@@ -408,7 +408,7 @@ SHA or “original prerequisites” is insufficient.
 **Files:**
 
 - Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
-- Modify: `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Create: `packages/local-runtime/test/agent-runtime-composition.test.ts`
 - Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
 - Claim: new Task140R0 claim.
 
@@ -418,18 +418,27 @@ CF-1 integration `48c9cbcdcf723bcc74868f782bc2375bae565ae6`. This is the sole
 factory registration: it captures reviewed Task134A normalization and the
 Task135A binder/stores, then registers the H-owned `WeakMap` resolver against
 the exact runner registry. It accepts no public structural tuple and remains
-blocked on any missing captured collaborator.
+blocked on any missing captured collaborator. Before edits, the coordinator
+must explicitly approve and invoke `superpowers:subagent-driven-development`
+and record that approval in the Task140R0 claim.
 
 - [ ] **Step 1: Write causal RED tests.**
 
-  Prove a public tuple/lookalike cannot construct or register the closure;
-  a swapped registry/preparation/readback/store cannot resolve; and the valid
-  factory-captured registration admits dispatch but cannot itself append H or
-  terminal state.
+  Create the isolated composition suite. Prove a public tuple/lookalike cannot
+  construct or register the closure; legacy-v1 and direct/caller-supplied
+  exact-v2 artifacts are rejected; caller-supplied production bindings,
+  `providerPostureHash`, and `exactRunBindingHash` are rejected; and each
+  exact-run, provider-posture, and six private context value can be swapped one
+  at a time only to fail closed. Every negative case must assert zero renderer,
+  provider-adapter, ledger-append, runner-dispatch, H prepare/bind/readback,
+  store, and terminal activity. A valid factory-captured control alone reaches
+  exactly one exact-v2 renderer call and still performs none of those later
+  effects in R0. Provider activity means readiness lookup, adapter invocation,
+  or network call; ledger activity means any read, write, or append.
 
 - [ ] **Step 2: Run focused RED.**
 
-  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the missing factory registration failure.
+  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the missing private registration/exact renderer path and every incorrectly admitted direct, injected, or swapped case.
 
 - [ ] **Step 3: Implement private registration only.**
 
@@ -437,14 +446,22 @@ blocked on any missing captured collaborator.
   bind it through Task140P's non-indexed registration seam. Its `resolve` must
   reparse/hash the Task134A preparation, call the captured Task135A binder,
   reparse/hash its readback, then return only the captured stores plus matching
-  frozen data. It exposes only the existing narrow orchestration route; it does
-  not accept caller capability arguments or duplicate H prepare/bind/readback.
+  frozen data. Before invoking the exact renderer, it strictly compares every
+  captured exact-run, provider-posture, and context value. It exposes only the
+  existing narrow orchestration route; it does not accept a caller artifact,
+  binding, derived hash, capability argument, or duplicate H
+  prepare/bind/readback.
   The old public `handoffCapability` remains temporarily inert for Task140H to
   remove functionally; Task140R1 removes its shape after H is reviewed.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
   `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+  GREEN requires the valid captured control to invoke
+  `renderExactlyBoundProductionSpecialistPrompt` exactly once and return a
+  recomputed matching v2 binding, while every negative RED above rejects with
+  all effect counters still at zero.
 
 - [ ] **Step 5: Commit and fresh review.**
 
@@ -644,8 +661,11 @@ constructor.
 
 ### Task140R0 added live-path registrar-integrity acceptance
 
-**Files:** retain Task140R0's existing files and claim. Its tests may add only
-the named Task140R0 test paths already in this plan; no Task132A public API or
+**Files:** modify
+`packages/local-runtime/src/agent-runtime-factory.ts`, create
+`packages/local-runtime/test/agent-runtime-composition.test.ts`, modify
+`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`, and
+create the Task140R0 claim. No other test path, Task132A public API, or
 test-only constructor may be introduced.
 
 **Consumes:** reviewed/coordinator-integrated Task132A lexical closure,
@@ -681,15 +701,23 @@ append; a missing factory capture makes the port unavailable.
   six independent counterfactuals that swap exactly one of: content hash,
   source high-water, selection manifest, scope, policy, or provenance. Each
   counterfactual must reach the live admission/resolve boundary and reject
-  before H prepare, H readback, or terminal append. Keep separate REDs proving
-  a public tuple/lookalike cannot construct or register the closure.
+  before renderer, provider readiness/adapter/network, any ledger, runner-dispatch, H
+  prepare/bind/readback, store, or terminal activity. Keep separate REDs
+  proving a public tuple/lookalike cannot construct or register the closure;
+  legacy-v1 and direct/caller-supplied exact-v2 artifacts cannot enter; caller
+  production bindings or derived hashes cannot be injected; and every
+  exact-run and provider-posture value swapped one at a time rejects at the
+  same zero-effect boundary. The valid captured control alone may invoke the
+  exact renderer once.
 
 - [ ] **Step 2: Run Task140R0 focused RED.**
 
   Run exactly:
   `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts`
 
-  Record the missing registration or incorrectly accepted swapped binding.
+  Record the missing registration/exact renderer path or each incorrectly
+  accepted legacy, direct-v2, injected-hash, exact-run, posture, or context
+  counterfactual.
 
 - [ ] **Step 3: Implement only private R0 registration and live rechecks.**
 
@@ -699,7 +727,9 @@ append; a missing factory capture makes the port unavailable.
   rebuild the actual pack through the captured registry, and reject each exact
   mismatch of content hash, source high-water, selection manifest/proof, scope,
   policy version, or provenance before it calls Task135A's `prepare`. It then
-  performs the existing preparation/readback reparse/hash and binder checks.
+  checks every captured exact-run and provider-posture value before rendering,
+  performs the existing preparation/readback reparse/hash and binder checks,
+  and invokes the exact-v2 renderer once only for the valid control.
   Register only that closed resolver through Task140P's non-indexed
   runner-registry `WeakMap`; no caller may pass a closure/capability/tuple, and
   the resolver does not return a context capability or verified binding set.
@@ -711,12 +741,842 @@ append; a missing factory capture makes the port unavailable.
 
   `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
 
-  The Task140R0 claim must enumerate successful control plus all six live-path
-  swaps and public tuple rejection. Full verification remains closed; a fresh
-  independent complete-range review is required before coordinator integration.
+  GREEN and the Task140R0 claim must enumerate the successful exact-v2 control;
+  legacy-v1, direct-v2, binding/hash-injection, every exact-run/posture swap,
+  all six live-path context swaps, and public tuple rejection; and zero activity
+  for every named effect in each negative case. Full verification remains
+  closed; a fresh independent complete-range review is required before
+  coordinator integration.
 
 **Revised release order:** fresh plan review approves this amendment; then a
 fresh bounded Task132A author may implement only the replacement Task132A
 boundary. Task133 and Task134A remain blocked until its reviewed/coordinator
 integration. Task140R0 remains blocked on all of its original prerequisites;
 this amendment does not accelerate any H or terminal work.
+## CF-1R5 Task133 Pure Renderer And Task140R0 Private Composition Amendment
+
+This corrective amendment supersedes only the original Task133 public
+`createProductionAgentPromptCapability({ authority, renderer, verifyContext })`
+and structural `VerifiedContextBindingSet` callback contract. That contract is
+retired: Task132A keeps `MountedWorkspaceRuntimeAuthority`,
+`VerifyMountedContextForRunInput`, `VerifiedContextBindingSet`, its `WeakSet`
+membership, factory attestation, and lexical verifier private in
+`packages/local-runtime/src/agent-runtime-context-packs.ts` and
+`packages/local-runtime/src/agent-runtime-factory.ts`. Task133 must not
+re-export or duplicate those shapes, accept an authority/verifier/context
+capability/registrar/factory capture, or add a public callback, tuple, brand,
+fallback, shadow capability, mint route, or production-readiness claim.
+
+### Source-backed canonical data ownership
+
+`packages/agent/src/prompt-artifacts.ts` remains the canonical owner of
+`ContextPackRef`, `PromptArtifactResolvedPayloadAudit`,
+`PromptArtifactEvaluatedContextRequirement`, `PromptArtifactProductionBinding`,
+`PromptArtifactEnvelope`, `buildPromptArtifact`,
+`parsePromptArtifactEnvelope`, and `promptArtifactAuditMetadata`.
+`buildPromptArtifact` already normalizes and freezes an envelope, but it does
+not bind task/attempt/approved-run/provider posture and requires private
+`VerifiedResolvedContextPack` values whenever a production binding is present.
+`packages/agent/src/production-specialist-prompts.ts` likewise renders only
+from verified resolved packs. Neither is a legal Task133 public input.
+
+Task133 therefore owns the one canonical **data-only** input module
+`packages/local-runtime/src/agent-runtime-prompt-render-input.ts` and its
+test `packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts`.
+It exports exactly `PureAgentPromptRenderInputV1`,
+`normalizePureAgentPromptRenderInput`, and
+`hashPureAgentPromptRenderInput`; no package index re-export, capability, or
+factory constructor is added. The normalizer accepts only a plain own-data,
+symbol-free, dense-array input, freezes its result, and rejects accessor,
+prototype, sparse-array, stale, or swapped values before any render. Its
+canonical hash covers exactly:
+
+- `schemaVersion: "agent-runtime-pure-prompt-render-input.v1"`, `taskId`,
+  `attemptId`, `approvedRunId`, `runType`, and
+  `residentAgentId: "agent_default"`;
+- `workspaceId`, `mountInstanceId`, `workflowDescriptorHash`, `policyVersion`,
+  and `scopeApplicabilityHash`;
+- `providerPosture` data only: `providerId`, `modelId`, `capabilityIds`,
+  `selectionPolicyVersion`, `readinessState: "ready"`,
+  `approvalRequirementId`, and `postureHash`;
+- `promptTemplateId`, `promptTemplateVersion`, `rendererId`,
+  `rendererVersion`, `rendererHash`, `providerOutputSchemaId`,
+  `providerOutputSchemaVersion`, `handoffSchemaId`, and
+  `handoffSchemaVersion`; and
+- canonical `contextPackRefs`, `resolvedPayloadAudits`,
+  `evaluatedContextRequirements`, allowed omissions, and a bounded plain-data
+  `templateData` value.
+
+Those are normalized data/audit facts, never Task132 private verified-binding
+objects or a substitute proof that a context pack was verified. Later users
+import this one module rather than reproduce its parser or hash.
+
+### Task133: pure renderer replacement
+
+**Files:**
+
+- Create: `packages/local-runtime/src/agent-runtime-prompt-render-input.ts`
+- Create: `packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts`
+- Create: `packages/local-runtime/src/agent-runtime-prompt-renderer.ts`
+- Create: `packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`
+- Create: `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`
+
+Task133 exports exactly
+`renderPureAgentPrompt(input: PureAgentPromptRenderInputV1): Readonly<PromptArtifactEnvelope>`
+from `agent-runtime-prompt-renderer.ts`. It first calls the canonical Task133
+normalizer/hash, then uses the agent-owned prompt-artifact builder only to
+return a frozen, local-only envelope with `safetyClass: "sensitive-local-only"`,
+`transferApprovalClass: "none"`, and no production binding. Prompt text may
+exist only inside that in-process returned envelope so a later private
+composition can use it; it is never logged, placed in diagnostics, audit
+metadata, DTOs, ledger events, errors, or a handoff. The envelope alone is not
+provider-transferable, executable, readiness, verified-context, durable, or
+terminal evidence. The renderer does not resolve a secret, call a provider,
+consume approval, inspect a factory closure, or invoke a context verifier.
+
+- [ ] **Step 1: Write causal REDs.**
+
+  Prove malformed/accessor/prototype/symbol/sparse inputs and swaps of run,
+  attempt, approved run, workspace/mount, policy, provider posture, template,
+  renderer hash, schema version, context ref/audit, or input hash reject before
+  text creation. Prove the result is frozen, has no production binding, cannot
+  pass `assertPromptArtifactCanTransferToRemoteProvider`, and its diagnostics
+  and `promptArtifactAuditMetadata` contain no rendered text. No RED may use a
+  Task132 type, callback, or fake capability.
+
+- [ ] **Step 2: Run the focused RED command.**
+
+  `npm test -- packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts packages/agent/test/prompt-artifacts.test.ts`
+
+  Expected: FAIL because the named pure input/renderer exports are absent;
+  existing prompt-artifact coverage remains green.
+
+- [ ] **Step 3: Implement the smallest data-only normalizer and renderer.**
+
+  Implement only the named pure input parser/hash and
+  `renderPureAgentPrompt`. Do not add a context/factory/provider API, a
+  production binding, or a transfer/readiness assertion.
+
+- [ ] **Step 4: Run focused GREEN and exact non-full gate.**
+
+  GREEN reruns the Step 2 command. The final required fail-fast gate is one
+  chain:
+
+  `npm test -- packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts packages/agent/test/prompt-artifacts.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+  `npm run verify` remains **CLOSED**.
+
+- [ ] **Step 5: Claim, commit, and review.**
+
+  The claim records Task132A integration
+  `7ec1eb6885716ac7324839c578677366fe1bb244`, reviewed/integrated Tasks126–130,
+  exact program base/rebase, the causal RED, final gate, local-only envelope
+  boundary, and no public authority route. A fresh independent Terra/xhigh
+  reviewer reads the complete rebase-base-through-candidate range before a
+  coordinator-only merge. Task134A remains independent.
+
+### Task140R0 private renderer composition seam
+
+Only Task140R0, after its existing lexical factory verifier has completed the
+six live checks, may copy those private verified facts into
+`PureAgentPromptRenderInputV1`, call `renderPureAgentPrompt` inside the private
+resolver in `packages/local-runtime/src/agent-runtime-factory.ts`, and retain
+the result only for its closed composition. It then uses the captured private
+resolved packs and agent-owned prompt-artifact contracts to form any later
+production binding; it does not return a capability, verified binding, or
+caller-supplied verifier. Data flows one way from private R0 verification to
+pure Task133 data to the private renderer call. Task133 does not import R0;
+R0 depends on reviewed/integrated Task133, so no cycle arises.
+
+Task140R0 modifies
+`packages/local-runtime/src/agent-runtime-factory.ts`, creates
+`packages/local-runtime/test/agent-runtime-composition.test.ts`, and modifies
+`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts` to add
+causal tests that forged, stale, or each swapped normalized field cannot reach
+the renderer, and that a direct Task133 local-only envelope is neither port
+registration input nor executable/readiness evidence. Its focused RED/GREEN
+and final non-full gate remain:
+
+`npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+Task140R0 remains blocked on all of its existing prerequisites; this amendment
+does not authorize its implementation, H sequencing, provider activity, or
+terminal behavior.
+
+## CF-1R5 Task133 Canonical Production Renderer Repair
+
+This section supersedes the preceding Task133 pure-input/local-only-envelope
+amendment in full. Do not implement
+`agent-runtime-prompt-render-input.ts`, `templateData`, `postureHash` as an
+input field, `renderPureAgentPrompt`, or a second local-only prompt artifact.
+Those shapes were rejected because they left prompt material untyped, made
+posture hashing circular, and required Task140R0 to create or upgrade a second
+artifact.
+
+Task133 instead extends the existing canonical agent-owned production prompt
+path. It remains pure and non-authoritative: rendering an artifact never proves
+mounted context, factory admission, provider approval, readiness, execution,
+or terminal state. Task140R0 remains the sole later owner of private runtime
+admission.
+
+### Exact canonical binding owner
+
+`packages/agent/src/prompt-artifacts.ts` owns these new frozen data contracts:
+
+```ts
+export interface PromptArtifactProviderPostureBinding {
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityIds: readonly string[];
+  readonly selectionPolicyVersion: string;
+  readonly readinessState: "ready";
+  readonly approvalRequirementId: string;
+}
+
+export interface PromptArtifactExactRunBinding {
+  readonly schemaVersion: "agent-production-prompt-exact-run-binding.v1";
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly runType: AgentSpecialistRunType;
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workflowDescriptorHash: `sha256:${string}`;
+  readonly policyVersion: string;
+  readonly providerPosture: PromptArtifactProviderPostureBinding;
+}
+```
+
+The same module exports exactly
+`normalizePromptArtifactProviderPostureBinding`,
+`hashPromptArtifactProviderPostureBinding`,
+`normalizePromptArtifactExactRunBinding`, and
+`hashPromptArtifactExactRunBinding`. The normalizers accept only exact-key,
+plain own-data, symbol-free records and dense plain arrays. Capability IDs must
+be unique and already in canonical lexical order. The posture hash is computed
+from normalized posture material; it is never supplied as input. The exact-run
+hash is computed from normalized exact-run material, including the nested
+normalized posture; it is never supplied as input. Neither hash includes prompt
+text, credentials, raw provider errors, local paths, or arbitrary template
+data.
+
+`PromptArtifactProductionBinding` gains required `exactRunBinding`,
+`exactRunBindingHash`, and `providerPostureHash` fields. Build, parse,
+serialize, freeze, transfer assertion, and audit metadata must normalize the
+binding and recompute both hashes. A stale, forged, swapped, missing, or
+noncanonical binding fails before an envelope is accepted or transferred.
+
+### Task133 canonical renderer extension
+
+Task133 changes exactly:
+
+- modify `packages/agent/src/prompt-artifacts.ts`;
+- modify `packages/agent/test/prompt-artifacts.test.ts`;
+- modify `packages/agent/src/production-specialist-prompts.ts`;
+- modify `packages/agent/test/production-specialist-prompts.test.ts`;
+- create `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`.
+
+`RenderProductionSpecialistPromptInput` gains the exact-run fields not already
+present: `attemptId`, `approvedRunId`, `residentAgentId`, `workspaceId`,
+`mountInstanceId`, `workflowDescriptorHash`, `policyVersion`, and
+`providerPosture`. Existing `taskId`, `runId`, `runType`, `generatedAt`,
+`scope`, and `resolvedContextPacks` remain the sole canonical rendering inputs.
+There is no `templateData`: the existing registered renderer and verified
+resolved packs remain the only text-rendering path. Existing
+`renderProductionSpecialistPrompt` normalizes the exact binding before text
+rendering, calls the canonical template renderer once, and creates exactly one
+provider-approved `PromptArtifactEnvelope` with the exact binding and computed
+hashes in its production manifest. No second builder, local-only upgrade, or
+Task140R0 renderer is permitted.
+
+Task133 tests must establish causal rejection of changed task, attempt,
+approved run, run, type, resident, workspace, mount, workflow descriptor,
+policy, provider/model/capabilities/selection policy/readiness/approval
+requirement, context ref/content hash, template/renderer/output/handoff schema,
+and parsed/serialized exact-binding hashes. They must also reject accessors,
+symbols, sparse/custom arrays, custom prototypes, duplicate or unsorted
+capabilities, supplied hash lookalikes, and prompt/secret-bearing diagnostic
+material. A valid artifact remains renderer-verified and provider-transfer
+eligible only at the artifact boundary; tests must prove it performs zero
+provider, approval, ledger, runner, H, store, or terminal effects.
+
+RED command:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/task-orchestrator-approval.test.ts
+```
+
+GREEN and final non-full fail-fast gate:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/task-orchestrator-approval.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+Full verification remains **CLOSED**.
+
+### Frozen Task133 dispatch gate
+
+Before a fresh Task133 implementation author is dispatched, the coordinator
+must integrate an independently approved version of this amendment and create
+one new isolated branch from the then-current clean program head. That base
+must descend from Task120 `49c3490a262162bd1d7146994390a2a6b5052394`,
+Task126 `2e7a8a011ada9828f2978129ddc9f47719c33655`, Task127
+`93a93844a18343a3d49933a4bf9fb92190224aa5`, Task128
+`ba43f007c371229ca5ad96844f4b3bc08584702b`, Task129
+`d362d1a73f45b947bcd6e1c7915c9e7fd9f96d3a`, Task130
+`78f456263a9af1d010df494684ea2d0906134eb4`, and Task132A
+`7ec1eb6885716ac7324839c578677366fe1bb244`. The coordinator records the
+full resolved SHAs, plan-amendment integration SHA, exact program-base SHA,
+focused prerequisite result, author session, and file ceiling before source
+edits. Any mismatch blocks dispatch rather than creating a shadow type or
+rebasing a child.
+
+### One-way Task140R0 composition
+
+Task140R0 modifies only its already assigned factory and route/composition
+tests. After the factory's six live context checks and captured provider-policy
+checks pass, it rebuilds the actual package-verified
+`VerifiedResolvedContextPack[]` through its captured registry, constructs one
+`RenderProductionSpecialistPromptInput` from the exact claim/attempt/run,
+resident, mount, workflow, policy, provider posture, scope, and current time,
+and calls `renderProductionSpecialistPrompt` exactly once. It checks the
+artifact's exact-run and posture hashes before admitting only that artifact to
+the existing private orchestration route. It does not create, upgrade, or
+rebuild an envelope, render text, accept an artifact/binding from a caller, or
+return a verifier/capability/private binding set.
+
+Task140R0's existing focused suite must add one end-to-end causal path proving
+canonical render -> exact binding/hash readback -> private factory admission.
+Counterfactuals must prove every swapped exact-run/posture/context field and a
+direct otherwise-valid production artifact fail before renderer/provider/
+ledger/runner/H/store/terminal activity. Task133 has no Task140R0 dependency;
+Task140R0 depends on reviewed/coordinator-integrated Task133, so no cycle or
+conditional ownership remains. This section does not authorize Task140R0, H,
+provider activity, or terminal work.
+
+## CF-1R5 Task133 Discriminated Binding Migration And Exact Renderer Amendment
+
+**Status:** This is the sole executable Task133 contract. It supersedes in
+full the two earlier Task133 amendments headed `CF-1R5 Task133 Pure Renderer
+And Task140R0 Private Composition Amendment` and `CF-1R5 Task133 Canonical
+Production Renderer Repair`, including their local-only envelope, pure-input
+module, `templateData`, five-file ceiling, and instruction to extend the
+legacy renderer in place. Those rejected amendments remain forward-only Git
+history, but no worker may implement, quote as current scope, or reconcile
+their Task133 instructions. The current claim below is the only durable Task133
+dispatch record.
+
+### Non-authoritative Boundary
+
+Task133 changes pure artifact data and its durable data projections only. It
+does not construct or accept a factory authority, verifier callback, mounted
+context capability, registrar capture, provider call, capability mint route,
+H operation, store operation, terminal state, ledger-write authority, or
+readiness claim. A rendered v1 or v2 artifact is not proof of verified context,
+factory admission, provider approval, or execution. The ordinary runtime
+continues to reject direct production invocation without its already-existing
+proof; Task133 neither creates nor changes that proof route.
+
+There is one canonical production prompt-text function:
+`renderCanonicalProductionPrompt` in
+`packages/agent/src/production-specialist-prompts.ts`. Both public renderer
+entry points below call that function exactly once and then call the existing
+`buildPromptArtifact` exactly once. No second text renderer, envelope upgrade,
+local-only artifact, hash-to-text resolver, local parser/hash mirror, or
+caller-supplied derived hash is permitted.
+
+### Frozen Compatibility Contract
+
+`packages/agent/src/prompt-artifacts.ts` remains the only owner of artifact
+envelope, serialization, parser, transfer assertion, audit DTO, and derived
+binding hashes. It must replace the unversioned production-binding object with
+this discriminated output union. Every persisted output field shown is
+required; v2 has no optional or defaulted exact-run, posture, or derived-hash
+field. Its distinct build-input shape accepts only raw inputs and must reject
+every persisted or lookalike output-hash field before builder acceptance.
+
+```ts
+export interface PromptArtifactProductionBindingV1 {
+  readonly schemaVersion: "agent-production-prompt-binding.v1";
+  readonly rendererId: string;
+  readonly rendererVersion: number;
+  readonly rendererHash: `sha256:${string}`;
+  readonly renderedPromptHash: `sha256:${string}`;
+  readonly providerOutputSchemaId: string;
+  readonly providerOutputSchemaVersion: number;
+  readonly handoffSchemaId: string;
+  readonly handoffSchemaVersion: number;
+  readonly scopeApplicabilityHash: `sha256:${string}`;
+  readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
+  readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
+}
+
+export interface PromptArtifactProviderPostureV2 {
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityIds: readonly string[];
+  readonly selectionPolicyVersion: string;
+  readonly readinessState: "ready";
+  readonly approvalRequirementId: string;
+}
+
+export interface PromptArtifactExactRunBindingV2 {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workflowDescriptorHash: `sha256:${string}`;
+  readonly policyVersion: string;
+  readonly providerPosture: PromptArtifactProviderPostureV2;
+}
+
+export interface PromptArtifactProductionBindingV2 {
+  readonly schemaVersion: "agent-production-prompt-binding.v2";
+  readonly rendererId: string;
+  readonly rendererVersion: number;
+  readonly rendererHash: `sha256:${string}`;
+  readonly renderedPromptHash: `sha256:${string}`;
+  readonly providerOutputSchemaId: string;
+  readonly providerOutputSchemaVersion: number;
+  readonly handoffSchemaId: string;
+  readonly handoffSchemaVersion: number;
+  readonly scopeApplicabilityHash: `sha256:${string}`;
+  readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
+  readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
+  readonly exactRunBinding: PromptArtifactExactRunBindingV2;
+  readonly providerPostureHash: `sha256:${string}`;
+  readonly exactRunBindingHash: `sha256:${string}`;
+}
+
+export interface BuildPromptArtifactProductionBindingV2 {
+  readonly schemaVersion: "agent-production-prompt-binding.v2";
+  readonly rendererId: string;
+  readonly rendererVersion: number;
+  readonly providerOutputSchemaId: string;
+  readonly providerOutputSchemaVersion: number;
+  readonly handoffSchemaId: string;
+  readonly handoffSchemaVersion: number;
+  readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
+  readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
+  readonly scope: ProductionRunScope;
+  readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
+}
+
+export type PromptArtifactProductionBinding =
+  | PromptArtifactProductionBindingV1
+  | PromptArtifactProductionBindingV2;
+export type BuildPromptArtifactProductionBinding =
+  | PromptArtifactProductionBindingV1
+  | BuildPromptArtifactProductionBindingV2;
+```
+
+`BuildPromptArtifactInput.production` accepts only
+`BuildPromptArtifactProductionBinding`, never the persisted v2 type. The v1
+branch is the explicit compatibility shape for every current caller.
+An unversioned production binding is invalid; the migration must add the v1
+discriminator at every current direct construction instead of using an
+optional `schemaVersion` or a parser default. V2 is the only exact-binding
+shape and cannot be synthesized from v1. The v2 build shape deliberately
+omits every persisted derived hash: `rendererHash`, `renderedPromptHash`,
+`scopeApplicabilityHash`, `providerPostureHash`, and `exactRunBindingHash`.
+The builder accepts raw `scope` and raw `exactRun` instead; it verifies the
+named non-derived registration fields against the canonical registration and
+derives the persisted hashes from that canonical registration, the canonical
+scope/exact-run material, and the canonical rendered text. It must reject an
+otherwise-valid v2 object with any omitted hash field or any unknown
+hash-lookalike own property before constructing an envelope; it must never
+normalize, silently correct, or overwrite caller hash material.
+
+The module also owns these data-only operations:
+
+```ts
+export interface CreatePromptArtifactExactRunBindingV2Input {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workflowDescriptor: SpecialistWorkflowDescriptor;
+  readonly policyVersion: string;
+  readonly providerPosture: PromptArtifactProviderPostureV2;
+}
+
+export function createPromptArtifactExactRunBindingV2(
+  input: CreatePromptArtifactExactRunBindingV2Input
+): PromptArtifactExactRunBindingV2;
+export function hashPromptArtifactProviderPostureV2(
+  posture: PromptArtifactProviderPostureV2
+): `sha256:${string}`;
+export function hashPromptArtifactExactRunBindingV2(
+  binding: PromptArtifactExactRunBindingV2
+): `sha256:${string}`;
+export function parsePromptArtifactAuditMetadata(
+  value: unknown
+): PromptArtifactAuditMetadata;
+```
+
+`createPromptArtifactExactRunBindingV2` normalizes the raw descriptor and
+posture as plain own-data before computing `workflowDescriptorHash` with the
+existing canonical agent hash. The build-only v2 production input contains the
+raw scope and raw exact-run input and no derived hash fields.
+`buildPromptArtifact` is the artifact owner: it derives `renderedPromptHash`
+from canonical rendered text, derives the canonical registration and scope
+hashes, and creates both exact-run/posture hashes. No caller may supply one of
+those values. `parsePromptArtifactEnvelope`,
+`serializePromptArtifactEnvelope`, `promptArtifactAuditMetadata`, and
+`parsePromptArtifactAuditMetadata` require the persisted v2 hashes and
+recompute them. No caller, including Task140R0, supplies a v2 output hash.
+
+All v1/v2 parsers reject accessors, symbols, sparse or custom arrays,
+non-plain prototypes, unknown fields, missing discriminators, duplicate or
+non-lexically-sorted capability IDs, stale hashes, and secret-bearing
+diagnostic material. The ontology contract may validate exact hash syntax and
+required v2 fields but must not reimplement the agent hash algorithm; it
+preserves the hashes emitted by the canonical artifact parser.
+
+### Renderer Entry Points And Current Callers
+
+`packages/agent/src/production-specialist-prompts.ts` keeps its current entry
+point with its current input contract:
+
+```ts
+export function renderProductionSpecialistPrompt(
+  input: RenderProductionSpecialistPromptInput
+): PromptArtifactEnvelope;
+```
+
+It intentionally emits `PromptArtifactProductionBindingV1` and adds the v1
+discriminator itself. It must not grow `attemptId`, `approvedRunId`,
+workspace/mount, provider posture, optional exact fields, or defaulted v2
+values. This preserves the existing specialist-runner path as an explicit
+legacy compatibility path.
+
+Add the strict v2-only entry point:
+
+```ts
+export interface RenderExactlyBoundProductionSpecialistPromptInput {
+  readonly generatedAt: string;
+  readonly scope: ProductionRunScope;
+  readonly resolvedContextPacks: readonly VerifiedResolvedContextPack[];
+  readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
+}
+
+export function renderExactlyBoundProductionSpecialistPrompt(
+  input: RenderExactlyBoundProductionSpecialistPromptInput
+): PromptArtifactEnvelope;
+```
+
+The exact entry derives task/run/type from `exactRun`, validates that the
+workflow descriptor agrees with the registered specialist, calculates the
+exact binding through the artifact owner, and emits v2. Its input has no
+artifact, production-binding, verifier, hash, template-data, or authority
+parameter. It must not accept omissions: applicability remains derived from
+the registered context requirements.
+
+The current `rg -n "\\brenderProductionSpecialistPrompt\\b" packages`
+call-site census is frozen as follows:
+
+- `packages/agent/src/specialist-runner-kernel.ts:219` remains a v1 caller.
+- `packages/agent/test/production-specialist-prompts.test.ts` is the direct
+  renderer/unit witness and gains the v2 cases.
+- `packages/agent/test/evidence-triage-workflow.test.ts:849`,
+  `packages/agent/test/prr-negotiation-workflow.test.ts:1723`, and
+  `packages/agent/test/task-orchestrator-evidence-triage.test.ts:230` remain
+  deterministic v1 caller witnesses.
+- `packages/agent/test/evidence-triage-nous-live.test.ts:258`,
+  `packages/agent/test/prr-negotiation-nous-live.test.ts:228`, and
+  `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts:235`
+  remain unedited and unrun because provider/Nous work is closed.
+
+No current caller is silently upgraded. Task140R0 is the first and only
+planned v2 caller after private verification; it is not part of Task133 source
+work.
+
+### Exhaustive Task133 File Contract
+
+The rejected five-file ceiling is retired. A future Task133 implementation may
+modify only this source set, this test set, and its new implementation claim:
+
+**Modify source**
+
+- `packages/agent/src/prompt-artifacts.ts`
+- `packages/agent/src/production-specialist-prompts.ts`
+- `packages/agent/src/adapters/provider-byte-transfer.ts`
+- `packages/agent/src/runtime.ts`
+- `packages/agent/src/projection.ts`
+- `packages/agent/src/projection-types.ts`
+- `packages/ontology/src/contracts.ts`
+
+**Modify tests**
+
+- `packages/agent/test/prompt-artifacts.test.ts`
+- `packages/agent/test/production-specialist-prompts.test.ts`
+- `packages/agent/test/provider-byte-transfer-adapter.test.ts`
+- `packages/agent/test/runtime.test.ts`
+- `packages/agent/test/projection.test.ts`
+- `packages/agent/test/specialist-runner-kernel.test.ts`
+- `packages/agent/test/evidence-triage-workflow.test.ts`
+- `packages/agent/test/prr-negotiation-workflow.test.ts`
+- `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+- `packages/ontology/test/agent-contracts.test.ts`
+- `packages/workspace-ops/test/projection-rebuild.test.ts`
+
+**Create**
+
+- `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`
+
+`packages/agent/src/specialist-runner-kernel.ts`,
+`packages/workspace-ops/src/projection-rebuild.ts`, the three closed live-test
+files above, all factory files, every provider adapter other than
+`provider-byte-transfer.ts`, all H files, and every store remain read-only
+unless a future independent reviewer authorizes a new amendment. The workspace
+rebuild source already delegates ledger validation to `validateKnowledgeEvent`;
+its focused test must prove a v2 event survives that real rebuild path without
+adding an agent-specific rebuild authority.
+
+### Required Migration Tasks
+
+> **For Task133 implementation workers:** the coordinator must explicitly
+> approve and invoke `superpowers:subagent-driven-development` before source
+> edits. Dispatch one fresh worker for each task below, require its claim and
+> causal RED before code, and use a fresh defects-first reviewer between tasks.
+> This approval is a prerequisite for implementation, not approval to run a
+> provider, factory, H, store, or terminal path.
+
+#### Task133.1: Canonical Artifact Union And Renderer Split
+
+**Files:** modify only `packages/agent/src/prompt-artifacts.ts`,
+`packages/agent/src/production-specialist-prompts.ts`,
+`packages/agent/test/prompt-artifacts.test.ts`, and
+`packages/agent/test/production-specialist-prompts.test.ts`.
+
+1. Write causal REDs that require an explicit v1 discriminator, an exact v2
+   artifact from `renderExactlyBoundProductionSpecialistPrompt`, computed
+   posture/exact hashes, stable parse/serialize/audit round-trip, and rejection
+   of every changed exact run/posture field and either derived hash. Cover a
+   caller-supplied derived-hash property as an unknown build input, rather than
+   accepting or correcting it. Freeze and run named witnesses
+   `rejectsV2BuildInputWithRenderedPromptHashBeforeBuilderAcceptance` and
+   `rejectsV2BuildInputWithOutputHashLookalikeBeforeBuilderAcceptance`; each
+   supplies an otherwise-valid v2 build object augmented with the prohibited
+   own property, proves strict rejection before `buildPromptArtifact` accepts
+   it, and proves no silent correction or envelope formation occurs.
+2. Run:
+
+   ```bash
+   npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts
+   ```
+
+   Expected RED: the exact entry and discriminated parser are absent, and v2
+   audit/hash expectations fail.
+3. Implement the union, canonical audit parser, v1 legacy entry, and v2 exact
+   entry. Each entry calls `renderCanonicalProductionPrompt` once and
+   `buildPromptArtifact` once; v2 builds from raw exact input and never upgrades
+   v1.
+4. Rerun the same command. Expected GREEN: both explicit versions parse and
+   v2 hashes recompute exactly.
+5. Commit the four files with the Task133 implementation claim and stop for a
+   fresh review that checks the one-renderer and no-caller-hash rules.
+
+#### Task133.2: Durable Transfer, Runtime, And Projection Migration
+
+**Files:** modify only
+`packages/agent/src/adapters/provider-byte-transfer.ts`,
+`packages/agent/src/runtime.ts`, `packages/agent/src/projection.ts`,
+`packages/agent/src/projection-types.ts`, `packages/ontology/src/contracts.ts`,
+and their four listed focused tests.
+
+1. Write causal REDs with one v1 audit/event and one canonical v2 artifact
+   audit. They must prove provider-audit parsing preserves the v2 discriminator,
+   exact binding, and both hashes; the runtime requested-event payload retains
+   the same fields; the ontology event contract accepts only strict v1/v2
+   variants; and the agent projection reads back the unchanged v2 hashes.
+   A runtime test may use the existing non-root proof fixture with an absent
+   provider so the request event appends and is read back before provider
+   lookup; it must assert that no adapter invocation occurs and it must not add
+   a proof or capability mint API.
+2. Run:
+
+   ```bash
+   npm test -- packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts
+   ```
+
+   Expected RED: v2 audit fields are rejected, stripped, or absent on event
+   and projection readback.
+3. Replace the provider-local audit shape parser with the canonical
+   data-only audit parser, map both discriminated variants explicitly in the
+   runtime event payload and projection DTO, and mirror the strict union in the
+   ontology event contract. Do not duplicate hash derivation in the provider,
+   runtime, projection, or ontology package.
+4. Rerun the same command. Expected GREEN: v1 compatibility remains explicit,
+   v2 data and both hashes are byte-for-byte preserved, and no provider adapter
+   invocation is recorded.
+5. Commit the listed files and stop for a fresh review of strict union coverage,
+   event provenance, and absence of a new authority path.
+
+#### Task133.3: Legacy Caller And Rebuild Evidence
+
+**Files:** modify only the five listed deterministic caller/rebuild tests.
+
+1. Write causal REDs showing the existing kernel and workflow callers return
+   v1 explicitly, while a validated v2 `agent.model-invocation.requested`
+   event passes `validateKnowledgeEvent`, is replayed by
+   `buildAgentProjection`, and is supplied through the real
+   `rebuildProjection` builder without losing either hash. The rebuild fixture
+   writes only its expendable projection artifact and performs no store, H,
+   provider, or terminal action.
+2. Run:
+
+   ```bash
+   npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/workspace-ops/test/projection-rebuild.test.ts
+   ```
+
+   Expected RED: the legacy output lacks its explicit v1 version or the v2
+   projection/rebuild fixture cannot retain exact binding hashes.
+3. Update only test fixtures and assertions required by the explicit union.
+   Do not change `specialist-runner-kernel.ts` or `projection-rebuild.ts` to
+   manufacture v2 data.
+4. Rerun the same command. Expected GREEN: current callers remain v1 and the
+   validated v2 event rebuilds faithfully.
+5. Commit the tests and stop for a fresh review that checks caller migration
+   was explicit and rebuildability did not become a second source of truth.
+
+### Frozen Dispatch, Final Gate, And Review
+
+Before dispatch, the coordinator must first integrate an independently
+approved version of this amendment, then create a clean isolated Task133
+worktree from a program head descending from these exact prerequisites:
+
+- Task120 `49c3490a262162bd1d7146994390a2a6b5052394`
+- Task126 `2e7a8a011ada9828f2978129ddc9f47719c33655`
+- Task127 `93a93844a18343a3d49933a4bf9fb92190224aa5`
+- Task128 `ba43f007c371229ca5ad96844f4b3bc08584702b`
+- Task129 `d362d1a73f45b947bcd6e1c7915c9e7fd9f96d3a`
+- Task130 `78f456263a9af1d010df494684ea2d0906134eb4`
+- Task132A `7ec1eb6885716ac7324839c578677366fe1bb244`
+
+The coordinator records every resolved SHA, the integrated amendment SHA, the
+new program-base SHA, worker session IDs, the frozen file set, and the
+subagent-driven-development approval in the new Task133 claim before edits.
+Any missing ancestor, dirty base, divergent v1 fixture, or attempt to add a
+defaulted v2 field blocks dispatch.
+
+The final Task133 non-full gate is exactly:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+`npm run verify` remains closed. Do not run provider/network/credential/Nous
+actions, reset credits, `neo`, implementation in this planning worktree,
+self-review, self-integration, merge, or any live test. The fresh plan-review
+and final-gate review range is exactly
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. The reviewer must inspect
+every commit in that full lineage: `38c2456f1f935aca291d24447c31b6a1d0728fd1`,
+`ffc2dc81c189af3163ec7b573b4f6f4767660de7`,
+`d91f28a3f6434490246daaa97e399a905c902761` (the final pre-correction repair),
+`6f399c4d52d97bd2cc74a4800d065ce4bcb878bf`, and this forward correction at
+`HEAD`. A fresh independent Terra/xhigh reviewer must return an approval
+before the coordinator alone integrates it. Rejection requires another forward
+amendment; neither this branch nor a child implementation branch may merge
+itself.
+
+### Task140R0 V2-Only Composition Replacement
+
+This subsection supersedes the preceding Task140R0 file contract and Steps
+1–4 in full. It preserves Task140R0's original private-registration ownership,
+all prerequisites, Step 5 fresh-review/coordinator-integration gate, and the six
+live context checks. It adds no Task140 authorization.
+
+**Files:**
+
+- Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
+- Create: `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+- Create: `docs/agentic/claims/task-140-r0-r-owned-factory-port-registration.md`
+
+The new composition test is the isolated production-factory integration
+witness. The existing route test is the public/direct-input rejection witness.
+The two agent tests in the focused command are read-only Task140P/dispatch
+regression witnesses. No other source, test, or claim file is permitted.
+
+**Prerequisites:** all original Task140P/R0 prerequisites plus reviewed and
+coordinator-integrated Task133 implementation. Before edits, the coordinator
+must explicitly approve and invoke `superpowers:subagent-driven-development`
+and record that approval, every prerequisite full SHA, the clean base, and the
+frozen file list in the new Task140R0 claim. The six private context checks and
+captured provider-policy checks must exist before the exact renderer path.
+
+- [ ] **Step 1: Create exhaustive causal Task140R0 REDs.**
+
+  In `agent-runtime-composition.test.ts`, drive the real factory-created,
+  Task140P-registered resolver. Add one valid captured control and table-driven
+  counterfactuals that swap exactly one captured value at a time:
+  `taskId`, `attemptId`, `approvedRunId`, `runId`, `runType`,
+  `residentAgentId`, `workspaceId`, `mountInstanceId`, workflow descriptor,
+  `policyVersion`; provider `providerId`, `modelId`, `capabilityIds`,
+  `selectionPolicyVersion`, `readinessState`, `approvalRequirementId`; and
+  context content hash, source high-water, selection manifest/proof, scope,
+  policy version, and provenance. Each counterfactual must fail before renderer
+  invocation.
+
+  In `agent-task-orchestrator-routes.test.ts`, add separate real-route REDs for
+  a legacy-v1 artifact, a direct/caller-supplied exact-v2 artifact, a
+  caller-supplied production binding, injected `workflowDescriptorHash`,
+  injected `providerPostureHash`, and injected `exactRunBindingHash`. Do not
+  test an exported helper or add a test-only constructor. For every negative
+  test, install counters/spies and
+  assert zero renderer calls, provider readiness/adapter/network calls, ledger
+  reads/writes/appends, runner dispatches, H prepare/bind/readback calls, store
+  reads/writes, and terminal activity. The valid captured control must be the
+  only case expected to reach one renderer call, and R0 itself still records
+  zero later effects.
+
+- [ ] **Step 2: Run the exact focused RED.**
+
+  ```bash
+  npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts
+  ```
+
+  Record causal failures for the absent private exact-v2 composition path and
+  for every legacy/direct/injected/swapped case that is not yet rejected at the
+  required zero-effect boundary. A missing test file is not acceptable RED
+  evidence: create the suite before running this command.
+
+- [ ] **Step 3: Implement private exact-v2 composition only.**
+
+  After all private context and provider-policy comparisons succeed, construct
+  exactly one `RenderExactlyBoundProductionSpecialistPromptInput` from captured
+  task, attempt, approved-run, run, resident, workspace, mount, workflow,
+  policy, and ready provider-posture facts. Call
+  `renderExactlyBoundProductionSpecialistPrompt` exactly once, require an
+  explicit v2 artifact, recompute and compare the provider-posture and exact-run
+  hashes, and only then allow the existing private route to proceed. Reject all
+  direct artifacts, caller bindings/hashes, and one-field swaps before that
+  renderer call. Do not upgrade v1, render text locally, add a Task133 factory
+  surface, mint a capability, invoke a provider, append a ledger event, dispatch
+  a runner, or perform H, store, or terminal work.
+
+- [ ] **Step 4: Run GREEN and the exact non-full gate.**
+
+  ```bash
+  npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check
+  ```
+
+  GREEN requires the valid captured control to call the canonical exact
+  renderer exactly once and return an explicit v2 artifact whose exact binding
+  and both recomputed hashes match the captured facts. Every legacy-v1,
+  direct-v2, binding/hash injection, exact-run swap, provider-posture swap, and
+  context swap must reject with every named effect counter at zero. The claim
+  records each case and command result. `npm run verify`, provider/network/
+  credential/Nous activity, reset credits, `neo`, H/store/terminal work,
+  self-integration, and merge remain closed.
