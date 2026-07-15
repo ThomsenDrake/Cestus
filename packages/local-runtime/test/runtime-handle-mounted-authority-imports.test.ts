@@ -71,8 +71,12 @@ function productionSourceFiles(root: string): string[] {
       return [];
     }
 
-    const sourceRoot = join(packagesRoot, entry.name, "src");
-    return existsSync(sourceRoot) ? collectProductionSourceFiles(sourceRoot) : [];
+    return ["src", "bin"].flatMap((productionRootName) => {
+      const productionRoot = join(packagesRoot, entry.name, productionRootName);
+      return existsSync(productionRoot)
+        ? collectProductionSourceFiles(productionRoot)
+        : [];
+    });
   });
 }
 
@@ -217,6 +221,17 @@ function importEqualsReferencesFactoryCapture(
   );
 }
 
+function importTypeReferencesFactoryCapture(
+  root: string,
+  sourcePath: string,
+  importType: TypeScript.ImportTypeNode,
+): boolean {
+  return (
+    ts.isLiteralTypeNode(importType.argument) &&
+    isProtectedModuleSpecifier(root, sourcePath, importType.argument.literal)
+  );
+}
+
 function isStandardModuleRequireCall(expression: TypeScript.Expression): boolean {
   if (ts.isPropertyAccessExpression(expression)) {
     return (
@@ -236,6 +251,35 @@ function isStandardModuleRequireCall(expression: TypeScript.Expression): boolean
   );
 }
 
+function transparentExpressionInner(
+  expression: TypeScript.Expression,
+): TypeScript.Expression | undefined {
+  if (
+    ts.isParenthesizedExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isTypeAssertionExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isNonNullExpression(expression)
+  ) {
+    return expression.expression;
+  }
+
+  return undefined;
+}
+
+function unwrapTransparentExpression(
+  expression: TypeScript.Expression,
+): TypeScript.Expression {
+  let unwrappedExpression = expression;
+  while (true) {
+    const innerExpression = transparentExpressionInner(unwrappedExpression);
+    if (innerExpression === undefined) {
+      return unwrappedExpression;
+    }
+    unwrappedExpression = innerExpression;
+  }
+}
+
 function callReferencesFactoryCapture(
   root: string,
   sourcePath: string,
@@ -246,10 +290,14 @@ function callReferencesFactoryCapture(
     return false;
   }
 
+  if (call.expression.kind === ts.SyntaxKind.ImportKeyword) {
+    return true;
+  }
+
+  const callee = unwrapTransparentExpression(call.expression);
   return (
-    call.expression.kind === ts.SyntaxKind.ImportKeyword ||
-    (ts.isIdentifier(call.expression) && call.expression.text === "require") ||
-    isStandardModuleRequireCall(call.expression)
+    (ts.isIdentifier(callee) && callee.text === "require") ||
+    isStandardModuleRequireCall(callee)
   );
 }
 
@@ -273,6 +321,14 @@ function sourceImportsFactoryCaptureSeam(
     if (
       ts.isImportEqualsDeclaration(node) &&
       importEqualsReferencesFactoryCapture(root, sourcePath, node)
+    ) {
+      capturesFactoryAuthority = true;
+      return;
+    }
+
+    if (
+      ts.isImportTypeNode(node) &&
+      importTypeReferencesFactoryCapture(root, sourcePath, node)
     ) {
       capturesFactoryAuthority = true;
       return;
@@ -380,10 +436,13 @@ describe("factory-issued mounted runtime capture production imports", () => {
   it("rejects deep cross-package imports and re-exports across every production source extension", () => {
     const fixtureRoot = createFixtureWorkspace();
     const deepImport = "../../../local-runtime/src/runtime-factory.js";
+    const binDeepImport = "../../local-runtime/src/runtime-factory.js";
     const fragmentRuntimeFactoryImport = `${deepImport}#fragment`;
     const queryRuntimeFactoryImport = `${deepImport}?nonce`;
     const escapedRuntimeFactoryImport =
       "../../../local-runtime/src/\\u0072untime-factory.js";
+    const binFixturePath = "packages/agent-runtime/bin/deep-import.mjs";
+    const binFixtureSource = `import * as runtimeFactory from "${binDeepImport}";\nvoid runtimeFactory;\n`;
     const fixtureSources = {
       "ast-commented-dynamic-import.ts": `void import(/* dynamic-argument */ "${escapedRuntimeFactoryImport}");\n`,
       "ast-commented-import-equals.ts": `import runtimeFactory = require(/* import-equals-argument */ "${escapedRuntimeFactoryImport}");\nvoid runtimeFactory;\n`,
@@ -406,6 +465,9 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "fragment-import-equals.ts": `import runtimeFactory = require("${fragmentRuntimeFactoryImport}");\nvoid runtimeFactory;\n`,
       "fragment-namespace-import.ts": `import * as runtimeFactory from "${fragmentRuntimeFactoryImport}";\nvoid runtimeFactory;\n`,
       "fragment-namespace-reexport.ts": `export * as runtimeFactory from "${fragmentRuntimeFactoryImport}";\n`,
+      "import-type-default.ts": `type Leak = import("${deepImport}").default;\n`,
+      "import-type-namespace.ts": `type Leak = import("${deepImport}");\n`,
+      "import-type-qualifier.ts": `type Leak = import("${deepImport}").FactoryIssuedMountedRuntimeCapture;\n`,
       "module-element-require.cjs": `void module["require"]("${deepImport}");\n`,
       "module-require.cjs": `void module.require("${deepImport}");\n`,
       "named-default-import.ts": `import { default as runtimeFactory } from "${deepImport}";\nvoid runtimeFactory;\n`,
@@ -420,6 +482,21 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "type-namespace-import.ts": `import type * as runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
       "type-namespace-reexport.ts": `export type * as runtimeFactory from "${deepImport}";\n`,
       "type-star-reexport.ts": `export type * from "${deepImport}";\n`,
+      "wrapped-module-element-as.cts": `void (module["require"] as unknown)("${deepImport}");\n`,
+      "wrapped-module-element-non-null.cts": `void (module["require"]!)("${deepImport}");\n`,
+      "wrapped-module-element-parenthesized.cts": `void (module["require"])("${deepImport}");\n`,
+      "wrapped-module-element-satisfies.cts": `void (module["require"] satisfies unknown)("${deepImport}");\n`,
+      "wrapped-module-element-type-assertion.cts": `void (<unknown>module["require"])("${deepImport}");\n`,
+      "wrapped-module-property-as.cts": `void (module.require as unknown)("${deepImport}");\n`,
+      "wrapped-module-property-non-null.cts": `void (module.require!)("${deepImport}");\n`,
+      "wrapped-module-property-parenthesized.cts": `void (module.require)("${deepImport}");\n`,
+      "wrapped-module-property-satisfies.cts": `void (module.require satisfies unknown)("${deepImport}");\n`,
+      "wrapped-module-property-type-assertion.cts": `void (<unknown>module.require)("${deepImport}");\n`,
+      "wrapped-require-as.cts": `void (require as unknown)("${deepImport}");\n`,
+      "wrapped-require-non-null.cts": `void (require!)("${deepImport}");\n`,
+      "wrapped-require-parenthesized.cts": `void (require)("${deepImport}");\n`,
+      "wrapped-require-satisfies.cts": `void (require satisfies unknown)("${deepImport}");\n`,
+      "wrapped-require-type-assertion.cts": `void (<unknown>require)("${deepImport}");\n`,
     };
     const decodedFixtureModuleSpecifiers = new Map<string, string>([
       ["fragment-dynamic-import.ts", fragmentRuntimeFactoryImport],
@@ -444,6 +521,11 @@ describe("factory-issued mounted runtime capture production imports", () => {
       ["named-default-reexport.ts", "default"],
       ["named-default-type-import.ts", "default"],
       ["named-default-type-reexport.ts", "default"],
+      ["import-type-default.ts", "default"],
+      [
+        "import-type-qualifier.ts",
+        "FactoryIssuedMountedRuntimeCapture",
+      ],
       ["query-named-import.ts", "captureFactoryIssuedMountedRuntime"],
       [
         "query-named-reexport.ts",
@@ -473,6 +555,19 @@ describe("factory-issued mounted runtime capture production imports", () => {
         moduleSpecifier: deepImport,
         source: `void loader.require("${deepImport}");\n`,
       },
+      "wrapped-non-exact-require.cts": {
+        moduleSpecifier: "../../../unrelated/src/runtime-factory.js",
+        source:
+          'void (require as unknown)("../../../unrelated/src/runtime-factory.js");\n',
+      },
+      "wrapped-unrelated-loader.cts": {
+        moduleSpecifier: deepImport,
+        source: `void (loader.require as unknown)("${deepImport}");\n`,
+      },
+    };
+    const ignoredPackageRootSources = {
+      "packages/agent-runtime/fixtures/ignored.ts": `import { captureFactoryIssuedMountedRuntime } from "${binDeepImport}";\n`,
+      "packages/agent-runtime/test/ignored.ts": `import { captureFactoryIssuedMountedRuntime } from "${binDeepImport}";\n`,
     };
 
     for (const [fileName, source] of Object.entries(fixtureSources)) {
@@ -497,6 +592,20 @@ describe("factory-issued mounted runtime capture production imports", () => {
       }
     }
 
+    writeFixtureSource(fixtureRoot, binFixturePath, binFixtureSource);
+    const decodedBinTokens = decodedAstTokens(binFixturePath, binFixtureSource);
+    expect(syntacticDiagnosticsFor(binFixturePath, binFixtureSource)).toEqual([]);
+    expect(decodedBinTokens.stringLiterals).toContain(binDeepImport);
+
+    for (const [relativePath, source] of Object.entries(
+      ignoredPackageRootSources,
+    )) {
+      writeFixtureSource(fixtureRoot, relativePath, source);
+      const decodedTokens = decodedAstTokens(relativePath, source);
+      expect(syntacticDiagnosticsFor(relativePath, source)).toEqual([]);
+      expect(decodedTokens.stringLiterals).toContain(binDeepImport);
+    }
+
     for (const [fileName, fixture] of Object.entries(lookalikeFixtureSources)) {
       writeFixtureSource(
         fixtureRoot,
@@ -509,7 +618,9 @@ describe("factory-issued mounted runtime capture production imports", () => {
       expect(decodedTokens.stringLiterals).toContain(fixture.moduleSpecifier);
     }
 
+    expect(captureSeamImporters(fixtureRoot)).toContain(binFixturePath);
     expect(captureSeamImporters(fixtureRoot)).toEqual([
+      "packages/agent-runtime/bin/deep-import.mjs",
       "packages/agent-runtime/src/deep/ast-commented-dynamic-import.ts",
       "packages/agent-runtime/src/deep/ast-commented-import-equals.ts",
       "packages/agent-runtime/src/deep/ast-commented-named-import.ts",
@@ -531,6 +642,9 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/fragment-import-equals.ts",
       "packages/agent-runtime/src/deep/fragment-namespace-import.ts",
       "packages/agent-runtime/src/deep/fragment-namespace-reexport.ts",
+      "packages/agent-runtime/src/deep/import-type-default.ts",
+      "packages/agent-runtime/src/deep/import-type-namespace.ts",
+      "packages/agent-runtime/src/deep/import-type-qualifier.ts",
       "packages/agent-runtime/src/deep/module-element-require.cjs",
       "packages/agent-runtime/src/deep/module-require.cjs",
       "packages/agent-runtime/src/deep/named-default-import.ts",
@@ -545,6 +659,21 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/type-namespace-import.ts",
       "packages/agent-runtime/src/deep/type-namespace-reexport.ts",
       "packages/agent-runtime/src/deep/type-star-reexport.ts",
+      "packages/agent-runtime/src/deep/wrapped-module-element-as.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-element-non-null.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-element-parenthesized.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-element-satisfies.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-element-type-assertion.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-property-as.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-property-non-null.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-property-parenthesized.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-property-satisfies.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-property-type-assertion.cts",
+      "packages/agent-runtime/src/deep/wrapped-require-as.cts",
+      "packages/agent-runtime/src/deep/wrapped-require-non-null.cts",
+      "packages/agent-runtime/src/deep/wrapped-require-parenthesized.cts",
+      "packages/agent-runtime/src/deep/wrapped-require-satisfies.cts",
+      "packages/agent-runtime/src/deep/wrapped-require-type-assertion.cts",
     ]);
     expect(() => assertCaptureSeamImportersAreAllowed(fixtureRoot)).toThrow(
       /packages\/agent-runtime\/src\/deep\/capture\.cjs/,
