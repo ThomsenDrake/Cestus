@@ -5926,6 +5926,135 @@ Exactly two unqualified approvals permit coordinator-only plan integration.
 Source, full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/
 merge remain closed.
 
+### CF-1R22 physical-checkout material (incorporated below)
+
+This terminal overlay supersedes CF-1R21 only for Git environment binding,
+Task137A's complete command, and the exact Task140P/R0/H prerequisite-checker
+invocations. Every other CF-1R18 through CF-1R21 contract remains current.
+
+### Physical checkout and Git environment authority
+
+Task117A, Task137A, and every Task135C checker invocation reject every
+preexisting shell variable whose name begins with `GIT_`, with one exact
+execution-harness exception: a lone `GIT_PAGER=cat` is accepted and immediately
+unset before the first Git operation. No additional or differently valued
+variable is allowed. This prevents `GIT_WORK_TREE`,
+`GIT_INDEX_FILE`, `GIT_DIR`, `GIT_COMMON_DIR`, object alternates, config
+injection, namespace, shallow-file, and future Git environment controls from
+redirecting an authority check. Each shell gate records `pwd -P`, requires Git
+to report that exact physical path as its top level, and repeats both checks
+after its focused command before authorization.
+
+Task135C performs the equivalent check in Node before parsing arguments or
+spawning Git: `Object.keys(process.env).filter((key) => key.startsWith("GIT_"))`
+must be empty after accepting and deleting only a lone `GIT_PAGER=cat`;
+`realpathSync(process.cwd())` must equal the real path of the
+literal `git rev-parse --show-toplevel` result. Only after those checks does
+the checker create its private child-process environment with
+`GIT_NO_REPLACE_OBJECTS=1`. Its focused tests cover `GIT_WORK_TREE`,
+`GIT_INDEX_FILE`, `GIT_DIR`, `GIT_CONFIG_COUNT`, and an otherwise unknown
+`GIT_CESTUS_TEST`; each fails before any manifest, claim, or revision read.
+
+The exact reusable shell assertion in every complete command below is:
+
+```bash
+assert_git_authority_context() {
+  local -a git_authority_variables
+  mapfile -t git_authority_variables < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }')
+  if test "${#git_authority_variables[@]}" -eq 1; then
+    test "${git_authority_variables[0]}" = "GIT_PAGER" || return 70
+    test "$GIT_PAGER" = "cat" || return 70
+    unset GIT_PAGER
+  elif test "${#git_authority_variables[@]}" -ne 0; then
+    return 70
+  fi
+  test "$(git rev-parse --is-inside-work-tree)" = "true"
+  test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"
+}
+```
+
+### Complete Task117A command
+
+This replaces the CF-1R21 Task117A command in full. Before dispatch, the
+coordinator replaces the one literal `COORDINATOR_ATTESTATION_SHA` token with
+the lowercase 40-character SHA of the sibling program-registry attestation
+commit. Worker and both reviewers run these exact materialized bytes:
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() {
+  local -a git_authority_variables
+  mapfile -t git_authority_variables < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }')
+  if test "${#git_authority_variables[@]}" -eq 1; then
+    test "${git_authority_variables[0]}" = "GIT_PAGER" || return 70
+    test "$GIT_PAGER" = "cat" || return 70
+    unset GIT_PAGER
+  elif test "${#git_authority_variables[@]}" -ne 0; then
+    return 70
+  fi
+  test "$(git rev-parse --is-inside-work-tree)" = "true"
+  test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"
+}
+assert_git_authority_context
+task117a_claim='docs/agentic/claims/task-117a-runtime-handle-capture-freeze.md'
+task117a_freeze='docs/agentic/resident-agent-full-vision-contract-freeze.md'
+task117a_registry='docs/agentic/resident-agent-full-vision-program-registry.md'
+task117a_attestation='COORDINATOR_ATTESTATION_SHA'
+task117a_tmp="$(mktemp -d)"
+trap 'rm -rf "$task117a_tmp"' EXIT
+printf '%s\n' "$task117a_attestation" | grep -Eq '^[0-9a-f]{40}$'
+test ! -s "$(git rev-parse --git-path info/grafts)"
+test ! -s "$(git rev-parse --git-path shallow)"
+test -z "$(git ls-files -v | sed -n '/^[a-zS] /p')"
+test -z "$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+extract_task117a_claim() {
+  awk '/^<!-- task-117a-dispatch-v3:start -->$/ { starts++; inside=1 } inside { print } /^<!-- task-117a-dispatch-v3:end -->$/ { ends++; inside=0 } END { if (starts != 1 || ends != 1 || inside) exit 42 }'
+}
+extract_task117a_audit() {
+  awk '/^```bash$/ { inside=1; block=""; next } inside && /^```$/ { if (block ~ /CF-1 full-row canonicalRows audit/) { matches++; selected=block } inside=0; next } inside { block=block $0 ORS } END { if (matches != 1 || selected == "") exit 43; printf "%s", selected }'
+}
+extract_task117a_claim < "$task117a_claim" > "$task117a_tmp/claim"
+task117a_source="$(sed -n 's/^sourceBaseSha=\([0-9a-f]\{40\}\)$/\1/p' "$task117a_tmp/claim")"
+task117a_freeze_sha="$(sed -n 's/^freezeSha256=\([0-9a-f]\{64\}\)$/\1/p' "$task117a_tmp/claim")"
+task117a_audit_sha="$(sed -n 's/^auditSha256=\([0-9a-f]\{64\}\)$/\1/p' "$task117a_tmp/claim")"
+test "$(grep -Ec '^sourceBaseSha=[0-9a-f]{40}$' "$task117a_tmp/claim")" -eq 1
+test "$(grep -Ec '^freezeSha256=[0-9a-f]{64}$' "$task117a_tmp/claim")" -eq 1
+test "$(grep -Ec '^auditSha256=[0-9a-f]{64}$' "$task117a_tmp/claim")" -eq 1
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task117a_source}^{commit}")" = "$task117a_source"
+mapfile -t task117a_claim_commits < <(GIT_NO_REPLACE_OBJECTS=1 git log --no-renames --diff-filter=A --format=%H -- "$task117a_claim")
+test "${#task117a_claim_commits[@]}" -eq 1
+task117a_claim_commit="${task117a_claim_commits[0]}"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task117a_claim_commit}^")" = "$task117a_source"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git diff-tree --root --no-commit-id --name-status -r --no-renames "$task117a_claim_commit")" = "$(printf 'A\t%s' "$task117a_claim")"
+GIT_NO_REPLACE_OBJECTS=1 git show "${task117a_claim_commit}:${task117a_claim}" | extract_task117a_claim > "$task117a_tmp/claim-at-add"
+cmp -s "$task117a_tmp/claim" "$task117a_tmp/claim-at-add"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-list --parents -n 1 "$task117a_attestation" | awk '{print NF}')" -eq 2
+test "$(GIT_NO_REPLACE_OBJECTS=1 git diff-tree --no-commit-id --name-only -r --no-renames "$task117a_attestation")" = "$task117a_registry"
+task117a_claim_blob_sha="$(GIT_NO_REPLACE_OBJECTS=1 git show "${task117a_claim_commit}:${task117a_claim}" | sha256sum | awk '{print $1}')"
+task117a_attestation_start="<!-- resident-dispatch-attestation-v1:start task117a ${task117a_claim_commit} -->"
+task117a_attestation_end="<!-- resident-dispatch-attestation-v1:end task117a ${task117a_claim_commit} -->"
+GIT_NO_REPLACE_OBJECTS=1 git show "${task117a_attestation}:${task117a_registry}" | awk -v start="$task117a_attestation_start" -v end="$task117a_attestation_end" '$0 == start { matches++; inside=1 } inside { print } $0 == end { inside=0 } END { if (matches != 1 || inside) exit 44 }' > "$task117a_tmp/attestation"
+printf '%s\n' "$task117a_attestation_start" 'task=task117a' "dispatchCommitSha=$task117a_claim_commit" "sourceBaseSha=$task117a_source" 'manifestPath=none' 'manifestSha256=none' "claimPath=$task117a_claim" "claimSha256=$task117a_claim_blob_sha" "freezePath=$task117a_freeze" "intendedFreezeSha256=$task117a_freeze_sha" "auditSha256=$task117a_audit_sha" "$task117a_attestation_end" > "$task117a_tmp/expected-attestation"
+cmp -s "$task117a_tmp/attestation" "$task117a_tmp/expected-attestation"
+test -z "$(GIT_NO_REPLACE_OBJECTS=1 git rev-list --min-parents=2 "${task117a_source}..HEAD")"
+task117a_actual="$( { while read -r commit; do GIT_NO_REPLACE_OBJECTS=1 git diff-tree --no-commit-id --name-only -r --no-renames "$commit"; done < <(GIT_NO_REPLACE_OBJECTS=1 git rev-list --reverse "${task117a_source}..HEAD"); GIT_NO_REPLACE_OBJECTS=1 git diff --name-only --no-renames; GIT_NO_REPLACE_OBJECTS=1 git diff --cached --name-only --no-renames; git ls-files --others --exclude-standard; } | LC_ALL=C sort -u )"
+task117a_expected="$(printf '%s\n' "$task117a_claim" "$task117a_freeze" | LC_ALL=C sort -u)"
+test "$task117a_actual" = "$task117a_expected"
+test "$(sha256sum "$task117a_freeze" | awk '{print $1}')" = "$task117a_freeze_sha"
+extract_task117a_audit < "$task117a_freeze" > "$task117a_tmp/audit"
+test -s "$task117a_tmp/audit"
+test "$(sha256sum "$task117a_tmp/audit" | awk '{print $1}')" = "$task117a_audit_sha"
+bash "$task117a_tmp/audit"
+assert_git_authority_context
+test ! -s "$(git rev-parse --git-path info/grafts)"
+test ! -s "$(git rev-parse --git-path shallow)"
+test -z "$(git ls-files -v | sed -n '/^[a-zS] /p')"
+test -z "$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+git diff --check
+npm run factory:check
+```
+
 ## CF-1R21 - Whole-freeze, dispatch-attestation, and hidden-index authority
 
 This terminal overlay supersedes CF-1R20 only for Task117A freeze hashing and
@@ -6166,6 +6295,180 @@ Two fresh independent Terra/xhigh reviewers inspect exact range
 proof of whole-freeze plus audit hashing, literal external attestation binding,
 hidden-index/ignored/graft/shallow rejection, the exact Task135B producer-result
 and private transfer path, and every preserved CF-1R18 through CF-1R20 gate.
+Exactly two unqualified approvals permit coordinator-only plan integration.
+Source, full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/
+merge remain closed.
+
+## CF-1R22 - Physical-checkout binding and final executable commands
+
+This terminal section incorporates the complete CF-1R22 physical-checkout
+contract and Task117A command above, then supplies the remaining final commands.
+Together those CF-1R22 sections supersede CF-1R21 only for Git environment
+binding, Task137A's complete command, and the exact Task140P/R0/H prerequisite-
+checker invocations. Every other CF-1R18 through CF-1R21 contract remains
+current.
+
+### Complete Task137A command
+
+This replaces every older Task137A command in full:
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() {
+  local -a git_authority_variables
+  mapfile -t git_authority_variables < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }')
+  if test "${#git_authority_variables[@]}" -eq 1; then
+    test "${git_authority_variables[0]}" = "GIT_PAGER" || return 70
+    test "$GIT_PAGER" = "cat" || return 70
+    unset GIT_PAGER
+  elif test "${#git_authority_variables[@]}" -ne 0; then
+    return 70
+  fi
+  test "$(git rev-parse --is-inside-work-tree)" = "true"
+  test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"
+}
+assert_git_authority_context
+task137a_claim='docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md'
+task137a_base_lines="$(sed -n 's/^<!-- task-137a-dispatch-base-sha: \([0-9a-f]\{40\}\) -->$/\1/p' "$task137a_claim")"
+test "$(printf '%s\n' "$task137a_base_lines" | sed '/^$/d' | wc -l)" -eq 1
+task137a_base="$task137a_base_lines"
+test ! -s "$(git rev-parse --git-path info/grafts)"
+test ! -s "$(git rev-parse --git-path shallow)"
+test -z "$(git ls-files -v | sed -n '/^[a-zS] /p')"
+test -z "$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task137a_base}^{commit}")" = "$task137a_base"
+mapfile -t task137a_claim_commits < <(GIT_NO_REPLACE_OBJECTS=1 git log --no-renames --diff-filter=A --format=%H -- "$task137a_claim")
+test "${#task137a_claim_commits[@]}" -eq 1
+task137a_claim_commit="${task137a_claim_commits[0]}"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task137a_claim_commit}^")" = "$task137a_base"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git diff-tree --root --no-commit-id --name-status -r --no-renames "$task137a_claim_commit")" = "$(printf 'A\t%s' "$task137a_claim")"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git show "${task137a_claim_commit}:${task137a_claim}" | sed -n 's/^<!-- task-137a-dispatch-base-sha: \([0-9a-f]\{40\}\) -->$/\1/p')" = "$task137a_base"
+test -z "$(GIT_NO_REPLACE_OBJECTS=1 git rev-list --min-parents=2 "${task137a_base}..HEAD")"
+task137a_actual="$( { while read -r commit; do GIT_NO_REPLACE_OBJECTS=1 git diff-tree --no-commit-id --name-only -r --no-renames "$commit"; done < <(GIT_NO_REPLACE_OBJECTS=1 git rev-list --reverse "${task137a_base}..HEAD"); GIT_NO_REPLACE_OBJECTS=1 git diff --name-only --no-renames; GIT_NO_REPLACE_OBJECTS=1 git diff --cached --name-only --no-renames; git ls-files --others --exclude-standard; } | LC_ALL=C sort -u )"
+task137a_expected="$(printf '%s\n' docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md packages/local-runtime/src/mounted-artifact-authority-operation.ts packages/local-runtime/src/portable-workspace-lifecycle.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts | LC_ALL=C sort -u)"
+test "$task137a_actual" = "$task137a_expected"
+npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/agent/test/wake-supervisor.test.ts
+npm run typecheck
+test ! -e packages/local-runtime/src/index.ts
+! rg -n 'mounted-artifact-authority-operation|FactoryIssuedMountedRuntimeCapture' packages/agent/src/index.ts
+assert_git_authority_context
+test ! -s "$(git rev-parse --git-path info/grafts)"
+test ! -s "$(git rev-parse --git-path shallow)"
+test -z "$(git ls-files -v | sed -n '/^[a-zS] /p')"
+test -z "$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+git diff --check
+npm run factory:check
+```
+
+Its temporary-repository suite includes clean physical-checkout execution and
+alternate worktree/index/config/Git-directory counterfactuals in addition to
+every CF-1R20/CF-1R21 hidden-state and lineage case.
+
+### Exact P/R0/H preflight invocations
+
+Before each dispatch, the coordinator replaces
+`COORDINATOR_ATTESTATION_SHA` with the literal lowercase SHA of that task's
+sibling program-registry attestation commit and runs only the applicable block
+from a clean physical task checkout. These are the complete preflight commands;
+preflight no longer derives from a phase substitution in a review command.
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() { local -a v; mapfile -t v < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }'); if test "${#v[@]}" -eq 1; then test "${v[0]}" = GIT_PAGER || return 70; test "$GIT_PAGER" = cat || return 70; unset GIT_PAGER; elif test "${#v[@]}" -ne 0; then return 70; fi; test "$(git rev-parse --is-inside-work-tree)" = "true"; test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"; }
+assert_git_authority_context
+node scripts/check-resident-task-prerequisites.mjs --task task140p --phase preflight --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+assert_git_authority_context
+```
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() { local -a v; mapfile -t v < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }'); if test "${#v[@]}" -eq 1; then test "${v[0]}" = GIT_PAGER || return 70; test "$GIT_PAGER" = cat || return 70; unset GIT_PAGER; elif test "${#v[@]}" -ne 0; then return 70; fi; test "$(git rev-parse --is-inside-work-tree)" = "true"; test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"; }
+assert_git_authority_context
+node scripts/check-resident-task-prerequisites.mjs --task task140r0 --phase preflight --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+assert_git_authority_context
+```
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() { local -a v; mapfile -t v < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }'); if test "${#v[@]}" -eq 1; then test "${v[0]}" = GIT_PAGER || return 70; test "$GIT_PAGER" = cat || return 70; unset GIT_PAGER; elif test "${#v[@]}" -ne 0; then return 70; fi; test "$(git rev-parse --is-inside-work-tree)" = "true"; test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"; }
+assert_git_authority_context
+node scripts/check-resident-task-prerequisites.mjs --task task140h --phase preflight --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+assert_git_authority_context
+```
+
+### Exact P/R0/H review commands
+
+Worker GREEN and both fresh reviewers run the applicable complete materialized
+command below. The leading checker uses `--phase review`; no token or argument
+may be omitted, read from the environment, or reconstructed from older prose.
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() { local -a v; mapfile -t v < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }'); if test "${#v[@]}" -eq 1; then test "${v[0]}" = GIT_PAGER || return 70; test "$GIT_PAGER" = cat || return 70; unset GIT_PAGER; elif test "${#v[@]}" -ne 0; then return 70; fi; test "$(git rev-parse --is-inside-work-tree)" = "true"; test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"; }
+assert_git_authority_context
+node scripts/check-resident-task-prerequisites.mjs --task task140p --phase review --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts
+npm run typecheck
+! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts
+assert_git_authority_context
+git diff --check
+npm run factory:check
+```
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() { local -a v; mapfile -t v < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }'); if test "${#v[@]}" -eq 1; then test "${v[0]}" = GIT_PAGER || return 70; test "$GIT_PAGER" = cat || return 70; unset GIT_PAGER; elif test "${#v[@]}" -ne 0; then return 70; fi; test "$(git rev-parse --is-inside-work-tree)" = "true"; test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"; }
+assert_git_authority_context
+node scripts/check-resident-task-prerequisites.mjs --task task140r0 --phase review --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts
+npm run typecheck
+! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts
+! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/local-runtime packages/agent/src packages/agent/test
+assert_git_authority_context
+git diff --check
+npm run factory:check
+```
+
+```bash
+set -euo pipefail
+git_authority_repo_root="$(pwd -P)"
+assert_git_authority_context() { local -a v; mapfile -t v < <(compgen -v | LC_ALL=C awk '/^GIT_/ { print }'); if test "${#v[@]}" -eq 1; then test "${v[0]}" = GIT_PAGER || return 70; test "$GIT_PAGER" = cat || return 70; unset GIT_PAGER; elif test "${#v[@]}" -ne 0; then return 70; fi; test "$(git rev-parse --is-inside-work-tree)" = "true"; test "$(git rev-parse --show-toplevel)" = "$git_authority_repo_root"; }
+assert_git_authority_context
+node scripts/check-resident-task-prerequisites.mjs --task task140h --phase review --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-mounted-authority.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/resident-live-acceptance-adapters.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/resident-specialist-acceptance.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts
+npm run typecheck
+rg -n 'runEvidenceTriageResidentLiveAcceptance' packages/agent/test/evidence-triage-nous-live.test.ts
+rg -n 'runPrrNegotiationResidentLiveAcceptance' packages/agent/test/prr-negotiation-nous-live.test.ts
+rg -n 'runTaskOrchestratorEvidenceTriageResidentLiveAcceptance' packages/agent/test/task-orchestrator-evidence-triage-live.test.ts
+! rg -n 'createAgentRuntime|createTaskOrchestrator|createTaskOrchestratorProviderApprovalAdapter|defaultLocalAgentRuntimeFactory|createSqlitePrrRuntime|runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|prepareSpecialistRun|invokeSpecialistModel|runtime\.invokeModel|renderProductionSpecialistPrompt|buildLocalRuntimeStatusPromptArtifact' packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/fixtures/resident-live-acceptance-adapters.ts
+rg -n 'runResidentSpecialistAcceptance' packages/agent/test/fixtures/resident-live-acceptance-adapters.ts packages/local-runtime/src/agent-nous-smoke.ts
+! rg -n 'runtime\.invokeModel|renderProductionSpecialistPrompt|prepareSpecialistRun|invokeSpecialistModel|runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|buildLocalRuntimeStatusPromptArtifact|createSqlitePrrRuntime|defaultLocalAgentRuntimeFactory|\.cestus/local/prompt-artifacts' packages/local-runtime/src/agent-nous-smoke.ts
+! rg -n 'production-model-invocation-admission|production-prompt-readback|task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts
+assert_git_authority_context
+git diff --check
+npm run factory:check
+```
+
+### CF-1R22 dispatch and review rule
+
+The serialized dependency graph, immutable prerequisite maps, file ownership,
+and sibling-attestation trust model remain CF-1R18 through CF-1R21. Every
+implementation message pins the task's exact coordinator attestation SHA and
+specifically states that the coordinator approves use of
+`superpowers:subagent-driven-development` for that exact task. No source lane
+starts before reviewed and coordinator-integrated Task117A.
+
+Two fresh independent Terra/xhigh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. They reproduce the
+alternate-worktree/index bypass and prove it fails, run the complete Task137A
+command in clean and hidden-state fixtures, and verify every exact P/R0/H
+preflight/review command contains and validates the literal attestation SHA.
 Exactly two unqualified approvals permit coordinator-only plan integration.
 Source, full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/
 merge remain closed.
