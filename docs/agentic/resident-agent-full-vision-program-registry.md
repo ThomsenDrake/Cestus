@@ -8648,3 +8648,22 @@ explicit implementation authorization.
   negative assertions.
 - All source/live/full/credential/reset-credit/`neo`/plan-integration actions
   remain closed pending docs validation, commit, and two fresh approvals.
+
+## RV-1-E-283 — Executable producer candidate and fresh dual review
+
+- After reboot recovery and coordinator pre-review, the sole plan writer
+  committed CF-1R15A candidate
+  `505b22a18bbe2919387d35ae59e38fb89dfa0ae6`. It makes Task135B derive the
+  Task135A mounted authority from factory-held lifecycle/mounted-facts
+  readback, fixes the Task135C test path, enumerates strict prerequisite keys,
+  adds Task137 invalidation evidence, and gives P/R0/H complete executable
+  commands. `git diff --check` and `npm run factory:check` passed before commit.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviewers are authorized read-only against exact 20-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..505b22a18bbe2919387d35ae59e38fb89dfa0ae6`
+  and canonical program checkpoint
+  `67419af48d11d4b334e759ab6cd77e03b5b990ac`. Exactly two unqualified
+  **APPROVED** verdicts are required; every prior verdict is non-authorizing.
+- Latest authenticated usage reports 38% used / 62% weekly remaining, with no
+  reset credits. All source/live/full/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending both fresh approvals.
