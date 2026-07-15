@@ -819,6 +819,38 @@ describe("resident loop ontology contracts v2", () => {
     ) as never).success).toBe(false);
   });
 
+  it("rejects a later replan that reuses an earlier non-predecessor plan ID", () => {
+    const replay = v2ReplayWithPlanRecords(3);
+    const initialPlanId = replay[0]!.payload.planId;
+    const replayWithReusedInitialPlanId = replay.map((candidate) => {
+      if (candidate.payload.planRevision !== 2) return candidate;
+
+      const payload = candidate.payload as Record<string, unknown>;
+      const planReadback = payload.planReadback as Record<string, unknown> | undefined;
+      const finalObservationReadback = payload.finalObservationReadback as Record<string, unknown> | undefined;
+      return {
+        ...candidate,
+        payload: {
+          ...payload,
+          planId: initialPlanId,
+          ...(planReadback === undefined ? {} : { planReadback: { ...planReadback, planId: initialPlanId } }),
+          ...(finalObservationReadback === undefined
+            ? {}
+            : { finalObservationReadback: { ...finalObservationReadback, planId: initialPlanId } })
+        }
+      };
+    });
+
+    for (const candidate of replayWithReusedInitialPlanId) {
+      expectValid(candidate);
+    }
+    expect(replayWithReusedInitialPlanId
+      .filter((candidate) => candidate.type === "agent.resident-plan.recorded.v2")
+      .map((candidate) => candidate.payload.planId))
+      .toEqual(["plan_001", "plan_002", "plan_001"]);
+    expect(validateResidentLoopEventSequence(replayWithReusedInitialPlanId as never).success).toBe(false);
+  });
+
   it("rejects a replan without its causally preceding durable observation", () => {
     const replay = v2ReplayWithPlanRecords(2);
     const withoutPrecedingObservation = [
