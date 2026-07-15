@@ -10148,3 +10148,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ownership/import reviews. Both approvals are required before any merge
   preview. Full verification, providers, reset credits, integration, and every
   `neo` action remain closed.
+
+## RV-1-E-352 — Task135D typecheck-repair reviews dispatched
+
+- Fresh private-authority/lifecycle reviewer
+  `019f66a8-3376-7f11-9eee-a54a6978b81c` and ownership/import reviewer
+  `019f66a8-3538-7530-b9b7-951adacc3d92` are active, pinned, and read-only in
+  separate detached worktrees at exact candidate
+  `dc0d01f76d8a0c4073033b86e27157a205ef5209`.
+- Both use Terra/xhigh. Their ignored dependency and local secret-reference
+  symlinks were restored after worktree creation; provider, network, and
+  credential actions remain prohibited.
+- Each must inspect the complete post-Task135E range, reproduce the 20-test,
+  typecheck, no-index, range-diff, factory, topology, and clean-state gates, and
+  return explicit unqualified **APPROVED** or concrete **NEEDS-CHANGES** under
+  its distinct review lens. Both approvals are required before any merge
+  preview. Full verification, integration, reset credits, and every `neo`
+  action remain closed.
