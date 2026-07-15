@@ -8616,3 +8616,14 @@ explicit implementation authorization.
 - Latest authenticated usage reports 37% used / 63% weekly remaining. All
   source/live/full/credential/reset-credit/`neo`/plan-integration actions remain
   closed pending both fresh approvals.
+
+## RV-1-E-281 — Consume-time transport reviewer identities
+
+- Lifecycle/executability reviewer `019f6544-5aaf-72c2-b6d3-98d37604ee0b`
+  and authority/bypass reviewer `019f6544-5f3a-7602-9c63-e4f41248276b`
+  are active read-only on the exact candidate and context in RV-1-E-280. Both
+  use `gpt-5.6-terra` at `xhigh`. The former challenges the complete portable
+  prompt-to-handoff lifecycle and R0/H binder ordering; the latter challenges
+  one-shot authority, exact import ownership, leakage, live routes, and smoke.
+- No verdict from an older reviewer can carry forward. Source dispatch and plan
+  integration remain closed until both new reviewers explicitly approve.
