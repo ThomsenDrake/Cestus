@@ -166,3 +166,29 @@ manifest and claim paths must have empty history at reviewer HEAD. Causal
 fixtures must cover every listed rename/restore, delete/readd, restoration,
 symbolic-C, non-registry/merge-C, M/source/task, and manifest hash/content
 bypass. No new implementer or closed action is authorized.
+
+## RV-1-E-343 Repair Evidence (2026-07-15)
+
+The causal focused RED command exited `1` with 16/18 tests passing. The only
+two failures proved that review accepted worker evidence after original M and
+accepted a later manifest/claim path restoration. The repair makes any history
+for either literal authority path after original M a terminal rejection.
+
+The exact focused GREEN command exited `0` with 18/18 tests passing. The
+rename/restore and delete/readd fixtures each reach the unique-original-add
+rejection; byte-identical later modification/restoration reaches the new
+post-M-path-history rejection. Symbolic C reaches CLI-value validation,
+non-registry C reaches registry-only validation, merge C reaches one-parent
+validation, and each wrong dispatch/source/task/manifest field reaches the
+immutable-attestation-byte comparison. Existing raw-byte, replacement-ref, and
+authenticated retained-payload terminal-runner coverage remains green.
+
+The prescribed static/diff/factory gate exited `0`: the forbidden stdin,
+dynamic/CommonJS, and import expressions audit found no matches; the installed
+plain `rg` rejects the lookahead import rule, so the equivalent explicit
+`rg -P -n '^\\s*import\\s+.*from\\s+["'"'"'](?!node:)' scripts/check-resident-task-prerequisites.mjs`
+audit found no non-`node:` static import; `git diff --check` passed; and
+`npm run factory:check` reported `factory-readiness passed`. Full verification
+and all closed actions remain unperformed.
+
+- Status: ready-for-review.

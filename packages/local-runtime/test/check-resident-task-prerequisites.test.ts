@@ -55,6 +55,15 @@ function git(directory: string, args: readonly string[]): string {
 }
 
 function runChecker(fixture: Fixture, phase: "preflight" | "review", extraEnvironment: NodeJS.ProcessEnv = {}) {
+  return runCheckerWithAttestation(fixture, phase, fixture.coordinatorAttestation, extraEnvironment);
+}
+
+function runCheckerWithAttestation(
+  fixture: Fixture,
+  phase: "preflight" | "review",
+  coordinatorAttestation: string,
+  extraEnvironment: NodeJS.ProcessEnv = {}
+) {
   return spawnSync(
     process.execPath,
     [
@@ -63,10 +72,24 @@ function runChecker(fixture: Fixture, phase: "preflight" | "review", extraEnviro
       "--phase", phase,
       "--manifest", manifestPath,
       "--claim", claimPath,
-      "--coordinator-attestation", fixture.coordinatorAttestation
+      "--coordinator-attestation", coordinatorAttestation
     ],
     { cwd: fixture.directory, encoding: "utf8", env: { ...process.env, ...extraEnvironment } }
   );
+}
+
+function commitExternalAttestationMutation(
+  fixture: Fixture,
+  mutate: (directory: string) => void,
+  paths: readonly string[] = [registryPath]
+): string {
+  git(fixture.directory, ["checkout", "--quiet", "external-attestation"]);
+  mutate(fixture.directory);
+  git(fixture.directory, ["add", ...paths]);
+  git(fixture.directory, ["commit", "--quiet", "-m", "mutated external C"]);
+  const coordinatorAttestation = git(fixture.directory, ["rev-parse", "HEAD"]);
+  git(fixture.directory, ["checkout", "--quiet", "main-dispatch"]);
+  return coordinatorAttestation;
 }
 
 function runRetainedPayload(fixture: Fixture, phase: "preflight" | "review") {
@@ -195,8 +218,9 @@ function createFixture(task: TaskName = "task140p", options: FixtureOptions = {}
   return { directory, task, sourceBaseSha, dispatchCommit, coordinatorAttestation, prerequisiteShas };
 }
 
-function expectRejected(result: ReturnType<typeof runChecker>): void {
+function expectRejected(result: ReturnType<typeof runChecker>, message?: string): void {
   expect(result.status, `${result.stdout}\n${result.stderr}`).not.toBe(0);
+  if (message !== undefined) expect(result.stderr).toContain(message);
 }
 
 describe("check-resident-task-prerequisites", () => {
@@ -212,13 +236,13 @@ describe("check-resident-task-prerequisites", () => {
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
   });
 
-  it("permits only appended worker evidence during review", () => {
+  it("rejects review evidence history after original M", () => {
     const fixture = createFixture();
     appendFileSync(join(fixture.directory, claimPath), "\n## Worker evidence\n- focused tests passed\n");
     git(fixture.directory, ["add", claimPath]);
     git(fixture.directory, ["commit", "--quiet", "-m", "worker evidence"]);
     expect(runChecker(fixture, "preflight").status).not.toBe(0);
-    expect(runChecker(fixture, "review").status).toBe(0);
+    expectRejected(runChecker(fixture, "review"));
   });
 
   it("accepts only the exact task-specific task140r0 and task140h inventories", () => {
@@ -368,6 +392,37 @@ describe("check-resident-task-prerequisites", () => {
     expectRejected(runChecker(mergedFixture, "review"));
   });
 
+  it("rejects manifest and claim rename/restore, delete/readd, and valid-looking modification/restoration histories", () => {
+    for (const path of [manifestPath, claimPath]) {
+      const renamed = createFixture();
+      const movedPath = `${path}.moved`;
+      git(renamed.directory, ["mv", path, movedPath]);
+      git(renamed.directory, ["commit", "--quiet", "-m", "rename dispatch path"]);
+      git(renamed.directory, ["mv", movedPath, path]);
+      git(renamed.directory, ["commit", "--quiet", "-m", "restore dispatch path"]);
+      expectRejected(runChecker(renamed, "review"), "Dispatch path does not have one original add");
+
+      const deleted = createFixture();
+      const original = readFileSync(join(deleted.directory, path));
+      git(deleted.directory, ["rm", "--quiet", path]);
+      git(deleted.directory, ["commit", "--quiet", "-m", "delete dispatch path"]);
+      write(deleted.directory, path, original);
+      git(deleted.directory, ["add", path]);
+      git(deleted.directory, ["commit", "--quiet", "-m", "readd dispatch path"]);
+      expectRejected(runChecker(deleted, "review"), "Dispatch path does not have one original add");
+
+      const restored = createFixture();
+      const originalBytes = readFileSync(join(restored.directory, path));
+      appendFileSync(join(restored.directory, path), "\nvalid-looking later change\n");
+      git(restored.directory, ["add", path]);
+      git(restored.directory, ["commit", "--quiet", "-m", "later valid-looking change"]);
+      write(restored.directory, path, originalBytes);
+      git(restored.directory, ["add", path]);
+      git(restored.directory, ["commit", "--quiet", "-m", "restore original bytes"]);
+      expectRejected(runChecker(restored, "review"), "Dispatch authority path has history after M");
+    }
+  });
+
   it("rejects forged, wrong, symbolic, nonregistry, merge, duplicate, and mismatched external attestations", () => {
     const wrong = createFixture();
     const wrongResult = spawnSync(process.execPath, [checkerPath, "--task", wrong.task, "--phase", "preflight", "--manifest", manifestPath, "--claim", claimPath, "--coordinator-attestation", wrong.dispatchCommit], { cwd: wrong.directory, encoding: "utf8" });
@@ -396,6 +451,48 @@ describe("check-resident-task-prerequisites", () => {
     git(mismatch.directory, ["checkout", "--quiet", "main-dispatch"]);
     const mismatchResult = spawnSync(process.execPath, [checkerPath, "--task", mismatch.task, "--phase", "preflight", "--manifest", manifestPath, "--claim", claimPath, "--coordinator-attestation", mismatchC], { cwd: mismatch.directory, encoding: "utf8" });
     expectRejected(mismatchResult);
+  });
+
+  it("rejects symbolic, nonregistry, merge, wrong M/source/task, and changed-manifest coordinator attestations", () => {
+    const symbolic = createFixture();
+    expectRejected(runCheckerWithAttestation(symbolic, "preflight", "HEAD"), "CLI value is invalid");
+
+    const nonRegistry = createFixture();
+    const nonRegistryC = commitExternalAttestationMutation(
+      nonRegistry,
+      (directory) => write(directory, "docs/agentic/non-registry-c.txt", "not registry\n"),
+      ["docs/agentic/non-registry-c.txt"]
+    );
+    expectRejected(runCheckerWithAttestation(nonRegistry, "preflight", nonRegistryC), "Coordinator attestation is not registry-only");
+
+    const merged = createFixture();
+    git(merged.directory, ["checkout", "--quiet", "external-attestation"]);
+    git(merged.directory, ["checkout", "--quiet", "-b", "external-c-side"]);
+    git(merged.directory, ["commit", "--quiet", "--allow-empty", "-m", "external C side"]);
+    git(merged.directory, ["checkout", "--quiet", "external-attestation"]);
+    git(merged.directory, ["commit", "--quiet", "--allow-empty", "-m", "external C primary"]);
+    git(merged.directory, ["merge", "--quiet", "--no-ff", "external-c-side", "-m", "merge external C"]);
+    const mergedC = git(merged.directory, ["rev-parse", "HEAD"]);
+    git(merged.directory, ["checkout", "--quiet", "main-dispatch"]);
+    expectRejected(runCheckerWithAttestation(merged, "preflight", mergedC), "Coordinator attestation is not one-parent");
+
+    for (const [pattern, replacement] of [
+      [/^dispatchCommitSha=.*/m, (fixture: Fixture) => `dispatchCommitSha=${fixture.sourceBaseSha}`],
+      [/^sourceBaseSha=.*/m, (fixture: Fixture) => `sourceBaseSha=${fixture.prerequisiteShas.cf1}`],
+      [/^task=.*/m, () => "task=task140h"],
+      [/^manifestSha256=.*/m, () => `manifestSha256=${"0".repeat(64)}`],
+      [/^manifestPath=.*/m, () => "manifestPath=docs/agentic/claims/changed-prerequisites.json"]
+    ] as const) {
+      const fixture = createFixture();
+      const changedC = commitExternalAttestationMutation(fixture, (directory) => {
+        const registry = readFileSync(join(directory, registryPath), "utf8");
+        writeFileSync(join(directory, registryPath), registry.replace(pattern, replacement(fixture)));
+      });
+      expectRejected(
+        runCheckerWithAttestation(fixture, "preflight", changedC),
+        "Coordinator attestation does not match immutable dispatch bytes"
+      );
+    }
   });
 
   it("rejects retained-payload hash changes and path replacement around both authority calls", () => {

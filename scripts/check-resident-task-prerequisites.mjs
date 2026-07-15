@@ -305,6 +305,14 @@ function assertDispatchCommit(dispatchCommit, manifestPath, claimPath, sourceBas
   if (splitLines(git(["rev-list", "--merges", `${sourceBaseSha}..${head}`])).length !== 0) fail("Dispatch ancestry contains a merge");
 }
 
+function assertNoPostDispatchPathHistory(dispatchCommit, head, paths) {
+  for (const path of paths) {
+    if (splitLines(git(["log", "--no-renames", "--format=%H", `${dispatchCommit}..${head}`, "--", path])).length !== 0) {
+      fail("Dispatch authority path has history after M");
+    }
+  }
+}
+
 function assertAttestation(attestationSha, task, dispatchCommit, manifestPath, manifestBytes, claimPath, claimBytes, manifest) {
   assertExactCommit(attestationSha);
   if (git(["rev-list", "--parents", "-n", "1", attestationSha]).split(" ").length !== 2) fail("Coordinator attestation is not one-parent");
@@ -366,6 +374,7 @@ function main() {
   }
   assertClaim(immutableBlock(claimBytes), manifest, input.manifestPath);
   assertDispatchCommit(manifestAdd, input.manifestPath, input.claimPath, manifest.sourceBaseSha, head);
+  assertNoPostDispatchPathHistory(manifestAdd, head, [input.manifestPath, input.claimPath]);
   if (!currentRegularFile(input.manifestPath).equals(manifestBytes)) fail("Current manifest differs from M");
   if (immutableBlock(currentRegularFile(input.claimPath)) !== immutableBlock(claimBytes)) fail("Current immutable claim block differs from M");
   if (input.phase === "preflight" && head !== manifestAdd) fail("Preflight HEAD is not M");
