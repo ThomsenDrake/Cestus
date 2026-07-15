@@ -10182,3 +10182,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   program head. The preview must reproduce the focused/static/range/factory/
   topology gates before any no-ff program merge. Full verification, providers,
   reset credits, and every `neo` action remain closed.
+
+## RV-1-E-354 — Task135C prerequisite authority integrated
+
+- Detached preview merge `43367194d31f35b248b3fd6f06deb7f400e33623`
+  used exact first parent `5d8f508eaa0bb68de969dba1c3a0817d6139001c`
+  and candidate second parent
+  `9776594bc07a7eb2f3764a65c9d41c7219ae1885`. Its first-parent delta was
+  exactly the checker, focused test, and claim.
+- Preview verification passed all 18 focused tests, forbidden-runtime and
+  static-`node:` import audits, merge-range diff checking, factory readiness,
+  exact parentage, scope, and clean state.
+- Program no-ff merge
+  `a1444b05933e86a542abe8f8db3e2513b5f85e6f` has exact first parent
+  `5d8f508eaa0bb68de969dba1c3a0817d6139001c` and exact candidate second
+  parent `9776594bc07a7eb2f3764a65c9d41c7219ae1885`. Post-merge verification
+  again passed all 18 focused tests, static/import audits, first-parent diff
+  checking, factory readiness, exact three-path delta, and clean state.
+- This opens only downstream prerequisite-checker consumption on the program
+  branch. Full verification, providers, reset credits, and every `neo` action
+  remain closed.
