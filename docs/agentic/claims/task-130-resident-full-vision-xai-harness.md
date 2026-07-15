@@ -87,3 +87,41 @@ independent review.
   regression, so this isolated candidate remains in progress and must not be
   declared ready or integrated until that program-level correction and fresh
   independent review are complete.
+
+## RV-1-E-177 Forward Repair Evidence
+
+- Repair baseline: `64f11e2ccb6dafa80331946c004faa4fa23e7cab` remains
+  preserved. This forward repair changes only this claim, the Task130 xAI
+  harness, and its focused test.
+- Root cause: a generic `provider_*` parser accepted a self-consistent Codex
+  posture; public `assess` accepted a caller-supplied test route and returned
+  a non-production interface result; and any resolving append callback could
+  claim unavailable feasibility without an exact durable mounted readback.
+- Causal RED: `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts` exited `1` with **1
+  file / 23 tests: 10 failed, 13 passed**. The new failures proved a Codex
+  posture normalized instead of rejecting, the public test route returned
+  `interface-demonstrated`, and a resolving no-op plus workspace, mount, run,
+  provider, model, capability, and policy-swapped append results all returned
+  `unavailable`.
+- Repair: the adapter now requires the xAI-specific `provider_xai_` identity
+  across posture, credential reference, policy, and readback evidence; all
+  caller-supplied non-prohibited route objects are terminal invalid input; and
+  unavailable requires a plain own-data mounted readback with distinct safe
+  append/readback event IDs and exact record equality for workspace, mount,
+  run, provider, model, capability, policy, credential reference, source
+  events, idempotency key, and all fixed evidence fields.
+- GREEN: the same focused command exited `0` with **1 file / 23 tests**. It
+  proves no append on cross-provider or caller test-route input and bounded
+  `feasibility-append-unavailable` results for no-op and every listed swapped
+  readback binding.
+- Required fail-fast chain: `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck &&
+  git diff --check && npm run factory:check` exited `0`. `npm run verify` was
+  not run because the serialized full-verifier slot remains closed. The
+  temporary ignored `node_modules` symlink used only for the authorized local
+  commands is removed before commit.
+- Status: ready-for-review. A new fresh independent Terra/xhigh review is
+  required before any coordinator integration; no self-review, merge,
+  credential/provider/network action, fallback, material read, or `neo`
+  action occurred.

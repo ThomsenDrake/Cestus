@@ -8,6 +8,14 @@ const capabilityHash = "sha256:ddddddddddddddddddddddddddddddddddddddddddddddddd
 const approvalBindingHash = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const documentationHash = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
+function mountedReadback(record: XaiOfficialFlowUnavailableEvidence) {
+  return {
+    record,
+    feasibilityEventId: "evt_xai_feasibility_current",
+    readbackEventId: "evt_xai_feasibility_readback"
+  };
+}
+
 function currentPosture(overrides: Record<string, unknown> = {}) {
   return {
     residentAgentId: "agent_default" as const,
@@ -53,7 +61,7 @@ function createHarness(input: {
     feasibilityAuthority: {
       appendOfficialFlowUnavailable: async (evidence) => {
         input.appended.push(evidence);
-        return input.append?.(evidence) ?? { kind: "appended" as const };
+        return input.append?.(evidence) ?? mountedReadback(evidence);
       }
     }
   });
@@ -228,7 +236,30 @@ describe("official xAI subscription harness", () => {
     expect(appended).toEqual([]);
   });
 
-  it("can demonstrate only a test official xAI interface, never actual xAI feasibility", async () => {
+  it("rejects a self-consistent non-xAI provider posture before unavailable evidence can append", async () => {
+    const appended: XaiOfficialFlowUnavailableEvidence[] = [];
+    const result = await createHarness({ appended }).assess({
+      posture: currentPosture({
+        providerId: "provider_openai_codex",
+        modelId: "codex-latest",
+        credentialReference: {
+          ...currentPosture().credentialReference,
+          providerId: "provider_openai_codex"
+        },
+        policy: {
+          ...currentPosture().policy,
+          providerId: "provider_openai_codex",
+          modelId: "codex-latest"
+        }
+      }),
+      officialFlow: undefined
+    });
+
+    expect(result).toMatchObject({ kind: "blocked", category: "unsafe-input" });
+    expect(appended).toEqual([]);
+  });
+
+  it("rejects a caller-supplied test route instead of exposing a non-production feasibility result", async () => {
     const appended: XaiOfficialFlowUnavailableEvidence[] = [];
     const result = await createHarness({ appended }).assess({
       posture: currentPosture(),
@@ -240,15 +271,7 @@ describe("official xAI subscription harness", () => {
       }
     });
 
-    expect(result).toEqual({
-      kind: "interface-demonstrated",
-      category: "official-flow-interface-only",
-      actualXaiFeasibility: false,
-      providerId: "provider_xai_grok",
-      modelId: "grok-4",
-      capabilityHash,
-      safeDiagnosticCodes: ["official-flow-interface-only"]
-    });
+    expect(result).toMatchObject({ kind: "blocked", category: "unsafe-input" });
     expect(appended).toEqual([]);
   });
 
@@ -264,5 +287,43 @@ describe("official xAI subscription harness", () => {
       category: "feasibility-append-unavailable",
       safeDiagnosticCodes: ["feasibility-append-unavailable"]
     });
+  });
+
+  it("rejects a resolving no-op append without a durable mounted readback", async () => {
+    const appended: XaiOfficialFlowUnavailableEvidence[] = [];
+    const result = await createHarness({
+      appended,
+      append: async () => undefined
+    }).assess({ posture: currentPosture(), officialFlow: undefined });
+
+    expect(result).toMatchObject({
+      kind: "blocked",
+      category: "feasibility-append-unavailable",
+      safeDiagnosticCodes: ["feasibility-append-unavailable"]
+    });
+    expect(appended).toHaveLength(1);
+  });
+
+  it.each([
+    ["workspace", (evidence: XaiOfficialFlowUnavailableEvidence) => ({ ...evidence, workspaceId: "workspace_other" })],
+    ["mount", (evidence: XaiOfficialFlowUnavailableEvidence) => ({ ...evidence, mountInstanceId: "mount_other" })],
+    ["run", (evidence: XaiOfficialFlowUnavailableEvidence) => ({ ...evidence, runId: "run_other" })],
+    ["provider", (evidence: XaiOfficialFlowUnavailableEvidence) => ({ ...evidence, providerId: "provider_xai_other" })],
+    ["model", (evidence: XaiOfficialFlowUnavailableEvidence) => ({ ...evidence, modelId: "grok-other" })],
+    ["capability", (evidence: XaiOfficialFlowUnavailableEvidence) => ({ ...evidence, capabilityHash: approvalBindingHash })],
+    ["policy", (evidence: XaiOfficialFlowUnavailableEvidence) => ({ ...evidence, policyVersion: "policy_xai_harness_v2" })]
+  ])("rejects a %s-mismatched mounted append readback", async (_binding, mutate) => {
+    const appended: XaiOfficialFlowUnavailableEvidence[] = [];
+    const result = await createHarness({
+      appended,
+      append: async (evidence) => mountedReadback(mutate(evidence))
+    }).assess({ posture: currentPosture(), officialFlow: undefined });
+
+    expect(result).toMatchObject({
+      kind: "blocked",
+      category: "feasibility-append-unavailable",
+      safeDiagnosticCodes: ["feasibility-append-unavailable"]
+    });
+    expect(appended).toHaveLength(1);
   });
 });
