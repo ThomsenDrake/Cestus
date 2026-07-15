@@ -6612,3 +6612,28 @@ explicit implementation authorization.
   fresh independent Terra/xhigh review. Full verification remains **CLOSED**;
   no self-review, self-integration, merge, provider/network/credential/Nous,
   or `neo` action is authorized.
+
+## RV-1-E-193 — CF-1R4 blocked evidence and cycle-breaking plan amendment
+
+- The isolated CF-1R4 branch preserved causal RED evidence in `f53fa2ce` and
+  is **BLOCKED**, not a candidate: caller context identities are forgeable, no
+  factory attestation constructor exists, and a delegate H echo is accepted.
+  `git diff --check && npm run factory:check` passed; the expected RED suite
+  remained red. No production edit, typecheck, full verifier, review, merge,
+  integration, or `neo` action occurred.
+- The source-backed root cause is structural: task-orchestrator alone performs
+  post-run H prepare/bind/readback and terminal sequencing, while Task135's
+  mounted material/manifest stores do not yet exist. Forcing terminal H proof
+  into pre-Task135 Task134/factory would require forbidden orchestrator/store/
+  shared-contract edits or a prohibited tuple/fallback.
+- CF-1R5 records the approved forward split: Task132 registrar/factory
+  attestation unblocks Task133; Task134 becomes factory-closed normalized
+  dispatch/handoff preparation only; Task135 consumes preparation for mounted
+  stores without terminal H; a later Task140/H integration after Task135 and
+  its original prerequisites proves exact H readback and terminal completion.
+  Task133 and Task135 remain blocked until their respective reviewed producer
+  integrations. The bounded amendment defines exact files, REDs, gates, and
+  fresh-review requirements.
+- Full verification remains **CLOSED**, `neo` untouched, no provider/network/
+  credential/Nous action is authorized, authenticated use is `usedPercent=13`
+  / **87% remaining, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.

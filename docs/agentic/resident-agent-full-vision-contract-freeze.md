@@ -275,6 +275,42 @@ before Task133 or Task135 rebases; Task140 later consumes the foundation rather
 than recreating it. This grants no full verification, external action, or
 permissive factory behavior.
 
+## CF-1R5 — Registrar Attestation, Preparation, And Terminal-Handoff Split
+
+CF-1R4 blocked evidence `f53fa2ce` is preserved: forcing exact H finalization
+into a pre-Task135 factory seam is unsound because the task orchestrator owns
+post-run H sequencing and Task135's mounted stores do not yet exist. This
+correction replaces that impossible route without broadening a public factory
+or weakening terminal durability.
+
+1. A serialized Task132 attestation lane comes first and is the only
+   pre-Task133 writer of the factory/context seam. The real PRR, operational,
+   and investigative registrars attest their actual descriptor/parser/
+   producer/registration facts into a factory-held closure; caller strings and
+   callbacks cannot mint verified context bindings. Missing actual registrar
+   inputs leave the default factory blocked.
+2. A subsequent serialized Task134 lane owns factory-closed normalized runner
+   dispatch and **handoff preparation only**. It treats delegate output as
+   untrusted preparation input, never invokes H readback, and can never claim
+   durable, recorded, completed, or terminal success. Public callers cannot
+   provide structural authority/store/registration/provenance/H tuples.
+3. Task135 follows the reviewed preparation contract, performs only mounted
+   material/manifest preparation readback, and does not manufacture H
+   completion. It no longer waits on nonexistent pre-store terminal proof.
+4. The H-owned task orchestrator remains the sole prepare/bind/readback/
+   terminal-status sequencer. After Task135 and the original Task140
+   prerequisites are reviewed and integrated, a serialized Task140/H
+   integration composes the factory and executes the exact H readback/terminal
+   proof. It consumes the preparation/store contracts; it does not recreate
+   them.
+
+The bounded amendment at
+`docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`
+is the executable ownership and gate record. Its four lanes require fresh
+reviews and coordinator-only integration. No shadow brand, public structural
+mint route, fallback, full verification, `neo`, provider, credential, network,
+Nous, browser, or self-integration is authorized by this correction.
+
 ## Section-Local Documentation Audit
 
 Run this exact command from the repository root:
