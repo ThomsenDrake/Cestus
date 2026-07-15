@@ -11327,3 +11327,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   exact SHA remain required before coordinator-only program integration; all
   full/live/provider/credential/Nous/reset-credit/push/`neo` actions remain
   closed.
+
+## RV-1-E-415 — Task135D held for erased const-enum and static-block var scope
+
+- Complete lifecycle/scope reviewer
+  `019f674b-9eb0-7311-ac94-7db6f3fc5ab8` and exhaustive AST/security reviewer
+  `019f674b-ac38-7b21-9183-d20612cebefb` returned **NEEDS-CHANGES** for exact
+  candidate `100ce68487148453894f74965cf1d59008f79e1f` after the complete
+  permitted gate passed.
+- Both reviews found that the hoisted-`var` walk crosses class static blocks,
+  even though each static block is its own `var` environment. A local
+  `var require` or `var module` inside a static block therefore suppresses a
+  later genuine standard-loader call in the enclosing source or function.
+- The AST reviewer also found that configured TypeScript emit erases
+  non-ambient `const enum require/module`, but the scanner records those names
+  as runtime shadows. A later diagnostic-suppressed call can therefore reach
+  the real CommonJS loader while evading the computed-target policy.
+- Candidate `100ce68487148453894f74965cf1d59008f79e1f` is rejected and
+  preserved. Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` is
+  authorized for one bounded forward TDD repair in the import-authority test
+  and Task135D claim only. Exclude erased const enums from runtime shadows;
+  stop enclosing hoist walks at class static blocks; create the static block's
+  own `var` scope; and add causal inside/outside witnesses for both loader names
+  plus const-enum fixtures.
+- The author must preserve one-shot production bytes, all prior importer and
+  lexical coverage, exact four-path original-base scope, linear no-merge
+  topology, and clean status. The coordinator explicitly approves
+  `superpowers:subagent-driven-development` where relevant, plus
+  receiving-code-review, systematic-debugging, test-driven development, and
+  verification-before-completion.
+- Full verification, providers, network, credentials, Nous, reset credits,
+  integration, push, registry edits, and every `neo` action remain closed to
+  the author.
