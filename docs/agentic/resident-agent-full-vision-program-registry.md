@@ -9207,3 +9207,37 @@ explicit implementation authorization.
   network/credential/Nous activity, reset credits, `neo`, self-review, plan
   integration, and merge remain closed pending a committed docs-only candidate
   and two fresh independent unqualified Terra/xhigh approvals.
+
+## RV-1-E-310 — Exact-checkout terminal-authority candidate
+
+- The sole plan writer committed CF-1R24 candidate
+  `6bd6c03fe098a2c0fca7bf18454689cd478dddb1`. Its complete Task117A and
+  Task137A commands snapshot literal HEAD, every index entry, and every regular
+  file or symlink in the physical checkout except external `node_modules`
+  contents, then compare that snapshot inside the final full-authority
+  assertion after all audit, focused, static, typecheck, and readiness work.
+- Task117A now creates temporary state at a verified literal `/tmp` path,
+  sanitizes inherited temporary-directory controls, confines exit cleanup
+  outside the repository, and proves the literal coordinator-issued C is
+  itself a commit object rather than a tag that peels to one. Each complete
+  P/R0/H review command compares the same checkout/index/HEAD snapshot and
+  reruns its byte-identical C/M/base prerequisite checker as the terminal
+  operation.
+- All five extracted CF-1R24 bash blocks pass `bash -n`; each final nonblank
+  line is its named terminal authority function. Isolated fixtures detect an
+  already-allowed byte rewrite, ignored root `.npmrc`, and empty commit while
+  excluding only `node_modules` contents; separate counterfactuals distinguish
+  literal commits from annotated-tag objects and keep Task117A temporary state
+  outside a caller-selected repository TMPDIR. Static cardinality, `git diff
+  --check`, and `npm run factory:check` pass. Both plan and program worktrees
+  are clean.
+- The exact review lineage is the 29-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..6bd6c03fe098a2c0fca7bf18454689cd478dddb1`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`. Latest authenticated usage
+  reports 43% used / 57% weekly remaining, with no reset credits.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required; no prior verdict or reviewer identity carries. Source
+  dispatch, plan integration, live/provider/full/credential/Nous/reset-credit/
+  `neo` actions remain closed.
