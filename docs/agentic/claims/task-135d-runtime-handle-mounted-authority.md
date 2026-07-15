@@ -210,3 +210,26 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## Final default-binding and CommonJS review repair
+
+- Coordinator verdicts on
+  `b1a74ab7e96fef9a1c7dd5496261d90fcc3e9eb0`: both private-lifecycle and AST
+  import-authority lenses need this test-only scanner repair. No production
+  runtime code changes are authorized or present.
+- Causal RED: the prescribed focused command exited `1` only in the expanded
+  import test (1 failed, 19 passed). The existing scanner found the prior 27
+  paths and omitted exactly normal/type-only default imports plus direct
+  `module.require` and `module["require"]` calls to the exact protected target.
+- Import declarations now reject an exact protected module when
+  `ImportClause.name` is present. CommonJS recognition includes only direct
+  `module.require` and string-literal `module["require"]`; unrelated object
+  property/element calls remain non-authoritative. Decoded AST, suffix stripping,
+  importer-relative/root-bound resolution, NodeNext equivalence, and the sole
+  mounted-operation allowlist are unchanged.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed. The authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.
