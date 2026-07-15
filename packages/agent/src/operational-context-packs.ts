@@ -9,7 +9,7 @@ import type {
   ContextPackStalenessInput,
   ResolvedContextPack
 } from "./context-packs.js";
-import { buildResolvedContextPack, registerContextPackPayloadParserAuthority, serializeContextPackPayload } from "./context-packs.js";
+import { buildResolvedContextPack, hashAgentContextPack, registerContextPackPayloadParserAuthority, serializeContextPackPayload } from "./context-packs.js";
 import {
   assertOperationalContextSafeText,
   buildAgentMemorySummaryResolvedContextPack,
@@ -271,6 +271,13 @@ export interface OperationalContextPackProvider extends OperationalContextPackPr
 export interface OperationalContextPackRegistrationResult {
   readonly contextPackIds: readonly OperationalContextPackId[];
   readonly registrationKey: string;
+}
+
+export interface OperationalContextPackRegistrarEvidence {
+  readonly descriptorHash: string;
+  readonly parserIdentity: string;
+  readonly producerIdentity: "packages/agent/src/operational-context-packs";
+  readonly registrationIdentity: string;
 }
 
 export interface OperationalContextPackReadinessInputs {
@@ -577,6 +584,32 @@ export function registerOperationalContextPackBuilders(
   return Object.freeze({
     contextPackIds: Object.freeze(operationalContextPackDescriptors.map((descriptor) => descriptor.contextPackId as OperationalContextPackId)),
     registrationKey
+  });
+}
+
+/**
+ * Read-only evidence for registrations this module itself made. The private
+ * WeakMap is never exposed, so a manually populated or foreign registry has
+ * no evidence to return.
+ */
+export function lookupOperationalContextPackRegistrarEvidence(
+  registry: ContextPackRegistry,
+  contextPackId: string
+): OperationalContextPackRegistrarEvidence | undefined {
+  const contextPackIdKey = contextPackId as OperationalContextPackId;
+  const registration = operationalContextPackRegistrationState.get(registry)?.get(contextPackIdKey);
+  if (registration === undefined) {
+    return undefined;
+  }
+  const descriptor = registry.getDescriptor(contextPackId);
+  if (descriptor === undefined || operationalDescriptorFingerprint(descriptor) !== registration.descriptorFingerprint) {
+    return undefined;
+  }
+  return Object.freeze({
+    descriptorHash: hashAgentContextPack(descriptor),
+    parserIdentity: contextPackId,
+    producerIdentity: "packages/agent/src/operational-context-packs" as const,
+    registrationIdentity: registration.registrationKey
   });
 }
 
