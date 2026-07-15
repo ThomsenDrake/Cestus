@@ -8086,3 +8086,19 @@ explicit implementation authorization.
   independent Terra/xhigh defects-first review of this full six-commit range;
   no source claim, branch, provider, factory, H, store, terminal, full verify,
   neo, or self-integration action is authorized.
+
+## RV-1-E-255 — Task133 bridge repair full-lineage review dispatch
+
+- Fresh independent read-only reviewer
+  `/root/task133_bridge_full_lineage_review`, session
+  `019f6474-d4a3-7810-8e39-ff08bd23fea2`, is dispatched against the exact
+  complete six-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ceb255dd9c21fd967ee112acd7a95378b3a739d2`
+  through its generated full diff package. Its authoritative `turn_context`
+  records `model=gpt-5.6-terra` and `effort=xhigh`.
+- The reviewer must return defects-first APPROVED or NEEDS-CHANGES on the
+  private Task140R0 data bridge and all-six-real-hash-plus-lookalike
+  table-driven rejection contract. It is read-only and may not rerun gates.
+  Task133 source dispatch, plan integration, full verification, provider/
+  network/credential/Nous, reset credits, neo, and self-integration remain
+  closed pending its unqualified approval.
