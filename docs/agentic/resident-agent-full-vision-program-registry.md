@@ -8873,3 +8873,26 @@ explicit implementation authorization.
 - All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
   integration actions remain closed pending a committed docs-only repair and
   two fresh independent unqualified approvals. No prior verdict carries.
+
+## RV-1-E-295 — Fail-closed dispatch candidate
+
+- The sole plan writer committed CF-1R19 candidate
+  `dd52fa4d28394a7fa3447cbaf9314cb3eebc9294`. It adds literal `task117a` and
+  `task135d` keys to the immutable P/R0/H prerequisite maps and negative tests;
+  makes Task117A select exactly one nonempty canonical audit block; and binds
+  Task137A's full committed, staged, unstaged, and untracked lineage to its
+  exact six permitted paths through an immutable claim-only dispatch commit.
+- The real embedded audit passed, zero-match and duplicate-match extractor
+  counterfactuals failed as required, and `git diff --check` plus
+  `npm run factory:check` passed before commit. The exact review lineage is the
+  24-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..dd52fa4d28394a7fa3447cbaf9314cb3eebc9294`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required; every prior verdict and reviewer identity is
+  non-authorizing. Source dispatch, plan integration, live/provider/full/
+  credential/Nous/reset-credit/`neo` actions remain closed.
+- Latest authenticated usage reports 40% used / 60% weekly remaining, with no
+  reset credits. DRAIN and hard-pause thresholds remain unchanged.
