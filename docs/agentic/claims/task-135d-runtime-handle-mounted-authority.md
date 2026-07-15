@@ -378,3 +378,23 @@ self-integration, and program-registry edits remain closed.
 - Claim status is `ready-for-review`. No full verification,
   live/provider/network/credential/Nous action, reset, `neo`, merge, rebase,
   push, self-integration, or program-registry edit was performed.
+
+## Coordinator typecheck narrowing repair
+
+- Coordinator-independent verification of
+  `0a45dcff129e24783f4619dc66067efe1d39e40a` reported a blocking test-only
+  type error at import-scanner line 414: the combined class/enum declaration
+  branch forwarded an optional anonymous-class `name` to a `BindingName`
+  parameter. The candidate is preserved; this is a bounded forward scanner
+  typing repair only.
+- The repair splits class and enum handling. Class declarations now add a
+  binding only after an explicit `name !== undefined` guard; enum declarations
+  retain their named branch. No non-null assertion, cast, scope-policy, loader,
+  or production capture change was introduced.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 21
+  tests passed; `npm run typecheck` exited `0` after the explicit narrowing.
+- The authorized pre-commit non-full gate exited `0`:
+  `test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- Claim status remains `ready-for-review`. No full verification,
+  live/provider/network/credential/Nous action, reset, `neo`, merge, rebase,
+  push, self-integration, or program-registry edit was performed.

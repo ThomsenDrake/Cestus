@@ -410,7 +410,13 @@ function addShadowedLoaderStatement(
     addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
     return;
   }
-  if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) {
+  if (ts.isClassDeclaration(statement)) {
+    if (statement.name !== undefined) {
+      addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
+    }
+    return;
+  }
+  if (ts.isEnumDeclaration(statement)) {
     addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
     return;
   }
