@@ -6,12 +6,13 @@ const mountInstanceIdPattern = /^mount_[a-zA-Z0-9_-]+$/;
 const taskIdPattern = /^task_[a-zA-Z0-9_-]+$/;
 const attemptIdPattern = /^attempt_[a-zA-Z0-9_-]+$/;
 const runIdPattern = /^run_[a-zA-Z0-9_-]+$/;
-const providerIdPattern = /^provider_[a-zA-Z0-9_-]+$/;
+const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9_-]+$/;
 const credentialRefIdPattern = /^agent_credref_[a-zA-Z0-9_-]+$/;
 const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const modelIdPattern = /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/;
 const policyVersionPattern = /^policy_[a-zA-Z0-9_.-]+$/;
 const officialFlowIdPattern = /^xai-[a-z0-9][a-z0-9.-]{0,127}$/;
+const idempotencyKeyPattern = /^[a-zA-Z0-9_.|:-]+$/;
 
 const prohibitedOfficialFlowKinds = new Set([
   "browser-cookie",
@@ -58,15 +59,6 @@ export type XaiSubscriptionHarnessResult =
     readonly safeDiagnosticCodes: readonly ["official-flow-unavailable"];
   }
   | {
-    readonly kind: "interface-demonstrated";
-    readonly category: "official-flow-interface-only";
-    readonly actualXaiFeasibility: false;
-    readonly providerId: string;
-    readonly modelId: string;
-    readonly capabilityHash: string;
-    readonly safeDiagnosticCodes: readonly ["official-flow-interface-only"];
-  }
-  | {
     readonly kind: "blocked";
     readonly category:
       | "unsafe-input"
@@ -82,7 +74,15 @@ export type XaiSubscriptionHarnessResult =
   };
 
 export interface XaiFeasibilityAuthority {
-  appendOfficialFlowUnavailable(evidence: XaiOfficialFlowUnavailableEvidence): Promise<unknown>;
+  appendOfficialFlowUnavailable(
+    evidence: XaiOfficialFlowUnavailableEvidence
+  ): Promise<XaiOfficialFlowUnavailableAppendReadback>;
+}
+
+export interface XaiOfficialFlowUnavailableAppendReadback {
+  readonly record: XaiOfficialFlowUnavailableEvidence;
+  readonly feasibilityEventId: string;
+  readonly readbackEventId: string;
 }
 
 export interface XaiSubscriptionHarnessPosture {
@@ -145,7 +145,6 @@ interface NormalizedPosture {
 
 type NormalizedOfficialFlow =
   | { readonly kind: "absent" }
-  | { readonly kind: "test-interface"; readonly officialFlowId: string }
   | { readonly kind: "prohibited" }
   | { readonly kind: "invalid" };
 
@@ -183,16 +182,12 @@ export function createXaiSubscriptionHarness(input: unknown): XaiSubscriptionHar
       if (assessment.officialFlow.kind === "invalid") {
         return blocked("unsafe-input", configured.currentPosture);
       }
-      if (assessment.officialFlow.kind === "test-interface") {
-        if (assessment.officialFlow.officialFlowId !== configured.currentPosture.officialFlowId) {
-          return blocked("posture-mismatch", configured.currentPosture);
-        }
-        return interfaceDemonstrated(configured.currentPosture);
-      }
-
       const evidence = unavailableEvidence(configured.currentPosture);
       try {
-        await configured.feasibilityAuthority.appendOfficialFlowUnavailable(evidence);
+        const readback = await configured.feasibilityAuthority.appendOfficialFlowUnavailable(evidence);
+        if (!isExactMountedAppendReadback(readback, evidence)) {
+          return blocked("feasibility-append-unavailable", configured.currentPosture);
+        }
       } catch {
         return blocked("feasibility-append-unavailable", configured.currentPosture);
       }
@@ -242,14 +237,7 @@ function normalizeOfficialFlow(value: unknown): NormalizedOfficialFlow {
   if (hasProhibitedOfficialFlowKind(value)) {
     return Object.freeze({ kind: "prohibited" });
   }
-  const record = plainOwnDataRecord(value);
-  if (record === undefined || !hasExactKeys(record, ["kind", "officialFlowId", "documentationHash", "interfaceOnly"]) ||
-      record.kind !== "test-official-xai-route" ||
-      !isSafeId(record.officialFlowId, officialFlowIdPattern) ||
-      !isSafeHash(record.documentationHash) || record.interfaceOnly !== true) {
-    return Object.freeze({ kind: "invalid" });
-  }
-  return Object.freeze({ kind: "test-interface", officialFlowId: record.officialFlowId });
+  return Object.freeze({ kind: "invalid" });
 }
 
 function hasProhibitedOfficialFlowKind(value: unknown): boolean {
@@ -276,7 +264,7 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
   ]) || record.residentAgentId !== "agent_default" ||
       !isSafeId(record.workspaceId, workspaceIdPattern) || !isSafeId(record.mountInstanceId, mountInstanceIdPattern) ||
       !isSafeId(record.taskId, taskIdPattern) || !isSafeId(record.attemptId, attemptIdPattern) || !isSafeId(record.runId, runIdPattern) ||
-      !isSafeId(record.providerId, providerIdPattern) || !isSafeId(record.modelId, modelIdPattern) || !isSafeHash(record.capabilityHash)) {
+      !isSafeId(record.providerId, xaiProviderIdPattern) || !isSafeId(record.modelId, modelIdPattern) || !isSafeHash(record.capabilityHash)) {
     return undefined;
   }
   const credential = normalizeCredentialReference(record.credentialReference);
@@ -329,7 +317,7 @@ function normalizeCredentialReference(value: unknown): {
 } | undefined {
   const record = plainOwnDataRecord(value);
   if (record === undefined || !hasExactKeys(record, ["credentialRefId", "providerId", "credentialKind", "status", "capabilityScopes"]) ||
-      !isSafeId(record.credentialRefId, credentialRefIdPattern) || !isSafeId(record.providerId, providerIdPattern) ||
+      !isSafeId(record.credentialRefId, credentialRefIdPattern) || !isSafeId(record.providerId, xaiProviderIdPattern) ||
       (record.credentialKind !== "subscription-oauth" && record.credentialKind !== "device-code-oauth") || record.status !== "healthy") {
     return undefined;
   }
@@ -355,7 +343,7 @@ function normalizePolicy(value: unknown): {
   const record = plainOwnDataRecord(value);
   if (record === undefined || !hasExactKeys(record, [
     "policyVersion", "providerId", "modelId", "capabilityHash", "allowOfficialXaiHarness", "officialFlowId"
-  ]) || !isSafeId(record.policyVersion, policyVersionPattern) || !isSafeId(record.providerId, providerIdPattern) ||
+  ]) || !isSafeId(record.policyVersion, policyVersionPattern) || !isSafeId(record.providerId, xaiProviderIdPattern) ||
       !isSafeId(record.modelId, modelIdPattern) || !isSafeHash(record.capabilityHash) ||
       record.allowOfficialXaiHarness !== true || !isSafeId(record.officialFlowId, officialFlowIdPattern)) {
     return undefined;
@@ -398,6 +386,72 @@ function unavailableEvidence(posture: NormalizedPosture): XaiOfficialFlowUnavail
   });
 }
 
+function isExactMountedAppendReadback(value: unknown, expected: XaiOfficialFlowUnavailableEvidence): boolean {
+  const readback = plainOwnDataRecord(value);
+  if (readback === undefined || !hasExactKeys(readback, ["record", "feasibilityEventId", "readbackEventId"]) ||
+      !isSafeId(readback.feasibilityEventId, eventIdPattern) || !isSafeId(readback.readbackEventId, eventIdPattern) ||
+      readback.feasibilityEventId === readback.readbackEventId) {
+    return false;
+  }
+  const evidence = normalizeOfficialFlowUnavailableEvidence(readback.record);
+  return evidence !== undefined && sameUnavailableEvidence(evidence, expected);
+}
+
+function normalizeOfficialFlowUnavailableEvidence(value: unknown): XaiOfficialFlowUnavailableEvidence | undefined {
+  const record = plainOwnDataRecord(value);
+  if (record === undefined || !hasExactKeys(record, [
+    "recordVersion", "providerId", "modelId", "capabilityHash", "credentialRefId", "posture", "category", "policyVersion",
+    "workspaceId", "mountInstanceId", "runId", "approvalClass", "sourceEventIds", "documentationHash", "idempotencyKey"
+  ]) || record.recordVersion !== "agent-provider-feasibility.v1" ||
+      !isSafeId(record.providerId, xaiProviderIdPattern) || !isSafeId(record.modelId, modelIdPattern) ||
+      !isSafeHash(record.capabilityHash) || !isSafeId(record.credentialRefId, credentialRefIdPattern) ||
+      record.posture !== "unavailable" || record.category !== "official-flow-unavailable" ||
+      !isSafeId(record.policyVersion, policyVersionPattern) || !isSafeId(record.workspaceId, workspaceIdPattern) ||
+      !isSafeId(record.mountInstanceId, mountInstanceIdPattern) || !isSafeId(record.runId, runIdPattern) ||
+      record.approvalClass !== "provider-byte-transfer" || record.documentationHash !== undefined ||
+      !isSafeId(record.idempotencyKey, idempotencyKeyPattern)) {
+    return undefined;
+  }
+  const sourceEventIds = plainSafeStringArray(record.sourceEventIds, eventIdPattern);
+  if (sourceEventIds === undefined) {
+    return undefined;
+  }
+  return Object.freeze({
+    recordVersion: "agent-provider-feasibility.v1",
+    providerId: record.providerId,
+    modelId: record.modelId,
+    capabilityHash: record.capabilityHash,
+    credentialRefId: record.credentialRefId,
+    posture: "unavailable",
+    category: "official-flow-unavailable",
+    policyVersion: record.policyVersion,
+    workspaceId: record.workspaceId,
+    mountInstanceId: record.mountInstanceId,
+    runId: record.runId,
+    approvalClass: "provider-byte-transfer",
+    sourceEventIds,
+    documentationHash: undefined,
+    idempotencyKey: record.idempotencyKey
+  });
+}
+
+function sameUnavailableEvidence(
+  actual: XaiOfficialFlowUnavailableEvidence,
+  expected: XaiOfficialFlowUnavailableEvidence
+): boolean {
+  return actual.recordVersion === expected.recordVersion &&
+    actual.providerId === expected.providerId && actual.modelId === expected.modelId &&
+    actual.capabilityHash === expected.capabilityHash && actual.credentialRefId === expected.credentialRefId &&
+    actual.posture === expected.posture && actual.category === expected.category && actual.policyVersion === expected.policyVersion &&
+    actual.workspaceId === expected.workspaceId && actual.mountInstanceId === expected.mountInstanceId && actual.runId === expected.runId &&
+    actual.approvalClass === expected.approvalClass && actual.documentationHash === expected.documentationHash &&
+    actual.idempotencyKey === expected.idempotencyKey && sameStrings(actual.sourceEventIds, expected.sourceEventIds);
+}
+
+function sameStrings(actual: readonly string[], expected: readonly string[]): boolean {
+  return actual.length === expected.length && actual.every((value, index) => value === expected[index]);
+}
+
 function unavailable(posture: NormalizedPosture): XaiSubscriptionHarnessResult {
   return Object.freeze({
     kind: "unavailable",
@@ -406,18 +460,6 @@ function unavailable(posture: NormalizedPosture): XaiSubscriptionHarnessResult {
     modelId: posture.modelId,
     capabilityHash: posture.capabilityHash,
     safeDiagnosticCodes: Object.freeze(["official-flow-unavailable"] as const)
-  });
-}
-
-function interfaceDemonstrated(posture: NormalizedPosture): XaiSubscriptionHarnessResult {
-  return Object.freeze({
-    kind: "interface-demonstrated",
-    category: "official-flow-interface-only",
-    actualXaiFeasibility: false,
-    providerId: posture.providerId,
-    modelId: posture.modelId,
-    capabilityHash: posture.capabilityHash,
-    safeDiagnosticCodes: Object.freeze(["official-flow-interface-only"] as const)
   });
 }
 
