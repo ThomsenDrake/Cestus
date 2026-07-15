@@ -136,3 +136,29 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## RV-1-E-362 AST import-inspection repair
+
+- The coordinator independently preserved but rejected
+  `f121af369d2281b515fda07bb15ae4948404062b`: lexical regexes miss valid
+  TypeScript trivia and escaped-token spellings even though the compiler decodes
+  them to the protected runtime-factory module and capture names. The installed
+  local TypeScript compiler API is available; this forward repair owns only the
+  test scanner and causal fixtures, without a new dependency or production
+  change.
+
+- Causal RED: the prescribed focused command exited `1` only in the expanded
+  import test (1 failed, 19 passed). All eight new deep cross-package fixtures
+  had zero parse diagnostics and compiler-decoded to the protected module; the
+  two named forms also decoded to `captureFactoryIssuedMountedRuntime`. The
+  lexical scanner returned only the prior 11 paths and omitted all eight.
+- Focused GREEN: one compiler-AST traversal now inspects import/export
+  declarations, named and namespace bindings, import-equals/require, and
+  dynamic `import()` calls. It compares decoded string-literal module
+  specifiers and identifiers without a regex normalization layer; the command
+  exited `0` with 3 test files and 20 tests passed.
+- Authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.
