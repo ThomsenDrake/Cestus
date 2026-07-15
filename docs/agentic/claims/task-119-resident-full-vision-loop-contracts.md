@@ -354,3 +354,88 @@ the committed range. `544d95c9` remains preserved, unreviewed for integration,
 and unintegrated history; no self-review, self-integration, merge, full
 verification, provider/network/credential/Nous, Task120/136, or `neo` action
 is authorized.
+
+## CF-1R2 Fresh Replay-State Recovery Checkpoint
+
+- Fresh recovery author: `/root/task119_replay_state_recovery_retry` on
+  `codex/task-119-resident-full-vision-cf1r2-replay-state-recovery`, starting
+  from preserved unintegrated candidate
+  `5bf4c2895e6bd0121d58fd8b8f1ab4b18abbde9a`.
+- Runtime evidence is authoritative session metadata, not generic base prose:
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T21-24-08-019f635f-c36a-7943-ac85-1b171200f05a.jsonl:8`
+  records `turn_context` with `model=gpt-5.6-terra` and `effort=xhigh`.
+- Recovered governing-spec path: the assigned
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-design.md`
+  filename is absent in this checkout; the canonical present full-vision
+  program design is
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md`.
+- Root-cause investigation of the current v2 pure replay parser found three
+  coupled omissions: it admits only a fixed plan/observation/tool/suspension/
+  result quintet and requires all complete `budget` snapshots to be equal, so
+  it cannot prove per-record consumption or initial-plus-three-replan durable
+  progression; it checks a resumable anchor only for presence rather than the
+  immediately preceding suspension checkpoint, deadline, and next action; and
+  its result vocabulary lacks separately inspectable authority-stale,
+  context-stale, allowlist-mismatch, provenance-missing, and secret-detected
+  outcome semantics. The changed tactic is a pure replay-state transition
+  validator over per-record immutable budget deltas, exact prior-plan and
+  suspension bindings, and explicit category/outcome maps. It adds no store,
+  projection, provider, tool, H/W/P/gateway, or effect behavior.
+- Before production changes, this recovery will add and run causal REDs for a
+  valid fourth plan record plus an over-limit revision, omitted observation/
+  tool/result consumption, each swapped resume-anchor component, and every
+  required category's valid and invalid outcome pair. Full verification is
+  closed; the only final gate is the coordinator-specified fail-fast chain.
+
+## CF-1R2 Fresh Replay-State RED/GREEN Evidence
+
+- Environment-only recovery: the first focused RED invocation exited `127`
+  before loading tests because this isolated worktree had no ignored `vitest`
+  binary. `npm ci --ignore-scripts` then exited `0`, restoring only
+  lockfile-pinned ignored dependencies; it did not change a tracked package or
+  lockfile.
+- Causal RED: `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts` exited `1` with **13 failed
+  and 116 passed tests**. The valid five-event control failed on the absent
+  `budget.actionConsumption` boundary; the new fourth-plan control failed on
+  the fixed-quintet replay parser; and each resumable-anchor and category/
+  outcome control failed because the prior parser accepted only anchor
+  presence and omitted the required safe categories. Historical v1 tests
+  remained green.
+- GREEN: the same exact focused command exited `0` with **2 files / 129
+  tests passing**. Each v2 record now has a strict, immutable action budget
+  delta and the pure replay validator proves cumulative consumed/remaining
+  transitions, fixed ceilings, required record-class consumption, contiguous
+  revisions `0..3`, exact previous-plan readbacks, and a hard maximum of four
+  plan records (initial plus three replans). The original five-event fixture
+  remains valid, while the fourth-plan stream is valid and revision four is
+  rejected.
+- The pure replay validator binds a resumable result's checkpoint ID,
+  deadline, and next safe action to the immediately preceding durable
+  suspension checkpoint. The result contract now separately exposes
+  `authority-stale` and `context-stale` only as resumable outcomes, plus
+  `allowlist-mismatch`, `provenance-missing`, and `secret-detected` only as
+  failed outcomes; each has a valid and an invalid pair counterfactual.
+  This remains a no-effect contract/parser repair: no store, projection,
+  runner, H/W/P/gateway, provider, credential, network, or Nous behavior was
+  added or changed.
+
+Status: in-progress pending the one authorized post-claim fail-fast gate,
+scoped forward commit, and a distinct fresh Terra/xhigh review. Full
+verification remains closed; no self-review, self-integration, merge, Task120
+restart, Task136 work, provider/network/credential/Nous action, or `neo`
+action is authorized.
+
+## CF-1R2 Replay-State Fail-Fast Gate
+
+- The sole authorized non-full gate exited `0` as one fail-fast command:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported **2 files / 129 tests passing**; typecheck, diff check, and
+  factory readiness completed without a failing stage. Full verification was
+  not run and remains closed.
+
+Status: gate-passing and pending one scoped forward commit plus a distinct
+fresh Terra/xhigh review. No self-review, self-integration, merge, Task120
+restart, Task136 work, provider/network/credential/Nous action, or `neo`
+action is authorized.
