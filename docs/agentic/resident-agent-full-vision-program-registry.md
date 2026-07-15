@@ -12179,3 +12179,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-445 — Task137A second recovery rejected for bounded authority repair
+
+- Mounted-authority architecture reviewer
+  `019f67c2-66de-7453-a87a-14a37534f08d` and adversarial implementation/
+  compiler reviewer `019f67c2-7d13-7420-a4a2-73dcaccb6ed4` independently
+  returned **NEEDS-CHANGES** for exact candidate
+  `eea13305c957dc73d88fd616fa4fc1bb4d5f78b1`. Both reproduced the terminal
+  clean-shell gate at 6 files / 71 tests and standalone typecheck; the rejection
+  is uncovered semantic-policy and liveness behavior.
+- Parenthesized dynamic imports bypass the protected-module scanner, authorized
+  role files can re-export private authority, and the issuer role names a
+  nonexistent file instead of the plan-mandated runtime factory. A memoized
+  Task135B inspection can also survive exact runtime-handle close without
+  revalidating the private capture.
+- Recovery owner `019f67af-c6a6-7450-804e-1af32d558c9f` is authorized for one
+  bounded same-six-path repair. The coordinator explicitly approves task-
+  scoped `superpowers:subagent-driven-development`, receiving-code-review,
+  systematic debugging, TDD, and verification-before-completion with one
+  production writer.
+- Repair must unwrap transparent import expressions, prohibit every re-export
+  path, bind the exact factory issuer role, and revalidate capture liveness on
+  every memoized inspection. It must preserve all prior authority semantics and
+  add causal counterfactuals before another immutable candidate.
+- Exact candidate `eea13305c957dc73d88fd616fa4fc1bb4d5f78b1` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
