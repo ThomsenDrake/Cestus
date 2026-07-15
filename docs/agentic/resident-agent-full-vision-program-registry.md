@@ -6473,3 +6473,55 @@ explicit implementation authorization.
   must run exactly `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/agent/test/context-packs.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain before one forward commit, then stop for fresh independent review. Full verification remains **CLOSED**; no self-review, self-integration, merge, provider/network/credential action, or `neo` action is authorized.
 - Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
   untouched, and DRAIN/HARD PAUSE controls remain in force.
+
+## RV-1-E-188 — Task134 second review correction and recovery authorization
+
+- Fresh independent Terra/xhigh review of Task134 range
+  `435602f3..b5d07b93` returned **NEEDS-CHANGES**. Preserve `435602f3` and
+  `b5d07b93` as unintegrated forward-only history: neither is review-ready or
+  integration-ready, despite the candidate's focused 45-test/typecheck gate.
+- Two Important defects are accepted. The delegate supplies the durable
+  handoff claim and recorded object, while the implementation checks only run
+  identity plus object identity after H returns that same object; this is not
+  exact-bound durable H readback. Also, exported
+  `FactoryClosedSpecialistRunnerBinding` and the public
+  `createProductionSpecialistRunnerCapability({ closedBinding })` accept a
+  structural caller tuple. The test fixture is its only constructor, so the
+  alleged factory closure is forgeable and has no production composition.
+- The original candidate plus its one authorized repair are exhausted. A fresh
+  Terra/xhigh recovery author, distinct from every prior Task134 author and
+  reviewer, is authorized by the new recovery claim to prove whether the
+  existing three-file Task134 boundary can establish both exact H readback and
+  a runtime-enforced non-forgeable closure. It must start with causal RED
+  counterfactuals. If the boundary cannot establish closure without a shadow
+  contract or a public structural tuple, it must stop with a source-backed
+  composition-boundary report; the coordinator will issue a separate narrow
+  R-owned composition revision rather than accepting a fake closure.
+- The recovery has standing `superpowers:subagent-driven-development`,
+  systematic debugging, test-driven development, and
+  verification-before-completion authority. Any scoped candidate must use the
+  exact fail-fast gate `npm test -- packages/local-runtime/test/agent-runtime-specialist-runners.test.ts packages/agent/test/specialist-runner-kernel.test.ts && npm run typecheck && git diff --check && npm run factory:check` and exit `0` before fresh independent review. Full verification remains **CLOSED**; no self-review, self-integration, merge, provider/network/credential/Nous, or `neo` action is authorized. Task135 remains blocked pending reviewed coordinator integration.
+
+## RV-1-E-189 — Task136 interface-reconciliation correction
+
+- The independent Task136 contract audit establishes a CF-1 interface conflict,
+  not a Task136 implementation failure. Task120 currently exposes only v1
+  plan/observation recording and a two-collection projection. Its v1 shared
+  schema family lacks the required ten-budget identity, policy, authority,
+  source/context, allowlist/effect/approval/artifact, resumable-result, and
+  complete H-readback bindings. No local Task136 adapter may invent those
+  interfaces.
+- H has no complete `HandoffReadback`/lifecycle projection surface; P has no
+  mounted run/policy-bound `VerifiedProviderPosture`; W has no
+  suspend/reclaim/post-await loop-authority port; and the existing gateway has
+  no exact request/decision/result readback adapter. Those remain producer
+  owned. Task136 stays blocked with no claim/code because consuming partial or
+  synthetic replacements would weaken provenance and recovery guarantees.
+- Coordinator CF-1R2 now preserves v1 history and authorizes Task119 alone to
+  register strict versioned v2 loop-event parsers and replay tests. After its
+  fresh review and coordinator-only integration, Task120, then the H/W/P/
+  gateway producer repairs, will receive separate bounded authorizations and
+  fresh reviews. A fresh Task136 rebase can begin only after those merged SHAs
+  exist. Full verification remains **CLOSED**, `neo` untouched, current
+  authenticated use remains `usedPercent=13` / **87% remaining**, and reset
+  credits remain untouched.
