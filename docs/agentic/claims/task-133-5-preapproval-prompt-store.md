@@ -69,3 +69,32 @@ obtain any tested witness through the real issuer/readback path (or exercise
 structural rejection without fabricating a branded value), retain exact
 template-literal hashes, and rerun the focused eight-file suite plus a
 standalone typecheck before becoming a new candidate.
+
+## Second recovery ownership — 2026-07-15
+
+- Worker: `/root`.
+- Branch: `codex/task-133-5-preapproval-prompt-store-recovery-2`.
+- Worktree: `/home/drake/.codex/worktrees/2f54/Cestus`.
+- Recovery base: `c96db07b8a9e19939fa3e6801b31d82e5c96b13c`.
+- Status: `in-progress`.
+
+Candidate `c96db07b8a9e19939fa3e6801b31d82e5c96b13c` is retained only as
+rejected forensic evidence. Independent reviews
+`019f67b3-640d-7fb2-8569-9261d2745d92` and
+`019f67b3-71f6-7d01-80f0-af3838059113` both returned `NEEDS-CHANGES`:
+
+- mounted readback and the registrar rebind caller-supplied task/run/scope
+  facts instead of deriving them from the canonical parsed V1 artifact;
+- consumption does not revalidate the current mount/root/blob/process tuple,
+  so a prior-mount witness remains usable;
+- restart recovery only consults an in-memory witness map, delayed resume
+  compares a newly sampled time to the artifact time, and context-ready can
+  accept renderer or approval-hash fallbacks; and
+- the claimed lifecycle and adversarial tests are placeholders rather than
+  causal mounted-workspace regressions.
+
+This recovery replaces those paths as one coherent authority and restart
+boundary. It preserves portable-only canonical-byte storage, lexical
+one-use/private witness authority, exact template hashes, and the no-prompt
+text boundary. No provider, network, credentials, Nous, full verification,
+`neo`, merge, rebase, push, or integration action is authorized.
