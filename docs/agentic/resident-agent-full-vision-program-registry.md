@@ -9403,3 +9403,18 @@ explicit implementation authorization.
   verdicts are required; no earlier verdict or reviewer identity carries.
   Source dispatch, plan integration, live/provider/full/credential/Nous/
   reset-credit/`neo` actions remain closed.
+
+## RV-1-E-317 — Same-payload reviewer identities
+
+- Lifecycle/executability reviewer
+  `019f6638-81de-7c02-8e91-bfe7cf36a164` and authority/import/bypass reviewer
+  `019f6638-c5de-7a83-8292-fc40a222d33e` are active read-only on the exact
+  CF-1R26 candidate, lineage, and canonical checkpoint in RV-1-E-316. Both use
+  `gpt-5.6-terra` at `xhigh` in fresh isolated worktrees and are pinned under
+  distinct review titles.
+- Both were explicitly given the approved external-sibling-C and mutable-
+  evidence-suffix boundaries plus the external program-registry location.
+  Neither may edit, run full/live/provider/credential gates, touch `neo`, or
+  carry forward an earlier verdict. Source dispatch and plan integration remain
+  closed until both return explicit unqualified **APPROVED** verdicts and those
+  verdicts are durably recorded.
