@@ -81,3 +81,40 @@ integration.
   Full verification remains closed.
 - Final repair commit: recorded by the scoped forward commit containing this
   recovery record; fresh independent complete-range review remains required.
+
+## RV-1-E-217 Replacement Boundary Recovery
+
+- Replacement worker: `/root/task132a_boundary_red_replacement`, on the same
+  `codex/task-132a-boundary-reset-recovery` worktree and preserved
+  `c7f36114973857019a2d25735790489b406189f5` base. The authoritative
+  replacement `turn_context` is
+  `/home/drake/.codex/sessions/2026/07/15/rollout-2026-07-15T00-08-18-019f63f6-1091-79e1-be8e-839ebbdfc930.jsonl:8`:
+  `model=gpt-5.6-terra`, `reasoning_effort=xhigh`, and `effort=xhigh`.
+  The 2026-07-14 `019f63ec-9d8e-7a30-a288-299871bd7119` record is the
+  interrupted predecessor, not the replacement runtime.
+- The audited causal RED first exited `1` with exactly two boundary failures:
+  public `captureFactoryContextPackAttestation` was visible to an external
+  module and default empty factory composition did not throw
+  `blocked.factory-context-attestation-required`. The foreign manual
+  `buildResolved` fixture was repaired only to supply its canonical
+  `generatedAt` and `safeSummary` build-input fields; its normal public
+  `buildResolved` behavior remains covered without yielding registrar evidence.
+- The scoped correction removes all public factory/context capability capture,
+  consume, constructor, wrapper, tuple, and type surfaces. The factory now
+  captures only read-only package registrar snapshots in an unexported lexical
+  verifier and fails closed when its default registry has no actual registrar
+  evidence. It adds no H, task-orchestrator, provider, durable, or terminal
+  behavior.
+- Real PRR, operational, and investigative read-only registrar evidence stays
+  covered; foreign/manual registries return `undefined` while ordinary public
+  `buildResolved` remains available. The six live content-hash,
+  source-high-water, selection-manifest, scope, policy, and provenance swap
+  checks are intentionally deferred to Task140R0's private registered resolver;
+  no frozen-object immutability assertion is labeled as a live rejection.
+
+Status: ready-for-review after the post-claim exact Task132A non-full gate
+exited `0` with 3 files / 55 focused tests passing, TypeScript, whitespace, and
+factory readiness passing. One scoped forward commit, temporary dependency
+removal, and fresh complete staged-base review remain. Full verification,
+`neo`, provider/network/credential/Nous, reset credits, self-review,
+self-integration, merge, and downstream work remain closed.
