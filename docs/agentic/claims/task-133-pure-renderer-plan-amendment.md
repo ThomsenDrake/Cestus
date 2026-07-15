@@ -577,6 +577,8 @@ serialized task.
   approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
   before coordinator-only plan integration.
 
+
+
 ## Forward Correction — Factory-Captured State And Run-Bound Progression
 
 - Status remains **plan-repair candidate only**. Fresh reviewers
@@ -648,6 +650,35 @@ serialized task.
   executing it. Task137A records an immutable exact dispatch base in its
   claim-only first commit and compares its complete committed/uncommitted task
   lineage to the exact six permitted paths before GREEN review can pass.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
+
+## Forward Correction — Authenticated Oracle And Complete Lineage
+
+- Status remains **plan-repair candidate only**. Lifecycle reviewer
+  `019f659e-a6a7-7b12-8d5d-8ba23cd8fd79` approved `dd52fa4d`, but authority
+  reviewer `019f659e-a6df-72e2-960d-2253cec57217` rejected it because a
+  marker-bearing no-op can replace Task117A's unauthenticated audit, Task135C
+  can rediscover a later manifest touch as dispatch commit `M`, and Task137A's
+  net diff omits reverted intermediate, rename-concealed, and ignored paths.
+  The single approval is non-authorizing and does not carry forward.
+- CF-1R20 makes the coordinator validate the exact intended Task117A freeze in
+  a temporary root and pin the extracted audit SHA-256 in a claim-only commit
+  whose parent is the literal source base. The later freeze candidate must
+  reproduce those bytes, preserve the immutable claim block, and keep its
+  every-commit lineage to exactly the claim and freeze paths.
+- Task135C now identifies `M` only as the unique original add of both manifest
+  and claim with rename detection and Git replacement objects disabled. It
+  parses authority from bytes stored at that commit and rejects every later
+  replacement, deletion/re-addition, merge, or mutable HEAD substitution.
+- Task137A now rejects merge commits and ignored files under packages, scripts,
+  and claims; enumerates every individual commit with rename detection
+  disabled; and then unions staged, unstaged, and standard untracked paths.
+  Reverted intermediate edits and rename concealment therefore cannot satisfy
+  the exact six-file ceiling.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh independent unqualified Terra/xhigh

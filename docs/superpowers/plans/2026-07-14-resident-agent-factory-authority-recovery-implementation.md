@@ -3582,6 +3582,7 @@ activity. Two unqualified Terra/xhigh approvals are required before
 coordinator-only plan integration. Source/full/live/credential/reset-credit/
 `neo`/self-integration/merge remain closed.
 
+
 ## CF-1R11 Nested Authority, Production-Local Admission, And Resident Acceptance
 
 **Status:** This section supersedes CF-1R10 only where P carries a nested full
@@ -5750,3 +5751,177 @@ Task137A lineage-wide six-path equality gate in addition to every preserved
 CF-1R18 requirement. Exactly two unqualified approvals permit coordinator-only
 plan integration. Source, full/live/provider/credential/Nous/reset-credit/
 `neo`/self-integration/merge remain closed.
+
+## CF-1R20 - Authenticated oracle and complete Git lineage gates
+
+This overlay supersedes CF-1R19 only for Task117A audit authentication,
+Task135C dispatch-commit discovery, and Task137A changed-path accounting. Every
+CF-1R18/CF-1R19 ownership, authority, prerequisite, command, and restriction
+that is not explicitly replaced below remains current.
+
+### Task117A coordinator-pinned audit bytes
+
+Task117A remains coordinator-only and docs-only. Before changing the checked-out
+freeze, the coordinator prepares the exact intended post-amendment freeze in a
+temporary directory outside the repository, extracts exactly one nonempty bash
+block containing `CF-1 full-row canonicalRows audit`, runs that block against
+the temporary candidate, and computes SHA-256 over the exact extracted bytes.
+From a clean literal `sourceBaseSha`, the coordinator then creates the Task117A
+claim with exactly one immutable block:
+
+```text
+<!-- task-117a-dispatch-v2:start -->
+sourceBaseSha=0123456789012345678901234567890123456789
+auditSha256=0123456789012345678901234567890123456789012345678901234567890123
+<!-- task-117a-dispatch-v2:end -->
+```
+
+The coordinator commits only the new claim as the claim-add commit. Its parent
+must be the literal `sourceBaseSha`. Only after that commit may the coordinator
+write the already validated temporary freeze bytes into the checked-out freeze
+and append evidence outside the immutable claim block. The claim-add commit is
+found as the one and only original add of the claim with rename detection and
+Git replacement objects disabled; a latest-touch lookup is forbidden.
+
+Task117A GREEN and every fresh review run this exact gate from the candidate:
+
+```bash
+set -euo pipefail
+task117a_claim='docs/agentic/claims/task-117a-runtime-handle-capture-freeze.md'
+task117a_freeze='docs/agentic/resident-agent-full-vision-contract-freeze.md'
+task117a_tmp="$(mktemp -d)"
+trap 'rm -rf "$task117a_tmp"' EXIT
+extract_task117a_claim() {
+  awk '/^<!-- task-117a-dispatch-v2:start -->$/ { starts++; inside=1 } inside { print } /^<!-- task-117a-dispatch-v2:end -->$/ { ends++; inside=0 } END { if (starts != 1 || ends != 1 || inside) exit 42 }'
+}
+extract_task117a_audit() {
+  awk '/^```bash$/ { inside=1; block=""; next } inside && /^```$/ { if (block ~ /CF-1 full-row canonicalRows audit/) { matches++; selected=block } inside=0; next } inside { block=block $0 ORS } END { if (matches != 1 || selected == "") exit 43; printf "%s", selected }'
+}
+extract_task117a_claim < "$task117a_claim" > "$task117a_tmp/claim"
+task117a_source_lines="$(sed -n 's/^sourceBaseSha=\([0-9a-f]\{40\}\)$/\1/p' "$task117a_tmp/claim")"
+task117a_audit_sha_lines="$(sed -n 's/^auditSha256=\([0-9a-f]\{64\}\)$/\1/p' "$task117a_tmp/claim")"
+test "$(printf '%s\n' "$task117a_source_lines" | sed '/^$/d' | wc -l)" -eq 1
+test "$(printf '%s\n' "$task117a_audit_sha_lines" | sed '/^$/d' | wc -l)" -eq 1
+task117a_source="$task117a_source_lines"
+task117a_audit_sha="$task117a_audit_sha_lines"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task117a_source}^{commit}")" = "$task117a_source"
+mapfile -t task117a_claim_commits < <(GIT_NO_REPLACE_OBJECTS=1 git log --no-renames --diff-filter=A --format=%H -- "$task117a_claim")
+test "${#task117a_claim_commits[@]}" -eq 1
+task117a_claim_commit="${task117a_claim_commits[0]}"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task117a_claim_commit}^")" = "$task117a_source"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git diff-tree --root --no-commit-id --name-status -r --no-renames "$task117a_claim_commit")" = "$(printf 'A\t%s' "$task117a_claim")"
+GIT_NO_REPLACE_OBJECTS=1 git show "${task117a_claim_commit}:${task117a_claim}" | extract_task117a_claim > "$task117a_tmp/claim-at-add"
+cmp -s "$task117a_tmp/claim" "$task117a_tmp/claim-at-add"
+test -z "$(GIT_NO_REPLACE_OBJECTS=1 git rev-list --min-parents=2 "${task117a_source}..HEAD")"
+task117a_actual="$( { while read -r commit; do GIT_NO_REPLACE_OBJECTS=1 git diff-tree --no-commit-id --name-only -r --no-renames "$commit"; done < <(GIT_NO_REPLACE_OBJECTS=1 git rev-list --reverse "${task117a_source}..HEAD"); GIT_NO_REPLACE_OBJECTS=1 git diff --name-only --no-renames; GIT_NO_REPLACE_OBJECTS=1 git diff --cached --name-only --no-renames; git ls-files --others --exclude-standard; } | LC_ALL=C sort -u )"
+task117a_expected="$(printf '%s\n' "$task117a_claim" "$task117a_freeze" | LC_ALL=C sort -u)"
+test "$task117a_actual" = "$task117a_expected"
+extract_task117a_audit < "$task117a_freeze" > "$task117a_tmp/audit"
+test -s "$task117a_tmp/audit"
+test "$(sha256sum "$task117a_tmp/audit" | awk '{print $1}')" = "$task117a_audit_sha"
+bash "$task117a_tmp/audit"
+git diff --check
+npm run factory:check
+```
+
+The claim's digest is therefore fixed before the freeze changes and cannot be
+updated with a substituted marker-bearing no-op. The exact lineage union must
+equal only the claim and freeze paths. Tests/review include no-op replacement,
+comment-only marker replacement, changed digest, changed immutable block,
+duplicate add, delete/re-add, merge commit, rename, extra/reverted intermediate
+path, and replacement-object counterfactuals.
+
+### Task135C unique original dispatch add
+
+Task135C no longer discovers `M` with `git log -1`. Given the literal manifest
+and claim paths from the CLI, both `preflight` and `review` must:
+
+1. set `GIT_NO_REPLACE_OBJECTS=1` for every revision, ancestry, show, log,
+   diff, and tree operation;
+2. run `git log --no-renames --diff-filter=A --format=%H -- <manifest>` and
+   require exactly one result in `HEAD` ancestry;
+3. require the claim to have exactly the same one original-add commit;
+4. parse `sourceBaseSha` and all prerequisite facts from the manifest and
+   immutable claim bytes stored at that unique `M`, not from mutable HEAD bytes;
+5. require `M^=sourceBaseSha`, no merge in `sourceBaseSha..HEAD`, and exact
+   `A <manifest>` plus `A <claim>` name-status entries in `M`; and
+6. compare current/HEAD manifest bytes and the current/HEAD immutable claim
+   block to their exact bytes at `M` before any task command runs.
+
+A later touch, replacement two-file commit, delete/re-add, rename, merge,
+replacement object, edited manifest, or edited immutable block cannot redefine
+`M`. Add exact-title temporary-repository tests for each bypass, including a
+later valid-looking replacement bundle whose parent contains source work. The
+Task135C owned files and full command remain CF-1R18/CF-1R19, with these cases
+added to its focused suite.
+
+### Task137A every-commit six-path ceiling
+
+Task137A replaces CF-1R19's net-diff ceiling. The claim-add commit is the one
+and only original add of its claim, discovered with `--no-renames`, and every
+Git object operation sets `GIT_NO_REPLACE_OBJECTS=1`. The branch segment from
+the literal dispatch base through reviewer HEAD must contain no merge commit.
+Review enumerates every individual commit in `base..HEAD` with
+`git diff-tree --no-renames`; committed edits that are reverted later therefore
+remain visible. Staged and unstaged diffs also use `--no-renames`.
+
+Before forming the six-path union, the gate requires this command to produce no
+output:
+
+```bash
+git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims
+```
+
+Thus an ignored production, test, script, or claim-path file is an immediate
+failure rather than an invisible input. Standard untracked files remain part of
+the repository-wide union. Task137A's CF-1R19 complete gate is replaced by:
+
+```bash
+set -euo pipefail
+task137a_claim='docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md'
+task137a_base_lines="$(sed -n 's/^<!-- task-137a-dispatch-base-sha: \([0-9a-f]\{40\}\) -->$/\1/p' "$task137a_claim")"
+test "$(printf '%s\n' "$task137a_base_lines" | sed '/^$/d' | wc -l)" -eq 1
+task137a_base="$task137a_base_lines"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task137a_base}^{commit}")" = "$task137a_base"
+mapfile -t task137a_claim_commits < <(GIT_NO_REPLACE_OBJECTS=1 git log --no-renames --diff-filter=A --format=%H -- "$task137a_claim")
+test "${#task137a_claim_commits[@]}" -eq 1
+task137a_claim_commit="${task137a_claim_commits[0]}"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task137a_claim_commit}^")" = "$task137a_base"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git diff-tree --root --no-commit-id --name-status -r --no-renames "$task137a_claim_commit")" = "$(printf 'A\t%s' "$task137a_claim")"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git show "${task137a_claim_commit}:${task137a_claim}" | sed -n 's/^<!-- task-137a-dispatch-base-sha: \([0-9a-f]\{40\}\) -->$/\1/p')" = "$task137a_base"
+test -z "$(GIT_NO_REPLACE_OBJECTS=1 git rev-list --min-parents=2 "${task137a_base}..HEAD")"
+task137a_ignored="$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+test -z "$task137a_ignored"
+task137a_actual="$( { while read -r commit; do GIT_NO_REPLACE_OBJECTS=1 git diff-tree --no-commit-id --name-only -r --no-renames "$commit"; done < <(GIT_NO_REPLACE_OBJECTS=1 git rev-list --reverse "${task137a_base}..HEAD"); GIT_NO_REPLACE_OBJECTS=1 git diff --name-only --no-renames; GIT_NO_REPLACE_OBJECTS=1 git diff --cached --name-only --no-renames; git ls-files --others --exclude-standard; } | LC_ALL=C sort -u )"
+task137a_expected="$(printf '%s\n' docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md packages/local-runtime/src/mounted-artifact-authority-operation.ts packages/local-runtime/src/portable-workspace-lifecycle.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts | LC_ALL=C sort -u)"
+test "$task137a_actual" = "$task137a_expected"
+npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/agent/test/wake-supervisor.test.ts
+npm run typecheck
+test ! -e packages/local-runtime/src/index.ts
+! rg -n 'mounted-artifact-authority-operation|FactoryIssuedMountedRuntimeCapture' packages/agent/src/index.ts
+git diff --check
+npm run factory:check
+```
+
+Exact negative cases cover an out-of-scope path added then reverted in a later
+commit, source-to-allowed rename, allowed-to-source rename, ignored source/test
+file, duplicate claim add, delete/re-add, merge commit, replacement object,
+staged extra, unstaged extra, standard untracked extra, and clean exact-six
+review.
+
+### CF-1R20 dispatch and review rule
+
+The serialized dependency graph and exact prerequisite inventories remain
+CF-1R18/CF-1R19. No source lane starts before reviewed and coordinator-
+integrated Task117A. Every implementation message must specifically state that
+the coordinator approves use of `superpowers:subagent-driven-development` for
+that exact task.
+
+Two fresh independent Terra/xhigh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. They must run or inspect
+the authenticated Task117A gate and its no-op counterfactual, Task135C's unique-
+add replacement-bundle cases, and Task137A's every-commit/rename/ignored-file
+counterfactuals in addition to every preserved CF-1R18/CF-1R19 requirement.
+Exactly two unqualified approvals permit coordinator-only plan integration.
+Source, full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/
+merge remain closed.
