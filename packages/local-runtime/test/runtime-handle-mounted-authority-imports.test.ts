@@ -453,12 +453,31 @@ function addShadowedLoaderStatement(
     addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
     return;
   }
+  if (
+    ts.isModuleDeclaration(statement) &&
+    !hasDeclareModifier(statement.modifiers) &&
+    ts.isIdentifier(statement.name)
+  ) {
+    addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
+    return;
+  }
   if (ts.isImportDeclaration(statement)) {
     addShadowedLoaderImportDeclaration(shadowedLoaderNames, statement);
     return;
   }
   if (ts.isImportEqualsDeclaration(statement) && !statement.isTypeOnly) {
     addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
+  }
+}
+
+function addShadowedLoaderCaseBlockStatements(
+  shadowedLoaderNames: Set<string>,
+  caseBlock: TypeScript.CaseBlock,
+): void {
+  for (const clause of caseBlock.clauses) {
+    for (const statement of clause.statements) {
+      addShadowedLoaderStatement(shadowedLoaderNames, statement);
+    }
   }
 }
 
@@ -472,6 +491,9 @@ function shadowedLoaderNamesForScope(node: TypeScript.Node): ReadonlySet<string>
     for (const statement of node.statements) {
       addShadowedLoaderStatement(shadowedLoaderNames, statement);
     }
+  }
+  if (ts.isCaseBlock(node)) {
+    addShadowedLoaderCaseBlockStatements(shadowedLoaderNames, node);
   }
   if (
     ts.isSourceFile(node) ||
@@ -610,6 +632,9 @@ function sourceImportsFactoryCaptureSeam(
     if (ts.isClassExpression(node) && node.name !== undefined) {
       const classExpressionShadowedLoaderNames = new Set(shadowedLoaderNames);
       addShadowedLoaderBinding(classExpressionShadowedLoaderNames, node.name);
+      for (const modifier of node.modifiers ?? []) {
+        visit(modifier, classExpressionShadowedLoaderNames);
+      }
       for (const typeParameter of node.typeParameters ?? []) {
         visit(typeParameter, shadowedLoaderNames);
       }
@@ -728,6 +753,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "ambient-const-require.cts": `declare const require: (target: string) => unknown;\nconst target = "${deepImport}";\nvoid require(target);\n`,
       "ambient-enum-module.cts": `declare enum module { value }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
       "ambient-function-require.cts": `declare function require(target: string): unknown;\nconst target = "${deepImport}";\nvoid require(target);\n`,
+      "ambient-namespace-module.cts": `declare namespace module { function require(target: string): unknown; }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
+      "ambient-namespace-require.cts": `declare namespace require { const value: unknown; }\nconst target = "${deepImport}";\nvoid require(target);\n`,
       "ambient-var-module.cts": `declare var module: { require(target: string): unknown };\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
       "ast-commented-dynamic-import.ts": `void import(/* dynamic-argument */ "${escapedRuntimeFactoryImport}");\n`,
       "ast-commented-import-equals.ts": `import runtimeFactory = require(/* import-equals-argument */ "${escapedRuntimeFactoryImport}");\nvoid runtimeFactory;\n`,
@@ -748,6 +775,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "computed-module-element-require.cts": `const target = "${deepImport}";\nvoid module["require"](target);\n`,
       "computed-module-property-require.cts": `const target = "${deepImport}";\nvoid module.require(target);\n`,
       "computed-require.cts": `const target = "${deepImport}";\nvoid require(target);\n`,
+      "decorated-class-expression-module.cts": `const target = "${deepImport}";\nconst decorate = (_value: unknown) => undefined;\nconst Loader = @decorate(module.require(target)) class Loader {};\nvoid Loader;\n`,
+      "decorated-class-expression-require.cts": `const target = "${deepImport}";\nconst decorate = (_value: unknown) => undefined;\nconst Loader = @decorate(require(target)) class Loader {};\nvoid Loader;\n`,
       "default-import.ts": `import runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
       "default-type-import.ts": `import type runtimeFactory from "${deepImport}";\n`,
       "fragment-dynamic-import.ts": `void import("${fragmentRuntimeFactoryImport}");\n`,
@@ -875,6 +904,22 @@ describe("factory-issued mounted runtime capture production imports", () => {
         moduleSpecifier: deepImport,
         source: `const require = (_target: string) => undefined;\nconst target = "${deepImport}";\nvoid require(target);\n`,
       },
+      "shadowed-runtime-namespace-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `namespace module { export function require(_target: string): unknown { return undefined; } }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
+      },
+      "shadowed-runtime-namespace-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `namespace require { export const value = undefined; }\nconst target = "${deepImport}";\nvoid require(target);\n`,
+      },
+      "shadowed-switch-case-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `switch ("module") { case "module": const module = { require: (_target: string) => undefined }; const target = "${deepImport}"; void module.require(target); break; }\n`,
+      },
+      "shadowed-switch-case-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `switch ("require") { case "require": const require = (_target: string) => undefined; const target = "${deepImport}"; void require(target); break; }\n`,
+      },
       "shadowed-nested-var-module.cts": {
         moduleSpecifier: deepImport,
         source: `function load() { const target = "${deepImport}"; void module.require(target); { var module = { require: (_target: string) => undefined }; } }\n`,
@@ -914,6 +959,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "shadowed-class-expression-heritage-require.cts": {
         moduleSpecifier: deepImport,
         source: `const target = "${deepImport}";\nconst Loader = class require extends require(target) {};\nvoid Loader;\n`,
+      },
+      "shadowed-named-class-expression-decorator-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `const target = "${deepImport}";\nconst decorate = (_value: unknown) => undefined;\nconst Loader = @decorate(module.require(target)) class module {};\nvoid Loader;\n`,
+      },
+      "shadowed-named-class-expression-decorator-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `const target = "${deepImport}";\nconst decorate = (_value: unknown) => undefined;\nconst Loader = @decorate(require(target)) class require {};\nvoid Loader;\n`,
       },
     };
     const ignoredPackageRootSources = {
@@ -976,6 +1029,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/ambient-const-require.cts",
       "packages/agent-runtime/src/deep/ambient-enum-module.cts",
       "packages/agent-runtime/src/deep/ambient-function-require.cts",
+      "packages/agent-runtime/src/deep/ambient-namespace-module.cts",
+      "packages/agent-runtime/src/deep/ambient-namespace-require.cts",
       "packages/agent-runtime/src/deep/ambient-var-module.cts",
       "packages/agent-runtime/src/deep/ast-commented-dynamic-import.ts",
       "packages/agent-runtime/src/deep/ast-commented-import-equals.ts",
@@ -996,6 +1051,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/computed-module-element-require.cts",
       "packages/agent-runtime/src/deep/computed-module-property-require.cts",
       "packages/agent-runtime/src/deep/computed-require.cts",
+      "packages/agent-runtime/src/deep/decorated-class-expression-module.cts",
+      "packages/agent-runtime/src/deep/decorated-class-expression-require.cts",
       "packages/agent-runtime/src/deep/default-import.ts",
       "packages/agent-runtime/src/deep/default-type-import.ts",
       "packages/agent-runtime/src/deep/fragment-dynamic-import.ts",
