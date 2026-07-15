@@ -12119,3 +12119,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-443 — Task137A second recovery admitted to exact-SHA review
+
+- Fresh Task137A candidate
+  `eea13305c957dc73d88fd616fa4fc1bb4d5f78b1` on
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-2` is a clean
+  one-commit correction from rejected parent
+  `24f48a377bed52383dcacc45f057be95ca0053ae`. Its repair delta changes exactly
+  four authorized paths and remains inside the historical six-path ceiling.
+- Fresh coordinator admission passed the terminal latest **Complete Task137A**
+  clean-shell authority gate at 6 files / 71 tests, its internal typecheck,
+  static/factory/lineage/hidden-state/physical-checkout checks, and a second
+  standalone typecheck after dependency-link cleanup.
+- Fresh mounted-authority architecture reviewer
+  `019f67c2-66de-7453-a87a-14a37534f08d` and fresh adversarial implementation/
+  compiler/test reviewer `019f67c2-7d13-7420-a4a2-73dcaccb6ed4` are pinned and
+  read-only on the exact candidate. Both must return unqualified **APPROVED**
+  verdicts before coordinator integration.
+- Reviews must prove private Task135B capture transfer, one-time hostile-input
+  normalization, mount/run/high-water and append-prefix authority across every
+  await, one-shot burn and recovery rotation, no caller-copy/path/shadow/
+  fallback, and semantic role-specific import enforcement across every
+  production TypeScript import form.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
