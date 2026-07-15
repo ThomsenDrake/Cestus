@@ -11638,3 +11638,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-426 — Task137A reconstructed from corrected authority base
+
+- Fresh Terra/xhigh recovery thread
+  `019f6785-5c6b-7de3-8a06-2e0f01d42f2b`, worktree
+  `/home/drake/.codex/worktrees/b7db/Cestus`, starts from exact clean program
+  checkpoint `e0ac8eba4c1e9df6a3f0e0d860b67ad272a027ff` on branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery`.
+- Its first task commit must add only the Task137A claim, have literal parent
+  `e0ac8eba4c1e9df6a3f0e0d860b67ad272a027ff`, and contain exactly one immutable
+  dispatch-base marker for that same SHA. Every later commit and final state
+  remain subject to the terminal six-path union, no-merge, hidden-state,
+  physical-checkout, and retained-checker-byte gates.
+- The stopped `/home/drake/.codex/worktrees/1020/Cestus` branch is read-only
+  forensic evidence. The recovery writer may validate and reuse a specific
+  hunk only after reproducing the causal RED; it may not merge, rebase, or
+  cherry-pick the old branch or preserve its obsolete claim marker.
+- The coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion. The latest terminal CF-1R26 Task137A command
+  governs. Two fresh exact-SHA external approvals remain required before
+  coordinator integration.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
