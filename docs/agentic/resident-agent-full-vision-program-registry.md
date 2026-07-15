@@ -10762,3 +10762,16 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   rerun the complete focused/typecheck/no-index/diff/factory/topology gate
   before two fresh reviews. Full verification, providers, reset credits,
   integration, push, and every `neo` action remain closed.
+
+## RV-1-E-390 — Task135D named-default candidate admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  forward candidate `b80b28abc2ca19eedef6f7a8f9e13def7019303d`, adding causal
+  value/type named-default import and re-export fixtures plus exact
+  source-side `default` recognition while leaving production runtime bytes
+  unchanged.
+- Coordinator-independent verification passed the exact 20/20 focused suite,
+  `npm run typecheck`, no-index assertion, original-base diff, factory
+  readiness, exact four-path union, no-merge topology, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, reset credits, push, and every `neo` action remain closed.
