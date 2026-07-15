@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: in-progress.
+- Status: ready-for-review.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -140,3 +140,16 @@ against only U+0020, U+0009, U+000A, and U+000D. Raw blobs, replacement-ref
 rejection, NBSP/BOM rejection, malformed retained payloads, terminal-runner
 fixtures, C-tree hash binding, and all closed-action prohibitions remain
 unchanged.
+
+## RV-1-E-339 Repair Evidence (2026-07-15)
+
+The sole EOF repair adds the source-length guard before the exact ASCII
+whitespace membership test, so EOF cannot become the empty string accepted by
+`String.prototype.includes`. The complete focused command exited `0` with
+16/16 tests passing, including the strict NBSP/BOM, raw non-UTF8 C-blob,
+replacement-ref, malformed retained-payload, and terminal swap/rewrite/
+restoration fixtures. The static ABI/import audit found no prohibited stdin,
+dynamic/CommonJS, or non-`node:` import usage; as previously recorded, the
+lookahead import clause uses explicit `rg -P`. `git diff --check` and
+`npm run factory:check` both exited `0` (`factory-readiness passed`). No full
+verification or closed action was performed.

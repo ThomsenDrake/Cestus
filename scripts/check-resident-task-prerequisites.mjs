@@ -140,7 +140,7 @@ class StrictJson {
   }
 
   space() {
-    while (" \t\n\r".includes(this.source[this.index] ?? "")) this.index += 1;
+    while (this.index < this.source.length && " \t\n\r".includes(this.source[this.index])) this.index += 1;
   }
 
   value() {
