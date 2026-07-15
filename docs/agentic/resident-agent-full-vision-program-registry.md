@@ -11417,3 +11417,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   green preview by the same no-ff program integration and focused post-merge
   gate. Full/live/provider/credential/Nous/reset-credit/push/`neo` actions
   remain closed.
+
+## RV-1-E-419 — Task135D mounted capture authority integrated
+
+- Detached preview merge `1da51003e7a62b9c13cd658860ebbdb8a5824a60`
+  used exact first parent `602914c873c4b9a38bcb2094a8e44d29b726f6e7`
+  and exact candidate second parent
+  `98d322af353e29d8982cdbab6aee0335b07567f1`. Its first-parent delta was
+  exactly the Task135D claim, runtime factory, and two focused tests.
+- Preview verification passed the exact 21/21 focused suite,
+  `npm run typecheck`, no-index assertion, first-parent diff check, factory
+  readiness, exact parentage, four-path scope, and clean state.
+- Program no-ff merge
+  `30decebfe1167a4b98db256c24dea4d202f52404` has the same exact first and
+  second parents and the same four-path first-parent delta. Post-merge
+  verification again passed 21/21, typecheck, no-index, diff checking,
+  factory readiness, exact parentage, and clean state.
+- This opens only downstream resident-agent program work that names reviewed
+  Task135D as a prerequisite. Full verification, providers, network,
+  credentials, Nous, reset credits, push, and every `neo` action remain
+  closed.
