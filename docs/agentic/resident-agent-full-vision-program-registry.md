@@ -12633,3 +12633,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-463 — Task136 Recovery-5 rejected and returned for repair
+
+- Release-graph/mounted-authority reviewer
+  `019f680e-32e1-7ee3-882e-0e2e21e37caf` and API/autonomous-dispatch reviewer
+  `019f680e-37b5-7300-ab38-aad7f582b49c` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `288d5cba519e1a008c07241fb57dacbd18e56073`.
+- The canonical graph cannot reach GREEN because its two H/prompt prerequisite
+  nodes overlap without a reviewed transfer. Historical Task139 and G136
+  dispatch contracts also remain selectable outside narrow token fences.
+- The active matrix groups independent nodes and omits Create/Modify status for
+  52 absent inventory paths, so generic workers cannot dispatch each node
+  independently.
+- The BYOK mounted permit lacks a complete private issuer/import ABI; P1/PM/P2
+  parsers, imports, registration, and official-evidence provenance are not
+  linkable; and scheduler completion still depends on a gateway claim issuer
+  owned by a later node.
+- Exact candidate `288d5cba519e1a008c07241fb57dacbd18e56073`
+  must not be integrated or used to resume Task139. The existing documentation
+  owner has the binding reports and may produce one second descendant within
+  the same three-path ceiling. It must include an executable all-28-record
+  GREEN fixture plus deterministic RED fixtures, mechanically fence every
+  competing historical contract, and make every node standalone.
+- Documentation repair does not authorize subagent-driven development or source
+  implementation. Full verification, live/provider/network/credential/Nous
+  activity, reset credits, push, child self-integration, program merge without
+  coordinator review, and every `neo` action remain closed.
