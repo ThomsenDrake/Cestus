@@ -9692,3 +9692,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   two-file candidate for fresh independent review; it cannot integrate itself.
   Full verification, provider activity, reset credits, and every `neo` action
   remain closed.
+
+## RV-1-E-330 — Task133 atomic phase gate corrected
+
+- Task133.1 produced its required seven-failure causal RED and implemented only
+  its listed schema/binder files. Its identical focused rerun then reached the
+  Task133.2-owned provider-transfer parser, which correctly rejects the newly
+  discriminated binding until that parser is migrated. This is a direct atomic
+  cross-phase dependency, not an unrelated regression or permission to widen
+  the 28-path ceiling.
+- The terminal Task133 contract already requires .1-.3 to remain one atomic
+  migration with no intermediate typecheck or commit because the new strict
+  type can temporarily invalidate downstream consumers. For this execution,
+  the unsatisfiable intermediate order is corrected as follows: preserve the
+  Task133.1 RED and transitional failure evidence; write and run Task133.2 REDs;
+  implement only Task133.2 files; then require both Task133.1 and Task133.2
+  focused commands to pass before starting Task133.3.
+- Task133.3 and the final typecheck, forbidden-symbol, diff, and factory gates
+  are unchanged. The worker continues directly on the existing atomic branch,
+  may not inspect quarantined history, and still produces one combined commit
+  for fresh independent review. Full verification, live/provider activity,
+  reset credits, integration, and every `neo` action remain closed.
+
+## RV-1-E-331 — Task135C bounded forward recovery authorized
+
+- Task135C preserved clean WIP checkpoint
+  `7bad93c42e0fe6bac8e638119a18c93e84301241` after its required checker-absence
+  RED, an intermediate 13/13 GREEN, and an expanded 13/14 counterfactual run.
+  The remaining accepted forgery uses a syntactically valid but mismatched
+  `checkerSha256` in external one-parent registry-only attestation C.
+- Coordinator root-cause review confirms the exact missing authority check:
+  C's declared checker hash must equal the SHA-256 of the immutable checker blob
+  read from `C:scripts/check-resident-task-prerequisites.mjs`. C descends from
+  the source base containing the checker, while authenticated retained-payload
+  execution separately proves the same captured bytes are hashed and executed
+  without reopening a mutable path.
+- The failed attempt remains preserved on
+  `codex/task-135c-prerequisite-checker`. A fresh forward branch starts at the
+  WIP checkpoint and may change only the same checker, focused test, and claim.
+  Final review must inspect the complete original
+  `197c3ca528e9b666c02b9b87695bf900efa195b1` through recovery-candidate range,
+  not merely the recovery delta.
+- This reissue resets the focused-repair budget for the one confirmed authority
+  defect. Any new substantive failure stops again. Static ABI, diff, and
+  factory gates remain mandatory; full verification, provider activity, reset
+  credits, integration, and every `neo` action remain closed.
