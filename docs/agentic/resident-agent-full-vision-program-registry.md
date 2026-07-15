@@ -12406,3 +12406,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, source implementation, live/provider/network/credential/
   Nous activity, reset credits, push, child self-integration, program merge
   without coordinator review, and every `neo` action remain closed.
+
+## RV-1-E-453 — Task137A rejected for loader/export policy and lifetime retention
+
+- Mounted-authority architecture/lifecycle reviewer
+  `019f67e1-3703-7c30-977d-d37493923e18` and adversarial semantic-policy/
+  compiler/test reviewer `019f67e1-2333-7841-bfa7-8b0d512e5e5e`
+  independently returned **NEEDS-CHANGES** for exact candidate
+  `be38fada212e3f9905f028dca071d8122da342b2` after reproducing the literal
+  clean-shell gate at 6 files / 74 tests and standalone typecheck.
+- The AST policy recognizes direct `require` and `module.require` but not a
+  loader returned by `createRequire`, so an alias can load protected authority.
+  Authorized role files can also leak protected imports through exported
+  variables or wrapper functions because only export declarations and export
+  assignments are tracked.
+- Each issued operation is strongly retained by `registration.operations`, and
+  the lifecycle invalidation listener strongly retains the registration,
+  runtime handle, ledger, and operation set without an unsubscribe path. This
+  creates process-lifetime accumulation despite the surrounding WeakMaps.
+- Fresh Terra/xhigh recovery owner
+  `019f67ea-4c2f-7dd0-a975-f1efb13cf6e0`, worktree
+  `/home/drake/.codex/worktrees/4333/Cestus`, starts from the rejected candidate
+  and must create
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-3`. The
+  coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development` with one production writer.
+- Recovery must causally reject `createRequire` and propagated loader aliases,
+  reject transitive value/wrapper exports from authorized roles, and remove the
+  listener/strong-set retention chain while preserving per-call currentness,
+  stale-operation rejection, recovery rotation, and the six-path ceiling.
+- Exact candidate `be38fada212e3f9905f028dca071d8122da342b2` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
