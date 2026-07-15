@@ -10114,3 +10114,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   history reviews. Both approvals are required before any merge preview. Full
   verification, providers, reset credits, integration, and every `neo` action
   remain closed.
+
+## RV-1-E-350 — Task135C history-repair reviews dispatched
+
+- Fresh static/execution reviewer
+  `019f66a5-5d2b-74b0-9437-b00a4bdb7034` and Git-authority/history reviewer
+  `019f66a5-5ecf-7b63-bfeb-bae1f15b09f1` are active, pinned, and read-only in
+  separate detached worktrees at exact candidate
+  `9776594bc07a7eb2f3764a65c9d41c7219ae1885`.
+- Both use Terra/xhigh. Their ignored dependency and local secret-reference
+  symlinks were restored after worktree creation; provider, network, and
+  credential actions remain prohibited.
+- Each must inspect the complete original-base range, reproduce the 18-test,
+  static/import, range-diff, factory, topology, and clean-state gates, and
+  return explicit unqualified **APPROVED** or concrete **NEEDS-CHANGES** under
+  its distinct review lens. Both approvals are required before any merge
+  preview. Full verification, integration, reset credits, and every `neo`
+  action remain closed.
