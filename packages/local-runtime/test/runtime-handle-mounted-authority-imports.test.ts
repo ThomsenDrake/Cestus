@@ -39,7 +39,7 @@ const factoryCaptureExportNames = new Set([
 const runtimeFactoryFileName = "runtime-factory";
 const temporaryFixtureRoots: string[] = [];
 const require = createRequire(import.meta.url);
-const ts: typeof TypeScript = require("typescript");
+const ts = require("typescript") as typeof import("typescript");
 
 afterEach(() => {
   for (const fixtureRoot of temporaryFixtureRoots.splice(0)) {
@@ -77,13 +77,41 @@ function productionSourceFiles(root: string): string[] {
   });
 }
 
+function scriptKindForFileName(fileName: string): TypeScript.ScriptKind {
+  const extension = extname(fileName);
+  if (extension === ".tsx") {
+    return ts.ScriptKind.TSX;
+  }
+  if (extension === ".js" || extension === ".mjs" || extension === ".cjs") {
+    return ts.ScriptKind.JS;
+  }
+  return ts.ScriptKind.TS;
+}
+
 function sourceFileFor(fileName: string, source: string): TypeScript.SourceFile {
   return ts.createSourceFile(
     fileName,
     source,
     ts.ScriptTarget.Latest,
     true,
-    ts.getScriptKindFromFileName(fileName),
+    scriptKindForFileName(fileName),
+  );
+}
+
+function syntacticDiagnosticsFor(
+  fileName: string,
+  source: string,
+): readonly TypeScript.Diagnostic[] {
+  return (
+    ts.transpileModule(source, {
+      compilerOptions: {
+        allowJs: true,
+        jsx: ts.JsxEmit.Preserve,
+        target: ts.ScriptTarget.Latest,
+      },
+      fileName,
+      reportDiagnostics: true,
+    }).diagnostics ?? []
   );
 }
 
@@ -243,14 +271,13 @@ function writeFixtureSource(
 
 function decodedAstTokens(fileName: string, source: string): {
   identifiers: string[];
-  parseDiagnostics: readonly ts.DiagnosticWithLocation[];
   stringLiterals: string[];
 } {
   const sourceFile = sourceFileFor(fileName, source);
   const identifiers: string[] = [];
   const stringLiterals: string[] = [];
 
-  const visit = (node: ts.Node): void => {
+  const visit = (node: TypeScript.Node): void => {
     if (ts.isIdentifier(node)) {
       identifiers.push(node.text);
     }
@@ -261,7 +288,7 @@ function decodedAstTokens(fileName: string, source: string): {
   };
 
   visit(sourceFile);
-  return { identifiers, parseDiagnostics: sourceFile.parseDiagnostics, stringLiterals };
+  return { identifiers, stringLiterals };
 }
 
 describe("factory-issued mounted runtime capture production imports", () => {
@@ -319,7 +346,7 @@ describe("factory-issued mounted runtime capture production imports", () => {
       );
 
       const decodedTokens = decodedAstTokens(fileName, source);
-      expect(decodedTokens.parseDiagnostics).toEqual([]);
+      expect(syntacticDiagnosticsFor(fileName, source)).toEqual([]);
       expect(decodedTokens.stringLiterals).toContain(deepImport);
       if (fileName.includes("named-")) {
         expect(decodedTokens.identifiers).toContain(

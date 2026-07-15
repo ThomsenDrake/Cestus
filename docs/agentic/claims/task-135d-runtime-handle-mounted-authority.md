@@ -162,3 +162,26 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## RV-1-E-363 public compiler API typing repair
+
+- The coordinator independently rejected
+  `bdb0ab744ef32d99e2cccc2ca4bbe33034a6d379` only because its test scanner
+  referenced a non-public script-kind helper and `SourceFile.parseDiagnostics`,
+  and used the runtime `ts` const as a type namespace. The bounded forward
+  repair preserves `createRequire` for the runtime sourcemap behavior; type
+  positions now use `TypeScript.*`, script kind is derived from source
+  extension with public enum values, and fixture diagnostics use public
+  `transpileModule(...).diagnostics`.
+- Causal type RED: `npm run typecheck` exited `2` only at lines 86, 246, 253,
+  and 264 for those private/namespace API uses.
+- The first public-diagnostics implementation constructed a full `Program` for
+  every fixture and timed out only the import test (1 failed, 19 passed). The
+  public `transpileModule` replacement preserves the diagnostic assertion
+  without resolution overhead.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed. Typecheck and the authorized pre-commit non-full gate exited
+  `0`: `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.
