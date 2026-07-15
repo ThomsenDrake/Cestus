@@ -8759,3 +8759,23 @@ explicit implementation authorization.
   integration actions remain closed pending a committed docs-only repair and
   two fresh independent unqualified approvals. No earlier approval or reviewer
   identity carries forward.
+
+## RV-1-E-289 — Factory-captured progression candidate
+
+- The sole plan writer committed CF-1R17 candidate
+  `7e06c800da48961c3acef46d7ea8444a62c1c1d2`. Task137A now captures mounted
+  state only from an exact factory-issued portable `LocalRuntimeHandle`;
+  Task135B takes only an opaque operation and run tuple; and its private cursor
+  admits only exact append-only canonical H progression while rejecting path
+  substitution, unrelated events, rollback, identical-tuple revalidation, and
+  authority loss. A private Task140 guard brackets each H append and consumes
+  the cursor before returning terminal authority. `git diff --check` and
+  `npm run factory:check` passed before commit.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviewers are authorized read-only against exact 22-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..7e06c800da48961c3acef46d7ea8444a62c1c1d2`
+  and canonical program/source checkpoint
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`. Exactly two unqualified
+  **APPROVED** verdicts are required; every prior verdict is non-authorizing.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending both fresh approvals.
