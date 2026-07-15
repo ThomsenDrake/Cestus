@@ -12209,3 +12209,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-446 — Task136 mounted-authority redesign admitted to exact-SHA review
+
+- Task136 redesign candidate
+  `f1fe209caa2ddc27bcc5d4cc4b00f1054c958f2c` on
+  `codex/task-136-interface-reconciliation-recovery-3` is a clean one-commit
+  append-only correction from rejected parent
+  `7296007c08af71df404152a3da9e4de062aa11c7` and changes exactly the two
+  affected plans plus the Task136 claim.
+- Fresh coordinator admission passed exact-range diff checking, factory
+  readiness, the three-path ceiling, linear topology, and clean-checkout
+  checks. No source implementation is authorized by the candidate.
+- Fresh mounted-authority architecture/dependency reviewer
+  `019f67d0-ccef-79f0-a9c8-c26f5f3f2e52` and fresh plan-executability/release-
+  record/API reviewer `019f67d0-dc80-7930-9598-068f83167bea` are pinned and
+  read-only on the exact candidate. Both must return unqualified **APPROVED**
+  verdicts before coordinator integration.
+- Reviews must prove the P1-data -> PM-mounted-authority -> P2 chain, exact
+  local/official schemas, real event and mounted provenance, W/H locator-bound
+  authority, G result rereads, strict release-record parsing and review facts,
+  causal identical commands, acyclic qualified nodes, and zero caller-copy,
+  shadow, fallback, or implementer-invented ABI.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
