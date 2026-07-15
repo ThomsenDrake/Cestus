@@ -9064,3 +9064,29 @@ explicit implementation authorization.
   two fresh independent unqualified approvals. No prior verdict or reviewer
   identity carries forward. Latest authenticated usage reports 42% used / 58%
   weekly remaining, with no reset credits.
+
+## RV-1-E-304 — Physical-checkout-bound command candidate
+
+- The sole plan writer committed CF-1R22 candidate
+  `784efede7195f4c49bb9dd6764ac1b1ad0523fca`. It binds Task117A,
+  Task137A, and Task135C prerequisite checks to the physical checkout; rejects
+  every authority-affecting `GIT_*` variable; and accepts only the Codex
+  harness's lone inert `GIT_PAGER=cat`, which is immediately unset before Git
+  executes. This narrow materializability correction supersedes RV-1-E-303's
+  blanket wording without weakening its redirect rejection.
+- CF-1R22 publishes complete Task117A and Task137A commands plus separate exact
+  P/R0/H preflight and review commands. All six P/R0/H invocations carry the
+  literal `--coordinator-attestation COORDINATOR_ATTESTATION_SHA` argument.
+- All nine CF-1R22 bash blocks pass `bash -n`; the clean guard passes and
+  `GIT_INDEX_FILE`, `GIT_WORK_TREE`, wrong `GIT_PAGER`, `GIT_CONFIG_COUNT`, and
+  unknown `GIT_CESTUS_TEST` counterfactuals fail. `git diff --check` and
+  `npm run factory:check` pass; the plan worktree is clean. The exact review
+  lineage is the 27-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..784efede7195f4c49bb9dd6764ac1b1ad0523fca`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required; no prior verdict or reviewer identity carries.
+  Source dispatch, plan integration, live/provider/full/credential/Nous/reset-
+  credit/`neo` actions remain closed.
