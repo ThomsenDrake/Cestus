@@ -10455,3 +10455,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   subagent-driven-development authorization.
 - Both reviewers are read-only and pinned. Two unqualified approvals are
   required before coordinator-only plan integration or renewed Task133 source.
+
+## RV-1-E-370 — Task135D public-compiler candidate admitted
+
+- Existing author produced clean forward candidate
+  `e98ab9e8102714bad2f3d1b2ecc27d7c88bc1d19` after replacing internal
+  TypeScript APIs with extension-derived script kinds, `TypeScript.*` type
+  names, and public `transpileModule` diagnostics.
+- Coordinator-independent verification passed the exact 20/20 focused suite,
+  `npm run typecheck`, no-index assertion, original-base diff, factory, exact
+  four-path, no-merge, and clean gates.
+- Candidate remains review-only and unintegrated. Full verification, providers,
+  reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-371 — Task135D final fresh reviews dispatched
+
+- Fresh Terra/xhigh private-authority/lifecycle reviewer
+  `019f66ce-d769-7a32-bbfd-3c1f7d5e6295` audits factory identity, snapshots,
+  hostile mutation, close behavior, non-leakage, and unchanged production
+  semantics.
+- Fresh Terra/xhigh AST import-authority reviewer
+  `019f66ce-d903-7272-9bc6-a97eb88001b5` audits parser completeness, decoded
+  names/specifiers, import/export/call forms, exact roots and allowlist, public
+  APIs, performance, and regex-bypass absence.
+- Both reviewers are read-only and pinned. Two unqualified approvals are
+  required before coordinator-only integration.
