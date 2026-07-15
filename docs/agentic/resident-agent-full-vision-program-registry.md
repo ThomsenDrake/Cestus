@@ -12594,3 +12594,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `/home/drake/.codex/worktrees/program-coordinator-recovery/Cestus`.
 - This is a coordination-state recovery only. No feature candidate, source
   branch, program integration, remote, or `neo` state changed.
+
+## RV-1-E-461 — Task137A reviewer handoff corrected after delayed setup
+
+- The app's delayed worktree queue eventually materialized the visible
+  Task137A reviewer checkouts after fallback subagents had been dispatched.
+- Fallback reviewers `019f680c-23fc-7603-810d-1abd5e7fa9f4` and
+  `019f680c-1c5a-7741-890e-cab269a992ef` were shut down while still running;
+  they cannot attest or release any candidate.
+- The official independent exact-SHA pair is mounted-authority/lifecycle
+  reviewer `019f680c-7e0b-7112-8c60-90422bdb1354` and adversarial TypeScript
+  semantic-policy/compiler reviewer `019f680c-7fff-7381-84fc-785a765fc17e`.
+  Both use separate detached worktrees at
+  `b767abb1335428934abfbc7aeb4a2e6c8b02bf25`.
+- Two additional delayed duplicate read-only reviews may finish, but their
+  verdicts are advisory only and cannot replace either official unqualified
+  approval or weaken any finding.
