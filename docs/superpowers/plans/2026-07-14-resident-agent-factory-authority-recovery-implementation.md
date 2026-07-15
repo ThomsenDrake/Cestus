@@ -2203,3 +2203,201 @@ reviewer must return unqualified **APPROVED** before coordinator-only plan
 integration or source dispatch. `npm run verify`, provider/network/credential/
 Nous activity, reset credits, `neo`, source implementation in this worktree,
 self-review, self-integration, and merge remain closed.
+
+## CF-1R5 Durable Approval Artifact And Admission-Token Correction
+
+**Status:** This section supersedes the preceding lifecycle correction only
+where that correction omitted the pre-approval v1 owner, durable prompt
+artifact readback, or the v2 consumer channel. Its post-approval v1-to-v2
+binder, strict hash rules, Task133.1-.4 ownership, and safety gates remain
+current. No source task is authorized until this combined contract receives a
+fresh full-lineage approval.
+
+### Task133.5: executable pre-approval v1 and durable mounted store
+
+Task133.5 starts only after reviewed/coordinator-integrated Task133.1-.4. It is
+serialized before Task140P/R0/H and is the sole owner of the live v1 context
+render path.
+
+**Files:**
+
+- Modify `packages/agent/src/task-orchestrator-types.ts`
+- Modify `packages/agent/src/task-orchestrator-context.ts`
+- Modify `packages/agent/src/task-orchestrator.ts`
+- Modify `packages/agent/test/task-orchestrator-context.test.ts`
+- Modify `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+- Modify `packages/local-runtime/src/agent-prompt-artifacts.ts`
+- Modify `packages/local-runtime/src/agent-runtime-factory.ts`
+- Modify `packages/local-runtime/test/agent-prompt-artifacts.test.ts`
+- Create `packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts`
+- Create `docs/agentic/claims/task-133-5-preapproval-prompt-store.md`
+
+The agent-owned context render input gains required non-authoritative
+`attemptId` and `generatedAt`. `checkpointContextOrBlock` supplies the exact
+claim attempt and normalized tick time; direct fixtures migrate explicitly
+with no optional/default fields. The local factory's renderer registry uses:
+
+```ts
+renderProductionSpecialistPrompt({
+  taskId: input.taskId,
+  runId: input.attemptId,
+  runType: input.runType,
+  generatedAt: input.generatedAt,
+  scope: input.scope,
+  resolvedContextPacks: input.resolvedContextPacks
+});
+```
+
+For this v1 approval draft, `runId` deliberately equals the durable attempt ID;
+it is not the later approved provider run. The v2 exact binding records the
+later `approvedRunId`/`runId` without changing the approved text. No provider
+or approval fact enters context rendering.
+
+`agent-prompt-artifacts.ts` replaces its write-only private helper and
+in-memory-only resolver for resident orchestration with one captured mounted
+store:
+
+```ts
+export interface MountedPromptArtifactEnvelopeStore {
+  put(envelope: PromptArtifactEnvelope): PromptArtifactEnvelopeReadback;
+  read(inputArtifactHash: `sha256:${string}`): PromptArtifactEnvelope;
+}
+```
+
+The store writes canonical serialized envelope bytes under the mounted
+workspace blob root, uses create-only semantics, and on duplicate requires
+byte-identical canonical content. `read` parses the bytes, recomputes the
+artifact hash, and requires the requested hash. Resident orchestration has no
+internal-disk fallback when a portable workspace is configured or becomes
+unavailable. This is prompt-envelope persistence only, not H material/manifest
+storage.
+
+The factory renders v1, stores it, reads it back, and returns only that exact
+readback to the orchestrator. `appendContextReadyCheckpoint` appends its hash
+only after readback succeeds. On restart a fresh runtime can read the identical
+v1 envelope by the checkpoint/proof hash; no rerender is allowed. REDs cover
+missing attempt/time, swapped mutable input after await, failed/partial store,
+EEXIST byte mismatch, corrupt/hash-mismatched readback, portable-drive
+disconnect, restart readback, and zero checkpoint/approval/provider activity
+until exact readback.
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+The valid control observes exactly one text render, one create-or-verify put,
+one exact readback, and then one context-ready checkpoint. Commit only the
+listed files/claim and stop for fresh review.
+
+### Task140P opaque prompt-admission token
+
+The Task140P post-approval port returns an opaque in-process admission token,
+not the v2 envelope and not a public result:
+
+```ts
+export interface TaskOrchestratorPromptAdmission {
+  readonly schemaVersion: "agent-task-orchestrator.prompt-admission.v1";
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runType: TaskOrchestratorRunType;
+  readonly promptArtifactHash: `sha256:${string}`;
+}
+```
+
+The fields are diagnostics, not authority. Object identity membership in the
+port's private `WeakMap`, created only after its registered resolver returns a
+durably read-back v2 artifact, is authority. There is no public token builder,
+parser-to-authority conversion, serializer, or registration constructor.
+
+Task140P adds required `promptAdmission` to the internal
+`TaskOrchestratorRunnerDispatchInput`. `dispatchApprovedRunner` resolves the
+token after approval and before `appendRunnerDispatchingCheckpoint`, then
+passes that exact object to `dispatchVerifiedTaskRunner`. The latter rejects a
+foreign/structural/stale/swapped token before registry dispatch. Public route
+DTOs and task-orchestrator results never expose the token or v2 text.
+
+Task140P's existing files/gate remain current, but its RED/GREEN matrix adds
+missing, forged, copied, wrong-task/attempt/type/hash, reused, and post-await
+swapped tokens with zero checkpoint/provider/runner/H/store/terminal effects.
+Only one valid identity token may reach one private runner-registry dispatch.
+
+### Task140R0 durable v2 registration and restart recovery
+
+R0 uses the mounted prompt store from Task133.5. It reads the checkpoint/proof
+v1 by hash, compares its canonical bytes to the proof's parsed v1 envelope,
+reconsumes current approval, reruns all factory/context/provider/workspace
+checks, binds v2 once, persists v2 create-only, reads it back, and only then
+mints the Task140P admission token whose private mapping contains the exact v2
+hash and object. The v2 envelope itself is not stored in ledger events or
+returned publicly.
+
+After process restart no token is trusted or restored. A new runtime reads the
+durable v1/checkpoint/approval facts, repeats all live checks, deterministically
+rebinds or byte-verifies the same v2 store object, and mints a new in-process
+token. Drive disconnect, source high-water change, stale approval, v1/v2 byte
+mismatch, or any lock/provider/context change blocks reminting.
+
+R0's files add `packages/local-runtime/src/agent-prompt-artifacts.ts` and
+`packages/local-runtime/test/agent-prompt-artifacts.test.ts` only if Task133.5
+needs no source change but R0 needs a focused durable v2 witness; otherwise
+they remain read-only imports. The R0 claim freezes that decision before RED.
+Its exact final gate includes the prompt-artifact test plus the existing
+composition, route, port, and dispatch tests.
+
+### Task140H admission consumption and actual invocation path
+
+This subsection supersedes Task140H's instruction to consume an undefined
+resolved object. H receives only the exact Task140P admission token through the
+private runner-registry call. The factory-created runner closure consumes that
+token once through the same private port, reads the mapped v2 envelope from the
+mounted store, reparses/recomputes it, and requires task/attempt/type/hash
+equality before any invocation proof, provider call, H operation, or terminal
+append.
+
+Task140H expands its serialized file set with:
+
+- Modify `packages/agent/src/production-specialist-invocation-proof.ts`
+- Modify `packages/agent/test/production-specialist-invocation-proof.test.ts`
+- Modify `packages/local-runtime/src/agent-runtime-factory.ts`
+- Modify `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+
+alongside its already listed orchestrator/runtime/H files and tests. The
+production-specialist invocation proof may be minted only from successful
+single-use port consumption plus exact mounted v2 readback; the older separate
+identity proof alone is insufficient. The proof binds admission identity,
+v2 hash, source approved-v1 hash, task, attempt, approved run, run type,
+provider posture, and context hashes. Runtime/provider execution consumes that
+proof and the same v2 envelope. It does not render, bind, accept caller text,
+or resolve by an unadmitted hash.
+
+REDs prove a structural/copied/reused admission, arbitrary v2 hash, separately
+minted legacy identity proof, swapped mounted readback, and restart-stale token
+all reject before provider/ledger/runner/H/store-write/terminal effects. The
+valid vertical is exactly:
+
+```text
+approved durable v1 -> private R0 checks -> durable v2 readback
+-> opaque admission token -> private runner consumption
+-> v2-bound invocation proof -> existing provider/H sequence
+```
+
+Task140H's exact non-full gate is its existing focused suite plus
+`packages/agent/test/production-specialist-invocation-proof.test.ts`,
+`packages/local-runtime/test/agent-runtime-composition.test.ts`, and
+`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`, followed
+by typecheck, diff check, and factory readiness. Full verification and live
+provider execution remain closed until the later acceptance wave explicitly
+opens them.
+
+### Corrected durable-lifecycle review gate
+
+The complete review range remains
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. A fresh reviewer must trace
+the concrete v1 render/store/checkpoint/restart path, post-approval v2
+bind/store/remint path, admission-token dispatch/consumption path, and final
+invocation-proof/provider/H path against live source. Approval must explicitly
+confirm that every produced artifact or token has a durable or intentionally
+ephemeral owner and one serialized consumer. No source dispatch, plan merge,
+full verifier, provider/network/credential/Nous activity, reset credit, `neo`,
+self-review, or self-integration is authorized before that approval.
