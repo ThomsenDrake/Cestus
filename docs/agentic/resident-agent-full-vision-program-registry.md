@@ -7356,3 +7356,34 @@ explicit implementation authorization.
   bounded TDD/RED checkpoints, exact non-full `&&` gates, fresh independent
   complete-range review, and coordinator-only integration. All established
   closed gates remain in force.
+
+## RV-1-E-225 — Task133 factory-authority conflict and fail-closed amendment
+
+- Task133 author `019f640f-d64f-71d1-9163-571c19651c07` stopped before any
+  production/test/claim edit or commit. The original Task133 contract requires
+  public `createProductionAgentPromptCapability({ authority, renderer,
+  verifyContext })` and structural `VerifiedContextBindingSet` consumption,
+  while integrated Task132A deliberately keeps
+  `MountedWorkspaceRuntimeAuthority`, `VerifyMountedContextForRunInput`,
+  `VerifiedContextBindingSet`, its `WeakSet` verifier, and factory attestation
+  private. `agent-runtime-factory.ts` reserves real private-port composition
+  to Task140R0. The absent task-owned test path also made an initial Vitest
+  invocation exit 127 until the temporary local dependency link was removed;
+  it is environment evidence, not a semantic RED.
+- Re-exporting/redeclaring the private types or accepting a caller-supplied
+  structural `verifyContext` callback would recreate the forbidden public
+  tuple/callback/shadow authority route. Task133 is therefore **BLOCKED**
+  under its old wording, preserved clean without a claim or candidate commit.
+  Task134A is independent and remains active.
+- Approved forward correction: a fresh plan amendment must redefine Task133 as
+  a pure, non-authoritative prompt binding/renderer component over normalized
+  exact run/posture/context **data**. It may not accept authority,
+  `verifyContext`, context capability, registrar, factory capture, or claim
+  production readiness. Task140R0 remains the sole later owner that closes the
+  factory-held verifier into the private production port after live context
+  verification. The amendment must name canonical data/type ownership and an
+  exact private R0 composition seam that adds no public capability constructor
+  and no Task133-to-Task140R0 cycle. Fresh Terra/xhigh plan review is required
+  before a newly scoped Task133 implementation dispatch.
+- Full verification, provider/network/credential/Nous action, reset-credit
+  use, `neo`, and child self-integration remain **CLOSED**.
