@@ -9839,3 +9839,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `e532c35fd1b3a829dfbbd4f87d752f42304419f9`, stop for fresh ownership and
   authority review, and cannot integrate itself. Full verification, provider
   activity, reset credits, and every `neo` action remain closed.
+
+## RV-1-E-337 — Task135C rejected for bounded review repair
+
+- Static-ABI reviewer `019f6679-5457-7703-a944-ed2c5f0cee26` returned
+  **NEEDS-CHANGES** because `StrictJson.space()` accepts JavaScript `\\s`,
+  including U+00A0, instead of JSON's exact space, tab, carriage-return, and
+  line-feed set. A fully attested temporary repository proved the invalid
+  manifest was accepted while native `JSON.parse` rejected it.
+- Git-authority reviewer `019f6679-5457-7703-a944-ed4b7f6c18b9` returned
+  **NEEDS-CHANGES** because Git blob output is UTF-8 decoded and re-encoded
+  before hashing, `refs/replace/*` are ignored rather than rejected, and the
+  terminal retained-runner swap/rewrite/restoration counterfactuals are
+  incomplete. A non-UTF-8 executable-comment byte demonstrated that decoded
+  text and immutable raw blob hashes can differ.
+- Both reviewers otherwise reproduced the exact three-path/no-merge range,
+  14/14 focused suite, static audits, range diff checking, and factory
+  readiness. Candidate `5e3645f62d5f384ad6902883fa7112c0eaa59d26`
+  is rejected and cannot be integrated.
+- Fresh forward branch
+  `codex/task-135c-prerequisite-checker-review-repair` starts at the rejected
+  candidate. It may change only the same checker, test, and claim to: restrict
+  JSON whitespace exactly; preserve raw `Buffer` stdout for `git show` blob
+  hashing; explicitly reject any replacement ref; and add NBSP/BOM, raw-byte,
+  replacement-ref, malformed-payload, and terminal-runner substitution/
+  restoration witnesses.
+- Final review must inspect the complete original
+  `197c3ca528e9b666c02b9b87695bf900efa195b1..candidate` range and rerun every
+  focused/static/diff/factory gate. Any new substantive failure stops. Full
+  verification, provider activity, reset credits, integration, and every
+  `neo` action remain closed.
