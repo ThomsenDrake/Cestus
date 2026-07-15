@@ -8703,3 +8703,24 @@ explicit implementation authorization.
   reset credits. All source/live/full/provider/credential/Nous/reset-credit/
   `neo`/plan-integration actions remain closed pending a committed docs-only
   repair and two fresh independent approvals.
+
+## RV-1-E-286 — Opaque admission candidate and fresh dual review
+
+- The sole plan writer committed CF-1R16 candidate
+  `ce7d023775f739af146136ba1d379fe7a3b96788`. It splits Task137 into a
+  pre-store opaque current-admission operation and post-store wake-runtime
+  assembly; makes Task135B accept only one non-revivable operation identity;
+  assigns a mounted-ledger lifecycle store and sole factory production path;
+  replaces mutable manifests with committed hash-bound dispatch bundles;
+  enforces the private H registrar's source import boundary; and adds
+  credential-free named live-fixture adapter tests. `git diff --check` and
+  `npm run factory:check` passed before commit.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviewers are authorized read-only against exact 21-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..ce7d023775f739af146136ba1d379fe7a3b96788`
+  and canonical program/source checkpoint
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`. Exactly two unqualified
+  **APPROVED** verdicts are required; every prior verdict is non-authorizing.
+- Latest authenticated usage reports 38% used / 62% weekly remaining, with no
+  reset credits. All source/live/full/provider/credential/Nous/reset-credit/
+  `neo`/plan-integration actions remain closed pending both fresh approvals.
