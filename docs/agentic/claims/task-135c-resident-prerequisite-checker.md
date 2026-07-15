@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: in-progress.
+- Status: blocked.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -61,3 +61,19 @@ The coordinator restored this worktree's ignored `.env` symlink and its
 preserved test-only lane without a new implementer and must rerun the exact
 focused command, accepting only checker absence as the causal RED before
 creating the checker production file.
+
+## Focused Recovery Checkpoint (2026-07-15)
+
+The restored exact RED command reached the required causal failure: 3 valid
+controls failed only because
+`scripts/check-resident-task-prerequisites.mjs` was absent, while 10 rejection
+controls passed. The first checker GREEN attempt exposed a raw-Git-blob newline
+loss in manifest hashing; preserving `git show` bytes repaired that issue.
+After the focused suite reached 13/13, expanded temporary-repository coverage
+exposed a second substantive authority gap: the checker accepted a C block with
+a syntactically valid but mismatched `checkerSha256` because it did not bind the
+hash to immutable checker bytes in C's tree. Per the two-focused-repair-failure
+checkpoint, no third repair is attempted here. The scoped checker and expanded
+test fixture are preserved for coordinator recovery; no static ABI, factory,
+full verify, provider, network, credential, Nous, `neo`, registry, merge, or
+self-integration action has been performed.

@@ -66,16 +66,26 @@ function runChecker(fixture: Fixture, phase: "preflight" | "review", extraEnviro
 }
 
 function runRetainedPayload(fixture: Fixture, phase: "preflight" | "review") {
+  if (!existsSync(checkerPath)) return runChecker(fixture, phase);
   const payload = Buffer.from(
-    existsSync(checkerPath) ? readFileSync(checkerPath) : "// checker absent during RED\n"
+    readFileSync(checkerPath)
   ).toString("base64");
+  return runAuthenticatedPayload(fixture, phase, payload, hash(readFileSync(checkerPath)));
+}
+
+function runAuthenticatedPayload(
+  fixture: Fixture,
+  phase: "preflight" | "review",
+  payload: string,
+  expectedHash: string
+) {
   return spawnSync(
     "/bin/bash",
     [
       "--noprofile",
       "--norc",
       "-c",
-      "printf '%s' \"$TASK135C_PAYLOAD\" | base64 -d | node --input-type=module - \"$@\"",
+      "set -o pipefail; actual=\"$(printf '%s' \"$TASK135C_PAYLOAD\" | base64 -d | sha256sum | awk '{print $1}')\" || exit 72; test \"$actual\" = \"$TASK135C_EXPECTED_HASH\" || exit 72; printf '%s' \"$TASK135C_PAYLOAD\" | base64 -d | node --input-type=module - \"$@\"",
       "task135c-payload",
       "--task", fixture.task,
       "--phase", phase,
@@ -83,7 +93,11 @@ function runRetainedPayload(fixture: Fixture, phase: "preflight" | "review") {
       "--claim", claimPath,
       "--coordinator-attestation", fixture.coordinatorAttestation
     ],
-    { cwd: fixture.directory, encoding: "utf8", env: { ...process.env, TASK135C_PAYLOAD: payload } }
+    {
+      cwd: fixture.directory,
+      encoding: "utf8",
+      env: { ...process.env, TASK135C_PAYLOAD: payload, TASK135C_EXPECTED_HASH: expectedHash }
+    }
   );
 }
 
@@ -203,6 +217,14 @@ describe("check-resident-task-prerequisites", () => {
     expect(runChecker(fixture, "review").status).toBe(0);
   });
 
+  it("accepts only the exact task-specific task140r0 and task140h inventories", () => {
+    for (const task of ["task140r0", "task140h"] as const) {
+      const fixture = createFixture(task);
+      expect(runChecker(fixture, "preflight").status).toBe(0);
+      expect(runRetainedPayload(fixture, "preflight").status).toBe(0);
+    }
+  });
+
   it("rejects task140p without task117a", () => {
     const fixture = createFixture();
     const manifest = JSON.parse(readFileSync(join(fixture.directory, manifestPath), "utf8"));
@@ -273,14 +295,28 @@ describe("check-resident-task-prerequisites", () => {
   });
 
   it("rejects Git environment, physical-checkout, graft, shallow, hidden-index, and ignored authority state before reads", () => {
-    const environmentFixture = createFixture();
-    expectRejected(runChecker(environmentFixture, "preflight", { GIT_CESTUS_TEST: "1" }));
+    for (const variable of ["GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_DIR", "GIT_CONFIG_COUNT", "GIT_CESTUS_TEST"]) {
+      const environmentFixture = createFixture();
+      expectRejected(runChecker(environmentFixture, "preflight", { [variable]: "forged" }));
+    }
+    const pagerFixture = createFixture();
+    expect(runChecker(pagerFixture, "preflight", { GIT_PAGER: "cat" }).status).toBe(0);
     const graftFixture = createFixture();
     writeFileSync(join(graftFixture.directory, ".git", "info", "grafts"), `${graftFixture.sourceBaseSha}\n`);
     expectRejected(runChecker(graftFixture, "preflight"));
     const shallowFixture = createFixture();
     writeFileSync(join(shallowFixture.directory, ".git", "shallow"), `${shallowFixture.sourceBaseSha}\n`);
     expectRejected(runChecker(shallowFixture, "preflight"));
+    const assumedFixture = createFixture();
+    git(assumedFixture.directory, ["update-index", "--assume-unchanged", manifestPath]);
+    expectRejected(runChecker(assumedFixture, "preflight"));
+    const skippedFixture = createFixture();
+    git(skippedFixture.directory, ["update-index", "--skip-worktree", manifestPath]);
+    expectRejected(runChecker(skippedFixture, "preflight"));
+    const ignoredFixture = createFixture();
+    appendFileSync(join(ignoredFixture.directory, ".git", "info", "exclude"), "\nscripts/hidden-authority\n");
+    write(ignoredFixture.directory, "scripts/hidden-authority", "hidden\n");
+    expectRejected(runChecker(ignoredFixture, "preflight"));
   });
 
   it("rejects later-touch, replacement, rename, delete-readd, merge, wrong-parent, and extra-M-file dispatch bypasses", () => {
@@ -295,21 +331,48 @@ describe("check-resident-task-prerequisites", () => {
     git(extraMFile.directory, ["add", "."]);
     git(extraMFile.directory, ["commit", "--quiet", "-m", "replacement M with source"]);
     expectRejected(runChecker(extraMFile, "preflight"));
+    const wrongParent = createFixture();
+    git(wrongParent.directory, ["reset", "--mixed", "HEAD^"]);
+    git(wrongParent.directory, ["commit", "--quiet", "--allow-empty", "-m", "source work before replacement M"]);
+    git(wrongParent.directory, ["add", manifestPath, claimPath]);
+    git(wrongParent.directory, ["commit", "--quiet", "-m", "replacement M with wrong parent"]);
+    expectRejected(runChecker(wrongParent, "preflight"));
+    const mergedFixture = createFixture();
+    git(mergedFixture.directory, ["checkout", "--quiet", "-b", "review-side", mergedFixture.sourceBaseSha]);
+    git(mergedFixture.directory, ["commit", "--quiet", "--allow-empty", "-m", "side work"]);
+    git(mergedFixture.directory, ["checkout", "--quiet", "main-dispatch"]);
+    git(mergedFixture.directory, ["merge", "--quiet", "--no-ff", "review-side", "-m", "forbidden merge"]);
+    expectRejected(runChecker(mergedFixture, "review"));
   });
 
   it("rejects forged, wrong, symbolic, nonregistry, merge, duplicate, and mismatched external attestations", () => {
     const wrong = createFixture();
-    expectRejected({ ...runChecker(wrong, "preflight"), status: 1 });
+    const wrongResult = spawnSync(process.execPath, [checkerPath, "--task", wrong.task, "--phase", "preflight", "--manifest", manifestPath, "--claim", claimPath, "--coordinator-attestation", wrong.dispatchCommit], { cwd: wrong.directory, encoding: "utf8" });
+    expectRejected(wrongResult);
     const fixture = createFixture();
     const registry = join(fixture.directory, registryPath);
-    appendFileSync(registry, "\n<!-- resident-dispatch-attestation-v1:start task140p duplicate -->\n");
     git(fixture.directory, ["checkout", "--quiet", "external-attestation"]);
+    appendFileSync(
+      registry,
+      `\n<!-- resident-dispatch-attestation-v1:start task140p ${fixture.dispatchCommit} -->\n`
+    );
     git(fixture.directory, ["add", registryPath]);
     git(fixture.directory, ["commit", "--quiet", "-m", "forged C mutation"]);
     const forged = git(fixture.directory, ["rev-parse", "HEAD"]);
     git(fixture.directory, ["checkout", "--quiet", "main-dispatch"]);
     const result = spawnSync(process.execPath, [checkerPath, "--task", fixture.task, "--phase", "preflight", "--manifest", manifestPath, "--claim", claimPath, "--coordinator-attestation", forged], { cwd: fixture.directory, encoding: "utf8" });
     expectRejected(result);
+    const mismatch = createFixture();
+    git(mismatch.directory, ["checkout", "--quiet", "external-attestation"]);
+    const mismatchRegistry = join(mismatch.directory, registryPath);
+    const attestationBytes = readFileSync(mismatchRegistry, "utf8").replace(/checkerSha256=[0-9a-f]{64}/, `checkerSha256=${"0".repeat(64)}`);
+    writeFileSync(mismatchRegistry, attestationBytes);
+    git(mismatch.directory, ["add", registryPath]);
+    git(mismatch.directory, ["commit", "--quiet", "-m", "mismatched external C"]);
+    const mismatchC = git(mismatch.directory, ["rev-parse", "HEAD"]);
+    git(mismatch.directory, ["checkout", "--quiet", "main-dispatch"]);
+    const mismatchResult = spawnSync(process.execPath, [checkerPath, "--task", mismatch.task, "--phase", "preflight", "--manifest", manifestPath, "--claim", claimPath, "--coordinator-attestation", mismatchC], { cwd: mismatch.directory, encoding: "utf8" });
+    expectRejected(mismatchResult);
   });
 
   it("rejects retained-payload hash changes and path replacement around both authority calls", () => {
@@ -318,7 +381,12 @@ describe("check-resident-task-prerequisites", () => {
       existsSync(checkerPath) ? readFileSync(checkerPath) : "// checker absent during RED\n"
     ).toString("base64");
     const alteredPayload = `${payload.slice(0, -4)}AAAA`;
-    const result = spawnSync("/bin/bash", ["--noprofile", "--norc", "-c", "printf '%s' \"$TASK135C_PAYLOAD\" | base64 -d | node --input-type=module - \"$@\"", "task135c-payload", "--task", fixture.task, "--phase", "preflight", "--manifest", manifestPath, "--claim", claimPath, "--coordinator-attestation", fixture.coordinatorAttestation], { cwd: fixture.directory, encoding: "utf8", env: { ...process.env, TASK135C_PAYLOAD: alteredPayload } });
+    const result = runAuthenticatedPayload(fixture, "preflight", alteredPayload, hash(Buffer.from(payload, "base64")));
     expectRejected(result);
+    const pathReplacement = createFixture();
+    const capturedPayload = Buffer.from(readFileSync(checkerPath)).toString("base64");
+    write(pathReplacement.directory, "scripts/check-resident-task-prerequisites.mjs", "process.exit(99);\n");
+    const preservedBytes = runAuthenticatedPayload(pathReplacement, "preflight", capturedPayload, hash(readFileSync(checkerPath)));
+    expect(preservedBytes.status, `${preservedBytes.stdout}\n${preservedBytes.stderr}`).toBe(0);
   });
 });
