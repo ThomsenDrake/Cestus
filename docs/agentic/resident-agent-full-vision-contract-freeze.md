@@ -169,6 +169,42 @@ not this author branch commit.
    instruction. A shared-event change after this decision is a new CF-1
    revision with a fresh review, integration, and dependent rebase ledger.
 
+## CF-1R2 — Resident Loop Contract Reconciliation
+
+This forward-only coordinator correction preserves every accepted
+`agent.resident-*.v1` parser, event name, replay fixture, and historical event
+unchanged. The present v1 family is intentionally too narrow for the already
+approved Task120/136 boundary; it must not be silently widened or relabelled.
+Task119 is the sole serialized shared-schema owner for a new strict v2 family:
+`agent.resident-plan.recorded.v2`, `agent.resident-observation.recorded.v2`,
+`agent.resident-tool-step.recorded.v2`, `agent.resident-loop.suspended.v2`,
+and `agent.resident-loop.result.recorded.v2`.
+
+The v2 parsers must reject unknown or unsafe own-data input and carry the
+complete exact Task120/136 binding surface: resident/workspace/task/attempt/run
+identity; workflow descriptor ID, version, and hash; plan ID/revision and prior
+plan readback; policy ID/version/hash; all ten policy ceilings with consumed and
+remaining equality; ordered source events and context-pack hashes; complete
+mounted authority (workspace identity, mount generation, ledger/artifact-store
+identity, ledger high-water, and active-lock hash); causation and correlation.
+Tool-step v2 additionally binds the exact allowlist entry, tool/version,
+side-effect class, required approval class, preview, request/decision/result
+readbacks, and input/output artifact hashes. Suspension v2 binds its durable
+checkpoint and resumption deadline. Result v2 adds `resumable` plus its
+fail-closed category, exact final observation, an H-owned handoff readback
+carried verbatim for completion, and a durable resume anchor for resumable
+outcomes. A parser must reject terminal-looking results that lack the required
+H lifecycle/provenance proof or resumable results without their anchor.
+
+Task119's fresh correction must add strict v2 parser and replay coverage while
+leaving v1 behavior intact. It may not create Task120's store/projection or
+shadow H, W, P, or gateway DTOs. After a fresh independent review and
+coordinator-only merge, Task120 is reopened to consume v2 and publish the
+complete L-owned store/projection. H, W, P, and the existing gateway retain
+their respective producer-owned corrections; Task136 remains blocked until all
+of those reviewed integrations and rebases are recorded. This revision grants
+no provider, credential, network, Nous, browser, factory, or `neo` action.
+
 ## Section-Local Documentation Audit
 
 Run this exact command from the repository root:
