@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: in-progress.
+- Status: blocked.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -116,3 +116,15 @@ commit. Authorized scope is limited to strict ASCII JSON whitespace, raw Git
 blob bytes, explicit replacement-ref rejection, and retained-payload terminal
 counterfactual fixtures. The existing C-tree checker-hash binding remains
 required; no new implementer or closed action is authorized.
+
+## RV-1-E-337 Focused Failure Checkpoint (2026-07-15)
+
+The review RED was causal: 3 of 16 tests failed exactly for NBSP/BOM acceptance,
+UTF-8 re-encoding of an immutable Git blob, and a present replacement ref.
+The attempted minimal repair introduced a new substantive verifier failure:
+the ASCII whitespace loop used `" \t\n\r".includes("")` at EOF, which is true
+and caused checker invocations to spin. Two focused Vitest process trees were
+terminated after their direct worker PIDs were identified; no unrelated process
+was touched. Per the coordinator's stop condition, no follow-up code repair,
+static audit, factory gate, full verification, or closed action is attempted.
+The scoped work is preserved for the next coordinator recovery checkpoint.
