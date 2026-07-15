@@ -12725,3 +12725,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   exact-SHA reviews. Full verification, live/provider/network/credential/Nous
   activity, reset credits, push, child self-integration, program merge without
   coordinator review, and every `neo` action remain closed.
+
+## RV-1-E-468 — Task137A delayed-review defect added to recovery
+
+- Advisory delayed reviewer `019f680b-ea0e-77d2-95b1-42d5338822cd`
+  reproduced an additional authority defect on rejected candidate
+  `b767abb1335428934abfbc7aeb4a2e6c8b02bf25`: after the real factory runtime
+  handle closes, public operation inspection can still return a snapshot because
+  currentness consults lifecycle admission without the closed factory seam.
+- Recovery-4 must add a real-handle close counterfactual proving public
+  inspection and every operation method reject/burn after close, with no later
+  ledger or artifact effect. It must also include binding-default export flow
+  such as destructured defaults from a protected callable.
+- The two delayed duplicate reviewers were archived after their findings were
+  captured. They remain non-authoritative for approval or release.
