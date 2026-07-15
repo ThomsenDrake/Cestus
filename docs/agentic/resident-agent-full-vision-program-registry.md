@@ -9571,3 +9571,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both remain clean, read-only, and detached at exact candidate
   `f28e7be5399d9f266b34b6eab4342a99ea5d22b5`. This mapping correction changes
   no candidate bytes, review authority, or closed gate.
+
+## RV-1-E-325 — Task117A independently approved
+
+- Lifecycle/executability reviewer
+  `019f6656-d952-7883-ace8-b992631a2e08` returned explicit unqualified
+  **APPROVED** after reproducing the exact candidate/range, two-file ceiling,
+  immutable block, materialized command hash, terminal authority gate, and
+  downstream Task135D/Task133.1-.3/Task135C contract readability.
+- Authority/import/bypass reviewer
+  `019f6656-d9f1-7c12-903d-2ab9f8b44ae7` returned explicit unqualified
+  **APPROVED** after independently validating sibling attestation C, immutable
+  evidence, whole-freeze and audit commitments, R-only ownership, exact
+  canonical rows, all 863 counterfactual mutations, Git/environment controls,
+  factory readiness, and terminal snapshot revalidation.
+- Both review worktrees are clean and detached at exact approved candidate
+  `f28e7be5399d9f266b34b6eab4342a99ea5d22b5`. The candidate is now eligible
+  only for a fresh coordinator merge preview and coordinator-only no-ff
+  integration into the program branch. It is not authorized for `neo`.
+- Source fan-out, full verification, live/provider/network/credential/Nous
+  activity, reset credits, and every `neo` action remain closed until the
+  program integration is freshly previewed, verified, committed, and recorded.
