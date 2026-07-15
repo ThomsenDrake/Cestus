@@ -819,3 +819,33 @@ serialized task.
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
   approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
   before coordinator-only plan integration.
+
+## Forward Correction — Same-Payload Checker Execution
+
+- Status remains **plan-repair candidate only**. Lifecycle reviewer
+  `019f6629-4676-7b83-9e05-b7e73463fdb0` approved CF-1R25, but authority
+  reviewer `019f6629-87b7-75e0-80ba-f244952728b7` demonstrated that hashing
+  the checker and then reopening its mutable path permits a same-user swap and
+  restore. The coordinator independently reproduced substituted execution.
+- CF-1R26 changes only the six active P/R0/H checker-bearing commands. Each
+  captures the checker once into a shell-safe base64 payload, validates the
+  decoded payload hash against C, and executes that same retained payload from
+  Node's module-mode stdin for both first and terminal calls. A prototype kept
+  executing the approved payload after deterministic path substitution.
+- Task135C becomes explicitly standalone and stdin-compatible: unchanged
+  `process.argv.slice(2)` CLI semantics, only static `node:` imports, and no
+  stdin-data, `import.meta.url`, relative/package/dynamic/CommonJS dependency.
+  Exact swap, rewrite, malformed-payload, wrong-hash, and terminal-payload
+  counterfactuals are required before fresh review.
+- Coordinator validation extracted and syntax-checked all eight active
+  heredocs; found six one-time captures and six module-stdin runners with no
+  direct checker-path Node execution; and proved first-call and terminal path
+  swaps, in-place rewrites, CLI argument parity, wrong hashes, malformed
+  payloads, retained-payload rehashing, and the clean-shell boundary. The full
+  preserved CF-1R25 snapshot matrix also passes, including dependency pruning,
+  mode/symlink identity, special entries, and injected producer failures.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
