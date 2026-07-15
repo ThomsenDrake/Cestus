@@ -1871,3 +1871,335 @@ The fresh plan-review and eventual final-gate range remains exactly
 lineage commit through `8169fc7f344ce40b0bbd91e60a66dab697d4446d` and this
 new clean child correction at `HEAD`. Only a fresh independent approval permits
 coordinator integration; rejection requires another forward correction.
+
+## CF-1R5 Task133 Post-Approval V2 Binding Lifecycle Correction
+
+**Status:** This section is the sole current Task133/Task140 prompt-lifecycle
+contract. It supersedes every instruction above that calls
+`renderExactlyBoundProductionSpecialistPrompt`, forms v2 during context
+assembly, adds `attemptId` or `generatedAt` to the context-render hook, captures
+provider approval in the runtime factory before approval exists, or forbids a
+canonical post-approval binding envelope. The already integrated `8169fc7f`
+plan and the unintegrated `ceb255dd` pre-approval bridge remain reviewable
+history, not implementation authority.
+
+The live lifecycle fixes the ordering:
+
+```text
+context assembly
+  -> render canonical v1 text exactly once
+  -> append context-ready checkpoint with v1 artifact hash
+  -> select provider and consume human approval bound to exact v1 artifact
+  -> private Task140P/R0 post-approval admission
+  -> bind that byte-identical approved v1 artifact into strict v2
+  -> later H/provider execution may consume only the admitted v2 artifact
+```
+
+There is no second text render. V2 is a new immutable binding envelope over the
+approved v1 artifact, not a rerender, mutation, local-only upgrade, or caller
+artifact. Its provenance includes the exact approved v1 artifact hash.
+
+### Task133 canonical post-approval binder
+
+`packages/agent/src/prompt-artifacts.ts` keeps the explicit discriminated v1/v2
+output union, but v2 adds this required field:
+
+```ts
+readonly sourceApprovedPromptArtifactHash: `sha256:${string}`;
+```
+
+Replace every earlier raw-v2 build shape with:
+
+```ts
+export interface BuildPromptArtifactProductionBindingV2 {
+  readonly schemaVersion: "agent-production-prompt-binding.v2";
+  readonly sourceApprovedPromptArtifact: PromptArtifactEnvelope;
+  readonly scope: ProductionRunScope;
+  readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
+}
+
+export interface BindApprovedProductionSpecialistPromptV2Input {
+  readonly approvedPromptArtifact: PromptArtifactEnvelope;
+  readonly generatedAt: string;
+  readonly scope: ProductionRunScope;
+  readonly resolvedContextPacks: readonly VerifiedResolvedContextPack[];
+  readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
+}
+
+export function bindApprovedProductionSpecialistPromptV2(
+  input: BindApprovedProductionSpecialistPromptV2Input
+): PromptArtifactEnvelope;
+```
+
+The binder accepts only a canonical parsed v1 artifact. It requires the v1
+template, renderer registration, output/handoff schemas, rendered-text hash,
+scope applicability, context refs, evaluated requirements, resolved-payload
+audits, omissions, and top-level input artifact hash to recompute exactly. It
+requires current verified packs to match the v1 refs and audits. It preserves
+`approvedPromptArtifact.text` byte-for-byte and calls no renderer. The artifact
+owner derives `sourceApprovedPromptArtifactHash` from the parsed v1 envelope;
+`rendererHash`, `renderedPromptHash`, `scopeApplicabilityHash`,
+`providerPostureHash`, `exactRunBindingHash`, and `workflowDescriptorHash` from
+canonical raw material; and every other persisted v2 field from the canonical
+registration or verified packs. Neither the binder nor `buildPromptArtifact`
+accepts one of those persisted values as raw v2 input.
+
+Strict exact-key REDs are table-driven at their real nesting level:
+
+```ts
+const prohibitedV2ProductionKeys = [
+  "sourceApprovedPromptArtifactHash",
+  "rendererHash",
+  "renderedPromptHash",
+  "scopeApplicabilityHash",
+  "providerPostureHash",
+  "exactRunBindingHash"
+] as const;
+const prohibitedV2ExactRunKeys = ["workflowDescriptorHash"] as const;
+const prohibitedV2ProviderPostureKeys = ["postureHash"] as const;
+const prohibitedV2LookalikeKeys = [
+  "approvedPromptHash",
+  "renderHash",
+  "workflowHash",
+  "providerHash"
+] as const;
+```
+
+Each row augments an otherwise valid raw object with one own data property and
+must reject before normalization, envelope creation, approval read, provider
+activity, or any other effect. The parsed v1 source artifact legitimately
+contains its own v1 hashes; tests must distinguish that immutable approved
+source from prohibited raw-v2 output fields.
+
+`packages/agent/src/production-specialist-prompts.ts` retains only
+`renderProductionSpecialistPrompt` for canonical v1 rendering and adds the
+post-approval binder above. Delete/never add
+`renderExactlyBoundProductionSpecialistPrompt`. Existing callers remain
+explicit v1 callers. The binder does not accept prompt text separately, a
+renderer callback, a persisted binding, an approval boolean, a verifier, a
+capability, or factory authority.
+
+### Consume-time approval and transfer binding
+
+The approval proof continues to bind its exact v1 prompt artifact and hash.
+Task133 extends the canonical approval/transfer assertion rather than changing
+the human-approved bytes. When a later caller presents an admitted v2 artifact,
+consume-time validation must prove all of the following in one normalized
+snapshot:
+
+- `v2.production.sourceApprovedPromptArtifactHash` equals the current proof's
+  approved v1 artifact hash;
+- v2 text is byte-identical to the proof's parsed v1 text and both recomputed
+  rendered-text hashes match;
+- v2 context refs/audits equal the proof, current preview, context-ready
+  checkpoint, and current verified packs;
+- v2 task, attempt, approved run, run, run type, provider/model/capabilities,
+  selection policy, approval requirement, workflow, workspace, mount, and
+  policy equal the consume-time facts; and
+- approval, provider readiness, source hashes, locks, and preview are still
+  current when the v2 artifact is consumed.
+
+Direct v2, a v2 derived from a different v1 artifact, rerendered text, stale or
+swapped approval, changed provider/run/context/workflow, and every hash or
+lookalike injection reject before provider invocation, ledger append, runner
+dispatch, H, store, or terminal activity. The proof parser never treats a v2
+artifact as the source approval artifact. No boolean `approved` flag is
+authority.
+
+### Revised Task133 implementation ownership
+
+The future Task133 implementation is serialized into these reviewed tasks. The
+coordinator must explicitly approve and invoke
+`superpowers:subagent-driven-development` for each implementation task.
+
+#### Task133.1: v1 artifact and post-approval v2 binder
+
+**Files:**
+
+- Modify `packages/agent/src/prompt-artifacts.ts`
+- Modify `packages/agent/src/production-specialist-prompts.ts`
+- Modify `packages/agent/test/prompt-artifacts.test.ts`
+- Modify `packages/agent/test/production-specialist-prompts.test.ts`
+- Create `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`
+
+REDs require explicit v1, byte-identical v1-to-v2 binding, required source v1
+hash, all owner-derived hashes, strict nesting-level prohibited-key tables,
+hostile-object rejection, current-pack equality, immutable source/result, and
+zero renderer calls during binding. The positive witness counts exactly one
+canonical render for v1 and zero additional renders for v2.
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts
+```
+
+GREEN implements the minimum canonical binder and reruns the same command.
+
+#### Task133.2: approval and provider-transfer derivation
+
+**Files:**
+
+- Modify `packages/agent/src/specialist-runner-kernel.ts`
+- Modify `packages/agent/src/task-orchestrator-approval.ts`
+- Modify `packages/agent/src/adapters/provider-byte-transfer.ts`
+- Modify `packages/agent/test/specialist-runner-kernel.test.ts`
+- Modify `packages/agent/test/task-orchestrator-approval.test.ts`
+- Modify `packages/agent/test/provider-byte-transfer-adapter.test.ts`
+
+REDs prove consume-time v1-proof-to-v2 derivation succeeds only for the exact
+approved bytes and current run/provider/context facts. Table-driven stale,
+swapped, direct-v2, different-source-v1, rerendered-text, and hash-injection
+cases assert zero provider/ledger/runner/H/store/terminal effects.
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts
+```
+
+GREEN reuses canonical artifact parsers/hashes and current approval validation;
+it adds no provider call, approval mint route, or duplicate parser.
+
+#### Task133.3: durable event, projection, ontology, and rebuild migration
+
+**Files:**
+
+- Modify `packages/agent/src/runtime.ts`
+- Modify `packages/agent/src/projection.ts`
+- Modify `packages/agent/src/projection-types.ts`
+- Modify `packages/ontology/src/contracts.ts`
+- Modify `packages/agent/test/runtime.test.ts`
+- Modify `packages/agent/test/projection.test.ts`
+- Modify `packages/ontology/test/agent-contracts.test.ts`
+- Modify `packages/workspace-ops/test/projection-rebuild.test.ts`
+
+RED/GREEN proves strict v1 and v2 audit/event parsing, required source-approved
+artifact hash, unchanged exact hashes through append/readback/projection, and
+faithful rebuild from ledger events without making projection state truth.
+
+```bash
+npm test -- packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts
+```
+
+#### Task133.4: deterministic legacy caller compatibility
+
+**Files:** tests only:
+
+- `packages/agent/test/evidence-triage-workflow.test.ts`
+- `packages/agent/test/prr-negotiation-workflow.test.ts`
+- `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+
+The tests prove existing deterministic callers remain explicit v1 and that no
+caller silently forms v2. Live Nous/provider tests remain untouched and unrun.
+
+```bash
+npm test -- packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts
+```
+
+The exact final Task133 non-full gate is:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+### Task140P post-approval private-port amendment
+
+Task140P remains after reviewed/coordinator-integrated Task133 and all original
+prerequisites. It owns the post-approval orchestration call and private port
+contract; Task140R0 and H do not edit those files concurrently.
+
+**Task140P files:**
+
+- Create `packages/agent/src/task-orchestrator-handoff-port.ts`
+- Modify `packages/agent/src/task-orchestrator.ts`
+- Modify `packages/agent/test/task-orchestrator-handoff-port.test.ts`
+- Modify `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Modify `packages/agent/test/task-orchestrator-approval.test.ts`
+- Create the existing Task140P claim
+
+The port exposes no public resolver constructor. Its factory-registered private
+resolver receives one normalized data-only input assembled inside
+`dispatchApprovedRunner` after `approvalReader.inspect` reports the exact proof
+approved:
+
+```ts
+interface ResolveApprovedPromptBindingForDispatchInput {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runType: TaskOrchestratorRunType;
+  readonly generatedAt: string;
+  readonly scope: ProductionRunScope;
+  readonly approvalProof: TaskOrchestratorProviderApprovalProof;
+  readonly providerPosture: PromptArtifactProviderPostureV2;
+}
+```
+
+The port never receives the provider registry, selection service, callback,
+or whole `TaskOrchestratorProviderPolicy`; those remain in the orchestrator and
+factory closures. `dispatchApprovedRunner` exact-key normalizes and freezes the
+proof/posture data snapshot before the port `await`. The structural input is
+not authority. The private resolver registration,
+consume-time proof readback, factory-held context/workspace checks, and exact
+result membership are authority. Task140P normalizes before `await`, invokes
+the port before `appendRunnerDispatchingCheckpoint`, and rejects a missing,
+foreign, duplicate, stale, or lookalike resolver before provider/ledger/runner/
+H/store/terminal effects. It does not build v2 itself and does not expose the
+resolved artifact in a public result.
+
+Task140P RED/GREEN and final command add causal witnesses that context rendering
+still emits v1 exactly once, approval precedes the port call, and runner
+dispatch cannot occur until the private port returns one admitted v2 artifact.
+Its existing non-full gate remains, with the three listed test files.
+
+### Task140R0 factory-private post-approval resolver
+
+This replaces all pre-approval Task140R0 renderer/bridge instructions.
+
+**Files:**
+
+- Modify `packages/local-runtime/src/agent-runtime-factory.ts`
+- Create `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+- Create `docs/agentic/claims/task-140-r0-r-owned-factory-port-registration.md`
+- Read-only regression witnesses:
+  `packages/agent/test/task-orchestrator-handoff-port.test.ts` and
+  `packages/agent/test/task-orchestrator-dispatch.test.ts`
+
+The factory registers one lexical resolver into the Task140P private port. On
+each post-approval call it normalizes the data input once, reconsumes the exact
+provider approval against the ledger/current preview, selects and verifies the
+current provider descriptor/readiness, reruns all six live context checks,
+re-resolves current verified packs from the approved v1 refs, verifies current
+workspace/mount/identity/policy/source-high-water/locks, derives the canonical
+workflow descriptor, and calls `bindApprovedProductionSpecialistPromptV2`
+exactly once. It compares the returned source-v1, exact-run, posture, workflow,
+scope, context, and derived hashes before marking that exact object admitted in
+the private port's `WeakSet`/`WeakMap`.
+
+The valid control observes one v1 render earlier, zero renders in R0, one binder
+call, and zero later effects. Counterfactuals cover each task/attempt/run/type,
+provider/posture, source-v1/text, context/workflow/scope, workspace/mount/
+identity/policy/high-water/lock, approval, and prohibited hash field. Direct or
+caller-built v2 and resolver lookalikes fail before binder or later effects.
+
+```bash
+npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+Task140H may consume only the exact private-port-admitted v2 artifact. It may
+not rerender, rebind, accept a caller artifact, weaken approval, or infer
+completion from preparation.
+
+### Frozen lifecycle review gate
+
+Before Task133 source dispatch, the coordinator must integrate an independently
+approved version of this correction and record a clean program base descending
+from the previously frozen Task120, Task126, Task127, Task128, Task129, Task130,
+Task132A, Task134A, compiler repair, and Task135A integration SHAs. The claim
+records exact full SHAs, every serialized file owner, and explicit approval to
+use `superpowers:subagent-driven-development`.
+
+The plan review range is exactly
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`, including every rejected
+intermediate amendment and this correction. A fresh independent Terra/xhigh
+reviewer must return unqualified **APPROVED** before coordinator-only plan
+integration or source dispatch. `npm run verify`, provider/network/credential/
+Nous activity, reset credits, `neo`, source implementation in this worktree,
+self-review, self-integration, and merge remain closed.

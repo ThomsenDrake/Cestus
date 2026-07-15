@@ -111,3 +111,55 @@ remains the explicit compatibility branch and v2 remains strict with no
 defaults. Task140R0's latest bridge is data-only until its factory-private
 wrapper combines reviewed captures; it creates no public authority or
 implementation permission.
+
+## Forward Correction — Post-Approval V2 Binding Lifecycle
+
+- Status remains **plan-repair candidate only**. The already integrated
+  `8169fc7f` plan and unintegrated `ceb255dd` bridge are explicitly
+  non-authorizing after later full-lineage review proved that provider approval
+  does not exist during context rendering. No Task133 source implementation is
+  approved from either contract.
+- The sole current lifecycle contract is the appended `CF-1R5 Task133
+  Post-Approval V2 Binding Lifecycle Correction`. Context assembly renders one
+  canonical v1 prompt exactly once; the current approval proof binds that exact
+  v1 artifact and bytes; only after consume-time approval may the private
+  Task140P/R0 port bind those same bytes into strict v2. V2 records
+  `sourceApprovedPromptArtifactHash` and rerenders nothing.
+- The canonical Task133 operation is now
+  `bindApprovedProductionSpecialistPromptV2`, not
+  `renderExactlyBoundProductionSpecialistPrompt`. Raw v2 accepts the parsed v1
+  source artifact, raw scope, and raw exact-run/provider/workflow material. The
+  artifact owner derives every persisted hash.
+- Strict nested prohibited-key REDs cover
+  `sourceApprovedPromptArtifactHash`, `rendererHash`, `renderedPromptHash`,
+  `scopeApplicabilityHash`, `providerPostureHash`, `exactRunBindingHash`,
+  `workflowDescriptorHash`, `postureHash`, and the four named lookalikes. No
+  value is accepted, corrected, or silently overwritten.
+- Task133 owns the canonical binder, v1-to-v2 approval/transfer validation, and
+  strict durable event/projection/ontology/rebuild migration. Task140P alone
+  owns the post-approval orchestrator/port call. Task140R0 alone owns the
+  factory-private resolver and six live checks. Task140H may consume only the
+  exact private-port-admitted v2. Their shared files are serialized in that
+  order.
+- Consume-time validation must bind the v2 source hash and byte-identical text
+  to the current proof's v1 artifact, plus exact task/attempt/run/provider/
+  context/workflow/workspace/mount/policy facts. Direct or caller-built v2,
+  rerendered or swapped v1, stale approval, and every one-field swap reject
+  before provider, ledger, runner, H, store, or terminal effects.
+- The eventual implementation plan explicitly requires coordinator approval
+  and invocation of `superpowers:subagent-driven-development` for each Task133,
+  Task140P, Task140R0, and Task140H task. Full verification, provider/network/
+  credential/Nous activity, reset credits, `neo`, source implementation in this
+  worktree, self-integration, and merge remain closed.
+
+Documentation validation is only:
+
+```bash
+git diff --check && npm run factory:check
+```
+
+The next fresh review must inspect exact full lineage
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`, including every rejected
+intermediate amendment and this forward correction. Only an unqualified fresh
+Terra/xhigh approval permits coordinator-only integration. Rejection requires
+another forward correction; it never authorizes source dispatch.
