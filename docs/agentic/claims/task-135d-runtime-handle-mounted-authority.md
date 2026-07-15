@@ -262,3 +262,39 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## Final executable-root, import-type, and transparent-wrapper review repair
+
+- Durable authority: `RV-1-E-393` at registry commit `85b634ea`. Coordinator
+  review verdicts on `b80b28abc2ca19eedef6f7a8f9e13def7019303d`: private
+  lifecycle is **APPROVED**; AST import authority **NEEDS-CHANGES** only for
+  the bounded scanner gaps below. No production runtime file or behavior
+  changed.
+- Causal RED stage 1: an exact deep import in
+  `packages/agent-runtime/bin/deep-import.mjs` was parsed with its decoded
+  literal but was absent from the scanner result (1 failed, 19 passed), proving
+  that the former `packages/*/src` inventory missed executable package roots.
+- Causal RED stage 2: after the root-only repair, the scanner found the bin
+  file while the expected 54 importers yielded 36. The exact missing set was
+  three import-type namespace/qualifier/default forms plus 15 parenthesized,
+  `as`, type-assertion, `satisfies`, and non-null wrapper forms around
+  `require`, `module.require`, and `module["require"]` (1 failed, 19 passed).
+  Exact-target import-type handling reduced that missing set to only the 15
+  wrapper forms (1 failed, 19 passed).
+- The scanner now inventories only each package's `src` and executable `bin`
+  roots, retaining the existing extension filter and excluding test, fixture,
+  and unrelated roots. Exact `ImportTypeNode` string literals use the existing
+  decoded importer-relative/root-bound target comparison. Transparent
+  unwrapping is limited to parentheses, `as`, type assertions, `satisfies`,
+  and non-null expressions before `require` recognition; direct `import()`,
+  unrelated loaders, non-exact targets, and all existing resolver/allowlist
+  semantics remain unchanged.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed.
+- The authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- Claim lifecycle: reopened as `in-progress` for this bounded repair and
+  returned to `ready-for-review` after the documented focused and non-full
+  gates. No full verification, live/provider/network/credential/Nous action,
+  reset, `neo`, merge, rebase, push, self-integration, or program-registry edit
+  was performed.
