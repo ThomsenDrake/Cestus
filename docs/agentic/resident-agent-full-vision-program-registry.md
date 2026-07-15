@@ -8306,3 +8306,25 @@ explicit implementation authorization.
   <=7%; reset credits remain untouched. Task133/Task140 source implementation,
   full verification, provider/network/credential/Nous activity, `neo`, worker
   self-review, self-integration, and merge remain closed.
+
+## RV-1-E-265 — Task140H executable-plan rejection and bounded repair
+
+- Persistence/lifecycle reviewer
+  `019f64db-cac6-7b70-8c0d-a34b16e7b642` returned **NEEDS-CHANGES** on exact
+  range `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d9d91559`. The reviewer
+  found that CF-1R7 lists required cases and a final gate but does not define
+  the software-factory execution sequence: exact RED command and expected
+  causal failures, named implementation step, exact GREEN rerun, and final
+  integrated non-live gate. This is a plan-completeness rejection, not source
+  authorization.
+- Authority/consumer reviewer
+  `019f64db-ceaa-7c03-a884-3b664bd66df6` ended on Terra model capacity and
+  supplied no verdict. It is closed and contributes no approval evidence.
+- The sole plan writer is authorized only to append a CF-1R8 execution overlay
+  for Task140H that preserves CF-1R7 architecture, enumerates exact test names
+  and failure signatures, defines minimal source implementation order and
+  ownership, reruns the same focused command to GREEN, then runs the complete
+  H non-live gate. Documentation validation and commit are allowed, followed
+  by two fresh independent full-lineage reviews. Task133/Task140 source, full
+  verification, provider/network/credential/Nous activity, reset credits,
+  `neo`, self-review, self-integration, and merge remain closed.
