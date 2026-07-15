@@ -8353,3 +8353,18 @@ explicit implementation authorization.
   remain untouched. Task133/Task140 source implementation, full verification,
   provider/network/credential/Nous activity, `neo`, self-review,
   self-integration, and merge remain closed.
+
+## RV-1-E-267 — Task140H review capacity replacement
+
+- Reviewers `019f64ed-b884-7973-ad71-af729cd45881` and
+  `019f64ed-bc10-7fd1-8b8d-2a4d78c32bed` both ended on Terra model capacity
+  without a verdict. They are closed and contribute no approval evidence; the
+  immutable candidate and source were not changed.
+- Fresh independent Terra/xhigh replacements
+  `019f64f6-55c0-79c2-a4ca-e6cdf1fdffe9` (persistence/lifecycle) and
+  `019f64f6-5bef-7bc0-9dc5-f83bac7de640` (authority/consumer) are dispatched
+  read-only against the same exact range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..7c536e21` and canonical source
+  head `8e30bbe0`. Silence, timeout, or capacity remains non-authorizing; two
+  unqualified **APPROVED** verdicts are still required.
+- Every source/live/full/credential/`neo` action remains closed under RV-1-E-266.
