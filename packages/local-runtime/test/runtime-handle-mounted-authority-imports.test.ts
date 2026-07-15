@@ -75,19 +75,19 @@ function productionSourceFiles(root: string): string[] {
 
 function sourceImportsFactoryCaptureSeam(source: string): boolean {
   for (const match of source.matchAll(namedCaptureImportOrReexport)) {
-    if (factoryCaptureSymbol.test(match[1])) {
+    if (factoryCaptureSymbol.test(match[1]!)) {
       return true;
     }
   }
 
   for (const match of source.matchAll(namespaceCaptureImportOrReexport)) {
-    if (runtimeFactoryModuleSpecifier.test(match[1])) {
+    if (runtimeFactoryModuleSpecifier.test(match[1]!)) {
       return true;
     }
   }
 
   return [...source.matchAll(dynamicCaptureImportOrRequire)].some((match) =>
-    runtimeFactoryModuleSpecifier.test(match[1]),
+    runtimeFactoryModuleSpecifier.test(match[1]!),
   );
 }
 
