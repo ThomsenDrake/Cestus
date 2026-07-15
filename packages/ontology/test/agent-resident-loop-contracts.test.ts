@@ -109,6 +109,219 @@ function fixtureEvents() {
   ] as const;
 }
 
+const v2BudgetCeilings = {
+  planRevisions: 3,
+  observationRecords: 16,
+  toolSteps: 12,
+  providerInvocations: 3,
+  providerRequestBytes: 1048576,
+  providerResponseBytes: 1048576,
+  contextBytes: 1048576,
+  derivativeArtifactBytes: 16777216,
+  activeExecutionMs: 900000,
+  approvalSuspensionMs: 86400000
+};
+
+const v2BudgetConsumed = {
+  planRevisions: 1,
+  observationRecords: 2,
+  toolSteps: 1,
+  providerInvocations: 1,
+  providerRequestBytes: 128,
+  providerResponseBytes: 256,
+  contextBytes: 512,
+  derivativeArtifactBytes: 1024,
+  activeExecutionMs: 10,
+  approvalSuspensionMs: 5
+};
+
+const v2BudgetRemaining = {
+  planRevisions: 2,
+  observationRecords: 14,
+  toolSteps: 11,
+  providerInvocations: 2,
+  providerRequestBytes: 1048448,
+  providerResponseBytes: 1048320,
+  contextBytes: 1048064,
+  derivativeArtifactBytes: 16776192,
+  activeExecutionMs: 899990,
+  approvalSuspensionMs: 86399995
+};
+
+const v2Binding = {
+  residentAgentId: "agent_default",
+  workspaceId: "ws_001",
+  taskId: "task_001",
+  attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  runId: "run_001",
+  runMode: "evidence-triage",
+  workflowDescriptor: {
+    workflowDescriptorId: "workflow_evidence_triage",
+    workflowDescriptorVersion: "v1",
+    workflowDescriptorHash: hash
+  },
+  policy: {
+    policyId: "agent_policy_default",
+    policyVersion: "v1",
+    policyHash: hash
+  },
+  authority: {
+    workspaceIdentityHash: hash,
+    mountGeneration: "mount_001",
+    ledgerStoreIdentity: "ledger_001",
+    artifactStoreIdentity: "artifact_001",
+    ledgerHighWaterEventId: "evt_source_002",
+    policyHash: hash,
+    activeLocksHash: hash
+  },
+  sourceEventIds: ["evt_source_001", "evt_source_002"],
+  contextPackRefs: [
+    { contextPackId: "context_pack_001", contentHash: hash },
+    { contextPackId: "context_pack_002", contentHash: hash }
+  ],
+  budget: {
+    ceilings: v2BudgetCeilings,
+    consumed: v2BudgetConsumed,
+    remaining: v2BudgetRemaining
+  },
+  causationId: "evt_admission_001",
+  correlationId: "corr_resident_loop_001"
+};
+
+const v2PlanEventId = "evt_resident_v2_plan_task_001_attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_run_001";
+const v2ObservationEventId = "evt_resident_v2_observation_001";
+const v2ToolStepEventId = "evt_resident_v2_step_001";
+const v2SuspensionEventId = "evt_resident_v2_suspension_001";
+
+const v2PlanReadback = {
+  planRecordEventId: v2PlanEventId,
+  workspaceId: v2Binding.workspaceId,
+  residentAgentId: v2Binding.residentAgentId,
+  taskId: v2Binding.taskId,
+  attemptId: v2Binding.attemptId,
+  runId: v2Binding.runId,
+  planId: "plan_001",
+  planRevision: 0
+};
+
+function v2FixtureEvents() {
+  return [
+    event(v2PlanEventId, "agent.resident-plan.recorded.v2", {
+      ...v2Binding,
+      schemaVersion: "resident-plan-record.v2",
+      planId: "plan_001",
+      planRevision: 0,
+      priorPlanReadback: null,
+      steps: [{
+        ordinal: 1,
+        purpose: "inspect evidence",
+        toolId: "tool_read_workspace",
+        toolVersion: "1.0.0",
+        allowlistEntryHash: hash,
+        expectedSafeOutputClass: "observation",
+        prerequisiteStepOrdinals: []
+      }]
+    }, 1),
+    event(v2ObservationEventId, "agent.resident-observation.recorded.v2", {
+      ...v2Binding,
+      schemaVersion: "resident-observation-record.v2",
+      observationId: "observation_001",
+      planId: "plan_001",
+      planRevision: 0,
+      planReadback: v2PlanReadback,
+      stepOrdinal: 1,
+      kind: "tool-result",
+      safeSummary: "Evidence inspection completed.",
+      artifactHashes: [hash],
+      toolRequestId: "toolreq_001",
+      modelInvocationEventId: "evt_invocation_001"
+    }, 2),
+    event(v2ToolStepEventId, "agent.resident-tool-step.recorded.v2", {
+      ...v2Binding,
+      schemaVersion: "resident-tool-step-record.v2",
+      planId: "plan_001",
+      planRevision: 0,
+      planReadback: v2PlanReadback,
+      stepOrdinal: 1,
+      toolRequestId: "toolreq_001",
+      toolId: "tool_read_workspace",
+      toolVersion: "1.0.0",
+      allowlistEntryHash: hash,
+      sideEffectClass: "read-only",
+      requiredApprovalClass: "none",
+      state: "executed",
+      previewHash: hash,
+      gatewayReadbacks: {
+        requestEventId: "evt_tool_requested_001",
+        decisionEventId: "evt_tool_approved_001",
+        resultEventId: "evt_tool_completed_001"
+      },
+      inputArtifactHashes: [hash],
+      resultArtifactHashes: [hash]
+    }, 3),
+    event(v2SuspensionEventId, "agent.resident-loop.suspended.v2", {
+      ...v2Binding,
+      schemaVersion: "resident-loop-suspension.v2",
+      planId: "plan_001",
+      planRevision: 0,
+      planReadback: v2PlanReadback,
+      finalObservationReadback: {
+        observationEventId: v2ObservationEventId,
+        workspaceId: v2Binding.workspaceId,
+        residentAgentId: v2Binding.residentAgentId,
+        taskId: v2Binding.taskId,
+        attemptId: v2Binding.attemptId,
+        runId: v2Binding.runId,
+        planId: "plan_001",
+        planRevision: 0
+      },
+      suspensionCategory: "approval-required",
+      checkpoint: {
+        checkpointEventId: v2SuspensionEventId,
+        requestEventId: "evt_tool_requested_001",
+        decisionEventId: "evt_tool_approved_001",
+        resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
+        nextSafeAction: "await-human-review"
+      }
+    }, 4),
+    event("evt_resident_v2_result_001", "agent.resident-loop.result.recorded.v2", {
+      ...v2Binding,
+      schemaVersion: "resident-loop-result.v2",
+      planId: "plan_001",
+      planRevision: 0,
+      planReadback: v2PlanReadback,
+      finalObservationReadback: {
+        observationEventId: v2ObservationEventId,
+        workspaceId: v2Binding.workspaceId,
+        residentAgentId: v2Binding.residentAgentId,
+        taskId: v2Binding.taskId,
+        attemptId: v2Binding.attemptId,
+        runId: v2Binding.runId,
+        planId: "plan_001",
+        planRevision: 0
+      },
+      outcome: "completed",
+      category: "handoff-recorded",
+      resultHash: hash,
+      handoffReadback: {
+        outcome: "verified",
+        handoffId: "handoff_001_1111111111111111",
+        taskId: v2Binding.taskId,
+        attemptId: v2Binding.attemptId,
+        runId: v2Binding.runId,
+        manifestHash: hash,
+        finalOutputEventId: "evt_final_output_001",
+        preparedEventId: "evt_handoff_prepared_001",
+        recordedEventId: "evt_handoff_recorded_001",
+        terminalRunEventId: "evt_run_completed_001",
+        taskStatusEventId: "evt_task_completed_001",
+        authorityBinding: v2Binding.authority,
+        safeDiagnostics: [{ category: "handoff-recorded", nextSafeAction: "review-handoff" }]
+      }
+    }, 5)
+  ] as const;
+}
+
 function expectValid(candidate: ReturnType<typeof fixtureEvents>[number]) {
   const parsed = validateKnowledgeEvent(candidate);
   expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues)).toBe(true);
@@ -380,5 +593,119 @@ describe("resident loop ontology contracts", () => {
       { ...replay[1]!, payload: { ...replay[1]!.payload, planReadback: { ...planReadback, planRecordEventId: "evt_forged_plan" } } },
       ...replay.slice(2)
     ] as unknown as typeof replay).success).toBe(false);
+  });
+});
+
+describe("resident loop ontology contracts v2", () => {
+  it("preserves accepted v1 replay while requiring the complete strict v2 five-event family", () => {
+    for (const candidate of fixtureEvents()) {
+      expectValid(candidate);
+    }
+
+    expect(Object.keys(eventContracts)).toEqual(expect.arrayContaining([
+      "agent.resident-plan.recorded.v2",
+      "agent.resident-observation.recorded.v2",
+      "agent.resident-tool-step.recorded.v2",
+      "agent.resident-loop.suspended.v2",
+      "agent.resident-loop.result.recorded.v2"
+    ]));
+
+    const replay = v2FixtureEvents();
+    for (const candidate of replay) {
+      expectValid(candidate);
+    }
+    expect(validateResidentLoopEventSequence(replay as never).success).toBe(true);
+  });
+
+  it.each([
+    ["plan missing workspace identity", 0, (candidate: Record<string, unknown>) => {
+      const { workspaceId: _workspaceId, ...payload } = candidate;
+      return payload;
+    }],
+    ["plan missing descriptor binding", 0, (candidate: Record<string, unknown>) => {
+      const { workflowDescriptor: _workflowDescriptor, ...payload } = candidate;
+      return payload;
+    }],
+    ["plan missing policy binding", 0, (candidate: Record<string, unknown>) => {
+      const { policy: _policy, ...payload } = candidate;
+      return payload;
+    }],
+    ["plan mismatched authority policy", 0, (candidate: Record<string, unknown>) => ({
+      ...candidate,
+      authority: { ...(candidate.authority as Record<string, unknown>), policyHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222" }
+    })],
+    ["plan malformed ten-counter accounting", 0, (candidate: Record<string, unknown>) => ({
+      ...candidate,
+      budget: {
+        ...(candidate.budget as Record<string, unknown>),
+        remaining: { ...((candidate.budget as { remaining: Record<string, unknown> }).remaining), toolSteps: 10 }
+      }
+    })],
+    ["observation missing plan readback", 1, (candidate: Record<string, unknown>) => {
+      const { planReadback: _planReadback, ...payload } = candidate;
+      return payload;
+    }],
+    ["observation changed plan identity", 1, (candidate: Record<string, unknown>) => ({
+      ...candidate,
+      planReadback: { ...(candidate.planReadback as Record<string, unknown>), planId: "plan_other" }
+    })],
+    ["tool step missing exact allowlist binding", 2, (candidate: Record<string, unknown>) => {
+      const { allowlistEntryHash: _allowlistEntryHash, ...payload } = candidate;
+      return payload;
+    }],
+    ["tool step missing preview binding", 2, (candidate: Record<string, unknown>) => {
+      const { previewHash: _previewHash, ...payload } = candidate;
+      return payload;
+    }],
+    ["tool step missing durable gateway readback", 2, (candidate: Record<string, unknown>) => {
+      const { gatewayReadbacks: _gatewayReadbacks, ...payload } = candidate;
+      return payload;
+    }],
+    ["suspension missing durable checkpoint", 3, (candidate: Record<string, unknown>) => {
+      const { checkpoint: _checkpoint, ...payload } = candidate;
+      return payload;
+    }],
+    ["suspension changed final-observation identity", 3, (candidate: Record<string, unknown>) => ({
+      ...candidate,
+      finalObservationReadback: {
+        ...(candidate.finalObservationReadback as Record<string, unknown>),
+        runId: "run_other"
+      }
+    })],
+    ["completed result missing complete H readback", 4, (candidate: Record<string, unknown>) => {
+      const { handoffReadback: _handoffReadback, ...payload } = candidate;
+      return payload;
+    }],
+    ["completed result with incomplete H lifecycle proof", 4, (candidate: Record<string, unknown>) => ({
+      ...candidate,
+      handoffReadback: {
+        ...(candidate.handoffReadback as Record<string, unknown>),
+        terminalRunEventId: undefined
+      }
+    })],
+    ["resumable result without resume anchor", 4, (candidate: Record<string, unknown>) => {
+      const { handoffReadback: _handoffReadback, ...payload } = candidate;
+      return { ...payload, outcome: "resumable", category: "approval-required" };
+    }]
+  ])("rejects %s", (_label, index, mutate) => {
+    const candidate = v2FixtureEvents()[index]!;
+    expect(validateKnowledgeEvent({ ...candidate, payload: mutate(candidate.payload) }).success).toBe(false);
+  });
+
+  it("rejects unknown and unsafe own-data v2 input without reading an accessor", () => {
+    const [plan] = v2FixtureEvents();
+    expect(validateKnowledgeEvent({ ...plan, payload: { ...plan.payload, unexpected: true } }).success).toBe(false);
+
+    const payloadWithAccessor = { ...plan.payload };
+    let accessorCalls = 0;
+    Object.defineProperty(payloadWithAccessor, "unexpected", {
+      enumerable: true,
+      get: () => {
+        accessorCalls += 1;
+        throw new Error("v2 accessor must not run");
+      }
+    });
+    expect(validateKnowledgeEvent({ ...plan, payload: payloadWithAccessor }).success).toBe(false);
+    expect(accessorCalls).toBe(0);
   });
 });
