@@ -8009,3 +8009,39 @@ explicit implementation authorization.
   surface changed, and no unrelated coverage was narrowed. Only an
   unqualified approval permits coordinator-only merge and a post-merge actual
   compiler gate.
+
+## RV-1-E-252 — Task135A integration and Task133 post-integration safety freeze
+
+- Fresh independent Terra/xhigh Task135A rereviewer
+  `019f6464-8156-7821-991e-24c2f985ffe4` returned unqualified **APPROVED** on
+  exact complete range
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7..0c42f5e982f71ffae76b34f522803b0ad961b553`.
+  It confirmed the prior post-capture defect is closed by causal workspace,
+  mount, material-store, and manifest-store swaps with separate zero-I/O
+  counters, while production remains preparation-only. The coordinator reran
+  the exact post-review candidate gate: 3 focused files / 56 tests, one actual
+  compiler session, whitespace, and factory readiness exited `0`.
+- Coordinator-only no-ff program integration is
+  `ac3f9190`; the coordinator reran the same exact non-full gate on the actual
+  merged checkout and its unified session exited `0` after 56 tests,
+  typecheck, whitespace, and factory readiness. Task135A is integrated as
+  mounted preparation evidence only; it adds no H, terminal, provider, public
+  capability, or default-factory authority.
+- A later independent full-lineage Task133 review
+  `019f6463-219e-7841-aa5d-c7905010343f` found two P1 defects in already
+  integrated plan endpoint `8169fc7f`. Task140R0 has no executable data bridge
+  carrying attempt/generated-at facts to combine with its factory-captured
+  approved-run/provider/workspace posture, so it cannot construct the strict
+  v2 renderer input within its file ceiling. The raw-v2 RED text is also
+  contradictory and fails to require table-driven rejection of every real
+  persisted derived hash (`rendererHash`, `renderedPromptHash`,
+  `scopeApplicabilityHash`, `providerPostureHash`, and
+  `exactRunBindingHash`) plus a lookalike.
+- Plan merge `43ead553` is preserved history but is immediately superseded as
+  non-authorizing. **Task133 source dispatch is frozen**; the stale pre-plan
+  Task133 source worktree remains at `049de5bf` and no new Task133 source lane
+  exists. Documentation author `019f643c-5584-7b72-bcb2-39deb302d85a` is the
+  sole plan-worktree writer authorized to repair those two P1s forward, run
+  docs-safe validation, commit, and stop for a new true full-lineage review.
+  Task140P/R0/H/R1 remain blocked. Full verify, provider/network/credential/
+  Nous action, reset credits, `neo`, and child self-integration remain closed.
