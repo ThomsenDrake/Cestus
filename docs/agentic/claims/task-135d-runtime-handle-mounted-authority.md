@@ -113,3 +113,26 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## RV-1-E-355 type-namespace grammar repair
+
+- The coordinator independently preserved but rejected
+  `dc0d01f76d8a0c4073033b86e27157a205ef5209`: the namespace/re-export
+  grammar omitted the legal TypeScript-family `type` modifier between
+  `import`/`export` and `*`. This forward repair owns only causal deep
+  cross-package fixtures and the minimal grammar extension; roots, extensions,
+  existing runtime forms, allowlist behavior, and production code remain
+  unchanged.
+- Causal RED: the prescribed focused command exited `1` only in the expanded
+  import test (1 failed, 19 passed). Its exact scanner result retained the
+  existing eight paths and omitted only `import type * as`, `export type *`,
+  and `export type * as` deep cross-package fixtures.
+
+- Focused GREEN: after the optional whitespace-delimited `type` modifier in
+  the existing namespace/re-export grammar, the prescribed command exited `0`
+  with 3 test files and 20 tests passed.
+- Authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.

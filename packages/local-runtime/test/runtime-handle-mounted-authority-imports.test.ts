@@ -30,7 +30,7 @@ const factoryCaptureSymbol =
 const namedCaptureImportOrReexport =
   /\b(?:import|export)\s+(?:type\s+)?\{([\s\S]*?)\}\s+from\s*["'][^"']+["']/g;
 const namespaceCaptureImportOrReexport =
-  /\b(?:import\s*\*\s+as\s+[\w$]+\s+from|export\s*\*(?:\s+as\s+[\w$]+)?\s+from)\s*["']([^"']+)["']/g;
+  /\b(?:import(?:\s+type)?\s*\*\s+as\s+[\w$]+\s+from|export(?:\s+type)?\s*\*(?:\s+as\s+[\w$]+)?\s+from)\s*["']([^"']+)["']/g;
 const dynamicCaptureImportOrRequire =
   /\b(?:import|require)\s*\(\s*["']([^"']+)["']\s*\)/g;
 const runtimeFactoryModuleSpecifier =
@@ -161,6 +161,9 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "capture.ts": `import { captureFactoryIssuedMountedRuntime } from "${deepImport}";\n`,
       "capture.tsx": `export type { FactoryIssuedMountedRuntimeCapture } from "${deepImport}";\n`,
       "star-reexport.mjs": `export * from "${deepImport}";\n`,
+      "type-namespace-import.ts": `import type * as runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
+      "type-namespace-reexport.ts": `export type * as runtimeFactory from "${deepImport}";\n`,
+      "type-star-reexport.ts": `export type * from "${deepImport}";\n`,
     };
 
     for (const [fileName, source] of Object.entries(fixtureSources)) {
@@ -180,6 +183,9 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/capture.ts",
       "packages/agent-runtime/src/deep/capture.tsx",
       "packages/agent-runtime/src/deep/star-reexport.mjs",
+      "packages/agent-runtime/src/deep/type-namespace-import.ts",
+      "packages/agent-runtime/src/deep/type-namespace-reexport.ts",
+      "packages/agent-runtime/src/deep/type-star-reexport.ts",
     ]);
     expect(() => assertCaptureSeamImportersAreAllowed(fixtureRoot)).toThrow(
       /packages\/agent-runtime\/src\/deep\/capture\.cjs/,
