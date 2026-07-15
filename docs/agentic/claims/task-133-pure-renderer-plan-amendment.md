@@ -34,3 +34,19 @@
   redemption, `neo`, source implementation, self-review, self-integration,
   and merge are closed. A fresh independent Terra/xhigh defects-first plan
   review is required before any Task133 implementation redispatch.
+
+## First review and forward repair
+
+Fresh review of `0481c1e0..38c2456f` returned **NEEDS-CHANGES**: untyped
+`templateData`, circular caller-supplied posture hashing, no canonical text
+renderer, conditional duplicate Task140R0 artifact formation, and an unfrozen
+dispatch base. The first amendment remains preserved as rejected history.
+
+The forward repair removes that local renderer in full. It extends the one
+existing agent-owned `renderProductionSpecialistPrompt` and prompt-artifact
+production binding with exact run/provider data and non-circular computed
+hashes; names the exact five-file Task133 scope and fail-fast commands; freezes
+the Task120/126-130/132A ancestry gate; and gives Task140R0 one private,
+single-render composition path with causal direct-artifact and swapped-field
+zero-effect tests. No implementation is authorized until this repaired range
+receives a new fresh independent approval.
