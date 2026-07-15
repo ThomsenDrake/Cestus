@@ -7525,3 +7525,227 @@ explicit implementation authorization.
   Task133 remains separately gated by its plan-review repair.
 - Full verification, provider/network/credential/Nous action, reset-credit
   use, `neo`, and child self-integration remain **CLOSED**.
+
+## RV-1-E-235 — Task135A isolated authorization and prerequisite baseline
+
+- CF-1R5 Task135A mounted-preparation-store lane is authorized independently
+  of the unresolved Task133 pure-renderer plan review. Its frozen prerequisite
+  ancestry is present on the program branch: CF-1 `48c9cbcd`, Task121
+  `1a92a2c2`, Task122 `9839fbf8`, Task123 `87f5d940`, Task125
+  `2e5c35ab`, and reviewed/coordinator-integrated Task134A merge
+  `83a301d5`.
+- The coordinator reran the exact prerequisite non-full fail-fast gate on the
+  program branch before dispatch:
+  `npm test -- packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It exited 0: 2 focused files / 38 tests, typecheck, whitespace, and factory
+  readiness all passed.
+- Fresh isolated author `/root/task135a_mounted_preparation_stores`, session
+  `019f6427-346f-71d3-bd35-a88290a20a9a`, owns only
+  `/home/drake/.codex/worktrees/task-135a-mounted-preparation-stores` on
+  `codex/task-135a-mounted-preparation-stores`, based exactly on
+  `7fd10a7fcc08eb8ed315484cfcd1a08edeac2334`. Its own authoritative
+  `turn_context` records Terra/xhigh. The standing authorization explicitly
+  includes `superpowers:subagent-driven-development`, TDD, systematic
+  debugging, and verification-before-completion; it forbids self-integration.
+  The lane remains preparation-only: no H, factory registration, provider,
+  durable/terminal completion, public capability/mint route, or default
+  fallback. It requires causal RED evidence, the task-specific exact non-full
+  `&&` gate, a clean candidate, coordinator rerun, and a fresh independent
+  complete-range review before any coordinator-only merge.
+- Full verification, provider/network/credential/Nous action, reset-credit
+  use, `neo`, and child self-integration remain **CLOSED**.
+
+## RV-1-E-236 — Task133 pure-renderer amendment review returned NEEDS-CHANGES
+
+- Fresh independent Terra/xhigh reviewer
+  `/root/task133_pure_renderer_plan_review`, session
+  `019f6423-47f3-7310-824a-27fb91b9ac67`, reviewed exact amendment range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..38c2456f1f935aca291d24447c31b6a1d0728fd1`
+  and returned **NEEDS-CHANGES**. The amendment remains unintegrated history;
+  Task133 implementation stays blocked.
+- The findings require coordinator source verification and forward repair of
+  the canonical pure-input schema and `templateData` boundary, non-circular
+  provider-posture and input-hash validation, a single source-compatible
+  canonical renderer/builder flow, an exact testable Task140R0 private
+  composition seam with no second renderer or public authority, and an
+  explicit Task133 rebase/prerequisite gate. No finding authorizes reopening a
+  structural verifier callback, public mint route, provider action, or full
+  verifier.
+
+## RV-1-E-237 — Task133 canonical-renderer forward repair candidate
+
+- The first pure-renderer amendment remains preserved rejected history at
+  `38c2456f1f935aca291d24447c31b6a1d0728fd1`. Coordinator-owned forward
+  repair `ffc2dc81c189af3163ec7b573b4f6f4767660de7` is clean in the same
+  isolated Task133 plan worktree. The only changed files are the recovery plan
+  and its amendment claim. It supersedes the retired local
+  `templateData`/`renderPureAgentPrompt`/local-only-upgrade proposal with an
+  agent-owned exact production-binding data contract, computed non-circular
+  posture and binding hashes, the existing canonical production renderer, a
+  frozen five-file Task133 implementation ceiling, an explicit prerequisite
+  ancestry gate, and a one-way private Task140R0 admission seam.
+- The coordinator independently inspected the full amendment lineage
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ffc2dc81c189af3163ec7b573b4f6f4767660de7`,
+  including the rejected `38c2456f` amendment. `git diff --check` and
+  `npm run factory:check` exited 0 on the repaired candidate; full verification
+  remains closed.
+- A new fresh independent Terra/xhigh defects-first plan reviewer must inspect
+  that complete range and explicitly decide whether the five prior findings
+  (typed/no-shadow input material, non-circular hashes, one canonical renderer
+  and artifact formation, a testable one-way R0 seam, and frozen dispatch
+  ancestry) are actually closed. It must also check the exact contract fields,
+  all affected existing call sites, source/test ceilings, and no-new-authority
+  constraints. No Task133 implementation redispatch, plan integration, source
+  merge, or child self-integration is authorized without an unqualified
+  **APPROVED** verdict.
+- Full verification, provider/network/credential/Nous action, reset-credit
+  use, `neo`, and child self-integration remain **CLOSED**.
+
+## RV-1-E-238 — Task133 repaired complete-range review and usage monitor
+
+- Fresh independent defects-first reviewer
+  `/root/task133_canonical_renderer_plan_review`, session
+  `019f6431-88ac-70e2-8132-061b626163da`, is read-only on the exact complete
+  range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ffc2dc81c189af3163ec7b573b4f6f4767660de7`.
+  Its review package is the complete two-commit artifact
+  `.superpowers/sdd/review-0481c1e0..ffc2dc81.diff`; it must include the prior
+  rejected amendment and assess every prior NEEDS-CHANGES defect against live
+  call sites. Its authoritative `turn_context` at
+  `rollout-2026-07-15T01-13-15-019f6431-88ac-70e2-8132-061b626163da.jsonl:8`
+  records `model=gpt-5.6-terra`, `reasoning_effort=xhigh`, and `effort=xhigh`.
+  No implementation or integration is authorized pending the verdict.
+- The latest authenticated app-server rate-limit event reports
+  `primary.used_percent=27.0`: **73% weekly remaining**. This supersedes the
+  prior 26%/74% observation forward-only. No reset credit has been redeemed;
+  the last confirmed five credits remain untouched. DRAIN remains <=10%
+  remaining and HARD PAUSE <=7%.
+
+## RV-1-E-239 — Canonical compiler-process correction and bounded prerequisite repair
+
+- Fresh Task133 plan review of the complete
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ffc2dc81c189af3163ec7b573b4f6f4767660de7`
+  range returned **NEEDS-CHANGES**. Its source-backed findings are that the
+  declared five-file Task133 ceiling cannot supply the newly required binding
+  at existing specialist-runner and durable audit/projection call sites, and
+  that the amendment claim still names the superseded local-only renderer.
+  `ffc2dc81` remains unintegrated history; Task133 implementation remains
+  blocked pending a forward plan repair and fresh review.
+- A fresh single-process canonical `npm run typecheck` exited `2` with exactly
+  `packages/local-runtime/src/agent-runtime-factory.ts(104,38)` TS2677 (the
+  broad `FactoryHeldRegistrarEvidence` predicate is not assignable to the
+  producer-evidence union) and
+  `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts(94,5)`
+  TS2322 (the mutable dispatch retains literal `task_runtime`). This supersedes
+  prior Task132A/Task134A typecheck-green coordination evidence forward-only;
+  those assertions were contaminated by overlapping orphan `tsc` subprocesses
+  and wrapper-tail exit suppression. Historical commits and integrations are
+  preserved, but they are not evidence that the current program typecheck is
+  green.
+- Future exit-sensitive compiler gates must start only with no live `tsc`, run
+  one compiler process, wait for its actual process/exit, and reject a wrapper
+  completion that lacks that exit evidence. Newline/tail masking and live
+  compiler overlap are inadmissible. Full verification remains closed.
+- Task135A's dirty allowed claim/source/test is frozen without a commit in
+  `/home/drake/.codex/worktrees/task-135a-mounted-preparation-stores`; its
+  temporary dependency link was removed and its child was interrupted. After
+  a reviewed/coordinator-integrated prerequisite repair, the coordinator alone
+  will stash that dirty lane, merge the repaired program head forward without
+  rewriting history, restore its changes, update its base evidence, and rerun
+  the complete Task135A gate. No child may rebase or self-integrate.
+- One fresh bounded Terra/xhigh prerequisite repair author
+  `/root/task132a134_typecheck_repair`, session
+  `019f6438-8239-7912-9511-1ef65f17720f`, owns
+  `/home/drake/.codex/worktrees/task-132a134-typecheck-repair` on
+  `codex/task132a134-typecheck-repair`, based exactly on
+  `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3`. Its authoritative
+  `turn_context` at
+  `rollout-2026-07-15T01-20-52-019f6438-8239-7912-9511-1ef65f17720f.jsonl:8`
+  records Terra/xhigh. It may change only the two diagnosed files, must first
+  reproduce the standalone canonical typecheck RED, then run the focused
+  Task132A/Task134A non-full fail-fast gate with one actual compiler exit, and
+  stop for fresh independent review. The standing authorization includes
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion; it excludes full verify, provider/network/
+  credential/Nous action, reset credits, `neo`, child self-integration, and
+  out-of-scope repair.
+
+## RV-1-E-240 — Reboot recovery and Task133 third forward-repair dispatch
+
+- After the host reboot, the canonical program checkout is clean on
+  `codex/resident-agent-full-vision-program-watchdog-recovery` at
+  `25690a6553556fa21454d86cc69be5b7923e3aa2`. `neo` remains untouched and
+  every full-verifier, provider/network/credential/Nous, reset-credit, and
+  child self-integration gate remains closed.
+- Task135A remains frozen with only its intended dirty claim, source, and test
+  in `/home/drake/.codex/worktrees/task-135a-mounted-preparation-stores`.
+  Task133's plan worktree remains clean at rejected forward candidate
+  `ffc2dc81c189af3163ec7b573b4f6f4767660de7`. The bounded compiler repair
+  worktree remains clean at its assigned base while its original author owns
+  the two-file prerequisite repair. One actual `npm run typecheck` process was
+  observed in that worktree after recovery; it terminated before any later
+  compiler process was permitted. Its result is not treated as green evidence
+  without the author's captured exit and final gate record.
+- Fresh Task133 forward plan-repair author
+  `/root/task133_v2_compatibility_plan_repair`, session
+  `019f643c-5584-7b72-bcb2-39deb302d85a`, is the sole writer in
+  `/home/drake/.codex/worktrees/task-133-pure-renderer-plan-amendment`. Its
+  standing contract requires an explicit discriminated legacy-v1/exact-v2
+  compatibility migration, strict required exact-v2 fields and computed
+  hashes, one canonical text-rendering path, exhaustive provider/runtime/
+  projection/ontology/rebuild preservation tests, removal of the obsolete
+  local-only claim contract, exact file ownership and non-full gates, and a
+  fresh independent review before implementation. The eventual implementation
+  plan must explicitly authorize `superpowers:subagent-driven-development`;
+  implementation itself is not authorized by this dispatch.
+- The last authenticated usage observation remains 27% used / 73% weekly
+  remaining. No reset credit is consumed or authorized. DRAIN remains at
+  <=10% remaining and HARD PAUSE at <=7%.
+
+## RV-1-E-241 — Canonical compiler-repair candidate and fresh review
+
+- Bounded prerequisite candidate
+  `52bb8e5e` is clean on `codex/task132a134-typecheck-repair` and changes
+  exactly `packages/local-runtime/src/agent-runtime-factory.ts` plus
+  `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts` from
+  base `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3`. The source repair narrows the
+  private evidence type to the actual registrar-evidence union; the test repair
+  widens only the mutable hostile-dispatch fixture's `taskId`.
+- The coordinator observed no live compiler before starting one exact candidate
+  fail-fast chain. Seven focused files / 101 tests passed, then the same actual
+  unified-exec session exited `0` after `npm run typecheck`,
+  `git diff --check`, and `npm run factory:check`. The temporary compatible
+  `node_modules` link was removed. This is the first admissible superseding
+  compiler-green evidence after RV-1-E-239; it is review-only and not yet
+  program integration evidence.
+- Fresh independent read-only Terra/xhigh reviewer
+  `/root/task132a134_typecheck_repair_review`, session
+  `019f6442-b684-7720-a058-0c01459d5e4e`, is bound to exact
+  `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3..52bb8e5e`. It must confirm no
+  factory-authority broadening, no weakened ambiguity failure, no production
+  type relaxation, and no scope drift before returning an unqualified
+  **APPROVED** verdict. Coordinator-only integration remains conditional on
+  that verdict and another actual-process gate. Task135A remains frozen.
+
+## RV-1-E-242 — Compiler-repair review approval and post-review gate authorization
+
+- The fresh independent review session `019f6442-b684-7720-a058-0c01459d5e4e`
+  completed **APPROVED** for the exact complete range
+  `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3..52bb8e5e22ffadbb21a72d95fe054630700abbeb`.
+  It found no authority broadening, ambiguity weakening, production type
+  relaxation, or scope drift: the factory alias remains the union of the
+  three package-owned registrar lookup return types, and the only test change
+  widens the intentionally mutable hostile fixture's `taskId`. Its own
+  authoritative `turn_context` at
+  `rollout-2026-07-15T01-32-01-019f6442-b684-7720-a058-0c01459d5e4e.jsonl:6`
+  records `model=gpt-5.6-terra` and `effort=xhigh`.
+- This approval does not waive the compiler-process rule. The coordinator must
+  now run the exact candidate non-full chain in one detached actual shell,
+  observe its recorded exit after the single `tsc` process has terminated, and
+  verify no live `tsc` or `npm` remains. Only an exit `0` authorizes the
+  coordinator-only no-ff merge; Task135A remains frozen pending the repaired
+  canonical post-merge gate.
+- The latest authenticated app-server event records `primary.used_percent=28.0`
+  (**72% weekly remaining**), superseding the prior 27%/73% observation
+  forward-only. Reset-credit usage remains prohibited; DRAIN is <=10%
+  remaining and HARD PAUSE is <=7%.
