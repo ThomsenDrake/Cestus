@@ -10096,3 +10096,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Fresh schema/binder and durable-rebuild reviews remain mandatory after all
   focused/typecheck/static/range/factory/topology gates pass. Full verification,
   providers, reset credits, integration, and every `neo` action remain closed.
+
+## RV-1-E-349 — Task135C history repair admitted to fresh review
+
+- Replacement `9776594bc07a7eb2f3764a65c9d41c7219ae1885` is clean and
+  merge-free. Its complete original-base range changes exactly the prerequisite
+  checker, focused test, and append-only claim.
+- Independent coordinator verification passed all 18 focused counterfactuals,
+  the forbidden-runtime audit, the equivalent PCRE2 static-import audit using
+  `rg -P`, complete-range diff checking, factory readiness, exact three-path
+  scope, ancestry, and clean-state checks.
+- The repair adds explicit causal witnesses for rename/restore, delete/readd,
+  restored later touches, symbolic/non-registry/merge coordinator attestations,
+  and altered dispatch/source/task/manifest fields. Manifest and claim paths
+  now require no history after original dispatch M.
+- The candidate is admitted only to fresh static/execution and Git-authority/
+  history reviews. Both approvals are required before any merge preview. Full
+  verification, providers, reset credits, integration, and every `neo` action
+  remain closed.
