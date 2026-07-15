@@ -8667,3 +8667,15 @@ explicit implementation authorization.
 - Latest authenticated usage reports 38% used / 62% weekly remaining, with no
   reset credits. All source/live/full/credential/Nous/reset-credit/`neo`/plan-
   integration actions remain closed pending both fresh approvals.
+
+## RV-1-E-284 — Executable producer reviewer identities
+
+- Lifecycle/restart/executability reviewer
+  `019f6558-44d2-79e2-8e48-a834b5b95431` and authority/import/bypass reviewer
+  `019f6558-458c-7053-b2b3-444a4bc41a70` are active read-only on the exact
+  candidate and lineage in RV-1-E-283. Both use `gpt-5.6-terra` at `xhigh` in
+  fresh isolated worktrees.
+- Neither reviewer may edit, run full/live/provider/credential gates, or carry
+  forward any prior verdict. Source dispatch and plan integration remain closed
+  until both return explicit unqualified **APPROVED** verdicts and those
+  verdicts are durably recorded.
