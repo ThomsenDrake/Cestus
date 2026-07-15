@@ -272,3 +272,23 @@ Status: in-progress only for this CF-1R2 recovery authorization. Earlier
 Task119 candidate/review records remain preserved historical evidence; they do
 not authorize a v1 rewrite or an integration without the new review and
 coordinator-only merge.
+
+## CF-1R2 Fresh-Review Bounded V2 Repair
+
+- Preserve `544d95c92ed3c3ebc8672d30137ac5718801846a` as unintegrated
+  history. Fresh Terra/xhigh review accepted four Important defects: its
+  completed result carries a narrowed local H proxy, its ten maxima have no
+  hard ceilings, invalid outcome/category pairs parse, and tool-step/replay
+  validation does not bind step ordinals/prerequisites to the declared plan.
+- One bounded repair author may edit only this claim,
+  `packages/ontology/src/contracts.ts`, and
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`. It must first
+  write/run causal REDs for every defect: a complete H-owned handoff readback
+  and each narrowed/forged substitute; every hard-budget maximum; invalid
+  category/outcome pairs; undeclared tool step; and self, future, or nonexistent
+  prerequisite. The complete H shape must follow the governing handoff and
+  bounded-loop plans without an H source edit or a local proxy.
+- Preserve v1 behavior, five v2 event names, strict own-data normalization, and
+  replay requirements. Do not edit Task120/136, H/W/P/gateway/factory,
+  provider/credential, or `neo` files. Before one forward commit run exactly
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`; it must exit `0` as one fail-fast chain. Full verification is **CLOSED**. Stop for a fresh independent Terra/xhigh review; no self-review, self-integration, merge, provider/network/credential/Nous, or `neo` action.
