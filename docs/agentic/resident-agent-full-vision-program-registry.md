@@ -8542,3 +8542,22 @@ explicit implementation authorization.
   direct renderer/kernel/runtime model path.
 - All source/live/full/credential/reset-credit/`neo`/integration actions remain
   closed pending docs validation, commit, and two fresh approvals.
+
+## RV-1-E-277 — Explicit-consumer candidate and fresh dual review
+
+- After reboot recovery, the sole plan writer completed and committed CF-1R13
+  candidate `550fb053a07b0af5c28426e95fdf8ddf22ad7c48`. It assigns one explicit,
+  non-index-exported approval-admission producer/consumer module; gives P and
+  R0 complete identical RED/GREEN commands containing its focused identity
+  suite; and replaces the final H command with one aggregate that positively
+  requires resident smoke delegation and rejects direct smoke bypasses.
+  `git diff --check` and `npm run factory:check` passed before commit.
+- Fresh independent Terra/xhigh lifecycle/persistence and authority/consumer
+  reviewers are authorized read-only against exact 18-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..550fb053a07b0af5c28426e95fdf8ddf22ad7c48`
+  and canonical program/source context `5d3e1cbaeb6bd0183775317fc10d4226fc60a183`.
+  Exactly two unqualified **APPROVED** verdicts are required; prior approval,
+  silence, timeout, or capacity failure cannot carry forward.
+- Latest authenticated usage reports 36% used / 64% weekly remaining. All
+  source/live/full/credential/reset-credit/`neo`/plan-integration actions remain
+  closed pending both fresh approvals.
