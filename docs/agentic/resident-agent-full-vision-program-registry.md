@@ -8328,3 +8328,28 @@ explicit implementation authorization.
   by two fresh independent full-lineage reviews. Task133/Task140 source, full
   verification, provider/network/credential/Nous activity, reset credits,
   `neo`, self-review, self-integration, and merge remain closed.
+
+## RV-1-E-266 — Task140H executable candidate and fresh dual review
+
+- The sole plan writer committed CF-1R8 candidate
+  `7c536e21935ff9e82b0987d645c0227b336ca1e2`. It preserves CF-1R7 authority
+  while adding exact titled REDs, causal expected failures, minimum source
+  actions, identical GREEN reruns, and explicit typecheck/diff/factory gates.
+  H.1/H.2 form one atomic public-ABI/caller migration commit so removal of
+  prompt/proof fields cannot strand uncompilable kernel or smoke callers; H.3
+  is an independently reviewed recovery commit; H.4 is the complete non-live
+  integration gate. Runtime captures local-engine provider IDs at construction
+  so local data-only execution remains possible while unadmitted remote calls
+  reject before ledger/provider lookup. Post-commit
+  `git diff --check && npm run factory:check` exited `0`.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f64ed-b884-7973-ad71-af729cd45881` and authority/consumer reviewer
+  `019f64ed-bc10-7fd1-8b8d-2a4d78c32bed` are dispatched read-only against exact
+  full lineage `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..7c536e21` and canonical
+  source head `edc0d221`. Both must return unqualified **APPROVED** before any
+  coordinator-only plan integration; capacity or silence is not approval.
+- Latest authenticated token-count event remains `used_percent=34`, therefore
+  66% weekly remaining. DRAIN and HARD PAUSE remain unchanged; reset credits
+  remain untouched. Task133/Task140 source implementation, full verification,
+  provider/network/credential/Nous activity, `neo`, self-review,
+  self-integration, and merge remain closed.
