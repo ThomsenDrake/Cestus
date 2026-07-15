@@ -11146,3 +11146,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   carry forward. Two unqualified approvals of the exact SHA remain required
   before coordinator-only integration; all full/live/provider/credential/
   Nous/reset-credit/push/`neo` actions remain closed.
+
+## RV-1-E-407 — Task133 non-minting receipt replacement admitted
+
+- Existing author `019f6660-2912-7622-a99a-0def4e19e051` produced amended
+  atomic candidate `5d2fdc6baf9afd6ef446eb2be3101bccbc253f64` as the sole direct
+  child commit of exact source base
+  `197c3ca528e9b666c02b9b87695bf900efa195b1`.
+- All production prompt-binding receipt constructors and exports remain
+  absent. Governed tests use only local canonical fixtures, and malicious
+  task, attempt, and run receipt-identity transplants recompute the receipt
+  hash while retaining the enclosing checkpoint for canonical parse, direct
+  projection, and append-only ledger replay/rebuild rejection.
+- Strict negatives directly cover unknown receipt keys and missing or v0
+  receipt schema versions. Task133.2 and Task133.3 claims now describe the
+  replacement authority boundary and current review status.
+- Coordinator-independent verification caught two test-only TypeScript
+  inference defects. The final repair preserves exact receipt SHA template
+  types through an explicitly typed local material helper and a typed identity
+  override table without casts, non-null assertions, production changes, or
+  weaker public types.
+- The final candidate passed Task133.1 at 131/131, Task133.2 at 78/78,
+  Task133.3 at 141/141, `npm run typecheck`, the forbidden-renderer scan,
+  original-base diff check, factory readiness, exact 28-path scope, one
+  non-merge commit whose parent is the source base, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, network, credentials, Nous, reset credits, push, and every
+  `neo` action remain closed.
