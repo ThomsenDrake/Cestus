@@ -8679,3 +8679,27 @@ explicit implementation authorization.
   forward any prior verdict. Source dispatch and plan integration remain closed
   until both return explicit unqualified **APPROVED** verdicts and those
   verdicts are durably recorded.
+
+## RV-1-E-285 — Authority-source candidate rejected; bounded CF-1R16
+
+- Both fresh reviewers returned **NEEDS-CHANGES** on exact 20-commit range
+  `0481c1e0^..505b22a1`. Lifecycle reviewer
+  `019f6558-44d2-79e2-8e48-a834b5b95431` found no executable pre-B owner for
+  factory-held lifecycle inputs, a revivable admission that cannot enforce
+  post-I/O invalidation, and uncommitted prerequisite manifests unavailable to
+  fresh review. Authority reviewer
+  `019f6558-458c-7053-b2b3-444a4bc41a70` found structural mounted-facts and
+  authority inputs forgeable, no sole-import gate for handoff-port registration,
+  and `rg`-only live-fixture assertions without causal credential-free tests.
+- The sole plan writer is authorized only for CF-1R16: introduce a serialized
+  pre-Task135B private factory-minted lifecycle/store authority capture seam;
+  bind one non-revivable admission/invalidation latch through every I/O; make
+  each coordinator-authored prerequisite manifest a committed hash-bound
+  dispatch artifact with exact review gates; enforce the handoff registrar's
+  sole production importer; and add selected credential-free per-live-fixture
+  adapter tests proving one resident-acceptance call and zero direct runtime
+  construction.
+- Latest authenticated usage remains 38% used / 62% weekly remaining, with no
+  reset credits. All source/live/full/provider/credential/Nous/reset-credit/
+  `neo`/plan-integration actions remain closed pending a committed docs-only
+  repair and two fresh independent approvals.
