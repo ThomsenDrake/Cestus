@@ -2595,6 +2595,12 @@ including its files and gate. Task140H owns all of these files serially:
 - Modify `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
 - Create the Task140H claim
 
+`packages/agent/test/task-orchestrator-evidence-triage-live.test.ts` is a
+compile-only signature-migration file in Task140H. It must not be selected by a
+Task140H non-live command. Its real Nous execution remains reserved for the
+later coordinator-authorized live provider acceptance gate with the exact live
+environment switch stated there.
+
 The port consumes the exact admission once and returns a second opaque
 `ConsumedPromptAdmission` whose private binding contains the reparsed mounted
 v2 readback. `production-specialist-invocation-proof.ts` removes the public
@@ -2642,7 +2648,18 @@ durable H/terminal effect.
 Task140H's exact non-full gate is:
 
 ```bash
-npm test -- packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts && npm run typecheck && git diff --check && npm run factory:check
+npm test -- packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+### Integrated final Task133.1-.5 non-live gate
+
+This command replaces the earlier exact final Task133 command at lines
+2096-2100. It aggregates the binder, approval/transfer, event/projection/
+ontology/rebuild, deterministic compatibility, executable preapproval v1, and
+portable mounted-store suites. No live/provider-bearing test is selected:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-context.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts && npm run typecheck && git diff --check && npm run factory:check
 ```
 
 ### CF-1R6 review and dispatch gate
