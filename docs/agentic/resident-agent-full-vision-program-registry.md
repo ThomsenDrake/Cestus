@@ -12534,3 +12534,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   verification, live/provider/network/credential/Nous activity, reset credits,
   push, child self-integration, program merge without coordinator review, and
   every `neo` action remain closed.
+
+## RV-1-E-458 — Task137A corrected candidate admitted to review
+
+- Corrected Task137A candidate
+  `b767abb1335428934abfbc7aeb4a2e6c8b02bf25` is a clean descendant of rejected
+  `b79fa2eac0bde066850e58e933a92dc7ea1d1686` and changes only the claim and
+  import-policy test relative to that rejected parent.
+- Fresh coordinator admission passed the literal terminal authority gate at six
+  files / 78 tests, its internal and a separate standalone typecheck, semantic
+  policy, lineage, physical-checkout, exact-range diff, and factory-readiness
+  checks. The initial dependency-not-found exit was traced to the intentionally
+  absent ignored `node_modules` link and disappeared after mounting the approved
+  shared dependency tree.
+- App worktree creation and same-directory fork handoffs failed after the host
+  reboot, so two fresh independent read-only Terra/xhigh subagents review the
+  same immutable admitted checkout: mounted-authority/lifecycle reviewer
+  `019f680c-23fc-7603-810d-1abd5e7fa9f4` and adversarial TypeScript semantic-
+  policy/compiler reviewer `019f680c-1c5a-7741-890e-cab269a992ef`.
+- Both reviewers must return unqualified **APPROVED** verdicts on the exact SHA
+  before coordinator integration. The coordinator owns the ignored dependency
+  link and will remove it after reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
