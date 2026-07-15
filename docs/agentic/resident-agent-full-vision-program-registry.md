@@ -10743,3 +10743,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both reviewers are read-only and pinned at exact candidate
   `a865c5493f7467c11839a2b4b41154eeb44b3ae4`. Two unqualified approvals are
   required before coordinator-only integration.
+
+## RV-1-E-389 — Task135D held for named-default specifiers
+
+- Private-authority/lifecycle reviewer
+  `019f66e4-c207-7472-a288-31fabd1772f1` returned unqualified
+  **APPROVED** for exact candidate
+  `a865c5493f7467c11839a2b4b41154eeb44b3ae4`.
+- AST import-authority reviewer `019f66e4-ec35-7860-af42-35c39ce15a2f`
+  returned **NEEDS-CHANGES** because named-default imports and re-exports such
+  as `import { default as runtimeFactory }` use `NamedSpecifiers`; the scanner
+  does not treat source-side `default` as a protected exact-target name.
+- Candidate `a865c5493f7467c11839a2b4b41154eeb44b3ae4` is rejected and
+  preserved. The existing author is authorized for one two-path forward TDD
+  repair adding causal value/type named-default import/re-export fixtures and
+  exact source-side default recognition without broadening local aliases.
+- The replacement must preserve the exact four-path original-base union and
+  rerun the complete focused/typecheck/no-index/diff/factory/topology gate
+  before two fresh reviews. Full verification, providers, reset credits,
+  integration, push, and every `neo` action remain closed.
