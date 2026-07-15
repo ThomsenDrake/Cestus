@@ -12344,3 +12344,65 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-451 — Task133.5 rejected for atomicity and real-restart recovery
+
+- Mounted-prompt authority/restart reviewer
+  `019f67df-1bea-7f13-897e-73775dfee74f` and adversarial TypeScript/hostile-
+  input/integration reviewer `019f67df-2bc1-72e3-9b0c-22971e0959ed`
+  independently returned **NEEDS-CHANGES** for exact candidate
+  `9710909961d4579006c73d7781c094cec4b00e45`.
+- Both reviewers found the same one-use race: concurrent consumers can both
+  observe an available witness, await currentness, and produce two consumable
+  readbacks before either marks it burned. The mounted tuple is also not
+  revalidated immediately before the context-ready ledger effect.
+- The claimed restart test directly rereads a known hash while retaining
+  module-level authority maps; it does not reconstruct from a durable
+  context-ready checkpoint in a fresh process/runtime. Store tests likewise do
+  not causally swap workspace ID, root, or blob root before/between I/O with
+  original/replacement access counters.
+- Coordinator admission had independently passed all 86 focused tests,
+  standalone typecheck, static, diff, and factory gates, confirming that these
+  are uncovered behavioral defects rather than known verifier failures.
+- Fresh Terra/xhigh recovery owner
+  `019f67e5-ec74-7b93-a820-34fdbfa77e3f`, worktree
+  `/home/drake/.codex/worktrees/074c/Cestus`, starts from the rejected candidate
+  and must create `codex/task-133-5-preapproval-prompt-store-recovery-3`.
+  The coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development` with one production writer.
+- Recovery must atomically reserve/burn before the first await, add concurrent
+  consumption and pre-append mount-drift REDs, prove actual fresh-process
+  durable checkpoint/context/artifact recovery, and add all before/between-I/O
+  tuple swaps and access counters without weakening private brands or fallback
+  prohibitions.
+- Exact candidate `9710909961d4579006c73d7781c094cec4b00e45` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
+
+## RV-1-E-452 — Task136 Recovery-4 plan admitted to exact-SHA review
+
+- Documentation candidate
+  `14f2799a9ab1d7c633eacc8eb16c5eab9d77d2fa` on
+  `codex/task-136-interface-reconciliation-recovery-3` is one clean commit from
+  rejected candidate `f1fe209caa2ddc27bcc5d4cc4b00f1054c958f2c` and changes
+  exactly the bounded-loop plan, provider-credentials plan, and Task136 claim.
+- Fresh coordinator admission passed exact-range diff checking, factory
+  readiness, the three-path ceiling, single-parent topology, and clean-checkout
+  checks. No source implementation is authorized by the candidate.
+- The candidate adds a canonical embedded release graph, Task126 reader-mint
+  repair, exact P1 data schemas, PM mounted authority, one private factory-
+  composition owner, authority-bound H and P2 registration, and a private
+  scheduler completion adapter before locator-only G readback.
+- Fresh mounted-authority/dependency reviewer
+  `019f67e7-d777-7880-bbd6-22826e93554c` and autonomous-plan/release-record/API
+  reviewer `019f67e7-c51c-7603-a525-6c391555cf61` are pinned and read-only on
+  the exact candidate. They must prove that the terminal correction completely
+  and unambiguously supersedes every older caller-supplied release-list and
+  structural-authority section, that all task inventories and types are
+  complete, and that no implementer must invent an ABI before integration.
+- Full verification, source implementation, live/provider/network/credential/
+  Nous activity, reset credits, push, child self-integration, program merge
+  without coordinator review, and every `neo` action remain closed.
