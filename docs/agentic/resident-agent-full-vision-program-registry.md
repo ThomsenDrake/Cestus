@@ -6417,3 +6417,32 @@ explicit implementation authorization.
   run exactly `npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/execution-loop.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain. The full verifier remains **CLOSED** (`npm run verify` forbidden); no self-review, self-integration, merge, or `neo` action is allowed. Stop for a fresh independent Terra/xhigh review.
 - Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
   untouched, and DRAIN/HARD PAUSE controls remain in force.
+
+## RV-1-E-186 — Task133/135 prerequisite suites and strict-dependency checkpoint
+
+- The coordinator ran the requested exact predecessor-focused suites at clean
+  head `7761d75d`: Task133's merged Task120/126–130 suite passed **9 files /
+  126 tests**, and Task135's merged Task121–123/125 suite passed **6 files /
+  98 tests**. No full verifier ran.
+- A concrete governing-contract conflict prevents truthful dispatch today. The
+  detailed runtime-composition plan makes Task133 consume a **reviewed Task132**
+  `VerifiedContextBindingSet`, which is absent from the unintegrated Task132
+  recovery. It also makes Task135 consume Task134's reviewed
+  `ProductionSpecialistRunnerCapability` for its real factory-closed binding,
+  while Task134 is in a fresh authorized repair. The higher-level dependency
+  table omits these two source-level edges; the stricter concrete contract
+  governs. Dispatching Task133 or Task135 now would require forbidden shadow
+  interfaces or a fake binding.
+- Therefore no Task133 or Task135 author claim/worktree is created by this
+  record. Their separate dispatch authorizations are held pending Task132 and
+  Task134 fresh review, coordinator-only integration, and recorded rebase; no
+  product or safety contract is broadened. The available review capacity is
+  instead assigned to Task132.
+- Task136's pre-edit worker also stopped cleanly without a claim or code after
+  finding that current merged Task120/H/P modules lack its required frozen
+  ports and DTOs. It may not invent shadow types; this is a separate
+  coordinator CF-1/interface-reconciliation checkpoint, not an implementation
+  failure.
+- Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
+  untouched; DRAIN/HARD PAUSE controls apply, the full verifier remains
+  **CLOSED**, and `neo` remains untouched.
