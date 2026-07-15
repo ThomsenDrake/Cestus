@@ -10641,3 +10641,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   rerun the complete focused/typecheck/no-index/diff/factory/topology gate
   before two fresh reviews. Full verification, providers, reset credits,
   integration, push, and every `neo` action remain closed.
+
+## RV-1-E-382 — Task133 authority approved; factory context corrected
+
+- Authority/security reviewer
+  `019f66dc-9ee8-74b0-925e-93418ec8f638` returned unqualified
+  **APPROVED** for candidate
+  `f186e703a22e20c6936b25c846451e60ee687cb9`.
+- Factory-plan reviewer `019f66dc-d31c-72b2-924a-ec0c713a24ad` returned
+  **NEEDS-CHANGES** because its prompt pinned registry checkpoint `5c886eb8`,
+  which predates RV-1-E-379/E-380 and therefore omitted the coordinator-owned
+  immutable `dcb863e2..f186e703` dispatch. The candidate bytes were not changed.
+- The in-doc `dcb863e2..7cadeaed` range remains the historical repaired-plan
+  candidate required by RV-1-E-376; RV-1-E-379/E-380 durably owns the distinct
+  current replacement review range. Source and integration remain frozen.
+
+## RV-1-E-383 — Task133 registry-aware factory re-review dispatched
+
+- Fresh Terra/xhigh factory-plan reviewer
+  `019f66e1-580f-7620-8724-3c9ddca4016b` reviews exact candidate bytes
+  `dcb863e2bf258205308cdb35955f10ef71fdc501..f186e703a22e20c6936b25c846451e60ee687cb9`
+  while reading RV-1-E-379/E-380 from immutable registry commit `e176cf58`.
+- The reviewer must verify the durable two-layer audit boundary, all factory
+  executability gates, and future explicit subagent-driven-development
+  authorization. It is read-only and pinned; its unqualified approval is still
+  required before coordinator-only plan integration.
+- Full verification, source, providers, reset credits, integration, push, and
+  every `neo` action remain closed.
