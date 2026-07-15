@@ -9488,3 +9488,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   and exact authenticated audit bytes. It grants no authority to any symbolic
   ref, author identity, worker-created attestation, source implementation,
   provider, credential, live, full-verification, reset-credit, or `neo` action.
+
+## RV-1-E-321 — Task117A author dispatched
+
+- Fresh Terra/xhigh author task
+  `019f664a-40b4-7450-84db-76cc847b80c9` is active and pinned in isolated
+  worktree `/home/drake/.codex/worktrees/4048/Cestus` from claim-only dispatch
+  commit `d29cf3bb1a74a97f210bb63cd5e0d08d7267a773`.
+- The dispatch pins external sibling attestation
+  `1cde7adb1a3b9fb1621b75410c203eec631a45ba`, complete intended freeze hash
+  `63bc52aa306f3da6bc58b9e91047c4a945111b25f5cc55eb1642241a3ba5e807`,
+  and audit hash
+  `85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba`.
+  The coordinator explicitly approved `superpowers:subagent-driven-development`
+  for this exact task.
+- Ownership is limited to the Task117A claim evidence suffix and CF-1 freeze.
+  The immutable claim block cannot change. The worker must prove causal RED,
+  pass the byte-identical materialized authority command before and after its
+  candidate commit, and stop without merge or self-integration.
+- Source implementation, full verification, live/provider/network/credential/
+  Nous activity, reset credits, and every `neo` action remain closed.
