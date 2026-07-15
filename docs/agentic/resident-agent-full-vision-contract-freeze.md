@@ -243,6 +243,38 @@ consumes—not recreates—the reviewed closure after its original 132–139
 dependencies. This correction grants no full verification, `neo`, provider,
 credential, network, Nous, browser, or self-integration action.
 
+## CF-1R4 — Pre-Task133/135 Factory Composition-Authority Foundation
+
+Fresh review of preserved Task132 candidate `70f70375` found that its
+real-family parser keeps producer identity distinct from source projection but
+still emits caller-supplied producer/registration identities without registrar
+attestation. Its public callback/parser route is structurally forgeable. This
+converges with rejected Task134 closure `b5d07b93`: Task133 waits for reviewed
+Task132, Task135 waits for reviewed Task134, and the existing Task140 waits for
+133–139. Deferring either defect to Task140 is a dependency cycle.
+
+CF-1R4 supersedes the CF-1R3 start gate, never the preserved candidates. One
+fresh Terra/xhigh R author may assemble `70f70375` and `b5d07b93` only in an
+isolated recovery branch, never the program branch. It is the sole temporary
+writer of `packages/local-runtime/src/agent-runtime-factory.ts` and owns only
+the minimum Task132/134 source and focused tests plus a dedicated factory-
+attestation test needed to move both context registrar and runner/H binding
+behind factory-owned construction. Package-owned PRR/operational/investigative
+registrars, Task135 stores, Task140's composition test, H/W/P/L/shared schemas,
+provider configuration, routes, UI, and `neo` remain forbidden.
+
+The foundation must retain actual registry/registrar/parser evidence, mounted
+authority, and H capability in a factory closure; public context/runner
+surfaces may neither mint nor accept structural producer/registration/parser/
+authority/store/provenance/H tuples or lookalikes. Swapped producer,
+registration, or parser values and a delegate-created H echo must fail before
+builder, delegate, or H activity. When the incomplete default composition
+cannot form attested bindings, it remains fail-closed. Fresh review of the
+complete isolated recovery range and coordinator-only integration are required
+before Task133 or Task135 rebases; Task140 later consumes the foundation rather
+than recreating it. This grants no full verification, external action, or
+permissive factory behavior.
+
 ## Section-Local Documentation Audit
 
 Run this exact command from the repository root:
