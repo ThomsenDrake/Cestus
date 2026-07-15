@@ -48,3 +48,17 @@ This single fail-fast `&&` chain must exit `0`. Full verification is **CLOSED**
 (`npm run verify` forbidden). Stop for fresh independent Terra/xhigh review;
 no self-review, self-integration, merge, provider/network/credential/Nous, or
 `neo` action is authorized.
+
+## CF-1R4 Blocked Evidence And CF-1R5 Supersession
+
+- Isolated commit `f53fa2ce` preserves three causal REDs only: caller producer/
+  registration/parser identity acceptance, absent factory attestation, and
+  delegate-supplied H echo acceptance. Its expected suite remains red; it is
+  not reviewable or integration-ready. `git diff --check && npm run
+  factory:check` passed and the worktree was cleaned without production edits.
+- Root cause: task-orchestrator owns post-run H sequencing, and Task135's
+  mounted stores are absent. This scope cannot honestly create terminal
+  durability without forbidden files or a tuple/fallback. CF-1R5 supersedes
+  this combined foundation with serialized registrar attestation, nonterminal
+  runner preparation, mounted-store preparation, and later H/orchestrator
+  finalization lanes. Preserve this claim and all candidates forward-only.
