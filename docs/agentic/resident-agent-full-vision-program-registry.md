@@ -10917,3 +10917,43 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, providers, network, credentials, Nous, reset credits,
   merge, rebase, push, registry edits, and every `neo` action remain closed to
   the author.
+
+## RV-1-E-399 — Task135D held for wrapped and computed loaders
+
+- Private-authority/lifecycle reviewer
+  `019f6700-9cdc-7193-9204-ee6dfa2dc8c7` and exhaustive AST reviewer
+  `019f6700-a01d-73b2-8362-cacccbdcb849` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `1a132365a075fd7893f5b026e0609729f97961f8` after the complete permitted
+  gate passed.
+- The AST reviewer found that recursive transparent wrappers are normalized
+  only around the outer callee, not around protected module specifiers,
+  `module` receivers, or `"require"` element keys. Parenthesized and typed
+  forms can therefore evade the exact-target policy.
+- The lifecycle reviewer found that standard computed or indirect
+  `import`/`require` paths fail open whenever their specifier is not a string
+  literal. A production module can bind the protected path to a variable and
+  load the public capture seam without becoming a counted importer.
+- Candidate `1a132365a075fd7893f5b026e0609729f97961f8` is rejected and
+  preserved. The existing author `019f6660-25a4-7941-9dfe-acf8db99555e` is
+  authorized for one final two-path forward TDD repair in
+  `packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts`
+  and `docs/agentic/claims/task-135d-runtime-handle-mounted-authority.md` only.
+- The scanner must recursively normalize transparent wrappers around literal
+  module arguments, `module` receivers, and element keys. Standard dynamic
+  `import`, `require`, and `module.require` calls whose target cannot be
+  statically resolved must fail closed in production roots; unrelated loader
+  calls and root/basename/lookalike negatives must remain accepted. Causal
+  fixtures must cover each wrapper family and computed/indirect standard
+  loader family.
+- The replacement must preserve production runtime bytes, the exact four-path
+  original-base union, no-merge topology, and the complete 20-test-or-greater
+  focused/typecheck/no-index/diff/factory/topology gate before two fresh
+  reviews. The coordinator explicitly approves
+  `superpowers:subagent-driven-development` where relevant, plus
+  receiving-code-review, systematic-debugging, test-driven development, and
+  verification-before-completion; no additional implementation subagent is
+  required for this narrow repair.
+- Full verification, providers, network, credentials, Nous, reset credits,
+  integration, push, registry edits, and every `neo` action remain closed to
+  the author.
