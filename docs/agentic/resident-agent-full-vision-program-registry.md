@@ -6978,3 +6978,35 @@ explicit implementation authorization.
   fresh true-lineage review. Full verification, `neo`, provider/network/
   credential/Nous action, reset-credit use, and child self-integration remain
   **CLOSED**.
+
+## RV-1-E-208 — Task132A review correction and factory-closure recovery
+
+- Fresh Terra/xhigh review
+  `019f63b8-ac2c-76b2-a86b-6834b10c6b60` returned **NEEDS-CHANGES** for
+  `c7f36114973857019a2d25735790489b406189f5`. Preserve that candidate and all
+  earlier Task132 candidates as unintegrated history. The migrated
+  `agent-runtime-context-packs.test.ts` is 588 lines at the candidate, not the
+  982 lines claimed in RV-1-E-206; 982 was a diff aggregate, so RV-1-E-206 is
+  corrected forward. More importantly, the migration dropped existing real
+  registrar resolution-integrity cases for swapped content hash, source
+  high-water, selection manifest, scope, policy, and provenance. Those cases
+  must be restored/reconciled, not replaced by identity-only negatives.
+- The reviewer also established a structural P1: exported
+  `captureFactoryContextPackAttestation` and
+  `createFactoryHeldMountedAgentContextCapability` let an arbitrary caller
+  create/register/capture/consume the apparent factory-held token directly.
+  That public mint route violates factory-private closure even though the
+  WeakMap lookup and captured-identity recheck are otherwise sound.
+- A fresh Terra/xhigh Task132A recovery author is authorized from `c7f36114`,
+  solely within the existing eight-file Task132A scope. It has explicit
+  `superpowers:subagent-driven-development`, systematic debugging, TDD, and
+  verification-before-completion authority. It must first restore a causal
+  real-registrar resolution-integrity RED and add a structural external-mint
+  RED; then make the smallest factory-private closure correction with no public
+  tuple/brand/callback/fallback/shadow mint route. It must preserve readonly
+  accessors, captured-identity recheck/default fail-closed behavior, and no
+  H/orchestrator/durable-success claim. Run focused GREEN, then the exact
+  non-full `&&` gate, commit, and stop for fresh staged-base complete-range
+  review. Tasks133/134 remain blocked; full verify, `neo`, provider/network/
+  credential/Nous action, reset-credit use, and child self-integration remain
+  **CLOSED**.
