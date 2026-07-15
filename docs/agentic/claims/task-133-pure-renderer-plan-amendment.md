@@ -13,10 +13,11 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R15A owns the
-portable mounted authority/store producer, selected test paths, exact
-prerequisite inventories, Task137 invalidation gate, and self-contained P/R0/H
-commands; CF-1R15 owns the remaining deep pre-await snapshot, three dispatch
+read backward only for sections it explicitly preserves. CF-1R16 owns the
+Task137A opaque admission operation, Task135B portable mounted store producer,
+Task137B runtime wiring, immutable dispatch manifests, handoff-port import
+boundary, live-fixture adapters, and self-contained P/R0/H review commands;
+CF-1R15 owns the remaining deep pre-await snapshot and three dispatch
 rows, and per-live-file resident assertions; CF-1R14 owns the remaining consume-time transport, exact
 import allowlist, canonical handoff gates, and thin smoke boundary; CF-1R12 owns fresh
 witness reissuance, all live fixture migration, and the complete Task133 gate;
@@ -538,3 +539,34 @@ serialized task.
   remain closed. Exactly two fresh independent unqualified Terra/xhigh approvals
   of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required before
   coordinator-only integration.
+
+## Forward Correction — Opaque Admission Operation And Immutable Dispatch
+
+- Status remains **plan-repair candidate only**. Fresh reviewers
+  `019f6558-44d2-79e2-8e48-a834b5b95431` and
+  `019f6558-458c-7053-b2b3-444a4bc41a70` rejected `505b22a1` because Task135B
+  still accepted public structural lifecycle sources, could revive authority
+  by requesting a later same-tuple admission, and had no exact pre-B source or
+  factory wiring. They also found mutable/uncommitted prerequisite manifests,
+  no sole-import test for the H registrar, and live-file checks that could pass
+  without causally delegating through resident acceptance.
+- CF-1R16 splits Task137 into Task137A, which adds an opaque one-admission
+  operation backed by Task125's exact current admission identity, and Task137B,
+  which performs the original wake runtime assembly and registers the issuer
+  on that exact runtime. Task135B runs between them and accepts only the opaque
+  operation. It never calls `revalidate`; later same-tuple revalidation cannot
+  restore an old operation, and invalidation during I/O prevents a receipt.
+- Task135C now requires a coordinator-authored manifest plus immutable claim
+  block to be committed as a clean dispatch bundle whose parent is the literal
+  source base. Fresh review discovers and verifies that commit, its parent,
+  manifest bytes/hash, immutable claim block, prerequisite ancestry, and exact
+  task before running the same task aggregate in review mode.
+- Task140P/R0/H add a causal sole-import boundary for the private H registrar.
+  Task140H migrates every live fixture through a named deterministic adapter;
+  the credential-free adapter suite proves one resident-acceptance call and
+  zero direct runtime, workflow, renderer, provider, or model construction.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.

@@ -4666,3 +4666,488 @@ wait for reviewed/integrated Task135B. P waits for every exact manifest
 prerequisite; R0 waits for P; H waits for R0. Every implementation dispatch
 message must explicitly state that the coordinator approves use of
 `superpowers:subagent-driven-development`; a generic approval is insufficient.
+
+## CF-1R16 Opaque Admission Operation, Immutable Dispatch, And Causal Adapter Gate
+
+**Status:** This append-only correction supersedes CF-1R15/15A where Task135B
+accepted public structural lifecycle sources, could request a later admission,
+or preceded the operation that authorizes its I/O; where dispatch manifests
+were uncommitted or mutable; where the private H registrar lacked a causal
+sole-import test; and where live-file text search could pass without an actual
+resident-acceptance call. All other CF-1R15A commands and CF-1R15 deep-snapshot
+requirements remain current only where this section does not replace them.
+Source remains frozen pending two fresh approvals of
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
+
+### Corrected dependency graph
+
+```text
+Task133.1-.3 atomic -------------------------------> Task133.5
+
+Task124 + Task125 + Task132A + Task134A + Task135A
+  -> Task137A opaque current-admission operation
+  -> Task135B portable mounted handoff stores
+  -> Task137B wake runtime assembly and issuer registration
+  -> Task138 mounted handoff projection
+
+Task135C immutable prerequisite checker ------------------------------+
+Task133.5 + Task136 + Task137B + Task138 + Task139 + all earlier rows -+
+  -> Task140P -> Task140R0 -> Task140H -> Task140R1
+```
+
+Task137 no longer waits for Task135B as one indivisible task. Task137A is the
+only pre-Task135B W slice; Task137B completes the original Task137 deliverable
+after Task135B. Task138 waits for reviewed/integrated Task135B and Task137B.
+Task140P requires both reviewed Task137 commits. Task135B and Task133 do not run
+in parallel: Task137A waits for the already integrated 132-135A base, Task135B
+waits for Task137A, and Task137B waits for Task135B. Task135C remains disjoint
+and may run while Task133 or Task137A runs.
+
+### Task137A - exact current-admission operation
+
+**Files:**
+
+- Modify `packages/local-runtime/src/portable-workspace-lifecycle.ts`
+- Modify `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`
+- Create `packages/local-runtime/src/mounted-artifact-authority-operation.ts`
+- Create `packages/local-runtime/test/mounted-artifact-authority-operation.test.ts`
+- Create `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+- Create `docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md`
+
+Task137A adds a source-path-only Task125 inspector for the exact
+`PortableWorkspaceLifecyclePorts` object produced by
+`createPortableWorkspaceLifecyclePorts`. The inspector takes only that bundle,
+looks up the currently active Task125-issued `WorkspaceAdmissionSnapshot` in a
+module-private WeakMap, requires its exact identity/generation/revision and
+verified lease, requires no unresolved pending outage/reconciliation, and
+returns the exact admission plus a fresh frozen copy of its associated
+`PortableWorkspaceMountedFacts`. It does not accept an admission from its
+caller and does not revalidate, remount, acquire a lease, append, or issue a new
+admission. Task125 records its actual port bundle/current admission in
+module-private WeakSets/WeakMaps; a structural copy or caller-authored port
+bundle fails before any mounted reader, lease, reconciliation, filesystem, or
+store call.
+
+The new non-indexed module owns these internal interfaces:
+
+```ts
+export interface MountedArtifactAuthorityOperation {
+  readonly schemaVersion: "mounted-artifact-authority-operation.v1";
+}
+
+export interface MountedArtifactAuthoritySnapshot {
+  readonly schemaVersion: "mounted-artifact-authority-snapshot.v1";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workspaceIdentityEventId: string;
+  readonly mountEvidenceId: string;
+  readonly authorityEvidenceId: string;
+  readonly ledgerStoreEvidenceId: string;
+  readonly artifactStoreEvidenceId: string;
+  readonly derivativeStoreEvidenceId: string;
+  readonly policyVersion: string;
+  readonly policyDigest: string;
+  readonly lockStateDigest: string;
+  readonly highWaterMark: string;
+  readonly highWaterOrdinal: number;
+  readonly admissionGenerationId: string;
+}
+
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
+  readonly wakeRuntime: object;
+  readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
+}): void;
+
+export function issueMountedArtifactAuthorityOperationForFactory(
+  wakeRuntime: object
+): MountedArtifactAuthorityOperation;
+
+export function inspectMountedArtifactAuthorityOperation(
+  operation: MountedArtifactAuthorityOperation
+): MountedArtifactAuthoritySnapshot;
+```
+
+These are source-path exports only and are absent from every package index.
+The module stores the exact runtime, exact Task125 bundle, exact active
+admission returned at issuance, and operation identity in private WeakMaps.
+Registration verifies only the actual Task125 bundle and creates no authority.
+Issuance calls Task125's source-path current-admission inspector, blocks when no
+complete admission is active, creates one fresh frozen one-field identity, and
+snapshots that exact admission/facts pair. Inspection looks up that exact
+identity and reruns the same current-admission check against the captured
+admission; a copied, spread, serialized, structurally equal, foreign-runtime,
+or already burned object fails. Any later Task125 revalidation replaces the
+active admission, so the old operation fails even when every workspace tuple
+field is unchanged. Every Task125 invalidation reason, including shutdown,
+burns the old operation permanently. A new operation can be issued only after
+a complete later revalidation; a fresh process uses a separately registered
+wake-runtime identity.
+
+Add exact-title REDs:
+
+- `rejects a structural lifecycle bundle before mounted authority activity`
+- `old operation cannot revive after identical tuple revalidation`
+- `shutdown authority loss and admission mismatch permanently burn operation identity`
+- `fresh post recovery admission mints a distinct operation after full readback`
+- `copied serialized and foreign runtime operations fail before store io`
+- `only wake runtime may register and only agent runtime factory may issue authority operations`
+- `only portable mounted store producer may inspect authority operations`
+
+The import test walks every production TypeScript source. The only permitted
+registrar importer is `packages/local-runtime/src/wake-supervisor-runtime.ts`;
+the only permitted issuer importer is
+`packages/local-runtime/src/agent-runtime-factory.ts`; the only permitted
+inspection importer is
+`packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`. Before
+those later files import the symbols, zero matching importers is valid. Package
+indexes, routes, DTOs, status/projector modules, serializers, tests-as-runtime
+helpers, and every other production file are forbidden.
+
+Task137A's identical RED/GREEN command is:
+
+```bash
+npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/agent/test/wake-supervisor.test.ts
+```
+
+Expected RED: exit `1` because the operation module and Task125 current-
+admission inspector are absent. Expected GREEN: exit `0`, followed by:
+
+```bash
+npm run typecheck && test ! -e packages/local-runtime/src/index.ts && ! rg -n 'mounted-artifact-authority-operation' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Task137A commits only its six owned files and stops for fresh review.
+
+### Task135B - operation-bound portable mounted stores
+
+Replace every earlier Task135B constructor/input with:
+
+```ts
+interface PortableMountedAgentArtifactStoreProducerInput {
+  readonly configSource: ResolvedLocalRuntimeConfig;
+  readonly mountedWorkspaceSource: MountedPortableWorkspace;
+}
+
+interface BindPortableMountedAgentHandoffInput {
+  readonly authorityOperation: MountedArtifactAuthorityOperation;
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runType: string;
+}
+
+export function createPortableMountedAgentArtifactStoreProducer(
+  input: PortableMountedAgentArtifactStoreProducerInput
+): {
+  bind(input: BindPortableMountedAgentHandoffInput):
+    Promise<PortableMountedAgentHandoffBinding>;
+};
+```
+
+Task135B accepts no mounted-facts port, `WorkspaceAvailabilityAuthority`,
+revalidator, lifecycle bundle, callback, inspector, `MountedPreparationAuthority`,
+path, store, admission, or admission generation from its caller. On producer
+construction it exact-key snapshots the portable config and mounted workspace.
+On `bind`, immediately before and after every material/manifest `put` or `get`,
+it calls only `inspectMountedArtifactAuthorityOperation` with the same exact
+operation identity. It never calls Task125 `revalidate` and therefore can never
+replace or revive the captured admission.
+
+Each inspection must equal the original operation snapshot and the freshly
+remounted workspace root, workspace ID, canonical ledger/blob/derivative paths,
+mount instance, identity/mount/authority/store evidence, policy/lock digests,
+and high-water tuple. Only then may Task135B derive Task135A's data-only
+`MountedPreparationAuthority`, create distinct path-hiding material/manifest
+stores below the remounted derivative root, and call the canonical Task135A
+binder. If authority is invalidated during an awaited I/O, the post-I/O
+inspection fails. The content-addressed write may remain an unreferenced orphan,
+but no store receipt, binder readback, H input, ledger event, or terminal effect
+is returned. A fresh later operation creates a fresh binding; the old one never
+works again.
+
+Add or replace exact-title REDs:
+
+- `accepts only a task137a opaque authority operation`
+- `forged structural authority operation fails before remount and store io`
+- `old operation cannot revive after same tuple revalidation`
+- `invalidation during material put and get returns no receipt or authority`
+- `invalidation during manifest put and get returns no receipt or authority`
+- `fresh recovery operation reconstructs distinct stores from full remount readback`
+- `rejects root mount evidence policy lock high water and store role swaps without fallback`
+- `creates distinct portable material and manifest stores without exposing paths`
+
+Task135B's identical RED/GREEN command is:
+
+```bash
+npm test -- packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/agent/test/specialist-handoff-preparation.test.ts
+```
+
+Expected RED: exit `1` because the producer is absent. Expected GREEN: exit
+`0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'revalidate|WorkspaceAvailabilityAuthority|PortableWorkspaceMountedFactsPort|MountedPreparationAuthority.*input|process\.cwd|\.cestus/local|internal-storage|in-memory-fallback|fallbackRoot' packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts && git diff --check && npm run factory:check
+```
+
+### Task137B - wake runtime registration and actual production path
+
+Task137B owns the original Task137 files and claim after reviewed Task135B:
+
+- Create `packages/local-runtime/src/wake-supervisor-runtime.ts`
+- Create `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
+- Create `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
+- Create `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`
+- Create `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+- Modify `packages/ontology/src/contracts.ts` only for the already CF-1-frozen
+  wake event schemas
+- Create `packages/ontology/test/resident-wake-contracts.test.ts`
+- Create `docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md`
+- Modify only `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+
+Its production constructor accepts exactly a `LocalRuntimeHandle`, frozen
+`WakeRuntimePort`, validated wake-policy snapshot, actor, clock/timer/watcher,
+and safe ID factories. It accepts no mounted-facts reader, availability
+authority, lifecycle bundle, lease/reconciliation port, admission, raw ledger,
+workspace path, artifact store, or authority callback from its caller. The
+non-indexed mounted lifecycle store builds Task125's three input adapters only
+from the exact handle's mounted workspace and ledger: it remounts the configured
+portable root, reads back the resident identity event, rebuilds current agent
+locks from ledger events, hashes the frozen policy and lock snapshot, records
+the current ledger ordinal/last-event readback, verifies blob/derivative roots,
+and implements the CF-1-frozen lease/lifecycle/reconciliation event readback.
+It appends only the CF-1 names in
+`resident-agent-full-vision-contract-freeze.md` and validates them through the
+ontology contract before append and after `readStream`; it invents no event
+type or fallback ledger.
+
+The ontology test requires strict payloads binding workspace, resident,
+supervisor epoch, identity/mount/authority evidence, policy/lock digest,
+high-water, causation/correlation, lease expiry, transition, and exact
+reconciliation readback. The mounted-store test proves process restart rebuilds
+all facts from `handle.ledger.readAll()`, an active foreign lease remains
+distinct from workspace unavailability, duplicate reconciliation reuses one
+exact idempotency record, and any swapped/regressed fact blocks before append.
+The runtime import test permits `createWakeSupervisorRuntime` in exactly one
+production importer after R0:
+`packages/local-runtime/src/agent-runtime-factory.ts`; before R0, zero is valid.
+It forbids routes, indexes, DTOs, status/projector modules, and every other
+production importer.
+
+`createWakeSupervisorRuntime` constructs the exact Task125 lifecycle bundle
+used by its supervisor and registers that exact runtime/bundle through
+`registerMountedArtifactAuthorityIssuerForWakeRuntime`. Registration creates no
+authority. The factory-only issue call succeeds only after the supervisor's
+current admission has survived authority, lease, policy/lock/high-water, and
+reconciliation checks; Task125's private current-admission lookup supplies the
+exact admission at that instant. The runtime exposes no issuer,
+operation, lifecycle port, mounted facts, admission, path, store, or writer on
+`WakeSupervisorRuntime` or `SupervisionControlPort`. Stop invalidates Task125
+authority before returning and thereby burns every operation for that epoch.
+
+The only production path is:
+
+```text
+agent-runtime-factory.ts
+  -> createWakeSupervisorRuntime(exact mounted handle and frozen runtime inputs)
+  -> issueMountedArtifactAuthorityOperationForFactory(exact wake runtime)
+  -> Task135B bind(exact operation and run identity)
+  -> Task135A binder plus distinct mounted stores
+```
+
+No route, command, public factory input, task result, DTO, or caller callback
+can occupy any arrow. Task140R0 later owns the sole factory import and call;
+Task137B does not edit the factory. Add exact-title REDs
+`wake runtime registers one non public authority issuer after complete admission`,
+`stopped runtime cannot issue or inspect an authority operation`, and
+`fresh process runtime requires new admission and emits a distinct operation`.
+
+Task137B's complete cross-lane RED/GREEN command is:
+
+```bash
+npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/agent/test/wake-supervisor.test.ts
+```
+
+Expected RED: exit `1` because the runtime module is absent. Expected GREEN:
+exit `0`, followed by `npm run typecheck && git diff --check && npm run
+factory:check`. Fresh review must prove the path above, same-operation checks
+around all I/O, permanent invalidation, no fallback, and no public issuer.
+
+### Task135C - committed immutable dispatch bundles
+
+Replace `resident-task140-prerequisites.v1` and every uncommitted-manifest
+instruction with `resident-task-prerequisites.v2`:
+
+```json
+{
+  "schemaVersion": "resident-task-prerequisites.v2",
+  "task": "task140p",
+  "sourceBaseSha": "0123456789012345678901234567890123456789",
+  "prerequisiteShas": {}
+}
+```
+
+The exact prerequisite keys remain CF-1R15A's enumerated P/R0/H sets, except
+the P set uses distinct `task137a` and `task137b` keys in place of `task137`.
+Task135C's CLI is now exactly:
+
+```bash
+node scripts/check-resident-task-prerequisites.mjs --task <task140p|task140r0|task140h> --phase <preflight|review> --manifest <path> --claim <path>
+```
+
+Before each P/R0/H dispatch, the coordinator creates the manifest and claim on
+the literal `sourceBaseSha`, writes one immutable claim block delimited by
+`<!-- resident-dispatch-v2:start -->` and
+`<!-- resident-dispatch-v2:end -->`, and includes task, source base, manifest
+path, lowercase SHA-256 of the exact manifest bytes, and every prerequisite
+key/SHA. The coordinator commits only those two files as dispatch commit `M`.
+`M^` must equal `sourceBaseSha`; `git diff --name-only M^..M` must equal the
+manifest and claim paths; no source/test/script file may be in `M`. The
+coordinator runs preflight from clean `HEAD=M` before sending the explicit
+subagent-driven-development approval.
+
+`preflight` discovers `M` with `git log -1 --format=%H -- <manifest>`, requires
+`HEAD=M`, verifies `M^=sourceBaseSha`, checks the exact two-file diff, reparses
+the committed manifest bytes, recomputes the manifest SHA-256, compares the
+immutable claim block byte-for-byte with its version at `M`, and proves every
+literal prerequisite is a commit ancestor of `sourceBaseSha`. It permits later
+worker changes outside the manifest and immutable claim block so the worker can
+rerun preflight before committing source.
+
+`review` rediscovers the same `M`, requires `M` to be an ancestor of reviewer
+`HEAD`, requires the manifest bytes and immutable claim block at reviewer HEAD
+to equal `M`, repeats exact schema/task/hash/ancestry checks, and rejects any
+replacement manifest commit, changed source base, symbolic SHA, extra/missing
+key, edited immutable block, or source file smuggled into `M`. Workers may only
+append evidence after the immutable block.
+
+Add temporary-Git-repository tests for valid coordinator commit, dirty source
+after M precommit, valid worker commit review, replaced M, amended manifest,
+changed immutable block, wrong parent, extra file in M, nonancestor prerequisite,
+symbolic/abbreviated SHA, wrong task, and missing/extra key. The owned files and
+RED/GREEN command remain CF-1R15A's corrected Task135C files and command. Its
+post-GREEN gate is `git diff --check && npm run factory:check`.
+
+### Task140 private H registrar import boundary
+
+Task140P additionally creates
+`packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts`.
+It walks every production TypeScript source and enforces:
+
+1. only `packages/local-runtime/src/agent-runtime-factory.ts` may import
+   `registerTaskOrchestratorHandoffPortForFactory`;
+2. only `packages/agent/src/task-orchestrator.ts` may import
+   `requireRegisteredTaskOrchestratorHandoffPort` or the resolver interface;
+3. neither symbol/module appears in any index, route, DTO, status, projection,
+   serializer, logger, UI, provider, workflow, or other production file; and
+4. a foreign deep importer, second registrar object, copied registry, and
+   structural port cannot populate the exact module-private WeakMap and cause
+   any checkpoint, runner, provider, H, ledger, or terminal effect.
+
+Before R0, zero factory registrar imports is valid; after R0, exactly one is
+required. The causal bypass RED belongs to
+`packages/agent/test/task-orchestrator-handoff-port.test.ts`. Add both suites to
+every P/R0/H focused and final command.
+
+Task140R0 is also the sole production composition owner for the Task137B path.
+It calls `createWakeSupervisorRuntime` with the exact `LocalRuntimeHandle` and
+factory-held policy/runtime inputs, waits for current lifecycle admission,
+calls `issueMountedArtifactAuthorityOperationForFactory` with that exact wake
+runtime, and passes the returned operation plus exact run identity to Task135B.
+Add exact-title R0 REDs `factory derives handoff stores through one task137b
+runtime operation`, `factory blocks store binding before current wake admission`,
+and `factory restart cannot reuse prior runtime or authority operation`.
+Failures record zero remount/store/provider/H/terminal effects beyond the
+mounted reads required to establish the block.
+
+### Task140H named live-fixture adapters
+
+Task140H additionally owns:
+
+- Create `packages/agent/test/fixtures/resident-live-acceptance-adapters.ts`
+- Create `packages/agent/test/resident-live-acceptance-adapters.test.ts`
+- Create `docs/agentic/claims/task-140-h-private-resident-invocation.md`
+- Modify `packages/agent/test/evidence-triage-nous-live.test.ts`
+- Modify `packages/agent/test/prr-negotiation-nous-live.test.ts`
+- Modify `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts`
+
+The fixture module exports exactly one named adapter per live file:
+`runEvidenceTriageResidentLiveAcceptance`,
+`runPrrNegotiationResidentLiveAcceptance`, and
+`runTaskOrchestratorEvidenceTriageResidentLiveAcceptance`. Each adapter accepts
+an explicit portable root and a test-injectable resident-acceptance dependency;
+its default dependency is only `runResidentSpecialistAcceptance`. The adapter
+module imports no direct runtime factory, agent runtime, task orchestrator,
+approval adapter, workflow, renderer, provider invoker, or model method.
+
+Each live file deletes all direct runtime/workflow/orchestrator/prompt/model
+construction and calls its exact named adapter once. The deterministic test
+injects a spy for each row, proves exactly one call with that row's explicit
+portable root and run type, and proves zero direct factory/runtime/provider/
+workflow/renderer/model calls. It uses no credential, provider, network, or
+live test. Exact-title rows are:
+
+- `evidence triage live fixture delegates once through resident acceptance`
+- `prr negotiation live fixture delegates once through resident acceptance`
+- `orchestrator evidence triage live fixture delegates once through resident acceptance`
+
+The final static gate positively requires each live file's exact adapter import
+and call, rejects either other adapter name in that file, and bans
+`createAgentRuntime`, `createTaskOrchestrator`,
+`createTaskOrchestratorProviderApprovalAdapter`, `defaultLocalAgentRuntimeFactory`,
+`createSqlitePrrRuntime`, direct workflow functions, prompt builders/renderers,
+`prepareSpecialistRun`, `invokeSpecialistModel`, and `runtime.invokeModel` in
+all three live files and in the adapter module.
+
+### Self-contained P/R0/H precommit and review gates
+
+The coordinator/worker precommit commands use `--phase preflight`; every fresh
+reviewer uses the corresponding command below with `--phase review`. The claim
+argument is mandatory. These review commands are complete and do not inherit a
+shell fragment from an earlier overlay.
+
+Task140P fresh-review command:
+
+```bash
+node scripts/check-resident-task-prerequisites.mjs --task task140p --phase review --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md && npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts && npm run typecheck && ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Task140R0 fresh-review command:
+
+```bash
+node scripts/check-resident-task-prerequisites.mjs --task task140r0 --phase review --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md && npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts && npm run typecheck && ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/local-runtime packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+Task140H fresh-review command:
+
+```bash
+node scripts/check-resident-task-prerequisites.mjs --task task140h --phase review --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md && npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/resident-live-acceptance-adapters.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/resident-specialist-acceptance.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts && npm run typecheck && rg -n 'runEvidenceTriageResidentLiveAcceptance' packages/agent/test/evidence-triage-nous-live.test.ts && rg -n 'runPrrNegotiationResidentLiveAcceptance' packages/agent/test/prr-negotiation-nous-live.test.ts && rg -n 'runTaskOrchestratorEvidenceTriageResidentLiveAcceptance' packages/agent/test/task-orchestrator-evidence-triage-live.test.ts && ! rg -n 'createAgentRuntime|createTaskOrchestrator|createTaskOrchestratorProviderApprovalAdapter|defaultLocalAgentRuntimeFactory|createSqlitePrrRuntime|runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|prepareSpecialistRun|invokeSpecialistModel|runtime\.invokeModel|renderProductionSpecialistPrompt|buildLocalRuntimeStatusPromptArtifact' packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/fixtures/resident-live-acceptance-adapters.ts && rg -n 'runResidentSpecialistAcceptance' packages/agent/test/fixtures/resident-live-acceptance-adapters.ts packages/local-runtime/src/agent-nous-smoke.ts && ! rg -n 'runtime\.invokeModel|renderProductionSpecialistPrompt|prepareSpecialistRun|invokeSpecialistModel|runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|buildLocalRuntimeStatusPromptArtifact|createSqlitePrrRuntime|defaultLocalAgentRuntimeFactory|\.cestus/local/prompt-artifacts' packages/local-runtime/src/agent-nous-smoke.ts && ! rg -n 'production-model-invocation-admission|production-prompt-readback|task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+For the worker's uncommitted post-GREEN precommit gate, replace only
+`--phase review` with `--phase preflight`; every other byte of the corresponding
+displayed command remains identical. Before tests/source exist, the coordinator
+runs only that task's leading checker invocation in `preflight` mode from clean
+dispatch commit M. No P/R0/H commit can reach review without the coordinator
+checker preflight, the worker's complete uncommitted precommit command, and the
+fresh review command shown above.
+
+### CF-1R16 dispatch and review rule
+
+After two fresh unqualified approvals and coordinator-only plan integration,
+dispatch Task137A, Task133.1-.3, and Task135C only when their existing
+predecessors are present; Task135B waits for reviewed/integrated Task137A;
+Task137B waits for reviewed/integrated Task135B; Task138 waits Task137B; P waits
+all exact manifest prerequisites; R0 waits P; H waits R0. Every implementation
+message must specifically say the coordinator approves use of
+`superpowers:subagent-driven-development` for that exact task.
+
+Two fresh independent Terra/xhigh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Approval requires explicit
+confirmation that old operations cannot revive; Task135B accepts no structural
+authority and never revalidates; Task137B plus R0 provide the sole production
+issuer path; dispatch manifests and immutable claim blocks are committed and
+fresh-reviewable; the H registrar has causal import/bypass protection; every
+live fixture causally delegates through one named resident adapter; and all
+precommit/review commands are self-contained. Exactly two unqualified
+approvals permit coordinator-only plan integration. Source/full/live/provider/
+credential/reset-credit/`neo`/self-integration/merge remain closed.
