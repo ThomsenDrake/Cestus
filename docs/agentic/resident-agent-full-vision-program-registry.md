@@ -12610,3 +12610,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Two additional delayed duplicate read-only reviews may finish, but their
   verdicts are advisory only and cannot replace either official unqualified
   approval or weaken any finding.
+
+## RV-1-E-462 — Task133.5 corrected candidate admitted to review
+
+- Corrected Task133.5 candidate
+  `8250f9720ecb7f79e3f13fcb24e167da2533562c` is a clean descendant of rejected
+  `a262abe0198e96698bfc01f698527683022136c4` and preserves the exact eight-path
+  changed-file ceiling from recovery base
+  `9710909961d4579006c73d7781c094cec4b00e45`.
+- Fresh coordinator admission passed the exact eight focused files at 97 tests,
+  standalone typecheck, all three negative prompt-boundary searches, exact-
+  range diff checking, factory readiness, and clean-checkout verification.
+- Fresh mounted-prompt authority/durable-restart reviewer
+  `019f6812-89b7-7291-a76a-37c2d65497a8` and adversarial TypeScript/hostile-
+  input/integration reviewer `019f6812-8f92-7263-bbea-6719bb43f20b` are pinned
+  and read-only on the exact candidate. Both must return unqualified
+  **APPROVED** verdicts before coordinator integration.
+- Reviews cover atomic witness reservation/failure burn, pre-append mounted
+  currentness, canonical bytes, actual fresh-process durable recovery, exact
+  context refs, all mount-drift counterfactuals, private types, no duplicate
+  provider preparation, prompt secrecy, and fallback prohibitions.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
