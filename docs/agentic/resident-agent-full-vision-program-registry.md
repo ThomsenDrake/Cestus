@@ -9614,3 +9614,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   source-dispatch preparation on task branches. Full verification,
   live/provider/network/credential/Nous activity, reset credits, and every
   `neo` action remain closed until a later explicit gate.
+
+## RV-1-E-327 — Post-Task117A source fan-out dispatched
+
+- Three fresh independent Terra/xhigh implementation tasks start from exact
+  clean program checkpoint `197c3ca528e9b666c02b9b87695bf900efa195b1`:
+  Task135D runtime capture `019f6660-25a4-7941-9dfe-acf8db99555e` on
+  `codex/task-135d-runtime-handle-capture`; atomic Task133.1-.3 prompt binding
+  `019f6660-2912-7622-a99a-0def4e19e051` on
+  `codex/task-133-atomic-prompt-binding-migration`; and Task135C prerequisite
+  checker `019f6660-252a-7e21-a623-eafe794e4a38` on
+  `codex/task-135c-prerequisite-checker`.
+- Every implementation message pins CF-1 integration
+  `a321955d84eb700722e08eaa835ddb076fda62b2`, reviewed/coordinator-integrated
+  Task117A merge `2ad417356afc00b26ff00fa763977e2469463d72`, external sibling
+  attestation C `1cde7adb1a3b9fb1621b75410c203eec631a45ba`, Task125
+  `2e5c35ab7bca33df9f1a0c482c496fbb93350086`, and Task135A
+  `ac3f91901da0c9b23722a046be73d95746f691da`. Task133 additionally pins the
+  exact integrated Task120, Task126-130, Task132A, and Task134A predecessors.
+- The coordinator explicitly approves `superpowers:subagent-driven-development`
+  for each exact task together with TDD, systematic debugging, and
+  verification-before-completion. Prompts bind exact range-wide file ceilings,
+  causal REDs, identical focused GREEN commands, final typecheck/static/diff/
+  factory gates, and coordinator-owned fresh final review/integration.
+- The rejected historical `codex/task-133-runtime-prompt-binding-v2` material is
+  explicitly quarantined from inspection, reuse, cherry-pick, rebase, or
+  review. Task133 must be implemented fresh as one atomic .1-.3 migration.
+- Full verification, live/provider/network/credential/Nous actions, reset
+  credits, child integration, central-registry edits, and every `neo` action
+  remain closed. Each worker stops with a clean committed candidate or a
+  structured authority/schema/repeated-verifier blocker; routine progress does
+  not require user intervention.
