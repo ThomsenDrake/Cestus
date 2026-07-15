@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: claimed.
+- Status: blocked.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -40,3 +40,15 @@ network, credential, Nous, reset-credit, `neo`, central-registry edits, and
 integration actions are closed. The authorized final gates are the focused
 Task135C test, static ABI rejection, `git diff --check`, and
 `npm run factory:check` only.
+
+## Blocked Evidence (2026-07-15)
+
+The mandatory causal RED command
+`npm test -- packages/local-runtime/test/check-resident-task-prerequisites.test.ts`
+was attempted before any checker production file existed. It exited `127` with
+`sh: line 1: vitest: command not found`; the checkout also has no executable
+`node_modules/.bin/vitest`. This is an unavailable dependency rather than the
+only accepted checker-absence RED. Per the Task135C stop condition, no package
+installation, production checker implementation, or substitute verifier was
+attempted. The new uncommitted causal test file remains available for a
+coordinator-provided dependency recovery and subsequent valid RED/GREEN cycle.
