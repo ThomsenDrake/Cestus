@@ -8449,3 +8449,25 @@ explicit implementation authorization.
   source head `5f181cae`. Two unqualified **APPROVED** verdicts remain required.
 - Latest authenticated usage remains 35% used / 65% weekly remaining. All
   source/live/full/credential/reset-credit/`neo`/integration actions remain closed.
+
+## RV-1-E-272 — Nested-proof/readback/local-engine/live-route rejection
+
+- Both reviewers returned **NEEDS-CHANGES** on exact range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..fadbc03d`. Persistence reviewer
+  `019f6511-eca9-7223-8b74-d686ad2497af` found P's nested approval proof still
+  carries prompt bytes, Task133.5 lacks opaque mounted-readback provenance, and
+  the claim retains a stale one-review integration sentence. Authority reviewer
+  `019f6511-f063-7ff3-9a65-98c404c858b7` independently confirmed the nested
+  proof leak and additionally found provider-ID-only local-engine bypass,
+  direct live Nous workflow bypasses, missing portable smoke bootstrap/no-mount
+  RED, and a review range that excludes base commit `0481c1e0` and its registry
+  change.
+- The sole plan writer is authorized only for CF-1R11: add an opaque exact
+  mounted-v1 readback witness; replace P's nested proof with hash-only facts plus
+  a separate opaque approval-admission token privately consumed by R0; require
+  H admission for every production run including local engines; migrate both
+  live Nous tests and smoke to one portable resident acceptance harness; add
+  mounted/no-mount REDs; and make `0481c1e0^..HEAD` the sole two-review range
+  including the historic registry file.
+- All source/live/full/credential/reset-credit/`neo`/integration actions remain
+  closed pending docs validation, commit, and two fresh approvals.
