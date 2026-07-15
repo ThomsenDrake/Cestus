@@ -7465,3 +7465,23 @@ explicit implementation authorization.
   review that omits staged runner source/test is admissible. A fresh independent
   Terra/xhigh defects-first complete-range review is now required; no merge,
   Task135A release, or child self-integration is authorized.
+
+## RV-1-E-231 — Final Task133 amendment bound and Task134A review dispatch
+
+- Per bounded recovery rule, final Task133 amendment author
+  `/root/task133_pure_renderer_plan_final_author`, session
+  `019f641c-36d8-7760-a0ef-3b78d7f3a21f`, is the final delegated author
+  attempt on the preserved single lane. Its authoritative
+  `rollout-2026-07-15T00-49-58-019f641c-36d8-7760-a0ef-3b78d7f3a21f.jsonl:8`
+  records `model=gpt-5.6-terra`, `reasoning_effort=xhigh`, and `effort=xhigh`.
+  It must repair the six executable-plan omissions in its concrete two-doc
+  patch before committing; if it again produces neither patch nor exact
+  blocker by its bounded checkpoint, the coordinator—not another author—takes
+  over that same preserved worktree and dispatches only a fresh reviewer.
+- Fresh independent Task134A complete-range reviewer
+  `/root/task134a_complete_range_review`, session
+  `019f641e-30ce-7773-b130-477a85342aab`, is read-only and bound to exact
+  `049de5bff428df204912d485baff57ca7f6d8cf3..08e12c60b068e5a8bbf2c7f8087ac450bd2df372`,
+  including staging `6aaa5438a880bc4c211fe4790ffa196e030ab3c9`. Its own
+  `turn_context` records Terra/xhigh. Integration remains coordinator-only and
+  conditional on an unqualified **APPROVED** verdict.
