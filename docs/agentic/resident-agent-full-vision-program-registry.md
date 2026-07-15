@@ -7220,3 +7220,25 @@ explicit implementation authorization.
   provider/durable/terminal change, then run focused GREEN and the exact
   non-full `&&` gate, commit, remove its dependency link, and stop for fresh
   complete staged-base review. All closed-gate restrictions remain in force.
+
+## RV-1-E-219 — Task132A boundary-reset candidate admitted to review only
+
+- The replacement's actual observed Git candidate is
+  `812e5899f339eda84bf187033e08c44ff7ba945f`; the author's separately reported
+  full SHA suffix was inaccurate and is not accepted as identity evidence. The
+  real candidate is clean, descends from staged base
+  `f66c100554301f57ce757c2cfe0f82e729c8bab6`, and the complete staged-base
+  range contains only Task132A's claim, three preserved package registrar
+  modules, two local-runtime sources, and two local-runtime tests. Its final
+  commit changes only the claim, the two local-runtime sources, and the two
+  local-runtime tests.
+- The coordinator independently reran the exact non-full `&&` gate at the
+  observed candidate: 3 focused files / 55 tests passed, then typecheck,
+  whitespace, and factory readiness all exited 0. A coordinator-created
+  temporary dependency link was removed afterward. This is review-only
+  evidence: a fresh independent Terra/xhigh reviewer must read exact complete
+  staged-base range
+  `f66c100554301f57ce757c2cfe0f82e729c8bab6..812e5899f339eda84bf187033e08c44ff7ba945f`
+  before coordinator-only integration. Tasks133/134 remain blocked; full
+  verify, `neo`, provider/network/credential/Nous action, reset-credit use,
+  and child self-integration remain **CLOSED**.
