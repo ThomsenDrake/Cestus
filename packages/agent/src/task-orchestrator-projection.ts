@@ -1,10 +1,14 @@
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import {
+  hashAgentTaskOrchestratorPromptBindingReceipt,
+  type KnowledgeEvent
+} from "../../ontology/src/contracts.js";
 import type {
   AgentSpecialistRunType,
   AgentTaskStatus,
   ProjectedTaskOrchestratorTask,
   TaskOrchestratorAttemptProjection,
   TaskOrchestratorLeaseProjection,
+  TaskOrchestratorLatestCheckpointProjection,
   TaskOrchestratorProjectionDto,
   TaskOrchestratorProjectionState,
   TaskOrchestratorSuspendedCheckpointProjection
@@ -50,6 +54,7 @@ interface CheckpointRecord {
   readonly runId?: string | undefined;
   readonly toolRequestIds: readonly string[];
   readonly safeNextActions: readonly string[];
+  readonly latestPromptBindingReceipt?: TaskOrchestratorAttemptProjection["latestPromptBindingReceipt"];
 }
 
 interface ReleaseRecord {
@@ -170,7 +175,15 @@ export function buildTaskOrchestratorProjection(
           checkpointedAt: event.payload.checkpointedAt as string,
           runId: event.payload.runId as string | undefined,
           toolRequestIds: freezeArray((event.payload.toolRequestIds as readonly string[] | undefined) ?? []),
-          safeNextActions: freezeArray((event.payload.safeNextActions as readonly string[] | undefined) ?? [])
+          safeNextActions: freezeArray((event.payload.safeNextActions as readonly string[] | undefined) ?? []),
+          latestPromptBindingReceipt: projectPromptBindingReceipt({
+            checkpointEventId: event.id,
+            checkpointKind: event.payload.checkpointKind,
+            taskId: event.payload.taskId,
+            attemptId: event.payload.attemptId,
+            runId: event.payload.runId
+          }, event.payload.promptBindingReceipt
+          )
         });
         rememberAttemptEvent(draft, event);
         break;
@@ -310,6 +323,9 @@ function projectAttempt(input: {
 }): TaskOrchestratorAttemptProjection {
   const latestClaim = input.draft.claims.at(-1);
   const latestCheckpoint = input.draft.checkpoints.at(-1);
+  const latestPromptBindingReceipt = input.draft.checkpoints.findLast(
+    (checkpoint) => checkpoint.latestPromptBindingReceipt !== undefined
+  )?.latestPromptBindingReceipt;
   const latestRelease = input.draft.releases.at(-1);
   const latestClaimRelease = latestClaim === undefined
     ? undefined
@@ -380,11 +396,21 @@ function projectAttempt(input: {
     diagnosticReason = "checkpoint-blocked";
   }
 
+  const attemptId = latestClaim?.attemptId ?? input.draft.completion?.attemptId ?? "attempt_unknown";
+  const latestCheckpointProjection: TaskOrchestratorLatestCheckpointProjection | undefined = latestCheckpoint === undefined
+    ? undefined
+    : freezeProjected({
+      checkpointEventId: latestCheckpoint.event.id,
+      checkpointKind: latestCheckpoint.checkpointKind,
+      attemptId,
+      ...(latestCheckpoint.runId === undefined ? {} : { runId: latestCheckpoint.runId })
+    });
+
   return freezeProjected({
     attemptKey: input.draft.attemptKey,
     taskId: input.draft.taskId,
     runType: input.draft.runType,
-    attemptId: latestClaim?.attemptId ?? input.draft.completion?.attemptId ?? "attempt_unknown",
+    attemptId,
     retryGeneration: input.draft.retryGeneration,
     state,
     recoverable,
@@ -405,12 +431,82 @@ function projectAttempt(input: {
         handoffRecordedEventId: input.handoffRecorded.event.id,
         verifiedAt: input.handoffRecorded.verifiedAt
       }),
+    latestCheckpoint: latestCheckpointProjection,
+    latestPromptBindingReceipt,
     specialistRunCompletedEventId: completedProof?.specialistRunCompletedEventId ?? input.runCompleted?.event.id,
     orchestrationCompletedEventId: input.draft.completion?.event.id,
     orchestrationFailedEventId: input.draft.failure?.event.id,
     diagnosticReason,
     eventIds: freezeArray(input.draft.eventIds),
     causationIds: freezeArray(input.draft.causationIds)
+  });
+}
+
+function projectPromptBindingReceipt(
+  checkpoint: {
+    readonly checkpointEventId: unknown;
+    readonly checkpointKind: unknown;
+    readonly taskId: unknown;
+    readonly attemptId: unknown;
+    readonly runId: unknown;
+  },
+  value: unknown
+): TaskOrchestratorAttemptProjection["latestPromptBindingReceipt"] {
+  if (
+    checkpoint.checkpointKind !== "prompt-bound" ||
+    typeof checkpoint.checkpointEventId !== "string" ||
+    checkpoint.checkpointEventId.length === 0 ||
+    typeof checkpoint.taskId !== "string" ||
+    checkpoint.taskId.length === 0 ||
+    typeof checkpoint.attemptId !== "string" ||
+    checkpoint.attemptId.length === 0 ||
+    typeof checkpoint.runId !== "string" ||
+    checkpoint.runId.length === 0
+  ) {
+    return undefined;
+  }
+  if (value === undefined || value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const receipt = value as Record<string, unknown>;
+  const keys = [
+    "schemaVersion", "taskId", "attemptId", "runId", "sourceApprovedPromptArtifactHash", "boundPromptArtifactHash", "generatedAt", "approvalEventId",
+    "providerPostureHash", "exactRunBindingHash", "workspaceId", "mountInstanceId", "receiptHash"
+  ] as const;
+  if (Object.keys(receipt).length !== keys.length || keys.some((key) => typeof receipt[key] !== "string")) {
+    return undefined;
+  }
+  if (receipt.schemaVersion !== "agent-task-orchestrator.prompt-binding-receipt.v1") {
+    return undefined;
+  }
+  const stringReceipt = receipt as Record<(typeof keys)[number], string>;
+  let expectedReceiptHash: `sha256:${string}`;
+  try {
+    expectedReceiptHash = hashAgentTaskOrchestratorPromptBindingReceipt(stringReceipt);
+  } catch {
+    return undefined;
+  }
+  if (stringReceipt.receiptHash !== expectedReceiptHash) {
+    return undefined;
+  }
+  if (
+    stringReceipt.taskId !== checkpoint.taskId ||
+    stringReceipt.attemptId !== checkpoint.attemptId ||
+    stringReceipt.runId !== checkpoint.runId
+  ) {
+    return undefined;
+  }
+  return freezeProjected({
+    checkpointEventId: checkpoint.checkpointEventId,
+    taskId: stringReceipt.taskId,
+    attemptId: stringReceipt.attemptId,
+    runId: stringReceipt.runId,
+    sourceApprovedPromptArtifactHash: stringReceipt.sourceApprovedPromptArtifactHash,
+    boundPromptArtifactHash: stringReceipt.boundPromptArtifactHash,
+    approvalEventId: stringReceipt.approvalEventId,
+    providerPostureHash: stringReceipt.providerPostureHash,
+    exactRunBindingHash: stringReceipt.exactRunBindingHash,
+    receiptHash: stringReceipt.receiptHash
   });
 }
 

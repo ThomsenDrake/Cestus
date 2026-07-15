@@ -75,6 +75,16 @@ export type SpecialistRunnerProviderReadiness =
 export interface SpecialistRunnerProviderTransferApprovalProof {
   readonly currentPreviewInput: RebuildProviderByteTransferCurrentPreviewInput;
   readonly approvedPreviewHash: `sha256:${string}`;
+  /** Present only after the human-approved v1 artifact has been bound into v2. */
+  readonly approvedPromptArtifact?: PromptArtifactEnvelope;
+}
+
+export interface Task133V2TransferAuthorityBlocked {
+  readonly schemaVersion: "agent-task133-v2-transfer-boundary.v1";
+  readonly status: "blocked";
+  readonly code: "authority-resolution-required";
+  readonly boundPromptArtifactHash: `sha256:${string}`;
+  readonly sourceApprovedPromptArtifactHash: `sha256:${string}`;
 }
 
 export interface AssertSelectedSpecialistProviderByteTransferApprovalInput {
@@ -210,6 +220,79 @@ interface CurrentProductionSpecialistRun {
 
 const preparedSpecialistRunBindings = new WeakMap<PreparedSpecialistRun, PreparedSpecialistRunBinding>();
 
+/**
+ * Validates a post-approval v2 envelope against the immutable, human-approved
+ * v1 source. This is assertion-only and performs no provider, ledger, store,
+ * handoff, or terminal work.
+ */
+export function assertApprovedV1ToV2ArtifactInvariants(
+  input: {
+    readonly approvedV1: PromptArtifactEnvelope;
+    readonly candidateV2: PromptArtifactEnvelope;
+  }
+): void {
+  const approved = promptArtifactAuditMetadata(input.approvedV1);
+  const bound = promptArtifactAuditMetadata(input.candidateV2);
+  const source = approved.production;
+  const binding = bound.production;
+  if (source?.schemaVersion !== "agent-production-prompt-binding.v1") {
+    throw new Error("Production v2 binding requires an exact approved v1 prompt artifact.");
+  }
+  if (binding?.schemaVersion !== "agent-production-prompt-binding.v2") {
+    throw new Error("Production prompt binding is not a strict v2 artifact.");
+  }
+  if (
+    binding.sourceApprovedPromptArtifactHash !== approved.inputArtifactHash ||
+    input.candidateV2.text !== input.approvedV1.text ||
+    binding.renderedPromptHash !== source.renderedPromptHash ||
+    bound.runType !== approved.runType ||
+    bound.promptTemplateId !== approved.promptTemplateId ||
+    bound.promptTemplateVersion !== approved.promptTemplateVersion ||
+    bound.safetyClass !== approved.safetyClass ||
+    bound.transferApprovalClass !== approved.transferApprovalClass ||
+    JSON.stringify(bound.contextPackRefs) !== JSON.stringify(approved.contextPackRefs) ||
+    JSON.stringify(binding.evaluatedContextRequirements) !== JSON.stringify(source.evaluatedContextRequirements) ||
+    JSON.stringify(binding.resolvedPayloadAudits) !== JSON.stringify(source.resolvedPayloadAudits)
+  ) {
+    throw new Error("Production v2 binding does not preserve the exact approved v1 bytes and context.");
+  }
+}
+
+export function blockV2ProviderTransferUntilFactoryAuthority(
+  input: {
+    readonly approvedV1: PromptArtifactEnvelope;
+    readonly candidateV2: PromptArtifactEnvelope;
+  }
+): Task133V2TransferAuthorityBlocked {
+  assertApprovedV1ToV2ArtifactInvariants(input);
+  const boundPromptArtifactHash = requireTask133CanonicalContentHash(
+    input.candidateV2.manifest.inputArtifactHash,
+    "bound prompt artifact"
+  );
+  const sourceApprovedPromptArtifactHash = requireTask133CanonicalContentHash(
+    input.approvedV1.manifest.inputArtifactHash,
+    "source approved prompt artifact"
+  );
+  return Object.freeze({
+    schemaVersion: "agent-task133-v2-transfer-boundary.v1",
+    status: "blocked",
+    code: "authority-resolution-required",
+    boundPromptArtifactHash,
+    sourceApprovedPromptArtifactHash
+  });
+}
+
+function requireTask133CanonicalContentHash(value: string, label: string): `sha256:${string}` {
+  if (!isTask133CanonicalContentHash(value)) {
+    throw new Error(`Task133 ${label} hash is not a canonical SHA-256 content hash.`);
+  }
+  return value;
+}
+
+function isTask133CanonicalContentHash(value: string): value is `sha256:${string}` {
+  return /^sha256:[a-f0-9]{64}$/.test(value);
+}
+
 export async function prepareSpecialistRun(
   input: SpecialistRunnerBaseInput,
   runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">
@@ -315,9 +398,23 @@ export async function invokeSpecialistModel(
  */
 export async function assertSelectedSpecialistProviderByteTransferApproval(
   input: AssertSelectedSpecialistProviderByteTransferApprovalInput
-): Promise<void> {
+): Promise<Task133V2TransferAuthorityBlocked | undefined> {
   const promptArtifact = input.promptArtifact;
-  assertPromptArtifactCanTransferToRemoteProvider(promptArtifact);
+  const production = promptArtifact.manifest.production;
+  const proof = input.providerTransferApproval;
+  if (production?.schemaVersion === "agent-production-prompt-binding.v2") {
+    if (
+      proof.approvedPromptArtifact === undefined
+    ) {
+      throw new Error("Production v2 binding requires the exact approved v1 artifact.");
+    }
+    return blockV2ProviderTransferUntilFactoryAuthority({
+      approvedV1: proof.approvedPromptArtifact,
+      candidateV2: promptArtifact
+    });
+  } else {
+    assertPromptArtifactCanTransferToRemoteProvider(promptArtifact);
+  }
   const card = providerReadinessCards(input.providerReadiness).find((candidate) => candidate.providerId === input.providerId);
   if (card === undefined) {
     throw new Error("Selected provider readiness is unavailable for specialist invocation.");
@@ -330,7 +427,7 @@ export async function assertSelectedSpecialistProviderByteTransferApproval(
     promptArtifact.manifest.transferApprovalClass === "provider-byte-transfer"
   ) {
     await assertProviderByteTransferApproved(input, card, promptArtifact);
-    return;
+    return undefined;
   }
   throw new Error("Selected provider readiness is not ready for provider byte-transfer approval.");
 }
@@ -358,7 +455,7 @@ async function assertProviderReadinessAllowsInvocation(
   if (input.providerTransferApproval === undefined) {
     throw new Error("Provider byte-transfer approval is required before remote specialist invocation.");
   }
-  await assertSelectedSpecialistProviderByteTransferApproval({
+  const approval = await assertSelectedSpecialistProviderByteTransferApproval({
     ledger: input.ledger,
     runId: input.runId,
     taskId: input.taskId,
@@ -369,6 +466,9 @@ async function assertProviderReadinessAllowsInvocation(
     providerTransferApproval: input.providerTransferApproval,
     promptArtifact
   });
+  if (approval?.status === "blocked") {
+    throw new Error("Production v2 provider transfer requires factory authority resolution.");
+  }
 }
 
 async function assertProviderByteTransferApproved(
@@ -380,7 +480,9 @@ async function assertProviderByteTransferApproved(
   if (proof === undefined) {
     throw new Error("Provider byte-transfer approval is required before remote specialist invocation.");
   }
-  const promptAudit = promptArtifactAuditMetadata(promptArtifact);
+  const promptAudit = promptArtifact.manifest.production?.schemaVersion === "agent-production-prompt-binding.v2"
+    ? promptArtifactAuditMetadata(proof.approvedPromptArtifact!)
+    : promptArtifactAuditMetadata(promptArtifact);
   const current = await (input.rebuildCurrentPreview ?? rebuildProviderByteTransferCurrentPreview)(proof.currentPreviewInput);
   if (current.activeLocks.length > 0) {
     throw new Error("Provider byte-transfer approval proof includes active locks.");

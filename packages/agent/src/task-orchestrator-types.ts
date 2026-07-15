@@ -1,4 +1,4 @@
-import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { type KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type {
   ContextPackRef,
   ContextPackRegistry,
@@ -84,6 +84,22 @@ export interface TaskOrchestratorProviderPostureCheckpoint {
   readonly promptArtifactHash: string;
   readonly contextBindingHashes: readonly string[];
   readonly approvalRequirementId: string;
+}
+
+export interface TaskOrchestratorPromptBindingReceiptV1 {
+  readonly schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1";
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly sourceApprovedPromptArtifactHash: `sha256:${string}`;
+  readonly boundPromptArtifactHash: `sha256:${string}`;
+  readonly generatedAt: string;
+  readonly approvalEventId: string;
+  readonly providerPostureHash: `sha256:${string}`;
+  readonly exactRunBindingHash: `sha256:${string}`;
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly receiptHash: `sha256:${string}`;
 }
 
 export interface TaskOrchestrationBoundaryInput {

@@ -1,0 +1,38 @@
+# Task133.1 Claim: Discriminated v1 Artifact And Post-Approval v2 Binder
+
+- Plan: `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`, terminal CF-1R27/R28, integrated at `03c74856e45ca16779e1af2338a4ed4c63cc02e2`.
+- Authority: registry authorization `6651b139e74e5c71b7b0f499e3b2a44cb61798ce`; coordinator records RV-1-E-385/E-386.
+- Worker and branch: `/root` / `codex/task-133-atomic-prompt-binding-review-recovery-2`.
+- Source base: `197c3ca528e9b666c02b9b87695bf900efa195b1`.
+- Status: `recovery/verified` in the one atomic Task133.1-.3 replacement commit.
+- SDD history: the coordinator explicitly authorized `superpowers:subagent-driven-development`; this recovery was executed directly, with no internal implementer or self-integration.
+
+## Required Prerequisites
+
+- CF1 integration: `a321955d84eb700722e08eaa835ddb076fda62b2`.
+- Reviewed Task117A: `2ad417356afc00b26ff00fa763977e2469463d72`.
+- Task117A external sibling attestation C: `1cde7adb1a3b9fb1621b75410c203eec631a45ba`.
+- Task120: `49c3490a262162bd1d7146994390a2a6b5052394`.
+- Task125: `2e5c35ab7bca33df9f1a0c482c496fbb93350086`.
+- Task126: `2e7a8a011ada9828f2978129ddc9f47719c33655`.
+- Task127: `93a93844a18343a3d49933a4bf9fb92190224aa5`.
+- Task128: `ba43f007c371229ca5ad96844f4b3bc08584702b`.
+- Task129: `d362d1a73f45b947bcd6e1c7915c9e7fd9f96d3a`.
+- Task130: `78f456263a9af1d010df494684ea2d0906134eb4`.
+- Task132A: `7ec1eb6885716ac7324839c578677366fe1bb244`.
+- Task134A: `83a301d541e7fec5d0b29e6f2003566c06336158`.
+- Task135A: `ac3f91901da0c9b23722a046be73d95746f691da`.
+
+## Evidence
+
+The causal Task133.1 RED exited 1 with seven exact failures covering strict
+v1, the post-approval v2 binder, owner-derived hashes, hostile/unversioned
+input, and explicit-v1 legacy workflow callers. The exact focused GREEN passed
+5 files / 131 tests. CF-1R28 required this suite to be rerun immediately after
+Task133.2 GREEN and before any Task133.3 work; that rerun passed 5 files / 131
+tests.
+
+The artifact contract remains discriminated: v2 construction preserves the
+approved v1 bytes and uses no renderer, caller-owned output hash, or raw
+production prompt rendering. `renderExactlyBoundProductionSpecialistPrompt`
+remains absent from agent source and tests.

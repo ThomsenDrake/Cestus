@@ -49,6 +49,14 @@ const requiredNonPrrPacks = [
 ] as const;
 
 describe("task orchestrator deterministic evidence triage vertical", () => {
+  it("legacy deterministic caller remains explicit v1", async () => {
+    const fixture = await prepareEvidenceTriageVertical();
+
+    expect(fixture.promptArtifact.manifest.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
+  });
+
   it("evidence triage queue claim plan context approval wait reclaim deterministic test provider final output handoff run terminal task terminal", async () => {
     const fixture = await prepareEvidenceTriageVertical();
 
@@ -339,6 +347,7 @@ async function prepareEvidenceTriageVertical(options: {
 
   return {
     ledger,
+    promptArtifact,
     orchestrator,
     gateway,
     runnerCalls,

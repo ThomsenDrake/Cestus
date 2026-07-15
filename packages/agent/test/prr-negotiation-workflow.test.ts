@@ -77,6 +77,22 @@ interface AuthoritativePrrFollowUpFixture {
 }
 
 describe("PRR negotiation workflow", () => {
+  it("legacy deterministic caller remains explicit v1", async () => {
+    const artifact = await providerApprovedPromptArtifact(createWorkflowContextPacks([
+      "prr-read-model.v1",
+      "jurisdiction-pack-summary.v1",
+      "governance-locks.v1",
+      "evidence-summary.v1",
+      "agent-memory-summary.v1",
+      "task-run-history.v1",
+      "workspace-runtime-status.v1"
+    ], []));
+
+    expect(artifact.manifest.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
+  });
+
   it("permits bounded instructional narrative while drafting locally and requesting follow-up approval", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
