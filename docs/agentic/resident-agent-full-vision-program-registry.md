@@ -8792,3 +8792,26 @@ explicit implementation authorization.
   carry forward any earlier verdict. Source dispatch and plan integration
   remain closed until both return explicit unqualified **APPROVED** verdicts
   and those verdicts are durably recorded.
+
+## RV-1-E-291 — Factory progression candidate rejected; bounded CF-1R18
+
+- Both fresh reviewers returned **NEEDS-CHANGES** on exact 22-commit range
+  `0481c1e0^..7e06c800`. Lifecycle reviewer
+  `019f6583-f5ce-7482-ba56-f479d09589b7` found the claim still authorizing
+  CF-1R16, an incomplete Task137A file/commit ceiling, H-terminal behavior
+  assigned before Task140H, and no owned full-progression test or complete
+  affected-task commands. Authority reviewer
+  `019f6584-403d-7932-b4b3-2fd76154193b` additionally found that W-owned
+  Task137A was assigned the R-only default `runtime-factory.ts` write and that
+  callable guard methods placed on a binding remain reflectable despite being
+  non-enumerable.
+- The sole plan writer is authorized only for CF-1R18: make the claim name
+  CF-1R18; add a coordinator-integrity-checked R-owned factory-capture task and
+  exact ownership revision before Task137A; restore Task137A's exact six-file
+  ceiling; keep Task135B to operation/cursor/store component behavior; hold
+  guard state solely in the private H-port WeakMap; assign all orchestration
+  bracketing and the named full-progression integration test to Task140H; and
+  reproduce complete commands for every affected task.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending a committed docs-only repair and
+  two fresh independent unqualified approvals. No prior verdict carries.
