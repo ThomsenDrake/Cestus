@@ -1,6 +1,6 @@
 # Task135D recovery: R-owned factory-issued mounted handle capture
 
-- Status: claimed
+- Status: ready-for-review
 - Owner: `/root`
 - Branch: `codex/task-135d-runtime-handle-capture-recovery`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
@@ -49,3 +49,20 @@ The unchanged focused command must show only the missing-capture causal RED
 while all resident-identity tests pass. Full verification, provider/network/
 credential/Nous actions, reset credits, `neo`, merges, rebases, pushes,
 self-integration, and program-registry edits remain closed.
+
+## Recovery verification evidence
+
+- Causal RED: the unchanged focused command exited `1` with only the 8
+  Task135D capture tests failing because
+  `captureFactoryIssuedMountedRuntime is not a function`; both companion test
+  files passed (11 tests).
+- First GREEN attempt isolated one close-path defect: it burned captures by
+  deleting their private entries, causing inspection to report `required`
+  instead of `closed`. The corrective change retains only an unusable private
+  closed marker and clears the handle's derived-capture set before ledger close.
+- Focused GREEN: the unchanged focused command exited `0` with 3 test files
+  and 19 tests passed.
+- Pre-commit authorized non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, or self-integration was performed.
