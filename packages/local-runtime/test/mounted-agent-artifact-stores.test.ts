@@ -119,6 +119,7 @@ describe("mounted preparation stores", () => {
 
     expect(() => binder.prepare(preparationFor())).toThrow(/binding-invalid/i);
     expect(stores.calls).toEqual({ materialPut: 0, materialGet: 0, manifestPut: 0, manifestGet: 0 });
+    expect(stores.replacementCalls).toEqual({ materialPut: 0, materialGet: 0, manifestPut: 0, manifestGet: 0 });
   });
 
   it("rejects mismatched stores before it creates a binder", () => {
@@ -179,10 +180,13 @@ type MutableMountedAgentArtifactStores = Omit<MountedAgentArtifactStores,
 function storesFor(): {
   readonly stores: MutableMountedAgentArtifactStores;
   readonly calls: StoreCalls;
+  readonly replacementCalls: StoreCalls;
 } {
   const calls = { materialPut: 0, materialGet: 0, manifestPut: 0, manifestGet: 0 };
+  const replacementCalls = { materialPut: 0, materialGet: 0, manifestPut: 0, manifestGet: 0 };
   return {
     calls,
+    replacementCalls,
     stores: {
       storesVersion: "mounted-agent-artifact-stores.v1",
       workspaceId: "workspace_mounted_preparation",
@@ -217,8 +221,8 @@ const mountedStoreMutations: readonly (readonly [
 ])[] = [
   ["workspaceId", () => "workspace_swapped_after_capture"],
   ["mountInstanceId", () => "mount_swapped_after_capture"],
-  ["materialStore", (stores) => replacementStoreFor(stores.calls, "material")],
-  ["manifestStore", (stores) => replacementStoreFor(stores.calls, "manifest")]
+  ["materialStore", (stores) => replacementStoreFor(stores.replacementCalls, "material")],
+  ["manifestStore", (stores) => replacementStoreFor(stores.replacementCalls, "manifest")]
 ];
 
 function replacementStoreFor(

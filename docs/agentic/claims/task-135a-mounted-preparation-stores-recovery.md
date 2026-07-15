@@ -90,3 +90,31 @@ authorized final gate is the Task135A non-full fail-fast chain.
   `factory-readiness passed`. Full verification, providers, network,
   credentials, Nous, reset-credit, neo, source changes, self-review,
   self-integration, and merges remain unperformed.
+
+## Fresh Review P1 Repair
+
+- Fresh complete-range review of
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7..72830758c7d9dbeca9b688961e37c77cdb7fb099`
+  returned `NEEDS-CHANGES` with one P1: the candidate tested artifact-store
+  tuple mismatch only during binder construction and did not causally lock the
+  post-capture revalidation at `assertCapturedBindingCurrent`.
+- The finding is verified. Production already compares current captured
+  `artifactStores.workspaceId`, `mountInstanceId`, `materialStore`, and
+  `manifestStore`, plus current authority-to-store workspace/mount identity,
+  before parsing preparation or performing store work. The repair therefore
+  changes tests and this claim only.
+- The earlier focused `18 passed` entry labeled RED-stage was pass-only evidence,
+  not a causal RED. Superseding RED temporarily removed only the six
+  post-capture store-currentness comparisons from the working source, without
+  committing that mutation. The focused command
+  `npm test -- packages/local-runtime/test/mounted-agent-artifact-stores.test.ts`
+  exited `1` with exactly 4 failed / 14 passed: post-capture changes to
+  `workspaceId`, `mountInstanceId`, `materialStore`, and `manifestStore` were
+  each accepted instead of throwing.
+- The production comparisons were restored byte-for-byte before GREEN. The
+  same focused command then exited `0` with 18/18 tests. Each mutation now
+  asserts separate all-zero counters for the originally captured material and
+  manifest stores and for replacement material and manifest stores. No H
+  capability or H activity exists in this preparation-only lane; the hostile
+  shape/accessor cases and exact task/run/authority mismatch matrix remain
+  unchanged.
