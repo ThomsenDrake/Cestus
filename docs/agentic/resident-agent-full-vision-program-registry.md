@@ -8595,3 +8595,24 @@ explicit implementation authorization.
   smoke's direct status-prompt builder/fallback path.
 - All source/live/full/credential/reset-credit/`neo`/plan-integration actions
   remain closed pending docs validation, commit, and two fresh approvals.
+
+## RV-1-E-280 — Consume-time transport candidate and dual re-review
+
+- The sole plan writer committed CF-1R14 candidate
+  `94182e9a8d6b6c122d053432776767a5c53e218d`. It keeps ordinary approval
+  inspection status-only; mints and transports one full-fact-bound admission
+  inside the shared consume-time dispatch path; burns identity on every consume
+  attempt; splits P semantics from R0 import evidence; freezes an exact import
+  allowlist; binds reviewed Task134A/135A and future exact 136-139 prerequisites;
+  adds canonical preparation/store/projection gates; and removes smoke's direct
+  prompt-builder/runtime-factory/internal-fallback path. `git diff --check` and
+  `npm run factory:check` passed before commit.
+- Fresh independent Terra/xhigh lifecycle/persistence and authority/consumer
+  reviewers are authorized read-only against exact 19-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..94182e9a8d6b6c122d053432776767a5c53e218d`
+  and canonical program/source context
+  `17e16a2385b7c0918da624f225beaf77da6b75da`. Exactly two unqualified
+  **APPROVED** verdicts are required; every prior verdict is non-authorizing.
+- Latest authenticated usage reports 37% used / 63% weekly remaining. All
+  source/live/full/credential/reset-credit/`neo`/plan-integration actions remain
+  closed pending both fresh approvals.
