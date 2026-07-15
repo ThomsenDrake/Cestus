@@ -11577,3 +11577,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-424 — Task135D transition repair admitted for review
+
+- Task135D import-guard transition repair thread
+  `019f6776-0d48-7dc2-9e0c-261dbc736ab5` produced clean candidate
+  `fbcdc9d7de82f371fc312b9c206e84edd59946ae` over exact program checkpoint
+  `52381a20c50fa074c0aa1f0f6672c72b8c3fa7ea`. Its two commits and net diff
+  touch only the repair claim and
+  `packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts`.
+- Coordinator admission confirmed the minimal test change uses the same
+  existence-dependent zero-or-exact-one importer transition already enforced
+  by the allowlist helper. Fresh focused verification passed 3/3 tests,
+  `npm run typecheck`, exact-base diff checking, and factory readiness; status
+  and scope are clean.
+- Fresh independent Terra/xhigh transition reviewer
+  `019f677e-4cf4-7fb3-9ef5-5b9ea610770a` is pinned at the exact candidate. It
+  must reproduce the one allowed Task137A importer with one ephemeral untracked
+  authority module, remove it, rerun the zero-importer state, run the remaining
+  gates, and return an unqualified exact-SHA verdict. No tracked edit is
+  authorized.
+- Task137A remains stopped and unchanged until this repair is approved,
+  coordinator-integrated, and a fresh Task137A branch is reconstructed from
+  the corrected base with a new truthful immutable claim parent.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
