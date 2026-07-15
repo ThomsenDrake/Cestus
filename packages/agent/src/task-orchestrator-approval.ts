@@ -61,7 +61,7 @@ export function createTaskOrchestratorProviderApprovalAdapter(
         if (!taskOrchestratorApprovalProofBindsPromptEnvelope(inspection.proof)) {
           return { status: "waiting", reason: "provider-byte-transfer-proof-missing-or-stale" };
         }
-        await assertSelectedSpecialistProviderByteTransferApproval({
+        const approval = await assertSelectedSpecialistProviderByteTransferApproval({
           ledger: inspection.ledger,
           runId: inspection.proof.runId,
           taskId: inspection.taskId,
@@ -73,6 +73,9 @@ export function createTaskOrchestratorProviderApprovalAdapter(
           promptArtifact: inspection.proof.promptArtifact,
           ...(input.rebuildCurrentPreview === undefined ? {} : { rebuildCurrentPreview: input.rebuildCurrentPreview })
         });
+        if (approval?.status === "blocked") {
+          return { status: "waiting", reason: "provider-byte-transfer-proof-missing-or-stale" };
+        }
       } catch {
         return { status: "waiting", reason: "provider-byte-transfer-proof-missing-or-stale" };
       }
@@ -133,8 +136,17 @@ function proofPromptArtifactEnvelope(
   }
   const inputArtifactHash = ownDataProperty(manifest, "inputArtifactHash");
   const contextPackRefs = densePlainDataArray(ownDataProperty(manifest, "contextPackRefs"));
+  const production = ownDataProperty(manifest, "production");
   if (typeof inputArtifactHash !== "string" || !contentHashPattern.test(inputArtifactHash) ||
     contextPackRefs === undefined || contextPackRefs.length === 0) {
+    return undefined;
+  }
+  // An approval proof is always evidence of the original v1 bytes. A v2
+  // envelope is only consumable later alongside this retained v1 source.
+  if (production !== undefined && (
+    !isPlainRecord(production) ||
+    ownDataProperty(production, "schemaVersion") !== "agent-production-prompt-binding.v1"
+  )) {
     return undefined;
   }
   if (contextPackRefs.some((ref) => !isCheckpointableContextPackRef(ref))) {

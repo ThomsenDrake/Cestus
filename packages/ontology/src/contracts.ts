@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { validateGovernancePolicy } from "./governance-policy.js";
 
@@ -335,7 +336,7 @@ const agentProductionResolvedPayloadAuditSchema = z.object({
   sizeBytes: z.number().int().nonnegative(),
   schemaId: agentProductionAuditIdSchema
 }).strict();
-const agentProductionPromptAuditBindingSchema = z.object({
+const agentProductionPromptAuditBindingFields = {
   rendererId: agentProductionAuditIdSchema,
   rendererVersion: z.number().int().positive(),
   rendererHash: contentHashSchema,
@@ -347,7 +348,13 @@ const agentProductionPromptAuditBindingSchema = z.object({
   scopeApplicabilityHash: contentHashSchema,
   evaluatedContextRequirements: z.array(agentProductionContextRequirementSchema).min(1),
   resolvedPayloadAudits: z.array(agentProductionResolvedPayloadAuditSchema).min(1)
-}).strict().superRefine((binding, ctx) => {
+};
+const agentProductionPromptAuditBindingCoreSchema = z.object(agentProductionPromptAuditBindingFields).strict();
+
+function addAgentProductionPromptAuditBindingIssues(
+  binding: z.infer<typeof agentProductionPromptAuditBindingCoreSchema>,
+  ctx: z.RefinementCtx
+) {
   const requirementsByPackId = new Map(binding.evaluatedContextRequirements.map((requirement) => [requirement.contextPackId, requirement]));
   if (requirementsByPackId.size !== binding.evaluatedContextRequirements.length) {
     ctx.addIssue({ code: "custom", path: ["evaluatedContextRequirements"], message: "production context requirements must be unique by contextPackId" });
@@ -371,7 +378,47 @@ const agentProductionPromptAuditBindingSchema = z.object({
       ctx.addIssue({ code: "custom", path: ["resolvedPayloadAudits"], message: "resolved payload audits require an applicable context requirement" });
     }
   }
-});
+}
+
+const agentProductionPromptAuditBindingV1Schema = agentProductionPromptAuditBindingCoreSchema.extend({
+  schemaVersion: z.literal("agent-production-prompt-binding.v1")
+}).strict().superRefine(addAgentProductionPromptAuditBindingIssues);
+
+const agentProductionPromptProviderPostureV2Schema = z.object({
+  providerId: secretSafeStringSchema.min(1),
+  modelId: secretSafeStringSchema.min(1),
+  capabilityIds: z.array(secretSafeStringSchema.min(1)).min(1),
+  selectionPolicyVersion: secretSafeStringSchema.min(1),
+  readinessState: z.literal("ready"),
+  approvalRequirementId: secretSafeStringSchema.min(1)
+}).strict();
+
+const agentProductionPromptExactRunBindingV2Schema = z.object({
+  taskId: secretSafeStringSchema.min(1),
+  attemptId: secretSafeStringSchema.min(1),
+  approvedRunId: secretSafeStringSchema.min(1),
+  runId: secretSafeStringSchema.min(1),
+  runType: agentSpecialistRunTypeSchema.exclude(["ontology-bootstrap"]),
+  residentAgentId: z.literal("agent_default"),
+  workspaceId: secretSafeStringSchema.min(1),
+  mountInstanceId: secretSafeStringSchema.min(1),
+  workflowDescriptorHash: contentHashSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  providerPosture: agentProductionPromptProviderPostureV2Schema
+}).strict();
+
+const agentProductionPromptAuditBindingV2Schema = agentProductionPromptAuditBindingCoreSchema.extend({
+  schemaVersion: z.literal("agent-production-prompt-binding.v2"),
+  sourceApprovedPromptArtifactHash: contentHashSchema,
+  exactRunBinding: agentProductionPromptExactRunBindingV2Schema,
+  providerPostureHash: contentHashSchema,
+  exactRunBindingHash: contentHashSchema
+}).strict().superRefine(addAgentProductionPromptAuditBindingIssues);
+
+const agentProductionPromptAuditBindingSchema = z.discriminatedUnion("schemaVersion", [
+  agentProductionPromptAuditBindingV1Schema,
+  agentProductionPromptAuditBindingV2Schema
+]);
 const agentReadModelChangeSchema = z.object({
   projectionName: secretSafeStringSchema.min(1),
   change: secretSafeTextSchema,
@@ -530,10 +577,43 @@ const agentTaskOrchestrationCheckpointKindSchema = z.enum([
   "context-ready",
   "prompt-ready",
   "approval-wait",
+  "prompt-bound",
   "runner-dispatching",
   "handoff-pending",
   "blocked"
 ]);
+
+const agentTaskOrchestratorPromptBindingReceiptSchema = z.object({
+  schemaVersion: z.literal("agent-task-orchestrator.prompt-binding-receipt.v1"),
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  sourceApprovedPromptArtifactHash: contentHashSchema,
+  boundPromptArtifactHash: contentHashSchema,
+  generatedAt: z.string().datetime(),
+  approvalEventId: eventIdSchema,
+  providerPostureHash: contentHashSchema,
+  exactRunBindingHash: contentHashSchema,
+  workspaceId: secretSafeStringSchema.min(1),
+  mountInstanceId: secretSafeStringSchema.min(1),
+  receiptHash: contentHashSchema
+}).strict();
+
+/** Computes the canonical hash for the hash-only durable receipt material. */
+export function hashAgentTaskOrchestratorPromptBindingReceipt(
+  material: unknown
+): `sha256:${string}` {
+  const receiptMaterial = material !== null && typeof material === "object" && !Array.isArray(material)
+    ? (() => {
+        const { receiptHash: _receiptHash, ...withoutReceiptHash } = material as Record<string, unknown>;
+        return withoutReceiptHash;
+      })()
+    : material;
+  const normalized = agentTaskOrchestratorPromptBindingReceiptSchema
+    .omit({ receiptHash: true })
+    .parse(receiptMaterial);
+  return `sha256:${createHash("sha256").update(JSON.stringify(normalized)).digest("hex")}`;
+}
 
 const agentTaskOrchestrationCheckpointedPayloadSchema = z.object({
   taskId: agentTaskIdSchema,
@@ -553,9 +633,17 @@ const agentTaskOrchestrationCheckpointedPayloadSchema = z.object({
   inputArtifactHashes: agentArtifactHashesSchema.optional(),
   promptArtifactHash: contentHashSchema.optional(),
   lockSnapshot: agentTaskOrchestrationLockSnapshotSchema.optional(),
+  promptBindingReceipt: agentTaskOrchestratorPromptBindingReceiptSchema.optional(),
   safeNextActions: agentSafeActionsSchema
 }).strict().superRefine((checkpoint, ctx) => {
-  if (checkpoint.checkpointKind !== "approval-wait") {
+  if (checkpoint.checkpointKind !== "prompt-bound" && checkpoint.promptBindingReceipt !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["promptBindingReceipt"],
+      message: "Only prompt-bound checkpoints may carry a prompt binding receipt"
+    });
+  }
+  if (checkpoint.checkpointKind !== "approval-wait" && checkpoint.checkpointKind !== "prompt-bound") {
     return;
   }
 
@@ -588,6 +676,43 @@ const agentTaskOrchestrationCheckpointedPayloadSchema = z.object({
         message: `approval-wait checkpoints require at least one ${field} entry`
       });
     }
+  }
+
+  if (checkpoint.checkpointKind !== "prompt-bound") {
+    return;
+  }
+  const receipt = checkpoint.promptBindingReceipt;
+  if (receipt === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["promptBindingReceipt"],
+      message: "prompt-bound checkpoints require a strict prompt binding receipt"
+    });
+    return;
+  }
+  if (receipt.receiptHash !== hashAgentTaskOrchestratorPromptBindingReceipt(receipt)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["promptBindingReceipt", "receiptHash"],
+      message: "prompt-bound receiptHash must match its canonical receipt material"
+    });
+  }
+  if (
+    receipt.taskId !== checkpoint.taskId ||
+    receipt.attemptId !== checkpoint.attemptId ||
+    receipt.runId !== checkpoint.runId ||
+    checkpoint.promptArtifactHash !== receipt.boundPromptArtifactHash ||
+    checkpoint.checkpointedAt !== receipt.generatedAt ||
+    !(checkpoint.sourceEventIds ?? []).includes(receipt.approvalEventId) ||
+    !(checkpoint.inputArtifactHashes ?? []).includes(receipt.boundPromptArtifactHash) ||
+    !(checkpoint.sourceEventIds ?? []).length ||
+    !(checkpoint.toolRequestIds ?? []).length
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["promptBindingReceipt"],
+      message: "prompt-bound receipt must bind the approved event, bound prompt hash, and current checkpoint facts"
+    });
   }
 });
 

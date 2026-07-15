@@ -8,6 +8,9 @@ import type {
   ProjectedAgentMemoryHistoryEntry,
   ProjectedAgentModelInvocation,
   ProjectedAgentPermission,
+  ProjectedAgentProductionPromptAudit,
+  ProjectedAgentProductionPromptAuditV1,
+  ProjectedAgentProductionPromptAuditV2,
   ProjectedAgentPromptArtifactOmission,
   ProjectedAgentRun,
   ProjectedAgentTask,
@@ -681,11 +684,13 @@ function projectPromptOmissions(omissions: readonly AgentPromptOmissionPayload[]
   );
 }
 
-function projectProductionPromptAudit(production: AgentProductionPromptAuditPayload | undefined) {
+function projectProductionPromptAudit(
+  production: AgentProductionPromptAuditPayload | undefined
+): ProjectedAgentProductionPromptAudit | undefined {
   if (production === undefined) {
     return undefined;
   }
-  return freezeProjected({
+  const common = {
     rendererId: production.rendererId,
     rendererVersion: production.rendererVersion,
     rendererHash: production.rendererHash,
@@ -708,7 +713,40 @@ function projectProductionPromptAudit(production: AgentProductionPromptAuditPayl
       sizeBytes: audit.sizeBytes,
       schemaId: audit.schemaId
     })))
-  });
+  };
+  if (production.schemaVersion === "agent-production-prompt-binding.v1") {
+    return freezeProjected({
+      schemaVersion: production.schemaVersion,
+      ...common
+    }) satisfies ProjectedAgentProductionPromptAuditV1;
+  }
+  return freezeProjected({
+    schemaVersion: production.schemaVersion,
+    ...common,
+    sourceApprovedPromptArtifactHash: production.sourceApprovedPromptArtifactHash,
+    exactRunBinding: freezeProjected({
+      taskId: production.exactRunBinding.taskId,
+      attemptId: production.exactRunBinding.attemptId,
+      approvedRunId: production.exactRunBinding.approvedRunId,
+      runId: production.exactRunBinding.runId,
+      runType: production.exactRunBinding.runType,
+      residentAgentId: production.exactRunBinding.residentAgentId,
+      workspaceId: production.exactRunBinding.workspaceId,
+      mountInstanceId: production.exactRunBinding.mountInstanceId,
+      workflowDescriptorHash: production.exactRunBinding.workflowDescriptorHash,
+      policyVersion: production.exactRunBinding.policyVersion,
+      providerPosture: freezeProjected({
+        providerId: production.exactRunBinding.providerPosture.providerId,
+        modelId: production.exactRunBinding.providerPosture.modelId,
+        capabilityIds: freezeArray(production.exactRunBinding.providerPosture.capabilityIds),
+        selectionPolicyVersion: production.exactRunBinding.providerPosture.selectionPolicyVersion,
+        readinessState: production.exactRunBinding.providerPosture.readinessState,
+        approvalRequirementId: production.exactRunBinding.providerPosture.approvalRequirementId
+      })
+    }),
+    providerPostureHash: production.providerPostureHash,
+    exactRunBindingHash: production.exactRunBindingHash
+  }) satisfies ProjectedAgentProductionPromptAuditV2;
 }
 
 function toolRequestCanAcceptExecutionClaim(state: ProjectedAgentToolRequest["state"]): boolean {

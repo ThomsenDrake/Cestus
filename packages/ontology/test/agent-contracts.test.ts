@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { eventContracts, validateKnowledgeEvent } from "../src/contracts.js";
+import {
+  eventContracts,
+  hashAgentTaskOrchestratorPromptBindingReceipt,
+  validateKnowledgeEvent
+} from "../src/contracts.js";
 
 const context = {
   actor: { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" },
@@ -139,6 +143,134 @@ describe("resident agent event contracts", () => {
         payload: { ...checkpointed.payload, toolRequestIds: [] }
       }).success
     ).toBe(false);
+  });
+
+  it("rejects missing unknown or unversioned durable prompt binding", () => {
+    const receiptMaterial = {
+      schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1",
+      taskId: "task_001",
+      attemptId: orchestratorAttemptId,
+      runId: "run_001",
+      sourceApprovedPromptArtifactHash: hash111,
+      boundPromptArtifactHash: hash222,
+      generatedAt: context.occurredAt,
+      approvalEventId: "evt_agent_tool_approved_provider_transfer",
+      providerPostureHash: hash333,
+      exactRunBindingHash: hash111,
+      workspaceId: "ws_001",
+      mountInstanceId: "mount_001"
+    };
+    const receipt = {
+      ...receiptMaterial,
+      receiptHash: hashAgentTaskOrchestratorPromptBindingReceipt(receiptMaterial)
+    };
+    const checkpointed = agentEvent(
+      "evt_agent_task_orchestration_prompt_bound",
+      "agent.task.orchestration.checkpointed",
+      orchestratorStreamId,
+      {
+        ...taskOrchestrationCheckpointedPayload(),
+        checkpointKind: "prompt-bound",
+        checkpointedAt: receipt.generatedAt,
+        promptArtifactHash: hash222,
+        sourceEventIds: ["evt_agent_task_created", receipt.approvalEventId],
+        inputArtifactHashes: [hash111, hash222],
+        promptBindingReceipt: receipt
+      }
+    );
+
+    expect(validateKnowledgeEvent(checkpointed).success).toBe(true);
+    const { schemaVersion: _schemaVersion, ...versionlessReceipt } = receipt;
+    for (const [suffix, promptBindingReceipt] of [
+      ["unknown", { ...receipt, unexpectedReceiptField: "reject" }],
+      ["missing", versionlessReceipt],
+      ["v0", { ...receipt, schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v0" }]
+    ] as const) {
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_strict_${suffix}`,
+        payload: { ...checkpointed.payload, promptBindingReceipt }
+      }).success).toBe(false);
+    }
+    for (const production of [
+      undefined,
+      { schemaVersion: "agent-production-prompt-binding.v0" },
+      { rendererId: "unversioned" }
+    ]) {
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_${String(production)}`,
+        payload: {
+          ...checkpointed.payload,
+          promptBindingReceipt: production === undefined ? undefined : receipt,
+          production
+        }
+      }).success).toBe(false);
+    }
+  });
+
+  it("rejects prompt-bound receipts transplanted across task attempt or run identity", () => {
+    const receiptMaterial = {
+      schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1",
+      taskId: "task_001",
+      attemptId: orchestratorAttemptId,
+      runId: "run_001",
+      sourceApprovedPromptArtifactHash: hash111,
+      boundPromptArtifactHash: hash222,
+      generatedAt: context.occurredAt,
+      approvalEventId: "evt_agent_tool_approved_provider_transfer",
+      providerPostureHash: hash333,
+      exactRunBindingHash: hash111,
+      workspaceId: "ws_001",
+      mountInstanceId: "mount_001"
+    };
+    const receipt = {
+      ...receiptMaterial,
+      receiptHash: hashAgentTaskOrchestratorPromptBindingReceipt(receiptMaterial)
+    };
+    const checkpointed = agentEvent(
+      "evt_agent_task_orchestration_prompt_bound_identity",
+      "agent.task.orchestration.checkpointed",
+      orchestratorStreamId,
+      {
+        ...taskOrchestrationCheckpointedPayload(),
+        checkpointKind: "prompt-bound",
+        checkpointedAt: receipt.generatedAt,
+        promptArtifactHash: hash222,
+        sourceEventIds: ["evt_agent_task_created", receipt.approvalEventId],
+        inputArtifactHashes: [hash111, hash222],
+        promptBindingReceipt: receipt
+      }
+    );
+
+    for (const [field, value] of [
+      ["taskId", "task_002"],
+      ["attemptId", "attempt_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+      ["runId", "run_002"]
+    ] as const) {
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_transplanted_${field}`,
+        payload: { ...checkpointed.payload, [field]: value }
+      }).success).toBe(false);
+    }
+
+    for (const [field, value] of [
+      ["taskId", "task_002"],
+      ["attemptId", "attempt_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+      ["runId", "run_002"]
+    ] as const) {
+      const transplantedMaterial = { ...receiptMaterial, [field]: value };
+      const transplantedReceipt = {
+        ...transplantedMaterial,
+        receiptHash: hashAgentTaskOrchestratorPromptBindingReceipt(transplantedMaterial)
+      };
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_receipt_transplanted_${field}`,
+        payload: { ...checkpointed.payload, promptBindingReceipt: transplantedReceipt }
+      }).success).toBe(false);
+    }
   });
 
   it("accepts agent.task.orchestration.released for approval suspension and stale claim recovery", () => {
@@ -993,6 +1125,7 @@ function modelInvocationPromptAuditPayload(): Record<string, unknown> {
 
 function productionPromptAuditBinding(): Record<string, unknown> {
   return {
+    schemaVersion: "agent-production-prompt-binding.v1",
     rendererId: "evidence-triage.classify.renderer",
     rendererVersion: 1,
     rendererHash: hash111,

@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import * as agent from "../src/index.js";
 import {
+  bindApprovedProductionSpecialistPromptV2,
   buildContextPackRef,
   buildSpecialistHandoffMaterial,
   buildPromptArtifact,
@@ -17,6 +19,7 @@ import {
   productionSpecialistPromptRegistrations,
   recordSpecialistHandoff,
   serializeSpecialistLocalArtifact,
+  specialistWorkflowDescriptorFor,
   type AgentContextPackJsonValue,
   type ContextPackRegistry,
   type SpecialistRunnerBaseInput,
@@ -151,6 +154,102 @@ describe("specialist runner artifact serialization", () => {
 });
 
 describe("production specialist run preparation", () => {
+  it("structurally valid v2 is blocked without factory authority", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const block = (agent as unknown as {
+      readonly blockV2ProviderTransferUntilFactoryAuthority?: (input: unknown) => unknown;
+    }).blockV2ProviderTransferUntilFactoryAuthority;
+    const selected = (agent as unknown as {
+      readonly assertSelectedSpecialistProviderByteTransferApproval?: (input: unknown) => Promise<unknown>;
+    }).assertSelectedSpecialistProviderByteTransferApproval;
+
+    expect(block).toBeTypeOf("function");
+    const blocked = block!({
+      approvedV1: fixture.approvedPromptArtifact,
+      candidateV2: fixture.boundPromptArtifact
+    });
+    expect(blocked).toEqual(expect.objectContaining({
+      schemaVersion: "agent-task133-v2-transfer-boundary.v1",
+      status: "blocked",
+      code: "authority-resolution-required",
+      sourceApprovedPromptArtifactHash: fixture.approvedPromptArtifact.manifest.inputArtifactHash,
+      boundPromptArtifactHash: fixture.boundPromptArtifact.manifest.inputArtifactHash
+    }));
+    expect(Object.isFrozen(blocked)).toBe(true);
+    expect(selected).toBeTypeOf("function");
+    const blockedSelection = v2BlockedSelectionInput(fixture, fixture.exactRun);
+    await expect(selected!(blockedSelection.input)).resolves.toEqual(blocked);
+    expect(blockedSelection.effects).toEqual([]);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("rejects swapped source v1 and rerendered text", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const alternate = await boundRunnerPromptFixture({ runId: "run_runner_test_swapped", taskId: "task_runner_test_swapped" });
+    const assertion = (agent as unknown as {
+      readonly assertApprovedV1ToV2ArtifactInvariants?: (input: unknown) => void;
+    }).assertApprovedV1ToV2ArtifactInvariants;
+
+    expect(assertion).toBeTypeOf("function");
+    expect(() => assertion!({
+      approvedV1: alternate.approvedPromptArtifact,
+      candidateV2: fixture.boundPromptArtifact
+    })).toThrow(/approved|source|binding/i);
+    expect(() => assertion!({
+      approvedV1: fixture.approvedPromptArtifact,
+      candidateV2: { ...fixture.boundPromptArtifact, text: `${fixture.boundPromptArtifact.text}\nRerendered.` }
+    })).toThrow(/hash|text|approved|binding/i);
+    expect(fixture.invocationCount()).toBe(0);
+    expect(alternate.invocationCount()).toBe(0);
+  });
+
+  it("direct v2 proof and exact run cannot become transfer authority", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const selected = (agent as unknown as {
+      readonly assertSelectedSpecialistProviderByteTransferApproval?: (input: unknown) => Promise<unknown>;
+    }).assertSelectedSpecialistProviderByteTransferApproval;
+
+    expect(selected).toBeTypeOf("function");
+    const blockedSelection = v2BlockedSelectionInput(fixture, {
+      ...fixture.exactRun,
+      attemptId: "attempt_runner_test_direct_proof"
+    });
+    await expect(selected!(blockedSelection.input)).resolves.toEqual(expect.objectContaining({
+      status: "blocked",
+      code: "authority-resolution-required"
+    }));
+    expect(blockedSelection.effects).toEqual([]);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("each missing current authority family remains zero effect", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const selected = (agent as unknown as {
+      readonly assertSelectedSpecialistProviderByteTransferApproval?: (input: unknown) => Promise<unknown>;
+    }).assertSelectedSpecialistProviderByteTransferApproval;
+
+    expect(selected).toBeTypeOf("function");
+    for (const exactRun of [
+      { ...fixture.exactRun, attemptId: "attempt_runner_test_swapped" },
+      { ...fixture.exactRun, approvedRunId: "run_runner_test_approved_swapped" },
+      { ...fixture.exactRun, workspaceId: "ws_runner_test_swapped" },
+      { ...fixture.exactRun, mountInstanceId: "mount_runner_test_swapped" },
+      { ...fixture.exactRun, workflowDescriptor: specialistWorkflowDescriptorFor("prr-negotiation") },
+      { ...fixture.exactRun, policyVersion: "runner-policy.swapped" },
+      { ...fixture.exactRun, providerPosture: { ...fixture.exactRun.providerPosture, capabilityIds: ["capability_runner_swapped"] } },
+      { ...fixture.exactRun, providerPosture: { ...fixture.exactRun.providerPosture, selectionPolicyVersion: "runner-selection.swapped" } },
+      { ...fixture.exactRun, providerPosture: { ...fixture.exactRun.providerPosture, readinessState: "requires-byte-transfer-approval" as never } }
+    ]) {
+      const blockedSelection = v2BlockedSelectionInput(fixture, exactRun);
+      await expect(selected!(blockedSelection.input)).resolves.toEqual(expect.objectContaining({
+        status: "blocked",
+        code: "authority-resolution-required"
+      }));
+      expect(blockedSelection.effects).toEqual([]);
+    }
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
   it("rejects a missing production registration before provider invocation", async () => {
     const fixture = await runnerFixture();
 
@@ -1328,6 +1427,103 @@ async function runnerFixture(patch: {
   return {
     input,
     invocationCount: () => invocations
+  };
+}
+
+async function boundRunnerPromptFixture(patch: {
+  readonly runId?: string;
+  readonly taskId?: string;
+} = {}) {
+  const fixture = await runnerFixture(patch);
+  const prepared = await prepareSpecialistRun(fixture.input, "evidence-triage");
+  const approvedPromptArtifact = prepared.promptArtifact;
+  const resolvedContextPacks = approvedPromptArtifact.resolvedContextPacks;
+  if (resolvedContextPacks === undefined) {
+    throw new Error("Expected canonical v1 prompt artifact to retain verified context packs.");
+  }
+  const exactRun = {
+    taskId: fixture.input.taskId,
+    attemptId: `attempt_${fixture.input.runId}`,
+    approvedRunId: fixture.input.runId,
+    runId: fixture.input.runId,
+    runType: "evidence-triage" as const,
+    residentAgentId: "agent_default" as const,
+    workspaceId: "ws_runner_test",
+    mountInstanceId: "mount_runner_test",
+    workflowDescriptor: specialistWorkflowDescriptorFor("evidence-triage"),
+    policyVersion: "runner-policy.v1",
+    providerPosture: {
+      providerId: fixture.input.providerId,
+      modelId: fixture.input.modelFamily,
+      capabilityIds: ["capability_runner_local_test"],
+      selectionPolicyVersion: "runner-selection.v1",
+      readinessState: "ready" as const,
+      approvalRequirementId: `toolreq_${fixture.input.runId}`
+    }
+  };
+  const boundPromptArtifact = bindApprovedProductionSpecialistPromptV2({
+    approvedPromptArtifact,
+    generatedAt: approvedPromptArtifact.manifest.generatedAt,
+    scope: fixture.input.scope ?? { kind: "task", refs: [fixture.input.taskId] },
+    resolvedContextPacks,
+    exactRun
+  });
+  return { ...fixture, approvedPromptArtifact, boundPromptArtifact, exactRun };
+}
+
+function v2InvocationFacts(fixture: Awaited<ReturnType<typeof boundRunnerPromptFixture>>) {
+  return {
+    taskId: fixture.input.taskId,
+    runId: fixture.input.runId,
+    runType: "evidence-triage" as const,
+    residentAgentId: "agent_default" as const,
+    providerId: fixture.input.providerId,
+    modelId: fixture.input.modelFamily,
+    approvalRequirementId: fixture.exactRun.providerPosture.approvalRequirementId
+  };
+}
+
+function v2BlockedSelectionInput(
+  fixture: Awaited<ReturnType<typeof boundRunnerPromptFixture>>,
+  exactRun: ReturnType<typeof boundRunnerPromptFixture> extends Promise<infer Result>
+    ? Result extends { readonly exactRun: infer ExactRun } ? ExactRun : never
+    : never
+) {
+  const effects: string[] = [];
+  const forbidden = (name: string) => new Proxy({}, {
+    get() {
+      effects.push(name);
+      throw new Error(`Unexpected ${name} access while v2 authority is blocked.`);
+    }
+  });
+  const proof = {
+    approvedPromptArtifact: fixture.approvedPromptArtifact,
+    get exactRun() {
+      effects.push("proof.exactRun");
+      return exactRun;
+    },
+    get v2InvocationFacts() {
+      effects.push("proof.v2InvocationFacts");
+      return v2InvocationFacts(fixture);
+    },
+    get currentPreviewInput() {
+      effects.push("proof.currentPreviewInput");
+      throw new Error("Current preview must not be read while v2 authority is blocked.");
+    }
+  };
+  return {
+    effects,
+    input: {
+      ledger: forbidden("ledger") as EventLedger,
+      runId: fixture.input.runId,
+      taskId: fixture.input.taskId,
+      providerId: fixture.input.providerId,
+      modelFamily: fixture.input.modelFamily,
+      credentialRef: forbidden("credential") as SpecialistRunnerBaseInput["credentialRef"],
+      providerReadiness: forbidden("provider-readiness") as SpecialistRunnerBaseInput["providerReadiness"],
+      providerTransferApproval: proof,
+      promptArtifact: fixture.boundPromptArtifact
+    }
   };
 }
 

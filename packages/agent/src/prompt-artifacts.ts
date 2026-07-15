@@ -16,8 +16,10 @@ import {
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations
 } from "./production-specialist-prompts.js";
+import type { ProductionRunScope } from "./production-specialist-registration-metadata.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import { approvedAgentSpecialistRunTypes, type AgentSpecialistRunType } from "./specialists.js";
+import { specialistWorkflowDescriptorFor, type SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
 
 export type PromptArtifactSafetyClass =
   | "workspace-safe"
@@ -50,19 +52,91 @@ export interface PromptArtifactEvaluatedContextRequirement {
   readonly omissionReason?: "no-associated-prr" | undefined;
 }
 
-export interface PromptArtifactProductionBinding {
+export interface PromptArtifactProductionBindingV1 {
+  readonly schemaVersion: "agent-production-prompt-binding.v1";
   readonly rendererId: string;
   readonly rendererVersion: number;
-  readonly rendererHash: string;
-  readonly renderedPromptHash: string;
+  readonly rendererHash: `sha256:${string}`;
+  readonly renderedPromptHash: `sha256:${string}`;
   readonly providerOutputSchemaId: string;
   readonly providerOutputSchemaVersion: number;
   readonly handoffSchemaId: string;
   readonly handoffSchemaVersion: number;
-  readonly scopeApplicabilityHash: string;
+  readonly scopeApplicabilityHash: `sha256:${string}`;
   readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
   readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
 }
+
+export interface PromptArtifactProviderPostureV2 {
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityIds: readonly string[];
+  readonly selectionPolicyVersion: string;
+  readonly readinessState: "ready";
+  readonly approvalRequirementId: string;
+}
+
+export interface PromptArtifactExactRunBindingV2 {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workflowDescriptorHash: `sha256:${string}`;
+  readonly policyVersion: string;
+  readonly providerPosture: PromptArtifactProviderPostureV2;
+}
+
+export interface PromptArtifactProductionBindingV2 {
+  readonly schemaVersion: "agent-production-prompt-binding.v2";
+  readonly rendererId: string;
+  readonly rendererVersion: number;
+  readonly rendererHash: `sha256:${string}`;
+  readonly renderedPromptHash: `sha256:${string}`;
+  readonly providerOutputSchemaId: string;
+  readonly providerOutputSchemaVersion: number;
+  readonly handoffSchemaId: string;
+  readonly handoffSchemaVersion: number;
+  readonly scopeApplicabilityHash: `sha256:${string}`;
+  readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
+  readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
+  readonly sourceApprovedPromptArtifactHash: `sha256:${string}`;
+  readonly exactRunBinding: PromptArtifactExactRunBindingV2;
+  readonly providerPostureHash: `sha256:${string}`;
+  readonly exactRunBindingHash: `sha256:${string}`;
+}
+
+export interface CreatePromptArtifactExactRunBindingV2Input {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workflowDescriptor: SpecialistWorkflowDescriptor;
+  readonly policyVersion: string;
+  readonly providerPosture: PromptArtifactProviderPostureV2;
+}
+
+export interface BuildPromptArtifactProductionBindingV2 {
+  readonly schemaVersion: "agent-production-prompt-binding.v2";
+  readonly sourceApprovedPromptArtifact: PromptArtifactEnvelope;
+  readonly scope: ProductionRunScope;
+  readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
+}
+
+export type PromptArtifactProductionBinding =
+  | PromptArtifactProductionBindingV1
+  | PromptArtifactProductionBindingV2;
+
+export type BuildPromptArtifactProductionBinding =
+  | PromptArtifactProductionBindingV1
+  | BuildPromptArtifactProductionBindingV2;
 
 export interface PromptArtifactManifest {
   readonly inputArtifactHash: string;
@@ -98,6 +172,7 @@ export interface PromptArtifactAuditMetadata {
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly omissions: readonly PromptArtifactOmission[];
   readonly safeSummary: string;
+  /** Durable artifact audit: v2 build-only inputs are never exposed here. */
   readonly production?: PromptArtifactProductionBinding;
 }
 
@@ -112,7 +187,7 @@ export interface BuildPromptArtifactInput {
   readonly text: string;
   readonly safeSummary: string;
   readonly omissions?: readonly PromptArtifactOmission[];
-  readonly production?: PromptArtifactProductionBinding;
+  readonly production?: BuildPromptArtifactProductionBinding;
   readonly resolvedContextPacks?: readonly VerifiedResolvedContextPack[];
 }
 
@@ -179,7 +254,7 @@ const promptArtifactEvaluatedContextRequirementObjectSchema = z.object({
   }
 });
 
-const promptArtifactProductionBindingObjectSchema = z.object({
+const promptArtifactProductionBindingFieldsSchema = z.object({
   rendererId: agentSecretSafeTextSchema("production.rendererId"),
   rendererVersion: z.number().int().positive(),
   rendererHash: z.string().regex(contentHashPattern),
@@ -191,7 +266,73 @@ const promptArtifactProductionBindingObjectSchema = z.object({
   scopeApplicabilityHash: z.string().regex(contentHashPattern),
   evaluatedContextRequirements: z.array(promptArtifactEvaluatedContextRequirementObjectSchema),
   resolvedPayloadAudits: z.array(promptArtifactResolvedPayloadAuditObjectSchema)
+});
+
+const promptArtifactProviderPostureV2ObjectSchema = z.object({
+  providerId: agentSecretSafeTextSchema("production.providerPosture.providerId"),
+  modelId: agentSecretSafeTextSchema("production.providerPosture.modelId"),
+  capabilityIds: z.array(agentSecretSafeTextSchema("production.providerPosture.capabilityIds")).min(1),
+  selectionPolicyVersion: agentSecretSafeTextSchema("production.providerPosture.selectionPolicyVersion"),
+  readinessState: z.literal("ready"),
+  approvalRequirementId: agentSecretSafeTextSchema("production.providerPosture.approvalRequirementId")
 }).strict();
+
+const promptArtifactExactRunBindingV2ObjectSchema = z.object({
+  taskId: agentSecretSafeTextSchema("production.exactRunBinding.taskId"),
+  attemptId: agentSecretSafeTextSchema("production.exactRunBinding.attemptId"),
+  approvedRunId: agentSecretSafeTextSchema("production.exactRunBinding.approvedRunId"),
+  runId: agentSecretSafeTextSchema("production.exactRunBinding.runId"),
+  runType: runTypeSchema.refine((value) => value !== "ontology-bootstrap", { message: "production exact run must be a production run type" }),
+  residentAgentId: z.literal("agent_default"),
+  workspaceId: agentSecretSafeTextSchema("production.exactRunBinding.workspaceId"),
+  mountInstanceId: agentSecretSafeTextSchema("production.exactRunBinding.mountInstanceId"),
+  workflowDescriptorHash: z.string().regex(contentHashPattern),
+  policyVersion: agentSecretSafeTextSchema("production.exactRunBinding.policyVersion"),
+  providerPosture: promptArtifactProviderPostureV2ObjectSchema
+}).strict();
+
+const promptArtifactProductionBindingV1ObjectSchema = promptArtifactProductionBindingFieldsSchema.extend({
+  schemaVersion: z.literal("agent-production-prompt-binding.v1")
+}).strict();
+
+const promptArtifactProductionBindingV2ObjectSchema = promptArtifactProductionBindingFieldsSchema.extend({
+  schemaVersion: z.literal("agent-production-prompt-binding.v2"),
+  sourceApprovedPromptArtifactHash: z.string().regex(contentHashPattern),
+  exactRunBinding: promptArtifactExactRunBindingV2ObjectSchema,
+  providerPostureHash: z.string().regex(contentHashPattern),
+  exactRunBindingHash: z.string().regex(contentHashPattern)
+}).strict();
+
+const promptArtifactProductionBindingObjectSchema = z.discriminatedUnion("schemaVersion", [
+  promptArtifactProductionBindingV1ObjectSchema,
+  promptArtifactProductionBindingV2ObjectSchema
+]);
+
+const createPromptArtifactExactRunBindingV2InputObjectSchema = z.object({
+  taskId: agentSecretSafeTextSchema("production.exactRun.taskId"),
+  attemptId: agentSecretSafeTextSchema("production.exactRun.attemptId"),
+  approvedRunId: agentSecretSafeTextSchema("production.exactRun.approvedRunId"),
+  runId: agentSecretSafeTextSchema("production.exactRun.runId"),
+  runType: runTypeSchema.refine((value) => value !== "ontology-bootstrap", { message: "production exact run must be a production run type" }),
+  residentAgentId: z.literal("agent_default"),
+  workspaceId: agentSecretSafeTextSchema("production.exactRun.workspaceId"),
+  mountInstanceId: agentSecretSafeTextSchema("production.exactRun.mountInstanceId"),
+  workflowDescriptor: z.unknown(),
+  policyVersion: agentSecretSafeTextSchema("production.exactRun.policyVersion"),
+  providerPosture: promptArtifactProviderPostureV2ObjectSchema
+}).strict();
+
+const buildPromptArtifactProductionBindingV2ObjectSchema = z.object({
+  schemaVersion: z.literal("agent-production-prompt-binding.v2"),
+  sourceApprovedPromptArtifact: z.unknown(),
+  scope: z.unknown(),
+  exactRun: createPromptArtifactExactRunBindingV2InputObjectSchema
+}).strict();
+
+const buildPromptArtifactProductionBindingObjectSchema = z.discriminatedUnion("schemaVersion", [
+  promptArtifactProductionBindingV1ObjectSchema,
+  buildPromptArtifactProductionBindingV2ObjectSchema
+]);
 
 const buildPromptArtifactInputObjectSchema = z.object({
   promptTemplateId: agentSecretSafeTextSchema("promptTemplateId"),
@@ -204,7 +345,7 @@ const buildPromptArtifactInputObjectSchema = z.object({
   text: agentSecretSafeTextSchema("promptArtifact.text"),
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
   omissions: z.array(promptArtifactOmissionObjectSchema).optional(),
-  production: promptArtifactProductionBindingObjectSchema.optional(),
+  production: buildPromptArtifactProductionBindingObjectSchema.optional(),
   resolvedContextPacks: z.array(z.unknown()).optional()
 }).strict();
 
@@ -227,12 +368,71 @@ const promptArtifactEnvelopeObjectSchema = z.object({
   text: agentSecretSafeTextSchema("promptArtifact.text"),
   resolvedContextPacks: z.array(z.unknown()).optional()
 }).strict();
+const promptArtifactAuditMetadataObjectSchema = z.object({
+  inputArtifactHash: z.string().regex(contentHashPattern),
+  promptTemplateId: agentSecretSafeTextSchema("promptTemplateId"),
+  promptTemplateVersion: z.number().int().positive(),
+  runType: runTypeSchema,
+  safetyClass: safetyClassSchema,
+  transferApprovalClass: transferApprovalClassSchema,
+  contextPackRefs: z.array(contextPackRefSchema).min(1),
+  omissions: z.array(promptArtifactOmissionObjectSchema),
+  safeSummary: agentSecretSafeTextSchema("safeSummary"),
+  production: promptArtifactProductionBindingObjectSchema.optional()
+}).strict();
 const promptArtifactTemplateRegistrationObjectSchema = z.object({
   runType: runTypeSchema,
   promptTemplateId: agentSecretSafeTextSchema("promptTemplateId"),
   promptTemplateVersion: z.number().int().positive(),
   label: agentSecretSafeTextSchema("template.label")
 }).strict();
+
+export function createPromptArtifactExactRunBindingV2(
+  input: CreatePromptArtifactExactRunBindingV2Input
+): PromptArtifactExactRunBindingV2 {
+  const parsed = parseNormalizedDtoOrThrow(input, createPromptArtifactExactRunBindingV2InputObjectSchema, "$");
+  const canonicalDescriptor = specialistWorkflowDescriptorFor(parsed.runType);
+  if (stableJsonForPromptArtifact(parsed.workflowDescriptor) !== stableJsonForPromptArtifact(canonicalDescriptor)) {
+    throw new Error("Production exact run workflow descriptor does not match the registered specialist workflow");
+  }
+  const providerPosture = freezePromptArtifactProviderPostureV2(parsed.providerPosture);
+  return freezePromptArtifactExactRunBindingV2({
+    taskId: parsed.taskId,
+    attemptId: parsed.attemptId,
+    approvedRunId: parsed.approvedRunId,
+    runId: parsed.runId,
+    runType: parsed.runType as Exclude<AgentSpecialistRunType, "ontology-bootstrap">,
+    residentAgentId: parsed.residentAgentId,
+    workspaceId: parsed.workspaceId,
+    mountInstanceId: parsed.mountInstanceId,
+    workflowDescriptorHash: hashAgentContextPack(canonicalDescriptor) as `sha256:${string}`,
+    policyVersion: parsed.policyVersion,
+    providerPosture
+  });
+}
+
+export function hashPromptArtifactProviderPostureV2(
+  posture: PromptArtifactProviderPostureV2
+): `sha256:${string}` {
+  return hashAgentContextPack(freezePromptArtifactProviderPostureV2(
+    parseNormalizedDtoOrThrow(posture, promptArtifactProviderPostureV2ObjectSchema, "$")
+  )) as `sha256:${string}`;
+}
+
+export function hashPromptArtifactExactRunBindingV2(
+  binding: PromptArtifactExactRunBindingV2
+): `sha256:${string}` {
+  // The schema verifies the content-hash strings; this restores their branded
+  // TypeScript form after Zod's plain-string inference.
+  const parsed = parseNormalizedDtoOrThrow(
+    binding,
+    promptArtifactExactRunBindingV2ObjectSchema,
+    "$"
+  ) as PromptArtifactExactRunBindingV2;
+  return hashAgentContextPack(freezePromptArtifactExactRunBindingV2(
+    parsed
+  )) as `sha256:${string}`;
+}
 
 export function buildPromptArtifact(input: BuildPromptArtifactInput): PromptArtifactEnvelope {
   const parsed = parseNormalizedDtoOrThrow(input, buildPromptArtifactInputObjectSchema, "$");
@@ -418,6 +618,24 @@ export function promptArtifactAuditMetadata(envelope: PromptArtifactEnvelope): P
   });
 }
 
+export function parsePromptArtifactAuditMetadata(value: unknown): PromptArtifactAuditMetadata {
+  const parsed = parseNormalizedDtoOrThrow(value, promptArtifactAuditMetadataObjectSchema, "$");
+  return Object.freeze({
+    inputArtifactHash: parsed.inputArtifactHash,
+    promptTemplateId: parsed.promptTemplateId,
+    promptTemplateVersion: parsed.promptTemplateVersion,
+    runType: parsed.runType,
+    safetyClass: parsed.safetyClass,
+    transferApprovalClass: parsed.transferApprovalClass,
+    contextPackRefs: Object.freeze([...parsed.contextPackRefs]),
+    omissions: Object.freeze(parsed.omissions.map(freezePromptArtifactOmission)),
+    safeSummary: parsed.safeSummary,
+    ...(parsed.production === undefined
+      ? {}
+      : { production: freezePromptArtifactProductionBinding(parsed.production as PromptArtifactProductionBinding) })
+  });
+}
+
 function normalizePromptArtifactEnvelope(envelope: unknown): PromptArtifactEnvelope {
   const parsed = parseNormalizedDtoOrThrow(envelope, promptArtifactEnvelopeObjectSchema, "$");
   const production = parsed.manifest.production === undefined
@@ -463,12 +681,30 @@ function computePromptArtifactHash(input: {
 }
 
 function normalizeProductionBinding(
-  production: PromptArtifactProductionBinding | z.infer<typeof promptArtifactProductionBindingObjectSchema>,
+  production: PromptArtifactProductionBinding | BuildPromptArtifactProductionBinding | z.infer<typeof promptArtifactProductionBindingObjectSchema> | z.infer<typeof buildPromptArtifactProductionBindingObjectSchema>,
   manifest: Pick<PromptArtifactManifest, "runType" | "promptTemplateId" | "promptTemplateVersion" | "contextPackRefs">,
   text: string,
   verifiedResolvedContextPacks?: readonly VerifiedResolvedContextPack[],
   options: { readonly deriveHashes?: boolean } = {}
 ): PromptArtifactProductionBinding {
+  if (production.schemaVersion === "agent-production-prompt-binding.v2" && "sourceApprovedPromptArtifact" in production) {
+    return bindProductionBindingV2(production, manifest, text, verifiedResolvedContextPacks);
+  }
+
+  if (production.schemaVersion === "agent-production-prompt-binding.v2") {
+    return normalizePersistedProductionBindingV2(production, manifest, text, verifiedResolvedContextPacks);
+  }
+
+  return normalizeProductionBindingV1(production, manifest, text, verifiedResolvedContextPacks, options);
+}
+
+function normalizeProductionBindingV1(
+  production: PromptArtifactProductionBindingV1 | z.infer<typeof promptArtifactProductionBindingV1ObjectSchema>,
+  manifest: Pick<PromptArtifactManifest, "runType" | "promptTemplateId" | "promptTemplateVersion" | "contextPackRefs">,
+  text: string,
+  verifiedResolvedContextPacks?: readonly VerifiedResolvedContextPack[],
+  options: { readonly deriveHashes?: boolean } = {}
+): PromptArtifactProductionBindingV1 {
   if (!isProductionRunType(manifest.runType)) {
     throw new Error("Production prompt binding is not supported for this run type");
   }
@@ -503,7 +739,123 @@ function normalizeProductionBinding(
     ...production,
     renderedPromptHash: expectedRenderedPromptHash,
     resolvedPayloadAudits: expectedAudits
-  });
+  } as PromptArtifactProductionBindingV1) as PromptArtifactProductionBindingV1;
+}
+
+function bindProductionBindingV2(
+  production: BuildPromptArtifactProductionBindingV2 | z.infer<typeof buildPromptArtifactProductionBindingV2ObjectSchema>,
+  manifest: Pick<PromptArtifactManifest, "runType" | "promptTemplateId" | "promptTemplateVersion" | "contextPackRefs">,
+  text: string,
+  verifiedResolvedContextPacks?: readonly VerifiedResolvedContextPack[]
+): PromptArtifactProductionBindingV2 {
+  if (verifiedResolvedContextPacks === undefined) {
+    throw new Error("Production v2 binding requires resolved context packs");
+  }
+  if (typeof production.scope !== "object" || production.scope === null || Array.isArray(production.scope)) {
+    throw new Error("Production v2 binding requires a raw production scope");
+  }
+  const source = normalizePromptArtifactEnvelope(production.sourceApprovedPromptArtifact);
+  const sourceProduction = source.manifest.production;
+  if (sourceProduction === undefined || sourceProduction.schemaVersion !== "agent-production-prompt-binding.v1") {
+    throw new Error("Production v2 binding requires an explicit approved v1 source artifact");
+  }
+  if (
+    source.manifest.runType !== manifest.runType ||
+    source.manifest.promptTemplateId !== manifest.promptTemplateId ||
+    source.manifest.promptTemplateVersion !== manifest.promptTemplateVersion ||
+    source.text !== text ||
+    stableJsonForPromptArtifact(source.manifest.contextPackRefs) !== stableJsonForPromptArtifact(manifest.contextPackRefs)
+  ) {
+    throw new Error("Production v2 binding must preserve the exact approved v1 bytes and template facts");
+  }
+
+  const normalizedSource = normalizeProductionBindingV1(
+    sourceProduction,
+    source.manifest,
+    source.text,
+    verifiedResolvedContextPacks
+  );
+  const exactRunBinding = createPromptArtifactExactRunBindingV2(production.exactRun as CreatePromptArtifactExactRunBindingV2Input);
+  if (exactRunBinding.runType !== manifest.runType) {
+    throw new Error("Production v2 exact run does not match the approved v1 run type");
+  }
+  const registration = productionSpecialistPromptRegistrationFor(exactRunBinding.runType);
+  const expectedAudits = auditsFromVerifiedResolvedContextPacks(verifiedResolvedContextPacks);
+  if (stableJsonForPromptArtifact(normalizedSource.resolvedPayloadAudits) !== stableJsonForPromptArtifact(expectedAudits)) {
+    throw new Error("Production v2 binding resolved context packs do not match the approved v1 source");
+  }
+
+  return freezePromptArtifactProductionBinding({
+    schemaVersion: "agent-production-prompt-binding.v2",
+    rendererId: registration.rendererId,
+    rendererVersion: registration.rendererVersion,
+    rendererHash: registration.rendererHash,
+    renderedPromptHash: hashPromptText(text) as `sha256:${string}`,
+    providerOutputSchemaId: registration.providerOutputSchemaId,
+    providerOutputSchemaVersion: registration.providerOutputSchemaVersion,
+    handoffSchemaId: registration.handoffSchemaId,
+    handoffSchemaVersion: registration.handoffSchemaVersion,
+    scopeApplicabilityHash: normalizedSource.scopeApplicabilityHash,
+    evaluatedContextRequirements: normalizedSource.evaluatedContextRequirements,
+    resolvedPayloadAudits: expectedAudits,
+    sourceApprovedPromptArtifactHash: source.manifest.inputArtifactHash as `sha256:${string}`,
+    exactRunBinding,
+    providerPostureHash: hashPromptArtifactProviderPostureV2(exactRunBinding.providerPosture),
+    exactRunBindingHash: hashPromptArtifactExactRunBindingV2(exactRunBinding)
+  }) as PromptArtifactProductionBindingV2;
+}
+
+function normalizePersistedProductionBindingV2(
+  production: PromptArtifactProductionBindingV2 | z.infer<typeof promptArtifactProductionBindingV2ObjectSchema>,
+  manifest: Pick<PromptArtifactManifest, "runType" | "promptTemplateId" | "promptTemplateVersion" | "contextPackRefs">,
+  text: string,
+  verifiedResolvedContextPacks?: readonly VerifiedResolvedContextPack[]
+): PromptArtifactProductionBindingV2 {
+  // Both callers have already parsed this DTO against the strict durable-v2
+  // schema. Keep build-v2 input fields out of the persisted branch.
+  const persisted = production as PromptArtifactProductionBindingV2;
+  if (!isProductionRunType(manifest.runType)) {
+    throw new Error("Production prompt binding is not supported for this run type");
+  }
+  const registration = productionSpecialistPromptRegistrationFor(manifest.runType);
+  if (
+    manifest.promptTemplateId !== registration.promptTemplateId ||
+    manifest.promptTemplateVersion !== registration.promptTemplateVersion ||
+    persisted.rendererId !== registration.rendererId ||
+    persisted.rendererVersion !== registration.rendererVersion ||
+    persisted.rendererHash !== registration.rendererHash ||
+    persisted.providerOutputSchemaId !== registration.providerOutputSchemaId ||
+    persisted.providerOutputSchemaVersion !== registration.providerOutputSchemaVersion ||
+    persisted.handoffSchemaId !== registration.handoffSchemaId ||
+    persisted.handoffSchemaVersion !== registration.handoffSchemaVersion
+  ) {
+    throw new Error("Production prompt binding does not match the registered specialist renderer");
+  }
+  const exactRunBinding = normalizePersistedPromptArtifactExactRunBindingV2(persisted.exactRunBinding);
+  if (exactRunBinding.runType !== manifest.runType) {
+    throw new Error("Production v2 exact run does not match the artifact run type");
+  }
+  if (
+    persisted.providerPostureHash !== hashPromptArtifactProviderPostureV2(exactRunBinding.providerPosture) ||
+    persisted.exactRunBindingHash !== hashPromptArtifactExactRunBindingV2(exactRunBinding)
+  ) {
+    throw new Error("Production v2 binding derived hash mismatch");
+  }
+  assertEvaluatedContextRequirements(persisted.evaluatedContextRequirements, registration.contextRequirements, manifest.contextPackRefs);
+  const expectedAudits = verifiedResolvedContextPacks === undefined
+    ? auditsFromContextPackRefs(manifest.contextPackRefs)
+    : auditsFromVerifiedResolvedContextPacks(verifiedResolvedContextPacks);
+  if (stableJsonForPromptArtifact(persisted.resolvedPayloadAudits) !== stableJsonForPromptArtifact(expectedAudits)) {
+    throw new Error("Production resolved payload audits do not match authoritative context packs");
+  }
+  if (persisted.renderedPromptHash !== hashPromptText(text)) {
+    throw new Error("Production prompt binding hash mismatch");
+  }
+  return freezePromptArtifactProductionBinding({
+    ...persisted,
+    exactRunBinding,
+    resolvedPayloadAudits: expectedAudits
+  }) as PromptArtifactProductionBindingV2;
 }
 
 function assertEvaluatedContextRequirements(
@@ -579,7 +931,7 @@ function auditsFromContextPackRefs(refs: readonly ContextPackRef[]): readonly Pr
   })));
 }
 
-function hashPromptText(text: string): string {
+function hashPromptText(text: string): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(Buffer.from(text, "utf8")).digest("hex")}`;
 }
 
@@ -853,7 +1205,7 @@ function freezePromptArtifactOmission(omission: z.infer<typeof promptArtifactOmi
 function freezePromptArtifactProductionBinding(
   production: PromptArtifactProductionBinding
 ): PromptArtifactProductionBinding {
-  return Object.freeze({
+  const common = {
     rendererId: production.rendererId,
     rendererVersion: production.rendererVersion,
     rendererHash: production.rendererHash,
@@ -876,6 +1228,81 @@ function freezePromptArtifactProductionBinding(
       sizeBytes: audit.sizeBytes,
       schemaId: audit.schemaId
     })))
+  };
+  if (production.schemaVersion === "agent-production-prompt-binding.v2") {
+    return Object.freeze({
+      schemaVersion: production.schemaVersion,
+      ...common,
+      sourceApprovedPromptArtifactHash: production.sourceApprovedPromptArtifactHash,
+      exactRunBinding: freezePromptArtifactExactRunBindingV2(production.exactRunBinding),
+      providerPostureHash: production.providerPostureHash,
+      exactRunBindingHash: production.exactRunBindingHash
+    });
+  }
+  return Object.freeze({
+    schemaVersion: production.schemaVersion,
+    ...common
+  });
+}
+
+function normalizePersistedPromptArtifactExactRunBindingV2(
+  binding: PromptArtifactExactRunBindingV2 | z.infer<typeof promptArtifactExactRunBindingV2ObjectSchema>
+): PromptArtifactExactRunBindingV2 {
+  const parsed = parseNormalizedDtoOrThrow(binding, promptArtifactExactRunBindingV2ObjectSchema, "$");
+  const canonicalDescriptor = specialistWorkflowDescriptorFor(parsed.runType);
+  if (parsed.workflowDescriptorHash !== hashAgentContextPack(canonicalDescriptor)) {
+    throw new Error("Production v2 workflow descriptor hash mismatch");
+  }
+  return freezePromptArtifactExactRunBindingV2({
+    taskId: parsed.taskId,
+    attemptId: parsed.attemptId,
+    approvedRunId: parsed.approvedRunId,
+    runId: parsed.runId,
+    runType: parsed.runType as Exclude<AgentSpecialistRunType, "ontology-bootstrap">,
+    residentAgentId: parsed.residentAgentId,
+    workspaceId: parsed.workspaceId,
+    mountInstanceId: parsed.mountInstanceId,
+    workflowDescriptorHash: parsed.workflowDescriptorHash as `sha256:${string}`,
+    policyVersion: parsed.policyVersion,
+    providerPosture: freezePromptArtifactProviderPostureV2(parsed.providerPosture)
+  });
+}
+
+function freezePromptArtifactExactRunBindingV2(
+  binding: PromptArtifactExactRunBindingV2
+): PromptArtifactExactRunBindingV2 {
+  return Object.freeze({
+    taskId: binding.taskId,
+    attemptId: binding.attemptId,
+    approvedRunId: binding.approvedRunId,
+    runId: binding.runId,
+    runType: binding.runType,
+    residentAgentId: binding.residentAgentId,
+    workspaceId: binding.workspaceId,
+    mountInstanceId: binding.mountInstanceId,
+    workflowDescriptorHash: binding.workflowDescriptorHash,
+    policyVersion: binding.policyVersion,
+    providerPosture: freezePromptArtifactProviderPostureV2(binding.providerPosture)
+  });
+}
+
+function freezePromptArtifactProviderPostureV2(
+  posture: PromptArtifactProviderPostureV2
+): PromptArtifactProviderPostureV2 {
+  const capabilityIds = [...posture.capabilityIds];
+  if (
+    capabilityIds.some((capabilityId, index) => index > 0 && capabilityIds[index - 1]! >= capabilityId) ||
+    new Set(capabilityIds).size !== capabilityIds.length
+  ) {
+    throw new Error("Production v2 provider capability IDs must be unique and lexically sorted");
+  }
+  return Object.freeze({
+    providerId: posture.providerId,
+    modelId: posture.modelId,
+    capabilityIds: Object.freeze(capabilityIds),
+    selectionPolicyVersion: posture.selectionPolicyVersion,
+    readinessState: posture.readinessState,
+    approvalRequirementId: posture.approvalRequirementId
   });
 }
 

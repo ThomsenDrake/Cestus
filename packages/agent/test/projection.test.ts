@@ -227,7 +227,7 @@ describe("buildAgentProjection", () => {
     ]);
   });
 
-  it("replays model invocation prompt audit metadata without prompt text or mixed output artifacts", () => {
+  it("round trips explicit production binding v1 without defaulting", () => {
     const dto = buildAgentProjection(modelInvocationAuditEvents()).toDto() as ReturnType<
       ReturnType<typeof buildAgentProjection>["toDto"]
     > & {
@@ -262,6 +262,54 @@ describe("buildAgentProjection", () => {
     const serialized = JSON.stringify(dto);
     expect(serialized).not.toContain("Use the listed context pack summaries");
     expect(serialized).not.toContain("resolved-payload-sentinel");
+  });
+
+  it("round trips strict v2 with source v1 and all owner hashes", () => {
+    const events = modelInvocationAuditEvents().map((event) => event.type !== "agent.model-invocation.requested"
+      ? event
+      : {
+        ...event,
+        payload: {
+          ...event.payload,
+          production: {
+            ...productionPromptAuditBinding(),
+            schemaVersion: "agent-production-prompt-binding.v2",
+            sourceApprovedPromptArtifactHash: hash111,
+            providerPostureHash: hash222,
+            exactRunBindingHash: hash333,
+            exactRunBinding: {
+              taskId: "task_prompt_audit",
+              attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              approvedRunId: "run_prompt_audit",
+              runId: "run_prompt_audit",
+              runType: "evidence-triage",
+              residentAgentId: "agent_default",
+              workspaceId: "ws_case_001",
+              mountInstanceId: "mount_case_001",
+              workflowDescriptorHash: hash111,
+              policyVersion: "policy.v1",
+              providerPosture: {
+                providerId: "provider_remote_model",
+                modelId: "remote-safe",
+                capabilityIds: ["capability_remote_model"],
+                selectionPolicyVersion: "policy.v1",
+                readinessState: "ready",
+                approvalRequirementId: "toolreq_provider_transfer"
+              }
+            }
+          }
+        }
+      }
+    );
+    const invocation = buildAgentProjection(events as Parameters<typeof buildAgentProjection>[0])
+      .toDto().modelInvocations?.find((item) => item.invocationId === "inv_prompt_audit");
+
+    expect(invocation?.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v2",
+      sourceApprovedPromptArtifactHash: hash111,
+      providerPostureHash: hash222,
+      exactRunBindingHash: hash333
+    });
   });
 });
 
@@ -505,6 +553,7 @@ function promptOmission(): Record<string, unknown> {
 
 function productionPromptAuditBinding(): Record<string, unknown> {
   return {
+    schemaVersion: "agent-production-prompt-binding.v1",
     rendererId: "evidence-triage.classify.renderer",
     rendererVersion: 1,
     rendererHash: hash111,

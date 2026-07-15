@@ -1021,6 +1021,7 @@ function promptAuditPayload(metadata: PromptArtifactAuditMetadata | undefined) {
     omissions: metadata.omissions.map((omission) => ({ ...omission })),
     transferApprovalClass: metadata.transferApprovalClass,
     ...optionalValue("production", metadata.production === undefined ? undefined : {
+      schemaVersion: metadata.production.schemaVersion,
       rendererId: metadata.production.rendererId,
       rendererVersion: metadata.production.rendererVersion,
       rendererHash: metadata.production.rendererHash,
@@ -1031,7 +1032,19 @@ function promptAuditPayload(metadata: PromptArtifactAuditMetadata | undefined) {
       handoffSchemaVersion: metadata.production.handoffSchemaVersion,
       scopeApplicabilityHash: metadata.production.scopeApplicabilityHash,
       evaluatedContextRequirements: metadata.production.evaluatedContextRequirements.map((requirement) => ({ ...requirement })),
-      resolvedPayloadAudits: metadata.production.resolvedPayloadAudits.map((audit) => ({ ...audit }))
+      resolvedPayloadAudits: metadata.production.resolvedPayloadAudits.map((audit) => ({ ...audit })),
+      ...(metadata.production.schemaVersion === "agent-production-prompt-binding.v2" ? {
+        sourceApprovedPromptArtifactHash: metadata.production.sourceApprovedPromptArtifactHash,
+        exactRunBinding: {
+          ...metadata.production.exactRunBinding,
+          providerPosture: {
+            ...metadata.production.exactRunBinding.providerPosture,
+            capabilityIds: [...metadata.production.exactRunBinding.providerPosture.capabilityIds]
+          }
+        },
+        providerPostureHash: metadata.production.providerPostureHash,
+        exactRunBindingHash: metadata.production.exactRunBindingHash
+      } : {})
     })
   };
 }

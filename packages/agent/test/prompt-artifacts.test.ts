@@ -7,6 +7,7 @@ import {
   registerContextPackPayloadParserAuthority
 } from "../src/context-packs.js";
 import type { AgentContextPackJsonValue, ContextPackRef } from "../src/context-packs.js";
+import type { PromptArtifactProductionBindingV1 } from "../src/prompt-artifacts.js";
 import {
   assertPromptArtifactCanTransferToRemoteProvider,
   buildPromptArtifact,
@@ -202,6 +203,7 @@ describe("resident agent prompt artifacts", () => {
       text: "Rendered prompt contains bounded payload content.",
       safeSummary: "Provider-approved evidence triage prompt artifact.",
       production: {
+        schemaVersion: "agent-production-prompt-binding.v1",
         rendererId: registration.rendererId,
         rendererVersion: registration.rendererVersion,
         rendererHash: registration.rendererHash,
@@ -222,6 +224,57 @@ describe("resident agent prompt artifacts", () => {
     expect(JSON.stringify(audit)).not.toContain("payload-only-fact");
     expect(JSON.stringify(audit)).not.toContain("Rendered prompt contains bounded payload content");
     expect(envelope.resolvedContextPacks?.[0]).toBe(verifiedResolvedEvidenceSummary);
+  });
+
+  it("derives every v2 output hash and rejects caller-supplied hashes", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const artifact = buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs)
+    });
+
+    expect(artifact.manifest.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
+    expect(() => buildPromptArtifact({
+      promptTemplateId: artifact.manifest.promptTemplateId,
+      promptTemplateVersion: artifact.manifest.promptTemplateVersion,
+      generatedAt: artifact.manifest.generatedAt,
+      runType: artifact.manifest.runType,
+      safetyClass: artifact.manifest.safetyClass,
+      transferApprovalClass: artifact.manifest.transferApprovalClass,
+      contextPackRefs,
+      text: artifact.text,
+      safeSummary: artifact.manifest.safeSummary,
+      production: {
+        ...artifact.manifest.production!,
+        schemaVersion: "agent-production-prompt-binding.v2",
+        sourceApprovedPromptArtifactHash: artifact.manifest.inputArtifactHash
+      } as never,
+      resolvedContextPacks
+    })).toThrow(/v2|approved|raw|production/i);
+  });
+
+  it("rejects unversioned and hostile production bindings", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const { schemaVersion: _schemaVersion, ...unversionedBinding } = productionBinding(contextPackRefs);
+
+    expect(() => buildPromptArtifact({
+      promptTemplateId: "evidence-triage.classify.v1",
+      promptTemplateVersion: 1,
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      runType: "evidence-triage",
+      safetyClass: "provider-approved",
+      transferApprovalClass: "provider-byte-transfer",
+      contextPackRefs,
+      text: "Rendered prompt contains bounded payload content.",
+      safeSummary: "Provider-approved evidence triage prompt artifact.",
+      production: unversionedBinding as never,
+      resolvedContextPacks
+    })).toThrow(/schema|version|production/i);
   });
 
   it("does not let generic construction transfer arbitrary text with a complete production binding", async () => {
@@ -642,7 +695,7 @@ function buildProductionEvidenceTriageArtifact(input: {
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly resolvedContextPacks: readonly Awaited<ReturnType<typeof resolvedEvidenceTriageContextPacks>>[number][];
   readonly evaluatedContextRequirements: ReturnType<typeof evaluatedEvidenceTriageRequirements>;
-  readonly scopeApplicabilityHash?: string;
+  readonly scopeApplicabilityHash?: `sha256:${string}`;
 }) {
   const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
   return buildPromptArtifact({
@@ -656,6 +709,7 @@ function buildProductionEvidenceTriageArtifact(input: {
     text: "Rendered prompt contains bounded payload content.",
     safeSummary: "Provider-approved evidence triage prompt artifact.",
     production: {
+      schemaVersion: "agent-production-prompt-binding.v1",
       rendererId: registration.rendererId,
       rendererVersion: registration.rendererVersion,
       rendererHash: registration.rendererHash,
@@ -672,9 +726,10 @@ function buildProductionEvidenceTriageArtifact(input: {
   });
 }
 
-function productionBinding(contextPackRefs: readonly ContextPackRef[]) {
+function productionBinding(contextPackRefs: readonly ContextPackRef[]): PromptArtifactProductionBindingV1 {
   const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
   return {
+    schemaVersion: "agent-production-prompt-binding.v1" as const,
     rendererId: registration.rendererId,
     rendererVersion: registration.rendererVersion,
     rendererHash: registration.rendererHash,
@@ -736,6 +791,7 @@ async function genericProductionShapedArtifact(runType: Parameters<typeof produc
       .filter((requirement) => requirement.status === "not-applicable")
       .map(() => ({ reason: "no-associated-prr", sourceRef: "prr-read-model.v1", safeSummary: "PRR context is not applicable." })),
     production: {
+      schemaVersion: "agent-production-prompt-binding.v1",
       rendererId: registration.rendererId,
       rendererVersion: registration.rendererVersion,
       rendererHash: registration.rendererHash,
