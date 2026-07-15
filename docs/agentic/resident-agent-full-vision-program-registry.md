@@ -12441,3 +12441,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-454 — Task136 Recovery-4 rejected as non-dispatchable
+
+- Mounted-authority/dependency reviewer
+  `019f67e7-d777-7880-bbd6-22826e93554c` and autonomous-plan/release-record/API
+  reviewer `019f67e7-c51c-7603-a525-6c391555cf61` independently returned
+  **NEEDS-CHANGES** for exact documentation candidate
+  `14f2799a9ab1d7c633eacc8eb16c5eab9d77d2fa` after exact-range diff and
+  factory-readiness checks passed.
+- The embedded release checker does not prove release-record immutability,
+  dispatch-base blob equality, strict record grammar, unknown-record rejection,
+  or dependency integration/release ancestry before a consumer candidate.
+- The terminal graph contains an FC/P2 dependency cycle, leaves G136-SC unable
+  to own the scheduler call site or obtain an opaque completion claim, and does
+  not define complete private registrar or provider-posture readback ABIs.
+- Provider lineage records cannot uniquely bind the selected feasibility,
+  capability, credential reference, model, and current-use configuration.
+  Task126-R also leaves reader-mint import escape paths outside its enumerated
+  packages/forms, and the claimed exclusive inventory overlaps the Task137A and
+  Task137B-W import-policy test without a transfer rule.
+- Historical executable `TASK136_RELEASES` and capability-bearing handoff
+  examples remain selectable because prose supersession is not mechanically
+  enforced.
+- Exact candidate `14f2799a9ab1d7c633eacc8eb16c5eab9d77d2fa` must not be
+  integrated. A fresh documentation owner must start from that SHA, preserve
+  the same three-path ceiling, and produce one terminal, mechanically
+  dispatchable correction before any Task139 source work resumes.
+- Full verification, source implementation, live/provider/network/credential/
+  Nous activity, reset credits, push, child self-integration, program merge
+  without coordinator review, and every `neo` action remain closed.
