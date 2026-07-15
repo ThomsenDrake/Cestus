@@ -99,7 +99,11 @@ interface MountedProductionPromptReadbackBinding {
   readonly authoritativeResolvedContextPacks?: readonly VerifiedResolvedContextPack[] | undefined;
   readonly rereadCanonicalBytes: () => Promise<Uint8Array>;
   readonly revalidateCurrent: () => Promise<void>;
-  consumed: boolean;
+  /**
+   * A reservation is made synchronously, before any mounted I/O. A failed
+   * reservation remains terminal: prompt authority is never retryable.
+   */
+  state: "available" | "consuming" | "consumed";
 }
 
 interface MountedAuthorityBinding extends MountedProductionPromptReadbackMount {
@@ -177,7 +181,7 @@ export async function issueMountedProductionPromptReadback(
     }),
     rereadCanonicalBytes: input.rereadCanonicalBytes,
     revalidateCurrent,
-    consumed: false
+    state: "available"
   });
   return witness;
 }
@@ -194,38 +198,58 @@ export async function consumeMountedProductionPromptReadbackWitness(
   if (binding === undefined) {
     throw new Error("A current mounted production prompt readback witness is required.");
   }
-  if (binding.consumed) {
+  if (binding.state !== "available") {
     throw new Error("Mounted production prompt readback witness is already consumed.");
   }
+  binding.state = "consuming";
+  try {
+    await binding.revalidateCurrent();
+    if (expected === undefined) {
+      throw new Error("Mounted production prompt readback expectations are required.");
+    }
+    if (
+      expected.workspaceId !== binding.workspaceId ||
+      expected.taskId !== binding.taskId ||
+      expected.runId !== binding.runId ||
+      expected.runType !== binding.runType ||
+      expected.scopeApplicabilityHash !== binding.scopeApplicabilityHash ||
+      !sameCanonicalJson(expected.contextPackRefs, binding.contextPackRefs)
+    ) {
+      throw new Error("Mounted production prompt readback does not match the current task, run, scope, context, or checkpoint tuple.");
+    }
+    return Object.freeze({
+      envelope: binding.envelope,
+      workspaceId: binding.workspaceId,
+      rootDir: binding.rootDir,
+      blobRoot: binding.blobRoot,
+      mountInstanceId: binding.mountInstanceId,
+      taskId: binding.taskId,
+      runId: binding.runId,
+      runType: binding.runType,
+      generatedAt: binding.generatedAt,
+      scopeApplicabilityHash: binding.scopeApplicabilityHash,
+      contextPackRefs: binding.contextPackRefs,
+      revalidateCurrent: binding.revalidateCurrent
+    });
+  } finally {
+    binding.state = "consumed";
+  }
+}
+
+/**
+ * Revalidates a still-unconsumed mounted readback without granting a caller
+ * access to its parsed prompt. The local factory keeps this only in its
+ * lexical render/readback handoff before context-ready is appended.
+ */
+export async function revalidateMountedProductionPromptReadbackWitness(witness: unknown): Promise<void> {
+  if (typeof witness !== "object" || witness === null) {
+    throw new Error("A current mounted production prompt readback witness is required.");
+  }
+  const binding = bindings.get(witness);
+  if (binding === undefined || binding.state !== "available") {
+    throw new Error("A current unconsumed mounted production prompt readback witness is required.");
+  }
   await binding.revalidateCurrent();
-  if (expected === undefined) {
-    throw new Error("Mounted production prompt readback expectations are required.");
-  }
-  if (
-    expected.workspaceId !== binding.workspaceId ||
-    expected.taskId !== binding.taskId ||
-    expected.runId !== binding.runId ||
-    expected.runType !== binding.runType ||
-    expected.scopeApplicabilityHash !== binding.scopeApplicabilityHash ||
-    !sameCanonicalJson(expected.contextPackRefs, binding.contextPackRefs)
-  ) {
-    throw new Error("Mounted production prompt readback does not match the current task, run, scope, context, or checkpoint tuple.");
-  }
-  binding.consumed = true;
-  return Object.freeze({
-    envelope: binding.envelope,
-    workspaceId: binding.workspaceId,
-    rootDir: binding.rootDir,
-    blobRoot: binding.blobRoot,
-    mountInstanceId: binding.mountInstanceId,
-    taskId: binding.taskId,
-    runId: binding.runId,
-    runType: binding.runType,
-    generatedAt: binding.generatedAt,
-    scopeApplicabilityHash: binding.scopeApplicabilityHash,
-    contextPackRefs: binding.contextPackRefs,
-    revalidateCurrent: binding.revalidateCurrent
-  });
 }
 
 function parseCanonicalProductionEnvelope(

@@ -29,6 +29,11 @@ import {
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import {
+  createMountedProductionPromptReadbackAuthority,
+  issueMountedProductionPromptReadback
+} from "../src/production-prompt-readback.js";
+import { serializePromptArtifactEnvelope } from "../src/prompt-artifacts.js";
 import { ConcurrencyConflictError, InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
@@ -90,6 +95,42 @@ describe("specialist runner artifact serialization", () => {
 
     await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
       .resolves.toMatchObject({ promptArtifact: { manifest: { production: { schemaVersion: "agent-production-prompt-binding.v1" } } } });
+  });
+
+  it("concurrent mounted witness preparation yields at most one provider-preparable run", async () => {
+    const fixture = await runnerFixture({ includeWitness: false });
+    const canonical = Buffer.from(serializePromptArtifactEnvelope(fixture.rendered));
+    const rereadStarted = deferred<void>();
+    const rereadRelease = deferred<Uint8Array>();
+    let deferConsumption = false;
+    let rereadCount = 0;
+    const authority = createMountedProductionPromptReadbackAuthority({
+      currentMount: () => ({ workspaceId: "ws_runner_test", rootDir: "/runner", blobRoot: "/runner/blobs" })
+    });
+    const witness = await issueMountedProductionPromptReadback({
+      serializedEnvelope: canonical,
+      authoritativeResolvedContextPacks: fixture.rendered.resolvedContextPacks,
+      authority,
+      rereadCanonicalBytes: async () => {
+        rereadCount += 1;
+        if (!deferConsumption) return canonical;
+        rereadStarted.resolve();
+        return await rereadRelease.promise;
+      }
+    });
+    const input = { ...fixture.input, mountedPromptReadbackWitness: witness };
+
+    deferConsumption = true;
+    const first = prepareSpecialistRun(input, "evidence-triage");
+    const second = prepareSpecialistRun(input, "evidence-triage");
+    await rereadStarted.promise;
+    for (let microtask = 0; microtask < 20; microtask += 1) await Promise.resolve();
+
+    expect(rereadCount).toBe(2);
+    rereadRelease.resolve(canonical);
+    await expect(first).resolves.toMatchObject({ promptArtifact: { manifest: { inputArtifactHash: fixture.rendered.manifest.inputArtifactHash } } });
+    await expect(second).rejects.toThrow(/already consumed|mounted.*readback/i);
+    expect(fixture.invocationCount()).toBe(0);
   });
 
   it("preserves the authoritative artifact timestamp across delayed approval resume", async () => {
@@ -1432,6 +1473,12 @@ const runnerContextPackIds = [
   "prr-read-model.v1",
   "jurisdiction-pack-summary.v1"
 ] as const;
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
 
 async function runnerFixture(patch: {
   readonly contextPacks?: ContextPackRegistry;

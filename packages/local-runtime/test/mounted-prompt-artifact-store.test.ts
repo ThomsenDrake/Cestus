@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildContextPackRef,
   buildResolvedContextPack,
@@ -14,7 +14,7 @@ import {
   productionSpecialistPromptRegistrationFor,
   renderProductionSpecialistPrompt
 } from "../../agent/src/production-specialist-prompts.js";
-import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { createPortableWorkspace, type MountedPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createMountedPromptArtifactStore } from "../src/mounted-prompt-artifact-store.js";
 import { createSqlitePrrRuntime } from "../src/runtime-factory.js";
@@ -22,6 +22,9 @@ import { createSqlitePrrRuntime } from "../src/runtime-factory.js";
 const dirs: string[] = [];
 
 afterEach(() => {
+  vi.doUnmock("node:fs/promises");
+  vi.doUnmock("../../workspace/src/index.js");
+  vi.resetModules();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -50,6 +53,30 @@ describe("mounted prompt artifact store", () => {
       });
     } finally {
       handle.close();
+    }
+  });
+
+  it.each(["workspaceId", "rootDir", "blobRoot"] as const)("rejects %s mount drift before artifact I/O", async (field) => {
+    const fixture = await driftFixture(field);
+    try {
+      fixture.swapBeforeIo();
+      await expect(fixture.store.read({ inputArtifactHash: fixture.hash })).rejects.toThrow(/tuple|mount|portable/i);
+      expect(fixture.accesses.original).toBe(0);
+      expect(fixture.accesses.replacement).toBe(0);
+    } finally {
+      fixture.close();
+    }
+  });
+
+  it.each(["workspaceId", "rootDir", "blobRoot"] as const)("rejects %s mount drift after artifact I/O without replacement access", async (field) => {
+    const fixture = await driftFixture(field);
+    try {
+      fixture.swapDuringOriginalRead();
+      await expect(fixture.store.read({ inputArtifactHash: fixture.hash })).rejects.toThrow(/tuple|mount|portable/i);
+      expect(fixture.accesses.original).toBe(1);
+      expect(fixture.accesses.replacement).toBe(0);
+    } finally {
+      fixture.close();
     }
   });
 
@@ -253,6 +280,68 @@ function providerUsefulPayload(contextPackId: string): AgentContextPackJsonValue
     default:
       throw new Error(`Unexpected mounted store context pack ${contextPackId}`);
   }
+}
+
+async function driftFixture(field: "workspaceId" | "rootDir" | "blobRoot") {
+  const handle = portableHandle();
+  const prompt = await productionPromptEnvelope();
+  const sourceStore = await createMountedPromptArtifactStore({ handle });
+  await sourceStore.put(prompt);
+  const original = handle.mountedWorkspace;
+  if (original === undefined) throw new Error("Expected a mounted portable workspace.");
+  const replacement = replacementWorkspaceTuple(original, field);
+  let current = original;
+  let swapDuringRead = false;
+  const accesses = { original: 0, replacement: 0 };
+
+  vi.resetModules();
+  vi.doMock("../../workspace/src/index.js", async () => {
+    const actual = await vi.importActual<typeof import("../../workspace/src/index.js")>("../../workspace/src/index.js");
+    return {
+      ...actual,
+      mountPortableWorkspace: () => ({ ok: true as const, workspace: current })
+    };
+  });
+  vi.doMock("node:fs/promises", async () => {
+    const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    return {
+      ...actual,
+      readFile: async (path: Parameters<typeof actual.readFile>[0], options?: Parameters<typeof actual.readFile>[1]) => {
+        const pathText = String(path);
+        if (current === original) accesses.original += 1;
+        if (current === replacement) accesses.replacement += 1;
+        const result = options === undefined
+          ? await actual.readFile(path)
+          : await actual.readFile(path, options);
+        if (swapDuringRead && pathText.startsWith(original.paths.blobRoot)) current = replacement;
+        return result;
+      }
+    };
+  });
+  const { createMountedPromptArtifactStore: createDriftStore } = await import("../src/mounted-prompt-artifact-store.js");
+  const store = await createDriftStore({ handle });
+  return {
+    store,
+    hash: prompt.manifest.inputArtifactHash as `sha256:${string}`,
+    accesses,
+    swapBeforeIo: () => { current = replacement; },
+    swapDuringOriginalRead: () => { swapDuringRead = true; },
+    close: () => handle.close()
+  };
+}
+
+function replacementWorkspaceTuple(
+  original: MountedPortableWorkspace,
+  field: "workspaceId" | "rootDir" | "blobRoot"
+): MountedPortableWorkspace {
+  const rootDir = field === "rootDir" ? `${original.rootDir}-replacement` : original.rootDir;
+  const blobRoot = field === "blobRoot" ? `${original.paths.blobRoot}-replacement` : original.paths.blobRoot;
+  return Object.freeze({
+    ...original,
+    workspaceId: field === "workspaceId" ? "ws_prompt_store_replacement" : original.workspaceId,
+    rootDir,
+    paths: Object.freeze({ ...original.paths, blobRoot })
+  });
 }
 
 function tempDir(prefix: string): string {
