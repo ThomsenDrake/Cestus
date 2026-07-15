@@ -11721,3 +11721,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-429 — Task136 second candidate rejected at root-cause checkpoint
+
+- Architecture reviewer `019f678a-34a7-7ec1-83e0-e2511afcdcbd` and
+  plan-executability/API reviewer `019f678a-43fc-7a11-bb34-a57cee0d67b6`
+  independently returned **NEEDS-CHANGES** for exact candidate
+  `3e7b1aa829299e6b8001dce300adffd1d2073475`. Diff checking and factory
+  readiness passed; the rejection is a contract-graph failure.
+- CF1-HR lacks complete Task123 four-path release and reviewed Task133.5
+  kernel-pair transfer. G136-R also has a request/tool-step bootstrap cycle;
+  T120-R names undefined readback contracts; gateway and approval signatures
+  trust caller copies; Task139-P2 does not mount the canonical Task126 posture
+  reader; and CF1-HR lacks an exact H readback parser/producer contract.
+- The original author exhausted two bounded candidates and is stopped
+  read-only. Fresh Terra/xhigh recovery owner
+  `019f6794-6c7e-7e83-82de-87759c01989b`, worktree
+  `/home/drake/.codex/worktrees/325a/Cestus`, starts from the rejected second
+  candidate and may append one terminal correction on a new task-scoped branch.
+  It owns only the same plan and claim paths; source implementation and
+  `superpowers:subagent-driven-development` are not relevant or authorized.
+- Any recovery candidate requires fresh exact-SHA admission and two new
+  independent reviews. Neither rejected Task136 candidate is integrable.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
+
+## RV-1-E-430 — Task137A admitted to exact-SHA review
+
+- Task137A candidate `e0ab720e05791defd6de646a39c0090231972e93` on
+  `codex/task-137a-mounted-artifact-authority-operation-recovery` is a clean,
+  linear two-commit range from exact base
+  `e0ac8eba4c1e9df6a3f0e0d860b67ad272a027ff` and changes exactly its six
+  authorized paths.
+- Coordinator admission reran the terminal latest **Complete Task137A** clean-
+  shell command. It passed 6 focused files / 66 tests, typecheck, static import
+  boundaries, factory readiness, exact claim-parent and every-commit path
+  ceilings, hidden-state checks, physical-checkout snapshots, and the final
+  checkout rehash. The ignored dependency link was removed and the candidate
+  worktree is clean.
+- Fresh architecture/authority reviewer
+  `019f6794-592f-7992-8edd-60746202ab9d` and fresh adversarial implementation/
+  test reviewer `019f6794-6e58-7b52-9bed-dc45abf2a531` are pinned and read-only
+  on exact candidate `e0ab720e05791defd6de646a39c0090231972e93`. Both must
+  return unqualified **APPROVED** verdicts before coordinator integration.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
