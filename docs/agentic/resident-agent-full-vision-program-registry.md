@@ -8391,3 +8391,23 @@ explicit implementation authorization.
   opening with the latest sole lifecycle contract. Run docs-only validation,
   commit, and obtain two fresh full-lineage approvals. All source/live/full/
   credential/reset-credit/`neo`/integration actions remain closed.
+
+## RV-1-E-269 — Sole-lifecycle Task133 candidate and dual review
+
+- The sole plan writer committed candidate
+  `d0b7e707f229af417fd39ffdbf6440773f31a5b9`. CF-1R9 supplies exact causal
+  RED/GREEN cycles for Task133.1-.3 and .5, retires non-causal Task133.4 into
+  Task133.1, and treats .1-.3 as one atomic discriminated-schema migration with
+  one typecheck/commit after .3. Task133.5 remains a separately reviewed
+  portable-store commit. The claim opening now names only render-v1-once,
+  mounted readback, consume approval, bind-v2-without-rerender, receipt,
+  ephemeral admission, and private H; it explicitly forbids the old exact-v2
+  renderer. Post-commit `git diff --check && npm run factory:check` exited `0`.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f6505-1e85-7813-a9d2-ade280b6843c` and authority/consumer reviewer
+  `019f6505-230f-70b0-854f-a272e48a3c77` are dispatched read-only against exact
+  range `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d0b7e707` and canonical
+  source head `e8d8ad1b`. Two unqualified **APPROVED** verdicts remain required.
+- Latest authenticated token-count event reports `used_percent=35`, therefore
+  65% weekly remaining. DRAIN/HARD PAUSE and reset-credit policy remain
+  unchanged. Source/live/full/credential/`neo`/integration actions remain closed.
