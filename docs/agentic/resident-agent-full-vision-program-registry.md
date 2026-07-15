@@ -8431,3 +8431,21 @@ explicit implementation authorization.
   v2 time solely by reading the exact approval event `occurredAt`.
 - All source/live/full/credential/reset-credit/`neo`/integration actions remain
   closed pending docs validation, commit, and two new full-lineage approvals.
+
+## RV-1-E-271 — Complete Task133.5/P/R0 candidate and dual review
+
+- The sole plan writer committed CF-1R10 candidate
+  `fadbc03d50b72dd72c7a8da4a529bf452aa84b98`. Task133.5 now removes the
+  canonical kernel's implicit render fallback and migrates its direct local PRR
+  caller to supplied mounted v1 readback. Task140P and Task140R0 now have
+  complete replacement file lists, no-time P input, exact causal REDs,
+  identical GREENs, implementation steps, typecheck/diff/factory gates, and
+  commit/review boundaries. R0 derives v2 time solely by rereading the exact
+  approval event `context.occurredAt`. Post-commit docs validation passed.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f6511-eca9-7223-8b74-d686ad2497af` and authority/consumer reviewer
+  `019f6511-f063-7ff3-9a65-98c404c858b7` are dispatched read-only against exact
+  range `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..fadbc03d` and canonical
+  source head `5f181cae`. Two unqualified **APPROVED** verdicts remain required.
+- Latest authenticated usage remains 35% used / 65% weekly remaining. All
+  source/live/full/credential/reset-credit/`neo`/integration actions remain closed.
