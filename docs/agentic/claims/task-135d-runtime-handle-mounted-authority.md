@@ -2,11 +2,16 @@
 
 - Status: ready-for-review
 - Owner: `/root`
-- Branch: `codex/task-135d-runtime-handle-capture-recovery`
+- Branch: `codex/task-135d-runtime-handle-capture-import-review-repair`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
 - Claimed at: `2026-07-15T16:00:07Z`
 - Plan: `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`, terminal Task135D through CF-1R26.
 - Coordinator recovery boundary: `RV-1-E-336`.
+- Coordinator import-ownership review repair: `RV-1-E-343`; prior candidate
+  `4e6542a462b428ce5c0d0c278410fba81ecff6a7` is preserved but rejected only
+  for incomplete import ownership coverage. This bounded forward repair owns
+  the import-authority test and claim evidence only; production authority and
+  lifecycle behavior remain review-approved and must not change.
 
 <!-- task-135d-recovery-dispatch-base-sha: e532c35fd1b3a829dfbbd4f87d752f42304419f9 -->
 
@@ -66,3 +71,27 @@ self-integration, and program-registry edits remain closed.
   `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, or self-integration was performed.
+
+## RV-1-E-343 import ownership repair evidence
+
+- The claim was reopened from the coordinator's preserved, review-rejected
+  `4e6542a462b428ce5c0d0c278410fba81ecff6a7` on fresh forward branch
+  `codex/task-135d-runtime-handle-capture-import-review-repair`; production
+  code remains untouched.
+- The import verifier now recursively enumerates every `packages/*/src` tree
+  and every supported production extension (`.ts`, `.tsx`, `.mts`, `.cts`,
+  `.js`, `.mjs`, `.cjs`). It rejects named, namespace, dynamic/CommonJS, and
+  star re-exports of the private capture/inspection seam outside the exact
+  future `packages/local-runtime/src/mounted-artifact-authority-operation.ts`
+  path. The current absent seam therefore admits zero importers.
+- Causal fixture proof: a temporary deep
+  `packages/agent-runtime/src/deep` fixture exercises all seven extensions,
+  including a cross-package factory deep import and a star re-export. The
+  scanner reports every fixture file and the allowlist assertion rejects it.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed (the original 19 plus the expanded import case).
+- Authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.
