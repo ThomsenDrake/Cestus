@@ -6446,3 +6446,30 @@ explicit implementation authorization.
 - Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
   untouched; DRAIN/HARD PAUSE controls apply, the full verifier remains
   **CLOSED**, and `neo` remains untouched.
+
+## RV-1-E-187 — Task132 real-family review finding and fresh recovery
+
+- Fresh independent Terra/xhigh review of Task132 recovery
+  `ced8dfc6..500900f5` returned **NEEDS-CHANGES**. It found one Important
+  integration defect: `canonicalRegistrations` requires workspace scope and
+  equates producer identity to source projection, while real PRR registrations
+  have `prr-request` scope and distinct registration identity; its single
+  selection-manifest parser also requires singular `sourceHighWaterMark`,
+  rejecting real operational payloads with no manifest and investigative
+  manifests with plural projection high-water marks. The review ran no tests or
+  full verifier; old caller-owned registry behavior remains removed and scope
+  is otherwise clean.
+- Preserve `500900f5` as unintegrated history. Two focused Task132 repairs are
+  exhausted, so a fresh Terra/xhigh author is authorized only for the existing
+  Task132 claim, source, and test from that commit. It must add causal RED
+  coverage using real package-owned PRR, operational, and investigative
+  registration/payload family shapes—not only synthetic workspace fixtures—and
+  preserve the distinct workspace authority, pack scope, registration/producer
+  identity, and each family's selection/high-water semantics. It may not weaken
+  mounted authority, accept generic unbounded JSON, or edit package-owned
+  builders/shared contracts/factory/prompt/provider code.
+- The recovery may use `superpowers:subagent-driven-development`, systematic
+  debugging, test-driven development, and verification-before-completion. It
+  must run exactly `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/agent/test/context-packs.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain before one forward commit, then stop for fresh independent review. Full verification remains **CLOSED**; no self-review, self-integration, merge, provider/network/credential action, or `neo` action is authorized.
+- Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
+  untouched, and DRAIN/HARD PAUSE controls remain in force.
