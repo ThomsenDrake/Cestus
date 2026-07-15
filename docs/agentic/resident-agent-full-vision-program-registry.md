@@ -11359,3 +11359,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, providers, network, credentials, Nous, reset credits,
   integration, push, registry edits, and every `neo` action remain closed to
   the author.
+
+## RV-1-E-416 — Task135D emit-scope replacement admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  replacement candidate `98d322af353e29d8982cdbab6aee0335b07567f1` over
+  exact original base `e532c35fd1b3a829dfbbd4f87d752f42304419f9`.
+- The scanner now excludes erased const enums while retaining ordinary emitted
+  enum shadows. Class static blocks stop enclosing hoisted-`var` collection
+  and establish their own local `var` environment.
+- Causal fixtures prove const-enum and outside-static-block calls still reach
+  genuine computed standard-loader detection, while ordinary enums and calls
+  inside the same static block remain unrelated local bindings. All prior
+  one-shot, import-family, wrapper, target, class, decorator, switch,
+  namespace, ambient, and lexical fixtures remain green.
+- Coordinator-independent verification passed the exact 3-file focused suite
+  at 21/21 tests, `npm run typecheck`, no-index assertion, original-base diff
+  check, factory readiness, exact four-path union, 24 linear commits with no
+  merges, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, network, credentials, Nous, reset credits, push, and every
+  `neo` action remain closed.
