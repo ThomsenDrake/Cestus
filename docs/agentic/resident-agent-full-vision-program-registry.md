@@ -7726,3 +7726,26 @@ explicit implementation authorization.
   type relaxation, and no scope drift before returning an unqualified
   **APPROVED** verdict. Coordinator-only integration remains conditional on
   that verdict and another actual-process gate. Task135A remains frozen.
+
+## RV-1-E-242 — Compiler-repair review approval and post-review gate authorization
+
+- The fresh independent review session `019f6442-b684-7720-a058-0c01459d5e4e`
+  completed **APPROVED** for the exact complete range
+  `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3..52bb8e5e22ffadbb21a72d95fe054630700abbeb`.
+  It found no authority broadening, ambiguity weakening, production type
+  relaxation, or scope drift: the factory alias remains the union of the
+  three package-owned registrar lookup return types, and the only test change
+  widens the intentionally mutable hostile fixture's `taskId`. Its own
+  authoritative `turn_context` at
+  `rollout-2026-07-15T01-32-01-019f6442-b684-7720-a058-0c01459d5e4e.jsonl:6`
+  records `model=gpt-5.6-terra` and `effort=xhigh`.
+- This approval does not waive the compiler-process rule. The coordinator must
+  now run the exact candidate non-full chain in one detached actual shell,
+  observe its recorded exit after the single `tsc` process has terminated, and
+  verify no live `tsc` or `npm` remains. Only an exit `0` authorizes the
+  coordinator-only no-ff merge; Task135A remains frozen pending the repaired
+  canonical post-merge gate.
+- The latest authenticated app-server event records `primary.used_percent=28.0`
+  (**72% weekly remaining**), superseding the prior 27%/73% observation
+  forward-only. Reset-credit usage remains prohibited; DRAIN is <=10%
+  remaining and HARD PAUSE is <=7%.
