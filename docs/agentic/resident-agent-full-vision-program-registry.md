@@ -10480,3 +10480,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   APIs, performance, and regex-bypass absence.
 - Both reviewers are read-only and pinned. Two unqualified approvals are
   required before coordinator-only integration.
+
+## RV-1-E-372 — Task133 plan held for executable dependency repair
+
+- Authority/security reviewer `019f66cb-4c67-7191-b3d3-e44ab88946ef`
+  returned unqualified **APPROVED**: Task133 is pure and zero-effect, caller
+  proof/exact-run is non-authoritative, P/R0 owns complete current authority,
+  and durable receipts remain audit facts.
+- Factory-plan reviewer `019f66cb-4e64-7da2-abc1-0d56b8f1304f` returned
+  **NEEDS-CHANGES**. Task140P's declared GREEN circularly requires an R0-owned
+  resolver before R0 may start; Task133.2 omits the mandatory Task133.1 suite
+  rerun before Task133.3; and candidate-specific review ranges include the
+  parent instead of the exact candidate delta.
+- Candidate `8b36829ab23019b9e3d8595d24bac2b09bc40496` is rejected and
+  preserved. The existing docs author is authorized for one two-path forward
+  repair: P proves admission-only zero-transfer behavior without an R0
+  resolver, R0 owns the first valid end-to-end transfer, the Task133.1 rerun is
+  restored, and review ranges become `dcb863e2..candidate`.
+- Full verification, source, providers, reset credits, integration, push, and
+  every `neo` action remain closed. Two fresh plan approvals are required on
+  replacement bytes.
