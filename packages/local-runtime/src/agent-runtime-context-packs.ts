@@ -15,7 +15,7 @@ import {
   type VerifiedResolvedContextPack
 } from "../../agent/src/index.js";
 
-export interface MountedWorkspaceRuntimeAuthority {
+interface MountedWorkspaceRuntimeAuthority {
   readonly authorityVersion: "mounted-workspace-runtime-authority.v1";
   readonly workspaceId: string;
   readonly mountInstanceId: string;
@@ -25,7 +25,7 @@ export interface MountedWorkspaceRuntimeAuthority {
   reverify(input: RuntimeAuthorityReverificationInput): Promise<unknown>;
 }
 
-export interface RuntimeAuthorityReverificationInput {
+interface RuntimeAuthorityReverificationInput {
   readonly schemaVersion: "mounted-runtime-authority-reverification.v1";
   readonly workspaceId: string;
   readonly mountInstanceId: string;
@@ -35,7 +35,7 @@ export interface RuntimeAuthorityReverificationInput {
   readonly runId: string;
 }
 
-export interface ContextRegistrationBinding {
+interface ContextRegistrationBinding {
   readonly schemaVersion: "context-registration-binding.v1";
   /** The mount that authorizes this registration, independent of pack scope. */
   readonly workspaceId: string;
@@ -62,7 +62,7 @@ export interface ContextRegistrationBinding {
  * invent a generic payload grammar: it consumes only these frozen proof forms
  * after the package-owned parser has authenticated the resolved envelope.
  */
-export type ContextPackSelectionProof =
+type ContextPackSelectionProof =
   | {
     readonly kind: "operational-ref.v1";
   }
@@ -85,12 +85,12 @@ export type ContextPackSelectionProof =
     readonly sourceProjectionHighWaterMarks: readonly ContextProjectionHighWaterMark[];
   };
 
-export interface ContextProjectionHighWaterMark {
+interface ContextProjectionHighWaterMark {
   readonly projection: "agent" | "governance" | "graph" | "ingestion";
   readonly highWaterMark: number;
 }
 
-export interface VerifyMountedContextForRunInput {
+interface VerifyMountedContextForRunInput {
   readonly schemaVersion: "verify-mounted-context-for-run.v1";
   readonly workspaceId: string;
   readonly mountInstanceId: string;
@@ -101,19 +101,19 @@ export interface VerifyMountedContextForRunInput {
   readonly requiredContextPackIds: readonly string[];
 }
 
-export interface MountedContextCapability {
+interface MountedContextCapability {
   readonly capabilityVersion: "mounted-agent-context.v1";
   readonly workspaceId: string;
   readonly mountInstanceId: string;
   verifyForRun(input: VerifyMountedContextForRunInput): Promise<VerifiedContextBindingSet>;
 }
 
-export interface FactoryMountedContextCapabilityInput {
+interface FactoryMountedContextCapabilityInput {
   readonly authority: MountedWorkspaceRuntimeAuthority;
   readonly registrations: readonly ContextRegistrationBinding[];
 }
 
-export interface VerifiedContextBindingSet {
+interface VerifiedContextBindingSet {
   readonly schemaVersion: "verified-context-binding-set.v1";
   readonly workspaceId: string;
   readonly mountInstanceId: string;
@@ -125,7 +125,7 @@ export interface VerifiedContextBindingSet {
   readonly bindings: readonly VerifiedContextBinding[];
 }
 
-export interface VerifiedContextBinding {
+interface VerifiedContextBinding {
   readonly contextPackId: string;
   readonly version: number;
   readonly descriptorHash: string;
@@ -184,7 +184,7 @@ interface FactoryContextAttestation {
  * The former public structural constructor deliberately fails closed. Only a
  * factory-held attestation can construct a mounted context capability.
  */
-export function createMountedAgentContextCapability(_input: unknown): MountedContextCapability {
+function createMountedAgentContextCapability(_input: unknown): MountedContextCapability {
   throw blocked("factory-context-attestation-required");
 }
 
@@ -193,7 +193,7 @@ export function createMountedAgentContextCapability(_input: unknown): MountedCon
  * A caller cannot fabricate this opaque token from a tuple, callback, local
  * fallback, or a registry that the producer modules did not register.
  */
-export function captureFactoryContextPackAttestation(registry: ContextPackRegistry): object {
+function captureFactoryContextPackAttestation(registry: ContextPackRegistry): object {
   const descriptors = factoryRegistryDescriptors(registry);
   const registrationsById = new Map<string, ContextPackRegistrarEvidence>();
   for (const descriptor of descriptors) {
@@ -212,7 +212,7 @@ export function captureFactoryContextPackAttestation(registry: ContextPackRegist
 }
 
 /** Factory-only construction consumes an opaque attestation captured above. */
-export function createFactoryHeldMountedAgentContextCapability(input: FactoryMountedContextCapabilityInput & {
+function createFactoryHeldMountedAgentContextCapability(input: FactoryMountedContextCapabilityInput & {
   readonly factoryContextAttestation: object;
 }): MountedContextCapability {
   const canonicalInput = ownDataRecord(input, "mounted-context-capability-input");
@@ -301,11 +301,11 @@ export function createFactoryHeldMountedAgentContextCapability(input: FactoryMou
   return capability;
 }
 
-export function hasMountedContextCapability(value: unknown): value is MountedContextCapability {
+function hasMountedContextCapability(value: unknown): value is MountedContextCapability {
   return typeof value === "object" && value !== null && mountedContextCapabilities.has(value);
 }
 
-export function hasVerifiedContextBindingSet(value: unknown): value is VerifiedContextBindingSet {
+function hasVerifiedContextBindingSet(value: unknown): value is VerifiedContextBindingSet {
   return typeof value === "object" && value !== null && verifiedContextBindingSets.has(value);
 }
 

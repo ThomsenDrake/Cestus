@@ -1,20 +1,18 @@
 import {
   createAgentRuntime,
   createContextPackRegistry,
+  lookupInvestigativeContextPackRegistrarEvidence,
+  lookupOperationalContextPackRegistrarEvidence,
+  lookupPrrContextPackRegistrarEvidence,
   specialistWorkflowDescriptorFor,
   type AgentApprovedToolExecutorDescriptor,
-  type AgentTaskOrchestratorRuntimeCapabilities
+  type AgentTaskOrchestratorRuntimeCapabilities,
+  type ContextPackRegistry
 } from "../../agent/src/index.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
 import { createTaskOrchestratorProviderApprovalAdapter } from "../../agent/src/task-orchestrator-approval.js";
 import { createTaskOrchestratorHandoffCapability } from "../../agent/src/task-orchestrator.js";
 import { createLocalAgentProviderConfiguration } from "./agent-provider-readiness.js";
-import {
-  captureFactoryContextPackAttestation,
-  createFactoryHeldMountedAgentContextCapability,
-  type FactoryMountedContextCapabilityInput,
-  type MountedContextCapability
-} from "./agent-runtime-context-packs.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 export interface LocalAgentRuntimeFactoryInput {
@@ -28,44 +26,14 @@ export type LocalAgentRuntimeFactory = (
   input: LocalAgentRuntimeFactoryInput
 ) => ReturnType<typeof createAgentRuntime>;
 
-export interface FactoryAttestedRuntimeCapabilitiesInput {
-  readonly contextRegistry?: ReturnType<typeof createContextPackRegistry>;
-}
-
-export interface FactoryAttestedRuntimeCapabilities {
-  readonly contextRegistry: ReturnType<typeof createContextPackRegistry>;
-  createMountedContextCapability(input: FactoryMountedContextCapabilityInput): MountedContextCapability;
-}
-
-/**
- * R is the sole construction boundary for mounted context authority. It
- * captures package-private registrar facts from an actual registry and never
- * accepts a caller-supplied registrar tuple, callback, or fallback map.
- */
-export function createFactoryAttestedRuntimeCapabilities(
-  rawInput: FactoryAttestedRuntimeCapabilitiesInput = {}
-): FactoryAttestedRuntimeCapabilities {
-  const input = canonicalFactoryAttestedRuntimeCapabilitiesInput(rawInput);
-  const contextRegistry = input.contextRegistry ?? createContextPackRegistry();
-  const factoryContextAttestation = captureFactoryContextPackAttestation(contextRegistry);
-  return Object.freeze({
-    contextRegistry,
-    createMountedContextCapability(input: FactoryMountedContextCapabilityInput): MountedContextCapability {
-      return createFactoryHeldMountedAgentContextCapability({
-        ...input,
-        factoryContextAttestation
-      });
-    }
-  });
-}
-
 export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input) => {
+  const contextRegistry = createContextPackRegistry();
+  const verifyFactoryHeldContextBindings = createFactoryHeldContextBindingVerifier(contextRegistry);
   const configuredProviders = createLocalAgentProviderConfiguration({
     cwd: input.handle.config.cwd,
     now: input.now
   });
 
-  const factoryCapabilities = createFactoryAttestedRuntimeCapabilities();
   return createAgentRuntime({
     ledger: input.handle.ledger,
     actor: input.actor,
@@ -74,9 +42,68 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     identityLifecycleReady: () => input.handle.residentIdentity.ready(),
     providers: configuredProviders.providers,
     approvedToolExecutors: input.approvedToolExecutors ?? [],
-    taskOrchestratorCapabilities: createLocalTaskOrchestratorCapabilities(configuredProviders, factoryCapabilities.contextRegistry)
+    taskOrchestratorCapabilities: createLocalTaskOrchestratorCapabilities(configuredProviders, contextRegistry)
   });
 };
+
+interface FactoryHeldRegistrarEvidence {
+  readonly descriptorHash: string;
+  readonly parserIdentity: string;
+  readonly producerIdentity: string;
+  readonly registrationIdentity: string;
+}
+
+/**
+ * This closure is deliberately lexical to the factory. Task132A records the
+ * exact package-owned registrar identities but exposes no capability or way
+ * for an external caller to capture, consume, or supply them. Task140R0 is
+ * the first authorized owner that can close this verifier into a real port.
+ */
+function createFactoryHeldContextBindingVerifier(contextRegistry: ContextPackRegistry): () => void {
+  const descriptors = contextRegistry.listDescriptors();
+  if (descriptors.length === 0) {
+    throw new Error("blocked.factory-context-attestation-required");
+  }
+
+  const captured = new Map<string, FactoryHeldRegistrarEvidence>();
+  for (const descriptor of descriptors) {
+    const evidence = packageOwnedRegistrarEvidence(contextRegistry, descriptor.contextPackId);
+    if (evidence === undefined || captured.has(descriptor.contextPackId)) {
+      throw new Error("blocked.factory-context-attestation-required");
+    }
+    captured.set(descriptor.contextPackId, Object.freeze({ ...evidence }));
+  }
+
+  return () => {
+    const currentDescriptors = contextRegistry.listDescriptors();
+    if (currentDescriptors.length !== captured.size) {
+      throw new Error("blocked.factory-context-attestation-required");
+    }
+    for (const descriptor of currentDescriptors) {
+      const capturedEvidence = captured.get(descriptor.contextPackId);
+      const currentEvidence = packageOwnedRegistrarEvidence(contextRegistry, descriptor.contextPackId);
+      if (capturedEvidence === undefined || currentEvidence === undefined ||
+        capturedEvidence.descriptorHash !== currentEvidence.descriptorHash ||
+        capturedEvidence.parserIdentity !== currentEvidence.parserIdentity ||
+        capturedEvidence.producerIdentity !== currentEvidence.producerIdentity ||
+        capturedEvidence.registrationIdentity !== currentEvidence.registrationIdentity) {
+        throw new Error("blocked.factory-context-attestation-required");
+      }
+    }
+  };
+}
+
+function packageOwnedRegistrarEvidence(
+  contextRegistry: ContextPackRegistry,
+  contextPackId: string
+): FactoryHeldRegistrarEvidence | undefined {
+  const evidence = [
+    lookupPrrContextPackRegistrarEvidence(contextRegistry, contextPackId),
+    lookupOperationalContextPackRegistrarEvidence(contextRegistry, contextPackId),
+    lookupInvestigativeContextPackRegistrarEvidence(contextRegistry, contextPackId)
+  ].filter((candidate): candidate is FactoryHeldRegistrarEvidence => candidate !== undefined);
+  return evidence.length === 1 ? evidence[0] : undefined;
+}
 
 function createLocalTaskOrchestratorCapabilities(
   configuredProviders: ReturnType<typeof createLocalAgentProviderConfiguration>,
@@ -99,28 +126,5 @@ function createLocalTaskOrchestratorCapabilities(
       }
     },
     handoffCapability: createTaskOrchestratorHandoffCapability()
-  });
-}
-
-function canonicalFactoryAttestedRuntimeCapabilitiesInput(
-  value: FactoryAttestedRuntimeCapabilitiesInput
-): FactoryAttestedRuntimeCapabilitiesInput {
-  if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype) {
-    throw new Error("blocked.factory-context-attestation-required");
-  }
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  if (Object.getOwnPropertySymbols(value).length !== 0 || Object.keys(descriptors).some((key) => key !== "contextRegistry")) {
-    throw new Error("blocked.factory-context-attestation-required");
-  }
-  const contextRegistry = descriptors.contextRegistry;
-  if (contextRegistry !== undefined && (!Object.prototype.hasOwnProperty.call(contextRegistry, "value") ||
-    contextRegistry.enumerable !== true || contextRegistry.configurable !== true || contextRegistry.writable !== true)) {
-    throw new Error("blocked.factory-context-attestation-required");
-  }
-  if (contextRegistry === undefined) {
-    return Object.freeze({});
-  }
-  return Object.freeze({
-    contextRegistry: contextRegistry.value as ReturnType<typeof createContextPackRegistry>
   });
 }
