@@ -9671,3 +9671,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   its four authorized paths.
 - Full verification, live/provider/network/credential/Nous actions, reset
   credits, all other task integrations, and every `neo` action remain closed.
+
+## RV-1-E-329 — Task135E identity-fixture repair dispatched
+
+- Fresh Terra/xhigh task `019f6670-19e5-7411-912b-e51624db349f` is active and
+  pinned on `codex/task-135e-resident-identity-fixture-repair` from exact clean
+  source base `3aeebe7e7fe3e79f99ed7cbc59f58899c5cd068b`. Its linked worktree is
+  attached to that named branch with ignored dependency and local credential
+  links restored after the reboot.
+- The task's complete tracked ceiling is
+  `packages/local-runtime/test/resident-identity-bootstrap.test.ts` plus
+  `docs/agentic/claims/task-135e-resident-identity-fixture-repair.md`. The
+  independently reproduced nine-test baseline failure is its causal RED.
+- The repair may only inject a minimal resident-identity agent runtime through
+  the existing test seam using the exact handle ledger, actor, clock, lifecycle,
+  and readiness promise. Production context attestation and default runtime
+  fail-closed behavior cannot be weakened or edited.
+- The coordinator explicitly authorizes SDD if useful, TDD, systematic
+  debugging, and completion verification. The worker stops at a clean committed
+  two-file candidate for fresh independent review; it cannot integrate itself.
+  Full verification, provider activity, reset credits, and every `neo` action
+  remain closed.
