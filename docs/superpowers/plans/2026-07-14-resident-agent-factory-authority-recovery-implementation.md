@@ -5151,3 +5151,265 @@ live fixture causally delegates through one named resident adapter; and all
 precommit/review commands are self-contained. Exactly two unqualified
 approvals permit coordinator-only plan integration. Source/full/live/provider/
 credential/reset-credit/`neo`/self-integration/merge remain closed.
+
+## CF-1R17 - factory-captured mounted state and run-bound high-water progression
+
+This overlay supersedes CF-1R16 wherever Task137A registration, Task135B
+construction, operation inspection, high-water comparison, Task137B
+registration, the R0 production path, or their tests conflict with this
+section. Both CF-1R16 reviewers rejected the candidate: a fixed original high-
+water tuple cannot survive H's own final-output append, and Task135B still
+accepted public config/workspace objects that contain caller-controlled paths.
+No source dispatch is permitted until this overlay has two fresh unqualified
+approvals.
+
+### Task137A factory-issued mounted-runtime capture
+
+Task137A additionally owns:
+
+- Modify `packages/local-runtime/src/runtime-factory.ts`
+- Create `packages/local-runtime/test/runtime-handle-mounted-authority.test.ts`
+- Extend `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+
+`runtime-factory.ts` records each exact `LocalRuntimeHandle` returned by
+`createSqlitePrrRuntime` in a module-private live-state `WeakMap`; `close()`
+irreversibly marks that exact handle and every capture derived from it closed.
+For a portable mounted
+handle it can mint a fresh frozen `FactoryIssuedMountedRuntimeCapture` whose
+identity is the only key into a second private `WeakMap` containing the exact
+handle, ledger, config, and mounted workspace. A structural handle, spread,
+copy, deserialized value, closed handle, non-portable handle, mismatched ledger,
+or reused capture fails before filesystem or ledger I/O. The capture and its
+inspector are source-path-only, absent from every package index, DTO, route,
+status, projection, serializer, logger, or task result, and imported in
+production only by `mounted-artifact-authority-operation.ts`.
+
+The Task137A registrar signature is replaced by:
+
+```ts
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
+  readonly wakeRuntime: object;
+  readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
+  readonly runtimeHandle: LocalRuntimeHandle;
+}): void;
+```
+
+Registration verifies the exact Task125 lifecycle bundle, obtains one private
+factory-issued mounted-runtime capture from the exact handle, and stores both
+under the exact wake-runtime identity. It creates no admission or operation.
+Issuance remains factory-only and captures the current Task125 admission plus
+that private mounted-runtime capture. No config, mounted workspace, root,
+SQLite path, store, ledger, lifecycle port, or capture is exposed on
+`MountedArtifactAuthorityOperation` or its public snapshot.
+
+Add exact-title REDs:
+
+- `factory issued mounted runtime capture rejects structural and copied handles before io`
+- `closed non portable and mismatched handles cannot register mounted authority`
+- `mounted runtime capture is absent from indexes dto logs serializers and results`
+- `only mounted authority operation may import factory issued runtime capture`
+
+The complete Task137A RED/GREEN command becomes:
+
+```bash
+npm test -- packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/agent/test/wake-supervisor.test.ts
+```
+
+Expected GREEN is followed by:
+
+```bash
+npm run typecheck && test ! -e packages/local-runtime/src/index.ts && ! rg -n 'mounted-artifact-authority-operation|FactoryIssuedMountedRuntimeCapture' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+### Private one-shot authority cursor
+
+At Task135B `bind`, the operation is consumed into one module-private cursor
+bound to the exact `taskId`, `attemptId`, `approvedRunId`, and `runType`. A
+second bind, copied operation, old operation, different run tuple, normal/
+resume/reclaim competitor, or structural cursor fails before remount, ledger,
+or store I/O. The cursor is never returned to the factory, agent package,
+caller, route, DTO, projection, status, log, serializer, or terminal result.
+
+The cursor snapshots exact canonical bytes for `runtimeHandle.ledger.readAll()`
+and the initial current admission. Before and after every awaited material or
+manifest `put`/`get`, and once before returning H/terminal authority, the
+private inspector performs all of these checks in order:
+
+1. prove the exact cursor is live, one-shot, and bound to the same run tuple;
+2. inspect the exact Task125 lifecycle bundle without requesting revalidation;
+3. remount only from the private factory-issued capture and expected workspace
+   ID, then compare identity, mount, authority, store roles, policy, locks, and
+   canonical roots with the captured handle and current admission;
+4. read the exact captured ledger, require the prior accepted event list to be
+   an exact byte-for-byte prefix, and reject deletion, replacement, reorder,
+   regression, duplicate conflict, or a different ledger object; and
+5. pass any suffix through the run-bound progression automaton below before
+   advancing the cursor's private accepted high-water.
+
+The progression automaton derives its initial phase from the canonical run and
+task streams so an exact idempotent resume can reuse prior events. New suffix
+events are permitted only in canonical causal order for the bound run/task:
+
+1. one `agent.specialist-run.step.recorded` final-output event;
+2. one matching `agent.specialist-handoff.prepared` event;
+3. one matching `agent.specialist-handoff.recorded` event;
+4. one matching terminal `agent.specialist-run.completed` or
+   `agent.specialist-run.failed` event; and
+5. when observed by the final cursor check, the matching
+   `agent.task.orchestration.completed` and exact terminal
+   `agent.task.status.changed` events.
+
+Every permitted event must use the expected stream, run/task identity,
+resident-agent actor, schema, content hashes, prepared/recorded/terminal
+causation, and prior event IDs already established by the canonical H kernel.
+The only non-H suffixes allowed are the frozen
+`agent.wake.supervisor.lease.claimed.v1` and
+`agent.wake.supervisor.recovery.verified.v1` events produced by the captured
+wake-runtime epoch, and only after the exact current admission incorporates
+their high-water and proves unchanged workspace identity, authority, policy,
+locks, and no pending outage/reconciliation. Pause, resume-request, paused,
+degraded, unrecoverable, trigger, legal/governance lock change, foreign run,
+other task, provider/tool, arbitrary wake, or unexplained global events burn
+the cursor and require a fresh full admission and retry.
+
+If Task125 still exposes the original admission while an accepted H suffix has
+advanced the exact ledger, the cursor may advance only its private accepted
+event prefix; it does not mint or revive an admission. If Task125 later exposes
+a different current admission, the inspector permits exactly one successor
+only when its high-water is strictly greater, equals the already accepted
+prefix, and every non-high-water fact and wake-runtime epoch is unchanged. It
+then mints a fresh internal cursor identity, transfers the same one-shot run
+binding, and permanently burns the predecessor. Identical-tuple revalidation,
+same-or-lower high-water, an unaccepted suffix, changed facts, no current
+admission, outage, shutdown, or reconciliation burns the cursor without a
+successor. Task135B never calls `revalidate`, never asks for a later admission,
+and cannot choose a successor.
+
+Add exact-title REDs:
+
+- `canonical material final output manifest projection and terminal advances one authority cursor`
+- `exact resumed handoff derives its phase and remains one shot`
+- `strictly higher admitted handoff suffix rotates cursor and permanently burns predecessor`
+- `identical tuple revalidation cannot rotate or revive authority cursor`
+- `unrelated append between material and manifest burns cursor before manifest io`
+- `policy lock foreign run and arbitrary wake suffixes return no receipt or terminal authority`
+- `rollback replacement and reorder fail before store io without fallback`
+- `authority loss during each awaited io returns no receipt handoff or terminal effect`
+
+### Task135B operation-only producer
+
+Delete `PortableMountedAgentArtifactStoreProducerInput` and every constructor or
+factory parameter containing `ResolvedLocalRuntimeConfig`,
+`MountedPortableWorkspace`, a path, root, ledger, store, lifecycle port,
+mounted facts, availability authority, callback, revalidator, admission, or
+capture. The sole production signature is:
+
+```ts
+export function createPortableMountedAgentArtifactStoreProducer(
+  authorityOperation: MountedArtifactAuthorityOperation
+): {
+  bind(input: BindPortableMountedAgentHandoffInput):
+    Promise<PortableMountedAgentHandoffBinding>;
+};
+```
+
+Only `agent-runtime-factory.ts` may import this producer. Only
+`portable-mounted-agent-artifact-stores.ts` may import the private operation
+cursor inspector. The producer obtains all mounted paths and the exact ledger
+only from that inspector's private factory-issued capture, creates the material
+and manifest stores below the inspected derivative root, and never places a
+path-bearing value in its returned binding. A copied/swapped config or mounted
+workspace is impossible as input; causal tests additionally deep-import and
+attempt structural substitution and prove zero remount/store I/O and zero
+path leakage through bindings, errors, logs, DTOs, serializers, or snapshots.
+
+`PortableMountedAgentHandoffBinding` additionally carries one non-enumerable,
+source-private authority guard into the already private Task140 handoff-port
+resolver. It is not part of any public agent/runtime type and cannot be supplied
+by a caller. The guard exposes only `beforeEffect(kind)`,
+`afterAppend(kind, eventId)`, and `consumeAfterCanonicalHandoff(eventIds)` to
+that exact registered resolver. Task140H must bracket every final-output,
+prepared, recorded, terminal, orchestration-completed, and task-status append
+with the first two operations; a failed post-append check stops before the next
+effect. It then calls the consume operation before returning a handoff result.
+The final consume proves every returned event ID and causal link against the
+captured ledger, burns the cursor on success or failure, and returns only a
+frozen data-only consumed receipt with no path, store, ledger, operation, or
+cursor. Store `put`/`get` operations remain automatically bracketed inside
+Task135B. The private H registrar import/bypass test proves no second resolver,
+structural guard, deep importer, or public capability can invoke or replace any
+of these operations.
+
+Add exact-title REDs `authority loss after manifest read stops before terminal
+append`, `authority loss after committed terminal stops orchestration and task
+status`, and `final consumed receipt proves every canonical handoff event and
+cannot be reused`.
+
+Task135B's complete RED/GREEN command becomes:
+
+```bash
+npm test -- packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts
+```
+
+Expected GREEN is followed by:
+
+```bash
+npm run typecheck && ! rg -n 'PortableMountedAgentArtifactStoreProducerInput|ResolvedLocalRuntimeConfig|MountedPortableWorkspace|configSource|mountedWorkspaceSource|revalidate|WorkspaceAvailabilityAuthority|PortableWorkspaceMountedFactsPort|process\.cwd|\.cestus/local|internal-storage|in-memory-fallback|fallbackRoot' packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts && git diff --check && npm run factory:check
+```
+
+### Task137B and Task140R0 corrected composition
+
+`createWakeSupervisorRuntime` still accepts the exact `LocalRuntimeHandle` and
+constructs the exact Task125 lifecycle bundle. Its registration call now passes
+that same handle, bundle, and wake-runtime identity. Registration rejects a
+structural/copy handle through Task137A's private factory-issued-handle proof.
+Stop first invalidates Task125, burns the runtime registration and every cursor,
+then closes the handle; restart must create a new handle, capture, runtime,
+admission, operation, and cursor.
+
+Task140R0's sole production path is now exactly:
+
+```text
+agent-runtime-factory.ts exact lexical LocalRuntimeHandle
+  -> createWakeSupervisorRuntime(exact handle)
+  -> Task137B registers exact runtime + lifecycle bundle + handle
+  -> issueMountedArtifactAuthorityOperationForFactory(exact runtime)
+  -> createPortableMountedAgentArtifactStoreProducer(exact opaque operation)
+  -> bind(exact task/attempt/approved-run/run-type)
+  -> private cursor obtains mounted state; no path-bearing caller input
+  -> Task135A binder and canonical H progression
+```
+
+Add the full canonical H progression test to Task137B, R0, and H aggregate
+commands. Their fresh reviewers must causally prove material write/read,
+final-output append, manifest write/read, prepared/recorded projection
+readbacks, terminal append, final cursor check, and restart recovery. A failure
+at each boundary must leave at most an unreferenced content-addressed orphan and
+must return no receipt, handoff binding, terminal authority, orchestration
+completion receipt, task completion receipt, or provider/tool effect. If an
+append committed before a post-await authority loss, its exact unacknowledged
+event may remain append-only recovery evidence; no later sequence effect may
+run, and resume must either reuse that exact event through canonical race
+recovery or record a safe blocked state. The plan never requires rollback or
+deletion of a committed ledger event.
+
+### CF-1R17 dispatch and review rule
+
+The dependency order remains Task137A -> Task135B -> Task137B -> Task138 and
+Task140P -> Task140R0 -> Task140H -> Task140R1. Task133.1-.3 and Task135C remain
+disjoint where CF-1R16 permits. Every implementation dispatch must explicitly
+state that the coordinator approves use of
+`superpowers:subagent-driven-development` for that exact task.
+
+Two fresh independent Terra/xhigh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`; neither CF-1R16 reviewer
+or verdict carries forward. Approval requires explicit proof that Task135B has
+only an opaque-operation input; mounted state comes only from an exact factory-
+issued handle; the canonical H sequence can advance without accepting an
+unrelated append; identical-tuple revalidation and old cursor identities cannot
+revive; every awaited I/O has causal invalidation tests; Task137B/R0 own the
+sole production path; and all prior immutable-dispatch, private-registrar, live-
+adapter, and self-contained command requirements remain executable. Exactly
+two unqualified approvals permit coordinator-only plan integration. Source,
+full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/merge
+remain closed.

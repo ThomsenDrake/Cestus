@@ -570,3 +570,35 @@ serialized task.
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
   approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
   before coordinator-only plan integration.
+
+## Forward Correction — Factory-Captured State And Run-Bound Progression
+
+- Status remains **plan-repair candidate only**. Fresh reviewers
+  `019f6573-bf32-7543-9946-ca4df9bc97de` and
+  `019f6574-0227-7fb1-a401-1df91a4ccff4` rejected `ce7d0237` because a fixed
+  initial high-water comparison makes canonical H reject its own final-output
+  append before manifest persistence, while Task135B still accepts public
+  config and mounted-workspace structures containing caller-controlled paths.
+- CF-1R17 makes `runtime-factory.ts` mint a private identity-backed capture only
+  for an exact factory-issued portable `LocalRuntimeHandle`. Task137B registers
+  that exact handle with its exact lifecycle bundle and runtime. Task135B takes
+  only the opaque operation; config, workspace, path, ledger, store, lifecycle,
+  callback, admission, and capture inputs are deleted.
+- One private cursor consumes the operation and exact run tuple. It verifies an
+  exact append-only ledger prefix around every awaited store I/O and permits
+  only the causally bound final-output, prepared, recorded, terminal,
+  orchestration, task-status, and same-epoch non-authority-changing lifecycle
+  progression. Unrelated events, policy/lock change, rollback, replacement,
+  authority loss, or path substitution burn it without a receipt or terminal
+  effect.
+- A different Task125 admission can rotate the cursor only when high-water is
+  strictly greater, equals an already accepted H prefix, and every other fact
+  and epoch is unchanged. The predecessor is burned. Identical-tuple
+  revalidation, same/lower high-water, or an unaccepted suffix can never revive
+  an old operation. Task135B never requests revalidation or chooses an
+  admission.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
