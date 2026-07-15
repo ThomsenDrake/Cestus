@@ -549,3 +549,46 @@ one scoped forward commit, and a new fresh complete-range independent
 Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
 Task136 work, provider/network/credential/Nous action, or `neo` action is
 authorized.
+
+## RV-1-E-207 Causal Observation Repair
+
+- Fresh repair author: `/root/task119_observation_causality_repair` on
+  `codex/task-119-resident-full-vision-observation-causality-repair`, starting
+  exactly at preserved unintegrated
+  `e1afd3fc3c68ae543a4d08dbfb8d690e9b0fa9ce`. Authoritative runtime evidence
+  is `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T23-07-45-019f63be-a200-7002-bc53-4869c235435c.jsonl:8`:
+  its `turn_context` records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Causal RED: the focused command exited `1` with 1 failed and 134 passed
+  tests. The new parser-valid three-plan counterfactual removes plan_002's
+  observation, reuses plan_001's observation event ID in plan_003's replan
+  readback, spoofs the required plan_002-shaped readback fields, and recounts
+  every budget transition and sequence. Before the repair,
+  `validateResidentLoopEventSequence` accepted that stale-observation replay.
+- Root cause: the ordered replay parser retained `finalObservation` across a
+  newly active plan. The replan, suspension, and result checks therefore had
+  an old observation event ID available after a plan transition while testing
+  only readback identity fields. The smallest repair validates a replan against
+  the preceding plan's final observation, then clears that consumed state when
+  the new plan becomes active; later records can only bind an observation
+  observed under the active plan.
+- GREEN: the same focused command exited `0` with 2 files / 135 tests passing.
+  Existing valid revisions, exact readbacks, observation and prerequisite
+  causality, H proof, and initial-plus-three plan accounting remain covered.
+
+Status: in-progress pending the exact authorized non-full fail-fast chain, one
+scoped forward commit, and a new fresh true-lineage Terra/xhigh review. Full
+verification, `neo`, provider/network/credential/Nous action, reset-credit
+use, self-review, self-integration, and merge remain closed.
+
+## RV-1-E-207 Causal Observation Repair Gate
+
+- The exact authorized one-line non-full fail-fast gate exited `0`:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported 2 focused files / 135 tests passing; typecheck, diff check, and
+  factory readiness completed without a failing stage. Full verification was
+  not run.
+
+Status: ready for one scoped forward commit and a new fresh true-lineage
+Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
+Task136 work, provider/network/credential/Nous action, reset-credit use, or
+`neo` action is authorized.
