@@ -787,3 +787,35 @@ serialized task.
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
   approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
   before coordinator-only plan integration.
+
+## Forward Correction — Clean Shell And Checker Bytes
+
+- Status remains **plan-repair candidate only**. Authority reviewer
+  `019f6604-efbe-72f0-b8ef-aae20c51773f` proved that CF-1R24 omits special
+  filesystem entries, inherits command-replacing shell state, and trusts the
+  current prerequisite checker before authenticating its bytes. Lifecycle
+  reviewer `019f6604-eeae-7c43-94fc-f2403790fa49` independently rejected the
+  candidate. Suggestions to require C's parent or whole-current-claim equality
+  to M are not adopted because they conflict with the explicit external-C and
+  mutable-evidence-suffix contracts.
+- CF-1R25 amends eight complete active commands. Each runs inside an absolute-
+  path clean-shell envelope. The checkout snapshot includes directories and
+  symlink identities, rejects special entries, prunes only real dependency-
+  directory contents, and propagates producer/hash failures without a digest.
+  Every P/R0/H preflight/review checker call verifies a literal coordinator-
+  issued checker SHA bound into C; review repeats the check before its terminal
+  checker call.
+- Coordinator validation extracted all eight active heredocs and passed
+  `bash -n` plus wrapper/checker cardinality checks. Adversarial fixtures proved
+  that forged shell functions, `PATH`, `BASH_ENV`, Git/Node/npm controls, and a
+  Nous credential do not enter the clean shell; a wrong checker hash fails
+  before Node executes; real dependency contents are pruned while directory
+  mode and symlink identity remain bound; and FIFO, `readlink`, `stat`, `find`,
+  `sort`, and file-hash failures return nonzero without an authorizing digest.
+  `git diff --check` and `npm run factory:check` pass. Full verification remains
+  deliberately closed by the current program gate.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
