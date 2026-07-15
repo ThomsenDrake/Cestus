@@ -9645,3 +9645,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remain closed. Each worker stops with a clean committed candidate or a
   structured authority/schema/repeated-verifier blocker; routine progress does
   not require user intervention.
+
+## RV-1-E-328 — Task135D companion-baseline repair opened
+
+- After reboot recovery restored ignored dependency wiring, Task135D produced
+  its required missing-capture causal RED. The same prescribed command also
+  exposed nine failures in
+  `packages/local-runtime/test/resident-identity-bootstrap.test.ts` before any
+  Task135D production change. The coordinator reproduced all nine failures on
+  clean program checkpoint `9cebf46b9d92dfec62e5a7e0ac8ec85d15a06aa7`.
+- Root-cause isolation shows the suite still reaches the default local agent
+  runtime factory, while the reviewed factory-held context boundary now fails
+  that factory closed until its later registrar composition owner lands. The
+  resident-identity behavior under test is independent of that context
+  composition and already supports an injected agent runtime factory.
+- A fresh test-only repair lane will make the suite inject a minimal resident-
+  identity runtime through the existing factory seam. Its complete tracked
+  ceiling is the resident-identity test plus a durable repair claim; production
+  runtime, context registration, Task135D source, and every other path remain
+  closed. The existing nine failures are the repair's causal RED.
+- Task135D remains blocked before production code. Its preserved test-only
+  artifact will be committed on the blocked branch, then resumed on a fresh
+  recovery branch based on the independently reviewed and coordinator-integrated
+  repair so the recovered Task135D base-to-candidate range still contains only
+  its four authorized paths.
+- Full verification, live/provider/network/credential/Nous actions, reset
+  credits, all other task integrations, and every `neo` action remain closed.
