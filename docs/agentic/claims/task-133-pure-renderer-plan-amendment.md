@@ -86,15 +86,13 @@ git diff --check && npm run factory:check
 ```
 
 The fresh plan-review and final-gate review range is exactly
-`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. The reviewer must inspect
-every commit in that full lineage: `38c2456f1f935aca291d24447c31b6a1d0728fd1`,
-`ffc2dc81c189af3163ec7b573b4f6f4767660de7`,
-`d91f28a3f6434490246daaa97e399a905c902761` (the final pre-correction repair),
-`6f399c4d52d97bd2cc74a4800d065ce4bcb878bf`,
-`8169fc7f344ce40b0bbd91e60a66dab697d4446d`, and this forward correction at
-`HEAD`. Stop after a fresh independent Terra/xhigh review; only the
-coordinator may integrate an approved amendment or explicitly approve and
-invoke `superpowers:subagent-driven-development` for later implementation.
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. That Git range is the sole
+lineage inventory; this claim deliberately does not duplicate a commit list
+that can become stale after another forward correction. The reviewer must use
+`git rev-list --reverse` and inspect every commit in the exact range. Stop after
+a fresh independent Terra/xhigh review; only the coordinator may integrate an
+approved amendment or explicitly approve and invoke
+`superpowers:subagent-driven-development` for later implementation.
 
 ## Forward Correction — Full-Lineage Review And Owner-Derived V2 Hashes
 
@@ -238,6 +236,10 @@ explicit `superpowers:subagent-driven-development` dispatch.
   coverage, consumes the exact private token once, and mints invocation
   authority only from the v2 readback-bound consumed admission. Its complete
   file set and runnable `&&` gate are frozen in CF-1R6.
+- The integrated final Task133.1-.5 command now includes the new receipt,
+  projection, portable mounted-store, and executable preapproval suites. The H
+  non-live gate excludes the env-sensitive live Nous test; that test is
+  compile-only until the later explicitly authorized provider acceptance gate.
 - The interrupted Task133.1 source branch remains rejected historical input and
   cannot be committed, rebased, reviewed, or integrated from this plan repair.
   Full verification, provider/network/credential/Nous activity, reset credits,
