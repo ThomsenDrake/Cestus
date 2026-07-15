@@ -6296,3 +6296,38 @@ explicit implementation authorization.
   self-integration, merge, or `neo` action is authorized. Primary usage remains
   `usedPercent=11` / **89% remaining**, reset credits untouched, and
   DRAIN/HARD PAUSE controls remain in force.
+
+## RV-1-E-181 — Task132 mounted-contract review findings and fresh recovery
+
+- Fresh independent Terra/xhigh review of complete Task132 range
+  `5be1283c..ced8dfc6` returned **NEEDS-CHANGES**. Its type-narrowing forward
+  repair is sound, and scope/diff/claim correction are clean, but the candidate
+  is not an implementation of the frozen mounted context contract.
+- Two Critical defects are accepted. It takes caller-owned static identity and
+  a `ContextPackRegistry`, rather than a `MountedWorkspaceRuntimeAuthority`,
+  frozen `ContextRegistrationBinding`s, and factory-controlled builder
+  registration; it therefore cannot revalidate mount/authority, distinguish a
+  stale same-workspace registry, or rule out fallback/cache authority. It also
+  fails to bind descriptor/version/parser/producer/scope/source-high-water/
+  selection-manifest/policy/provenance and duplicate-pack facts to authoritative
+  mounted state before resolution. One Important defect remains: arrays and
+  objects are not fully plain-own-data normalized before `.map`/field use,
+  allowing sparse/custom/accessor/symbol/non-enumerable shapes.
+- Preserve `2832657f` and `ced8dfc6`; neither is review-ready or
+  integration-ready. A fresh Terra/xhigh recovery author, distinct from the
+  original Task132 author and reviewer, is authorized only for the existing
+  Task132 claim, source, and test from `ced8dfc6`. It must write causal RED
+  coverage for switched mount/stale authority, changed descriptor/version,
+  parser, hash, source high-water, selection manifest, scope, policy, duplicate
+  pack, and hostile accessor/prototype/symbol/sparse/custom array/object input.
+  It must implement the exact mounted capability surface—authority plus frozen
+  registrations plus factory-controlled `registerBuilders`—and fail closed
+  before prompt/provider/fallback activity. No shared contract, factory,
+  browser, provider, credential, network, or `neo` file may change.
+- The worker may use `superpowers:subagent-driven-development`, systematic
+  debugging, test-driven development, and verification-before-completion. It
+  must run the focused suite and exactly `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/agent/test/context-packs.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain before one forward
+  commit, then stop for a fresh independent review. Full verification remains
+  **CLOSED**; no self-review, self-integration, merge, or `neo` action is
+  allowed. Primary usage remains `usedPercent=11` / **89% remaining**, reset
+  credits untouched, and DRAIN/HARD PAUSE controls remain in force.
