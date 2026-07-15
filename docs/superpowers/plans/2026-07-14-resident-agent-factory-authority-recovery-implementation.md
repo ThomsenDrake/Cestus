@@ -3791,3 +3791,94 @@ maps, production local engines require H, live/smoke callers use the portable
 resident harness, every RED/GREEN is identical, and no non-live gate contacts a
 provider. Full/source/live/credential/reset-credit/`neo`/self-integration/merge
 remain closed.
+
+## CF-1R12 Fresh Witness Reissue And Complete Aggregate Gates
+
+**Status:** This section supersedes all earlier Task133 integrated commands,
+Task140H.4 commands, and live-fixture ownership lists. It preserves CF-1R11
+authority design and adds the missing restart and aggregate evidence. Source
+remains frozen pending two fresh approvals of
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
+
+### Fresh-runtime mounted witness reissuance
+
+Task133.5's mounted store `read` is the sole restart reissuer. After a process
+restart, no witness or WeakMap entry exists. The new factory must:
+
+```text
+mount and verify exact portable workspace tuple
+-> read durable context-ready checkpoint and its v1 hash
+-> mounted store read(hash)
+-> parse/hash/canonical-byte verification
+-> post-I/O remount and exact tuple verification
+-> register one new current-process witness
+-> pass that exact witness through the lexical runner
+-> kernel consumes it once
+```
+
+The new witness has the same hash/workspace/mount diagnostics but distinct
+object identity. An old-process witness is never serialized/restored; missing
+checkpoint/artifact, changed high-water/context, corrupt bytes, tuple drift, or
+old/structural identity rejects before runner/provider/H/handoff/terminal
+effects.
+
+Add exact-title RED
+`fresh runtime rereads context-ready v1 and issues a new consumable witness`.
+The test uses a persisted temporary portable workspace and a fresh module/
+runtime instance with no prior WeakMap state, proves old and new witness
+identity differ, consumes the new witness once, and proves the old/copy cannot
+be consumed. Include it in the identical Task133.5 RED/GREEN command from
+CF-1R11. If an isolated module graph is needed in-process, use Vitest module
+reset plus dynamic import; no test-only production reset API is allowed.
+
+### Third live fixture migration
+
+Add `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts` to the
+atomic H.1/H.2 ownership. Replace its direct
+`renderProductionSpecialistPrompt` / `prepareSpecialistRun` /
+`invokeSpecialistModel` path with `runResidentSpecialistAcceptance` for
+`evidence-triage`. It must use the same explicit portable workspace and
+test-human approval policy as the other two live fixtures. No live fixture may
+receive runtime model methods, prompt artifacts, provider proofs, admission
+tokens, or private factory closures.
+
+The three live files remain compile-only during H implementation. The later
+coordinator-authorized live gate, and no earlier gate, is:
+
+```bash
+npm test -- packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts
+```
+
+### Complete integrated Task133 gate
+
+This command replaces every earlier integrated Task133 command:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/agent/test/production-prompt-readback.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-context.test.ts packages/local-runtime/test/agent-prr-context-packs.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts && npm run typecheck && ! rg -n 'production-prompt-readback' packages/agent/src/index.ts && ! rg -n 'renderProductionSpecialistPrompt\(' packages/agent/src/specialist-runner-kernel.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+Expected: exit `0`, including fresh-runtime witness reissuance. No live or
+provider-bearing test is selected.
+
+### Complete Task140H non-live gate
+
+This command replaces CF-1R7 and CF-1R8 H.4 commands and aggregates every
+H.1-H.3 plus resident-acceptance suite:
+
+```bash
+npm test -- packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/resident-specialist-acceptance.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts && npm run typecheck && ! rg -n 'runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|prepareSpecialistRun|invokeSpecialistModel|runtime\.invokeModel|renderProductionSpecialistPrompt' packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts && ! rg -n 'production-model-invocation-admission|production-prompt-readback' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Expected: exit `0`; all three live files are excluded while static checks prove
+they have no direct workflow/kernel/model/render bypass. No provider/network/
+credential activity is permitted.
+
+### CF-1R12 review gate
+
+Two fresh independent reviewers inspect exact full lineage
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Approval requires explicit
+confirmation that restart issues a new mounted witness, all three live files
+use resident acceptance, and the two complete aggregate commands include every
+current suite and non-export/static assertion. Exactly two unqualified
+Terra/xhigh approvals permit coordinator-only plan integration. Source/full/
+live/credential/reset-credit/`neo`/self-integration/merge remain closed.
