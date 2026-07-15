@@ -10131,3 +10131,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   its distinct review lens. Both approvals are required before any merge
   preview. Full verification, integration, reset credits, and every `neo`
   action remain closed.
+
+## RV-1-E-351 — Task135D typecheck repair admitted to fresh review
+
+- Replacement `dc0d01f76d8a0c4073033b86e27157a205ef5209` is clean and
+  merge-free. Its complete post-Task135E base range changes exactly the runtime
+  factory, two focused capture/import tests, and append-only claim.
+- Independent coordinator verification passed all 20 focused tests, complete
+  typecheck, the no-index assertion, complete-range diff checking, factory
+  readiness, exact four-path scope, ancestry, and clean-state checks.
+- The final forward repair changes only the three structurally required regex
+  capture accesses to non-null assertions. It leaves scanner regular
+  expressions, recursive package coverage, fixture behavior, and production
+  runtime code unchanged from the prior semantically reviewed candidate.
+- The candidate is admitted only to fresh private-authority/lifecycle and
+  ownership/import reviews. Both approvals are required before any merge
+  preview. Full verification, providers, reset credits, integration, and every
+  `neo` action remain closed.
