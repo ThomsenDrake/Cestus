@@ -753,3 +753,37 @@ serialized task.
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
   approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
   before coordinator-only plan integration.
+
+## Forward Correction — Exact Checkout And Terminal Prerequisite Authority
+
+- Status remains **plan-repair candidate only**. Lifecycle reviewer
+  `019f65f0-2703-77d1-b23e-a3f164c903e7` and authority reviewer
+  `019f65f0-2649-77e2-a24c-5683e8245de0` both rejected `da34e403`. They proved
+  ignored `docs`, `.npmrc`, and `dist` writes escape the final path scan; an
+  already-allowed byte rewrite or empty commit preserves the permitted union;
+  caller TMPDIR can move Task117A temporary cleanup into the repository; an
+  annotated tag can impersonate literal C; and P/R0/H review gates do not
+  revalidate C/M/base after focused commands.
+- CF-1R24 publishes five complete commands. Task117A and Task137A bind literal
+  HEAD, the index, and every checkout file/symlink before work and compare that
+  snapshot inside their terminal full-authority assertion. Task117A uses a
+  verified outside-repository temporary root and requires C itself to be a
+  commit object. Each P/R0/H review command compares the same exact checkout
+  snapshot and reruns its byte-identical prerequisite checker as the terminal
+  operation.
+- Validation: all five extracted CF-1R24 bash blocks pass `bash -n`, and each
+  last nonblank line is its named terminal authority function. An isolated Git
+  fixture proved stable-state equality and final-state inequality for an
+  already-allowed file rewrite, ignored root `.npmrc`, and empty commit while
+  confirming only `node_modules` contents are excluded. Separate fixtures
+  proved a literal commit passes the C object check, an annotated-tag object
+  fails it, and caller-directed TMPDIR cannot place Task117A temporary state in
+  the repository. The exact section contains five commands, six P/R0/H review
+  attestation invocations, one Task117A commit-object check, and two calls each
+  to the Task117A and Task137A full assertions. `git diff --check` and
+  `npm run factory:check` pass.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
