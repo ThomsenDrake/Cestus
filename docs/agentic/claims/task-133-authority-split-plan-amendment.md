@@ -66,7 +66,7 @@ git diff --check && npm run factory:check
 ```
 
 Candidate-specific review range:
-`dcb863e2bf258205308cdb35955f10ef71fdc501^..HEAD`.
+`dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD`.
 
 Full-lineage review range:
 `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
@@ -78,3 +78,33 @@ sources are independently current and private, binder/renderer/receipt roles
 are not duplicated, and the stated commands and serialized merge order are
 complete. Only two unqualified approvals permit coordinator-only plan
 integration; rejection requires another append-only documentation correction.
+
+## Forward repair after fresh plan review — 2026-07-15
+
+The rejected-but-preserved candidate is
+`8b36829ab23019b9e3d8595d24bac2b09bc40496`. Its fresh authority/security
+review verdict was **APPROVED**. Its separate factory-plan review verdict was
+**NEEDS-CHANGES**, for three bounded plan defects: Task140P's GREEN depended on
+an R0-owned resolver, the atomic Task133 phase omitted a required Task133.1
+rerun between 133.2 and 133.3, and the candidate-specific review formula
+incorrectly included the parent of the frozen base.
+
+CF-1R28 is the forward repair. It preserves the rejected candidate and the
+approved authority boundary, while requiring that Task140P prove only opaque
+admission creation/validation, the absence of factory-private authority, and
+zero provider, ledger-write, tool, runner, store, handoff, or terminal
+transfer effects. P's own tests neither import, instantiate, fake, nor depend
+on the Task140R0 factory resolver. After reviewed P integration, Task140R0
+alone supplies the complete private independently-current authority and owns
+the first valid end-to-end V2 provider-transfer admission control; it does not
+duplicate Task133 renderer, binder, or receipt ownership.
+
+The correction also requires the exact complete Task133.1 suite to pass after
+Task133.2 and before Task133.3 begins, without breaking the one-commit atomic
+Task133.1-.3 phase. Every active candidate-specific review reference is exactly
+`dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD`, never a parent-inclusive
+form. Two new independent reviews—authority/security and factory-plan—must
+review the repaired candidate. Each future implementation authorization must
+explicitly approve `superpowers:subagent-driven-development` where subagents
+are relevant, TDD, verification-before-completion, fresh independent review,
+and coordinator-only integration.
