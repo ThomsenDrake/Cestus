@@ -10202,3 +10202,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - This opens only downstream prerequisite-checker consumption on the program
   branch. Full verification, providers, reset credits, and every `neo` action
   remain closed.
+
+## RV-1-E-355 — Task135D held for type-only namespace import repair
+
+- Private-authority/lifecycle reviewer
+  `019f66a8-3376-7f11-9eee-a54a6978b81c` returned unqualified
+  **APPROVED** after reproducing the complete 20-test/typecheck/no-index/range/
+  factory/topology gate and auditing private capture identity, snapshots,
+  hostile mutation, closure, and non-leakage behavior.
+- Ownership/import reviewer `019f66a8-3538-7530-b9b7-951adacc3d92`
+  returned **NEEDS-CHANGES** because the scanner misses legal TypeScript
+  `import type * as`, `export type * from`, and `export type * as ... from`
+  forms targeting the private runtime-factory seam.
+- Candidate `dc0d01f76d8a0c4073033b86e27157a205ef5209` remains rejected and
+  must be preserved. A fresh forward test-only repair may extend the existing
+  namespace/re-export grammar and causal deep cross-package fixture for exactly
+  those type-only forms, plus append claim evidence; production runtime behavior
+  must not change.
+- The replacement must rerun the complete 20-test suite, typecheck, no-index,
+  original-base diff, factory, exact four-path/no-merge, and clean-state gates,
+  then receive both fresh review lenses. Full verification, providers, reset
+  credits, integration, and every `neo` action remain closed.
