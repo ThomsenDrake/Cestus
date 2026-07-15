@@ -11506,3 +11506,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous actions, reset
   credits, child self-integration, push, program merge, and every `neo` action
   remain closed while these candidates develop.
+
+## RV-1-E-422 — Candidate admission and bounded recovery frontier
+
+- Task136 documentation reconciliation thread
+  `019f676a-434c-7c91-a2fb-c860a7f4ecea` produced clean two-path candidate
+  `be03f5f680dbbebe9ff651fe03e755ed02eb52df` over exact dispatch base
+  `288bdb56b520a58501cb7f270dc6018711a8041f`. Coordinator admission confirmed
+  only the bounded-loop implementation plan and reconciliation claim changed;
+  `git diff --check` and factory readiness passed. The candidate freezes six
+  disjoint producer repairs for the seven missing Task136 interfaces and
+  remains review-only pending fresh architecture and executability reviews.
+- Task139 thread `019f676a-401d-7f63-a154-c0143783de67` produced candidate
+  `e02f83c7579701aca1bed6d6b71eba72791045ee`. Coordinator admission passed the
+  exact focused suite at 14/14 but rejected the candidate before review because
+  a fresh `npm run typecheck` found nine un-narrowed `unknown` values in the
+  new provider-configuration source. The same author is authorized for one
+  bounded three-path systematic-debugging repair that preserves runtime
+  validation and reruns the exact focused/typecheck/diff/factory gates.
+- Task133.5 thread `019f6769-a2f2-7961-8eeb-ec27feb8d184` stopped at its
+  mandated two-repair checkpoint and committed durable recovery evidence at
+  `dd64f7af`. Its uncommitted authorized-path work is preserved. The reported
+  gaps are envelope parsing, mounted-runtime fixture composition, missing
+  attempt/generated-at context inputs, and no local PRR mounted-witness
+  channel. No candidate is admitted; coordinator-owned interface
+  reconciliation is required before a third implementation attempt.
+- Task137A thread `019f676a-3ce7-7b70-9578-0bbf8b88da96` passed 66 focused
+  tests before the integrated Task135D import guard failed. Root-cause audit
+  confirmed the plan requires zero capture-seam importers before Task137A and
+  exactly its mounted authority module afterward, while the workspace-root
+  assertion is hard-coded to zero. Task137A's six-path work remains unchanged
+  and uncommitted. Producer-test repair thread
+  `019f6776-0d48-7dc2-9e0c-261dbc736ab5` owns only the Task135D import test and
+  a repair claim from program checkpoint `52381a20`; after review and
+  integration, Task137A must be reconstructed on the corrected base with a
+  truthful new immutable claim parent.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
