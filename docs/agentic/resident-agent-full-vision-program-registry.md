@@ -11544,3 +11544,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-423 — Task136 reviews and Task133.5 recovery dispatched
+
+- Exact immutable Task136 documentation candidate
+  `be03f5f680dbbebe9ff651fe03e755ed02eb52df` is under two fresh independent
+  Terra/xhigh read-only reviews. Architecture/invariant reviewer
+  `019f6779-4052-75d1-afb4-2a57a92f6aeb` validates producer gaps, resident
+  identity, append-only/projection/mounted/approval/provider/H boundaries.
+  Executability/ownership reviewer `019f6779-431b-72a0-b7af-a3667ce51b4d`
+  validates disjoint files, causal identical RED/GREEN commands, dependency
+  order, measurable acceptance, and autonomous dispatch quality. Both require
+  an unqualified verdict on the exact SHA and may not edit.
+- Fresh Task133.5 recovery implementation thread
+  `019f677b-0c0a-7040-8e52-24bac253dda4`, worktree
+  `/home/drake/.codex/worktrees/67b2/Cestus`, starts from clean program
+  checkpoint `140bfd3a` and must use branch
+  `codex/task-133-5-preapproval-prompt-store-recovery`. It may inspect the
+  stopped `/home/drake/.codex/worktrees/00a1/Cestus` diff only as failure
+  evidence. The coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion; the prior branch remains read-only.
+- The Task133.5 recovery prompt fixes the execution boundary without changing
+  product scope: preserve serialized canonical envelope bytes; construct real
+  mounted portable fixtures; add attempt/time through owned orchestrator
+  inputs; supply the exact witness through owned runtime-factory lexical
+  composition; retain one-use non-exported WeakMap authority and no fallback.
+- Standard ignored canonical dependency links are available to the active
+  implementation/review worktrees and must be removed by implementation lanes
+  before final candidate reporting. No dependency install or lockfile change
+  is authorized.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
