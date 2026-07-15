@@ -5925,3 +5925,247 @@ counterfactuals in addition to every preserved CF-1R18/CF-1R19 requirement.
 Exactly two unqualified approvals permit coordinator-only plan integration.
 Source, full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/
 merge remain closed.
+
+## CF-1R21 - Whole-freeze, dispatch-attestation, and hidden-index authority
+
+This terminal overlay supersedes CF-1R20 only for Task117A freeze hashing and
+worktree visibility, coordinator dispatch authentication, Task135C attestation,
+Task137A worktree visibility, and Task135B's exact producer-result type. Every
+other CF-1R18 through CF-1R20 contract remains current.
+
+### Whole-freeze Task117A commitment
+
+The Task117A immutable dispatch block is now exactly:
+
+```text
+<!-- task-117a-dispatch-v3:start -->
+sourceBaseSha=0123456789012345678901234567890123456789
+freezeSha256=0123456789012345678901234567890123456789012345678901234567890123
+auditSha256=0123456789012345678901234567890123456789012345678901234567890123
+<!-- task-117a-dispatch-v3:end -->
+```
+
+Before the claim-add commit, the coordinator prepares the complete exact
+post-amendment freeze outside the repository, runs its one authenticated audit
+block against that temporary root, and computes both SHA-256 values. The claim-
+add commit pins both values before any checked-out freeze byte changes. GREEN
+and review compare the complete checked-out freeze bytes and the exact
+extracted audit bytes to those distinct values before executing the audit. A
+change to the non-production boundary, ownership prose, matrix, audit, or any
+other freeze byte therefore fails even if the audit would otherwise pass.
+
+### Coordinator dispatch attestation
+
+Git author and committer strings are never authority. After creating Task117A's
+claim-add commit `M`, or a Task135C P/R0/H two-file dispatch commit `M`, the
+coordinator appends one exact attestation block to the canonical program
+registry and commits that registry-only change as `C`:
+
+```text
+<!-- resident-dispatch-attestation-v1:start TASK M -->
+task=TASK
+dispatchCommitSha=M
+sourceBaseSha=SOURCE_BASE
+manifestPath=MANIFEST_PATH_OR_NONE
+manifestSha256=MANIFEST_SHA256_OR_NONE
+claimPath=CLAIM_PATH
+claimSha256=CLAIM_SHA256
+freezePath=FREEZE_PATH_OR_NONE
+intendedFreezeSha256=FREEZE_SHA256_OR_NONE
+auditSha256=AUDIT_SHA256_OR_NONE
+<!-- resident-dispatch-attestation-v1:end TASK M -->
+```
+
+`C` is not chosen by a worker or rediscovered from mutable task state. The
+coordinator's dispatch message pins its literal lowercase 40-character SHA,
+and the fresh review prompt repeats that same SHA and the byte-identical gate.
+The task-specific command materializes `COORDINATOR_ATTESTATION_SHA` with that
+literal value before dispatch; an environment variable, branch, tag, symbolic
+ref, abbreviation, Git author, or worker-provided value is forbidden.
+
+The gate verifies `C` as a one-parent commit whose changed-path set is exactly
+`docs/agentic/resident-agent-full-vision-program-registry.md`, extracts exactly
+one block whose start/end markers name the exact task and `M`, and compares all
+fields to the original bytes at `M`. Task117A additionally compares both pinned
+freeze/audit hashes. Task135C compares manifest and claim hashes, source base,
+task, and the complete prerequisite map represented by the manifest. The
+literal externally issued `C` is the trust root; commit identity metadata is
+not. Review rejects a missing, substituted, worker-chosen, symbolic, duplicate,
+or field-mismatched attestation.
+
+Task135C's CLI therefore becomes:
+
+```bash
+node scripts/check-resident-task-prerequisites.mjs --task TASK --phase PHASE --manifest MANIFEST_PATH --claim CLAIM_PATH --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+```
+
+Every complete P/R0/H command must include its exact coordinator-issued `C` in
+that argument in both worker and review messages. Add temporary-repository
+tests for a valid external attestation and forged author, worker-created C,
+wrong C, symbolic C, non-registry C, merge C, duplicate block, wrong M, wrong
+hash, wrong source base, wrong task, and changed prerequisite manifest.
+
+### Hidden Git-state rejection
+
+Before any Task117A, Task135C, or Task137A revision/ancestry/path check, the
+gate requires no graft or shallow-history override:
+
+```bash
+test ! -s "$(git rev-parse --git-path info/grafts)"
+test ! -s "$(git rev-parse --git-path shallow)"
+```
+
+Task117A and Task137A additionally reject every tracked index entry marked
+assume-unchanged or skip-worktree and every ignored authority-path file:
+
+```bash
+test -z "$(git ls-files -v | sed -n '/^[a-zS] /p')"
+test -z "$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+```
+
+These checks run before the committed/staged/unstaged/untracked union and again
+after the focused tests, before `git diff --check`. A hidden tracked edit,
+sparse/skip-worktree path, ignored source/test/script/claim file, graft, shallow
+boundary, or replacement ref cannot disappear from review. Exact counterfactual
+tests use `git update-index --assume-unchanged`, `git update-index
+--skip-worktree`, ignored authority files, `info/grafts`, and a shallow file;
+each must fail before an audit, test, or factory gate can authorize the task.
+
+Task117A's CF-1R20 gate is otherwise unchanged, except it:
+
+1. parses exactly one `sourceBaseSha`, `freezeSha256`, and `auditSha256` from
+   the v3 immutable block;
+2. validates the exact coordinator attestation `C` and its Task117A block;
+3. runs the hidden-state checks above before and after its audit;
+4. requires `sha256sum "$task117a_freeze"` to equal `freezeSha256`; and
+5. still requires the every-commit union to equal exactly the claim and freeze
+   paths and the extracted audit hash to equal `auditSha256`.
+
+The complete Task117A gate is this template. Before dispatch, the coordinator
+replaces the one literal `COORDINATOR_ATTESTATION_SHA` token with `C`; the
+worker and both reviewers run that byte-identical materialized command:
+
+```bash
+set -euo pipefail
+task117a_claim='docs/agentic/claims/task-117a-runtime-handle-capture-freeze.md'
+task117a_freeze='docs/agentic/resident-agent-full-vision-contract-freeze.md'
+task117a_registry='docs/agentic/resident-agent-full-vision-program-registry.md'
+task117a_attestation='COORDINATOR_ATTESTATION_SHA'
+task117a_tmp="$(mktemp -d)"
+trap 'rm -rf "$task117a_tmp"' EXIT
+printf '%s\n' "$task117a_attestation" | grep -Eq '^[0-9a-f]{40}$'
+test ! -s "$(git rev-parse --git-path info/grafts)"
+test ! -s "$(git rev-parse --git-path shallow)"
+test -z "$(git ls-files -v | sed -n '/^[a-zS] /p')"
+test -z "$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+extract_task117a_claim() {
+  awk '/^<!-- task-117a-dispatch-v3:start -->$/ { starts++; inside=1 } inside { print } /^<!-- task-117a-dispatch-v3:end -->$/ { ends++; inside=0 } END { if (starts != 1 || ends != 1 || inside) exit 42 }'
+}
+extract_task117a_audit() {
+  awk '/^```bash$/ { inside=1; block=""; next } inside && /^```$/ { if (block ~ /CF-1 full-row canonicalRows audit/) { matches++; selected=block } inside=0; next } inside { block=block $0 ORS } END { if (matches != 1 || selected == "") exit 43; printf "%s", selected }'
+}
+extract_task117a_claim < "$task117a_claim" > "$task117a_tmp/claim"
+task117a_source="$(sed -n 's/^sourceBaseSha=\([0-9a-f]\{40\}\)$/\1/p' "$task117a_tmp/claim")"
+task117a_freeze_sha="$(sed -n 's/^freezeSha256=\([0-9a-f]\{64\}\)$/\1/p' "$task117a_tmp/claim")"
+task117a_audit_sha="$(sed -n 's/^auditSha256=\([0-9a-f]\{64\}\)$/\1/p' "$task117a_tmp/claim")"
+test "$(grep -Ec '^sourceBaseSha=[0-9a-f]{40}$' "$task117a_tmp/claim")" -eq 1
+test "$(grep -Ec '^freezeSha256=[0-9a-f]{64}$' "$task117a_tmp/claim")" -eq 1
+test "$(grep -Ec '^auditSha256=[0-9a-f]{64}$' "$task117a_tmp/claim")" -eq 1
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task117a_source}^{commit}")" = "$task117a_source"
+mapfile -t task117a_claim_commits < <(GIT_NO_REPLACE_OBJECTS=1 git log --no-renames --diff-filter=A --format=%H -- "$task117a_claim")
+test "${#task117a_claim_commits[@]}" -eq 1
+task117a_claim_commit="${task117a_claim_commits[0]}"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-parse "${task117a_claim_commit}^")" = "$task117a_source"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git diff-tree --root --no-commit-id --name-status -r --no-renames "$task117a_claim_commit")" = "$(printf 'A\t%s' "$task117a_claim")"
+GIT_NO_REPLACE_OBJECTS=1 git show "${task117a_claim_commit}:${task117a_claim}" | extract_task117a_claim > "$task117a_tmp/claim-at-add"
+cmp -s "$task117a_tmp/claim" "$task117a_tmp/claim-at-add"
+test "$(GIT_NO_REPLACE_OBJECTS=1 git rev-list --parents -n 1 "$task117a_attestation" | awk '{print NF}')" -eq 2
+test "$(GIT_NO_REPLACE_OBJECTS=1 git diff-tree --no-commit-id --name-only -r --no-renames "$task117a_attestation")" = "$task117a_registry"
+task117a_claim_blob_sha="$(GIT_NO_REPLACE_OBJECTS=1 git show "${task117a_claim_commit}:${task117a_claim}" | sha256sum | awk '{print $1}')"
+task117a_attestation_start="<!-- resident-dispatch-attestation-v1:start task117a ${task117a_claim_commit} -->"
+task117a_attestation_end="<!-- resident-dispatch-attestation-v1:end task117a ${task117a_claim_commit} -->"
+GIT_NO_REPLACE_OBJECTS=1 git show "${task117a_attestation}:${task117a_registry}" | awk -v start="$task117a_attestation_start" -v end="$task117a_attestation_end" '$0 == start { matches++; inside=1 } inside { print } $0 == end { inside=0 } END { if (matches != 1 || inside) exit 44 }' > "$task117a_tmp/attestation"
+printf '%s\n' "$task117a_attestation_start" 'task=task117a' "dispatchCommitSha=$task117a_claim_commit" "sourceBaseSha=$task117a_source" 'manifestPath=none' 'manifestSha256=none' "claimPath=$task117a_claim" "claimSha256=$task117a_claim_blob_sha" "freezePath=$task117a_freeze" "intendedFreezeSha256=$task117a_freeze_sha" "auditSha256=$task117a_audit_sha" "$task117a_attestation_end" > "$task117a_tmp/expected-attestation"
+cmp -s "$task117a_tmp/attestation" "$task117a_tmp/expected-attestation"
+test -z "$(GIT_NO_REPLACE_OBJECTS=1 git rev-list --min-parents=2 "${task117a_source}..HEAD")"
+task117a_actual="$( { while read -r commit; do GIT_NO_REPLACE_OBJECTS=1 git diff-tree --no-commit-id --name-only -r --no-renames "$commit"; done < <(GIT_NO_REPLACE_OBJECTS=1 git rev-list --reverse "${task117a_source}..HEAD"); GIT_NO_REPLACE_OBJECTS=1 git diff --name-only --no-renames; GIT_NO_REPLACE_OBJECTS=1 git diff --cached --name-only --no-renames; git ls-files --others --exclude-standard; } | LC_ALL=C sort -u )"
+task117a_expected="$(printf '%s\n' "$task117a_claim" "$task117a_freeze" | LC_ALL=C sort -u)"
+test "$task117a_actual" = "$task117a_expected"
+test "$(sha256sum "$task117a_freeze" | awk '{print $1}')" = "$task117a_freeze_sha"
+extract_task117a_audit < "$task117a_freeze" > "$task117a_tmp/audit"
+test -s "$task117a_tmp/audit"
+test "$(sha256sum "$task117a_tmp/audit" | awk '{print $1}')" = "$task117a_audit_sha"
+bash "$task117a_tmp/audit"
+test -z "$(git ls-files -v | sed -n '/^[a-zS] /p')"
+test -z "$(git ls-files --others --ignored --exclude-standard -- packages scripts docs/agentic/claims)"
+git diff --check
+npm run factory:check
+```
+
+Task137A's CF-1R20 complete command is otherwise unchanged, with the same
+before/after hidden-state checks added. Task135C applies graft/shallow,
+replacement-object, unique-original-add, exact attestation, manifest/claim
+worktree-byte, schema, exact-key, and ancestry checks before any P/R0/H command.
+
+### Exact Task135B private producer result
+
+CF-1R18 replaces CF-1R16's obsolete binding-only `bind()` return. The exact
+source-private types in
+`packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` are:
+
+```ts
+declare const mountedHandoffAuthorityControllerBrand: unique symbol;
+
+export type MountedHandoffAuthorityController = Readonly<{
+  readonly [mountedHandoffAuthorityControllerBrand]: true;
+}>;
+
+export interface FactoryPortableMountedAgentHandoffProducerResultV1 {
+  readonly schemaVersion: "factory-portable-mounted-agent-handoff-result.v1";
+  readonly binding: PortableMountedAgentHandoffBinding;
+  readonly controller: MountedHandoffAuthorityController;
+}
+
+export function createPortableMountedAgentArtifactStoreProducer(
+  authorityOperation: MountedArtifactAuthorityOperation
+): {
+  bind(input: BindPortableMountedAgentHandoffInput):
+    Promise<FactoryPortableMountedAgentHandoffProducerResultV1>;
+};
+```
+
+The unique brand is not exported. The opaque frozen controller has no own
+callable property, method, path, store, ledger, authority fact, or serializable
+state; exact identity is accepted only by Task135B's module-private WeakMap.
+The result is consumed only inside the lexical local runtime factory and is
+never a runtime/agent DTO, binding field, route value, projection, log, or
+public export. `PortableMountedAgentHandoffBinding` remains data/store-only and
+contains no controller or guard.
+
+Only `agent-runtime-factory.ts` may import the producer result, opaque
+controller, or source-private controller operations. It captures the exact
+controller in `MountedHandoffAuthorityControllerClosureV1`, whose callables are
+transferred only through R0's internal resolver pair into the H-port module's
+private WeakMap. The closure/result/controller is never returned to task
+orchestrator or any caller. Task140H reaches it only through the named H-port
+before/after/consume operations. Exact import and reflection tests reject a
+binding-attached controller, callable result/controller property, structural
+or copied controller, second importer, second registrar, serializer/log leak,
+or any unnamed transfer channel.
+
+### CF-1R21 dispatch and review rule
+
+The serialized dependency graph and exact prerequisite inventories remain
+CF-1R18/CF-1R19. Every implementation message must pin the exact coordinator
+attestation SHA and specifically state that the coordinator approves use of
+`superpowers:subagent-driven-development` for that exact task. No source lane
+starts before reviewed and coordinator-integrated Task117A.
+
+Two fresh independent Terra/xhigh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Approval requires explicit
+proof of whole-freeze plus audit hashing, literal external attestation binding,
+hidden-index/ignored/graft/shallow rejection, the exact Task135B producer-result
+and private transfer path, and every preserved CF-1R18 through CF-1R20 gate.
+Exactly two unqualified approvals permit coordinator-only plan integration.
+Source, full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/
+merge remain closed.
