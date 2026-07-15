@@ -11437,3 +11437,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task135D as a prerequisite. Full verification, providers, network,
   credentials, Nous, reset credits, push, and every `neo` action remain
   closed.
+
+## RV-1-E-420 — Reboot recovery and next dependency frontier
+
+- The canonical program worktree recovered cleanly at
+  `4b449ff303997eadcaabfc72c72d2e8f8280e623`. Task133 is integrated through
+  `c6a20cf34eab8061b2592251bfe0c62036228118`; Task117A is integrated through
+  `2ad417356afc00b26ff00fa763977e2469463d72`; and Task135D is integrated
+  through `30decebfe1167a4b98db256c24dea4d202f52404`. Every named commit is an
+  ancestor of this checkpoint. `neo` remains untouched.
+- Three source lanes are independently ready from this exact clean checkpoint.
+  Task133.5 owns only its complete CF-1R9/R10/R11/R12 portable pre-approval
+  prompt-store, opaque mounted-readback, fallback-removal, and restart-witness
+  file set. Task137A owns exactly the six CF-1R18-through-CF-1R26 mounted-
+  authority-operation paths and waits on no remaining prerequisite after
+  Task117A/Task135D integration. Task139 owns only its provider-configuration
+  claim, source, and test after verified ancestry of Tasks126-130 and Task133.
+- Task136 is not authorized for source implementation. The producer-owned
+  strict checkpoint, mounted-authority, provider-posture, gateway-readback,
+  and complete handoff interfaces recorded missing by RV-1-E-189 still are
+  not present as the approved bounded-loop plan names them. One disjoint
+  documentation-only reconciliation lane may audit current producer surfaces
+  and amend the active bounded-loop plan with exact owners, files, dependency
+  order, RED/GREEN commands, and no shadow authority type. It may not edit
+  source or tests.
+- Every implementation authorization explicitly approves
+  `superpowers:subagent-driven-development` for its exact task, plus TDD,
+  verification-before-completion, fresh independent review, and coordinator-
+  only integration. Workers must stop with structured evidence on a genuine
+  schema/API conflict rather than broaden ownership.
+- Full `npm run verify`, live/provider/network/credential/Nous activity,
+  reset-credit use, push, self-integration, merge into the program branch, and
+  every `neo` action remain closed. Only task-focused suites, typecheck where
+  named, `git diff --check`, and factory readiness are authorized.
