@@ -9021,3 +9021,16 @@ explicit implementation authorization.
   reviews are authorized read-only. Exactly two unqualified **APPROVED**
   verdicts are required. Source dispatch, plan integration, live/provider/full/
   credential/Nous/reset-credit/`neo` actions remain closed.
+
+## RV-1-E-302 — Attested whole-freeze reviewer identities
+
+- Lifecycle/executability reviewer
+  `019f65c6-4ca7-72c0-aa73-428a58c9a536` and authority/import/bypass reviewer
+  `019f65c6-991f-7a91-ae17-a21f57f76b79` are active read-only on the exact
+  candidate, lineage, and canonical checkpoint in RV-1-E-301. Both use
+  `gpt-5.6-terra` at `xhigh` in fresh isolated worktrees and are pinned under
+  distinct CF-1R21 review titles.
+- Neither may edit, run full/live/provider/credential gates, touch `neo`, or
+  carry forward any earlier verdict. Source dispatch and plan integration
+  remain closed until both return explicit unqualified **APPROVED** verdicts
+  and those verdicts are durably recorded.
