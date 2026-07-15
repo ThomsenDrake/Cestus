@@ -9929,3 +9929,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   check before reporting a replacement candidate. Any production change or new
   failure stops. Full verify, providers, reset credits, integration, and every
   `neo` action remain closed.
+
+## RV-1-E-341 — Task135C and Task135D replacements admitted to review
+
+- Task135C replacement `efff6e025ac922bf0fcaf42696a24043489588ec`
+  is clean and merge-free. Its complete original-base range changes exactly the
+  checker, focused test, and claim. Independent coordinator verification passed
+  all 16 counterfactuals, rejected forbidden runtime/import mechanisms,
+  confirmed only static `node:` imports, passed complete-range diff checking,
+  and passed factory readiness.
+- The Task135C range now includes exact JSON whitespace, raw Git blob `Buffer`
+  hashing, explicit replacement-ref rejection, immutable C-tree checker binding,
+  authenticated retained-payload execution, and malformed/terminal-runner
+  counterfactuals. It is admitted only to fresh static/execution and Git-
+  authority/bypass reviews.
+- Task135D replacement `4e6542a462b428ce5c0d0c278410fba81ecff6a7`
+  is clean and merge-free. Its post-Task135E base range changes exactly the
+  runtime factory, two capture tests, and claim. Independent coordinator
+  verification passed all 19 focused tests, typecheck, no-index, complete-range
+  diff checking, and factory readiness.
+- Task135D's hostile nested-config witness now compiles through checked
+  reflection while preserving the same runtime mutation and snapshot assertions.
+  It is admitted only to fresh ownership/import and private-authority/lifecycle
+  reviews. No candidate is authorized for integration, full verification,
+  provider activity, reset credits, or any `neo` action.
