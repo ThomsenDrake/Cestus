@@ -8737,3 +8737,25 @@ explicit implementation authorization.
   any prior verdict. Source dispatch and plan integration remain closed until
   both return explicit unqualified **APPROVED** verdicts and those verdicts are
   durably recorded.
+
+## RV-1-E-288 — Opaque admission candidate rejected; bounded CF-1R17
+
+- Both fresh reviewers returned **NEEDS-CHANGES** on exact 21-commit range
+  `0481c1e0^..ce7d0237`. Lifecycle reviewer
+  `019f6573-bf32-7543-9946-ca4df9bc97de` proved that Task135B's fixed original
+  high-water comparison rejects the canonical H sequence after its own final-
+  output append and therefore cannot reach manifest readback or completion.
+  Authority reviewer `019f6574-0227-7fb1-a401-1df91a4ccff4` proved that the
+  Task135B producer still accepts public path-bearing config and mounted-
+  workspace structures, so copied or substituted roots remain caller inputs.
+- The sole plan writer is authorized only for CF-1R17: remove every config and
+  mounted-workspace parameter from Task135B; bind its opaque operation to
+  private state captured from an exact factory-issued `LocalRuntimeHandle`; and
+  replace fixed high-water equality with a private, append-only, run-bound H
+  progression that rejects unrelated events, rollback, identical-tuple
+  revalidation, authority loss, and all path substitution before returning a
+  receipt or terminal authority.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending a committed docs-only repair and
+  two fresh independent unqualified approvals. No earlier approval or reviewer
+  identity carries forward.
