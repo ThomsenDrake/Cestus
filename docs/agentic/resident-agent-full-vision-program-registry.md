@@ -7194,3 +7194,29 @@ explicit implementation authorization.
   silently lost elsewhere, and fresh `git diff --check` evidence. Unjustified
   coverage must be restored before any source edit, GREEN, candidate gate, or
   review. All Task132A scope and closed-gate restrictions remain in force.
+
+## RV-1-E-218 — Task132A RED coverage audit accepted for minimal GREEN
+
+- The replacement supplied a full test-reduction audit and the coordinator
+  independently inspected it. Public-mint absence assertions now reside in the
+  plan-mandated external-consumer
+  `agent-runtime-context-packs.test.ts`; the retained suite still exercises
+  real PRR/operational/investigative read-only registrar evidence, ordinary
+  public `buildResolved`, foreign/manual undefined lookups, and default
+  fail-closed composition. The malformed foreign manual `buildResolved` fixture
+  was repaired only with its required canonical `generatedAt`/`safeSummary`
+  fields; no production or unrelated coverage changed. Generic hostile
+  context-pack boundary coverage remains in `packages/agent/test/context-packs.test.ts`.
+  Retired public mounted-capability/VerifyForRun/duplicate/authority tests are
+  not mislabeled as live acceptance; the six live dimensions remain Task140R0
+  obligations under the approved plan.
+- The coordinator independently reran the focused RED: exactly two failures
+  and 53 passes—public `captureFactoryContextPackAttestation` export and default
+  factory composition failing to throw
+  `blocked.factory-context-attestation-required`; `git diff --check` is clean.
+  This author is now authorized only for the smallest lexical private-closure
+  GREEN within the existing eight-file scope. It must preserve the retained
+  registrar tests and public ordinary `buildResolved`, make no H/orchestrator/
+  provider/durable/terminal change, then run focused GREEN and the exact
+  non-full `&&` gate, commit, remove its dependency link, and stop for fresh
+  complete staged-base review. All closed-gate restrictions remain in force.
