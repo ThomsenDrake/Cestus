@@ -387,6 +387,7 @@ Task134A integration SHA, and exact program-base SHA.
 - Modify only for pre-dispatch admission: `packages/agent/src/task-orchestrator.ts`
 - Create: `packages/agent/test/task-orchestrator-handoff-port.test.ts`
 - Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Modify: `packages/agent/test/task-orchestrator-approval.test.ts`
 - Claim: new Task140P claim.
 
 **Prerequisites:** reviewed/coordinator-integrated Task132A, Task133, Task134A,
@@ -400,12 +401,14 @@ SHA or “original prerequisites” is insufficient.
   Prove a public runtime registry with no exact private `WeakMap` registration
   cannot reach `appendRunnerDispatchingCheckpoint`, delegate/runner dispatch,
   provider activity, runner-specific ledger append, H, or terminal state. A
-  forged registry/port/callback/tuple must have the same zero-effect result;
-  only a factory-only direct registration of the exact registry admits dispatch.
+  forged registry/port/callback/tuple must have the same zero-effect result.
+  Convert the existing valid provider-approval test to prove its unregistered
+  standalone registry now fails closed without a provider call; valid admission
+  is proved later only by Task140R0 factory-composition tests.
 
 - [ ] **Step 2: Run focused RED.**
 
-  Run `npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the absent-admission failure before any delegate/provider/ledger effect.
+  Run `npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts` and record the absent-admission failure before any delegate/provider/ledger effect.
 
 - [ ] **Step 3: Implement the minimal admission seam.**
 
@@ -419,7 +422,7 @@ SHA or “original prerequisites” is insufficient.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
-  `npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+  `npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts && npm run typecheck && git diff --check && npm run factory:check`
 
 - [ ] **Step 5: Commit and fresh review.**
 
@@ -537,7 +540,13 @@ prerequisite. Its claim repeats all exact 132–139 and Task140P/R0 SHAs.
 - Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
 - Modify only to remove the obsolete public field: `packages/agent/src/runtime-types.ts`,
   `packages/agent/src/runtime.ts`, and `packages/agent/src/task-orchestrator.ts`
-- Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`,
+  `packages/agent/test/runtime.test.ts`,
+  `packages/agent/test/task-orchestrator-approval.test.ts`,
+  `packages/agent/test/task-orchestrator-claims.test.ts`,
+  `packages/agent/test/task-orchestrator-evidence-triage.test.ts`,
+  `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts`, and
+  `packages/agent/test/task-orchestrator-recovery.test.ts`
 - Claim: new Task140R1 claim.
 
 **Prerequisites:** reviewed/coordinator-integrated Task140H plus every prior
@@ -549,12 +558,13 @@ private port, binder, H order, or any terminal behavior.
 - [ ] **Step 1: Write causal RED tests.**
 
   Prove no public runtime capability shape can carry `handoffCapability`, the
-  production factory constructs no such object, and valid private-port H
-  execution remains reachable only through the registered resolver.
+  production factory constructs no such object, every named prior typed test
+  fixture compiles without that property, and valid private-port H execution
+  remains reachable only through the registered resolver.
 
 - [ ] **Step 2: Run focused RED.**
 
-  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts` and record the obsolete public-field failure.
+  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/runtime.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts` and record the obsolete public-field failure.
 
 - [ ] **Step 3: Remove only the obsolete structural route.**
 
@@ -565,7 +575,7 @@ private port, binder, H order, or any terminal behavior.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
-  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/runtime.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts && npm run typecheck && git diff --check && npm run factory:check`
 
 - [ ] **Step 5: Commit and complete-range review.**
 
