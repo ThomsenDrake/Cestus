@@ -720,3 +720,152 @@ fresh bounded Task132A author may implement only the replacement Task132A
 boundary. Task133 and Task134A remain blocked until its reviewed/coordinator
 integration. Task140R0 remains blocked on all of its original prerequisites;
 this amendment does not accelerate any H or terminal work.
+## CF-1R5 Task133 Pure Renderer And Task140R0 Private Composition Amendment
+
+This corrective amendment supersedes only the original Task133 public
+`createProductionAgentPromptCapability({ authority, renderer, verifyContext })`
+and structural `VerifiedContextBindingSet` callback contract. That contract is
+retired: Task132A keeps `MountedWorkspaceRuntimeAuthority`,
+`VerifyMountedContextForRunInput`, `VerifiedContextBindingSet`, its `WeakSet`
+membership, factory attestation, and lexical verifier private in
+`packages/local-runtime/src/agent-runtime-context-packs.ts` and
+`packages/local-runtime/src/agent-runtime-factory.ts`. Task133 must not
+re-export or duplicate those shapes, accept an authority/verifier/context
+capability/registrar/factory capture, or add a public callback, tuple, brand,
+fallback, shadow capability, mint route, or production-readiness claim.
+
+### Source-backed canonical data ownership
+
+`packages/agent/src/prompt-artifacts.ts` remains the canonical owner of
+`ContextPackRef`, `PromptArtifactResolvedPayloadAudit`,
+`PromptArtifactEvaluatedContextRequirement`, `PromptArtifactProductionBinding`,
+`PromptArtifactEnvelope`, `buildPromptArtifact`,
+`parsePromptArtifactEnvelope`, and `promptArtifactAuditMetadata`.
+`buildPromptArtifact` already normalizes and freezes an envelope, but it does
+not bind task/attempt/approved-run/provider posture and requires private
+`VerifiedResolvedContextPack` values whenever a production binding is present.
+`packages/agent/src/production-specialist-prompts.ts` likewise renders only
+from verified resolved packs. Neither is a legal Task133 public input.
+
+Task133 therefore owns the one canonical **data-only** input module
+`packages/local-runtime/src/agent-runtime-prompt-render-input.ts` and its
+test `packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts`.
+It exports exactly `PureAgentPromptRenderInputV1`,
+`normalizePureAgentPromptRenderInput`, and
+`hashPureAgentPromptRenderInput`; no package index re-export, capability, or
+factory constructor is added. The normalizer accepts only a plain own-data,
+symbol-free, dense-array input, freezes its result, and rejects accessor,
+prototype, sparse-array, stale, or swapped values before any render. Its
+canonical hash covers exactly:
+
+- `schemaVersion: "agent-runtime-pure-prompt-render-input.v1"`, `taskId`,
+  `attemptId`, `approvedRunId`, `runType`, and
+  `residentAgentId: "agent_default"`;
+- `workspaceId`, `mountInstanceId`, `workflowDescriptorHash`, `policyVersion`,
+  and `scopeApplicabilityHash`;
+- `providerPosture` data only: `providerId`, `modelId`, `capabilityIds`,
+  `selectionPolicyVersion`, `readinessState: "ready"`,
+  `approvalRequirementId`, and `postureHash`;
+- `promptTemplateId`, `promptTemplateVersion`, `rendererId`,
+  `rendererVersion`, `rendererHash`, `providerOutputSchemaId`,
+  `providerOutputSchemaVersion`, `handoffSchemaId`, and
+  `handoffSchemaVersion`; and
+- canonical `contextPackRefs`, `resolvedPayloadAudits`,
+  `evaluatedContextRequirements`, allowed omissions, and a bounded plain-data
+  `templateData` value.
+
+Those are normalized data/audit facts, never Task132 private verified-binding
+objects or a substitute proof that a context pack was verified. Later users
+import this one module rather than reproduce its parser or hash.
+
+### Task133: pure renderer replacement
+
+**Files:**
+
+- Create: `packages/local-runtime/src/agent-runtime-prompt-render-input.ts`
+- Create: `packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts`
+- Create: `packages/local-runtime/src/agent-runtime-prompt-renderer.ts`
+- Create: `packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`
+- Create: `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`
+
+Task133 exports exactly
+`renderPureAgentPrompt(input: PureAgentPromptRenderInputV1): Readonly<PromptArtifactEnvelope>`
+from `agent-runtime-prompt-renderer.ts`. It first calls the canonical Task133
+normalizer/hash, then uses the agent-owned prompt-artifact builder only to
+return a frozen, local-only envelope with `safetyClass: "sensitive-local-only"`,
+`transferApprovalClass: "none"`, and no production binding. Prompt text may
+exist only inside that in-process returned envelope so a later private
+composition can use it; it is never logged, placed in diagnostics, audit
+metadata, DTOs, ledger events, errors, or a handoff. The envelope alone is not
+provider-transferable, executable, readiness, verified-context, durable, or
+terminal evidence. The renderer does not resolve a secret, call a provider,
+consume approval, inspect a factory closure, or invoke a context verifier.
+
+- [ ] **Step 1: Write causal REDs.**
+
+  Prove malformed/accessor/prototype/symbol/sparse inputs and swaps of run,
+  attempt, approved run, workspace/mount, policy, provider posture, template,
+  renderer hash, schema version, context ref/audit, or input hash reject before
+  text creation. Prove the result is frozen, has no production binding, cannot
+  pass `assertPromptArtifactCanTransferToRemoteProvider`, and its diagnostics
+  and `promptArtifactAuditMetadata` contain no rendered text. No RED may use a
+  Task132 type, callback, or fake capability.
+
+- [ ] **Step 2: Run the focused RED command.**
+
+  `npm test -- packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts packages/agent/test/prompt-artifacts.test.ts`
+
+  Expected: FAIL because the named pure input/renderer exports are absent;
+  existing prompt-artifact coverage remains green.
+
+- [ ] **Step 3: Implement the smallest data-only normalizer and renderer.**
+
+  Implement only the named pure input parser/hash and
+  `renderPureAgentPrompt`. Do not add a context/factory/provider API, a
+  production binding, or a transfer/readiness assertion.
+
+- [ ] **Step 4: Run focused GREEN and exact non-full gate.**
+
+  GREEN reruns the Step 2 command. The final required fail-fast gate is one
+  chain:
+
+  `npm test -- packages/local-runtime/test/agent-runtime-prompt-render-input.test.ts packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts packages/agent/test/prompt-artifacts.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+  `npm run verify` remains **CLOSED**.
+
+- [ ] **Step 5: Claim, commit, and review.**
+
+  The claim records Task132A integration
+  `7ec1eb6885716ac7324839c578677366fe1bb244`, reviewed/integrated Tasks126–130,
+  exact program base/rebase, the causal RED, final gate, local-only envelope
+  boundary, and no public authority route. A fresh independent Terra/xhigh
+  reviewer reads the complete rebase-base-through-candidate range before a
+  coordinator-only merge. Task134A remains independent.
+
+### Task140R0 private renderer composition seam
+
+Only Task140R0, after its existing lexical factory verifier has completed the
+six live checks, may copy those private verified facts into
+`PureAgentPromptRenderInputV1`, call `renderPureAgentPrompt` inside the private
+resolver in `packages/local-runtime/src/agent-runtime-factory.ts`, and retain
+the result only for its closed composition. It then uses the captured private
+resolved packs and agent-owned prompt-artifact contracts to form any later
+production binding; it does not return a capability, verified binding, or
+caller-supplied verifier. Data flows one way from private R0 verification to
+pure Task133 data to the private renderer call. Task133 does not import R0;
+R0 depends on reviewed/integrated Task133, so no cycle arises.
+
+Task140R0's existing exact files
+`packages/local-runtime/src/agent-runtime-factory.ts`,
+`packages/local-runtime/test/agent-runtime-composition.test.ts`, and
+`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts` must add
+causal tests that forged, stale, or each swapped normalized field cannot reach
+the renderer, and that a direct Task133 local-only envelope is neither port
+registration input nor executable/readiness evidence. Its focused RED/GREEN
+and final non-full gate remain:
+
+`npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+Task140R0 remains blocked on all of its existing prerequisites; this amendment
+does not authorize its implementation, H sequencing, provider activity, or
+terminal behavior.
