@@ -2,7 +2,7 @@
 
 - Status: ready-for-review
 - Owner: `/root`
-- Branch: `codex/task-135d-runtime-handle-capture-import-review-repair`
+- Branch: `codex/task-135d-runtime-handle-capture-ast-import-review-repair`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
 - Claimed at: `2026-07-15T16:00:07Z`
 - Plan: `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`, terminal Task135D through CF-1R26.
