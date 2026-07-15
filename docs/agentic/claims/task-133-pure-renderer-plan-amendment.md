@@ -23,8 +23,12 @@ history and must not be used as implementation instructions.
 
 - `packages/agent/src/prompt-artifacts.ts` is the canonical data owner. It
   must expose an explicit legacy production-binding v1 and strict exact v2;
-  v2 requires all exact-run/posture fields and canonical computed hashes.
-  Unversioned bindings and caller-supplied derived hashes are invalid.
+  v2 requires all exact-run/posture fields and canonical computed hashes. Its
+  build input supplies raw scope and exact-run material rather than output
+  hashes: the artifact owner derives `renderedPromptHash` from canonical
+  rendered text and rejects every supplied output-hash or hash-lookalike
+  property before builder acceptance. Unversioned bindings and caller-supplied
+  derived hashes are invalid.
 - `packages/agent/src/production-specialist-prompts.ts` retains
   `renderProductionSpecialistPrompt` as the deliberate v1 route for current
   callers and adds `renderExactlyBoundProductionSpecialistPrompt` as the v2
@@ -76,10 +80,27 @@ Run only:
 git diff --check && npm run factory:check
 ```
 
-The fresh full-lineage review range is
-`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`, where `HEAD` is the clean
-child documentation repair commit. The reviewer must inspect the complete
-range, including the preserved rejected amendments and this superseding
-contract. Stop after a fresh independent Terra/xhigh review; only the
+The fresh plan-review and final-gate review range is exactly
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. The reviewer must inspect
+every commit in that full lineage: `38c2456f1f935aca291d24447c31b6a1d0728fd1`,
+`ffc2dc81c189af3163ec7b573b4f6f4767660de7`,
+`d91f28a3f6434490246daaa97e399a905c902761` (the final pre-correction repair),
+`6f399c4d52d97bd2cc74a4800d065ce4bcb878bf`, and this forward correction at
+`HEAD`. Stop after a fresh independent Terra/xhigh review; only the
 coordinator may integrate an approved amendment or explicitly approve and
 invoke `superpowers:subagent-driven-development` for later implementation.
+
+## Forward Correction — Full-Lineage Review And Owner-Derived V2 Hashes
+
+This forward correction supersedes the prior generic full-lineage wording in
+this claim and the active amendment. It preserves the preceding Task133 and
+Task140R0 repairs as reviewable history, requires the exact range above for the
+next fresh review, and does not authorize source/tests, provider work,
+capabilities, shadow rendering, local artifacts, self-integration, or merge.
+
+The frozen Task133.1 contract names two future strict-boundary witnesses:
+`rejectsV2BuildInputWithRenderedPromptHashBeforeBuilderAcceptance` and
+`rejectsV2BuildInputWithOutputHashLookalikeBeforeBuilderAcceptance`. They must
+prove rejection before any builder acceptance, correction, or envelope
+formation; V1 remains the explicit compatibility branch and V2 remains strict
+with no defaults.
