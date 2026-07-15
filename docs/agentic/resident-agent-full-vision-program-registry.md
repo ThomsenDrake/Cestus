@@ -10843,3 +10843,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   one non-merge commit over the source base, and clean status.
 - Candidate remains review-only and unintegrated. Full verification,
   providers, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-395 — Task133 amended reviews dispatched
+
+- Fresh Terra/xhigh prompt-authority/security reviewer
+  `019f66fc-5090-7a40-b61e-be75c9939891` audits strict v1/v2 binding,
+  owner-derived hashes, byte preservation, runtime SHA narrowing, pure
+  zero-effect blocking, and Task140P/R0 authority separation.
+- Fresh Terra/xhigh durable-replay/factory reviewer
+  `019f66fc-4e27-7cc3-9773-90eefb4ae845` audits canonical event and receipt
+  schemas, hash recomputation, malformed rejection, latest-receipt retention,
+  real ledger replay/rebuild, projections, claims, and exact topology.
+- Both reviewers are read-only and pinned at exact candidate
+  `11cadcf59829e1cb7b709adbcb48e5b567523828`. Two unqualified approvals are
+  required before coordinator-only integration.
