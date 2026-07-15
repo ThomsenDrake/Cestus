@@ -9953,3 +9953,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   It is admitted only to fresh ownership/import and private-authority/lifecycle
   reviews. No candidate is authorized for integration, full verification,
   provider activity, reset credits, or any `neo` action.
+
+## RV-1-E-342 — Task135C and Task135D replacement reviews dispatched
+
+- Task135C Git-authority reviewer `019f668f-12cb-7623-b1a8-ebd2d85223fb`
+  and static/execution reviewer `019f668f-0a9f-73d1-9c69-30e19d248901` are
+  active, pinned, and read-only in separate detached worktrees at exact
+  replacement `efff6e025ac922bf0fcaf42696a24043489588ec`.
+- Task135D ownership/import reviewer `019f668f-0fd8-7b93-948a-54401379b56c`
+  and private-authority/lifecycle reviewer
+  `019f668f-0a9c-7f51-96fd-f0510596466c` are active, pinned, and read-only in
+  separate detached worktrees at exact replacement
+  `4e6542a462b428ce5c0d0c278410fba81ecff6a7`.
+- All four use Terra/xhigh with ignored dependency wiring restored. Each must
+  reproduce its exact complete range and focused/static/type/diff/factory gates,
+  inspect its distinct authority lens, and return explicit unqualified
+  **APPROVED** or concrete **NEEDS-CHANGES**. They may not edit, delegate,
+  commit, integrate, run full verification, invoke providers, use reset credits,
+  or touch `neo`.
+- Both approvals per candidate are required before any coordinator merge
+  preview. All integrations remain closed.
