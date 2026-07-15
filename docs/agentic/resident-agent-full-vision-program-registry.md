@@ -10030,3 +10030,49 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   **NEEDS-CHANGES** and may not edit, delegate, integrate, run full verification,
   invoke providers, use reset credits, or touch `neo`. Both approvals are
   required before any coordinator merge preview.
+
+## RV-1-E-346 — Task133 replacement held for atomic review repair
+
+- Schema/binder/approval-safety reviewer
+  `019f6696-dd6d-7db0-b36d-442b9ff87a6e` returned **NEEDS-CHANGES** because
+  caller-supplied V2 exact-run facts are checked only against the V2 envelope,
+  not cross-bound to the selected invocation and approval proof. A stale or
+  swapped task/run/provider/model/posture/approval-requirement binding can
+  therefore survive the current validation path.
+- Durable-event/projection/rebuild reviewer
+  `019f6696-e045-73a3-a565-6318b1f6a13f` returned **NEEDS-CHANGES** because
+  ledger validation/readback checks only the receipt-hash format instead of
+  recomputing the canonical hash, and because a receipt is accepted on a
+  checkpoint whose kind is not `prompt-bound`.
+- Both reviewers reproduced the exact one-commit/no-merge 28-path range and
+  passed their focused suites at 131/131, 76/76, and 133/133 as applicable,
+  plus typecheck, forbidden-renderer absence, complete-range diff checking,
+  factory readiness, and clean-state checks. Candidate
+  `7b306de04a91c2377f992273b4845f85ae1af2e2` remains rejected.
+- The repair must use a fresh branch from original base
+  `197c3ca528e9b666c02b9b87695bf900efa195b1`, reapply the rejected candidate
+  without committing, add causal zero-effect stale/swapped-V2 and forged/
+  misplaced-receipt tests, then produce exactly one replacement commit within
+  the same 28-path ceiling. Both fresh review lenses are required afterward.
+  Full verification, providers, reset credits, integration, and every `neo`
+  action remain closed.
+
+## RV-1-E-347 — Task135D import repair rejected by coordinator typecheck
+
+- Import-ownership repair candidate
+  `b8a0c19ba500fb1e0c4780c9a3e16a535500916f` is clean, merge-free, and retains
+  the exact four-path ceiling from post-Task135E base
+  `e532c35fd1b3a829dfbbd4f87d752f42304419f9`. Independent coordinator
+  verification passed all 20 focused tests and the no-index, range, and
+  clean-state checks.
+- Coordinator typecheck rejected the candidate at three accesses to regex
+  capture group `match[1]` in the expanded import scanner. With
+  `noUncheckedIndexedAccess`, the values remain typed as `string | undefined`
+  even though each regex structurally requires the group.
+- A bounded forward test-only repair may assert or explicitly guard those three
+  structurally required capture values without changing the regular
+  expressions, scanner behavior, fixture coverage, or production code. It must
+  rerun the complete 20-test suite, typecheck, no-index, original-base diff,
+  factory, exact four-path/no-merge, and clean-state gates before fresh reviews.
+  Full verification, providers, reset credits, integration, and every `neo`
+  action remain closed.
