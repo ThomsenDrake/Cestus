@@ -12028,3 +12028,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-440 — Task136 terminal correction admitted to exact-SHA review
+
+- Task136 terminal documentation candidate
+  `7296007c08af71df404152a3da9e4de062aa11c7` on
+  `codex/task-136-interface-reconciliation-recovery-2` is a clean one-commit
+  append-only correction from rejected parent
+  `e24cc2003bf0ceebe0bb421b4bcb100573c2b7eb` and changes exactly the bounded-
+  loop plan and Task136 claim.
+- Fresh coordinator admission passed exact-range diff checking, factory
+  readiness, the two-path ceiling, linear topology, and clean-checkout checks.
+  The plan intentionally keeps CF1-HR blocked until Task133.5 has exact reviewed
+  coordinator integration evidence.
+- Fresh architecture/authority/dependency reviewer
+  `019f67b9-4006-7561-81ca-29a61bcb8875` and fresh plan-executability/API
+  reviewer `019f67b9-4e71-7022-b07a-aaed2bd655bd` are pinned and read-only on
+  the exact candidate. Both must return unqualified **APPROVED** verdicts before
+  coordinator integration.
+- Reviews must prove qualified acyclic task identities, machine-verifiable
+  release records and ancestry, strict current V2 H ABI, W-issued private
+  mounted authority across awaits, authoritative G136 gateway facts, canonical
+  Task126/Task139-P1 provider bindings, and single-owner executable contracts
+  without caller-copy authority, shadow state, or fallback.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
