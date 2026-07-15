@@ -185,3 +185,28 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## Final AST authority review repair
+
+- Coordinator verdicts on
+  `e98ab9e8102714bad2f3d1b2ecc27d7c88bc1d19`: private lifecycle authority is
+  **APPROVED**; AST import authority needs this bounded repair. No production
+  runtime code changes are authorized or present.
+- Causal RED: the prescribed focused command exited `1` only in the expanded
+  import test (1 failed, 19 passed). The compiler AST decoded all query and
+  fragment module literals, while the basename predicate omitted exactly the
+  eight protected named, namespace, re-export, import-equals/require, and
+  dynamic-import paths.
+- The scanner now removes only `?`/`#` suffixes from decoded literals, requires
+  a relative specifier, resolves it from `dirname(sourcePath)`, normalizes
+  source extensions (including NodeNext `.js`/`.mjs`/`.cjs`), and compares the
+  extensionless result to the exact
+  `packages/local-runtime/src/runtime-factory` root target. Bare-package and
+  unrelated relative lookalikes remain excluded; the mounted-operation
+  allowlist is unchanged.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed. The authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.
