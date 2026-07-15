@@ -1,6 +1,6 @@
 # Task135D recovery: R-owned factory-issued mounted handle capture
 
-- Status: in-progress
+- Status: ready-for-review
 - Owner: `/root`
 - Branch: `codex/task-135d-runtime-handle-capture-ast-import-review-repair`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
@@ -532,3 +532,14 @@ self-integration, and program-registry edits remain closed.
   passed. The expected importer array was kept in the scanner's sorted order
   (`star-…` before `static-…`) after the repair; the remaining permitted
   candidate gates are pending at this claim checkpoint.
+
+### RV-1-E-415 candidate gate evidence
+
+- Attached immutable checkpoint `560abc6bcb32cc6af7bb0af94bb6c40efe4f4eac`
+  passed the prescribed focused suite (3 files, 21 tests), `npm run typecheck`,
+  no-index assertion, original-base `git diff --check`, and
+  `npm run factory:check`.
+- Its original-base union remained exactly the four authorized paths, with no
+  merge commits and a clean worktree. This claim-closeout commit returns the
+  lane to `ready-for-review`; the final immutable candidate receives the same
+  complete permitted gate set.
