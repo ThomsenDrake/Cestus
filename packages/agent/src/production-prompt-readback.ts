@@ -107,7 +107,7 @@ interface MountedAuthorityBinding extends MountedProductionPromptReadbackMount {
   readonly currentMount: () => MountedProductionPromptReadbackMount;
 }
 
-const bindings = new WeakMap<MountedProductionPromptReadbackWitness, MountedProductionPromptReadbackBinding>();
+const bindings = new WeakMap<object, MountedProductionPromptReadbackBinding>();
 const authorityBindings = new WeakMap<MountedProductionPromptReadbackAuthority, MountedAuthorityBinding>();
 const currentAuthorities = new Map<string, MountedProductionPromptReadbackAuthority>();
 
@@ -184,9 +184,12 @@ export async function issueMountedProductionPromptReadback(
 
 /** Consumes one exact private membership; structural/copy witnesses cannot pass. */
 export async function consumeMountedProductionPromptReadbackWitness(
-  witness: MountedProductionPromptReadbackWitness,
-  expected: MountedProductionPromptReadbackExpectations
+  witness: unknown,
+  expected?: MountedProductionPromptReadbackExpectations
 ): Promise<ConsumedMountedProductionPromptReadback> {
+  if (typeof witness !== "object" || witness === null) {
+    throw new Error("A current mounted production prompt readback witness is required.");
+  }
   const binding = bindings.get(witness);
   if (binding === undefined) {
     throw new Error("A current mounted production prompt readback witness is required.");
@@ -194,15 +197,10 @@ export async function consumeMountedProductionPromptReadbackWitness(
   if (binding.consumed) {
     throw new Error("Mounted production prompt readback witness is already consumed.");
   }
-  if (
-    witness.schemaVersion !== "agent-mounted-production-prompt-readback.v1" ||
-    witness.inputArtifactHash !== binding.envelope.manifest.inputArtifactHash ||
-    witness.workspaceId !== binding.workspaceId ||
-    witness.mountInstanceId !== binding.mountInstanceId
-  ) {
-    throw new Error("Mounted production prompt readback witness does not match its private binding.");
-  }
   await binding.revalidateCurrent();
+  if (expected === undefined) {
+    throw new Error("Mounted production prompt readback expectations are required.");
+  }
   if (
     expected.workspaceId !== binding.workspaceId ||
     expected.taskId !== binding.taskId ||

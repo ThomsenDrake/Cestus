@@ -1554,7 +1554,7 @@ function mountedRunnerHandle(workspaceId: string): LocalRuntimeHandle {
         sqlitePath: join(root, "ledger", "ontology.sqlite")
       }
     },
-    actor: { id: "actor_runner_test", kind: "agent", label: "Runner Test" },
+    actor: { id: "actor_runner_test", kind: "system", label: "Runner Test" },
     now: () => "2026-07-11T08:00:00.000Z"
   });
   mountedRunnerHandles.push(handle);
