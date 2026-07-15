@@ -10500,3 +10500,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, source, providers, reset credits, integration, push, and
   every `neo` action remain closed. Two fresh plan approvals are required on
   replacement bytes.
+
+## RV-1-E-373 — Task135D held for exact resolved-source matching
+
+- Private-authority/lifecycle reviewer
+  `019f66ce-d769-7a32-bbfd-3c1f7d5e6295` returned unqualified **APPROVED**.
+- AST import-authority reviewer `019f66ce-d903-7272-9bc6-a97eb88001b5`
+  returned **NEEDS-CHANGES**: valid ESM query/fragment specifiers such as
+  `import("./runtime-factory.js?nonce")` bypass basename/extension matching.
+- Candidate `e98ab9e8102714bad2f3d1b2ecc27d7c88bc1d19` is rejected and
+  preserved. The existing author is authorized for one two-path forward repair
+  with causal query/fragment fixtures and importer-relative, workspace-root-
+  bound, NodeNext-extension-equivalent comparison to the exact protected
+  `packages/local-runtime/src/runtime-factory` target. Unrelated lookalike
+  basenames must remain non-authoritative.
+- The replacement must preserve the exact four-path original-base union and
+  rerun the complete focused/typecheck/no-index/diff/factory/topology gate
+  before two fresh reviews. Full verification, providers, reset credits,
+  integration, push, and every `neo` action remain closed.
