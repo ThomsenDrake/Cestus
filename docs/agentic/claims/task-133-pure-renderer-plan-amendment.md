@@ -163,3 +163,43 @@ The next fresh review must inspect exact full lineage
 intermediate amendment and this forward correction. Only an unqualified fresh
 Terra/xhigh approval permits coordinator-only integration. Rejection requires
 another forward correction; it never authorizes source dispatch.
+
+## Forward Correction — Durable V1 Store And Opaque V2 Admission
+
+- Status remains **plan-repair candidate only**. Full-lineage review of
+  `220cf866` found no executable owner for v1 context rendering, no durable
+  byte-identical v1 readback after restart, and no private channel from admitted
+  v2 to the runner/provider consumer. Those omissions make `220cf866` and all
+  earlier Task133 plan merges non-authorizing for source work.
+- Task133.5 now owns the executable v1 path. It carries exact attempt/time as
+  non-authoritative context data, renders v1 once with the attempt as the
+  approval-draft run identity, persists canonical envelope bytes in the
+  mounted prompt-artifact store, requires exact readback, and only then permits
+  the context-ready hash checkpoint. No provider fact enters this path.
+- The mounted prompt store is create-only, hash-addressed, parser-verified, and
+  restart-readable from the portable workspace. Resident orchestration has no
+  internal fallback after portable-drive configuration or disconnect. Prompt
+  envelopes are not H material/manifest artifacts.
+- Task140P returns an opaque identity-bound admission token and passes that
+  exact token in the private runner dispatch. Token fields are diagnostic;
+  private `WeakMap` membership is authority. Tokens are never serialized,
+  projected, returned in route DTOs, or reconstructed structurally.
+- Task140R0 persists and reads back strict v2 before token mint. Restart creates
+  no trusted token: it rereads durable v1/approval/checkpoint facts, reruns all
+  live checks, rebinds or byte-verifies v2, then mints a fresh token. Stale
+  drive, lock, high-water, approval, provider, context, or bytes block remint.
+- Task140H consumes the single-use token through the factory runner closure,
+  rereads the mapped v2, and may mint a production invocation proof only when
+  admission identity, v2/source-v1 hashes, task/attempt/run/provider/context,
+  and mounted readback all match. A separate legacy identity proof or arbitrary
+  hash is insufficient.
+- The complete serialized path is now durable v1 -> consume-time approval ->
+  durable v2 -> ephemeral admission token -> private runner consumption ->
+  v2-bound invocation proof -> existing provider/H sequence. Every failed
+  boundary has causal zero-effect tests; full/live gates remain closed.
+
+The sole executable contract is the latest plan section read with the preceding
+post-approval binder section. The next review range remains exact
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. Only an unqualified fresh
+Terra/xhigh approval can authorize coordinator-only integration and later
+explicit `superpowers:subagent-driven-development` dispatch.
