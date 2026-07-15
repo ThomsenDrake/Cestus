@@ -9869,3 +9869,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   focused/static/diff/factory gate. Any new substantive failure stops. Full
   verification, provider activity, reset credits, integration, and every
   `neo` action remain closed.
+
+## RV-1-E-338 — Task133 candidate rejected by coordinator typecheck
+
+- Atomic candidate `95964de22e92ad8397c1d2fe5bbac3fa6f51e2cc`
+  is preserved on `codex/task-133-atomic-prompt-binding-migration`. Its exact
+  one-commit range contains the required 28 paths, no merges, and independently
+  passes all three focused suites at 131, 76, and 133 tests.
+- Independent coordinator verification then reproduced a failing typecheck.
+  Errors show incomplete v1/v2 narrowing and build-vs-durable binding separation
+  across provider transfer, runtime, prompt artifacts, specialist runner,
+  projections, and focused fixtures. The final path-ceiling repair changed
+  types after the worker's earlier successful gate, so the committed candidate
+  does not satisfy the terminal compile contract and cannot enter review.
+- The rejected commit remains untouched. Fresh forward recovery branch
+  `codex/task-133-atomic-prompt-binding-typecheck-recovery` starts from original
+  source base `197c3ca528e9b666c02b9b87695bf900efa195b1`; the coordinator reapplies
+  the rejected commit without committing, preserving the exact 28-path patch
+  while restoring the required one-atomic-commit topology for the replacement.
+- The parent must directly repair the compile RED within those same 28 paths,
+  rerun all three focused suites, typecheck, forbidden-renderer search, range
+  diff checking, and factory readiness, then create exactly one clean non-merge
+  replacement commit from the original base. No quarantined history may be
+  inspected or reused. Full verification, provider activity, reset credits,
+  integration, and every `neo` action remain closed.
