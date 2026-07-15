@@ -7404,3 +7404,11 @@ explicit implementation authorization.
   exporting/recreating Task132 authority, then stop for a distinct fresh
   defects-first Terra/xhigh plan review. Task134A remains independently active
   and the established closures remain in force.
+
+## RV-1-E-227 — Authenticated usage monitor update
+
+- The latest authenticated app-server rate-limit event reports
+  `primary.used_percent=25.0`: **75% weekly remaining**. This supersedes the
+  prior 24%/76% observation forward-only. The five known reset credits remain
+  untouched and must not be redeemed. DRAIN remains at <=10% remaining and
+  HARD PAUSE at <=7%; all current work remains above those thresholds.
