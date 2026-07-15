@@ -2,33 +2,38 @@
 
 - Status: forward-repaired candidate pending the documentation gate and a fresh
   independent defects-first plan review. The fresh review of full lineage
-  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d91f28a3f6434490246daaa97e399a905c902761`
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..8169fc7f344ce40b0bbd91e60a66dab697d4446d`
   returned `NEEDS-CHANGES` on two P1 plan defects; this child repair addresses
   both without authorizing implementation.
 - Coordinator-owned forward repair on
   `codex/task-133-pure-renderer-plan-amendment`, resumed from clean candidate
-  `d91f28a3f6434490246daaa97e399a905c902761`; the full amendment lineage begins
+  `8169fc7f344ce40b0bbd91e60a66dab697d4446d`; the full amendment lineage begins
   at `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8`. Only this claim and the active
   recovery plan are changed by this documentation task.
 
 ## Current Executable Contract
 
-The current contract is the appended `CF-1R5 Task133 Discriminated Binding
-Migration And Exact Renderer Amendment` in
+The current contract is the appended `CF-1R5 Task133 Raw-V2 And Task140R0
+Data-Bridge Correction`, read with the preserved `CF-1R5 Task133 Discriminated
+Binding Migration And Exact Renderer Amendment`, in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`.
-Its corrected `Task140R0 V2-Only Composition Replacement` is the sole future
-R0 execution overlay. Together they are the current executable contract.
-Earlier local-only, five-file, and incomplete R0 prose remains rejected Git
-history and must not be used as implementation instructions.
+The latest correction solely replaces the raw-v2 build contract/Task133.1
+steps and the Task140R0 file/interface/step/command overlay. Together these are
+the current executable contract. Earlier local-only, five-file, incomplete R0,
+and contradictory omitted-hash prose remains rejected Git history and must not
+be used as implementation instructions.
 
 - `packages/agent/src/prompt-artifacts.ts` is the canonical data owner. It
   must expose an explicit legacy production-binding v1 and strict exact v2;
   v2 requires all exact-run/posture fields and canonical computed hashes. Its
-  build input supplies raw scope and exact-run material rather than output
-  hashes: the artifact owner derives `renderedPromptHash` from canonical
-  rendered text and rejects every supplied output-hash or hash-lookalike
-  property before builder acceptance. Unversioned bindings and caller-supplied
-  derived hashes are invalid.
+  build input supplies canonical raw renderer material, raw scope, exact-run
+  material, verified packs, and canonical rendered text rather than output
+  hashes. The artifact owner derives all five output hashes and table-rejects
+  `rendererHash`, `renderedPromptHash`, `scopeApplicabilityHash`,
+  `providerPostureHash`, `exactRunBindingHash`, and the `postureHash`
+  lookalike before builder acceptance. Unversioned bindings and
+  caller-supplied derived hashes are invalid; no value is corrected or
+  overwritten.
 - `packages/agent/src/production-specialist-prompts.ts` retains
   `renderProductionSpecialistPrompt` as the deliberate v1 route for current
   callers and adds `renderExactlyBoundProductionSpecialistPrompt` as the v2
@@ -43,13 +48,13 @@ history and must not be used as implementation instructions.
   and capabilities remain private and out of Task133 scope. Task140R0 is the
   sole future v2 consumer after its existing private prerequisites; it rejects
   legacy and direct artifacts before any effect.
-- Task140R0 modifies its factory and route test, creates the previously absent
-  `packages/local-runtime/test/agent-runtime-composition.test.ts`, and creates
-  its claim. Its actual RED/GREEN steps and focused command now cover a valid
-  captured v2 control; legacy-v1 and direct-v2 artifacts; caller binding and
-  derived-hash injection; every one-field exact-run, provider-posture, and six
-  context swap; and zero renderer/provider/ledger/runner/H/store/terminal
-  activity for every rejection.
+- Task140R0 creates the previously absent composition test and extends the
+  agent-owned context-render path with required non-authoritative `attemptId`
+  and `generatedAt` data. Only the factory-private wrapper combines those with
+  captured workspace/mount/policy/provider authority to construct v2. Its
+  expanded file list, exact focused command, RED/GREEN steps, legacy/direct-v2
+  and swap matrix, and zero renderer/provider/ledger/runner/H/store/terminal
+  rejection boundary are frozen in the latest correction.
 
 ## Frozen Prerequisites And Scope
 
@@ -85,7 +90,8 @@ The fresh plan-review and final-gate review range is exactly
 every commit in that full lineage: `38c2456f1f935aca291d24447c31b6a1d0728fd1`,
 `ffc2dc81c189af3163ec7b573b4f6f4767660de7`,
 `d91f28a3f6434490246daaa97e399a905c902761` (the final pre-correction repair),
-`6f399c4d52d97bd2cc74a4800d065ce4bcb878bf`, and this forward correction at
+`6f399c4d52d97bd2cc74a4800d065ce4bcb878bf`,
+`8169fc7f344ce40b0bbd91e60a66dab697d4446d`, and this forward correction at
 `HEAD`. Stop after a fresh independent Terra/xhigh review; only the
 coordinator may integrate an approved amendment or explicitly approve and
 invoke `superpowers:subagent-driven-development` for later implementation.
@@ -98,9 +104,10 @@ Task140R0 repairs as reviewable history, requires the exact range above for the
 next fresh review, and does not authorize source/tests, provider work,
 capabilities, shadow rendering, local artifacts, self-integration, or merge.
 
-The frozen Task133.1 contract names two future strict-boundary witnesses:
-`rejectsV2BuildInputWithRenderedPromptHashBeforeBuilderAcceptance` and
-`rejectsV2BuildInputWithOutputHashLookalikeBeforeBuilderAcceptance`. They must
-prove rejection before any builder acceptance, correction, or envelope
-formation; V1 remains the explicit compatibility branch and V2 remains strict
-with no defaults.
+The earlier two-witness wording is superseded by the latest six-row exact-key
+table over all five persisted output hashes plus `postureHash`. Every row must
+reject before builder acceptance, correction, or envelope formation; v1
+remains the explicit compatibility branch and v2 remains strict with no
+defaults. Task140R0's latest bridge is data-only until its factory-private
+wrapper combines reviewed captures; it creates no public authority or
+implementation permission.
