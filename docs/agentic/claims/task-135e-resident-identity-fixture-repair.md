@@ -1,6 +1,6 @@
 # Task 135E: Resident Identity Fixture Repair
 
-- Status: in-progress
+- Status: ready-for-review
 - Branch: `codex/task-135e-resident-identity-fixture-repair`
 - Source base: `3aeebe7e7fe3e79f99ed7cbc59f58899c5cd068b`
 
@@ -24,9 +24,16 @@ The first status assertion received no `identityLifecycle`, and the remaining
 failures were the same downstream default-factory boundary rather than
 resident-identity lifecycle regressions.
 
-## Required Verification
+## GREEN Evidence
 
-- `npm test -- packages/local-runtime/test/resident-identity-bootstrap.test.ts`
-- `npm run typecheck && git diff --check && npm run factory:check`
+`npm test -- packages/local-runtime/test/resident-identity-bootstrap.test.ts`
+passed with `Test Files  1 passed (1)` and `Tests  9 passed (9)` after the
+fixture supplied a local resident-identity runtime through
+`CreateLocalRuntimeHttpHandlerInput.agentRuntimeFactory`.
+
+## Pre-commit Final Gate
+
+`npm run typecheck && git diff --check && npm run factory:check` exited 0.
+The typecheck, whitespace, and factory-readiness gates produced no failures.
 
 `npm run verify` is closed by the active authority-recovery gate.
