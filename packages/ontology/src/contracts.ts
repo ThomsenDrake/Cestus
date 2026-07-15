@@ -775,6 +775,582 @@ const agentResidentLoopResultRecordedPayloadSchema = residentLoopIdentitySchema.
   addResidentReadbackIdentityIssues(value, value.terminalReadback, "terminalReadback", ctx);
 });
 
+const residentLoopV2RunModeSchema = z.enum([
+  "evidence-triage",
+  "ontology-bootstrap",
+  "investigation-planner",
+  "prr-negotiation",
+  "timeline-builder",
+  "contradiction-finder",
+  "report-builder",
+  "memory-curation"
+]);
+
+const residentLoopV2ToolSideEffectClassSchema = z.enum([
+  "read-only",
+  "local-derivative",
+  "ledger-proposal",
+  "ledger-review",
+  "external-byte-transfer",
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair",
+  "legal-escalation"
+]);
+
+const residentLoopV2ApprovalClassSchema = z.enum([
+  "none",
+  "human-review",
+  "provider-byte-transfer",
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair",
+  "legal-escalation",
+  "ledger-review"
+]);
+
+const residentLoopV2ResultCategorySchema = z.enum([
+  "handoff-recorded",
+  "validation-failed",
+  "budget-exhausted",
+  "approval-required",
+  "approval-denied",
+  "approval-stale",
+  "workspace-unavailable",
+  "provider-unavailable",
+  "source-stale",
+  "policy-changed",
+  "claim-conflict",
+  "persistence-unconfirmed",
+  "tool-failed",
+  "authority-stale",
+  "context-stale",
+  "allowlist-mismatch",
+  "provenance-missing",
+  "secret-detected"
+]);
+
+const residentLoopV2BudgetUsageSchema = z.object({
+  planRevisions: z.number().int().nonnegative(),
+  observationRecords: z.number().int().nonnegative(),
+  toolSteps: z.number().int().nonnegative(),
+  providerInvocations: z.number().int().nonnegative(),
+  providerRequestBytes: z.number().int().nonnegative(),
+  providerResponseBytes: z.number().int().nonnegative(),
+  contextBytes: z.number().int().nonnegative(),
+  derivativeArtifactBytes: z.number().int().nonnegative(),
+  activeExecutionMs: z.number().int().nonnegative(),
+  approvalSuspensionMs: z.number().int().nonnegative()
+}).strict();
+
+const residentLoopV2HardMaximums = {
+  planRevisions: 3,
+  observationRecords: 16,
+  toolSteps: 12,
+  providerInvocations: 3,
+  providerRequestBytes: 1048576,
+  providerResponseBytes: 1048576,
+  contextBytes: 1048576,
+  derivativeArtifactBytes: 16777216,
+  activeExecutionMs: 900000,
+  approvalSuspensionMs: 86400000
+} as const;
+
+const residentLoopV2BudgetSchema = z.object({
+  ceilings: residentLoopV2BudgetUsageSchema,
+  consumed: residentLoopV2BudgetUsageSchema,
+  remaining: residentLoopV2BudgetUsageSchema,
+  actionConsumption: residentLoopV2BudgetUsageSchema
+}).strict().superRefine((value, ctx) => {
+  for (const field of [
+    "planRevisions",
+    "observationRecords",
+    "toolSteps",
+    "providerInvocations",
+    "providerRequestBytes",
+    "providerResponseBytes",
+    "contextBytes",
+    "derivativeArtifactBytes",
+    "activeExecutionMs",
+    "approvalSuspensionMs"
+  ] as const) {
+    if (value.ceilings[field] > residentLoopV2HardMaximums[field]) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ceilings", field],
+        message: `${field} ceiling must not exceed its approved hard maximum`
+      });
+    }
+    if (value.consumed[field] + value.remaining[field] !== value.ceilings[field]) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["remaining", field],
+        message: `${field} consumed plus remaining must equal its ceiling`
+      });
+    }
+  }
+  if (Object.values(value.actionConsumption).every((consumption) => consumption === 0)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["actionConsumption"],
+      message: "each durable resident-loop record must account for nonzero action consumption"
+    });
+  }
+});
+
+const residentLoopV2WorkflowDescriptorSchema = z.object({
+  workflowDescriptorId: agentSecretSafeIdSchema(/^workflow_[a-zA-Z0-9_-]+$/),
+  workflowDescriptorVersion: secretSafeStringSchema.min(1),
+  workflowDescriptorHash: contentHashSchema
+}).strict();
+
+const residentLoopV2PolicySchema = z.object({
+  policyId: agentPolicyIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyHash: contentHashSchema
+}).strict();
+
+const residentLoopV2AuthoritySchema = z.object({
+  workspaceIdentityHash: contentHashSchema,
+  mountGeneration: secretSafeStringSchema.min(1),
+  ledgerStoreIdentity: secretSafeStringSchema.min(1),
+  artifactStoreIdentity: secretSafeStringSchema.min(1),
+  ledgerHighWaterEventId: eventIdSchema,
+  policyHash: contentHashSchema,
+  activeLocksHash: contentHashSchema
+}).strict();
+
+const residentLoopV2ContextPackRefSchema = z.object({
+  contextPackId: agentSecretSafeIdSchema(/^context_pack_[a-zA-Z0-9_-]+$/),
+  contentHash: contentHashSchema
+}).strict();
+
+function addResidentLoopV2OrderedUniqueIssues(
+  values: readonly string[],
+  path: readonly (string | number)[],
+  label: string,
+  ctx: z.RefinementCtx
+): void {
+  const expected = [...values].sort((left, right) => left.localeCompare(right));
+  if (expected.some((value, index) => value !== values[index])) {
+    ctx.addIssue({ code: "custom", path: [...path], message: `${label} must be canonically ordered` });
+  }
+  if (new Set(values).size !== values.length) {
+    ctx.addIssue({ code: "custom", path: [...path], message: `${label} must not contain duplicates` });
+  }
+}
+
+const residentLoopV2BindingSchema = z.object({
+  residentAgentId: z.literal("agent_default"),
+  workspaceId: agentWorkspaceIdSchema,
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  runMode: residentLoopV2RunModeSchema,
+  workflowDescriptor: residentLoopV2WorkflowDescriptorSchema,
+  policy: residentLoopV2PolicySchema,
+  authority: residentLoopV2AuthoritySchema,
+  sourceEventIds: z.array(eventIdSchema).min(1),
+  contextPackRefs: z.array(residentLoopV2ContextPackRefSchema).min(1),
+  budget: residentLoopV2BudgetSchema,
+  causationId: eventIdSchema,
+  correlationId: secretSafeStringSchema.min(3)
+}).strict().superRefine((value, ctx) => {
+  if (value.authority.policyHash !== value.policy.policyHash) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["authority", "policyHash"],
+      message: "mounted authority policy hash must equal the bound policy hash"
+    });
+  }
+  if (value.authority.ledgerHighWaterEventId !== value.sourceEventIds[value.sourceEventIds.length - 1]) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["authority", "ledgerHighWaterEventId"],
+      message: "mounted ledger high-water must equal the final ordered source event"
+    });
+  }
+  addResidentLoopV2OrderedUniqueIssues(value.sourceEventIds, ["sourceEventIds"], "source event IDs", ctx);
+  const contextPackIds = value.contextPackRefs.map((ref) => ref.contextPackId);
+  addResidentLoopV2OrderedUniqueIssues(contextPackIds, ["contextPackRefs"], "context pack references", ctx);
+});
+
+const residentLoopV2PlanReadbackSchema = z.object({
+  planRecordEventId: eventIdSchema,
+  workspaceId: agentWorkspaceIdSchema,
+  residentAgentId: z.literal("agent_default"),
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative()
+}).strict();
+
+const residentLoopV2PriorPlanReadbackSchema = residentLoopV2PlanReadbackSchema.extend({
+  priorPlanRecordEventId: eventIdSchema
+}).strict().superRefine((value, ctx) => {
+  if (value.priorPlanRecordEventId !== value.planRecordEventId) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["priorPlanRecordEventId"],
+      message: "prior plan readback must carry its exact prior plan record event ID"
+    });
+  }
+});
+
+const residentLoopV2FinalObservationReadbackSchema = z.object({
+  observationEventId: eventIdSchema,
+  workspaceId: agentWorkspaceIdSchema,
+  residentAgentId: z.literal("agent_default"),
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative()
+}).strict();
+
+function addResidentLoopV2PlanReadbackIssues(
+  value: z.infer<typeof residentLoopV2BindingSchema> & { readonly planId: string; readonly planRevision: number },
+  readback: z.infer<typeof residentLoopV2PlanReadbackSchema>,
+  path: string,
+  ctx: z.RefinementCtx
+): void {
+  for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+    if (readback[field] !== value[field]) {
+      ctx.addIssue({ code: "custom", path: [path, field], message: `${path} must preserve the exact plan binding` });
+    }
+  }
+}
+
+function addResidentLoopV2FinalObservationReadbackIssues(
+  value: z.infer<typeof residentLoopV2BindingSchema> & { readonly planId: string; readonly planRevision: number },
+  readback: z.infer<typeof residentLoopV2FinalObservationReadbackSchema>,
+  path: string,
+  ctx: z.RefinementCtx
+): void {
+  for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+    if (readback[field] !== value[field]) {
+      ctx.addIssue({ code: "custom", path: [path, field], message: `${path} must preserve the exact observation binding` });
+    }
+  }
+}
+
+const residentLoopV2PlannedStepSchema = z.object({
+  ordinal: z.number().int().positive(),
+  purpose: secretSafeTextSchema,
+  toolId: secretSafeStringSchema.min(3),
+  toolVersion: secretSafeStringSchema.min(1),
+  allowlistEntryHash: contentHashSchema,
+  expectedSafeOutputClass: z.enum(["observation", "derivative", "proposal", "approval-request"]),
+  prerequisiteStepOrdinals: z.array(z.number().int().positive())
+}).strict();
+
+const agentResidentPlanRecordedV2PayloadSchema = residentLoopV2BindingSchema.extend({
+  schemaVersion: z.literal("resident-plan-record.v2"),
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  priorPlanReadback: residentLoopV2PriorPlanReadbackSchema.nullable(),
+  replanObservationReadback: residentLoopV2FinalObservationReadbackSchema.nullable(),
+  steps: z.array(residentLoopV2PlannedStepSchema).min(1)
+}).strict().superRefine((value, ctx) => {
+  if ((value.planRevision === 0) !== (value.priorPlanReadback === null)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["priorPlanReadback"],
+      message: "initial plans require null prior readback and replans require an exact prior readback"
+    });
+  }
+  if ((value.planRevision === 0) !== (value.replanObservationReadback === null)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["replanObservationReadback"],
+      message: "initial plans require null replan observation readback and replans require an exact preceding observation"
+    });
+  }
+  if (value.planRevision > residentLoopV2HardMaximums.planRevisions) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["planRevision"],
+      message: "replans may not exceed the three-replan maximum after the initial plan"
+    });
+  }
+  const expectedPlanRevisionConsumption = value.planRevision === 0 ? 0 : 1;
+  if (value.budget.actionConsumption.planRevisions !== expectedPlanRevisionConsumption) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["budget", "actionConsumption", "planRevisions"],
+      message: "only replans may consume exactly one plan-revision budget slot"
+    });
+  }
+  if (value.priorPlanReadback !== null) {
+    for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId"] as const) {
+      if (value.priorPlanReadback[field] !== value[field]) {
+        ctx.addIssue({ code: "custom", path: ["priorPlanReadback", field], message: "prior plan readback must preserve loop identity" });
+      }
+    }
+    if (value.priorPlanReadback.planRevision + 1 !== value.planRevision) {
+      ctx.addIssue({ code: "custom", path: ["priorPlanReadback", "planRevision"], message: "replans must increment the exact prior plan revision" });
+    }
+    if (value.priorPlanReadback.planId === value.planId) {
+      ctx.addIssue({ code: "custom", path: ["planId"], message: "replans require a fresh plan ID" });
+    }
+    if (value.replanObservationReadback !== null) {
+      for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+        if (value.replanObservationReadback[field] !== value.priorPlanReadback[field]) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["replanObservationReadback", field],
+            message: "replan observation readback must preserve the exact preceding plan binding"
+          });
+        }
+      }
+    }
+  }
+  const ordinals = value.steps.map((step) => step.ordinal);
+  if (new Set(ordinals).size !== ordinals.length) {
+    ctx.addIssue({ code: "custom", path: ["steps"], message: "planned-step ordinals must be unique" });
+  }
+  if (ordinals.some((ordinal, index) => index > 0 && ordinal <= ordinals[index - 1]!)) {
+    ctx.addIssue({ code: "custom", path: ["steps"], message: "planned steps must be ordered by ordinal" });
+  }
+  const declaredOrdinals = new Set(ordinals);
+  for (const [stepIndex, step] of value.steps.entries()) {
+    const prerequisites = new Set<number>();
+    for (const [prerequisiteIndex, prerequisite] of step.prerequisiteStepOrdinals.entries()) {
+      if (!declaredOrdinals.has(prerequisite)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["steps", stepIndex, "prerequisiteStepOrdinals", prerequisiteIndex],
+          message: "planned-step prerequisites must reference a declared step ordinal"
+        });
+      }
+      if (prerequisite >= step.ordinal) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["steps", stepIndex, "prerequisiteStepOrdinals", prerequisiteIndex],
+          message: "planned-step prerequisites must precede their dependent step"
+        });
+      }
+      if (prerequisites.has(prerequisite)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["steps", stepIndex, "prerequisiteStepOrdinals", prerequisiteIndex],
+          message: "planned-step prerequisites must not repeat an ordinal"
+        });
+      }
+      prerequisites.add(prerequisite);
+    }
+  }
+});
+
+const agentResidentObservationRecordedV2PayloadSchema = residentLoopV2BindingSchema.extend({
+  schemaVersion: z.literal("resident-observation-record.v2"),
+  observationId: agentSecretSafeIdSchema(/^observation_[a-zA-Z0-9_-]+$/),
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  planReadback: residentLoopV2PlanReadbackSchema,
+  stepOrdinal: z.number().int().positive(),
+  kind: z.enum(["context-verified", "tool-result", "provider-result", "budget", "approval", "recovery", "failure"]),
+  safeSummary: secretSafeTextSchema,
+  artifactHashes: z.array(contentHashSchema),
+  toolRequestId: agentToolRequestIdSchema.optional(),
+  modelInvocationEventId: eventIdSchema.optional()
+}).strict().superRefine((value, ctx) => addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx));
+
+const residentLoopV2GatewayReadbacksSchema = z.object({
+  requestEventId: eventIdSchema,
+  decisionEventId: eventIdSchema,
+  resultEventId: eventIdSchema
+}).strict();
+
+const agentResidentToolStepRecordedV2PayloadSchema = residentLoopV2BindingSchema.extend({
+  schemaVersion: z.literal("resident-tool-step-record.v2"),
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  planReadback: residentLoopV2PlanReadbackSchema,
+  stepOrdinal: z.number().int().positive(),
+  toolRequestId: agentToolRequestIdSchema,
+  toolId: secretSafeStringSchema.min(3),
+  toolVersion: secretSafeStringSchema.min(1),
+  allowlistEntryHash: contentHashSchema,
+  sideEffectClass: residentLoopV2ToolSideEffectClassSchema,
+  requiredApprovalClass: residentLoopV2ApprovalClassSchema,
+  state: z.enum(["requested", "suspended", "executed", "denied", "failed"]),
+  previewHash: contentHashSchema,
+  gatewayReadbacks: residentLoopV2GatewayReadbacksSchema,
+  inputArtifactHashes: z.array(contentHashSchema),
+  resultArtifactHashes: z.array(contentHashSchema)
+}).strict().superRefine((value, ctx) => addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx));
+
+const residentLoopV2CheckpointSchema = z.object({
+  checkpointEventId: eventIdSchema,
+  requestEventId: eventIdSchema,
+  decisionEventId: eventIdSchema,
+  resumptionDeadlineAt: z.string().datetime(),
+  nextSafeAction: secretSafeStringSchema.min(1)
+}).strict();
+
+const agentResidentLoopSuspendedV2PayloadSchema = residentLoopV2BindingSchema.extend({
+  schemaVersion: z.literal("resident-loop-suspension.v2"),
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  planReadback: residentLoopV2PlanReadbackSchema,
+  finalObservationReadback: residentLoopV2FinalObservationReadbackSchema,
+  suspensionCategory: z.enum(["budget-exhausted", "approval-required", "authority-stale", "context-stale", "provider-unavailable"]),
+  checkpoint: residentLoopV2CheckpointSchema
+}).strict().superRefine((value, ctx) => {
+  addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx);
+  addResidentLoopV2FinalObservationReadbackIssues(value, value.finalObservationReadback, "finalObservationReadback", ctx);
+});
+
+const residentLoopV2HandoffDiagnosticCategorySchema = z.enum([
+  "workspace-unavailable",
+  "mount-identity-mismatch",
+  "mount-store-identity-mismatch",
+  "mount-authority-stale",
+  "legacy-manifest-unbound",
+  "manifest-missing",
+  "manifest-hash-mismatch",
+  "manifest-content-mismatch",
+  "artifact-missing",
+  "artifact-hash-mismatch",
+  "source-missing",
+  "source-stale",
+  "source-swapped",
+  "provenance-missing",
+  "provenance-cross-run",
+  "run-identity-missing",
+  "run-identity-duplicate",
+  "task-binding-conflict",
+  "final-output-conflict",
+  "expected-sequence-conflict",
+  "terminal-before-readback",
+  "terminal-status-conflict",
+  "supersession-conflict",
+  "dto-invalid",
+  "dto-cross-run",
+  "unsafe-boundary-value",
+  "secret-safety-rejection"
+]);
+
+const residentLoopV2HandoffDiagnosticSchema = z.object({
+  category: residentLoopV2HandoffDiagnosticCategorySchema,
+  retry: z.enum(["none", "after-remount", "after-repair", "after-review"]),
+  safeMessage: secretSafeTextSchema,
+  eventIds: z.array(eventIdSchema),
+  artifactHashes: z.array(contentHashSchema)
+}).strict();
+
+/**
+ * CF-1 carries the H-owned readback verbatim for the completed result. This
+ * schema is the approved HandoffReadback.v1 surface; L neither selects a
+ * reduced view nor supplies a local lifecycle substitute.
+ */
+const residentLoopV2HandoffReadbackSchema = z.object({
+  outcome: z.literal("verified"),
+  runId: agentRunIdSchema,
+  taskId: agentTaskIdSchema,
+  handoffId: secretSafeStringSchema.min(1),
+  manifestSchemaVersion: z.literal("agent-specialist-handoff-manifest.v2"),
+  manifestHash: contentHashSchema,
+  finalOutputStepId: secretSafeStringSchema.min(1),
+  finalOutputEventId: eventIdSchema,
+  preparedEventId: eventIdSchema,
+  recordedEventId: eventIdSchema,
+  terminalRunEventId: eventIdSchema,
+  taskStatusEventId: eventIdSchema,
+  authorityBinding: residentLoopV2AuthoritySchema,
+  diagnostics: z.array(residentLoopV2HandoffDiagnosticSchema)
+}).strict();
+
+const residentLoopV2ResumeAnchorSchema = z.object({
+  checkpointEventId: eventIdSchema,
+  nextSafeAction: secretSafeStringSchema.min(1),
+  resumptionDeadlineAt: z.string().datetime()
+}).strict();
+
+const residentLoopV2ResultCategoriesByOutcome = {
+  completed: ["handoff-recorded"],
+  failed: [
+    "validation-failed",
+    "budget-exhausted",
+    "approval-denied",
+    "tool-failed",
+    "allowlist-mismatch",
+    "provenance-missing",
+    "secret-detected"
+  ],
+  resumable: [
+    "budget-exhausted",
+    "approval-required",
+    "approval-denied",
+    "approval-stale",
+    "workspace-unavailable",
+    "provider-unavailable",
+    "source-stale",
+    "policy-changed",
+    "claim-conflict",
+    "persistence-unconfirmed",
+    "tool-failed",
+    "authority-stale",
+    "context-stale"
+  ]
+} as const;
+
+const agentResidentLoopResultRecordedV2PayloadSchema = residentLoopV2BindingSchema.extend({
+  schemaVersion: z.literal("resident-loop-result.v2"),
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  planReadback: residentLoopV2PlanReadbackSchema,
+  finalObservationReadback: residentLoopV2FinalObservationReadbackSchema,
+  outcome: z.enum(["completed", "failed", "resumable"]),
+  category: residentLoopV2ResultCategorySchema,
+  resultHash: contentHashSchema,
+  handoffReadback: residentLoopV2HandoffReadbackSchema.optional(),
+  resumeAnchor: residentLoopV2ResumeAnchorSchema.optional()
+}).strict().superRefine((value, ctx) => {
+  addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx);
+  addResidentLoopV2FinalObservationReadbackIssues(value, value.finalObservationReadback, "finalObservationReadback", ctx);
+  const permittedCategories = residentLoopV2ResultCategoriesByOutcome[value.outcome] as readonly string[];
+  if (!permittedCategories.includes(value.category)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["category"],
+      message: `${value.outcome} results require a category with the governing terminal or resumable semantics`
+    });
+  }
+  if (value.outcome === "completed") {
+    if (value.category !== "handoff-recorded") {
+      ctx.addIssue({ code: "custom", path: ["category"], message: "completed results require handoff-recorded category" });
+    }
+    if (value.handoffReadback === undefined) {
+      ctx.addIssue({ code: "custom", path: ["handoffReadback"], message: "completed results require complete H handoff readback proof" });
+    } else {
+      for (const field of ["taskId", "runId"] as const) {
+        if (value.handoffReadback[field] !== value[field]) {
+          ctx.addIssue({ code: "custom", path: ["handoffReadback", field], message: "H handoff readback must preserve result identity" });
+        }
+      }
+      if (JSON.stringify(value.handoffReadback.authorityBinding) !== JSON.stringify(value.authority)) {
+        ctx.addIssue({ code: "custom", path: ["handoffReadback", "authorityBinding"], message: "H handoff authority must equal mounted authority" });
+      }
+    }
+    if (value.resumeAnchor !== undefined) {
+      ctx.addIssue({ code: "custom", path: ["resumeAnchor"], message: "completed results cannot carry a resumable anchor" });
+    }
+    return;
+  }
+  if (value.handoffReadback !== undefined) {
+    ctx.addIssue({ code: "custom", path: ["handoffReadback"], message: "only completed results may carry H handoff proof" });
+  }
+  if (value.outcome === "resumable" && value.resumeAnchor === undefined) {
+    ctx.addIssue({ code: "custom", path: ["resumeAnchor"], message: "resumable results require a durable resume anchor" });
+  }
+  if (value.outcome === "failed" && value.resumeAnchor !== undefined) {
+    ctx.addIssue({ code: "custom", path: ["resumeAnchor"], message: "failed results cannot carry a resumable anchor" });
+  }
+});
+
 const triggerIdSchema = agentSecretSafeIdSchema(/^trigger_[a-zA-Z0-9_-]+$/);
 const triggerRequestIdSchema = agentSecretSafeIdSchema(/^trq_[a-zA-Z0-9_-]+$/);
 const triggerContentHashSchema = contentHashSchema.transform((value) => value as `sha256:${string}`);
@@ -1920,6 +2496,11 @@ export const payloadSchemas = {
   "agent.resident-tool-step.recorded.v1": agentResidentToolStepRecordedPayloadSchema,
   "agent.resident-loop.suspended.v1": agentResidentLoopSuspendedPayloadSchema,
   "agent.resident-loop.result.recorded.v1": agentResidentLoopResultRecordedPayloadSchema,
+  "agent.resident-plan.recorded.v2": agentResidentPlanRecordedV2PayloadSchema,
+  "agent.resident-observation.recorded.v2": agentResidentObservationRecordedV2PayloadSchema,
+  "agent.resident-tool-step.recorded.v2": agentResidentToolStepRecordedV2PayloadSchema,
+  "agent.resident-loop.suspended.v2": agentResidentLoopSuspendedV2PayloadSchema,
+  "agent.resident-loop.result.recorded.v2": agentResidentLoopResultRecordedV2PayloadSchema,
   "agent.trigger.requested.v1": agentTriggerRequestedPayloadSchema,
   "agent.specialist-run.started": agentSpecialistRunStartedPayloadSchema,
   "agent.specialist-run.step.recorded": agentSpecialistRunStepRecordedPayloadSchema,
@@ -2207,6 +2788,41 @@ export const eventContracts = {
     description: "Records a terminal resident-loop result only with exact plan, final-observation, and terminal readbacks.",
     agentGuidance: "Bind task/attempt/run, policy, authority, budget, source, context, causation, correlation, plan and final-observation readbacks, result hash, and terminal readback. Never emit terminal-looking completion without its required readback; this record does not send PRRs, execute tools, or accept graph state.",
     invariants: ["all readback identities must match", "terminalReadback is required", "resultHash is content-addressed", "result records do not authorize an effect"]
+  },
+  "agent.resident-plan.recorded.v2": {
+    type: "agent.resident-plan.recorded.v2",
+    version: 1,
+    description: "Records a strict versioned resident plan with complete descriptor, policy, authority, source/context, and ten-counter bindings.",
+    agentGuidance: "Bind the resident/workspace/task/attempt/run identity, exact workflow descriptor, policy identity, ordered sources and context packs, mounted authority, all budget ceilings and consumed/remaining values, plan ID/revision, and prior plan readback. This parser records no store, provider, tool, scheduler, or graph effect.",
+    invariants: ["v1 plan behavior remains unchanged", "authority policy hash equals bound policy", "ten counters reconcile exactly", "replans bind the exact prior readback"]
+  },
+  "agent.resident-observation.recorded.v2": {
+    type: "agent.resident-observation.recorded.v2",
+    version: 1,
+    description: "Records a strict resident observation bound to an exact v2 plan readback and complete mounted loop binding.",
+    agentGuidance: "Carry the exact plan ID/revision/readback plus descriptor, policy, authority, source/context, ten-counter, causation, and correlation bindings. This observation does not grant a tool, provider, or domain effect.",
+    invariants: ["plan readback preserves workspace and loop identity", "budget reconciles exactly", "unknown and unsafe own-data are rejected"]
+  },
+  "agent.resident-tool-step.recorded.v2": {
+    type: "agent.resident-tool-step.recorded.v2",
+    version: 1,
+    description: "Records a strict resident tool-step binding with exact allowlist, preview, durable gateway readbacks, and artifact hashes.",
+    agentGuidance: "Bind exact tool ID/version, allowlist hash, side-effect and approval classes, preview, request/decision/result readbacks, input/output artifact hashes, and the complete v2 plan equality surface. This event never authorizes or completes a tool effect.",
+    invariants: ["tool identity is exact", "all durable gateway readbacks are present", "tool-step records do not grant an effect"]
+  },
+  "agent.resident-loop.suspended.v2": {
+    type: "agent.resident-loop.suspended.v2",
+    version: 1,
+    description: "Records a strict resumable resident-loop suspension with exact plan and final-observation readbacks plus durable checkpoint/deadline proof.",
+    agentGuidance: "Bind the complete v2 loop surface, exact plan and observation readbacks, and a durable checkpoint with request/decision references and resumption deadline. Suspension is not completion and does not authorize continuation after restart.",
+    invariants: ["both readbacks preserve the exact loop binding", "checkpoint and deadline are required", "suspension remains nonterminal"]
+  },
+  "agent.resident-loop.result.recorded.v2": {
+    type: "agent.resident-loop.result.recorded.v2",
+    version: 1,
+    description: "Records a strict terminal or resumable resident-loop outcome with exact plan/observation and H lifecycle proof where completion is claimed.",
+    agentGuidance: "A completed handoff-recorded result carries the complete H readback verbatim with exact identity, lifecycle, provenance, authority, and safe diagnostics. A resumable result carries only a durable resume anchor. Incomplete terminal-looking values fail closed.",
+    invariants: ["completed results require verified complete H proof", "resumable results require a durable anchor", "results do not authorize external or graph effects"]
   },
   "agent.trigger.requested.v1": {
     type: "agent.trigger.requested.v1",
@@ -2814,7 +3430,12 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
     type === "agent.resident-observation.recorded.v1" ||
     type === "agent.resident-tool-step.recorded.v1" ||
     type === "agent.resident-loop.suspended.v1" ||
-    type === "agent.resident-loop.result.recorded.v1"
+    type === "agent.resident-loop.result.recorded.v1" ||
+    type === "agent.resident-plan.recorded.v2" ||
+    type === "agent.resident-observation.recorded.v2" ||
+    type === "agent.resident-tool-step.recorded.v2" ||
+    type === "agent.resident-loop.suspended.v2" ||
+    type === "agent.resident-loop.result.recorded.v2"
   ) {
     return `agent_resident_loop_${agentPayload.taskId}_${agentPayload.attemptId}_${agentPayload.runId}`;
   }
@@ -2941,7 +3562,12 @@ function isResidentLoopEventType(type: KnowledgeEventType): boolean {
     type === "agent.resident-observation.recorded.v1" ||
     type === "agent.resident-tool-step.recorded.v1" ||
     type === "agent.resident-loop.suspended.v1" ||
-    type === "agent.resident-loop.result.recorded.v1";
+    type === "agent.resident-loop.result.recorded.v1" ||
+    type === "agent.resident-plan.recorded.v2" ||
+    type === "agent.resident-observation.recorded.v2" ||
+    type === "agent.resident-tool-step.recorded.v2" ||
+    type === "agent.resident-loop.suspended.v2" ||
+    type === "agent.resident-loop.result.recorded.v2";
 }
 
 function isTriggerEventType(type: KnowledgeEventType): boolean {
@@ -3069,7 +3695,10 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
 
     if (isResidentLoopEventType(event.type)) {
       const residentPayload = payload.data as Record<string, unknown>;
-      if (event.context.causationId !== residentPayload.causationEventId) {
+      const residentCausationId = event.type.endsWith(".v2")
+        ? residentPayload.causationId
+        : residentPayload.causationEventId;
+      if (event.context.causationId !== residentCausationId) {
         ctx.addIssue({
           code: "custom",
           message: "resident-loop causation must match the event context",
@@ -3115,6 +3744,275 @@ export type ResidentLoopSequenceValidation =
   | { readonly success: true }
   | { readonly success: false; readonly issues: readonly string[] };
 
+function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]): ResidentLoopSequenceValidation {
+  const residentLoopV2Types = [
+    "agent.resident-plan.recorded.v2",
+    "agent.resident-observation.recorded.v2",
+    "agent.resident-tool-step.recorded.v2",
+    "agent.resident-loop.suspended.v2",
+    "agent.resident-loop.result.recorded.v2"
+  ] as const;
+  const issues: string[] = [];
+
+  if (events.length < residentLoopV2Types.length) {
+    return { success: false, issues: ["resident-loop v2 replay is incomplete"] };
+  }
+  const plan = events[0];
+  if (plan === undefined || plan.type !== "agent.resident-plan.recorded.v2") {
+    return { success: false, issues: ["resident-loop v2 replay must begin with its initial plan record"] };
+  }
+  const planPayload = plan.payload as Record<string, unknown>;
+  for (const [index, event] of events.entries()) {
+    if (!residentLoopV2Types.includes(event.type as typeof residentLoopV2Types[number])) {
+      issues.push(`event ${index + 1} must be a resident-loop v2 record`);
+    }
+    if (event.sequence !== index + 1) issues.push(`event ${index + 1} must have sequence ${index + 1}`);
+    if (event.streamId !== plan.streamId) issues.push(`event ${index + 1} must use the plan stream`);
+    if (!validateKnowledgeEvent(event).success) issues.push(`event ${index + 1} must satisfy its strict v2 parser`);
+  }
+
+  const bindingFields = [
+    "residentAgentId",
+    "workspaceId",
+    "taskId",
+    "attemptId",
+    "runId",
+    "runMode",
+    "workflowDescriptor",
+    "policy",
+    "authority",
+    "sourceEventIds",
+    "contextPackRefs",
+    "causationId",
+    "correlationId"
+  ] as const;
+  const sameBinding = (payload: Record<string, unknown>, label: string) => {
+    for (const field of bindingFields) {
+      if (JSON.stringify(payload[field]) !== JSON.stringify(planPayload[field])) {
+        issues.push(`${label} must preserve ${field}`);
+      }
+    }
+  };
+  const planReadbackMatches = (payload: Record<string, unknown>, expectedPlan: KnowledgeEvent, label: string) => {
+    const expectedPlanPayload = expectedPlan.payload as Record<string, unknown>;
+    const readback = payload.planReadback as Record<string, unknown> | undefined;
+    if (readback?.planRecordEventId !== expectedPlan.id) issues.push(`${label} must read back the exact active v2 plan event`);
+    for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+      if (readback?.[field] !== expectedPlanPayload[field]) issues.push(`${label} plan readback must preserve ${field}`);
+    }
+  };
+  const observationReadbackMatches = (
+    payload: Record<string, unknown>,
+    expectedObservation: KnowledgeEvent | undefined,
+    expectedPlan: KnowledgeEvent,
+    label: string
+  ) => {
+    const expectedPlanPayload = expectedPlan.payload as Record<string, unknown>;
+    const readback = payload.finalObservationReadback as Record<string, unknown> | undefined;
+    if (expectedObservation === undefined || readback?.observationEventId !== expectedObservation.id) {
+      issues.push(`${label} must read back the exact final v2 observation`);
+    }
+    for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+      if (readback?.[field] !== expectedPlanPayload[field]) issues.push(`${label} final observation readback must preserve ${field}`);
+    }
+  };
+
+  const budgetFields = [
+    "planRevisions",
+    "observationRecords",
+    "toolSteps",
+    "providerInvocations",
+    "providerRequestBytes",
+    "providerResponseBytes",
+    "contextBytes",
+    "derivativeArtifactBytes",
+    "activeExecutionMs",
+    "approvalSuspensionMs"
+  ] as const;
+  const budgetActionByType = {
+    "agent.resident-observation.recorded.v2": "observationRecords",
+    "agent.resident-tool-step.recorded.v2": "toolSteps",
+    "agent.resident-loop.suspended.v2": "approvalSuspensionMs",
+    "agent.resident-loop.result.recorded.v2": "activeExecutionMs"
+  } as const;
+  let priorConsumed: Record<string, number> | undefined;
+  let priorRemaining: Record<string, number> | undefined;
+  let activePlan: KnowledgeEvent | undefined;
+  let finalObservation: KnowledgeEvent | undefined;
+  let suspension: KnowledgeEvent | undefined;
+  let result: KnowledgeEvent | undefined;
+  const plans: KnowledgeEvent[] = [];
+  const executedStepOrdinals = new Set<number>();
+
+  for (const [index, event] of events.entries()) {
+    const payload = event.payload as Record<string, unknown>;
+    sameBinding(payload, `event ${index + 1}`);
+    const budget = payload.budget as {
+      ceilings?: Record<string, number>;
+      consumed?: Record<string, number>;
+      remaining?: Record<string, number>;
+      actionConsumption?: Record<string, number>;
+    } | undefined;
+    const ceilings = budget?.ceilings;
+    const consumed = budget?.consumed;
+    const remaining = budget?.remaining;
+    const actionConsumption = budget?.actionConsumption;
+    if (JSON.stringify(ceilings) !== JSON.stringify((planPayload.budget as Record<string, unknown> | undefined)?.ceilings)) {
+      issues.push(`event ${index + 1} must preserve the approved budget ceilings`);
+    }
+    for (const field of budgetFields) {
+      const action = actionConsumption?.[field];
+      const currentConsumed = consumed?.[field];
+      const currentRemaining = remaining?.[field];
+      const previousConsumed = priorConsumed?.[field] ?? 0;
+      const previousRemaining = priorRemaining?.[field] ?? ceilings?.[field];
+      if (typeof action !== "number" || typeof currentConsumed !== "number" || typeof currentRemaining !== "number" || typeof previousRemaining !== "number") {
+        issues.push(`event ${index + 1} must carry a complete durable ${field} budget transition`);
+        continue;
+      }
+      if (currentConsumed !== previousConsumed + action) {
+        issues.push(`event ${index + 1} consumed ${field} must advance exactly by its action consumption`);
+      }
+      if (currentRemaining !== previousRemaining - action) {
+        issues.push(`event ${index + 1} remaining ${field} must decrease exactly by its action consumption`);
+      }
+    }
+    const requiredAction = budgetActionByType[event.type as keyof typeof budgetActionByType];
+    if (requiredAction !== undefined && actionConsumption?.[requiredAction] === 0) {
+      issues.push(`event ${index + 1} must consume ${requiredAction} for its durable action`);
+    }
+    priorConsumed = consumed;
+    priorRemaining = remaining;
+
+    if (event.type === "agent.resident-plan.recorded.v2") {
+      const priorPlan = plans.at(-1);
+      const priorPlanReadback = payload.priorPlanReadback as Record<string, unknown> | null | undefined;
+      const replanObservationReadback = payload.replanObservationReadback as Record<string, unknown> | null | undefined;
+      if (plans.length >= 4) issues.push("resident-loop v2 replay permits at most four plan records");
+      if (payload.planRevision !== plans.length) issues.push("plan records must progress through contiguous revisions starting at zero");
+      if (priorPlan === undefined) {
+        if (priorPlanReadback !== null) issues.push("initial plan must not carry a prior plan readback");
+        if (replanObservationReadback !== null) issues.push("initial plan must not carry a replan observation readback");
+        if (actionConsumption?.planRevisions !== 0) issues.push("initial plan must not consume a replan budget slot");
+      } else {
+        const priorPlanPayload = priorPlan.payload as Record<string, unknown>;
+        if (priorPlanReadback?.planRecordEventId !== priorPlan.id || priorPlanReadback.priorPlanRecordEventId !== priorPlan.id) {
+          issues.push("replan must bind the exact preceding plan record event");
+        }
+        for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+          if (priorPlanReadback?.[field] !== priorPlanPayload[field]) {
+            issues.push(`replan prior readback must preserve preceding ${field}`);
+          }
+        }
+        if (plans.some((record) => (record.payload as Record<string, unknown>).planId === payload.planId)) {
+          issues.push("replans require a fresh plan ID");
+        }
+        if (finalObservation === undefined || replanObservationReadback?.observationEventId !== finalObservation.id) {
+          issues.push("replan must bind the exact preceding durable observation event");
+        }
+        for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+          if (replanObservationReadback?.[field] !== priorPlanPayload[field]) {
+            issues.push(`replan observation readback must preserve preceding ${field}`);
+          }
+        }
+        if (actionConsumption?.planRevisions !== 1) issues.push("each replan must consume exactly one plan-revision budget slot");
+      }
+      plans.push(event);
+      activePlan = event;
+      finalObservation = undefined;
+      executedStepOrdinals.clear();
+      continue;
+    }
+
+    if (activePlan === undefined) {
+      issues.push(`event ${index + 1} cannot precede the initial plan`);
+      continue;
+    }
+    planReadbackMatches(payload, activePlan, `event ${index + 1}`);
+
+    if (event.type === "agent.resident-observation.recorded.v2") {
+      finalObservation = event;
+      continue;
+    }
+    if (event.type === "agent.resident-tool-step.recorded.v2") {
+      const activePlanPayload = activePlan.payload as Record<string, unknown>;
+      const plannedSteps = Array.isArray(activePlanPayload.steps) ? activePlanPayload.steps : [];
+      const declaredToolStep = plannedSteps.find((candidate) =>
+        typeof candidate === "object" &&
+        candidate !== null &&
+        (candidate as Record<string, unknown>).ordinal === payload.stepOrdinal
+      ) as Record<string, unknown> | undefined;
+      if (declaredToolStep === undefined) {
+        issues.push("tool step must reference a declared plan step ordinal");
+      } else {
+        for (const field of ["toolId", "toolVersion", "allowlistEntryHash"] as const) {
+          if (payload[field] !== declaredToolStep[field]) {
+            issues.push(`tool step must preserve the declared ${field}`);
+          }
+        }
+        const prerequisiteStepOrdinals = Array.isArray(declaredToolStep.prerequisiteStepOrdinals)
+          ? declaredToolStep.prerequisiteStepOrdinals
+          : [];
+        for (const prerequisiteStepOrdinal of prerequisiteStepOrdinals) {
+          if (!executedStepOrdinals.has(prerequisiteStepOrdinal as number)) {
+            issues.push("tool step prerequisites must have causally prior executed tool steps");
+          }
+        }
+        if (payload.state === "executed") executedStepOrdinals.add(payload.stepOrdinal as number);
+      }
+      continue;
+    }
+    if (event.type === "agent.resident-loop.suspended.v2") {
+      if (index !== events.length - 2) issues.push("suspension must be the record immediately before the terminal or resumable result");
+      if (suspension !== undefined) issues.push("resident-loop v2 replay may contain only one suspension record");
+      observationReadbackMatches(payload, finalObservation, activePlan, "suspension");
+      const checkpoint = payload.checkpoint as Record<string, unknown> | undefined;
+      if (checkpoint?.checkpointEventId !== event.id) issues.push("suspension must read back its exact durable checkpoint event");
+      suspension = event;
+      continue;
+    }
+    if (event.type === "agent.resident-loop.result.recorded.v2") {
+      if (index !== events.length - 1) issues.push("result must be the final resident-loop v2 record");
+      if (result !== undefined) issues.push("resident-loop v2 replay may contain only one result record");
+      if (suspension === undefined) issues.push("result must immediately follow a durable suspension record");
+      observationReadbackMatches(payload, finalObservation, activePlan, "result");
+      if (payload.outcome === "completed") {
+        const handoff = payload.handoffReadback as Record<string, unknown> | undefined;
+        if (handoff?.outcome !== "verified") issues.push("completed result requires verified H readback");
+        for (const field of ["taskId", "runId"] as const) {
+          if (handoff?.[field] !== planPayload[field]) issues.push(`H handoff readback must preserve ${field}`);
+        }
+        if (JSON.stringify(handoff?.authorityBinding) !== JSON.stringify(planPayload.authority)) {
+          issues.push("H handoff authority binding must equal the mounted authority");
+        }
+      }
+      if (payload.outcome === "resumable") {
+        const resumeAnchor = payload.resumeAnchor as Record<string, unknown> | undefined;
+        const checkpoint = suspension === undefined ? undefined : (suspension.payload as Record<string, unknown>).checkpoint as Record<string, unknown> | undefined;
+        if (resumeAnchor === undefined) {
+          issues.push("resumable result requires a durable resume anchor");
+        } else if (checkpoint === undefined) {
+          issues.push("resumable result requires its preceding suspension checkpoint");
+        } else {
+          if (resumeAnchor.checkpointEventId !== suspension?.id || resumeAnchor.checkpointEventId !== checkpoint.checkpointEventId) {
+            issues.push("resumable result must bind the exact preceding suspension checkpoint ID");
+          }
+          if (resumeAnchor.resumptionDeadlineAt !== checkpoint.resumptionDeadlineAt) {
+            issues.push("resumable result must preserve the suspension resumption deadline");
+          }
+          if (resumeAnchor.nextSafeAction !== checkpoint.nextSafeAction) {
+            issues.push("resumable result must preserve the suspension next safe action");
+          }
+        }
+      }
+      result = event;
+    }
+  }
+  if (suspension === undefined) issues.push("resident-loop v2 replay requires one durable suspension record");
+  if (result === undefined) issues.push("resident-loop v2 replay requires one final result record");
+  return issues.length === 0 ? { success: true } : { success: false, issues };
+}
+
 /**
  * Validates the replayable resident-loop five-event fixture after ledger
  * readback. Individual payload parsing cannot prove that a supplied event ID
@@ -3123,6 +4021,9 @@ export type ResidentLoopSequenceValidation =
  * effect.
  */
 export function validateResidentLoopEventSequence(events: readonly KnowledgeEvent[]): ResidentLoopSequenceValidation {
+  if (events[0]?.type === "agent.resident-plan.recorded.v2") {
+    return validateResidentLoopV2EventSequence(events);
+  }
   const expectedTypes = [
     "agent.resident-plan.recorded.v1",
     "agent.resident-observation.recorded.v1",
