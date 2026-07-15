@@ -2676,3 +2676,142 @@ specifically approves use of `superpowers:subagent-driven-development`.
 Implementation, full verification, provider/network/credential/Nous activity,
 reset credits, `neo`, self-review, self-integration, and merge remain closed
 until their later durable gates explicitly open them.
+
+## CF-1R7 H-Private Model Invocation Command Correction
+
+**Status:** This section supersedes CF-1R6 Task140H only where the public
+runtime command still carries prompt bytes or proof authority. The durable
+v1/v2 store, receipt, admission-token, proof-binding, crash-recovery, and
+no-duplicate contracts remain current. Task133/Task140 source stays frozen
+pending a new full-lineage approval.
+
+### Data-only public command and private identity binding
+
+`packages/agent/src/runtime.ts` keeps a package-exported invocation command only
+as strict secret-safe data:
+
+```ts
+export interface InvokeAgentModelInput {
+  readonly invocationId: string;
+  readonly runId: string;
+  readonly providerId: string;
+  readonly modelFamily: string;
+  readonly inputArtifactHash: string;
+  readonly credentialRef: CredentialReference;
+  readonly safetyClass?:
+    | "workspace-safe"
+    | "public-safe"
+    | "sensitive-local-only"
+    | "provider-approved";
+  readonly returnOutputText?: boolean;
+}
+```
+
+Delete `promptArtifact` and `productionInvocationProof` from that interface.
+`runtime.invokeModel` exact-key validates own enumerable data descriptors and
+freezes the **same command object in place** before any `await`; it must not
+clone or reconstruct the object because object identity is the private
+admission binding. Caller-supplied `promptArtifact`, `productionInvocationProof`, token,
+admission, v2 binding, text, callback, resolver, or lookalike key rejects before
+ledger read/append, provider lookup/invocation, artifact I/O, H, or terminal
+activity. The public command and every route/result DTO contain IDs and hashes
+only.
+
+Create `packages/agent/src/production-model-invocation-admission.ts`. It is
+intentionally **not** re-exported by `packages/agent/src/index.ts`. It owns a
+module-private `WeakMap<InvokeAgentModelInput, HiddenProductionInvocation>`.
+The module exports no authority through `packages/agent/src/index.ts`; the
+production factory imports its package-internal bridge by explicit source-module
+path, matching existing `local-runtime` composition practice. Only that
+Task140H factory bridge can call the module-private constructor with the exact
+private `ConsumedPromptAdmission`; construction uses the H-owned private
+consumed-admission accessor, reparses the mounted v2,
+creates the v2-bound production invocation proof, freezes one data-only command
+object, and maps that exact object identity to the v2 envelope and proof.
+Copying or reconstructing the command loses membership. The hidden mapping is
+single-use and never serialized, projected, returned, logged, or placed in a
+route DTO.
+
+`runtime.invokeModel` imports only internal lookup-and-claim functions. Before
+its first `await`, it freezes the exact command and performs a non-consuming
+identity lookup. For a production specialist run it requires exact command
+identity membership,
+reparses and recomputes the hidden v2 envelope and all source-v1/run/provider/
+context/receipt hashes, and verifies command equality. It then atomically
+claims/deletes the same mapping and consumes the production proof exactly
+once, with no `await` between final validation, claim, and proof consumption.
+V2 validation occurs **before** either authority is burned. Only after both
+succeed may it append the deterministic
+`agent.model-invocation.requested` event and call the provider. Invalid v2 does
+not burn a valid proof; a later exact first use may succeed, while any second
+use fails.
+
+Unadmitted public remote-provider commands fail closed even when all diagnostic
+IDs and hashes match. Existing non-production local-engine calls may remain a
+separate data-only branch because they transfer no prompt envelope; this
+correction creates no generic remote-provider bypass. Future remote workflows
+must register their own reviewed private admission rather than adding bytes or
+proofs back to the public command.
+
+### Factory proxy and caller migration
+
+`packages/agent/src/specialist-runner-kernel.ts` retains the narrow
+`SpecialistRunnerModelInvoker`, but production composition must never inject
+the public runtime object directly. Task140H's lexical factory runner closure
+creates one private proxy bound to the consumed admission. The kernel submits
+only data fields; the proxy creates the identity-bound admitted command and
+delegates it to runtime. A caller-supplied invoker remains useful for pure unit
+tests but cannot register a command with the real runtime or reach a real
+provider.
+
+Remove the direct `runtime.invokeModel({ promptArtifact })` path from
+`packages/local-runtime/src/agent-nous-smoke.ts`. The smoke becomes a thin
+caller of the resident orchestrator/H vertical and receives only its safe
+report; it never receives the private proxy, command binding, envelope, proof,
+or token. Its deterministic mocked test runs in Task140H. Real Nous execution
+remains in the separately authorized acceptance gate and must exercise the same
+resident path.
+
+### Revised complete Task140H ownership
+
+In addition to every CF-1R6 Task140H file, Task140H owns serially:
+
+- Read-only contract: `packages/agent/src/index.ts` must not export the private module
+- Create `packages/agent/src/production-model-invocation-admission.ts`
+- Create `packages/agent/test/production-model-invocation-admission.test.ts`
+- Modify `packages/agent/test/evidence-triage-workflow.test.ts`
+- Modify `packages/agent/test/prr-negotiation-workflow.test.ts`
+- Modify `packages/agent/test/investigation-planner-workflow.test.ts`
+- Modify `packages/local-runtime/src/agent-nous-smoke.ts`
+- Modify `packages/local-runtime/test/agent-nous-smoke.test.ts`
+
+The three specialist workflow tests migrate real-runtime controls to the
+factory-private proxy and add direct-public-runtime counterfactuals; deterministic
+fake invokers remain test-only. Live Nous workflow tests are compile-only until
+their later live gate. No HTTP/cockpit runtime object exposes the proxy.
+
+REDs in `production-model-invocation-admission.test.ts`, `runtime.test.ts`, and
+`specialist-runner-kernel.test.ts` cover missing membership; structural and
+spread-copied commands; direct public runtime calls; old envelope/proof fields;
+forged, copied, reused, or swapped consumed admission; v1 or mismatched v2;
+wrong receipt/source-v1/task/attempt/run/provider/model/credential/context;
+post-normalization mutation; invalid-v2-before-proof-consume ordering; and
+second proof/command use. Every rejection asserts zero ledger append, provider,
+network, artifact write, H, handoff, and terminal activity.
+
+This command replaces every earlier Task140H non-live command:
+
+```bash
+npm test -- packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts && npm run typecheck && ! rg -n 'production-model-invocation-admission' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+No live test is selected. The fresh plan-review range is exactly
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; reviewers must use Git to
+inspect every commit and verify that the public command can carry neither bytes
+nor proof and that only private exact object identity reaches the runtime
+consumer. Only two fresh unqualified Terra/xhigh approvals permit
+coordinator-only plan integration. Each later source task still requires a
+coordinator message specifically approving
+`superpowers:subagent-driven-development`. Full verification,
+provider/network/credential/Nous activity, reset credits, `neo`, self-review,
+self-integration, and merge remain closed.
