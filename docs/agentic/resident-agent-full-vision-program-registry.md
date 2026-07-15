@@ -8221,3 +8221,23 @@ explicit implementation authorization.
   <=7%; reset credits remain untouched. Full verification,
   provider/network/credential/Nous activity, `neo`, worker self-review,
   self-integration, and merge remain closed.
+
+## RV-1-E-261 — Task133 replayability review rejection and bounded repair
+
+- Persistence/lifecycle reviewer
+  `019f64c1-3d87-7423-85ce-1ae237dbc492` returned **NEEDS-CHANGES** for
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..b3b455d7`. The architecture was
+  not rejected; the plan's older final Task133 command failed to aggregate the
+  new receipt/store suites, Task140H's non-live command still named the
+  env-sensitive live Nous test, and the claim's enumerated commit list omitted
+  three commits that are present in the exact range.
+- Authority/consumer reviewer
+  `019f64c1-4108-7533-bbbb-fcb81d2db1a8` ended with model-capacity error and
+  supplied no verdict. It is closed and cannot contribute approval evidence.
+- The sole plan-worktree writer is authorized only for a forward documentation
+  repair that adds one integrated Task133.1-.5 final non-live gate, removes the
+  live test from Task140H's non-live command while reserving it for the later
+  explicitly authorized provider gate, and makes the claim's exact nine-commit
+  lineage complete. Run only documentation validation, commit, then obtain two
+  fresh full-lineage reviews. Task133/Task140 source remains frozen; all prior
+  closed actions remain closed.
