@@ -110,7 +110,7 @@ function fixtureEvents() {
 }
 
 const v2BudgetCeilings = {
-  planRevisions: 4,
+  planRevisions: 3,
   observationRecords: 16,
   toolSteps: 12,
   providerInvocations: 3,
@@ -123,7 +123,7 @@ const v2BudgetCeilings = {
 };
 
 const v2HardMaximums = {
-  planRevisions: 4,
+  planRevisions: 3,
   observationRecords: 16,
   toolSteps: 12,
   providerInvocations: 3,
@@ -225,7 +225,7 @@ function v2FixtureEvents() {
     consumed = advanceV2Budget(consumed, actionConsumption);
     return v2BudgetSnapshot(consumed, actionConsumption);
   };
-  const planBudget = nextBudget(v2BudgetUsage({ planRevisions: 1, contextBytes: 512 }));
+  const planBudget = nextBudget(v2BudgetUsage({ contextBytes: 512 }));
   const observationBudget = nextBudget(v2BudgetUsage({
     observationRecords: 1,
     providerInvocations: 1,
@@ -243,6 +243,7 @@ function v2FixtureEvents() {
       planId: "plan_001",
       planRevision: 0,
       priorPlanReadback: null,
+      replanObservationReadback: null,
       steps: [{
         ordinal: 1,
         purpose: "inspect evidence",
@@ -380,30 +381,33 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
     consumed = advanceV2Budget(consumed, actionConsumption);
     return v2BudgetSnapshot(consumed, actionConsumption);
   };
-  let priorPlanEventId: string | undefined;
+  let priorPlanReadback: Record<string, unknown> | undefined;
+  let priorObservationReadback: Record<string, unknown> | undefined;
   let finalPlanReadback: Record<string, unknown> | undefined;
   let finalObservationReadback: Record<string, unknown> | undefined;
 
   for (let planRevision = 0; planRevision < planRecordCount; planRevision += 1) {
     const planEventId = planRevision === 0 ? v2PlanEventId : `evt_resident_v2_plan_${planRevision + 1}`;
+    const planId = `plan_${String(planRevision + 1).padStart(3, "0")}`;
     const planReadback = {
       ...v2PlanReadback,
       planRecordEventId: planEventId,
+      planId,
       planRevision
     };
     replay.push(event(planEventId, "agent.resident-plan.recorded.v2", {
       ...basePlan.payload,
       budget: nextBudget(v2BudgetUsage({
-        planRevisions: 1,
+        ...(planRevision === 0 ? {} : { planRevisions: 1 }),
         ...(planRevision === 0 ? { contextBytes: 512 } : {})
       })),
+      planId,
       planRevision,
-      priorPlanReadback: priorPlanEventId === undefined ? null : {
-        ...v2PlanReadback,
-        planRecordEventId: priorPlanEventId,
-        priorPlanRecordEventId: priorPlanEventId,
-        planRevision: planRevision - 1
-      }
+      priorPlanReadback: priorPlanReadback === undefined ? null : {
+        ...priorPlanReadback,
+        priorPlanRecordEventId: priorPlanReadback.planRecordEventId
+      },
+      replanObservationReadback: priorObservationReadback ?? null
     }, replay.length + 1));
     replay.push(event(`evt_resident_v2_observation_${planRevision + 1}`, "agent.resident-observation.recorded.v2", {
       ...baseObservation.payload,
@@ -416,6 +420,7 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
         } : {})
       })),
       observationId: `observation_${planRevision + 1}`,
+      planId,
       planRevision,
       planReadback
     }, replay.length + 1));
@@ -426,27 +431,30 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
         toolSteps: 1,
         ...(planRevision === 0 ? { derivativeArtifactBytes: 1024 } : {})
       })),
+      planId,
       planRevision,
       planReadback
     }, replay.length + 1));
-    priorPlanEventId = planEventId;
-    finalPlanReadback = planReadback;
-    finalObservationReadback = {
+    priorPlanReadback = planReadback;
+    priorObservationReadback = {
       observationEventId: observationEvent.id,
       workspaceId: v2Binding.workspaceId,
       residentAgentId: v2Binding.residentAgentId,
       taskId: v2Binding.taskId,
       attemptId: v2Binding.attemptId,
       runId: v2Binding.runId,
-      planId: "plan_001",
+      planId,
       planRevision
     };
+    finalPlanReadback = planReadback;
+    finalObservationReadback = priorObservationReadback;
   }
 
   const suspensionEventId = `evt_resident_v2_suspension_${planRecordCount}`;
   replay.push(event(suspensionEventId, "agent.resident-loop.suspended.v2", {
     ...baseSuspension.payload,
     budget: nextBudget(v2BudgetUsage({ approvalSuspensionMs: 5 })),
+    planId: finalPlanReadback?.planId,
     planRevision: planRecordCount - 1,
     planReadback: finalPlanReadback,
     finalObservationReadback,
@@ -458,6 +466,7 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
   replay.push(event(`evt_resident_v2_result_${planRecordCount}`, "agent.resident-loop.result.recorded.v2", {
     ...baseResult.payload,
     budget: nextBudget(v2BudgetUsage({ activeExecutionMs: 10 })),
+    planId: finalPlanReadback?.planId,
     planRevision: planRecordCount - 1,
     planReadback: finalPlanReadback,
     finalObservationReadback
@@ -763,6 +772,89 @@ describe("resident loop ontology contracts v2", () => {
   it("replays durable budget progression through a fourth plan record and rejects an over-limit revision", () => {
     expect(validateResidentLoopEventSequence(v2ReplayWithPlanRecords(4) as never).success).toBe(true);
     expect(validateResidentLoopEventSequence(v2ReplayWithPlanRecords(5) as never).success).toBe(false);
+  });
+
+  it("rejects a fourth replan before it can consume a replan budget slot", () => {
+    const replay = v2ReplayWithPlanRecords(4);
+    const fourthReplan = replay.find((candidate) =>
+      candidate.type === "agent.resident-plan.recorded.v2" && candidate.payload.planRevision === 3
+    )!;
+    const budget = fourthReplan.payload.budget as {
+      actionConsumption: V2BudgetUsage;
+      consumed: V2BudgetUsage;
+    };
+
+    expect(validateKnowledgeEvent({
+      ...fourthReplan,
+      payload: {
+        ...fourthReplan.payload,
+        planRevision: 4,
+        planId: "plan_005",
+        priorPlanReadback: {
+          ...(fourthReplan.payload.priorPlanReadback as Record<string, unknown>),
+          planId: "plan_004",
+          planRevision: 3
+        },
+        replanObservationReadback: {
+          ...(fourthReplan.payload.replanObservationReadback as Record<string, unknown>),
+          planId: "plan_004",
+          planRevision: 3
+        },
+        budget: v2BudgetSnapshot(
+          { ...budget.consumed, planRevisions: 4 },
+          { ...budget.actionConsumption, planRevisions: 1 }
+        )
+      }
+    }).success).toBe(false);
+  });
+
+  it("rejects a replan that reuses its predecessor plan ID", () => {
+    const replay = v2ReplayWithPlanRecords(2);
+    const initialPlan = replay[0]!;
+
+    expect(validateResidentLoopEventSequence(replay.map((candidate) =>
+      candidate.type === "agent.resident-plan.recorded.v2" && candidate.payload.planRevision === 1
+        ? { ...candidate, payload: { ...candidate.payload, planId: initialPlan.payload.planId } }
+        : candidate
+    ) as never).success).toBe(false);
+  });
+
+  it("rejects a replan without its causally preceding durable observation", () => {
+    const replay = v2ReplayWithPlanRecords(2);
+    const withoutPrecedingObservation = [
+      replay[0]!,
+      replay[2]!,
+      replay[3]!,
+      replay[4]!,
+      replay[5]!,
+      replay[6]!,
+      replay[7]!
+    ];
+    let consumed = v2BudgetUsage();
+    const recounted = withoutPrecedingObservation.map((candidate, index) => {
+      const actionConsumption = (candidate.payload.budget as { actionConsumption: V2BudgetUsage }).actionConsumption;
+      consumed = advanceV2Budget(consumed, actionConsumption);
+      return {
+        ...candidate,
+        sequence: index + 1,
+        payload: { ...candidate.payload, budget: v2BudgetSnapshot(consumed, actionConsumption) }
+      };
+    });
+
+    expect(validateResidentLoopEventSequence(recounted as never).success).toBe(false);
+  });
+
+  it("rejects a declared step when its prerequisite was never executed", () => {
+    const replay = v2FixtureEvents();
+    const toolStep = replay[2]!;
+
+    expect(validateResidentLoopEventSequence([
+      replay[0]!,
+      replay[1]!,
+      { ...toolStep, payload: { ...toolStep.payload, stepOrdinal: 2 } },
+      replay[3]!,
+      replay[4]!
+    ] as never).success).toBe(false);
   });
 
   it.each([
