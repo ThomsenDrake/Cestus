@@ -6840,3 +6840,41 @@ explicit implementation authorization.
 - Full verification remains **CLOSED**, `neo` untouched, no provider/network/
   credential/Nous action, and authenticated use remains `usedPercent=13` /
   **87% remaining**, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-202 — Reboot recovery, Task119 identity review, and Task132A resume
+
+- After the unplanned machine reboot, the coordinator independently reconciled
+  the canonical program worktree: clean
+  `6d4839865166df9e17ca219b856abf1b81b18fc8` on
+  `codex/resident-agent-full-vision-program-watchdog-recovery`; `neo` and
+  `origin/neo` both remain untouched at
+  `f88ced73be1e64660d95874394a324bd317fc20a`. The approved CF-1R5 plan and
+  all prior append-only corrections remain in history. No full verifier,
+  provider/network/credential/Nous action, reset-credit redemption, or neo
+  action occurred in recovery.
+- Fresh complete-range Task119 review
+  `019f6394-a03f-70e3-9d9e-9d1707c36250` returned **NEEDS-CHANGES** for
+  `2b1c6f193024d5a4aa7f02d829df88e896d35a12`, despite its coordinator-observed
+  non-full exact gate passing. It rejects a replan ID only when it equals the
+  immediately prior plan; `plan_1 -> plan_2 -> plan_1` remains accepted. Preserve
+  `2b1c6f19` and all earlier Task119 candidates as unintegrated history. One
+  fresh Terra/xhigh author is authorized only for the Task119 claim,
+  `contracts.ts`, and its focused test: first write/run a causal three-plan
+  reuse RED, then reject any plan ID already seen anywhere in the replay;
+  preserve the approved initial-plus-three accounting, causal observation and
+  prerequisite work. It has explicit `superpowers:subagent-driven-development`,
+  TDD, systematic-debugging, and verification-before-completion authority; it
+  must run the exact non-full `&&` gate, commit, and stop for fresh independent
+  complete-range review. Full verification remains **CLOSED**.
+- The interrupted Task132A worktree survives at staged base
+  `f66c100554301f57ce757c2cfe0f82e729c8bab6`. Its in-scope producer/accessor,
+  factory, claim, and new attestation-test edits are preserved. The deletion of
+  the staged 31k `agent-runtime-context-packs.test.ts` is incomplete reboot
+  state, not an accepted removal: coordinator must restore/reconcile that
+  coverage forward before any Task132A commit. The same Task132A thread
+  `019f6392-06f2-72d1-8336-0cd72f967a98` is authorized to resume its exact
+  scope/TDD/gates after that audit; no duplicate child, rebasing, or discarded
+  preserved work is authorized.
+- The last authenticated usage record remains `usedPercent=13` / **87% weekly
+  remaining** pending the next authenticated monitor event. DRAIN remains
+  <=10% remaining, HARD PAUSE <=7%, and reset credits remain untouched.
