@@ -8524,3 +8524,21 @@ explicit implementation authorization.
   unqualified **APPROVED** verdicts remain required.
 - Latest authenticated usage remains 36% used / 64% weekly remaining. All
   source/live/full/credential/reset-credit/`neo`/integration actions remain closed.
+
+## RV-1-E-276 — Approval-consumer and smoke-static bounded repair
+
+- Persistence/lifecycle reviewer `019f652c-7c12-7872-b22c-fd8b46603d06`
+  returned unqualified **APPROVED** on `0481c1e0^..d4f290ad`. Authority reviewer
+  `019f652c-76c9-7281-93c3-6d8da9f7b6d1` returned **NEEDS-CHANGES**: the plan
+  does not own a cross-package internal consumer for the agent-private approval
+  WeakMap, and the final static gate omits positive/negative inspection of the
+  smoke source. Because one reviewer rejected, the approval cannot authorize
+  integration or carry forward to a repaired endpoint.
+- The sole plan writer is authorized only for CF-1R13: create and own a non-
+  index-exported `task-orchestrator-approval-admission` module plus focused
+  identity tests; let local R0 import its consume function by explicit internal
+  source path; add it to P/R0 commands and non-export assertions; require smoke
+  source to positively call resident acceptance and statically forbid every
+  direct renderer/kernel/runtime model path.
+- All source/live/full/credential/reset-credit/`neo`/integration actions remain
+  closed pending docs validation, commit, and two fresh approvals.
