@@ -8102,3 +8102,23 @@ explicit implementation authorization.
   Task133 source dispatch, plan integration, full verification, provider/
   network/credential/Nous, reset credits, neo, and self-integration remain
   closed pending its unqualified approval.
+
+## RV-1-E-256 — Task133 bridge repair full-lineage approval
+
+- Fresh independent Terra/xhigh review session
+  `019f6474-d4a3-7810-8e39-ff08bd23fea2` returned **APPROVED** with no
+  defects for the exact full six-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ceb255dd9c21fd967ee112acd7a95378b3a739d2`.
+  It confirmed the public carrier is limited to attempt/generated-at data,
+  the lexical factory-only bridge supplies the remaining exact v2 facts, and
+  Task140R0's frozen files/negative tests prevent public authority, callback,
+  capability, or direct-artifact routes.
+- The review also confirms the correction supersedes the contradictory raw-v2
+  wording and requires rejection before envelope formation for exactly
+  `rendererHash`, `renderedPromptHash`, `scopeApplicabilityHash`,
+  `providerPostureHash`, `exactRunBindingHash`, and one lookalike. The
+  reviewer inspected all six commits and its authoritative `turn_context`
+  records `model=gpt-5.6-terra` and `effort=xhigh`. Coordinator-only no-ff
+  plan integration and post-merge documentation validation are authorized;
+  Task133 source stays closed until this integration and a current-head
+  prerequisite gate are durably recorded.
