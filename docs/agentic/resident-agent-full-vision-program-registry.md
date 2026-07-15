@@ -10430,3 +10430,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, providers, reset credits, integration, push, and every
   `neo` action remain closed. Two fresh independent review approvals are still
   required after a replacement candidate passes coordinator verification.
+
+## RV-1-E-368 — Task133 authority-split plan candidate admitted
+
+- Docs-only author `019f66c3-08b5-7040-b204-a8f3b0ce8161` produced clean
+  candidate `8b36829ab23019b9e3d8595d24bac2b09bc40496` from exact parent
+  `dcb863e2bf258205308cdb35955f10ef71fdc501`.
+- Coordinator-independent checks passed `git diff --check` and
+  `npm run factory:check`; the merge-free range changes exactly the active
+  authority-recovery plan and new Task133 authority-split amendment claim.
+- The candidate remains review-only and unintegrated. Source, full
+  verification, providers, reset credits, push, and every `neo` action remain
+  closed.
+
+## RV-1-E-369 — Task133 authority-split plan reviews dispatched
+
+- Fresh Terra/xhigh authority/security reviewer
+  `019f66cb-4c67-7191-b3d3-e44ab88946ef` reviews fail-closed Task133 behavior,
+  caller-supplied proof rejection, and the first valid Task140P/R0 authority
+  path.
+- Fresh Terra/xhigh factory-plan reviewer
+  `019f66cb-4e64-7da2-abc1-0d56b8f1304f` reviews exact ownership,
+  dependencies, merge order, commands, replay tests, and future explicit
+  subagent-driven-development authorization.
+- Both reviewers are read-only and pinned. Two unqualified approvals are
+  required before coordinator-only plan integration or renewed Task133 source.
