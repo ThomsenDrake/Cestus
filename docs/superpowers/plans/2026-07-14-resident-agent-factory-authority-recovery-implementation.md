@@ -593,3 +593,128 @@ blocked until Task133, Task135A, and all original 136–139 prerequisites are
 reviewed/integrated; reviewed integration then serializes Task140R0, Task140H,
 and Task140R1. Each rejected candidate is repaired forward with a fresh review;
 no child self-integrates.
+
+## CF-1R5 Observability-Boundary Amendment — Task132A and Task140R0
+
+**Status:** This amendment supersedes only the Task132A live-capability test
+wording and the corresponding Task140R0 acceptance minimum. It is a forward
+correction to resolve a verified testability/authority conflict; it does not
+weaken registrar integrity, factory-private authority, H sequencing, terminal
+state, provenance, or any prerequisite.
+
+**Root cause:** Before Task140R0, no production caller registers the
+factory-held closure into an observable runtime path. A Task132A test cannot
+both construct a live capability from an external module and preserve the
+invariant that no public tuple, brand, callback, fallback, constructor, or
+shadow route can mint one. Frozen-object mutation is an immutability check, not
+the required live resolution-integrity acceptance, and must not be labeled as
+such.
+
+### Task132A replacement acceptance boundary
+
+**Files:** retain the existing Task132A eight-file ceiling. The preferred
+minimal set is `packages/local-runtime/src/agent-runtime-factory.ts`,
+`packages/local-runtime/src/agent-runtime-context-packs.ts`, the two named
+local-runtime tests, the three named package registrar modules only when their
+read-only accessor evidence needs correction, and the existing Task132A claim.
+
+**Produces:** a lexical factory-owned closure that has no public construction
+or capture/consume API. It may remain unused until Task140R0. The closure must
+not be exported directly or indirectly; an external module must not be able to
+supply a registry, obtain a factory capability, or create a mounted context
+capability through a tuple, brand, callback, fallback, test hook, or shadow
+constructor.
+
+- [ ] **Step 1: Write Task132A causal REDs before source edits.**
+
+  In `packages/local-runtime/test/agent-runtime-context-packs.test.ts`, import
+  the public context/runtime modules exactly as an external consumer would and
+  assert `Reflect.get(module, "captureFactoryContextPackAttestation")`,
+  `Reflect.get(module, "createFactoryHeldMountedAgentContextCapability")`, and
+  every exported capability-construction wrapper are `undefined`; an attempted
+  external registry registration must not yield a build-capable object. Keep
+  real PRR (`prr-request`), operational (no manifest), and investigative
+  (plural high-water) registrar fixtures. Assert each read-only accessor returns
+  its actual captured registrar evidence, while a foreign/manual registry
+  returns `undefined` and the default empty factory composition returns blocked
+  before builder activity. These are absence/readback/fail-closed REDs, not
+  substitute resolution acceptance tests.
+
+- [ ] **Step 2: Run the Task132A focused RED.**
+
+  Run exactly:
+  `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/local-runtime/test/agent-runtime-context-attestation.test.ts packages/agent/test/context-packs.test.ts`
+
+  Record the expected failure that a public capture/consume/constructor route
+  exists or that foreign/manual/default composition does not fail closed.
+
+- [ ] **Step 3: Implement the smallest lexical private closure.**
+
+  Keep producer `WeakMap`s private; producer modules expose only read-only
+  lookups. Build the closure lexically inside `agent-runtime-factory.ts` from
+  its captured registry and those accessors. Do not export a capability
+  constructor, a capture token, an attestation tuple, a callback accepting a
+  caller registry, or a test-only hook. Preserve captured identity rechecks and
+  default fail-closed behavior. Do not invoke H, task orchestration, provider
+  work, durable append, or terminal/success logic.
+
+- [ ] **Step 4: Run Task132A GREEN and the exact non-full gate.**
+
+  `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/local-runtime/test/agent-runtime-context-attestation.test.ts packages/agent/test/context-packs.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+  The claim must state that the six content-hash, source-high-water,
+  selection-manifest, scope, policy, and provenance live-path swaps are
+  intentionally deferred to Task140R0; it must not call frozen-object
+  immutability a resolution rejection. Commit only the existing Task132A scope
+  and stop for fresh complete staged-base review.
+
+### Task140R0 added live-path registrar-integrity acceptance
+
+**Files:** retain Task140R0's existing files and claim. Its tests may add only
+the named Task140R0 test paths already in this plan; no Task132A public API or
+test-only constructor may be introduced.
+
+**Consumes:** reviewed/coordinator-integrated Task132A lexical closure,
+Task140P's non-indexed admission seam, reviewed Task134A normalization, and
+Task135A binder/stores. **Produces:** the first actual production-observable
+registration of the factory-held closure, still without H prepare or terminal
+append authority.
+
+- [ ] **Step 1: Write Task140R0 causal REDs.**
+
+  Through the real factory-created, Task140P-registered production path—not a
+  direct exported helper—construct a valid captured registration control and
+  six independent counterfactuals that swap exactly one of: content hash,
+  source high-water, selection manifest, scope, policy, or provenance. Each
+  counterfactual must reach the live admission/resolve boundary and reject
+  before H prepare, H readback, or terminal append. Keep separate REDs proving
+  a public tuple/lookalike cannot construct or register the closure.
+
+- [ ] **Step 2: Run Task140R0 focused RED.**
+
+  Run exactly:
+  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts`
+
+  Record the missing registration or incorrectly accepted swapped binding.
+
+- [ ] **Step 3: Implement only private R0 registration and live rechecks.**
+
+  Construct/register the resolver inside the factory from captured collaborators
+  and recheck all six exact bindings at the live resolve boundary. No caller may
+  pass a closure/capability/tuple; no duplicate H sequencing or terminal logic
+  is allowed. A missing, stale, swapped, or mismatched value fails closed before
+  H and terminal state.
+
+- [ ] **Step 4: Run Task140R0 GREEN and exact gate.**
+
+  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+  The Task140R0 claim must enumerate successful control plus all six live-path
+  swaps and public tuple rejection. Full verification remains closed; a fresh
+  independent complete-range review is required before coordinator integration.
+
+**Revised release order:** fresh plan review approves this amendment; then a
+fresh bounded Task132A author may implement only the replacement Task132A
+boundary. Task133 and Task134A remain blocked until its reviewed/coordinator
+integration. Task140R0 remains blocked on all of its original prerequisites;
+this amendment does not accelerate any H or terminal work.

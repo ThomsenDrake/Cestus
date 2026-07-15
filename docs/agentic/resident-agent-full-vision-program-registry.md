@@ -7085,3 +7085,26 @@ explicit implementation authorization.
   Tasks133 and 134 therefore remain blocked on reviewed/coordinator-integrated
   Task132A. Full verify, `neo`, provider/network/credential/Nous action, and
   child self-integration remain **CLOSED**.
+
+## RV-1-E-213 — Task132A observability-boundary conflict and plan amendment
+
+- Task132A's uncommitted factory-closure repair is frozen as non-candidate
+  evidence. After every public/shadow mint route is removed, no production-
+  observable caller exists before Task140R0 to exercise a live capability
+  resolution path. Conversely, exposing a constructor, capture token, callback,
+  or wrapper solely for an external Task132A test recreates the forbidden mint
+  route. The replacement six-case `Reflect.set` table is immutability evidence
+  only and is not accepted as live resolution-integrity acceptance.
+- The active CF-1R5 plan is amended forward for fresh review: Task132A owns only
+  lexical factory-private closure implementation, absence of all public/context/
+  factory mint APIs, real PRR/operational/investigative read-only registrar
+  evidence, foreign/manual rejection, default fail-closed composition, and no
+  H/orchestrator/durable/terminal success claim. Task140R0, as the first actual
+  production registration owner, must add causal real-live-path rejection of
+  swapped content hash, source high-water, selection manifest, scope, policy,
+  and provenance before it may pass. No frozen-object mutation may be mislabeled
+  as that proof.
+- A fresh read-only Terra/xhigh plan review is required before a corrected
+  Task132A implementation dispatch or retask. Tasks133/134, Task140P/R0/H/R1,
+  full verification, `neo`, provider/network/credential/Nous action,
+  reset-credit use, and child self-integration remain **CLOSED**.
