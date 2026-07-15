@@ -16,6 +16,8 @@ import { createTaskOrchestratorHandoffCapability, createTaskOrchestrator } from 
 import { createTaskOrchestratorProviderApprovalAdapter } from "../../agent/src/task-orchestrator-approval.js";
 import { specialistWorkflowDescriptorFor } from "../../agent/src/specialist-workflows.js";
 import type { TaskOrchestratorContextRenderInput } from "../../agent/src/task-orchestrator-types.js";
+import type { PromptArtifactEnvelope } from "../../agent/src/prompt-artifacts.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
@@ -89,7 +91,7 @@ describe("local runtime portable pre-approval prompt", () => {
     expect(contextReadyAppends).toBe(0);
   });
 
-  it("factory mount drift after store read blocks context-ready append", async () => {
+  it("revalidates mounted authority after the final context-ready ledger read and before append", async () => {
     const workspaceId = "ws_preapproval_factory_drift";
     const handle = portableHandle(workspaceId);
     const bootstrap = createAgentRuntime({ ledger: handle.ledger, actor, now, providers: [] });
@@ -107,7 +109,46 @@ describe("local runtime portable pre-approval prompt", () => {
       throw new Error("Expected a portable workspace runtime.");
     }
     const driftRoot = handle.config.storage.workspaceRoot;
-    let driftedAfterStoreRead = false;
+    const contextReadyStream = "agent_task_orchestration_task_preapproval_factory_drift_evidence-triage";
+    let releaseFinalContextReadyRead: (() => void) | undefined;
+    let signalFinalContextReadyRead: (() => void) | undefined;
+    const finalContextReadyRead = new Promise<void>((resolve) => {
+      signalFinalContextReadyRead = resolve;
+    });
+    let deferFinalContextReadyRead = true;
+    let mountedReadbackReturned = false;
+    let deferredWitness: import("../../agent/src/production-prompt-readback.js").MountedProductionPromptReadbackWitness | undefined;
+    let deferredEnvelope: PromptArtifactEnvelope | undefined;
+    let contextReadyAppends = 0;
+    const deferredLedger: EventLedger = {
+      append: async (event, options) => {
+        if (event.type === "agent.task.orchestration.checkpointed" && event.payload.checkpointKind === "context-ready") {
+          contextReadyAppends += 1;
+        }
+        return await handle.ledger.append(event, options);
+      },
+      async readStream(streamId) {
+        if (deferFinalContextReadyRead && mountedReadbackReturned && streamId === contextReadyStream) {
+          deferFinalContextReadyRead = false;
+          signalFinalContextReadyRead?.();
+          await new Promise<void>((resolve) => {
+            releaseFinalContextReadyRead = resolve;
+          });
+        }
+        return await handle.ledger.readStream(streamId);
+      },
+      async readAll() {
+        return await handle.ledger.readAll();
+      }
+    };
+    const deferredHandle: LocalRuntimeHandle = {
+      runtime: handle.runtime,
+      ledger: deferredLedger,
+      config: handle.config,
+      residentIdentity: handle.residentIdentity,
+      ...(handle.mountedWorkspace === undefined ? {} : { mountedWorkspace: handle.mountedWorkspace }),
+      close: () => handle.close()
+    };
     vi.doMock("../../agent/src/index.js", async () => {
       const actual = await vi.importActual<typeof import("../../agent/src/index.js")>("../../agent/src/index.js");
       const registrarEvidence = Object.freeze({
@@ -128,26 +169,15 @@ describe("local runtime portable pre-approval prompt", () => {
       const actual = await vi.importActual<typeof import("../src/mounted-prompt-artifact-store.js")>("../src/mounted-prompt-artifact-store.js");
       return {
         ...actual,
-        createMountedPromptArtifactStore: async (
-          input: Parameters<typeof actual.createMountedPromptArtifactStore>[0]
-        ) => {
+        createMountedPromptArtifactStore: async (input: Parameters<typeof actual.createMountedPromptArtifactStore>[0]) => {
           const store = await actual.createMountedPromptArtifactStore(input);
           return Object.freeze({
             put: store.put,
             async read(readInput: Parameters<typeof store.read>[0]) {
               const readback = await store.read(readInput);
-              if (!driftedAfterStoreRead) {
-                driftedAfterStoreRead = true;
-                writeFileSync(join(driftRoot, "cestus-workspace.json"), JSON.stringify({
-                  version: 1,
-                  layoutVersion: 1,
-                  workspaceId: "ws_preapproval_factory_replacement",
-                  label: "Replaced workspace",
-                  createdAt: now(),
-                  createdBy: actor.id,
-                  coreVersion: "0.1.0"
-                }));
-              }
+              mountedReadbackReturned = true;
+              deferredWitness = readback.witness;
+              deferredEnvelope = readback.envelope;
               return readback;
             }
           });
@@ -155,12 +185,46 @@ describe("local runtime portable pre-approval prompt", () => {
       };
     });
     const { defaultLocalAgentRuntimeFactory } = await import("../src/agent-runtime-factory.js");
-    const runtime = defaultLocalAgentRuntimeFactory({ handle, actor, now });
-    await runtime.tickTaskOrchestrator();
-    const checkpoints = (await handle.ledger.readStream("agent_task_orchestration_task_preapproval_factory_drift_evidence-triage"))
+    const runtime = defaultLocalAgentRuntimeFactory({ handle: deferredHandle, actor, now });
+    const ticking = runtime.tickTaskOrchestrator();
+    await finalContextReadyRead;
+    writeFileSync(join(driftRoot, "cestus-workspace.json"), JSON.stringify({
+      version: 1,
+      layoutVersion: 1,
+      workspaceId: "ws_preapproval_factory_replacement",
+      label: "Replaced workspace",
+      createdAt: now(),
+      createdBy: actor.id,
+      coreVersion: "0.1.0"
+    }));
+    releaseFinalContextReadyRead?.();
+    const summary = await ticking;
+    const checkpoints = (await handle.ledger.readStream(contextReadyStream))
       .filter((event) => event.type === "agent.task.orchestration.checkpointed");
-    expect(driftedAfterStoreRead).toBe(true);
+    expect(contextReadyAppends).toBe(0);
     expect(checkpoints.filter((event) => event.payload.checkpointKind === "context-ready")).toHaveLength(0);
+    expect(checkpoints.filter((event) => event.payload.checkpointKind === "approval-wait" || event.payload.checkpointKind === "runner-dispatching")).toHaveLength(0);
+    expect(summary.approvalWaiting).toHaveLength(0);
+    expect(summary.approvalVerified).toHaveLength(0);
+    expect(summary.sideEffectsScheduled).toHaveLength(0);
+    if (deferredWitness === undefined || deferredEnvelope === undefined) {
+      throw new Error("Expected the final-read regression to retain its mounted V1 witness.");
+    }
+    const claim = (await handle.ledger.readStream(contextReadyStream))
+      .find((event) => event.type === "agent.task.orchestration.claimed");
+    const production = deferredEnvelope.manifest.production;
+    if (claim === undefined || claim.type !== "agent.task.orchestration.claimed" || production?.schemaVersion !== "agent-production-prompt-binding.v1") {
+      throw new Error("Expected final-read regression mounted prompt claim facts.");
+    }
+    const { consumeMountedProductionPromptReadbackWitness } = await import("../../agent/src/production-prompt-readback.js");
+    await expect(consumeMountedProductionPromptReadbackWitness(deferredWitness, {
+      workspaceId,
+      taskId: claim.payload.taskId,
+      runId: claim.payload.attemptId,
+      runType: claim.payload.runType,
+      scopeApplicabilityHash: production.scopeApplicabilityHash,
+      contextPackRefs: deferredEnvelope.manifest.contextPackRefs
+    })).rejects.toThrow(/mount|process|current/i);
   });
 
   it("fresh runtime rereads context-ready V1 and issues a new consumable witness", async () => {
@@ -288,6 +352,266 @@ describe("local runtime portable pre-approval prompt", () => {
       .rejects.toThrow(/mounted.*prompt.*readback|required/i);
     await expect(consumeFreshWitness(recovered.witness, expectedRecovered))
       .resolves.toMatchObject({ envelope: { manifest: { inputArtifactHash: durableCheckpoint.payload.promptArtifactHash } } });
+  });
+
+  it("fresh production factory runner recovers the durable context-ready V1 before provider preparation", async () => {
+    const workspaceId = "ws_preapproval_factory_recovery";
+    const root = portableRoot(workspaceId);
+    const first = portableHandle(workspaceId, root);
+    const firstContext = await productionContextFromFreshModules();
+    let firstWitness: import("../../agent/src/production-prompt-readback.js").MountedProductionPromptReadbackWitness | undefined;
+    vi.doMock("../../agent/src/index.js", async () => {
+      const actual = await vi.importActual<typeof import("../../agent/src/index.js")>("../../agent/src/index.js");
+      const registrarEvidence = Object.freeze({
+        descriptorHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        parserIdentity: Object.freeze({}),
+        producerIdentity: Object.freeze({}),
+        registrationIdentity: Object.freeze({})
+      });
+      return {
+        ...actual,
+        createContextPackRegistry: () => firstContext.registry,
+        lookupPrrContextPackRegistrarEvidence: () => registrarEvidence,
+        lookupOperationalContextPackRegistrarEvidence: () => undefined,
+        lookupInvestigativeContextPackRegistrarEvidence: () => undefined
+      };
+    });
+    vi.doMock("../src/mounted-prompt-artifact-store.js", async () => {
+      const actual = await vi.importActual<typeof import("../src/mounted-prompt-artifact-store.js")>("../src/mounted-prompt-artifact-store.js");
+      return {
+        ...actual,
+        createMountedPromptArtifactStore: async (input: Parameters<typeof actual.createMountedPromptArtifactStore>[0]) => {
+          const store = await actual.createMountedPromptArtifactStore(input);
+          return Object.freeze({
+            put: store.put,
+            async read(readInput: Parameters<typeof store.read>[0]) {
+              const result = await store.read(readInput);
+              firstWitness = result.witness;
+              return result;
+            }
+          });
+        }
+      };
+    });
+    const { defaultLocalAgentRuntimeFactory: createFirstRuntime } = await import("../src/agent-runtime-factory.js");
+    const runtimeA = createFirstRuntime({ handle: first, actor, now });
+    await runtimeA.initializeDefaultIdentity({ workspaceId });
+    await runtimeA.createTask({
+      taskId: "task_preapproval_factory_recovery",
+      title: "Persist production factory context-ready prompt",
+      requestedBy: actor.id,
+      priority: "normal"
+    });
+    await runtimeA.tickTaskOrchestrator();
+    const streamId = "agent_task_orchestration_task_preapproval_factory_recovery_evidence-triage";
+    const checkpoint = (await first.ledger.readStream(streamId))
+      .find((event) => event.type === "agent.task.orchestration.checkpointed" && event.payload.checkpointKind === "context-ready");
+    if (checkpoint === undefined || checkpoint.type !== "agent.task.orchestration.checkpointed" || checkpoint.payload.promptArtifactHash === undefined) {
+      throw new Error("Expected runtime A to persist a context-ready V1 checkpoint.");
+    }
+    if (firstWitness === undefined) throw new Error("Expected runtime A mounted V1 witness.");
+    const copiedOldWitness = { ...firstWitness };
+    first.close();
+    handles.splice(handles.indexOf(first), 1);
+
+    vi.doUnmock("../../agent/src/index.js");
+    vi.doUnmock("../src/mounted-prompt-artifact-store.js");
+    vi.resetModules();
+    const freshContext = await productionContextFromFreshModules();
+    let freshRunner: import("../../agent/src/task-orchestrator.js").TaskOrchestratorRunnerRegistry | undefined;
+    let freshStoreReads = 0;
+    let lastRecoveredArtifactHash: `sha256:${string}` | undefined;
+    let freshReadback: Awaited<ReturnType<typeof createMountedPromptArtifactStore>> extends infer Store
+      ? Store extends { read: (...args: never[]) => infer Result } ? Awaited<Result> : never
+      : never;
+    vi.doMock("../../agent/src/index.js", async () => {
+      const actual = await vi.importActual<typeof import("../../agent/src/index.js")>("../../agent/src/index.js");
+      const registrarEvidence = Object.freeze({
+        descriptorHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        parserIdentity: Object.freeze({}),
+        producerIdentity: Object.freeze({}),
+        registrationIdentity: Object.freeze({})
+      });
+      return {
+        ...actual,
+        createContextPackRegistry: () => freshContext.registry,
+        lookupPrrContextPackRegistrarEvidence: () => registrarEvidence,
+        lookupOperationalContextPackRegistrarEvidence: () => undefined,
+        lookupInvestigativeContextPackRegistrarEvidence: () => undefined,
+        createAgentRuntime(input: Parameters<typeof actual.createAgentRuntime>[0]) {
+          freshRunner = input.taskOrchestratorCapabilities?.runnerRegistry;
+          return actual.createAgentRuntime(input);
+        }
+      };
+    });
+    vi.doMock("../src/mounted-prompt-artifact-store.js", async () => {
+      const actual = await vi.importActual<typeof import("../src/mounted-prompt-artifact-store.js")>("../src/mounted-prompt-artifact-store.js");
+      return {
+        ...actual,
+        createMountedPromptArtifactStore: async (input: Parameters<typeof actual.createMountedPromptArtifactStore>[0]) => {
+          const store = await actual.createMountedPromptArtifactStore(input);
+          return Object.freeze({
+            put: store.put,
+            async read(readInput: Parameters<typeof store.read>[0]) {
+              freshStoreReads += 1;
+              lastRecoveredArtifactHash = readInput.inputArtifactHash;
+              const result = await store.read(readInput);
+              freshReadback = result as typeof freshReadback;
+              return result;
+            }
+          });
+        }
+      };
+    });
+    const { createSqlitePrrRuntime: createFreshRuntime } = await import("../src/runtime-factory.js");
+    const { defaultLocalAgentRuntimeFactory: createFreshRuntimeFactory } = await import("../src/agent-runtime-factory.js");
+    const freshCwd = mkdtempSync(join(tmpdir(), "cestus-preapproval-factory-recovery-cwd-"));
+    dirs.push(freshCwd);
+    const fresh = createFreshRuntime({
+      config: {
+        ...resolveLocalRuntimeConfig({ cwd: freshCwd, env: {} }),
+        storage: { strategy: "portable-workspace", workspaceRoot: root, expectedWorkspaceId: workspaceId, sqlitePath: join(root, "ledger", "ontology.sqlite") }
+      },
+      actor,
+      now
+    });
+    handles.push(fresh);
+    const runtimeB = createFreshRuntimeFactory({ handle: fresh, actor, now });
+    await runtimeB.tickTaskOrchestrator();
+    if (freshRunner === undefined) throw new Error("Expected fresh production factory runner registry.");
+    const recoveryDispatch = Object.freeze({
+      verifiedProviderApproval: true,
+      verifiedContextBindings: true,
+      taskId: checkpoint.payload.taskId,
+      runType: checkpoint.payload.runType,
+      attemptId: checkpoint.payload.attemptId,
+      approvedRunId: "run_preapproval_factory_boundary"
+    });
+    await expect(freshRunner.dispatch(recoveryDispatch)).rejects.toThrow(/not configured for autonomous dispatch/i);
+    if (freshReadback?.witness === undefined) throw new Error("Expected fresh factory recovery to issue a mounted V1 witness.");
+    expect(freshReadback.witness).not.toBe(firstWitness);
+    const production = freshReadback.envelope.manifest.production;
+    if (production?.schemaVersion !== "agent-production-prompt-binding.v1") {
+      throw new Error("Expected factory recovery V1 artifact.");
+    }
+    const expectedRecovered = {
+      workspaceId,
+      taskId: checkpoint.payload.taskId,
+      runId: checkpoint.payload.attemptId,
+      runType: checkpoint.payload.runType,
+      scopeApplicabilityHash: production.scopeApplicabilityHash,
+      contextPackRefs: freshReadback.envelope.manifest.contextPackRefs
+    };
+    const { consumeMountedProductionPromptReadbackWitness: consumeFreshWitness } = await import("../../agent/src/production-prompt-readback.js");
+    await expect(consumeFreshWitness(firstWitness, expectedRecovered)).rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    await expect(consumeFreshWitness(copiedOldWitness, expectedRecovered)).rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    await expect(consumeFreshWitness(freshReadback.witness, expectedRecovered))
+      .resolves.toMatchObject({ envelope: { manifest: { inputArtifactHash: checkpoint.payload.promptArtifactHash } } });
+    await expect(consumeFreshWitness(freshReadback.witness, expectedRecovered)).rejects.toThrow(/consumed|required/i);
+
+    vi.doUnmock("../../agent/src/index.js");
+    vi.doUnmock("../src/mounted-prompt-artifact-store.js");
+    vi.resetModules();
+    const changedContext = await productionContextFromFreshModules({ changeEvidenceBytes: true });
+    let changedContextRunner: import("../../agent/src/task-orchestrator.js").TaskOrchestratorRunnerRegistry | undefined;
+    let changedContextStoreReads = 0;
+    vi.doMock("../../agent/src/index.js", async () => {
+      const actual = await vi.importActual<typeof import("../../agent/src/index.js")>("../../agent/src/index.js");
+      const registrarEvidence = Object.freeze({
+        descriptorHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        parserIdentity: Object.freeze({}),
+        producerIdentity: Object.freeze({}),
+        registrationIdentity: Object.freeze({})
+      });
+      return {
+        ...actual,
+        createContextPackRegistry: () => changedContext.registry,
+        lookupPrrContextPackRegistrarEvidence: () => registrarEvidence,
+        lookupOperationalContextPackRegistrarEvidence: () => undefined,
+        lookupInvestigativeContextPackRegistrarEvidence: () => undefined,
+        createAgentRuntime(input: Parameters<typeof actual.createAgentRuntime>[0]) {
+          changedContextRunner = input.taskOrchestratorCapabilities?.runnerRegistry;
+          return actual.createAgentRuntime(input);
+        }
+      };
+    });
+    vi.doMock("../src/mounted-prompt-artifact-store.js", async () => {
+      const actual = await vi.importActual<typeof import("../src/mounted-prompt-artifact-store.js")>("../src/mounted-prompt-artifact-store.js");
+      return {
+        ...actual,
+        createMountedPromptArtifactStore: async (input: Parameters<typeof actual.createMountedPromptArtifactStore>[0]) => {
+          const store = await actual.createMountedPromptArtifactStore(input);
+          return Object.freeze({
+            put: store.put,
+            async read(readInput: Parameters<typeof store.read>[0]) {
+              changedContextStoreReads += 1;
+              return await store.read(readInput);
+            }
+          });
+        }
+      };
+    });
+    const { createSqlitePrrRuntime: createChangedContextRuntime } = await import("../src/runtime-factory.js");
+    const { defaultLocalAgentRuntimeFactory: createChangedContextRuntimeFactory } = await import("../src/agent-runtime-factory.js");
+    const changedContextCwd = mkdtempSync(join(tmpdir(), "cestus-preapproval-factory-changed-context-cwd-"));
+    dirs.push(changedContextCwd);
+    const changedContextHandle = createChangedContextRuntime({
+      config: {
+        ...resolveLocalRuntimeConfig({ cwd: changedContextCwd, env: {} }),
+        storage: { strategy: "portable-workspace", workspaceRoot: root, expectedWorkspaceId: workspaceId, sqlitePath: join(root, "ledger", "ontology.sqlite") }
+      },
+      actor,
+      now
+    });
+    handles.push(changedContextHandle);
+    const changedContextRuntime = createChangedContextRuntimeFactory({ handle: changedContextHandle, actor, now });
+    await changedContextRuntime.tickTaskOrchestrator();
+    if (changedContextRunner === undefined) throw new Error("Expected changed-context factory runner registry.");
+    await expect(changedContextRunner.dispatch(recoveryDispatch)).rejects.toThrow(/context-ready checkpoint.*canonical context pack readback/i);
+    expect(changedContextStoreReads).toBe(0);
+
+    if (fresh.mountedWorkspace === undefined) throw new Error("Expected fresh production runtime mounted workspace.");
+    const promptHash = checkpoint.payload.promptArtifactHash as `sha256:${string}`;
+    const digest = promptHash.slice("sha256:".length);
+    writeFileSync(join(fresh.mountedWorkspace.paths.blobRoot, "agent-prompt-artifacts", "sha256", digest.slice(0, 2), `${digest}.json`), "{}");
+    await expect(freshRunner.dispatch(recoveryDispatch)).rejects.toThrow(/manifest|text|prompt|artifact|production/i);
+    expect(freshStoreReads).toBe(2);
+    expect(lastRecoveredArtifactHash).toBe(promptHash);
+
+    const originalBindings = checkpoint.payload.contextBindings;
+    const changedBindingHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
+    const streamAfterArtifactRejection = await fresh.ledger.readStream(streamId);
+    await fresh.ledger.append({
+      type: "agent.task.orchestration.checkpointed",
+      version: 1,
+      streamId,
+      context: checkpoint.context,
+      payload: {
+        ...checkpoint.payload,
+        checkpointedAt: now(),
+        resumeIdempotencyKey: `${checkpoint.payload.resumeIdempotencyKey}-changed-binding`,
+        contextBindings: originalBindings.map((binding, index) => index === 0 ? { ...binding, contentHash: changedBindingHash } : binding)
+      }
+    }, { expectedNextSequence: streamAfterArtifactRejection.length + 1 });
+    await expect(freshRunner.dispatch(recoveryDispatch)).rejects.toThrow(/context-ready checkpoint.*canonical context pack readback/i);
+    expect(freshStoreReads).toBe(2);
+
+    const changedArtifactHash = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
+    const streamAfterBindingRejection = await fresh.ledger.readStream(streamId);
+    await fresh.ledger.append({
+      type: "agent.task.orchestration.checkpointed",
+      version: 1,
+      streamId,
+      context: checkpoint.context,
+      payload: {
+        ...checkpoint.payload,
+        checkpointedAt: now(),
+        resumeIdempotencyKey: `${checkpoint.payload.resumeIdempotencyKey}-changed-artifact-ref`,
+        promptArtifactHash: changedArtifactHash
+      }
+    }, { expectedNextSequence: streamAfterBindingRejection.length + 1 });
+    await expect(freshRunner.dispatch(recoveryDispatch)).rejects.toThrow(/ENOENT|no such file|artifact/i);
+    expect(lastRecoveredArtifactHash).toBe(changedArtifactHash);
   });
 });
 

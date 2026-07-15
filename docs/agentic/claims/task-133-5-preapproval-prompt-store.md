@@ -228,3 +228,74 @@ The repaired worktree's fresh standalone typecheck passed. The complete
 focused suite and final static evidence must be rerun from the final committed
 bytes; this replacement remains pending fresh coordinator admission and two
 external reviews.
+
+## Fourth recovery ownership and causal repair evidence — 2026-07-15
+
+- Worker: `/root/task1335_writer` under coordinator `/root`.
+- Branch: `codex/task-133-5-preapproval-prompt-store-recovery-4`.
+- Worktree: `/home/drake/.codex/worktrees/d876/Cestus`.
+- Recovery base: `8250f9720ecb7f79e3f13fcb24e167da2533562c`.
+- Status: `candidate pending fresh coordinator admission and two external reviews`.
+
+Candidate `8250f9720ecb7f79e3f13fcb24e167da2533562c` and every predecessor
+remain rejected forensic evidence only. The two independent review verdicts
+`019f6812-89b7-7291-a76a-37c2d65497a8` and
+`019f6812-8f92-7263-bbea-6719bb43f20b` both found the same uncovered defects:
+
+1. Factory readback revalidated its mounted witness before returning the hash,
+   but `appendContextReadyCheckpoint` then awaited its final ledger read and
+   could append stale `context-ready` provenance after a mount or canonical
+   byte replacement.
+2. The purported restart test manually constructed its first orchestrator and
+   directly reread a known hash from a new store. It never exercised the
+   production factory runner registry's private
+   `recoverMountedContextReadyWitness` path.
+
+The first RED was run against restored `8250f972` production bytes before the
+repair was reapplied. The exact eight-file command exited `1` with the causal
+assertion `contextReadyAppends: expected 0, received 1`: the test deferred the
+real final context-ready stream read, changed the mounted workspace tuple
+while it was pending, then released it. The stale context-ready append was the
+only focused failure (96 of 97 tests passed).
+
+The repair keeps mounted authority private. The local factory now retains only
+a lexical revalidation closure alongside its opaque witness. The orchestrator
+constructs the checkpoint event, performs its final ledger read, awaits that
+closure, and immediately initiates `ledger.append` with no intervening await
+or effect. A tuple replacement in that final-read window now yields zero
+context-ready append, zero approval/runner preparation checkpoint, and an old
+witness invalidated by the changed mount authority.
+
+The production recovery vertical now persists the real context-ready
+checkpoint, canonical context packs, and mounted V1 in factory runtime A;
+terminates A; resets modules; creates fresh portable runtime B through the
+production local-runtime factory; enters B's factory-owned runner registry;
+and reaches its intentional pre-provider boundary only after the private
+recovery function rereads durable state and issues a new one-use witness. It
+does not directly call `freshStore.read` as the recovery path, inject an old
+readback/hash/authority, construct a bespoke recovery orchestrator, or depend
+on a prior WeakMap. The same vertical rejects old and copied witnesses,
+changed context-pack bytes/refs before store I/O, corrupt artifact bytes,
+changed durable context bindings, and changed durable prompt-artifact refs.
+The prior direct-store restart case remains as a separate counterfactual, not
+the production recovery proof.
+
+The recovery vertical did not produce a second source RED: when moved from the
+pseudo test to the production factory/runner seam, the pre-repair forensic
+baseline already completed durable checkpoint discovery, mounted-store
+readback, and fresh witness issuance correctly. The defect was the absence of
+that causal production coverage, not a new recovery implementation failure.
+No production change was made for this coverage replacement; the first RED
+above remains the causal source repair that gated the subsequent production
+edit.
+
+Final candidate evidence from the uncommitted replacement bytes:
+
+- Exact CF-1R11/R12 focused command: 8 files, 98 tests passed.
+- Fresh standalone `npm run typecheck` passed.
+- Required negative `rg` gates for the unexported readback module and both
+  renderer fallbacks passed; exact-range `git diff --check` passed; and
+  `npm run factory:check` reported `factory-readiness passed`.
+- The temporary ignored `node_modules` symlink is removed before commit.
+- Full verification, provider/network/credential/Nous/reset-credit/`neo`,
+  merge/rebase/push, and self-integration remain excluded.

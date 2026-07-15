@@ -748,6 +748,7 @@ async function checkpointContextOrBlock(
   }
 
   let mountedPromptHash: string | undefined;
+  let revalidateMountedPromptAfterFinalLedgerRead: (() => Promise<void>) | undefined;
   try {
     // Claim identity and the normalized tick time are Task133.5 render inputs.
     // Capture them before any context resolution can suspend.
@@ -768,7 +769,13 @@ async function checkpointContextOrBlock(
       renderPrompt: async (renderInput) => {
         const rendered = await capabilities.promptRendererRegistry.render(renderInput);
         const renderedPromptHash = promptArtifactHashFrom(rendered);
-        mountedPromptHash = await capabilities.promptRendererRegistry.readback(renderInput, rendered);
+        const readback = await capabilities.promptRendererRegistry.readback(renderInput, rendered);
+        if (typeof readback === "string") {
+          mountedPromptHash = readback;
+        } else {
+          mountedPromptHash = readback.inputArtifactHash;
+          revalidateMountedPromptAfterFinalLedgerRead = readback.revalidateAfterFinalLedgerRead;
+        }
         if (!isSha256(mountedPromptHash) || mountedPromptHash !== renderedPromptHash) {
           throw new Error("Task orchestrator context-ready prompt did not have exact mounted readback authority.");
         }
@@ -779,6 +786,7 @@ async function checkpointContextOrBlock(
       claim,
       contextBindings: assembled.checkpointContextBindings,
       promptArtifactHash: mountedPromptHash,
+      revalidateMountedPromptAfterFinalLedgerRead,
       tickedAt
     });
     return true;
@@ -1237,12 +1245,13 @@ async function appendContextReadyCheckpoint(
     readonly claim: ClaimEvent;
     readonly contextBindings: readonly TaskOrchestratorContextBinding[];
     readonly promptArtifactHash?: string | undefined;
+    /** Factory-held closure, invoked after the last stream read before append. */
+    readonly revalidateMountedPromptAfterFinalLedgerRead?: (() => Promise<void>) | undefined;
     readonly tickedAt: string;
   }
 ): Promise<CheckpointEvent> {
   const { claim } = checkpoint;
   const streamId = taskOrchestrationStreamId(claim.payload.taskId, claim.payload.runType);
-  const stream = await input.ledger.readStream(streamId);
   const contextBindings = checkpoint.contextBindings.map(checkpointBindingPayload);
   const sourceEventIds = uniqueStrings(contextBindings.flatMap((binding) => binding.provenanceEventIds));
   const inputArtifactHashes = uniqueStrings([
@@ -1276,6 +1285,8 @@ async function appendContextReadyCheckpoint(
       safeNextActions: ["continue to exact provider byte-transfer approval"]
     }
   };
+  const stream = await input.ledger.readStream(streamId);
+  await checkpoint.revalidateMountedPromptAfterFinalLedgerRead?.();
   return await input.ledger.append(event, { expectedNextSequence: stream.length + 1 }) as CheckpointEvent;
 }
 
@@ -1370,7 +1381,10 @@ function contextAssemblyCapabilities(input: CreateTaskOrchestratorInput): {
   readonly contextRegistry: ContextPackRegistry;
   readonly promptRendererRegistry: {
     render(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0]): unknown | Promise<unknown>;
-    readback(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0], rendered: unknown): string | Promise<string>;
+    readback(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0], rendered: unknown):
+      | string
+      | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }
+      | Promise<string | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }>;
   };
 } | undefined {
   const workflowRegistry = input.workflowRegistry;
@@ -1401,7 +1415,10 @@ function contextAssemblyCapabilities(input: CreateTaskOrchestratorInput): {
     contextRegistry: contextRegistry as ContextPackRegistry,
     promptRendererRegistry: promptRendererRegistry as {
       render(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0]): unknown | Promise<unknown>;
-      readback(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0], rendered: unknown): string | Promise<string>;
+      readback(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0], rendered: unknown):
+        | string
+        | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }
+        | Promise<string | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }>;
     }
   };
 }
