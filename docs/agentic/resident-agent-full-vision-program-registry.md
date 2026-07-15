@@ -11194,3 +11194,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both review tasks are pinned and read-only. Two unqualified approvals of the
   exact SHA remain required before coordinator-only integration; all full/
   live/provider/credential/Nous/reset-credit/push/`neo` actions remain closed.
+
+## RV-1-E-409 — Task135D held for class-expression and ambient binding scope
+
+- Final private-lifecycle reviewer
+  `019f672f-3d06-7b72-b690-0fb05964b5ec` and final exhaustive-AST reviewer
+  `019f672f-48db-7440-ae2b-9d4272aeb72a` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `cba50ab1de0477ff9e2e85f321567f544884a889` after the complete permitted
+  gate passed.
+- The lifecycle reviewer found that named class-expression self-bindings are
+  not introduced for the class body. A class expression named `require` or
+  `module` can therefore call its own binding inside a method and be
+  misclassified as an unshadowed standard CommonJS loader.
+- The AST reviewer found the inverse error for ambient TypeScript declarations:
+  `declare const require` and `declare var module` are erased at runtime, but
+  the scanner records them as runtime lexical bindings. A computed call to the
+  real CommonJS loader can therefore evade the fail-closed target rule.
+- Candidate `cba50ab1de0477ff9e2e85f321567f544884a889` is rejected and
+  preserved. Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` is
+  authorized for one bounded forward TDD repair in the import-authority test
+  and Task135D claim only. Add causal named class-expression fixtures for both
+  loader names, scope the class self-binding only within its body, add ambient
+  `declare` fixtures for both names, and exclude erased ambient declarations
+  from runtime-shadow collection while preserving real lexical shadowing and
+  genuine unshadowed computed-loader closure.
+- The author must preserve one-shot production capture bytes, the exact
+  four-path original-base union, linear no-merge topology, and clean status;
+  rerun the focused suite, typecheck, no-index assertion, diff check, factory
+  readiness, and topology checks before two fresh reviews. The coordinator
+  explicitly approves `superpowers:subagent-driven-development` where
+  relevant, plus receiving-code-review, systematic-debugging, test-driven
+  development, and verification-before-completion.
+- Full verification, providers, network, credentials, Nous, reset credits,
+  integration, push, registry edits, and every `neo` action remain closed to
+  the author.
