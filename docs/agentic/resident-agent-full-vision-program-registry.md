@@ -11913,3 +11913,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-436 — Task136 recovery rejected for terminal documentation repair
+
+- Architecture/authority reviewer
+  `019f67a3-77b4-77a0-9c26-a67aa56c4fa8` and plan-executability/API reviewer
+  `019f67a3-77fa-78a0-8384-96774f0ac467` independently returned
+  **NEEDS-CHANGES** for exact Task136 documentation candidate
+  `e24cc2003bf0ceebe0bb421b4bcb100573c2b7eb`. Exact-range diff checking and
+  factory readiness passed; the rejection is architectural and executable-
+  contract drift rather than a formatting failure.
+- CF1-HR's proposed readback is incompatible with the strict V2 handoff ABI,
+  references a non-exported authority type, drops required Task136 inputs, and
+  accepts caller-copy authority rather than a W-issued opaque mounted
+  capability revalidated across awaits. The reservation preflight does not
+  prove exact reviewed integration and currently points at a Task133.5 claim
+  that is not integrated.
+- The dependency graph ambiguously reuses Task123 for the shared four-path
+  prerequisite and the later ontology-bootstrap handoff. G136-R lacks
+  authoritative sources for side-effect, approval, and preview facts, while
+  Task139-P2 names an undefined configuration source and cannot construct the
+  canonical Task126 prompt-artifact and approval-preview bindings.
+- Recovery owner `019f6794-6c7e-7e83-82de-87759c01989b` is authorized for one
+  bounded same-two-path documentation correction. Source implementation and
+  `superpowers:subagent-driven-development` are not relevant or authorized.
+  The replacement must use qualified acyclic node IDs, machine-verifiable
+  reviewed-integration facts, current/approved single-owner ABIs, and opaque
+  mounted authority with no caller-copy or fallback.
+- Exact candidate `e24cc2003bf0ceebe0bb421b4bcb100573c2b7eb` must not be
+  integrated. Any replacement requires fresh coordinator admission and two
+  new independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
