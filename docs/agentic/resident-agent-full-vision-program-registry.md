@@ -6892,3 +6892,23 @@ explicit implementation authorization.
   fail-fast non-full gate and fresh independent review are complete. Full
   verification, provider/network/credential/Nous action, `neo`, and child
   self-integration remain **CLOSED**.
+
+## RV-1-E-204 — Task119 candidate evidence and full-lineage review correction
+
+- Task119 bounded repair candidate
+  `e1afd3fc3c68ae543a4d08dbfb8d690e9b0fa9ce` preserves all prior candidates
+  forward and adds the causal RED for `plan_001 -> plan_002 -> plan_001` plus
+  replay-wide plan-ID rejection. Its author recorded a true RED and an exact
+  non-full `&&` GREEN; the coordinator independently reran
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`, which exited 0 with 134 tests, typecheck, whitespace, and factory readiness. The
+  temporary lockfile-compatible dependency link was removed afterward. Full
+  verification remains closed.
+- Fresh Terra/xhigh reviewer
+  `019f63ad-9861-71f0-a8ea-d292b01acf95` returned **APPROVED**, with no
+  defects, missing tests, or spec drift, after its independent complete-range
+  source inspection. Its generated review package began at `5bf4c289` while
+  the actual program merge base is `fae25d1d`; that package-base fact is
+  preserved for audit, but the authenticated watchdog confirms the review
+  thread's complete-range verdict and authorizes coordinator-only no-ff
+  integration. `e1afd3fc` is therefore eligible only for that integration and
+  the required exact post-merge non-full gate; no full verifier is opened.
