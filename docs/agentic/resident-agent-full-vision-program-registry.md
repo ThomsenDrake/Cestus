@@ -10269,3 +10269,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both unqualified approvals are required before a coordinator-controlled
   detached merge preview. Full verification, integration, reset credits, push,
   and every `neo` action remain closed.
+
+## RV-1-E-359 — Task135D type-only import repair admitted
+
+- Forward candidate `f121af369d2281b515fda07bb15ae4948404062b`
+  preserves rejected predecessor `dc0d01f76d8a0c4073033b86e27157a205ef5209`
+  and changes only the authorized import-scanner test and append-only claim on
+  the recovery branch. Its original-base union remains exactly the four
+  Task135D paths with no merge commits and a clean worktree.
+- Coordinator reproduction from the committed candidate passed all 20 focused
+  tests, typecheck, no-index, original-base diff checking, factory readiness,
+  exact scope, topology, and clean-state checks.
+- Two fresh read-only reviews are required: private capture identity/lifecycle
+  safety and complete production import-ownership enforcement, including all
+  legal type-only namespace and re-export forms. Both unqualified approvals are
+  required before any merge preview.
+- Full verification, live/provider/network/credential actions, reset credits,
+  integration, push, and every `neo` action remain closed.
