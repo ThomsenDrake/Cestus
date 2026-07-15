@@ -137,6 +137,13 @@ interface RegisteredPrrContextPackIdentity {
   readonly registrationIdentity: string;
 }
 
+export interface PrrContextPackRegistrarEvidence {
+  readonly descriptorHash: string;
+  readonly parserIdentity: string;
+  readonly producerIdentity: "packages/agent/src/prr-context-packs";
+  readonly registrationIdentity: string;
+}
+
 const prrContextPackRegistrations = new WeakMap<ContextPackRegistry, Map<string, RegisteredPrrContextPackIdentity>>();
 const parserIdentityProperty = "cestusContextPackParserId";
 const prrReadModelContextPackId = "prr-read-model.v1";
@@ -300,6 +307,30 @@ export function registerPrrContextPackBuilders(input: RegisterPrrContextPackBuil
     input.jurisdictionPackSummary,
     jurisdictionPackSummaryContextPackId
   );
+}
+
+/**
+ * Returns only the immutable identity facts that this package actually
+ * recorded for this registry. It is deliberately not a registrar or minting
+ * API: manually populated and foreign registries have no private WeakMap
+ * record and therefore return undefined.
+ */
+export function lookupPrrContextPackRegistrarEvidence(
+  registry: ContextPackRegistry,
+  contextPackId: string
+): PrrContextPackRegistrarEvidence | undefined {
+  const registration = prrContextPackRegistrations.get(registry)?.get(`${contextPackId}@1`);
+  const descriptor = registry.getDescriptor(contextPackId);
+  if (registration === undefined || descriptor === undefined ||
+    canonicalDescriptorHash(descriptor) !== registration.descriptorHash) {
+    return undefined;
+  }
+  return Object.freeze({
+    descriptorHash: hashAgentContextPack(descriptor),
+    parserIdentity: registration.parserId,
+    producerIdentity: "packages/agent/src/prr-context-packs" as const,
+    registrationIdentity: registration.registrationIdentity
+  });
 }
 
 function registerPrrContextPackBuilder(
