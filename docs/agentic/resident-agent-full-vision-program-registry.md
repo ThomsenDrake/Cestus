@@ -10255,3 +10255,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   are required before any merge preview.
 - Full verification, live/provider/network/credential actions, reset credits,
   integration, push, and every `neo` action remain closed.
+
+## RV-1-E-358 — Task133 replacement reviews dispatched
+
+- Schema/binder/approval-safety reviewer
+  `019f66b4-5ce6-73d2-82cb-fd441639eab4` and durable event/projection/rebuild
+  reviewer `019f66b4-5e68-7c22-b7a2-34e75b55d993` started from exact detached
+  candidate `b3bec172205b39880e46b3e820b3f518ab990f1f` using Terra at xhigh.
+- Review worktree dependency and secret-local environment symlinks were restored
+  after creation. Those symlinks authorize no provider or credential action;
+  both reviews remain read-only and limited to the focused/typecheck/static/
+  diff/factory/topology gates.
+- Both unqualified approvals are required before a coordinator-controlled
+  detached merge preview. Full verification, integration, reset credits, push,
+  and every `neo` action remain closed.
