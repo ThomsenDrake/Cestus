@@ -12471,3 +12471,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, source implementation, live/provider/network/credential/
   Nous activity, reset credits, push, child self-integration, program merge
   without coordinator review, and every `neo` action remain closed.
+
+## RV-1-E-455 — Task136 Recovery-5 documentation owner dispatched
+
+- Fresh Terra/xhigh documentation owner
+  `019f67f0-8822-73d0-b6e1-25f5389acc19`, worktree
+  `/home/drake/.codex/worktrees/d69b/Cestus`, starts from rejected candidate
+  `14f2799a9ab1d7c633eacc8eb16c5eab9d77d2fa` and must create
+  `codex/task-136-interface-reconciliation-recovery-4`.
+- Ownership remains limited to the bounded-loop plan, provider-credentials
+  plan, and Task136 claim. Documentation review/repair does not authorize
+  subagent-driven development or source implementation.
+- Recovery must mechanically close release-record immutability and dependency
+  ancestry, eliminate the FC/P2 cycle, make scheduler completion independently
+  dispatchable, define every private registrar/readback/claim ABI, uniquely
+  bind provider lineage, close reader-mint imports, resolve path overlap, and
+  make all historical competing contracts non-dispatchable.
+- Any replacement requires fresh coordinator admission and two new independent
+  exact-SHA reviews before integration or Task139 resume.
+- Full verification, source implementation, live/provider/network/credential/
+  Nous activity, reset credits, push, child self-integration, program merge
+  without coordinator review, and every `neo` action remain closed.
