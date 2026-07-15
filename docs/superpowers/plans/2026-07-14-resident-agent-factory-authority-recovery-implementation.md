@@ -2815,3 +2815,291 @@ coordinator message specifically approving
 `superpowers:subagent-driven-development`. Full verification,
 provider/network/credential/Nous activity, reset credits, `neo`, self-review,
 self-integration, and merge remain closed.
+
+## CF-1R8 Task140H Executable RED/GREEN Sequence
+
+**Status:** This section preserves CF-1R6 lifecycle and CF-1R7 architecture but
+supersedes their prose-only Task140H implementation instructions. It is the
+sole executable Task140H sequence. Task140H remains one serialized source lane.
+H.1 and H.2 are separate RED/GREEN cycles inside one atomic ABI-migration
+commit because removing the public fields makes the existing kernel and smoke
+callers uncompilable until H.2 migrates them. H.3 is a second independently
+reviewed recovery commit; H.4 is the final integrated non-live gate.
+The coordinator's dispatch message for every increment must specifically
+approve use of `superpowers:subagent-driven-development`; generic plan approval
+does not open source work.
+
+### Task140H preflight and frozen interfaces
+
+Start from a fresh worktree at the coordinator-integrated plan head. Do not
+reuse, commit, rebase, or copy the dirty interrupted Task133.1 worktree. Read
+the current Task133/Task140P/Task140R0 claims and verify their prerequisite
+commits are ancestors. Before RED, record exact source ownership and confirm
+that no other lane owns a Task140H file.
+
+The internal module interface is frozen as follows; it is imported only by
+explicit source-module path and is absent from `packages/agent/src/index.ts`:
+
+```ts
+export interface ProductionModelInvocationBridge {
+  invoke(input: {
+    readonly command: InvokeAgentModelInput;
+    readonly consumedAdmission: ConsumedPromptAdmission;
+  }): Promise<AgentRuntimeResult<InvokeAgentModelResult>>;
+}
+
+export function createProductionModelInvocationBridge(input: {
+  readonly invokeAdmittedCommand: (
+    command: InvokeAgentModelInput
+  ) => Promise<AgentRuntimeResult<InvokeAgentModelResult>>;
+}): ProductionModelInvocationBridge;
+
+// Package-internal runtime consumer functions; never index-exported.
+export interface InternalHiddenProductionInvocation {
+  readonly command: InvokeAgentModelInput;
+  readonly promptArtifact: PromptArtifactEnvelope;
+  readonly proof: ProductionSpecialistInvocationProof;
+  readonly bindingHash: `sha256:${string}`;
+}
+
+export function lookupHiddenProductionInvocation(
+  command: InvokeAgentModelInput
+): InternalHiddenProductionInvocation | undefined;
+export function claimHiddenProductionInvocation(
+  command: InvokeAgentModelInput,
+  expected: InternalHiddenProductionInvocation
+): InternalHiddenProductionInvocation | undefined;
+```
+
+`InternalHiddenProductionInvocation` is exported only from this explicit
+internal source module and is absent from the package index. Its fields are not
+authority: only exact WeakMap membership and exact lookup-return identity can
+be claimed, so a structural copy cannot authorize invocation. The bridge
+uses the H-owned private consumed-admission accessor and sole proof minter. The
+factory supplies a deferred lexical `invokeAdmittedCommand` closure because
+the runner registry is composed before `createAgentRuntime` returns: the
+closure rejects `blocked.production-model-runtime-not-ready` until the exact
+runtime object is assigned, then delegates only its identity-bound command to
+that runtime. No public runtime object is installed directly as the specialist
+invoker.
+
+At `createAgentRuntime` construction, derive and freeze a set of local-engine
+provider IDs from the already supplied provider descriptors. Invocation uses
+that captured set synchronously, without provider-registry lookup, to preserve
+the existing unadmitted data-only local-engine branch. Every provider ID not in
+that set requires private identity membership before the first await; therefore
+an unadmitted public remote command rejects before ledger or provider lookup.
+
+### Task140H.1 — Data-only runtime command and identity admission
+
+**Files**
+
+- Modify `packages/agent/src/runtime.ts`
+- Modify `packages/agent/src/production-specialist-invocation-proof.ts`
+- Create `packages/agent/src/production-model-invocation-admission.ts`
+- Modify `packages/agent/test/runtime.test.ts`
+- Create `packages/agent/test/production-specialist-invocation-proof.test.ts`
+- Create `packages/agent/test/production-model-invocation-admission.test.ts`
+- Read only `packages/agent/src/index.ts`
+
+- [ ] **Step 1: write the causal REDs.** Add tests with these exact titles:
+  `rejects legacy prompt and proof keys before any runtime effect`,
+  `rejects an unadmitted public remote command before any runtime effect`,
+  `permits one data-only unadmitted local-engine command`,
+  `admits one exact factory command identity and rejects its spread copy`,
+  `validates hidden v2 before claiming mapping or consuming proof`,
+  `freezes the exact command before its first await`, and
+  `rejects a second use of the admitted command`. Legacy-key, unadmitted-remote,
+  copied-command, and reused-command rejection snapshots require ledger read/
+  append, provider lookup/invoke, artifact read/write, H, handoff, and terminal
+  counters all to remain zero. An admitted command whose current durable facts
+  invalidate v2 may read ledger/artifact evidence, but must perform zero ledger
+  append, provider invocation, artifact write, H, handoff, or terminal effect;
+  lookup must still return the same unclaimed mapping afterward.
+  The valid control requires exactly one request append, one provider call,
+  one completion append, and one output-artifact write.
+
+- [ ] **Step 2: run the exact RED command.**
+
+```bash
+npm test -- packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/runtime.test.ts
+```
+
+Expected: exit `1`. The new module/test may first fail import resolution; after
+adding only the frozen signatures with bodies that throw
+`blocked.production-model-invocation-admission-required`, rerun the same
+command. It must still exit `1` because the exact valid control cannot invoke,
+while current `runtime.invokeModel` still accepts the legacy carrier or reads
+the ledger before rejecting an unadmitted public command. A syntax, fixture,
+or unrelated test failure is not an accepted RED. If the behavioral REDs pass
+before production changes, stop for a contract conflict.
+
+- [ ] **Step 3: implement the minimum authority boundary.** Remove
+  `promptArtifact` and `productionInvocationProof` from
+  `InvokeAgentModelInput`; add strict same-object own-data validation/freeze;
+  capture the package-supplied local-engine provider-ID set at runtime creation;
+  add the private WeakMap bridge; move proof minting behind exact
+  `ConsumedPromptAdmission`; and make production remote runtime lookup hidden
+  identity before its first await, revalidate v2 and exact facts, atomically
+  claim the mapping, consume proof, then append the request. Do not modify
+  `index.ts`, add a public builder, or add provider/network code.
+
+- [ ] **Step 4: rerun the identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/runtime.test.ts
+```
+
+Expected: exit `0`; all named tests pass. Then run
+`! rg -n 'production-model-invocation-admission' packages/agent/src/index.ts && git diff --check`.
+Do not typecheck or commit yet: the deliberately removed public fields require
+the H.2 kernel, factory, workflow, and smoke caller migration in the same atomic
+ABI change.
+
+### Task140H.2 — Factory-held proxy and data-only specialist kernel
+
+**Files**
+
+- Modify `packages/agent/src/specialist-runner-kernel.ts`
+- Modify `packages/agent/test/specialist-runner-kernel.test.ts`
+- Modify `packages/local-runtime/src/agent-runtime-factory.ts`
+- Modify `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify `packages/agent/test/evidence-triage-workflow.test.ts`
+- Modify `packages/agent/test/prr-negotiation-workflow.test.ts`
+- Modify `packages/agent/test/investigation-planner-workflow.test.ts`
+- Modify `packages/local-runtime/src/agent-nous-smoke.ts`
+- Modify `packages/local-runtime/test/agent-nous-smoke.test.ts`
+- Modify signature only `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts`
+
+- [ ] **Step 1: write the causal REDs.** Add exact-title tests:
+  `kernel sends only the data-only invocation command`,
+  `factory bridge consumes the exact admitted token once`,
+  `factory refuses invocation before runtime assignment`,
+  `production composition never injects the public runtime as model invoker`,
+  and one `direct public runtime invocation remains blocked` control in each
+  specialist workflow. Also add `smoke invokes only through the resident
+  orchestrator H path`, `smoke report exposes no prompt proof token or
+  admission`, and `blocked resident execution performs no provider call`.
+  The kernel spy must reject any own key named
+  `promptArtifact`, `productionInvocationProof`, `prompt`, `text`, `token`, or
+  `admission`. Factory tests require zero provider/ledger/H effects for copied,
+  missing, swapped, or reused admission.
+
+- [ ] **Step 2: run the exact RED command.**
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts
+```
+
+Expected: exit `1` with the named data-only/factory controls failing because
+the current kernel mints and forwards proof plus prompt bytes and the current
+factory has no private admitted bridge; the smoke spy also reports the current
+direct `runtime.invokeModel({ promptArtifact })` call. Unrelated fixture or type
+failures are not accepted RED evidence.
+
+- [ ] **Step 3: implement the minimum proxy composition.** Remove the kernel
+  mint/import and prompt-bearing runtime call. Compose one package-internal
+  bridge in `agent-runtime-factory.ts`; use a fail-closed deferred runtime
+  closure; pass exact consumed admission only through the lexical production
+  runner; and give the kernel only a `SpecialistRunnerModelInvoker` that accepts
+  the data-only command. Replace the smoke's direct runtime invocation with one
+  thin resident orchestrator/H vertical call and return only IDs, hashes,
+  context-pack IDs, omission count, and secret-safe diagnostics. Update the
+  live test only enough to compile; do not execute it. Test fakes remain
+  isolated and cannot register hidden identity with a real runtime.
+
+- [ ] **Step 4: rerun the identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts
+```
+
+Expected: exit `0`, followed by
+`npm run typecheck && ! rg -n 'production-model-invocation-admission' packages/agent/src/index.ts && git diff --check && npm run factory:check`.
+Commit the combined H.1/H.2 listed files and claim amendment as one atomic ABI
+migration, then obtain fresh review before H.3.
+
+### Task140H.3 — Crash recovery and no-duplicate provider/H effects
+
+**Files**
+
+- Modify `packages/agent/src/task-orchestrator-handoff-port.ts`
+- Modify `packages/agent/src/task-orchestrator.ts`
+- Modify `packages/agent/src/runtime-types.ts`
+- Modify `packages/agent/test/task-orchestrator-handoff-port.test.ts`
+- Modify `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Modify `packages/agent/test/task-orchestrator-recovery.test.ts`
+- Modify `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+- Modify `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+
+- [ ] **Step 1: write the causal REDs.** Add exact-title tests:
+  `recovers before request with a fresh token and the same invocation id`,
+  `requested-only records one nonretryable unknown-outcome failure without replay`,
+  `failed invocation never replays without a new approved retry generation`,
+  `completed invocation resumes only from durable handoff readback`,
+  `terminal orchestration never remints or reinvokes`, and
+  `copied consumed admission cannot cross the handoff port`. Each test records
+  exact event IDs and asserts provider, H, handoff-write, and terminal counters;
+  requested-only may append/read exactly one causally linked orchestration
+  failure and must perform zero provider/H calls on every restart.
+
+- [ ] **Step 2: run the exact RED command.**
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts
+```
+
+Expected: exit `1`; specifically, the existing unconditional
+`runner-dispatching` return strands pre-request work or the requested-only case
+lacks the one nonretryable unknown-outcome event. A pass, unrelated failure, or
+provider call is a stop condition.
+
+- [ ] **Step 3: implement the CF-1R6 state matrix.** Consume exact admission in
+  the port, read the deterministic invocation stream, branch on no-request /
+  requested-only / failed / completed / terminal, append or read one causal
+  failure for unknown provider outcome, and resume completion only from exact
+  durable derivative/handoff readback. Never infer provider outcome and never
+  replay provider or H effects automatically.
+
+- [ ] **Step 4: rerun the identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts
+```
+
+Expected: exit `0`, followed by
+`npm run typecheck && git diff --check && npm run factory:check`. Commit only
+the listed files and claim amendment, then obtain fresh review.
+
+### Task140H.4 — Integrated non-live gate
+
+**Files**
+
+- Read only every H.1-H.3 source and test file
+- Modify only the final Task140H claim with exact commit and gate evidence
+
+- [ ] **Step 1: rerun the already-green smoke control.**
+
+```bash
+npm test -- packages/local-runtime/test/agent-nous-smoke.test.ts
+```
+
+Expected: exit `0` with the three H.2 smoke controls. Then run the complete
+CF-1R7 Task140H non-live command
+exactly as written above. It must exit `0` without selecting
+`task-orchestrator-evidence-triage-live.test.ts` or contacting a provider.
+Commit only the final claim amendment, then obtain fresh
+Task140H code and spec review. Full `npm run verify` and the real Nous gate
+remain reserved for their later coordinator-owned acceptance phase.
+
+### CF-1R8 review gate
+
+Fresh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD` and must verify every RED
+command can fail causally on canonical source, every GREEN command is identical
+to its RED command, H.1/H.2 form one explicitly atomic ABI commit, later file
+ownership and commit/review boundaries are complete, the final H command
+aggregates every new suite, and no live/provider activity is selected. Two
+unqualified independent Terra/xhigh approvals are
+required before coordinator-only plan integration. Rejection authorizes only
+another append-only documentation correction; it never authorizes source.

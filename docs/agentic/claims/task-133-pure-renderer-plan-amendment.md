@@ -292,3 +292,34 @@ serialized task.
   remain closed. Exact review range remains
   `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; two fresh unqualified
   Terra/xhigh approvals are required before coordinator integration.
+
+## Forward Correction — Executable Task140H RED/GREEN Sequence
+
+- Status remains **plan-repair candidate only**. Persistence/lifecycle reviewer
+  `019f64db-cac6-7b70-8c0d-a34b16e7b642` rejected `d9d91559` because CF-1R7
+  specified desired cases and a final gate but not exact failing commands,
+  causal failure evidence, implementation steps, and identical GREEN reruns.
+  The authority reviewer ended on capacity and supplied no verdict.
+- CF-1R8 preserves the private data-only architecture and serializes Task140H
+  into an atomic H.1/H.2 ABI migration, an independently reviewed
+  crash/no-replay H.3 commit, and the H.4 integrated gate. H.1/H.2 must share a
+  commit because deleting the public fields makes the existing kernel and
+  smoke callers uncompilable until their migration. Each phase names complete files,
+  exact test titles, zero-effect counters, an exact RED command and expected
+  failure, minimum implementation order, the identical GREEN command, and its
+  typecheck/diff/factory gate.
+- The frozen package-internal bridge interface and deferred factory-runtime
+  closure make the non-index-exported boundary compilable without installing a
+  public runtime object as the specialist invoker. Runtime validates and
+  freezes the exact mapped object before its first await, then validates v2
+  before atomically claiming mapping and proof.
+- Every Task140H source increment requires a coordinator message specifically
+  approving `superpowers:subagent-driven-development`, a fresh worktree, one
+  commit, and fresh review. The final integrated non-live command includes all
+  private-admission, proof, runtime, kernel, workflow, recovery, composition,
+  route, and smoke suites while excluding the live Nous test.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exact review range remains
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; two fresh unqualified
+  Terra/xhigh approvals are required before coordinator integration.
