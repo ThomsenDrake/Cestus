@@ -8066,3 +8066,23 @@ explicit implementation authorization.
 - Latest authenticated app-server event reports `usedPercent=31`, therefore
   69% weekly remaining; reset credits remain untouched. DRAIN stays at
   <=10% remaining and HARD PAUSE at <=7%.
+
+## RV-1-E-254 — Task133 exact-render-data-bridge repair candidate
+
+- The sole authorized documentation author
+  `019f643c-5584-7b72-bcb2-39deb302d85a` preserved all prior plan history and
+  committed forward repair candidate
+  `ceb255dd9c21fd967ee112acd7a95378b3a739d2` in the existing Task133 plan
+  worktree. Its true review/integration range is
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ceb255dd9c21fd967ee112acd7a95378b3a739d2`:
+  six documentation commits, changing only the recovery plan and its
+  amendment claim.
+- Coordinator inspection confirmed the range includes both P1 repair targets:
+  an exact private data bridge that lets the allowed Task140R0 composition
+  consume the already-captured orchestration facts without public authority,
+  and a non-contradictory table-driven RED requirement for every persisted v2
+  derived hash plus a lookalike. `git diff --check` and `npm run factory:check`
+  exited `0` on the candidate. Task133 source remains frozen pending a fresh,
+  independent Terra/xhigh defects-first review of this full six-commit range;
+  no source claim, branch, provider, factory, H, store, terminal, full verify,
+  neo, or self-integration action is authorized.
