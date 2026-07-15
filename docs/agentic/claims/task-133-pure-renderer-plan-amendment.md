@@ -13,7 +13,9 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R11 owns nested
+read backward only for sections it explicitly preserves. CF-1R12 owns fresh
+witness reissuance, all live fixture migration, and complete aggregate gates;
+CF-1R11 owns nested
 approval/readback authority, production-local admission, and resident live
 acceptance; CF-1R10 owns the
 Task133.5 fallback removal and complete Task140P/R0 execution; CF-1R9 owns the
@@ -394,3 +396,26 @@ serialized task.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed.
+
+## Forward Correction — Fresh Witness And Final Aggregate Gates
+
+- Status remains **plan-repair candidate only**. Reviewers
+  `019f6523-58d5-77e0-8a98-2ade6041e99d` and
+  `019f6523-5444-76e1-ac79-b0efac9882f8` rejected `db701238`: one live
+  orchestrator fixture remained direct, fresh-runtime witness reissuance was
+  implicit, and the final Task133/H aggregate commands omitted new suites.
+- CF-1R12 makes restart explicit: a fresh process remounts, reads the durable
+  context-ready hash, rereads and verifies v1, then mints a new current-process
+  witness; old identity is never restored. Its causal test proves the new
+  witness consumes once and old/copied identity fails.
+- All three live Nous fixtures use the portable resident acceptance harness and
+  remain excluded from non-live gates. Their later live command is frozen but
+  remains coordinator-closed.
+- CF-1R12 replaces every prior integrated Task133 and H.4 command with complete
+  aggregate gates containing the mounted-readback and resident-acceptance
+  suites plus non-export/direct-bypass assertions.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh unqualified Terra/xhigh approvals of
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required before
+  coordinator-only integration.
