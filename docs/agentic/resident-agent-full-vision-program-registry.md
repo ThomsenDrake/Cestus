@@ -7525,3 +7525,49 @@ explicit implementation authorization.
   Task133 remains separately gated by its plan-review repair.
 - Full verification, provider/network/credential/Nous action, reset-credit
   use, `neo`, and child self-integration remain **CLOSED**.
+
+## RV-1-E-235 — Task135A isolated authorization and prerequisite baseline
+
+- CF-1R5 Task135A mounted-preparation-store lane is authorized independently
+  of the unresolved Task133 pure-renderer plan review. Its frozen prerequisite
+  ancestry is present on the program branch: CF-1 `48c9cbcd`, Task121
+  `1a92a2c2`, Task122 `9839fbf8`, Task123 `87f5d940`, Task125
+  `2e5c35ab`, and reviewed/coordinator-integrated Task134A merge
+  `83a301d5`.
+- The coordinator reran the exact prerequisite non-full fail-fast gate on the
+  program branch before dispatch:
+  `npm test -- packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It exited 0: 2 focused files / 38 tests, typecheck, whitespace, and factory
+  readiness all passed.
+- Fresh isolated author `/root/task135a_mounted_preparation_stores`, session
+  `019f6427-346f-71d3-bd35-a88290a20a9a`, owns only
+  `/home/drake/.codex/worktrees/task-135a-mounted-preparation-stores` on
+  `codex/task-135a-mounted-preparation-stores`, based exactly on
+  `7fd10a7fcc08eb8ed315484cfcd1a08edeac2334`. Its own authoritative
+  `turn_context` records Terra/xhigh. The standing authorization explicitly
+  includes `superpowers:subagent-driven-development`, TDD, systematic
+  debugging, and verification-before-completion; it forbids self-integration.
+  The lane remains preparation-only: no H, factory registration, provider,
+  durable/terminal completion, public capability/mint route, or default
+  fallback. It requires causal RED evidence, the task-specific exact non-full
+  `&&` gate, a clean candidate, coordinator rerun, and a fresh independent
+  complete-range review before any coordinator-only merge.
+- Full verification, provider/network/credential/Nous action, reset-credit
+  use, `neo`, and child self-integration remain **CLOSED**.
+
+## RV-1-E-236 — Task133 pure-renderer amendment review returned NEEDS-CHANGES
+
+- Fresh independent Terra/xhigh reviewer
+  `/root/task133_pure_renderer_plan_review`, session
+  `019f6423-47f3-7310-824a-27fb91b9ac67`, reviewed exact amendment range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..38c2456f1f935aca291d24447c31b6a1d0728fd1`
+  and returned **NEEDS-CHANGES**. The amendment remains unintegrated history;
+  Task133 implementation stays blocked.
+- The findings require coordinator source verification and forward repair of
+  the canonical pure-input schema and `templateData` boundary, non-circular
+  provider-posture and input-hash validation, a single source-compatible
+  canonical renderer/builder flow, an exact testable Task140R0 private
+  composition seam with no second renderer or public authority, and an
+  explicit Task133 rebase/prerequisite gate. No finding authorizes reopening a
+  structural verifier callback, public mint route, provider action, or full
+  verifier.
