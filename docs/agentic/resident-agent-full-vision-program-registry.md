@@ -10884,3 +10884,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both reviewers are read-only and pinned at exact candidate
   `1a132365a075fd7893f5b026e0609729f97961f8`. Two unqualified approvals are
   required before coordinator-only integration.
+
+## RV-1-E-398 — Task133 held for receipt identity transplant
+
+- Prompt-authority/security reviewer
+  `019f66fc-5090-7a40-b61e-be75c9939891` and durable-replay/factory reviewer
+  `019f66fc-4e27-7cc3-9773-90eefb4ae845` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `11cadcf59829e1cb7b709adbcb48e5b567523828`.
+- Both reviewers found the same P1 boundary defect: the prompt-binding receipt
+  hash omits `taskId`, `attemptId`, and `runId`; canonical validation does not
+  compare those identities with the enclosing prompt-bound checkpoint; and
+  projection stamps the checkpoint identity onto any otherwise hash-valid
+  receipt. A receipt from one task, attempt, or run can therefore be
+  transplanted and projected as another.
+- Candidate `11cadcf59829e1cb7b709adbcb48e5b567523828` is rejected and
+  preserved. The existing author `019f6660-2912-7622-a99a-0def4e19e051` is
+  authorized for one bounded forward TDD repair within the fixed 28-path
+  Task133 union. The receipt material/schema/hash must include immutable
+  `taskId`, `attemptId`, and required `runId`; canonical validation and
+  projection must require exact equality with the prompt-bound checkpoint.
+- Causal RED/GREEN coverage must swap task, attempt, and run identities across
+  canonical ontology events, projection, and real ledger rebuild, proving no
+  transplanted receipt projects. The author must amend the sole atomic commit,
+  update the Task133.3 claim, and rerun all three focused Task133 suites plus
+  the complete permitted final gate before two fresh reviews.
+- The coordinator explicitly approves
+  `superpowers:subagent-driven-development` where relevant, plus
+  receiving-code-review, systematic-debugging, test-driven development, and
+  verification-before-completion. Because this is a narrow causal repair, no
+  additional implementation subagent is required.
+- Full verification, providers, network, credentials, Nous, reset credits,
+  merge, rebase, push, registry edits, and every `neo` action remain closed to
+  the author.
