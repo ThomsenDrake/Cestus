@@ -6912,3 +6912,22 @@ explicit implementation authorization.
   thread's complete-range verdict and authorizes coordinator-only no-ff
   integration. `e1afd3fc` is therefore eligible only for that integration and
   the required exact post-merge non-full gate; no full verifier is opened.
+
+## RV-1-E-205 — Task119 review-lineage correction
+
+- RV-1-E-204's treatment of reviewer
+  `019f63ad-9861-71f0-a8ea-d292b01acf95` as an integration authorization is
+  corrected forward. The generated review package covered
+  `5bf4c289..e1afd3fc`, but the actual program merge base is
+  `fae25d1d`; the unreviewed prefix includes `544d95c9` and `5bf4c289`.
+  The watchdog's prior relay did not independently waive that gap. Preserve
+  the subrange approval as historical evidence only; it is insufficient for
+  integration.
+- No Task119 merge began or committed. Candidate
+  `e1afd3fc3c68ae543a4d08dbfb8d690e9b0fa9ce` remains **NOT integrated-ready**
+  pending a fresh, read-only Terra/xhigh complete-lineage review of exact range
+  `fae25d1da52a1d6daa337a41d16cc712c77cf462..e1afd3fc3c68ae543a4d08dbfb8d690e9b0fa9ce`.
+  Coordinator-only no-ff integration and the exact post-merge non-full gate
+  are authorized only after that new reviewer returns APPROVED. Full verify,
+  `neo`, provider/network/credential/Nous action, reset-credit use, and child
+  self-integration remain **CLOSED**.
