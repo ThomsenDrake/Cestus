@@ -7116,3 +7116,318 @@ CF-1R25 contract remain unchanged. Exactly two fresh independent Terra/xhigh
 approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` permit coordinator-
 only plan integration. Source, full/live/provider/credential/Nous/reset-credit/
 `neo`/self-integration/merge remain closed.
+
+## CF-1R27 — Task133 authority-source split and durable receipt retention
+
+**Status:** This is the terminal, append-only correction for the Task133
+authority-source conflict recorded in RV-1-E-361 and RV-1-E-365. It supersedes
+only Task133.2's claim that its 28-path migration can accept a V2
+provider-transfer control, Task133.3's latest-checkpoint-only receipt
+projection, and the Task140P/R0 wording that leaves complete current authority
+implicit. It preserves strict discriminated V1/V2 schemas, the byte-preserving
+post-approval binder, owner-derived hashes, durable event/ontology/projection/
+rebuild migration, the one atomic Task133.1-.3 commit, and every closed
+activity in CF-1R26.
+
+Task133 has no independent source for the complete consume-time tuple. In
+particular, its six source/test paths cannot independently read the current
+attempt ID, approved-run ID, workspace ID, mount instance ID, workflow and
+policy, provider capability IDs, selection-policy version, or canonical
+readiness. `TaskOrchestratorProviderApprovalProof`, `exactRun`, a current-preview
+input, a structural factory tuple, and any pair of mutually consistent caller
+objects are evidence to validate or reject; none is authority. Accepting one
+would recreate RV-1-E-361's stale/swapped control.
+
+### Fixed ownership and first valid V2 path
+
+The authoritative lifecycle is now:
+
+```text
+Task133.1: canonical V1 render and pure byte-preserving V1 -> V2 binder
+  -> Task133.2: pure V1/V2 invariant check or explicit blocked result
+  -> Task133.3: hash-only prompt-bound receipt schema, projection, and rebuild
+  -> Task140P: opaque private admission from current orchestrator readbacks
+  -> Task140R0: factory-private independent authority resolution and V2 bind/readback
+  -> Task140P: sole receipt append/readback and private admission marking
+  -> Task140H: sole consumed-admission/provider/H sequence
+```
+
+Task133.2 is never a valid V2 provider-transfer path. Its only positive
+control is a structurally valid V1/V2 pair that returns the deterministic
+blocked result below, without an authorization claim. The combined Task140P
+plus registered Task140R0 resolver is the first valid V2 transfer-admission
+path; Task140P alone remains blocked because no factory resolver is registered.
+Task140H remains the only later provider/H effect owner. No phase rerenders
+text, rebuilds a renderer registration, mints an approval, derives a receipt
+hash outside its owner, or treats a projection as authority.
+
+```ts
+export interface Task133V2TransferAuthorityBlocked {
+  readonly schemaVersion: "agent-task133-v2-transfer-boundary.v1";
+  readonly status: "blocked";
+  readonly code: "authority-resolution-required";
+  readonly boundPromptArtifactHash: `sha256:${string}`;
+  readonly sourceApprovedPromptArtifactHash: `sha256:${string}`;
+}
+
+export function assertApprovedV1ToV2ArtifactInvariants(input: {
+  readonly approvedV1: PromptArtifactEnvelope;
+  readonly candidateV2: PromptArtifactEnvelope;
+}): void;
+
+export function blockV2ProviderTransferUntilFactoryAuthority(input: {
+  readonly approvedV1: PromptArtifactEnvelope;
+  readonly candidateV2: PromptArtifactEnvelope;
+}): Task133V2TransferAuthorityBlocked;
+```
+
+Both functions are pure. The first may parse, normalize, and recompute the
+schema discriminator, source-V1 hash, byte-identical text, context/audit
+identity, and owner-derived hashes. The second calls that invariant check and
+returns the frozen blocked result. Neither takes a proof, exact-run tuple,
+provider posture, readiness object, callback, resolver, factory capability,
+or persisted hash override. Neither reads a ledger, emits a log, calls a
+provider, or constructs an admission. The existing direct V2 branch in
+`assertSelectedSpecialistProviderByteTransferApproval` and the
+provider-byte-transfer adapter must use this boundary and fail closed. It must
+not add a compatibility exception for local engines, provider IDs, tests, or
+preexisting prepared runs.
+
+### Complete authority is Task140P/R0-private
+
+Task140P creates an opaque identity-only `Task140PProviderTransferAdmission`
+only after its own current claim/context-ready/approval inspection readbacks.
+It stores the matching private readback under object identity. It serializes no
+proof, exact-run value, prompt bytes, authority tuple, or resolver. Its direct
+caller cannot select a provider, fill a missing field, supply a replacement
+proof, or consume an admission twice.
+
+The one registered Task140R0 resolver consumes that exact identity once and
+independently rereads the complete authority from factory-held sources before
+calling the Task133 pure artifact check and canonical binder. The comparison
+is against the following sources, never a caller tuple:
+
+| Required fact | P/R0 authoritative source and recheck |
+| --- | --- |
+| `taskId`, `attemptId`, `approvedRunId`, `runType` | P's exact current claim and approval-event/tool-request ledger readbacks, rechecked by R0 against the factory-registered orchestration closure. |
+| `workspaceId`, `mountInstanceId` | R0's exact factory-issued mounted-runtime capture and current mounted authority readback. |
+| workflow descriptor and immutable policy/version/hash | R0's factory-captured workflow registration and policy reader, matched to the current task/run readback. |
+| provider ID, model ID, capability IDs, credential-reference ID, and selection-policy version | R0's factory-captured provider registry and selection service, recomputed from the current selection rather than copied from proof or V2. |
+| canonical readiness, preview, source hashes, context packs, locks, and high-water | R0's current mounted/readiness/context readers and P's current approval inspection; every value is checked before and after the asynchronous mounted V2 readback. |
+
+The resolver calls `bindApprovedProductionSpecialistPromptV2` exactly once only
+after those comparisons, persists/reads V2 only through the already-owned
+mounted prompt store, and returns a private prepared object. Task140P alone
+appends or exact-race-reads the `prompt-bound` checkpoint and calls `admit` with
+the exact readback. Task140R0 never appends a receipt; Task133.3 owns the
+canonical receipt parser/hash/projector; Task133.1 owns binder/hash formation;
+Task133.5 owns V1 and mounted prompt-store construction; Task140H alone
+consumes admission and continues provider/H work. A structural exactRun/proof,
+direct V2, copied admission, swapped private resolver, missing factory capture,
+or any one-field source change rejects before binder, provider, ledger append,
+runner dispatch, tool, store I/O, handoff, or terminal activity, except for
+the read-only current-authority reads required to establish the block.
+
+### Task133.1-.3 atomic file ceiling and TDD repair
+
+Task133.1-.3 retain exactly these 28 paths and one commit. No new Task133
+source/test/claim path is authorized by this correction:
+
+```text
+packages/agent/src/prompt-artifacts.ts
+packages/agent/src/production-specialist-prompts.ts
+packages/agent/test/prompt-artifacts.test.ts
+packages/agent/test/production-specialist-prompts.test.ts
+packages/agent/test/evidence-triage-workflow.test.ts
+packages/agent/test/prr-negotiation-workflow.test.ts
+packages/agent/test/task-orchestrator-evidence-triage.test.ts
+docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md
+packages/agent/src/specialist-runner-kernel.ts
+packages/agent/src/task-orchestrator-approval.ts
+packages/agent/src/adapters/provider-byte-transfer.ts
+packages/agent/test/specialist-runner-kernel.test.ts
+packages/agent/test/task-orchestrator-approval.test.ts
+packages/agent/test/provider-byte-transfer-adapter.test.ts
+docs/agentic/claims/task-133-2-approval-transfer-binding.md
+packages/agent/src/runtime.ts
+packages/agent/src/projection.ts
+packages/agent/src/projection-types.ts
+packages/agent/src/task-orchestrator-types.ts
+packages/agent/src/task-orchestrator-projection.ts
+packages/ontology/src/contracts.ts
+packages/agent/test/runtime.test.ts
+packages/agent/test/projection.test.ts
+packages/agent/test/task-orchestrator-events.test.ts
+packages/agent/test/task-orchestrator-projection.test.ts
+packages/ontology/test/agent-contracts.test.ts
+packages/workspace-ops/test/projection-rebuild.test.ts
+docs/agentic/claims/task-133-3-durable-prompt-binding.md
+```
+
+#### Task133.2 exact RED/GREEN
+
+- [ ] Write these causal REDs before production edits:
+  `structurally valid v2 is blocked without factory authority`,
+  `direct v2 proof and exact run cannot become transfer authority`, and
+  `each missing current authority family remains zero effect`. The final table
+  has one coherent caller-proof/exact-run mutation for attempt, approved run,
+  workspace, mount, workflow, policy/version, provider capability IDs,
+  selection-policy version, and readiness. A structurally valid artifact pair
+  is the control and must return `authority-resolution-required`, not success.
+  Every row asserts zero provider invocation, provider-readiness or adapter
+  call, ledger read/write/append, runner dispatch, tool, store, handoff, and
+  terminal effect.
+- [ ] Run RED and later the identical GREEN command:
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts
+```
+
+  RED exits `1` because the direct V2 path still accepts a structural proof or
+  cannot return the explicit blocked boundary. GREEN exits `0`; it proves only
+  pure invariant validation plus the blocked result. It does not create a V2
+  transfer-success test.
+- [ ] Implement only the six Task133.2 paths above. Reuse canonical artifact
+  parsing/hashing. Do not add a provider call, a factory callback, an opaque
+  token, a current-authority reader, an approval minter, a duplicate parser, or
+  a new exact-run/proof carrier.
+
+#### Task133.3 receipt retention and replay RED/GREEN
+
+`TaskOrchestratorAttemptProjection` must expose a safe,
+non-authoritative `latestPromptBindingReceipt` reference distinct from
+`latestCheckpoint`. The reducer processes every checkpoint in ledger order:
+it updates the receipt reference only after a valid `prompt-bound` payload
+passes canonical parse and receipt-hash recomputation for the same attempt;
+`runner-dispatching`, `handoff-pending`, and later unrelated valid checkpoint
+kinds do not erase it. A malformed, misplaced, mismatched-attempt, or
+hash-mismatched receipt is rejected and never becomes the reference. The
+receipt projection carries hash/event/attempt/run identity only, never prompt
+bytes, a token, proof, capability, or authorization result.
+
+- [ ] Write these causal REDs before production edits:
+  `retains latest valid prompt bound receipt after runner dispatching`,
+  `rejects malformed or non prompt bound receipt before projection`, and
+  `ledger replay retains prompt bound receipt after runner dispatching`.
+  The replay fixture appends a valid `prompt-bound` receipt, then the exact
+  later `runner-dispatching` checkpoint for the same attempt, rebuilds from
+  the ledger, and requires the original receipt event ID/hash while the latest
+  checkpoint remains `runner-dispatching`.
+- [ ] Run RED and later the identical GREEN command:
+
+```bash
+npm test -- packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts
+```
+
+  RED exits `1` because current latest-checkpoint selection loses the receipt
+  or accepts an invalid receipt. GREEN exits `0` after the strict event,
+  runtime, projector, ontology, and rebuild migration use the same canonical
+  receipt hash. The projection remains rebuildable and cannot admit transfer.
+- [ ] After Task133.3 GREEN, run exactly:
+
+```bash
+npm run typecheck && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+  Commit all 28 paths once, then stop for a fresh code review and a fresh
+  defects-first schema/replay review. The coordinator alone later integrates;
+  no child rebases, merges, pushes, or self-integrates.
+
+### Task140P and Task140R0 serialized amendment
+
+Task140P starts only after the reviewed/coordinator-integrated atomic Task133
+commit, Task133.5, Task135B/C/D, Task137A/B, Tasks136-139, and every active
+CF-1R26 prerequisite checker/attestation gate. It owns exactly:
+
+```text
+packages/agent/src/task-orchestrator-approval-admission.ts
+packages/agent/src/task-orchestrator-approval.ts
+packages/agent/src/task-orchestrator-handoff-port.ts
+packages/agent/src/task-orchestrator.ts
+packages/agent/test/task-orchestrator-approval-admission.test.ts
+packages/agent/test/task-orchestrator-approval.test.ts
+packages/agent/test/task-orchestrator-handoff-port.test.ts
+packages/agent/test/task-orchestrator-dispatch.test.ts
+packages/agent/test/task-orchestrator-recovery.test.ts
+packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts
+docs/agentic/claims/task-140-p-private-prompt-admission.md
+```
+
+P RED first proves that an unregistered resolver, a direct V2, a structural
+proof/exact-run pair, copied admission, or any missing authority family reaches
+neither receipt append nor provider/runner/H/store/terminal work. Its valid
+control proves only opaque prepare -> factory resolver -> receipt readback ->
+private admit; it performs no provider transfer. Run the following command
+first as RED and unchanged as GREEN. P's fresh review also runs the existing
+CF-1R26 Task140P review authority block before this same command:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts && npm run typecheck && ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Task140R0 starts only after P's reviewed/coordinator-integrated commit and the
+same checked prerequisite inventory. It owns exactly:
+
+```text
+packages/local-runtime/src/agent-runtime-factory.ts
+packages/local-runtime/test/agent-runtime-composition.test.ts
+packages/local-runtime/test/agent-task-orchestrator-routes.test.ts
+packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts
+docs/agentic/claims/task-140-r0-factory-prompt-binding.md
+```
+
+R0 RED first proves the authority-source table one family at a time. A change
+in any independently reread fact, a copied P admission, an injected exact-run
+or proof, a direct V2, an unregistered resolver, a swapped factory capture, or
+a changed mounted readback must fail before the binder, receipt, provider,
+ledger append, runner, tool, store write, H, handoff, or terminal effect. The
+single valid control consumes the opaque P identity, rereads all listed sources,
+calls the existing Task133 binder once without rendering, exact-reads mounted
+V2, and returns only P's private prepared object. P then owns the one receipt
+append/readback/admit transition. The R0 control is the first valid V2
+transfer-admission path, but not a provider invocation.
+
+Run the following command first as RED and unchanged as GREEN. R0's fresh
+review also runs the existing CF-1R26 Task140R0 review authority block before
+this same command:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts && npm run typecheck && ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/local-runtime packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+Task140H and R1 remain serialized after R0. They consume the exact private
+admission/readback path and make no alternate V2, approval, binder, receipt,
+or authority path. Their existing CF-1R26 ownership and terminal command stay
+in force.
+
+### Dispatch, review, and merge order
+
+1. Run only the docs gate below; commit this two-file correction. Two fresh
+   independent defects-first plan reviewers inspect the candidate-specific
+   delta and the full CF-1 lineage.
+2. The coordinator alone integrates an approved correction. Every later source
+   authorization explicitly approves `superpowers:subagent-driven-development`,
+   TDD, `verification-before-completion`, a fresh independent review, and
+   coordinator-only integration for that exact task.
+3. Task133.1-.3 completes one atomic commit and its two fresh reviews; then
+   Task133.5 and all independent stated prerequisites complete their existing
+   serialized reviews/integrations.
+4. Task140P completes and is reviewed/integrated; Task140R0 then completes and
+   is reviewed/integrated; Task140H then R1 follow under their existing gates.
+   No concurrent task edits any file owned by an earlier unintegrated task.
+
+The documentation-only candidate gate is exactly:
+
+```bash
+git diff --check && npm run factory:check
+```
+
+The candidate-specific review range is
+`dcb863e2bf258205308cdb35955f10ef71fdc501^..HEAD`; the full-lineage review
+range remains `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Two fresh
+independent reviewers must explicitly confirm the authority split, zero-effect
+Task133 boundary, receipt retention/replay, complete P/R0 source mapping,
+non-overlapping file ownership, commands, and merge order. Until both approve,
+source edits, source tests, full verification, providers, credentials, network,
+Nous, reset credits, `neo`, rebase, merge, push, integration, and all external
+actions remain closed.
