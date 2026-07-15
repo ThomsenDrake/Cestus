@@ -10014,3 +10014,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   durable-event/projection/rebuild reviews. Both must approve before a merge
   preview. Full verification, providers, reset credits, integration, and every
   `neo` action remain closed.
+
+## RV-1-E-345 — Task133 replacement reviews dispatched
+
+- Fresh schema/binder/approval-safety reviewer
+  `019f6696-dd6d-7db0-b36d-442b9ff87a6e` and durable-event/projection/rebuild
+  reviewer `019f6696-e045-73a3-a565-6318b1f6a13f` are active, pinned, and
+  read-only in separate detached worktrees at exact replacement
+  `7b306de04a91c2377f992273b4845f85ae1af2e2`.
+- Both use Terra/xhigh with ignored dependency wiring restored. Their prompts
+  bind the exact original base, one-commit/no-merge topology, 28-path ceiling,
+  distinct semantic lenses, focused suites, typecheck, forbidden-renderer,
+  range diff, factory, and clean-state gates.
+- Each must return explicit unqualified **APPROVED** or concrete
+  **NEEDS-CHANGES** and may not edit, delegate, integrate, run full verification,
+  invoke providers, use reset credits, or touch `neo`. Both approvals are
+  required before any coordinator merge preview.
