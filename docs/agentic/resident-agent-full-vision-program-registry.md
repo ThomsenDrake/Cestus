@@ -9034,3 +9034,33 @@ explicit implementation authorization.
   carry forward any earlier verdict. Source dispatch and plan integration
   remain closed until both return explicit unqualified **APPROVED** verdicts
   and those verdicts are durably recorded.
+
+## RV-1-E-303 — Attested whole-freeze candidate rejected; bounded CF-1R22
+
+- Authority/import/bypass reviewer
+  `019f65c6-991f-7a91-ae17-a21f57f76b79` corrected its initial ancestry
+  objection after re-evaluating the explicit sibling-object trust model and
+  returned **APPROVED**. Lifecycle/executability reviewer
+  `019f65c6-4ca7-72c0-aa73-428a58c9a536` returned **NEEDS-CHANGES** on exact
+  26-commit range `0481c1e0^..f275ce6f`. One approval cannot authorize plan
+  integration and does not carry forward.
+- The lifecycle review reproduced three fail-open or non-materializable
+  boundaries: caller-controlled `GIT_WORK_TREE`/`GIT_INDEX_FILE` can redirect
+  Task117A's Git checks away from the checkout whose audit executes; Task137A's
+  terminal overlay requires hidden-state checks without presenting the final
+  executable command; and the exact P/R0/H commands omit the newly mandatory
+  literal `--coordinator-attestation C` argument.
+- The sole plan writer is authorized only for CF-1R22: reject every preexisting
+  `GIT_*` variable and bind Git operations to the physical checkout root before
+  and after affected gates; publish one complete final Task137A command with
+  every hidden-state and repository-binding check in execution order; and
+  publish complete exact P/R0/H preflight and review invocations containing the
+  literal coordinator-issued attestation argument. Preserve the sibling
+  coordinator-attestation trust model and every other CF-1R18 through CF-1R21
+  ownership, lifecycle, authority, prerequisite, file-ceiling, and no-live/
+  no-source restriction.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending a committed docs-only repair and
+  two fresh independent unqualified approvals. No prior verdict or reviewer
+  identity carries forward. Latest authenticated usage reports 42% used / 58%
+  weekly remaining, with no reset credits.
