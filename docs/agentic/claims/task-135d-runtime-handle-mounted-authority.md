@@ -1,6 +1,6 @@
 # Task135D recovery: R-owned factory-issued mounted handle capture
 
-- Status: ready-for-review
+- Status: in-progress
 - Owner: `/root`
 - Branch: `codex/task-135d-runtime-handle-capture-ast-import-review-repair`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
@@ -428,3 +428,25 @@ self-integration, and program-registry edits remain closed.
   original-base path union was exactly the four authorized paths with no merge
   commits and a clean worktree. This claim-closeout commit returns the lane to
   `ready-for-review`; the final candidate receives the same required gates.
+
+### RV-1-E-409 coordinator pre-admission heritage correction
+
+- Coordinator pre-admission inspection of final-doc candidate
+  `f87bdb5b4564b31325cd0863259fe08a0a6838f6` found that the named
+  class-expression self-binding was passed to class members but not to heritage
+  clauses. JavaScript evaluates heritage while the class-name binding is in
+  scope (and in its TDZ), so these are not standard CommonJS loader calls.
+- Causal RED: two syntax-valid negative fixtures were added before the
+  traversal repair: `class require extends require(target) {}` and
+  `class module extends module.require(target) {}`. The exact focused suite
+  exited `1` only in the import-policy test (1 failed, 20 passed), receiving
+  71 importers instead of the expected 69 because it incorrectly counted only
+  those two heritage calls.
+- The named class-expression binding now flows to both heritage clauses and
+  members. Type parameters continue to use the inherited scope, so their
+  traversal does not broaden runtime loader recognition. Existing method/body,
+  ambient-declaration, `var` hoisting, and unshadowed computed-loader behavior
+  remain unchanged.
+- Focused GREEN: the prescribed three-file command exited `0` with 21 tests
+  passed. The remaining permitted candidate gates are pending at this claim
+  checkpoint.

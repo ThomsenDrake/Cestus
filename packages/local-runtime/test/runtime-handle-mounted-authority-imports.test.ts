@@ -608,16 +608,16 @@ function sourceImportsFactoryCaptureSeam(
     }
 
     if (ts.isClassExpression(node) && node.name !== undefined) {
-      const classBodyShadowedLoaderNames = new Set(shadowedLoaderNames);
-      addShadowedLoaderBinding(classBodyShadowedLoaderNames, node.name);
+      const classExpressionShadowedLoaderNames = new Set(shadowedLoaderNames);
+      addShadowedLoaderBinding(classExpressionShadowedLoaderNames, node.name);
       for (const typeParameter of node.typeParameters ?? []) {
         visit(typeParameter, shadowedLoaderNames);
       }
       for (const heritageClause of node.heritageClauses ?? []) {
-        visit(heritageClause, shadowedLoaderNames);
+        visit(heritageClause, classExpressionShadowedLoaderNames);
       }
       for (const member of node.members) {
-        visit(member, classBodyShadowedLoaderNames);
+        visit(member, classExpressionShadowedLoaderNames);
       }
       return;
     }
@@ -906,6 +906,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "shadowed-class-expression-require.cts": {
         moduleSpecifier: deepImport,
         source: `const Loader = class require { load() { const target = "${deepImport}"; void require(target); } };\nvoid Loader;\n`,
+      },
+      "shadowed-class-expression-heritage-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `const target = "${deepImport}";\nconst Loader = class module extends module.require(target) {};\nvoid Loader;\n`,
+      },
+      "shadowed-class-expression-heritage-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `const target = "${deepImport}";\nconst Loader = class require extends require(target) {};\nvoid Loader;\n`,
       },
     };
     const ignoredPackageRootSources = {
