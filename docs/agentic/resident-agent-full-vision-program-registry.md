@@ -10857,3 +10857,16 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both reviewers are read-only and pinned at exact candidate
   `11cadcf59829e1cb7b709adbcb48e5b567523828`. Two unqualified approvals are
   required before coordinator-only integration.
+
+## RV-1-E-396 — Task135D complete AST candidate admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  forward candidate `1a132365a075fd7893f5b026e0609729f97961f8`, adding causal
+  executable-bin, exact import-type, and transparent CommonJS-wrapper fixtures
+  plus narrowly bounded scanner support while leaving production runtime bytes
+  unchanged.
+- Coordinator-independent verification passed the exact 20/20 focused suite,
+  `npm run typecheck`, no-index assertion, original-base diff, factory
+  readiness, exact four-path union, no-merge topology, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, reset credits, push, and every `neo` action remain closed.
