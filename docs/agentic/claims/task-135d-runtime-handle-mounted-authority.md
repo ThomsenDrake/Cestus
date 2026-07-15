@@ -233,3 +233,32 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## Final named-default import-authority review repair
+
+- Coordinator review verdicts on
+  `a865c5493f7467c11839a2b4b41154eeb44b3ae4`: private lifecycle is
+  **APPROVED**; AST import authority **NEEDS-CHANGES** only for exact-target
+  named-default declarations. This remains a test-only scanner repair; no
+  production runtime file or behavior changed.
+- Claim lifecycle: reopened as `in-progress` for this bounded repair and
+  returned to `ready-for-review` after the documented focused and non-full
+  gates.
+- Causal RED: after adding decoded-AST fixtures for normal/type-only
+  named-default imports and normal/type-only named-default re-exports, the
+  prescribed focused command exited `1` only in the expanded import test (1
+  failed, 19 passed). It expected 35 protected importers and received 31,
+  omitting exactly the four named-default files.
+- The AST repair reads only the source-side name
+  `(propertyName ?? name).text`: decoded `default` is authoritative regardless
+  of its local alias, while a local alias named `default` for any other source
+  export remains non-authoritative. Existing capture exports and every other
+  static, namespace, type, import-equals, re-export, dynamic, and CommonJS
+  form are unchanged.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed.
+- The authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.
