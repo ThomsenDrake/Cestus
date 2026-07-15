@@ -145,3 +145,54 @@ need no cast or forged brand. Factory recovery now retains an explicit
 The replacement must repeat the exact focused suite, fresh standalone
 typecheck, three static gates, diff/factory gates, dependency-link removal,
 and two new external reviews.
+
+## Third recovery ownership and repair evidence — 2026-07-15
+
+- Worker: `/root`.
+- Branch: `codex/task-133-5-preapproval-prompt-store-recovery-3`.
+- Worktree: `/home/drake/.codex/worktrees/074c/Cestus`.
+- Recovery base: `9710909961d4579006c73d7781c094cec4b00e45`.
+- Status: `candidate pending fresh coordinator admission and two external reviews`.
+
+Candidate `9710909961d4579006c73d7781c094cec4b00e45` and all predecessors are
+rejected forensic evidence only. Fresh review found that a second consumer
+could enter the mounted witness path while the first consumer awaited mounted
+byte revalidation; the factory retained no non-consuming currentness check
+between store readback and the context-ready append; the restart test merely
+reread a known hash; and mounted-tuple tests did not exercise pre/post-I/O
+replacement or access counters.
+
+The bounded repair makes the private witness state transition from `available`
+to `consuming` synchronously before its first await and always terminally
+burns it as `consumed`, including on failed revalidation. It issues a
+non-consuming lexical currentness validator with each V1 mounted readback;
+the local factory retains it beside the opaque witness and awaits it immediately
+before returning the context-ready hash. This validator rechecks current
+workspace/root/blob tuple, mount authority/process identity, and exact
+canonical bytes without exposing the witness from `packages/agent/src/index.ts`
+or consuming it early. Durable recovery now compares each full current context
+pack ref to the checkpoint binding as well as its existing ID/hash/size checks.
+
+The causal RED/GREEN evidence now includes:
+
+- deferred concurrent witness consumption with exactly one possible success,
+  immediate second-consumer rejection before a second reread, and failed-first
+  burn rejection;
+- concurrent kernel preparation proving at most one provider-preparable run;
+- a post-store-read workspace swap through captured local-factory capabilities
+  with zero `context-ready` checkpoint append;
+- a real persisted orchestrator `context-ready` checkpoint and V1 artifact,
+  followed by first-runtime closure, Vitest module reset/dynamic fresh runtime
+  and store construction, checkpoint-derived recovery, newly issued witness
+  consumption, old/copied witness rejection, and changed context-pack-byte
+  rejection; and
+- workspace ID, resolved-root, and blob-root replacement before I/O and during
+  original artifact read, with separate original/replacement access counters.
+
+Focused CF-1R11/R12 command: 8 files, 97 tests passed. Fresh standalone
+`npm run typecheck` passed. The required three negative `rg` gates,
+`git diff --check`, and `npm run factory:check` passed. The ignored dependency
+symlink is removed before the candidate commit. Full verification, provider,
+network, credential, Nous, reset-credit, `neo`, merge/rebase/push, and
+self-integration remain excluded. This candidate stops for fresh coordinator
+admission and two new external reviews.

@@ -8,6 +8,7 @@ import {
 import {
   createMountedProductionPromptReadbackAuthority,
   issueMountedProductionPromptReadback,
+  revalidateMountedProductionPromptReadbackWitness,
   type MountedProductionPromptReadbackWitness
 } from "../../agent/src/production-prompt-readback.js";
 import type { VerifiedResolvedContextPack } from "../../agent/src/context-packs.js";
@@ -27,6 +28,8 @@ export interface MountedPromptArtifactReadInput {
 export interface MountedPromptArtifactReadResult {
   readonly envelope: PromptArtifactEnvelope;
   readonly witness?: MountedProductionPromptReadbackWitness | undefined;
+  /** Private factory handoff: rechecks the same mounted bytes without consumption. */
+  readonly revalidateCurrent?: () => Promise<void> | undefined;
 }
 
 interface PortableTuple {
@@ -136,7 +139,11 @@ export async function createMountedPromptArtifactStore(input: {
         authority,
         rereadCanonicalBytes: async () => (await readCanonical(inputArtifactHash, authoritativeResolvedContextPacks)).canonical
       });
-      return Object.freeze({ envelope: readback.envelope, witness });
+      return Object.freeze({
+        envelope: readback.envelope,
+        witness,
+        revalidateCurrent: async () => await revalidateMountedProductionPromptReadbackWitness(witness)
+      });
     }
   });
 }

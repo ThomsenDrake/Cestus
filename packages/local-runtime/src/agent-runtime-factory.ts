@@ -122,6 +122,7 @@ function createLocalTaskOrchestratorCapabilities(
   const mountedReadbacks = new Map<string, {
     readonly witness: MountedProductionPromptReadbackWitness;
     readonly envelope: PromptArtifactEnvelope;
+    readonly revalidateCurrent: () => Promise<void>;
   }>();
   return Object.freeze({
     schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1",
@@ -146,12 +147,13 @@ function createLocalTaskOrchestratorCapabilities(
           inputArtifactHash: artifact.manifest.inputArtifactHash as `sha256:${string}`,
           authoritativeResolvedContextPacks: input.resolvedContextPacks
         });
-        if (readback.witness === undefined) {
+        if (readback.witness === undefined || readback.revalidateCurrent === undefined) {
           throw new Error("Local task orchestrator requires mounted v1 prompt readback authority.");
         }
         mountedReadbacks.set(`${input.taskId}:${input.attemptId}`, {
           witness: readback.witness,
-          envelope: readback.envelope
+          envelope: readback.envelope,
+          revalidateCurrent: readback.revalidateCurrent
         });
         return readback.envelope;
       },
@@ -160,6 +162,9 @@ function createLocalTaskOrchestratorCapabilities(
         if (readback === undefined || readback.envelope !== rendered) {
           throw new Error("Local task orchestrator requires exact mounted prompt readback before context-ready.");
         }
+        // The final mounted tuple/process/byte revalidation belongs directly
+        // before the orchestrator receives this hash for its append.
+        await readback.revalidateCurrent();
         return readback.envelope.manifest.inputArtifactHash;
       }
     },
@@ -180,7 +185,6 @@ function createLocalTaskOrchestratorCapabilities(
           runType: input.runType,
           attemptId: input.attemptId
         });
-        if (retained === undefined) mountedReadbacks.set(key, readback);
         // Keep the exact one-use witness lexical until the later owned
         // admission runner receives it. Do not serialize or reconstruct it.
         void readback.witness;
@@ -224,7 +228,8 @@ async function recoverMountedContextReadyWitness(input: {
       durable === undefined ||
       resolved.ref.contextPackId !== durable.contextPackId ||
       resolved.ref.contentHash !== durable.contentHash ||
-      resolved.ref.sizeBytes !== durable.sizeBytes
+      resolved.ref.sizeBytes !== durable.sizeBytes ||
+      JSON.stringify(resolved.ref) !== JSON.stringify(durable.ref)
     ) {
       throw new Error("Local task orchestrator context-ready checkpoint no longer matches current canonical context pack readback.");
     }
