@@ -6822,3 +6822,21 @@ explicit implementation authorization.
   Full verification remains **CLOSED**, `neo` untouched, no provider/network/
   credential/Nous action, and authenticated use remains `usedPercent=13` /
   **87% remaining**, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-201 — CF-1R5 corrected-plan acceptance
+
+- A third fresh independent Terra/xhigh review of the complete corrected CF-1R5
+  amendment is **APPROVED**. Authoritative runtime metadata is
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T22-13-56-019f638d-5da7-7ed3-af6b-5e1e7aa713dc.jsonl`
+  (`turn_context`: `gpt-5.6-terra`, `xhigh`). The reviewer found no remaining
+  defect in private pre-dispatch admission, the Task134→135→140P→R0→H→R1
+  acyclic ABI/ownership chain, binder-only Task135, H-only persistence, typed
+  consumer ownership, or literal canonical matrix supersession.
+- Task132A may now be staged and dispatched under the approved plan. Task134A
+  remains blocked on reviewed/coordinator-integrated Task132A; Task135A remains
+  blocked on reviewed/coordinator-integrated Task134A; Task140P/R0/H/R1 remain
+  blocked on their stated reviewed prerequisites. Task119 remains separately
+  NEEDS-CHANGES and unintegrated pending its active bounded semantic repair.
+- Full verification remains **CLOSED**, `neo` untouched, no provider/network/
+  credential/Nous action, and authenticated use remains `usedPercent=13` /
+  **87% remaining**, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
