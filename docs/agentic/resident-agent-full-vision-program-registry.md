@@ -10716,3 +10716,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, providers, reset credits, merge, rebase, push,
   self-integration, registry edits, and every `neo` action remain closed. Two
   fresh code-review approvals are required before coordinator integration.
+
+## RV-1-E-387 — Task135D complete-import candidate admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  forward candidate `a865c5493f7467c11839a2b4b41154eeb44b3ae4`, adding causal
+  default/type-default and direct `module.require`/`module["require"]` fixtures
+  plus exact AST recognition while preserving unrelated receiver rejection.
+- Coordinator-independent verification passed the exact 20/20 focused suite,
+  `npm run typecheck`, no-index assertion, original-base diff, factory
+  readiness, exact four-path union, no-merge topology, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-388 — Task135D complete-import reviews dispatched
+
+- Fresh Terra/xhigh private-authority/lifecycle reviewer
+  `019f66e4-c207-7472-a288-31fabd1772f1` audits factory identity,
+  snapshots, mutation/currentness, close behavior, non-leakage, production
+  invariants, and exact scope.
+- Fresh Terra/xhigh AST import-authority reviewer
+  `019f66e4-ec35-7860-af42-35c39ce15a2f` audits all static/default/type,
+  re-export, dynamic and CommonJS loader forms, exact resolved-source identity,
+  lookalike rejection, roots, extensions, allowlist, public APIs, and
+  performance.
+- Both reviewers are read-only and pinned at exact candidate
+  `a865c5493f7467c11839a2b4b41154eeb44b3ae4`. Two unqualified approvals are
+  required before coordinator-only integration.
