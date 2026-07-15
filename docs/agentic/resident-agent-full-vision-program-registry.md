@@ -6798,3 +6798,27 @@ explicit implementation authorization.
   **CLOSED**, `neo` untouched, no provider/network/credential/Nous action, and
   authenticated use remains `usedPercent=13` / **87% remaining**, reset credits
   untouched, DRAIN <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-200 — CF-1R5 typed-consumer and approval-gate correction
+
+- The next fresh independent Terra/xhigh plan review of the admission amendment
+  returned **NEEDS-CHANGES** on exact scoped compile/effect consumers. Removing
+  the public `handoffCapability` property in Task140R1 would leave typed object
+  literals in `runtime.test.ts`, `task-orchestrator-approval.test.ts`, and
+  `task-orchestrator-claims.test.ts` as TypeScript excess-property failures;
+  the latter two plus evidence-triage/recovery fixtures are all serialized R1
+  typed-consumer cleanup. Root `tsconfig.json` includes package tests, so the
+  omission would fail the required typecheck gate.
+- The same review verified that Task140P's earlier admission correctly makes an
+  unregistered valid-approval registry fail closed, but the existing approval
+  test expected provider dispatch and was absent from P's scope/gate. CF-1R5
+  now assigns that test to Task140P for the explicit fail-closed transition,
+  assigns every named typed consumer to R1 for the serialized public-field
+  removal, and adds each focused test to the plan and frozen literal matrix.
+  Task140R0 remains the only later proof that actual factory registration admits
+  dispatch; no test fixture becomes a public registration route.
+- A third fresh independent plan review of the corrected complete amendment is
+  mandatory before Task132A, Task134A, Task135A, or Task140P/R0/H/R1 dispatch.
+  Full verification remains **CLOSED**, `neo` untouched, no provider/network/
+  credential/Nous action, and authenticated use remains `usedPercent=13` /
+  **87% remaining**, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
