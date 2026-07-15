@@ -7423,7 +7423,7 @@ git diff --check && npm run factory:check
 ```
 
 The candidate-specific review range is
-`dcb863e2bf258205308cdb35955f10ef71fdc501^..HEAD`; the full-lineage review
+`dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD`; the full-lineage review
 range remains `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Two fresh
 independent reviewers must explicitly confirm the authority split, zero-effect
 Task133 boundary, receipt retention/replay, complete P/R0 source mapping,
@@ -7431,3 +7431,154 @@ non-overlapping file ownership, commands, and merge order. Until both approve,
 source edits, source tests, full verification, providers, credentials, network,
 Nous, reset credits, `neo`, rebase, merge, push, integration, and all external
 actions remain closed.
+
+---
+
+## CF-1R28 — Forward repair: non-circular Task140P/R0 gates and atomic Task133 rerun (2026-07-15)
+
+**Status:** terminal documentation-only repair after the rejected-but-preserved
+candidate `8b36829ab23019b9e3d8595d24bac2b09bc40496`. Its fresh authority/security
+review was **APPROVED**; the independent factory-plan review was
+**NEEDS-CHANGES**. The latter found three bounded defects: Task140P's positive
+control was circular with the R0-owned resolver, Task133.3 lacked a mandatory
+complete Task133.1 rerun after Task133.2, and a candidate-specific range
+included the frozen base's parent. This correction supersedes only those
+CF-1R27 details. The Task133 V1/V2 schema, byte-preserving binder,
+owner-derived hashes, event/ontology/projection/rebuild migration, strict file
+ownership, and one atomic Task133.1-.3 commit remain binding.
+
+### CF-1R28.1 — Atomic Task133.1-.3 adds a mandatory Task133.1 replay gate
+
+Task133.2 retains CF-1R27's exact RED/GREEN command and limited control: it
+may prove pure V1/V2 artifact invariants and deterministic rejection paths, but
+cannot claim V2 provider-transfer authority. A structural proof/exact-run pair
+is inspectable only and returns `authority-resolution-required` with zero
+provider, readiness, adapter, ledger-write, runner, tool, store, handoff, and
+terminal effects.
+
+Immediately after Task133.2 passes GREEN, and **before Task133.3 begins any
+RED edit, test update, command, or implementation work**, run this exact,
+complete Task133.1 suite:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts
+```
+
+Expected result: exit 0. A failure stops the atomic phase for diagnosis;
+Task133.3 cannot begin until this rerun passes. It is an additional mandatory
+gate, not a replacement for Task133.2 or Task133.3 RED/GREEN. The entire
+Task133.1-.3 result still lands as one atomic commit, with no intermediate
+Task133 merge, integration, or review boundary.
+
+### CF-1R28.2 — Task140P has an opaque-only, resolver-free RED/GREEN
+
+Task140P retains its CF-1R27 file set; this correction changes no P or R0 file
+ownership:
+
+```text
+packages/agent/src/task-orchestrator-approval-admission.ts
+packages/agent/src/task-orchestrator-approval.ts
+packages/agent/src/task-orchestrator-handoff-port.ts
+packages/agent/src/task-orchestrator.ts
+packages/agent/test/task-orchestrator-approval-admission.test.ts
+packages/agent/test/task-orchestrator-approval.test.ts
+packages/agent/test/task-orchestrator-handoff-port.test.ts
+packages/agent/test/task-orchestrator-dispatch.test.ts
+packages/agent/test/task-orchestrator-recovery.test.ts
+packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts
+docs/agentic/claims/task-140-p-private-prompt-admission.md
+```
+
+Use this exact command first as RED and unchanged as GREEN:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts && npm run typecheck && ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Expected RED: opaque admission creation/validation and its prohibited-effect
+assertions are absent. Expected GREEN: P creates and validates only an opaque,
+single-use admission identity from the current approval artifact, while proving
+that factory-private authority is absent from P. P's own positive control must
+not resolve authority, append or read a prompt receipt, admit a V2 transfer, or
+invoke a provider.
+
+The P test harness must not import, instantiate, fake, register, spy on, or
+otherwise depend on a Task140R0 factory resolver. It must never execute an
+`opaque admission -> factory resolver -> private admit` control. An
+unregistered or missing factory-private authority, direct V2 payload, copied
+admission, structural proof/exact-run pair, or missing authority family must
+return the prescribed authority-resolution-required result with zero provider,
+ledger-write, tool, runner, store, handoff, or terminal transfer effects.
+Read-only inspection needed to form/validate the opaque identity is permitted;
+it is not a transfer effect.
+
+Task140P ends after this GREEN, its independent P review, and its own commit.
+It produces only the opaque contract. P has no R0 dependency and does not merge
+with R0; the coordinator alone may integrate the reviewed P commit before R0
+starts.
+
+### CF-1R28.3 — Task140R0 owns the first complete V2 transfer-admission control
+
+After reviewed P integration, and only then, Task140R0 consumes P's genuine
+opaque admission. R0 owns the first valid end-to-end V2 provider-transfer
+admission control with complete factory-private, independently current
+authority. This is an admission control, not an external provider invocation;
+the later provider-effect task retains that effect. R0 does not duplicate or
+move Task133 renderer, binder, prompt-bound receipt retention, or tests.
+
+R0 retains its CF-1R27 file set and isolated branch/review boundary:
+
+```text
+packages/local-runtime/src/agent-runtime-factory.ts
+packages/local-runtime/test/agent-runtime-composition.test.ts
+packages/local-runtime/test/agent-task-orchestrator-routes.test.ts
+packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts
+docs/agentic/claims/task-140-r0-factory-prompt-binding.md
+```
+
+Use this exact command first as RED and unchanged as GREEN:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts && npm run typecheck && ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/local-runtime packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+Expected RED: the factory cannot consume P's opaque admission and privately
+resolve the full authority tuple. Expected GREEN: R0 consumes the genuine
+single-use P identity, independently rereads and binds attemptId, approvedRunId,
+workspaceId, mountInstanceId, workflow/policy, provider capability IDs,
+selection-policy version, and canonical readiness. It alone supplies the
+private prepared authority to the existing Task133 pure checks and
+byte-preserving binder, performs the existing mounted V2 readback, and reaches
+the existing prompt-receipt/admission boundary. Any stale, missing, swapped, or
+independently re-derived family blocks before a transfer effect; a structural
+proof/exact-run pair cannot substitute for factory-private current authority.
+
+The dependency and merge order is fixed: (1) the reviewed atomic Task133.1-.3
+commit; (2) the reviewed Task140P opaque-only commit; (3) coordinator-only P
+integration; (4) the reviewed Task140R0 resolver commit; then (5)
+coordinator-only R0 integration. Task140H and R1 remain serialized after R0.
+No concurrent task owns the same files: P owns the eleven listed
+orchestrator/claim paths, R0 owns the five listed factory/claim paths, and
+Task133 retains CF-1R27's paths.
+
+Every future implementation authorization must explicitly approve
+`superpowers:subagent-driven-development` where subagents are relevant, TDD,
+verification-before-completion, fresh independent review, and coordinator-only
+integration.
+
+### CF-1R28.4 — Exact candidate delta and two new independent reviews
+
+Every candidate-specific review of this repaired candidate uses exactly:
+
+```text
+dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD
+```
+
+The range deliberately excludes the parent of `dcb863e2`; full-lineage ranges
+retain their separately named bases. Before implementation authorization, an
+authority/security reviewer and a factory-plan reviewer must independently
+review that exact delta for the P/R0 non-circular boundary, the post-Task133.2
+Task133.1 replay gate, exact ownership/dependency/merge order, and every
+closed source-freeze constraint. This correction authorizes no source or test
+change, full verification, provider/credential/network/live operation, reset
+credit, integration, merge, rebase, push, or `neo` action.
