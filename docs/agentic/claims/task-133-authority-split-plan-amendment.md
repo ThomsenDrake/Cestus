@@ -66,7 +66,7 @@ git diff --check && npm run factory:check
 ```
 
 Candidate-specific review range:
-`dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD`.
+`dcb863e2bf258205308cdb35955f10ef71fdc501..7cadeaed3c26f59a36e28ea34afcdff33af5e591`.
 
 Full-lineage review range:
 `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
@@ -102,7 +102,7 @@ duplicate Task133 renderer, binder, or receipt ownership.
 The correction also requires the exact complete Task133.1 suite to pass after
 Task133.2 and before Task133.3 begins, without breaking the one-commit atomic
 Task133.1-.3 phase. Every active candidate-specific review reference is exactly
-`dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD`, never a parent-inclusive
+`dcb863e2bf258205308cdb35955f10ef71fdc501..7cadeaed3c26f59a36e28ea34afcdff33af5e591`, never a parent-inclusive
 form. Two new independent reviews—authority/security and factory-plan—must
 review the repaired candidate. Each future implementation authorization must
 explicitly approve `superpowers:subagent-driven-development` where subagents

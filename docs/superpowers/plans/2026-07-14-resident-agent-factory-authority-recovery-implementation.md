@@ -7423,7 +7423,7 @@ git diff --check && npm run factory:check
 ```
 
 The candidate-specific review range is
-`dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD`; the full-lineage review
+`dcb863e2bf258205308cdb35955f10ef71fdc501..7cadeaed3c26f59a36e28ea34afcdff33af5e591`; the full-lineage review
 range remains `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Two fresh
 independent reviewers must explicitly confirm the authority split, zero-effect
 Task133 boundary, receipt retention/replay, complete P/R0 source mapping,
@@ -7571,7 +7571,7 @@ integration.
 Every candidate-specific review of this repaired candidate uses exactly:
 
 ```text
-dcb863e2bf258205308cdb35955f10ef71fdc501..HEAD
+dcb863e2bf258205308cdb35955f10ef71fdc501..7cadeaed3c26f59a36e28ea34afcdff33af5e591
 ```
 
 The range deliberately excludes the parent of `dcb863e2`; full-lineage ranges
