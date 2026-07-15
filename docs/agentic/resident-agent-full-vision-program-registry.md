@@ -7108,3 +7108,26 @@ explicit implementation authorization.
   Task132A implementation dispatch or retask. Tasks133/134, Task140P/R0/H/R1,
   full verification, `neo`, provider/network/credential/Nous action,
   reset-credit use, and child self-integration remain **CLOSED**.
+
+## RV-1-E-214 — CF-1R5 observability amendment review repair
+
+- Fresh Terra/xhigh plan review
+  `019f63df-985c-7702-8026-f6a8649c3fbd` returned **NEEDS-CHANGES**. The
+  amendment did not explicitly retire the original Task132A public-surface and
+  structural-tuple Steps 1–5; it also failed to define how Task140R0's existing
+  runner-registry handoff port receives the private context verifier, and it
+  incorrectly stated that a public context registry itself cannot build.
+- The plan is corrected forward: the original Task132A Steps 1–5 are expressly
+  retired and replaced by the amendment; public registries retain normal
+  `buildResolved` behavior but cannot obtain factory-held attestation or mounted
+  factory capability; and Task140R0 now closes an unexported factory-held
+  verifier inside its one Task140P `WeakMap` resolver. That resolver derives
+  expected IDs/hashes from `preparation.handoffMaterial.contextPackRefs`,
+  rebuilds through the captured registry, checks content hash, source
+  high-water, selection manifest/proof, scope, policy, and provenance against
+  factory-captured bindings, and only then calls Task135A binding—before H or
+  terminal state. No verified binding/capability becomes a public port result.
+- This plan repair requires a new fresh read-only Terra/xhigh review before any
+  Task132A retask. The frozen uncommitted Task132A work remains non-candidate
+  evidence; all prior closure candidates remain unintegrated. Downstream and
+  closed-gate restrictions from RV-1-E-213 remain in force.

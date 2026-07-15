@@ -188,50 +188,22 @@ the current program-base SHA, and exact staged-base SHA; mismatch blocks
 dispatch rather than rebasing a child.
 
 **Consumes:** actual package-owned registrar records and mounted authority.
-**Produces:** a factory-held context-attestation closure that can create a
-verified context capability only from the actual registry it captured. Each
-producer module keeps its existing `WeakMap` private and exports only a
+**Produces:** an unexported lexical factory-held context-binding verifier for a
+later R0 port closure; it exposes no capability constructor at Task132A time.
+Each producer module keeps its existing `WeakMap` private and exports only a
 read-only registry lookup; no producer exports a record/mint operation. The
-factory calls all three lookups against its own captured registry, and the
-context capability repeats those lookups rather than accepting identity text or
-a registrar tuple. Default composition blocked on a missing lookup is correct.
+factory calls all three lookups against its own captured registry and retains
+their identities for the later private verifier rather than accepting identity
+text or a registrar tuple. Default composition blocked on a missing lookup is
+correct.
 
-- [ ] **Step 1: Write causal RED tests.**
-
-  Add table cases that call the public context surface with a swapped producer,
-  registration, or parser identity and assert rejection before `build` runs.
-  Add positive fixtures built through real PRR (`prr-request`), operational
-  (no manifest), and investigative (plural high-water) registrars. The direct
-  factory call with a structural registrar tuple must reject before builder
-  activity.
-
-- [ ] **Step 2: Run focused RED.**
-
-  Run `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/local-runtime/test/agent-runtime-context-attestation.test.ts packages/agent/test/context-packs.test.ts` and record the expected identity/constructor failures.
-
-- [ ] **Step 3: Implement the minimal registrar readback and closure.**
-
-  Add one read-only accessor in each producer module over its existing private
-  `WeakMap`; it returns no writable registry callback and returns `undefined`
-  for a manually registered or foreign registry. The factory captures only
-  accessors' immutable snapshots for its own registry. The context capability
-  calls the same accessors on that captured registry and compares descriptor,
-  parser, producer, and registration identity before resolution. The focused
-  test uses actual `registerPrrContextPackBuilders`,
-  `registerOperationalContextPackBuilders`, and
-  `registerInvestigativeContextPacks` calls; the factory test asserts the
-  default empty registry blocks. Do not equate producer to source projection or
-  accept an identity tuple/callback from callers.
-
-- [ ] **Step 4: Run GREEN and exact gate.**
-
-  `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/local-runtime/test/agent-runtime-context-attestation.test.ts packages/agent/test/context-packs.test.ts && npm run typecheck && git diff --check && npm run factory:check`
-
-- [ ] **Step 5: Commit and fresh review.**
-
-  Commit only the listed files and Task132A claim, then request a fresh
-  Terra/xhigh review. Coordinator integration unblocks Task133 and the
-  serialized Task134A factory writer.
+> **Retired by the CF-1R5 Observability-Boundary Amendment below.** Do not
+> implement the original Task132A Steps 1–5. In particular, neither a public
+> context-surface capability call nor a direct factory call with a structural
+> registrar tuple is an admissible Task132A acceptance path. The only current
+> Task132A implementation and test instructions are the replacement steps in
+> that amendment; the original text remains available in Git history as the
+> rejected pre-amendment contract.
 
 ## Task 134A: Factory-Closed Normalized Handoff Preparation
 
@@ -632,7 +604,9 @@ constructor.
   assert `Reflect.get(module, "captureFactoryContextPackAttestation")`,
   `Reflect.get(module, "createFactoryHeldMountedAgentContextCapability")`, and
   every exported capability-construction wrapper are `undefined`; an attempted
-  external registry registration must not yield a build-capable object. Keep
+  external registry registration may retain its normal public
+  `buildResolved` behavior but must not yield a factory-held attestation or
+  mounted factory capability. Keep
   real PRR (`prr-request`), operational (no manifest), and investigative
   (plural high-water) registrar fixtures. Assert each read-only accessor returns
   its actual captured registrar evidence, while a foreign/manual registry
@@ -680,6 +654,26 @@ Task135A binder/stores. **Produces:** the first actual production-observable
 registration of the factory-held closure, still without H prepare or terminal
 append authority.
 
+**Private R0 bridge:** Task132A leaves an unexported
+`verifyFactoryHeldContextBindings` lexical closure in
+`packages/local-runtime/src/agent-runtime-factory.ts`. It captures only the
+factory-created registry, mounted authority, and canonical registration bindings;
+none is accepted by `LocalAgentRuntimeFactoryInput`, a public runtime DTO, or
+the Task140P port request. Task140R0 creates this closure while composing the
+actual factory and closes it inside the one `Task140P` handoff-port resolver it
+registers for the exact runner-registry object. On every `resolve({
+runnerRegistry, taskId, attemptId, approvedRunId, runType, preparation })`, the
+private resolver must first derive required IDs and expected content hashes from
+`preparation.handoffMaterial.contextPackRefs`, invoke the captured verifier,
+and only then invoke the captured Task135A binder. The verifier rebuilds through
+the captured registry and compares the actual resolved evidence against the
+factory-captured binding for exact content hash, source high-water, selection
+manifest/proof, scope, policy version, and provenance before the port returns
+its existing stores/preparation/readback result. The verified binding set is
+not a public result or caller-supplied argument. A mismatch throws from R0's
+private resolver before Task135A binding, H prepare/readback, or terminal
+append; a missing factory capture makes the port unavailable.
+
 - [ ] **Step 1: Write Task140R0 causal REDs.**
 
   Through the real factory-created, Task140P-registered production path—not a
@@ -699,11 +693,19 @@ append authority.
 
 - [ ] **Step 3: Implement only private R0 registration and live rechecks.**
 
-  Construct/register the resolver inside the factory from captured collaborators
-  and recheck all six exact bindings at the live resolve boundary. No caller may
-  pass a closure/capability/tuple; no duplicate H sequencing or terminal logic
-  is allowed. A missing, stale, swapped, or mismatched value fails closed before
-  H and terminal state.
+  Construct the lexical verifier and the port resolver inside the factory from
+  captured collaborators. The resolver must first map
+  `preparation.handoffMaterial.contextPackRefs` to factory-captured bindings,
+  rebuild the actual pack through the captured registry, and reject each exact
+  mismatch of content hash, source high-water, selection manifest/proof, scope,
+  policy version, or provenance before it calls Task135A's `prepare`. It then
+  performs the existing preparation/readback reparse/hash and binder checks.
+  Register only that closed resolver through Task140P's non-indexed
+  runner-registry `WeakMap`; no caller may pass a closure/capability/tuple, and
+  the resolver does not return a context capability or verified binding set.
+  No duplicate H sequencing or terminal logic is allowed. A missing, stale,
+  swapped, or mismatched value fails closed before Task135A binding, H, and
+  terminal state.
 
 - [ ] **Step 4: Run Task140R0 GREEN and exact gate.**
 
