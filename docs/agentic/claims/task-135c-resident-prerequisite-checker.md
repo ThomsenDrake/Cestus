@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: blocked.
+- Status: in-progress.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -77,3 +77,14 @@ checkpoint, no third repair is attempted here. The scoped checker and expanded
 test fixture are preserved for coordinator recovery; no static ABI, factory,
 full verify, provider, network, credential, Nous, `neo`, registry, merge, or
 self-integration action has been performed.
+
+## RV-1-E-331 Coordinator Recovery (2026-07-15)
+
+The coordinator completed and recorded the root-cause checkpoint as
+`RV-1-E-331`, preserved the failed attempt, and moved this clean worktree to
+`codex/task-135c-prerequisite-checker-recovery` at
+`7bad93c42e0fe6bac8e638119a18c93e84301241`. The one authorized repair binds
+the external C `checkerSha256` field to the SHA-256 of the immutable
+`C:scripts/check-resident-task-prerequisites.mjs` blob. It must retain the
+existing retained-payload hash-and-execute protection and must not reopen a
+mutable checker path. No new implementer is authorized.
