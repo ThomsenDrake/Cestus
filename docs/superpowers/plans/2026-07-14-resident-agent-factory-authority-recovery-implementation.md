@@ -3370,3 +3370,214 @@ opening names only this latest lifecycle, and return two unqualified
 Terra/xhigh approvals before coordinator-only plan integration. Full verify,
 provider/network/credential/Nous activity, reset credits, `neo`, source work in
 this plan branch, self-integration, and merge remain closed.
+
+## CF-1R10 Complete Task133.5/Task140P/Task140R0 Lifecycle
+
+**Status:** This section supersedes every earlier Task133.5 instruction only
+where it permits an implicit specialist render, and supersedes every earlier
+Task140P and Task140R0 file list, interface, RED/GREEN step, command, and
+conditional ownership statement in full. It preserves CF-1R9's Task133 schema
+sequence, CF-1R6 receipt/recovery invariants, and the post-approval binder. A
+worker must not consult an older P/R0 implementation section.
+
+### Task133.5 fallback-removal overlay
+
+Add these files to the complete CF-1R9 Task133.5 ownership:
+
+- Modify `packages/agent/src/specialist-runner-kernel.ts`
+- Modify `packages/agent/test/specialist-runner-kernel.test.ts`
+- Modify `packages/local-runtime/test/agent-prr-context-packs.test.ts`
+
+Add exact-title REDs
+`rejects missing mounted context-ready prompt instead of rendering`,
+`accepts the exact supplied context-ready v1 without another render`, and
+`local prr preparation supplies the stored v1 instead of using kernel fallback`.
+The missing-artifact counterfactual records zero renderer, ledger append,
+provider, H, store write, handoff, and terminal effects. The valid control
+records the one Task133.5 context render/store/readback before kernel entry and
+zero renderer calls inside `prepareSpecialistRun`.
+
+Replace CF-1R9 Task133.5's RED and GREEN command with this identical command:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/local-runtime/test/agent-prr-context-packs.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts
+```
+
+Expected RED additionally requires the canonical implicit branch in
+`prepareSpecialistRun` to render or accept missing input, and the local PRR
+direct caller to depend on that branch. Implement by deleting the
+`input.promptArtifact === undefined ? render...` fallback, rejecting a missing
+artifact before current-run/provider/ledger effects, and verifying only the v1
+artifact supplied from exact Task133.5 mounted readback in production
+composition. A structural caller artifact remains non-authoritative and cannot
+reach provider transfer without later P/R0/H authority. Expected GREEN is exit
+`0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'renderProductionSpecialistPrompt\(' packages/agent/src/specialist-runner-kernel.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+The Task133.5 commit includes all CF-1R9 and overlay files and stops for review.
+The integrated CF-1R9 gate additionally includes
+`packages/local-runtime/test/agent-prr-context-packs.test.ts` and both negative
+`rg` assertions above.
+
+### Task140P — Two-phase receipt admission and recovery dispatch
+
+Task140P starts only after reviewed coordinator integration of Task133.5. It
+has one fresh worktree, one commit, and one review. The coordinator message
+must specifically approve `superpowers:subagent-driven-development`.
+
+**Files**
+
+- Create `packages/agent/src/task-orchestrator-handoff-port.ts`
+- Modify `packages/agent/src/task-orchestrator.ts`
+- Modify `packages/agent/test/task-orchestrator-handoff-port.test.ts`
+- Modify `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Modify `packages/agent/test/task-orchestrator-approval.test.ts`
+- Modify `packages/agent/test/task-orchestrator-recovery.test.ts`
+- Create `docs/agentic/claims/task-140-p-private-prompt-admission.md`
+
+The exact structural resolver input is data-only and contains no time:
+
+```ts
+interface ResolveApprovedPromptBindingForDispatchInput {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runType: TaskOrchestratorRunType;
+  readonly scope: ProductionRunScope;
+  readonly approvalEventId: string;
+  readonly approvalProof: TaskOrchestratorProviderApprovalProof;
+  readonly providerPosture: PromptArtifactProviderPostureV2;
+}
+```
+
+`generatedAt`, `approvedAt`, `now`, callback, resolver, prompt artifact, v2,
+hash override, capability, and lookalike keys are forbidden. The orchestrator
+passes the exact `approvalEventId` returned by approval inspection; neither P
+nor a caller derives time. R0 alone reads that event and returns a prepared
+binding whose diagnostics include the event-derived time.
+
+- [ ] **Step 1: write causal REDs.** Add exact-title tests
+  `approval inspection precedes private binding preparation`,
+  `rejects generatedAt and every caller time before port activity`,
+  `prepare returns one identity-bound private binding`,
+  `appends and reads prompt-bound receipt before admission`,
+  `rejects copied swapped reused or foreign prepared binding and receipt`,
+  `runner-dispatching binds receipt event hash v2 hash and invocation id`, and
+  `recovers each pre-request crash with a fresh token and same durable ids`.
+  Cover crashes before v2 put, after put/before receipt, after receipt/before
+  admission, after admission/before dispatch checkpoint, and after checkpoint/
+  before token consumption. Every pre-request recovery uses a fresh ephemeral
+  object and never serializes/reconstructs one.
+
+- [ ] **Step 2: run RED.**
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected: exit `1` because the private two-phase port/receipt path is absent,
+`generatedAt` is accepted by the stale interface, or a recovery control cannot
+mint a fresh token from durable facts. Missing/syntax/unrelated failures are
+not accepted RED evidence.
+
+- [ ] **Step 3: implement minimum P lifecycle.** Create private registrar,
+  `prepare`, `admit`, and single-use `consume` identity maps. Strictly normalize
+  the no-time input before await; call prepare after current approval and before
+  runner checkpoint; append/read one prompt-bound receipt from prepared
+  diagnostics; admit only exact prepared identity plus exact receipt event;
+  append/read deterministic runner checkpoint; and recover through the CF-1R6
+  invocation-state matrix. Expose no public resolver constructor, token, v2,
+  receipt authority, or route field.
+
+- [ ] **Step 4: rerun identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected: exit `0`, followed by
+`npm run typecheck && git diff --check && npm run factory:check`. Commit only
+the listed files/claim and stop for fresh code/spec review.
+
+### Task140R0 — Factory-private durable v2 preparation and restart lookup
+
+R0 starts only after reviewed coordinator integration of P. It has one fresh
+worktree, one commit, and one review. The coordinator message must specifically
+approve `superpowers:subagent-driven-development`.
+
+**Files**
+
+- Modify `packages/local-runtime/src/agent-runtime-factory.ts`
+- Create `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+- Create `docs/agentic/claims/task-140-r0-factory-prompt-binding.md`
+- Read-only regression: `packages/local-runtime/src/agent-prompt-artifacts.ts`
+- Read-only regression: `packages/local-runtime/src/mounted-prompt-artifact-store.ts`
+- Read-only regression: `packages/local-runtime/test/agent-prompt-artifacts.test.ts`
+- Read-only regression: `packages/local-runtime/test/mounted-prompt-artifact-store.test.ts`
+- Read-only regression: `packages/agent/test/task-orchestrator-handoff-port.test.ts`
+- Read-only regression: `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Read-only regression: `packages/agent/test/task-orchestrator-recovery.test.ts`
+
+- [ ] **Step 1: write causal REDs.** In the two writable tests add exact-title
+  controls `rereads exact v1 and approval event before binding v2`,
+  `derives v2 generatedAt only from approval event occurredAt`,
+  `binds and stores v2 with zero renderer calls`,
+  `returns only one private prepared binding after exact mounted readback`,
+  `fresh factory reads receipt and v2 without in-memory resolver state`, and
+  `rejects stale approval context provider workspace mount lock or source`.
+  Table-reject structural `generatedAt`, caller v2/artifact/hash, one-field
+  task/attempt/run/type/posture/context/workflow/scope swaps, forged approval
+  event ID, non-approved event type, and event-time mismatch. Every rejection
+  records zero binder, store write, receipt append, token, runner, provider, H,
+  handoff, and terminal effects; durable reads needed for validation are allowed.
+
+- [ ] **Step 2: run RED.**
+
+```bash
+npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected: exit `1` because no factory-private P resolver is registered, the
+composition test is absent, or stale inherited code calls the forbidden exact
+renderer/accepts caller time. A missing created test is only the first RED;
+after adding its complete tests and a registrar skeleton that throws
+`blocked.factory-prompt-binding-required`, the identical command must still
+exit `1` on valid binding/restart controls.
+
+- [ ] **Step 3: implement minimum R0 resolver.** Register one lexical resolver
+  in the factory. On each call: exact-key normalize input; read and validate the
+  exact `approvalEventId` as current `agent.tool.approved`; use only its
+  `context.occurredAt`; read exact durable v1 by approval/checkpoint hash;
+  reconsume approval/current preview; rerun provider and all six live context/
+  workspace/mount/policy/source/lock checks; call
+  `bindApprovedProductionSpecialistPromptV2` once with zero renderer calls;
+  mounted put/read exact v2; then return the port-private prepared identity.
+  If a receipt exists, read v2 by its bound hash and verify byte-identical v2,
+  approval event time, source v1, and all current facts before returning a new
+  prepared identity. Never accept caller time/v2, rerender, append receipt,
+  mint admission, or use internal fallback.
+
+- [ ] **Step 4: rerun identical command to GREEN.**
+
+```bash
+npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected: exit `0`, followed by
+`npm run typecheck && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/local-runtime packages/agent/src packages/agent/test && git diff --check && npm run factory:check`.
+Commit only the three writable source/test files and R0 claim; read-only
+regressions must remain byte-identical. Stop for fresh code/spec review.
+
+### CF-1R10 review gate
+
+The sole implementation order is Task133.1-.3 atomic -> Task133.5 including
+fallback removal -> P -> R0 -> H. Fresh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD` and verify no executable
+step outside CF-1R9, CF-1R10, and CF-1R8 is needed, caller time is absent, every
+P/R0 RED has an identical GREEN, and all final gates exclude live/provider
+activity. Two unqualified Terra/xhigh approvals are required before
+coordinator-only plan integration. Source/full/live/credential/reset-credit/
+`neo`/self-integration/merge remain closed.

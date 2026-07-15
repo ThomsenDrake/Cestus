@@ -12,8 +12,9 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R9 owns the
-Task133 RED/GREEN sequence; CF-1R8 owns Task140H execution; CF-1R7 owns the
+read backward only for sections it explicitly preserves. CF-1R10 owns the
+Task133.5 fallback removal and complete Task140P/R0 execution; CF-1R9 owns the
+remaining Task133 RED/GREEN sequence; CF-1R8 owns Task140H execution; CF-1R7 owns the
 private data-only model command; CF-1R6 owns receipt/recovery/proof ordering;
 and the post-approval lifecycle correction owns v1-to-v2 binding semantics.
 Any earlier raw-v2 renderer, pre-approval exact-v2 route, local-only bridge,
@@ -34,6 +35,9 @@ non-authorizing.
   through append/readback/projection/ontology/rebuild; Task133.5 owns portable
   v1 persistence. The former standalone Task133.4 is retired, and its
   deterministic-v1 caller witnesses belong to the Task133.1 atomic migration.
+- Task133.5 also deletes the kernel's implicit rendering fallback. A production
+  specialist may consume only the v1 supplied from exact mounted context-ready
+  readback; absence rejects before effects and can never trigger rendering.
 - Task140P/R0 consume exact durable v1 and approval facts, bind/store/read v2,
   append/read its hash-only receipt, and mint only ephemeral identity authority.
   Task140H alone consumes that authority into the private data-only runtime
@@ -328,6 +332,33 @@ serialized task.
 - The integrated Task133 gate aggregates binder, approval/transfer, event/
   projection/ontology/rebuild, deterministic caller, context render, mounted
   store, and restart suites and excludes live/provider-bearing tests.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exact review range remains
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; two fresh unqualified
+  Terra/xhigh approvals are required before coordinator integration.
+
+## Forward Correction — Complete P/R0 And No Implicit Rendering
+
+- Status remains **plan-repair candidate only**. Reviewers
+  `019f6505-1e85-7813-a9d2-ade280b6843c` and
+  `019f6505-230f-70b0-854f-a272e48a3c77` rejected `d0b7e707`: inherited P/R0
+  steps still required the forbidden old renderer, P/R0 lacked complete
+  recovery RED/GREEN ownership, P accepted caller time, and the canonical
+  specialist kernel retained an implicit render fallback.
+- CF-1R10 adds fallback removal and direct/local caller regressions to the
+  complete Task133.5 commit. Missing prompt input now rejects; production
+  composition supplies exact mounted context-ready v1 and the kernel performs
+  zero renders.
+- CF-1R10 replaces every old P and R0 implementation instruction. P has a
+  complete two-phase prepare/receipt/admit/recovery TDD cycle and a structural
+  input with `approvalEventId` but no time. R0 rereads that exact approved event
+  and uses only its `context.occurredAt`, binds/stores/reads v2 with zero
+  renderer calls, and supports restart lookup from durable receipt/v2 evidence.
+- The sole implementation order is Task133.1-.3 atomic, Task133.5, P, R0, H.
+  Each source boundary requires explicit coordinator approval of
+  `superpowers:subagent-driven-development`, exact RED/GREEN evidence, commit,
+  and fresh review.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exact review range remains
