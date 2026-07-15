@@ -8139,3 +8139,24 @@ explicit implementation authorization.
   obtain a single-process current-head exact non-full baseline. Full verifier,
   provider/network/credential/Nous, reset credits, neo, source self-review,
   and self-integration remain closed.
+
+## RV-1-E-258 — Task133.1 isolated implementation dispatch
+
+- Fresh Task133.1 author `/root/task133_1_artifact_union_renderer`, session
+  `019f647f-2f7f-7ba3-be1d-efc4b9ac8276`, is bound to isolated branch
+  `codex/task-133-runtime-prompt-binding-v2` and worktree
+  `/home/drake/.codex/worktrees/task-133-runtime-prompt-binding-v2`. Its
+  preflight claim commits are `86c78321fc294695b6f958bc7af49f7641f88c29` and
+  `adc4470dcadba4b5f1357ad652d07d150e4fa8aa`, based on clean program
+  `d567a630f820122b7795a30f06922fd6f8664b37`. Its authoritative
+  `turn_context` records `model=gpt-5.6-terra`, `effort=xhigh`.
+- The claim records all frozen prerequisite SHAs, approved plan merge
+  `ba98cd1a`, current-head single-process baseline exit `0` (11 files / 280
+  tests, typecheck, diff, factory), and the Task133.1 four source/test files
+  plus claim ceiling. Coordinator explicitly authorizes
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion: causal six-key RED first, focused RED/GREEN,
+  exact non-full gate with one actual compiler exit, clean commit, then fresh
+  independent review. Full verification, provider/network/credential/Nous,
+  reset credits, neo, Task140, self-review, self-integration, rebase, and merge
+  remain closed.
