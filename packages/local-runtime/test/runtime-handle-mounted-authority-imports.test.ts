@@ -738,7 +738,11 @@ function decodedAstTokens(fileName: string, source: string): {
 
 describe("factory-issued mounted runtime capture production imports", () => {
   it("permits zero importers until the exact mounted authority operation exists", () => {
-    expect(captureSeamImporters(workspaceRoot)).toEqual([]);
+    expect(captureSeamImporters(workspaceRoot)).toEqual(
+      existsSync(join(workspaceRoot, mountedAuthorityOperationPath))
+        ? [mountedAuthorityOperationPath]
+        : [],
+    );
     expect(() => assertCaptureSeamImportersAreAllowed(workspaceRoot)).not.toThrow();
   });
 
