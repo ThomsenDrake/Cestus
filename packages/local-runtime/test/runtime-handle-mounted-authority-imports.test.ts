@@ -170,7 +170,15 @@ function declarationReferencesFactoryCapture(
   }
 
   if (ts.isImportDeclaration(declaration)) {
-    const bindings = declaration.importClause?.namedBindings;
+    const importClause = declaration.importClause;
+    if (importClause === undefined) {
+      return false;
+    }
+    if (importClause.name !== undefined) {
+      return true;
+    }
+
+    const bindings = importClause.namedBindings;
     if (bindings === undefined) {
       return false;
     }
@@ -208,6 +216,25 @@ function importEqualsReferencesFactoryCapture(
   );
 }
 
+function isStandardModuleRequireCall(expression: TypeScript.Expression): boolean {
+  if (ts.isPropertyAccessExpression(expression)) {
+    return (
+      ts.isIdentifier(expression.expression) &&
+      expression.expression.text === "module" &&
+      expression.name.text === "require"
+    );
+  }
+
+  return (
+    ts.isElementAccessExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    expression.expression.text === "module" &&
+    expression.argumentExpression !== undefined &&
+    ts.isStringLiteralLike(expression.argumentExpression) &&
+    expression.argumentExpression.text === "require"
+  );
+}
+
 function callReferencesFactoryCapture(
   root: string,
   sourcePath: string,
@@ -220,7 +247,8 @@ function callReferencesFactoryCapture(
 
   return (
     call.expression.kind === ts.SyntaxKind.ImportKeyword ||
-    (ts.isIdentifier(call.expression) && call.expression.text === "require")
+    (ts.isIdentifier(call.expression) && call.expression.text === "require") ||
+    isStandardModuleRequireCall(call.expression)
   );
 }
 
@@ -371,10 +399,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "capture.mts": `export { inspectFactoryIssuedMountedRuntimeCapture } from "${deepImport}";\n`,
       "capture.ts": `import { captureFactoryIssuedMountedRuntime } from "${deepImport}";\n`,
       "capture.tsx": `export type { FactoryIssuedMountedRuntimeCapture } from "${deepImport}";\n`,
+      "default-import.ts": `import runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
+      "default-type-import.ts": `import type runtimeFactory from "${deepImport}";\n`,
       "fragment-dynamic-import.ts": `void import("${fragmentRuntimeFactoryImport}");\n`,
       "fragment-import-equals.ts": `import runtimeFactory = require("${fragmentRuntimeFactoryImport}");\nvoid runtimeFactory;\n`,
       "fragment-namespace-import.ts": `import * as runtimeFactory from "${fragmentRuntimeFactoryImport}";\nvoid runtimeFactory;\n`,
       "fragment-namespace-reexport.ts": `export * as runtimeFactory from "${fragmentRuntimeFactoryImport}";\n`,
+      "module-element-require.cjs": `void module["require"]("${deepImport}");\n`,
+      "module-require.cjs": `void module.require("${deepImport}");\n`,
       "query-named-import.ts": `import { captureFactoryIssuedMountedRuntime } from "${queryRuntimeFactoryImport}";\n`,
       "query-named-reexport.ts": `export { inspectFactoryIssuedMountedRuntimeCapture } from "${queryRuntimeFactoryImport}";\n`,
       "query-require.cjs": `void require("${queryRuntimeFactoryImport}");\n`,
@@ -409,6 +441,10 @@ describe("factory-issued mounted runtime capture production imports", () => {
         "inspectFactoryIssuedMountedRuntimeCapture",
       ],
     ]);
+    const decodedFixtureDefaultBindings = new Map<string, string>([
+      ["default-import.ts", "runtimeFactory"],
+      ["default-type-import.ts", "runtimeFactory"],
+    ]);
     const lookalikeFixtureSources = {
       "lookalike-bare-query.ts": {
         moduleSpecifier: "@lookalike/runtime-factory.js?nonce",
@@ -419,6 +455,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
         moduleSpecifier: "../../../unrelated/src/runtime-factory.js#fragment",
         source:
           'void import("../../../unrelated/src/runtime-factory.js#fragment");\n',
+      },
+      "unrelated-element-require.cjs": {
+        moduleSpecifier: deepImport,
+        source: `void loader["require"]("${deepImport}");\n`,
+      },
+      "unrelated-property-require.cjs": {
+        moduleSpecifier: deepImport,
+        source: `void loader.require("${deepImport}");\n`,
       },
     };
 
@@ -437,6 +481,10 @@ describe("factory-issued mounted runtime capture production imports", () => {
       const protectedName = decodedFixtureProtectedNames.get(fileName);
       if (protectedName !== undefined) {
         expect(decodedTokens.identifiers).toContain(protectedName);
+      }
+      const defaultBinding = decodedFixtureDefaultBindings.get(fileName);
+      if (defaultBinding !== undefined) {
+        expect(decodedTokens.identifiers).toContain(defaultBinding);
       }
     }
 
@@ -468,10 +516,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/capture.mts",
       "packages/agent-runtime/src/deep/capture.ts",
       "packages/agent-runtime/src/deep/capture.tsx",
+      "packages/agent-runtime/src/deep/default-import.ts",
+      "packages/agent-runtime/src/deep/default-type-import.ts",
       "packages/agent-runtime/src/deep/fragment-dynamic-import.ts",
       "packages/agent-runtime/src/deep/fragment-import-equals.ts",
       "packages/agent-runtime/src/deep/fragment-namespace-import.ts",
       "packages/agent-runtime/src/deep/fragment-namespace-reexport.ts",
+      "packages/agent-runtime/src/deep/module-element-require.cjs",
+      "packages/agent-runtime/src/deep/module-require.cjs",
       "packages/agent-runtime/src/deep/query-named-import.ts",
       "packages/agent-runtime/src/deep/query-named-reexport.ts",
       "packages/agent-runtime/src/deep/query-require.cjs",
