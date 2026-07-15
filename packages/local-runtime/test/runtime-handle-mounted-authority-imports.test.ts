@@ -350,6 +350,16 @@ function hasDeclareModifier(
   );
 }
 
+function hasConstModifier(
+  modifiers: readonly TypeScript.ModifierLike[] | undefined,
+): boolean {
+  return (
+    modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.ConstKeyword,
+    ) ?? false
+  );
+}
+
 function isAmbientVariableDeclarationList(
   declarationList: TypeScript.VariableDeclarationList,
 ): boolean {
@@ -361,12 +371,18 @@ function isAmbientVariableDeclarationList(
 
 function addHoistedVarShadowedLoaderNames(
   shadowedLoaderNames: Set<string>,
-  scope: TypeScript.SourceFile | TypeScript.SignatureDeclaration | TypeScript.ModuleBlock,
+  scope:
+    | TypeScript.SourceFile
+    | TypeScript.SignatureDeclaration
+    | TypeScript.ModuleBlock
+    | TypeScript.ClassStaticBlockDeclaration,
 ): void {
   const visit = (node: TypeScript.Node, isScopeRoot: boolean): void => {
     if (
       !isScopeRoot &&
-      (ts.isFunctionLike(node) || ts.isModuleBlock(node))
+      (ts.isFunctionLike(node) ||
+        ts.isModuleBlock(node) ||
+        ts.isClassStaticBlockDeclaration(node))
     ) {
       return;
     }
@@ -448,7 +464,8 @@ function addShadowedLoaderStatement(
   }
   if (
     ts.isEnumDeclaration(statement) &&
-    !hasDeclareModifier(statement.modifiers)
+    !hasDeclareModifier(statement.modifiers) &&
+    !hasConstModifier(statement.modifiers)
   ) {
     addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
     return;
@@ -498,7 +515,8 @@ function shadowedLoaderNamesForScope(node: TypeScript.Node): ReadonlySet<string>
   if (
     ts.isSourceFile(node) ||
     ts.isFunctionLike(node) ||
-    ts.isModuleBlock(node)
+    ts.isModuleBlock(node) ||
+    ts.isClassStaticBlockDeclaration(node)
   ) {
     addHoistedVarShadowedLoaderNames(shadowedLoaderNames, node);
   }
@@ -750,6 +768,7 @@ describe("factory-issued mounted runtime capture production imports", () => {
     const binFixtureSource = `import * as runtimeFactory from "${binDeepImport}";\nvoid runtimeFactory;\n`;
     const fixtureSources = {
       "ambient-class-module.cts": `declare class module { static require(target: string): unknown; }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
+      "ambient-const-enum-module.cts": `declare const enum module { value }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
       "ambient-const-require.cts": `declare const require: (target: string) => unknown;\nconst target = "${deepImport}";\nvoid require(target);\n`,
       "ambient-enum-module.cts": `declare enum module { value }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
       "ambient-function-require.cts": `declare function require(target: string): unknown;\nconst target = "${deepImport}";\nvoid require(target);\n`,
@@ -775,6 +794,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "computed-module-element-require.cts": `const target = "${deepImport}";\nvoid module["require"](target);\n`,
       "computed-module-property-require.cts": `const target = "${deepImport}";\nvoid module.require(target);\n`,
       "computed-require.cts": `const target = "${deepImport}";\nvoid require(target);\n`,
+      "const-enum-module.cts": `const enum module { value }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
+      "const-enum-require.cts": `const enum require { value }\nconst target = "${deepImport}";\nvoid require(target);\n`,
       "decorated-class-expression-module.cts": `const target = "${deepImport}";\nconst decorate = (_value: unknown) => undefined;\nconst Loader = @decorate(module.require(target)) class Loader {};\nvoid Loader;\n`,
       "decorated-class-expression-require.cts": `const target = "${deepImport}";\nconst decorate = (_value: unknown) => undefined;\nconst Loader = @decorate(require(target)) class Loader {};\nvoid Loader;\n`,
       "default-import.ts": `import runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
@@ -796,6 +817,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "query-named-reexport.ts": `export { inspectFactoryIssuedMountedRuntimeCapture } from "${queryRuntimeFactoryImport}";\n`,
       "query-require.cjs": `void require("${queryRuntimeFactoryImport}");\n`,
       "query-star-reexport.ts": `export * from "${queryRuntimeFactoryImport}";\n`,
+      "static-block-var-module-outside.cts": `class Container { static { var module = { require: (_target: string) => undefined }; } }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
+      "static-block-var-require-outside.cts": `class Container { static { var require = (_target: string) => undefined; } }\nconst target = "${deepImport}";\nvoid require(target);\n`,
       "star-reexport.mjs": `export * from "${deepImport}";\n`,
       "type-namespace-import.ts": `import type * as runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
       "type-namespace-reexport.ts": `export type * as runtimeFactory from "${deepImport}";\n`,
@@ -912,6 +935,22 @@ describe("factory-issued mounted runtime capture production imports", () => {
         moduleSpecifier: deepImport,
         source: `namespace require { export const value = undefined; }\nconst target = "${deepImport}";\nvoid require(target);\n`,
       },
+      "shadowed-runtime-enum-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `enum module { value }\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
+      },
+      "shadowed-runtime-enum-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `enum require { value }\nconst target = "${deepImport}";\nvoid require(target);\n`,
+      },
+      "shadowed-static-block-var-module-inside.cts": {
+        moduleSpecifier: deepImport,
+        source: `class Container { static { var module = { require: (_target: string) => undefined }; const target = "${deepImport}"; void module.require(target); } }\n`,
+      },
+      "shadowed-static-block-var-require-inside.cts": {
+        moduleSpecifier: deepImport,
+        source: `class Container { static { var require = (_target: string) => undefined; const target = "${deepImport}"; void require(target); } }\n`,
+      },
       "shadowed-switch-case-module.cts": {
         moduleSpecifier: deepImport,
         source: `switch ("module") { case "module": const module = { require: (_target: string) => undefined }; const target = "${deepImport}"; void module.require(target); break; }\n`,
@@ -1026,6 +1065,7 @@ describe("factory-issued mounted runtime capture production imports", () => {
     expect(captureSeamImporters(fixtureRoot)).toEqual([
       "packages/agent-runtime/bin/deep-import.mjs",
       "packages/agent-runtime/src/deep/ambient-class-module.cts",
+      "packages/agent-runtime/src/deep/ambient-const-enum-module.cts",
       "packages/agent-runtime/src/deep/ambient-const-require.cts",
       "packages/agent-runtime/src/deep/ambient-enum-module.cts",
       "packages/agent-runtime/src/deep/ambient-function-require.cts",
@@ -1051,6 +1091,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/computed-module-element-require.cts",
       "packages/agent-runtime/src/deep/computed-module-property-require.cts",
       "packages/agent-runtime/src/deep/computed-require.cts",
+      "packages/agent-runtime/src/deep/const-enum-module.cts",
+      "packages/agent-runtime/src/deep/const-enum-require.cts",
       "packages/agent-runtime/src/deep/decorated-class-expression-module.cts",
       "packages/agent-runtime/src/deep/decorated-class-expression-require.cts",
       "packages/agent-runtime/src/deep/default-import.ts",
@@ -1073,6 +1115,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/query-require.cjs",
       "packages/agent-runtime/src/deep/query-star-reexport.ts",
       "packages/agent-runtime/src/deep/star-reexport.mjs",
+      "packages/agent-runtime/src/deep/static-block-var-module-outside.cts",
+      "packages/agent-runtime/src/deep/static-block-var-require-outside.cts",
       "packages/agent-runtime/src/deep/type-namespace-import.ts",
       "packages/agent-runtime/src/deep/type-namespace-reexport.ts",
       "packages/agent-runtime/src/deep/type-star-reexport.ts",
