@@ -491,7 +491,7 @@ function plainSafeStringArray(value: unknown, itemPattern: RegExp): readonly str
       return undefined;
     }
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const lengthDescriptor = descriptors.length;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
     if (lengthDescriptor === undefined || !("value" in lengthDescriptor) || typeof lengthDescriptor.value !== "number" ||
         lengthDescriptor.value < 1 || !Number.isSafeInteger(lengthDescriptor.value)) {
       return undefined;
