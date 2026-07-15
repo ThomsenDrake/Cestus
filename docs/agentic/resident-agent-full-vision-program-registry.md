@@ -7571,3 +7571,32 @@ explicit implementation authorization.
   explicit Task133 rebase/prerequisite gate. No finding authorizes reopening a
   structural verifier callback, public mint route, provider action, or full
   verifier.
+
+## RV-1-E-237 — Task133 canonical-renderer forward repair candidate
+
+- The first pure-renderer amendment remains preserved rejected history at
+  `38c2456f1f935aca291d24447c31b6a1d0728fd1`. Coordinator-owned forward
+  repair `ffc2dc81c189af3163ec7b573b4f6f4767660de7` is clean in the same
+  isolated Task133 plan worktree. The only changed files are the recovery plan
+  and its amendment claim. It supersedes the retired local
+  `templateData`/`renderPureAgentPrompt`/local-only-upgrade proposal with an
+  agent-owned exact production-binding data contract, computed non-circular
+  posture and binding hashes, the existing canonical production renderer, a
+  frozen five-file Task133 implementation ceiling, an explicit prerequisite
+  ancestry gate, and a one-way private Task140R0 admission seam.
+- The coordinator independently inspected the full amendment lineage
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ffc2dc81c189af3163ec7b573b4f6f4767660de7`,
+  including the rejected `38c2456f` amendment. `git diff --check` and
+  `npm run factory:check` exited 0 on the repaired candidate; full verification
+  remains closed.
+- A new fresh independent Terra/xhigh defects-first plan reviewer must inspect
+  that complete range and explicitly decide whether the five prior findings
+  (typed/no-shadow input material, non-circular hashes, one canonical renderer
+  and artifact formation, a testable one-way R0 seam, and frozen dispatch
+  ancestry) are actually closed. It must also check the exact contract fields,
+  all affected existing call sites, source/test ceilings, and no-new-authority
+  constraints. No Task133 implementation redispatch, plan integration, source
+  merge, or child self-integration is authorized without an unqualified
+  **APPROVED** verdict.
+- Full verification, provider/network/credential/Nous action, reset-credit
+  use, `neo`, and child self-integration remain **CLOSED**.
