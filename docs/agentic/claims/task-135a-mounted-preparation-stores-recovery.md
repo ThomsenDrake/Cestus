@@ -59,3 +59,34 @@ authorized final gate is the Task135A non-full fail-fast chain.
   remained. This makes the three-file lane a candidate for fresh independent
   review only. It is not integrated, executable, durable-terminal, or H
   completion evidence.
+
+## Independent Review Repair Evidence (2026-07-15)
+
+- Repair author: `/root/task135a_store_identity_repair`. The current task
+  session's latest authoritative `turn_context` in
+  `/home/drake/.codex/sessions/2026/07/15/rollout-2026-07-15T01-49-46-019f6452-f55e-78e0-94bd-1b157a4a0ecf.jsonl`
+  attests `gpt-5.6-terra` with `xhigh`; no later
+  `thread_settings_applied` record exists in that session file.
+- Causal test repair: after binder construction, the mutable captured
+  `artifactStores` source now independently swaps `workspaceId`,
+  `mountInstanceId`, `materialStore`, and `manifestStore`. Every case requires
+  `prepare` to reject before all material/manifest `put`/`get` counters remain
+  zero. Replacement stores share those counters, so the test also proves a
+  replacement store was not called.
+- RED-stage execution:
+  `npm test -- packages/local-runtime/test/mounted-agent-artifact-stores.test.ts`
+  exited `0` with 1 file / 18 tests passed. There was no runtime failure to
+  repair: the existing `assertCapturedBindingCurrent` already re-captures the
+  original stores and rejects all four changed identities. Accordingly this
+  repair changes no production source.
+- Process evidence: two no-live npm/tsc guards, six seconds apart, both
+  reported `no-live-npm-or-tsc` before the one controlled final gate. The
+  controlled `npm run typecheck` invokes the package script's actual
+  `tsc --noEmit`; its successful compiler exit is evidenced by its
+  `typecheck passed` output and the enclosing `&&` chain exit `0`.
+- GREEN/final non-full gate exited `0`:
+  `npm test -- packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported 3 test files / 56 tests passed, then `typecheck passed` and
+  `factory-readiness passed`. Full verification, providers, network,
+  credentials, Nous, reset-credit, neo, source changes, self-review,
+  self-integration, and merges remain unperformed.
