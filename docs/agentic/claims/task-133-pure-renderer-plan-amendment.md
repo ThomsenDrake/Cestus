@@ -13,10 +13,14 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R16 owns the
-Task137A opaque admission operation, Task135B portable mounted store producer,
-Task137B runtime wiring, immutable dispatch manifests, handoff-port import
-boundary, live-fixture adapters, and self-contained P/R0/H review commands;
+read backward only for sections it explicitly preserves. CF-1R18 owns the
+coordinator CF-1 ownership revision, R-owned factory capture, exact Task137A
+scope, Task135B component boundary, private WeakMap H guard, Task140H full-
+progression integration, and every affected-task command. CF-1R17 owns only
+the remaining run-bound cursor/high-water progression semantics that CF-1R18
+explicitly preserves. CF-1R16 owns the remaining immutable dispatch manifests,
+handoff-port import boundary, live-fixture adapters, and P/R0/H requirements
+not replaced by CF-1R18;
 CF-1R15 owns the remaining deep pre-await snapshot and three dispatch
 rows, and per-live-file resident assertions; CF-1R14 owns the remaining consume-time transport, exact
 import allowlist, canonical handoff gates, and thin smoke boundary; CF-1R12 owns fresh
@@ -597,6 +601,31 @@ serialized task.
   revalidation, same/lower high-water, or an unaccepted suffix can never revive
   an old operation. Task135B never requests revalidation or chooses an
   admission.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
+
+## Forward Correction — R-Owned Capture And H-Private Guard
+
+- Status remains **plan-repair candidate only**. Fresh reviewers
+  `019f6583-f5ce-7482-ba56-f479d09589b7` and
+  `019f6584-403d-7932-b4b3-2fd76154193b` rejected `7e06c800` because the claim
+  still named CF-1R16, Task137A's file ceiling omitted its new files, W was
+  assigned the R-only runtime-factory write, pre-H tasks were required to pass
+  H integration behavior, the full progression test had no owner or exact
+  commands, and non-enumerable guard methods remained reflectable.
+- CF-1R18 makes a coordinator-only integrity-checked Task117A amendment the
+  first task. It adds R-owned Task135D for exact factory-handle capture, restores
+  Task137A to exactly six W-owned files, and serializes Task135D -> Task137A ->
+  Task135B -> Task137B. Every affected task has a complete command and exact
+  file/commit ceiling.
+- Task135B now proves only operation/cursor/store components and returns an
+  opaque controller solely to the lexical factory closure. No callable guard
+  appears on any binding or controller. Task140P's H port stores the factory
+  closure in a private WeakMap keyed by the exact resolved binding; only
+  Task140H brackets real H appends and owns the named full-progression test.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
