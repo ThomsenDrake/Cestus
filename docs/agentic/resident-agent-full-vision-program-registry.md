@@ -7701,3 +7701,28 @@ explicit implementation authorization.
 - The last authenticated usage observation remains 27% used / 73% weekly
   remaining. No reset credit is consumed or authorized. DRAIN remains at
   <=10% remaining and HARD PAUSE at <=7%.
+
+## RV-1-E-241 — Canonical compiler-repair candidate and fresh review
+
+- Bounded prerequisite candidate
+  `52bb8e5e` is clean on `codex/task132a134-typecheck-repair` and changes
+  exactly `packages/local-runtime/src/agent-runtime-factory.ts` plus
+  `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts` from
+  base `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3`. The source repair narrows the
+  private evidence type to the actual registrar-evidence union; the test repair
+  widens only the mutable hostile-dispatch fixture's `taskId`.
+- The coordinator observed no live compiler before starting one exact candidate
+  fail-fast chain. Seven focused files / 101 tests passed, then the same actual
+  unified-exec session exited `0` after `npm run typecheck`,
+  `git diff --check`, and `npm run factory:check`. The temporary compatible
+  `node_modules` link was removed. This is the first admissible superseding
+  compiler-green evidence after RV-1-E-239; it is review-only and not yet
+  program integration evidence.
+- Fresh independent read-only Terra/xhigh reviewer
+  `/root/task132a134_typecheck_repair_review`, session
+  `019f6442-b684-7720-a058-0c01459d5e4e`, is bound to exact
+  `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3..52bb8e5e`. It must confirm no
+  factory-authority broadening, no weakened ambiguity failure, no production
+  type relaxation, and no scope drift before returning an unqualified
+  **APPROVED** verdict. Coordinator-only integration remains conditional on
+  that verdict and another actual-process gate. Task135A remains frozen.
