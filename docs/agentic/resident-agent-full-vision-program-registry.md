@@ -7990,3 +7990,22 @@ explicit implementation authorization.
 - `0c42f5e9` remains unintegrated pending an independent coordinator exact
   non-full gate with one actual compiler exit and a fresh complete-range review
   of `271406fca811d49ee9ebb7ff31f58b0b870ac1d7..0c42f5e982f71ffae76b34f522803b0ad961b553`.
+
+## RV-1-E-251 — Task135A retained-successor coordinator gate and review dispatch
+
+- Coordinator gate on clean candidate
+  `0c42f5e982f71ffae76b34f522803b0ad961b553` started only after the no-live
+  `tsc`/npm guard, ran in one detached actual shell, and wrote exit `0`. The
+  exact non-full chain passed 3 focused files / 56 tests, then `typecheck
+  passed`, `git diff --check`, and `factory-readiness passed`; no live compiler
+  or npm remained and the temporary dependency link was removed. This is
+  review-only evidence, not integration readiness.
+- Fresh independent Terra/xhigh review must inspect the complete range
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7..0c42f5e982f71ffae76b34f522803b0ad961b553`,
+  including original Task135A implementation, its first P1 repair, the
+  previously unowned-but-audited successor, and claim provenance. It must
+  independently decide that all post-capture workspace/mount/store-reference
+  swaps reject before original or replacement store I/O, no source authority
+  surface changed, and no unrelated coverage was narrowed. Only an
+  unqualified approval permits coordinator-only merge and a post-merge actual
+  compiler gate.
