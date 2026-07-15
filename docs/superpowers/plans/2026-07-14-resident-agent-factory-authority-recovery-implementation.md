@@ -1580,3 +1580,294 @@ captured provider-policy checks must exist before the exact renderer path.
   records each case and command result. `npm run verify`, provider/network/
   credential/Nous activity, reset credits, `neo`, H/store/terminal work,
   self-integration, and merge remain closed.
+
+## CF-1R5 Task133 Raw-V2 And Task140R0 Data-Bridge Correction
+
+**Status:** This is the sole current replacement for the earlier
+`BuildPromptArtifactProductionBindingV2` build-input wording, Task133.1 Steps
+1–4, and Task140R0's file contract, interfaces, Steps 1–4, and focused/final
+commands. The strict discriminated v1/v2 output union, one canonical text
+renderer, compatibility migration, transfer/runtime/ontology/projection/rebuild
+preservation, Task140 prerequisites, zero-effect rejection matrix, Step 5 fresh
+review, coordinator-only integration, and every closed activity remain in
+force. Earlier contradictory text remains reviewable lineage, not executable
+instruction.
+
+### Raw-V2 Builder Replacement
+
+`BuildPromptArtifactInput.text`, the raw scope below, the raw exact-run input,
+the verified packs, and the existing canonical renderer material are the full
+inputs from which the artifact owner derives every persisted v2 output hash.
+Replace the prior raw-v2 build shape in full with:
+
+```ts
+export interface BuildPromptArtifactProductionBindingV2 {
+  readonly schemaVersion: "agent-production-prompt-binding.v2";
+  readonly rendererMaterial: ProductionSpecialistRendererMaterial;
+  readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
+  readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
+  readonly scope: ProductionRunScope;
+  readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
+}
+```
+
+`rendererMaterial` is the frozen plain-data result of
+`productionSpecialistRendererMaterialFor(exactRun.runType)`, never a callback,
+hash, artifact, or caller-defined renderer. `buildPromptArtifact` exact-key
+parses that material and requires canonical equality before deriving the
+persisted renderer ID/version, output/handoff contract IDs/versions, and
+`rendererHash` through the existing canonical renderer-material hash. It
+derives `renderedPromptHash` from `BuildPromptArtifactInput.text`,
+`scopeApplicabilityHash` from raw `scope`, exact task/run type, canonical
+requirements/omissions, and verified packs, and the posture/exact hashes from
+raw `exactRun`. The v1 compatibility branch remains unchanged. No output hash
+is accepted, corrected, overwritten, or used as raw input.
+
+Task133.1 retains its four-file ceiling. Replace its RED/GREEN instructions
+with these executable steps:
+
+- [ ] **Step 1: Write the strict raw-v2 RED table.**
+
+  In `packages/agent/test/prompt-artifacts.test.ts`, construct one otherwise
+  valid raw v2 build input containing canonical `rendererMaterial`, raw
+  `scope`, raw `exactRun`, verified packs, evaluated requirements/audits, and
+  top-level canonical rendered `text`. Use one table-driven test with exactly
+  these prohibited own keys:
+
+  ```ts
+  const prohibitedV2BuildHashKeys = [
+    "rendererHash",
+    "renderedPromptHash",
+    "scopeApplicabilityHash",
+    "providerPostureHash",
+    "exactRunBindingHash",
+    "postureHash"
+  ] as const;
+  ```
+
+  The first five are persisted output keys; `postureHash` is the frozen
+  hash-lookalike. For each key, add a valid SHA-256-looking value as an own data
+  property and require strict unknown-key rejection from `buildPromptArtifact`.
+  The test must receive no envelope and must not observe a normalized,
+  corrected, or overwritten value. In
+  `packages/agent/test/production-specialist-prompts.test.ts`, add the positive
+  control proving the exact renderer passes canonical raw renderer material,
+  raw scope, and raw exact-run data once and receives all five owner-derived
+  persisted hashes.
+
+- [ ] **Step 2: Run the exact Task133.1 RED.**
+
+  ```bash
+  npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts
+  ```
+
+  Expected RED: the raw-v2 schema/material derivation is absent or one of the
+  six supplied hash/hash-lookalike keys is accepted or silently corrected.
+  An "omitted output hash" is not a RED because output hashes do not belong to
+  the raw build input.
+
+- [ ] **Step 3: Implement owner-only hash derivation.**
+
+  In `packages/agent/src/prompt-artifacts.ts`, strictly parse the replacement
+  raw shape before envelope construction, validate canonical renderer material,
+  and derive all five output hashes from the named raw inputs. Reuse one
+  canonical renderer-material hash and one canonical scope-applicability hash;
+  do not duplicate either algorithm. In
+  `packages/agent/src/production-specialist-prompts.ts`, both v1 and exact-v2
+  entries still call `renderCanonicalProductionPrompt` exactly once and
+  `buildPromptArtifact` exactly once; only the exact-v2 entry supplies the raw
+  renderer material/scope/exact-run shape. Do not accept a persisted v2 object,
+  caller hash, default, local upgrade, or second renderer.
+
+- [ ] **Step 4: Rerun the exact Task133.1 GREEN.**
+
+  Rerun the Step 2 command. GREEN requires all six table rows to throw before
+  envelope formation and the positive exact-renderer control to emit the five
+  correctly derived hashes. Task133.1 then follows its existing claim, commit,
+  fresh-review, and final non-full gate.
+
+### Task140R0 Exact Context-Render Data Bridge
+
+The live source census is binding: `checkpointContextOrBlock` owns
+`claim.payload.attemptId` and normalized `tickedAt`, but the current
+`TaskOrchestratorContextRenderInput` carries only task/run/scope/workflow/packs.
+The agent-owned path may transport the missing attempt and timestamp as
+non-authoritative required data. It may not transport provider approval,
+workspace/mount authority, a binding, a verifier, a capability, a hash, or an
+artifact.
+
+Replace the two agent-owned interfaces with these exact required shapes:
+
+```ts
+export interface TaskOrchestratorContextRenderInput {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly generatedAt: string;
+  readonly runType: TaskOrchestratorRunType;
+  readonly scope: ProductionRunScope;
+  readonly workflow: SpecialistWorkflowDescriptor;
+  readonly resolvedContextPacks: readonly VerifiedResolvedContextPack[];
+}
+
+export interface AssembleTaskOrchestratorContextInput {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly generatedAt: string;
+  readonly runType: TaskOrchestratorRunType;
+  readonly scope: ProductionRunScope;
+  readonly workflow: SpecialistWorkflowDescriptor;
+  readonly contextRegistry: ContextPackRegistry;
+  readonly renderPrompt?: (
+    input: TaskOrchestratorContextRenderInput
+  ) => unknown | Promise<unknown>;
+}
+```
+
+`checkpointContextOrBlock` passes `attemptId: claim.payload.attemptId` and
+`generatedAt: tickedAt`; `assembleTaskOrchestratorContext` forwards both
+unchanged in its frozen render input. No fallback, generated default, public
+setter, or parser upgrade is permitted.
+
+The local factory closes the following private data-only capture into its
+existing private prompt-renderer wrapper; this interface is lexical to
+`agent-runtime-factory.ts` and is not exported:
+
+```ts
+interface FactoryExactPromptAuthorityV2 {
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly policyVersion: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly providerPosture: PromptArtifactProviderPostureV2;
+}
+```
+
+The captured Task132A mounted authority supplies workspace, mount, and policy;
+the captured provider policy and selected descriptor supply provider/model/
+capabilities/selection-policy/approval-requirement posture after their private
+checks. Both `approvedRunId` and `runId` come from
+`providerPolicy.approval.runId`, matching the live dispatch contract that uses
+that value as `approvedRunId` and requires durable handoff `runId` equality.
+The wrapper requires the render input workflow to be the captured canonical
+descriptor and its verified packs to match the Task132A private binding set.
+Only then may it construct:
+
+```ts
+const exactRenderInput: RenderExactlyBoundProductionSpecialistPromptInput = {
+  generatedAt: renderInput.generatedAt,
+  scope: renderInput.scope,
+  resolvedContextPacks: renderInput.resolvedContextPacks,
+  exactRun: {
+    taskId: renderInput.taskId,
+    attemptId: renderInput.attemptId,
+    approvedRunId: captured.approvedRunId,
+    runId: captured.runId,
+    runType: renderInput.runType,
+    residentAgentId: captured.residentAgentId,
+    workspaceId: captured.workspaceId,
+    mountInstanceId: captured.mountInstanceId,
+    workflowDescriptor: renderInput.workflow,
+    policyVersion: captured.policyVersion,
+    providerPosture: captured.providerPosture
+  }
+};
+```
+
+This is the one executable bridge. Neither agent-owned interface is authority,
+and no caller may supply `captured`, `exactRenderInput`, a v2 artifact, a
+binding/hash, verified binding set, verifier, capability, registration, or mint
+route.
+
+**Task140R0 files:**
+
+- Modify: `packages/agent/src/task-orchestrator-types.ts`
+- Modify: `packages/agent/src/task-orchestrator-context.ts`
+- Modify: `packages/agent/src/task-orchestrator.ts`
+- Modify: `packages/agent/test/task-orchestrator-context.test.ts`
+- Modify: `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+- Modify fixture only: `packages/agent/test/prompt-artifacts.test.ts`
+- Modify fixture only: `packages/agent/test/cockpit.test.ts`
+- Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
+- Create: `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+- Create: `docs/agentic/claims/task-140-r0-r-owned-factory-port-registration.md`
+- Read-only regression witnesses:
+  `packages/agent/test/task-orchestrator-handoff-port.test.ts` and
+  `packages/agent/test/task-orchestrator-dispatch.test.ts`
+
+The direct assembly census contains thirteen calls in
+`task-orchestrator-context.test.ts`, one in `prompt-artifacts.test.ts`, and one
+in `cockpit.test.ts`; all receive explicit required attempt/time fixture data.
+No optional/default field hides that migration. Task133 implementation and
+Task140P are reviewed/coordinator-integrated before R0. R0 is the sole owner of
+these bridge edits in its commit; Task140H and Task140R1 remain blocked until
+R0 review/integration and therefore cannot concurrently edit
+`task-orchestrator.ts`. The second `prompt-artifacts.test.ts` edit is likewise
+serialized after reviewed Task133 integration and is fixture-only.
+
+- [ ] **Step 1: Write the agent bridge REDs.**
+
+  In `task-orchestrator-context.test.ts`, prove required `attemptId` and
+  `generatedAt` are forwarded unchanged with raw scope and the same verified
+  pack identities. Migrate every direct fixture explicitly. In
+  `task-orchestrator-evidence-triage.test.ts`, capture the real registry render
+  input and prove its `attemptId` equals the appended claim payload and its
+  `generatedAt` equals that tick's normalized `now`. Update only the direct
+  assembly fixtures in `prompt-artifacts.test.ts` and `cockpit.test.ts`; do not
+  add authority or artifact behavior there.
+
+- [ ] **Step 2: Write the private-wrapper and hostile-input REDs.**
+
+  In the created composition test, prove the factory combines the agent-owned
+  attempt/time/scope/packs only with its private captured authority to create
+  the exact input above. Retain the valid v2 control and every prior one-field
+  exact-run/posture/context swap. In the route test, retain legacy-v1,
+  direct-v2, caller binding, and hash injection rejection, and add attempts to
+  supply `approvedRunId`, workspace/mount/policy/provider posture, or the
+  private capture object. Every hostile or swapped case rejects before
+  renderer, provider, ledger, runner, H, store, or terminal activity.
+
+- [ ] **Step 3: Run the exact expanded Task140R0 RED.**
+
+  ```bash
+  npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts
+  ```
+
+  Expected RED: the required attempt/time carrier is absent, the factory cannot
+  construct the strict exact input, or a hostile/direct/swapped input reaches a
+  named effect. A missing created composition test is not valid RED evidence.
+
+- [ ] **Step 4: Implement only the required carrier and private wrapper.**
+
+  Add the two required non-authoritative fields, forward the live claim/tick
+  values, migrate every enumerated direct fixture, and construct the exact
+  input only inside the factory closure after all captured checks. Invoke
+  `renderExactlyBoundProductionSpecialistPrompt` exactly once for the valid
+  control and require its v2 binding/hashes to match the captured facts. Do not
+  add a public authority field, provider call, artifact input, local renderer,
+  verifier callback, capability/mint route, H/store/terminal operation, or
+  ledger append/read.
+
+- [ ] **Step 5: Run GREEN and the exact expanded non-full gate.**
+
+  ```bash
+  npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check
+  ```
+
+  GREEN requires exact bridge provenance, one exact renderer call for the valid
+  control, and every legacy/direct/injected/swapped/authority attempt to leave
+  every named effect counter at zero. Commit only the listed modified/created
+  files and the R0 claim, then stop for fresh complete-range review. Full
+  verification, implementation in this planning worktree, provider/network/
+  credential/Nous activity, reset credits, `neo`, self-integration, and merge
+  remain closed.
+
+### Corrected Review Gate
+
+The fresh plan-review and eventual final-gate range remains exactly
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. The reviewer reads every
+lineage commit through `8169fc7f344ce40b0bbd91e60a66dab697d4446d` and this
+new clean child correction at `HEAD`. Only a fresh independent approval permits
+coordinator integration; rejection requires another forward correction.
