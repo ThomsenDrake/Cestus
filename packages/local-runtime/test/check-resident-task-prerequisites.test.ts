@@ -362,7 +362,9 @@ describe("check-resident-task-prerequisites", () => {
     write(ignoredFixture.directory, "scripts/hidden-authority", "hidden\n");
     expectRejected(runChecker(ignoredFixture, "preflight"));
     const replacementFixture = createFixture();
-    git(replacementFixture.directory, ["replace", replacementFixture.sourceBaseSha, replacementFixture.prerequisiteShas.cf1]);
+    const cf1Sha = replacementFixture.prerequisiteShas.cf1;
+    if (cf1Sha === undefined) throw new Error("Expected cf1 prerequisite fixture SHA.");
+    git(replacementFixture.directory, ["replace", replacementFixture.sourceBaseSha, cf1Sha]);
     expectRejected(runChecker(replacementFixture, "preflight"));
   });
 

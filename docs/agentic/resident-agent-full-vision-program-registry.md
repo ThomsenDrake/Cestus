@@ -11249,3 +11249,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   resident-agent program branch, followed by focused/typecheck/diff/factory
   integration checks. Push, full/live/provider/credential/Nous/reset-credit
   actions and every `neo` action remain closed.
+
+## RV-1-E-411 — Task133 integrated with pre-existing Task135C typecheck repair
+
+- Coordinator-only cherry-pick `c6a20cf3` integrated exact reviewed Task133
+  candidate `5d2fdc6baf9afd6ef446eb2be3101bccbc253f64` into the resident-agent
+  program branch without conflict. The three post-integration focused suites
+  passed at 131/131, 78/78, and 141/141.
+- Program-level typecheck then exposed a pre-existing Task135C test-fixture
+  defect outside the Task133 range: `prerequisiteShas` is a
+  `Record<string, string>`, so its required `cf1` lookup remains
+  `string | undefined` under `noUncheckedIndexedAccess`.
+- The coordinator made one separate test-only supporting repair: require the
+  `cf1` fixture SHA explicitly before passing it to `git replace`. The causal
+  compiler RED was TS2322 at line 365; the unchanged Task135C focused suite
+  passed 18/18 and `npm run typecheck` passed after the guard.
+- Task133 reviewed bytes remain the isolated cherry-picked commit. Full
+  verification, providers, network, credentials, Nous, reset credits, push,
+  and every `neo` action remain closed.
