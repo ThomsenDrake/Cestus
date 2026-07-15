@@ -298,3 +298,35 @@ self-integration, and program-registry edits remain closed.
   gates. No full verification, live/provider/network/credential/Nous action,
   reset, `neo`, merge, rebase, push, self-integration, or program-registry edit
   was performed.
+
+## Final wrapped and computed loader review repair
+
+- Durable coordinator authority: `RV-1-E-399`, inspected at registry commit
+  `723f8d869c03aa1bef45fc7cebcdb46c1150d0a7`. Candidate
+  `1a132365a075fd7893f5b026e0609729f97961f8` is preserved and rejected; both
+  fresh reviewers found complementary P1 AST-scanner bypasses. This repair
+  changes only the scanner test and this claim; production runtime bytes remain
+  unchanged.
+- Causal RED: fixtures added before scanner changes cover recursively wrapped
+  module arguments, wrapped `module` receivers, wrapped `"require"` element
+  keys, and computed dynamic-import, `require`, `module.require`, and
+  `module["require"]` targets. The prescribed focused command exited `1` only
+  in the expanded import test (1 failed, 19 passed): expected 64 protected
+  importers and received 54, omitting exactly these 10 new fixtures.
+- Static module literal recognition now recursively unwraps only parentheses,
+  `as`, type assertions, `satisfies`, and non-null expressions. The same
+  bounded normalization applies to `module` receivers and element keys.
+  Recognized standard dynamic-import/CommonJS loader families fail closed when
+  their first target argument is not statically resolvable; unrelated loader
+  functions/receivers and static non-exact/package/lookalike targets remain
+  excluded. Root-bound identity, suffix stripping, NodeNext equivalence, the
+  extension filter, and sole mounted-operation allowlist are unchanged.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed.
+- The authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- Claim lifecycle: reopened as `in-progress` for this final bounded repair and
+  returned to `ready-for-review` after the documented gates. No full
+  verification, live/provider/network/credential/Nous action, reset, `neo`,
+  merge, rebase, push, self-integration, or program-registry edit was
+  performed.

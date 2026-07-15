@@ -140,11 +140,14 @@ function isProtectedModuleSpecifier(
   sourcePath: string,
   moduleSpecifier: TypeScript.Expression | undefined,
 ): boolean {
-  if (moduleSpecifier === undefined || !ts.isStringLiteralLike(moduleSpecifier)) {
+  const stringLiteralSpecifier = staticModuleSpecifier(moduleSpecifier);
+  if (stringLiteralSpecifier === undefined) {
     return false;
   }
 
-  const suffixlessSpecifier = moduleSpecifierWithoutSuffix(moduleSpecifier.text);
+  const suffixlessSpecifier = moduleSpecifierWithoutSuffix(
+    stringLiteralSpecifier.text,
+  );
   if (
     !suffixlessSpecifier.startsWith("./") &&
     !suffixlessSpecifier.startsWith("../")
@@ -233,21 +236,27 @@ function importTypeReferencesFactoryCapture(
 }
 
 function isStandardModuleRequireCall(expression: TypeScript.Expression): boolean {
-  if (ts.isPropertyAccessExpression(expression)) {
+  const callee = unwrapTransparentExpression(expression);
+  if (ts.isPropertyAccessExpression(callee)) {
+    const receiver = unwrapTransparentExpression(callee.expression);
     return (
-      ts.isIdentifier(expression.expression) &&
-      expression.expression.text === "module" &&
-      expression.name.text === "require"
+      ts.isIdentifier(receiver) &&
+      receiver.text === "module" &&
+      callee.name.text === "require"
     );
   }
 
+  if (!ts.isElementAccessExpression(callee)) {
+    return false;
+  }
+
+  const receiver = unwrapTransparentExpression(callee.expression);
+  const elementKey = unwrapTransparentExpression(callee.argumentExpression);
   return (
-    ts.isElementAccessExpression(expression) &&
-    ts.isIdentifier(expression.expression) &&
-    expression.expression.text === "module" &&
-    expression.argumentExpression !== undefined &&
-    ts.isStringLiteralLike(expression.argumentExpression) &&
-    expression.argumentExpression.text === "require"
+    ts.isIdentifier(receiver) &&
+    receiver.text === "module" &&
+    ts.isStringLiteralLike(elementKey) &&
+    elementKey.text === "require"
   );
 }
 
@@ -280,16 +289,20 @@ function unwrapTransparentExpression(
   }
 }
 
-function callReferencesFactoryCapture(
-  root: string,
-  sourcePath: string,
-  call: TypeScript.CallExpression,
-): boolean {
-  const argument = call.arguments[0];
-  if (!isProtectedModuleSpecifier(root, sourcePath, argument)) {
-    return false;
+function staticModuleSpecifier(
+  moduleSpecifier: TypeScript.Expression | undefined,
+): TypeScript.StringLiteralLike | undefined {
+  if (moduleSpecifier === undefined) {
+    return undefined;
   }
 
+  const unwrappedSpecifier = unwrapTransparentExpression(moduleSpecifier);
+  return ts.isStringLiteralLike(unwrappedSpecifier)
+    ? unwrappedSpecifier
+    : undefined;
+}
+
+function isStandardLoaderCall(call: TypeScript.CallExpression): boolean {
   if (call.expression.kind === ts.SyntaxKind.ImportKeyword) {
     return true;
   }
@@ -298,6 +311,22 @@ function callReferencesFactoryCapture(
   return (
     (ts.isIdentifier(callee) && callee.text === "require") ||
     isStandardModuleRequireCall(callee)
+  );
+}
+
+function callReferencesFactoryCapture(
+  root: string,
+  sourcePath: string,
+  call: TypeScript.CallExpression,
+): boolean {
+  if (!isStandardLoaderCall(call)) {
+    return false;
+  }
+
+  const moduleSpecifier = staticModuleSpecifier(call.arguments[0]);
+  return (
+    moduleSpecifier === undefined ||
+    isProtectedModuleSpecifier(root, sourcePath, moduleSpecifier)
   );
 }
 
@@ -459,6 +488,10 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "capture.mts": `export { inspectFactoryIssuedMountedRuntimeCapture } from "${deepImport}";\n`,
       "capture.ts": `import { captureFactoryIssuedMountedRuntime } from "${deepImport}";\n`,
       "capture.tsx": `export type { FactoryIssuedMountedRuntimeCapture } from "${deepImport}";\n`,
+      "computed-dynamic-import.cts": `const target = "${deepImport}";\nvoid import(target);\n`,
+      "computed-module-element-require.cts": `const target = "${deepImport}";\nvoid module["require"](target);\n`,
+      "computed-module-property-require.cts": `const target = "${deepImport}";\nvoid module.require(target);\n`,
+      "computed-require.cts": `const target = "${deepImport}";\nvoid require(target);\n`,
       "default-import.ts": `import runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
       "default-type-import.ts": `import type runtimeFactory from "${deepImport}";\n`,
       "fragment-dynamic-import.ts": `void import("${fragmentRuntimeFactoryImport}");\n`,
@@ -482,16 +515,22 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "type-namespace-import.ts": `import type * as runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
       "type-namespace-reexport.ts": `export type * as runtimeFactory from "${deepImport}";\n`,
       "type-star-reexport.ts": `export type * from "${deepImport}";\n`,
+      "wrapped-dynamic-import-argument.cts": `void import((((<unknown>"${deepImport}") as unknown) satisfies unknown)!);\n`,
+      "wrapped-module-element-argument.cts": `void module["require"]((((<unknown>"${deepImport}") as unknown) satisfies unknown)!);\n`,
       "wrapped-module-element-as.cts": `void (module["require"] as unknown)("${deepImport}");\n`,
       "wrapped-module-element-non-null.cts": `void (module["require"]!)("${deepImport}");\n`,
       "wrapped-module-element-parenthesized.cts": `void (module["require"])("${deepImport}");\n`,
+      "wrapped-module-element-receiver-and-key.cts": `void (((<unknown>module) as unknown) satisfies unknown)![(((<unknown>"require") as unknown) satisfies unknown)!]("${deepImport}");\n`,
       "wrapped-module-element-satisfies.cts": `void (module["require"] satisfies unknown)("${deepImport}");\n`,
       "wrapped-module-element-type-assertion.cts": `void (<unknown>module["require"])("${deepImport}");\n`,
+      "wrapped-module-property-argument.cts": `void module.require((((<unknown>"${deepImport}") as unknown) satisfies unknown)!);\n`,
       "wrapped-module-property-as.cts": `void (module.require as unknown)("${deepImport}");\n`,
       "wrapped-module-property-non-null.cts": `void (module.require!)("${deepImport}");\n`,
       "wrapped-module-property-parenthesized.cts": `void (module.require)("${deepImport}");\n`,
+      "wrapped-module-property-receiver.cts": `void (((<unknown>module) as unknown) satisfies unknown)!.require("${deepImport}");\n`,
       "wrapped-module-property-satisfies.cts": `void (module.require satisfies unknown)("${deepImport}");\n`,
       "wrapped-module-property-type-assertion.cts": `void (<unknown>module.require)("${deepImport}");\n`,
+      "wrapped-require-argument.cts": `void require((((<unknown>"${deepImport}") as unknown) satisfies unknown)!);\n`,
       "wrapped-require-as.cts": `void (require as unknown)("${deepImport}");\n`,
       "wrapped-require-non-null.cts": `void (require!)("${deepImport}");\n`,
       "wrapped-require-parenthesized.cts": `void (require)("${deepImport}");\n`,
@@ -563,6 +602,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "wrapped-unrelated-loader.cts": {
         moduleSpecifier: deepImport,
         source: `void (loader.require as unknown)("${deepImport}");\n`,
+      },
+      "computed-unrelated-loader.cts": {
+        moduleSpecifier: deepImport,
+        source: `const target = "${deepImport}";\nvoid loader(target);\n`,
+      },
+      "computed-unrelated-receiver.cts": {
+        moduleSpecifier: deepImport,
+        source: `const target = "${deepImport}";\nvoid loader.require(target);\n`,
       },
     };
     const ignoredPackageRootSources = {
@@ -636,6 +683,10 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/capture.mts",
       "packages/agent-runtime/src/deep/capture.ts",
       "packages/agent-runtime/src/deep/capture.tsx",
+      "packages/agent-runtime/src/deep/computed-dynamic-import.cts",
+      "packages/agent-runtime/src/deep/computed-module-element-require.cts",
+      "packages/agent-runtime/src/deep/computed-module-property-require.cts",
+      "packages/agent-runtime/src/deep/computed-require.cts",
       "packages/agent-runtime/src/deep/default-import.ts",
       "packages/agent-runtime/src/deep/default-type-import.ts",
       "packages/agent-runtime/src/deep/fragment-dynamic-import.ts",
@@ -659,16 +710,22 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/type-namespace-import.ts",
       "packages/agent-runtime/src/deep/type-namespace-reexport.ts",
       "packages/agent-runtime/src/deep/type-star-reexport.ts",
+      "packages/agent-runtime/src/deep/wrapped-dynamic-import-argument.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-element-argument.cts",
       "packages/agent-runtime/src/deep/wrapped-module-element-as.cts",
       "packages/agent-runtime/src/deep/wrapped-module-element-non-null.cts",
       "packages/agent-runtime/src/deep/wrapped-module-element-parenthesized.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-element-receiver-and-key.cts",
       "packages/agent-runtime/src/deep/wrapped-module-element-satisfies.cts",
       "packages/agent-runtime/src/deep/wrapped-module-element-type-assertion.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-property-argument.cts",
       "packages/agent-runtime/src/deep/wrapped-module-property-as.cts",
       "packages/agent-runtime/src/deep/wrapped-module-property-non-null.cts",
       "packages/agent-runtime/src/deep/wrapped-module-property-parenthesized.cts",
+      "packages/agent-runtime/src/deep/wrapped-module-property-receiver.cts",
       "packages/agent-runtime/src/deep/wrapped-module-property-satisfies.cts",
       "packages/agent-runtime/src/deep/wrapped-module-property-type-assertion.cts",
+      "packages/agent-runtime/src/deep/wrapped-require-argument.cts",
       "packages/agent-runtime/src/deep/wrapped-require-as.cts",
       "packages/agent-runtime/src/deep/wrapped-require-non-null.cts",
       "packages/agent-runtime/src/deep/wrapped-require-parenthesized.cts",
