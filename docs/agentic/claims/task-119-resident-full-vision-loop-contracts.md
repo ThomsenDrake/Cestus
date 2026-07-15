@@ -292,3 +292,23 @@ coordinator-only merge.
   replay requirements. Do not edit Task120/136, H/W/P/gateway/factory,
   provider/credential, or `neo` files. Before one forward commit run exactly
   `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`; it must exit `0` as one fail-fast chain. Full verification is **CLOSED**. Stop for a fresh independent Terra/xhigh review; no self-review, self-integration, merge, provider/network/credential/Nous, or `neo` action.
+
+## CF-1R2 Fresh Replay-State Recovery
+
+- Preserve `5bf4c2895e6bd0121d58fd8b8f1ab4b18abbde9a` as unintegrated
+  history. Its fresh review accepted the full-H and plan-step repair, but found
+  three remaining replay-state defects: whole-snapshot budget equality does
+  not account per action or enforce replan progression; resumable anchors do
+  not bind the actual suspension checkpoint/deadline/action; and the safe
+  outcome taxonomy omits required stale-authority/context, allowlist,
+  provenance, and secret-detection categories.
+- Prior v2 plus its one bounded repair are exhausted. A fresh Terra/xhigh
+  author with a changed replay-state tactic may edit only this claim,
+  `packages/ontology/src/contracts.ts`, and
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`. First write
+  REDs for a fourth plan record/over-limit revision, missing observation/tool/
+  result consumption, unrelated checkpoint/deadline/next-action anchor, and
+  every omitted category/outcome pair. Preserve v1, all five v2 names, full H
+  proof, strict own-data, declared-step/prerequisite checks, and no-effect
+  scope.
+- Before one forward commit run exactly `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`; exit `0` is required. Full verification remains **CLOSED**. Stop for fresh independent Terra/xhigh review; no self-review, self-integration, merge, provider/network/credential/Nous, or `neo` action.
