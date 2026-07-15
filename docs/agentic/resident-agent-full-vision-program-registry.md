@@ -7802,3 +7802,23 @@ explicit implementation authorization.
   evidence forward, and run its complete non-full gate. It remains
   unintegrated and cannot proceed to review until that gate has an actual
   single-compiler exit `0`.
+
+## RV-1-E-244 — Task133 discriminated-migration plan candidate and full-lineage review
+
+- The sole Task133 plan-repair lane has produced clean documentation candidate
+  `d91f28a3f6434490246daaa97e399a905c902761`. It is a forward repair of the
+  rejected `ffc2dc81` proposal and states a strict discriminated legacy-v1 /
+  exact-v2 binding migration, computed v2 hashes, one canonical rendering
+  path, preservation through transfer/runtime/ontology/projection/rebuild
+  boundaries, and retirement of the obsolete local-only/five-file contract.
+  Its author recorded `git diff --check` and `npm run factory:check` exit `0`;
+  source implementation, integration, and Task133 redispatch remain closed.
+- The actual candidate merge base against the current program is
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8`, not `ffc2dc81`. The fresh
+  defects-first Terra/xhigh plan review must therefore inspect the complete
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d91f28a3f6434490246daaa97e399a905c902761`
+  range and all three commits (`38c2456f`, rejected `ffc2dc81`, and `d91f28a3`).
+  A suffix-only review is inadmissible. It must re-decide all prior five
+  concerns plus the former five-file ceiling/call-site/audit-projection defect,
+  the exact v1/v2 discrimination, no optional/defaulted exact-v2 fields,
+  no shadow authority or duplicate renderer, and the one-way Task140R0 seam.
