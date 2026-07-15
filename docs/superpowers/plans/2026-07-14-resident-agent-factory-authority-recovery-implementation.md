@@ -2401,3 +2401,261 @@ confirm that every produced artifact or token has a durable or intentionally
 ephemeral owner and one serialized consumer. No source dispatch, plan merge,
 full verifier, provider/network/credential/Nous activity, reset credit, `neo`,
 self-review, or self-integration is authorized before that approval.
+
+## CF-1R6 Durable Binding Receipt, Recovery State, And Invocation Ownership Correction
+
+**Status:** This section is the sole current correction for Task133.3,
+Task133.5, Task140P, Task140R0, and Task140H. It preserves the approved
+post-approval v1-to-v2 binder and strict hash derivation above, but supersedes
+every earlier instruction that (a) treats a stored v2 hash as discoverable
+without a ledger receipt, (b) mints a token before durable binding-receipt
+readback, (c) returns immediately whenever `runner-dispatching` already exists,
+or (d) lets `invokeSpecialistModel` mint production invocation authority from a
+prepared specialist run alone. No source task is authorized until a fresh
+full-lineage review approves the combined contract.
+
+### One durable and replayable authority chain
+
+The only executable order is:
+
+```text
+durable v1 readback
+  -> consume exact approval event bound to v1
+  -> derive v2 generatedAt from that durable approval event occurredAt
+  -> bind v2 without rerendering
+  -> mounted v2 create-or-verify put and exact readback
+  -> append and read back hash-only prompt-bound receipt
+  -> mint ephemeral prompt-admission token
+  -> append or read exact runner-dispatching checkpoint
+  -> consume token once in the factory runner closure
+  -> mint v2-bound production invocation proof
+  -> append deterministic model-invocation request before provider/H effect
+```
+
+The approval event timestamp is the sole source of v2 `generatedAt`; wall-clock
+time, restart time, caller time, and token time are forbidden. Therefore a
+crash after v2 put but before receipt append can recreate byte-identical v2 from
+the same durable approval event and verify the existing content-addressed file.
+The token remains intentionally ephemeral and is never serialized.
+
+### Task133.3 prompt-binding receipt migration
+
+Task133.3 extends its already serialized event/ontology/projection/rebuild work
+with one strict `prompt-bound` orchestration checkpoint. Add `"prompt-bound"`
+to the checkpoint-kind contract and add this required nested payload only for
+that kind:
+
+```ts
+interface TaskOrchestratorPromptBindingReceiptV1 {
+  readonly schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1";
+  readonly sourceApprovedPromptArtifactHash: `sha256:${string}`;
+  readonly boundPromptArtifactHash: `sha256:${string}`;
+  readonly generatedAt: string;
+  readonly approvalEventId: string;
+  readonly providerPostureHash: `sha256:${string}`;
+  readonly exactRunBindingHash: `sha256:${string}`;
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly receiptHash: `sha256:${string}`;
+}
+```
+
+The checkpoint also requires exact `runId`, tool request, approval requirement,
+provider posture, context bindings, source event IDs, input artifact hashes,
+`promptArtifactHash`, and lock snapshot. `promptArtifactHash` must equal
+`boundPromptArtifactHash`; `sourceEventIds` must include the approval event;
+`generatedAt` must equal that event's durable `context.occurredAt`; all receipt
+fields and `receiptHash` are owner-derived and recomputed on append/readback.
+No path, prompt bytes, token, capability, proof, credential, or provider output
+is stored. Projection and rebuild preserve the exact hash-only receipt but do
+not make it authority.
+
+Task133.3's file set additionally owns the strict checkpoint subtype in
+`packages/agent/src/task-orchestrator-types.ts`, its projector in
+`packages/agent/src/task-orchestrator-projection.ts`, and focused coverage in
+`packages/agent/test/task-orchestrator-events.test.ts` and
+`packages/agent/test/task-orchestrator-projection.test.ts`. Its exact command is:
+
+```bash
+npm test -- packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+### Task133.5 mounted prompt store authority
+
+Task133.5 replaces the pathname-only store wording above with a captured
+factory store whose operations are asynchronous:
+
+```ts
+interface MountedPromptArtifactEnvelopeStore {
+  put(envelope: PromptArtifactEnvelope): Promise<PromptArtifactEnvelopeReadback>;
+  read(inputArtifactHash: `sha256:${string}`): Promise<PromptArtifactEnvelopeReadback>;
+}
+```
+
+Create `packages/local-runtime/src/mounted-prompt-artifact-store.ts` and
+`packages/local-runtime/test/mounted-prompt-artifact-store.test.ts`; do not add
+prompt-envelope authority to the Task135A preparation binder. The factory
+captures the portable configuration root, expected workspace ID, and initial
+mounted tuple (`workspaceId`, resolved `rootDir`, and `paths.blobRoot`).
+Immediately before and after every `put` and `read`, it calls the existing
+`mountPortableWorkspace` with that captured root and expected ID, exact-key
+normalizes the result, and requires the returned tuple to equal the captured
+tuple. The operation uses the freshly returned `blobRoot`, never the startup
+handle path. Mount failure, disconnect, root/identity/path replacement, or any
+pre/post tuple change rejects and returns no artifact.
+
+The production resident prompt store is portable-only: the factory refuses to
+construct it without a verified portable mount. Remove resident use of the
+in-memory resolver and `cwd/.cestus/local/prompt-artifacts` fallback; there is
+no internal fallback before, during, or after an outage. `put` canonicalizes
+once, writes create-only, and on `EEXIST` requires exact canonical-byte
+equality. `read` parses, recomputes `inputArtifactHash`, requires the requested
+hash, and requires reserialized canonical bytes to equal stored bytes before
+the post-I/O mount check. `FileBlobStore` is not the public lookup contract
+because its blob hash is not the envelope's `inputArtifactHash`. Tests mutate
+each captured mount tuple field before I/O and between I/O and post-check, with
+separate original/replacement I/O counters. Corrupt readback, restart readback,
+and zero checkpoint/approval/provider/H/terminal effects remain required.
+Replace the earlier Task133.5 gate with:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+### Task140P two-phase private admission and recovery transition
+
+The private port has two opaque object-identity stages. `prepare` invokes the
+registered Task140R0 resolver and returns a `PreparedPromptBinding` whose
+diagnostic fields are copied into the proposed receipt; its private `WeakMap`
+holds the exact durable v2 readback. The orchestrator appends or reads the
+strict `prompt-bound` checkpoint, reads it back from the ledger, and calls
+`admit(prepared, receiptReadback)`. Only exact private membership plus exact
+receipt-event readback mints `TaskOrchestratorPromptAdmission`. Structural
+objects, copied diagnostics, direct v2, or a receipt-shaped object are not
+authority.
+
+`dispatchApprovedRunner` then appends or reads the deterministic
+`runner-dispatching` checkpoint. That checkpoint must include the prompt-bound
+checkpoint event ID, receipt hash, bound v2 hash, and deterministic
+`invocationId`; these are hash-only recovery facts. An existing exact
+`runner-dispatching` checkpoint is a recovery branch, not an unconditional
+return. Recovery reacquires the claim, reruns approval/provider/context/
+workspace/lock checks, repeats `prepare -> receipt readback -> admit`, and may
+dispatch only under the state matrix below.
+
+Task140P additionally owns
+`packages/agent/test/task-orchestrator-recovery.test.ts` for this transition.
+RED/GREEN covers crashes before v2 put, after put/before receipt, after receipt/
+before admission, after admission/before dispatch checkpoint, and after the
+dispatch checkpoint/before token consumption. Every pre-invocation crash
+recovers with a fresh token and the same receipt/invocation ID; no token is
+restored or structurally reconstructed.
+
+### Task140R0 exact receipt preparation and restart lookup
+
+Task140R0 must never locate v2 from memory or recompute it from restart time.
+It reads the durable v1 and approval event, uses the approval event's exact
+`occurredAt`, binds v2, performs mounted create-or-verify and exact readback,
+and returns the port-private prepared object. If a `prompt-bound` receipt
+already exists, R0 reads v2 by `boundPromptArtifactHash` and requires byte-
+identical parser/hash/timestamp/source-v1/provider/run/context/workspace/mount
+equality before creating a new prepared object. Missing or divergent receipt,
+artifact, timestamp, approval, or mounted authority blocks before token mint.
+R0 never appends the receipt itself and never exposes v2 through a route DTO.
+
+R0's focused suite adds restart byte-equality cases for crash-after-put and
+crash-after-receipt, plus a lookup test proving a fresh factory has no in-memory
+resolver state. Its exact command is:
+
+```bash
+npm test -- packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+### Task140H sole invocation owner and no-duplicate state matrix
+
+This subsection replaces the entire earlier Task140H Step 1 through Step 5,
+including its files and gate. Task140H owns all of these files serially:
+
+- Modify `packages/agent/src/task-orchestrator-handoff-port.ts`
+- Modify `packages/agent/src/task-orchestrator.ts`
+- Modify `packages/agent/src/runtime.ts`
+- Modify `packages/agent/src/runtime-types.ts`
+- Modify `packages/agent/src/specialist-runner-kernel.ts`
+- Modify `packages/agent/src/production-specialist-invocation-proof.ts`
+- Modify `packages/agent/test/task-orchestrator-handoff-port.test.ts`
+- Modify `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Modify `packages/agent/test/task-orchestrator-recovery.test.ts`
+- Modify `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+- Modify `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts`
+- Modify `packages/agent/test/specialist-runner-kernel.test.ts`
+- Create `packages/agent/test/production-specialist-invocation-proof.test.ts`
+- Modify `packages/agent/test/runtime.test.ts`
+- Modify `packages/local-runtime/src/agent-runtime-factory.ts`
+- Modify `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+- Create the Task140H claim
+
+The port consumes the exact admission once and returns a second opaque
+`ConsumedPromptAdmission` whose private binding contains the reparsed mounted
+v2 readback. `production-specialist-invocation-proof.ts` removes the public
+`mintProductionSpecialistInvocationProof` export and Task140H owns
+`ProductionSpecialistInvocationProof`, the private `InvocationBinding` and
+`bindings`, the sole mint path, and `consumeProductionSpecialistInvocationProof`.
+The sole mint path accepts the exact privately registered consumed-admission
+object and binds admission identity, receipt hash, v2/source-v1 hashes, task,
+attempt, approved run, invocation ID, run type, provider posture, context
+hashes, credential/provider identity, and the same parsed v2 envelope object.
+
+`specialist-runner-kernel.ts` no longer mints a proof from
+`PreparedSpecialistRun`; `invokeSpecialistModel` can reach runtime invocation
+only with the H-owned v2-bound proof and exact mounted v2 envelope supplied by
+the factory runner closure. Direct calls, legacy prepared runs, separate
+identity proofs, copied/reused tokens, arbitrary hashes, or v1 artifacts fail
+before model-request append, provider adapter, H store, handoff, or terminal
+effects.
+
+The deterministic invocation stream governs recovery:
+
+- no `agent.model-invocation.requested`: a fresh admitted token may be consumed
+  and the same deterministic invocation may start;
+- `requested` without `completed` or `failed`: append/read one causally linked
+  `agent.task.orchestration.failed` event with category
+  `external-effect-failed`, a secret-safe provider-outcome-unknown message,
+  `retryable: false`, and the request event in `relatedEventIds`; never call the
+  provider or H automatically, and never infer provider failure or success;
+- terminal `agent.model-invocation.failed`: no automatic replay; only a new
+  explicit retry generation with a fresh approval can invoke;
+- `completed`: never call the provider again; resume only from exact durable
+  derivative/handoff readback under existing content-addressed idempotency, or
+  block if that readback is absent;
+- durable handoff or terminal orchestration already present: return the exact
+  durable result without runner/provider/H replay.
+
+Crash tests cover before and after admission consumption, model-request
+append, provider call, model completion append, H material put, manifest put,
+handoff readback, and terminal append. A crash after model-request append is
+intentionally recorded as an unknown external outcome rather than guessed or
+retried. Repeated recovery reads the same orchestration failure and appends no
+duplicate. Every branch asserts at most one provider invocation and at most one
+durable H/terminal effect.
+
+Task140H's exact non-full gate is:
+
+```bash
+npm test -- packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+### CF-1R6 review and dispatch gate
+
+The fresh defects-first plan review range remains exactly
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. Review must trace each
+crash boundary and prove that v1/v2 bytes have durable content-addressed owners,
+the v2 receipt has one append/readback owner, ephemeral objects have one private
+consumer, `specialist-runner-kernel.ts` has no legacy proof mint bypass, and an
+unknown provider outcome never causes automatic replay. Only unqualified fresh
+Terra/xhigh approval permits coordinator-only plan integration. After that,
+each serialized implementation task still requires a coordinator message that
+specifically approves use of `superpowers:subagent-driven-development`.
+Implementation, full verification, provider/network/credential/Nous activity,
+reset credits, `neo`, self-review, self-integration, and merge remain closed
+until their later durable gates explicitly open them.

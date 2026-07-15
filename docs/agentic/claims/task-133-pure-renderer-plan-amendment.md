@@ -203,3 +203,55 @@ post-approval binder section. The next review range remains exact
 `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. Only an unqualified fresh
 Terra/xhigh approval can authorize coordinator-only integration and later
 explicit `superpowers:subagent-driven-development` dispatch.
+
+## Forward Correction — Durable Receipt, Crash Recovery, And Sole Proof Mint
+
+- Status remains **plan-repair candidate only**. Independent persistence review
+  `019f64ac-d0f6-7a61-b4df-dfa6e76d2b0c` and authority review
+  `019f64ac-d47c-7c73-82a5-a5cac255f5f4` both returned `NEEDS-CHANGES` on the
+  full lineage through `b93190f2`. The earlier lifecycle can strand a reminted
+  token behind `runner-dispatching`, has no durable v2 locator/timestamp receipt,
+  does not revalidate mounted availability around every prompt store I/O, and
+  leaves the live proof minter in `specialist-runner-kernel.ts` outside H.
+- `CF-1R6 Durable Binding Receipt, Recovery State, And Invocation Ownership
+  Correction` is now the sole executable overlay for Task133.3, Task133.5,
+  Task140P, Task140R0, and Task140H. It introduces a strict hash-only
+  `prompt-bound` checkpoint receipt, derives v2 time only from the durable
+  approval event, and requires a fresh `mountPortableWorkspace` tuple check
+  before and after each prompt artifact put/read. The production resident store
+  is portable-only and has no internal fallback.
+- Admission is two phase. R0 returns a private prepared binding only after exact
+  durable v2 readback; the orchestrator appends and reads the receipt; the port
+  then mints an ephemeral token from private prepared-object membership plus
+  exact receipt-event readback. Restart repeats live checks and remints only
+  from v1, approval, receipt, and mounted v2 evidence.
+- Existing `runner-dispatching` is no longer an unconditional return. The
+  deterministic invocation stream decides recovery: no request may dispatch;
+  requested-only records one causally linked, non-retryable orchestration
+  failure for an unknown provider outcome; failed needs a new explicitly safe
+  task/retry policy and approval; completed never reinvokes and may resume only
+  from durable derivative/handoff readback; terminal history returns without
+  replay.
+- Task140H's entire prior implementation block is superseded. H explicitly owns
+  `specialist-runner-kernel.ts`, removes the public legacy proof mint, creates
+  `production-specialist-invocation-proof.test.ts`, adds runtime proof-consumer
+  coverage, consumes the exact private token once, and mints invocation
+  authority only from the v2 readback-bound consumed admission. Its complete
+  file set and runnable `&&` gate are frozen in CF-1R6.
+- The interrupted Task133.1 source branch remains rejected historical input and
+  cannot be committed, rebased, reviewed, or integrated from this plan repair.
+  Full verification, provider/network/credential/Nous activity, reset credits,
+  `neo`, source implementation in this worktree, self-review, self-integration,
+  and merge remain closed.
+
+Documentation validation remains only:
+
+```bash
+git diff --check && npm run factory:check
+```
+
+The next reviewer must inspect exact full lineage
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD` and return unqualified
+`APPROVED` before coordinator-only integration. A later implementation message
+must specifically approve `superpowers:subagent-driven-development` for every
+serialized task.
