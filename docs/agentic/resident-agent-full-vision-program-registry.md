@@ -11946,3 +11946,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-437 — Task137A replacement rejected by fresh compiler admission
+
+- Replacement candidate `24f48a377bed52383dcacc45f057be95ca0053ae` on
+  `codex/task-137a-mounted-artifact-authority-operation-recovery` is clean and
+  changes only four of the six permitted Task137A paths. Fresh coordinator
+  execution of the terminal **Complete Task137A** gate passed 6 focused files /
+  70 tests before standalone typecheck exited `2`.
+- Compiler defects are exact-optional-property assignment of `undefined` to a
+  factory capture, failure to narrow an import-policy role key, an invalid
+  `TypeNode` argument to a literal/expression helper, and a test reason outside
+  the admitted mounted-authority reason union. The child-reported typecheck
+  success is superseded by this fresh post-commit evidence.
+- The first recovery owner `019f6785-5c6b-7de3-8a06-2e0f01d42f2b` exhausted
+  its bounded repair budget and is stopped read-only. Fresh Terra/xhigh owner
+  `019f67af-c6a6-7450-804e-1af32d558c9f`, worktree
+  `/home/drake/.codex/worktrees/0cfa/Cestus`, starts from the rejected candidate
+  and must create `codex/task-137a-mounted-artifact-authority-operation-recovery-2`.
+- The coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development`, receiving-code-review, systematic
+  debugging, TDD, and verification-before-completion with one production
+  writer. Recovery remains limited to the same six paths and must preserve all
+  70 behavioral contracts while repairing compiler types without casts,
+  weakened unions, public brands, or relaxed authority.
+- Exact candidate `24f48a377bed52383dcacc45f057be95ca0053ae` must not be
+  reviewed or integrated. Any replacement requires fresh coordinator admission
+  and two new independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
