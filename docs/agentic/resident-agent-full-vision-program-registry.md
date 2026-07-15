@@ -7749,3 +7749,23 @@ explicit implementation authorization.
   (**72% weekly remaining**), superseding the prior 27%/73% observation
   forward-only. Reset-credit usage remains prohibited; DRAIN is <=10%
   remaining and HARD PAUSE is <=7%.
+
+## RV-1-E-243 — Coordinator integration and actual post-merge compiler gate
+
+- Coordinator-only no-ff merge `271406fca811d49ee9ebb7ff31f58b0b870ac1d7`
+  integrates reviewed prerequisite repair `52bb8e5e22ffadbb21a72d95fe054630700abbeb`
+  into the program branch. Its parents are the clean program head
+  `13de8363ab8bb45f053346fb0e95931742d1ff09` and the reviewed candidate;
+  no child self-integration or history rewrite occurred.
+- On the actual merged checkout, one detached gate shell started only after
+  the no-live-`tsc`/`npm` guard and wrote its own exit sentinel. It completed
+  exit `0`: the four focused files passed (12 tests), then `npm run typecheck`
+  printed `typecheck passed`, `git diff --check` passed, and
+  `npm run factory:check` printed `factory-readiness passed`; no compiler or
+  npm process remained. This is the required post-merge compiler evidence.
+- Task135A may now undergo only the already-authorized coordinator migration:
+  stash its preserved dirty lane, merge this repaired program head forward
+  without rewriting Task135A history, restore the stash, update its base
+  evidence forward, and run its complete non-full gate. It remains
+  unintegrated and cannot proceed to review until that gate has an actual
+  single-compiler exit `0`.
