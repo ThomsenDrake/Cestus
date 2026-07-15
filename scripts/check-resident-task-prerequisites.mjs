@@ -336,6 +336,10 @@ function assertAttestation(attestationSha, task, dispatchCommit, manifestPath, m
       fail("Coordinator attestation does not match immutable dispatch bytes");
     }
   }
+  const declaredCheckerHash = actual.find((line) => line.startsWith("checkerSha256="))?.slice("checkerSha256=".length);
+  if (declaredCheckerHash !== sha256(commitBlob(attestationSha, checkerPath))) {
+    fail("Coordinator checker hash does not bind C's immutable checker blob");
+  }
 }
 
 function main() {
