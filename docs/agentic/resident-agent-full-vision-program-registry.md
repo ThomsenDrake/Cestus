@@ -11100,3 +11100,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, providers, network, credentials, Nous, reset credits,
   integration, push, registry edits, and every `neo` action remain closed to
   the author.
+
+## RV-1-E-405 — Task135D one-shot lexical-loader replacement admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  replacement candidate `cba50ab1de0477ff9e2e85f321567f544884a889` over
+  exact original base `e532c35fd1b3a829dfbbd4f87d752f42304419f9`.
+- The factory-issued mounted-runtime capture is now consumed before
+  currentness checks or I/O on its first inspection; reuse fails without a
+  ledger read. Immutable snapshot, mutation, currentness, close, and
+  non-leakage behavior remains covered.
+- The production-root AST verifier distinguishes lexically shadowed local,
+  parameter, hoisted `var`, and named-function-expression bindings from the
+  standard CommonJS `require` and `module.require` loaders. Genuine
+  unshadowed computed standard-loader targets still fail closed.
+- Coordinator-independent verification caught and the author repaired one
+  anonymous-class binding type error with an explicit name guard. The final
+  candidate passed the exact 3-file focused suite at 21/21 tests,
+  `npm run typecheck`, the no-index assertion, original-base diff check,
+  factory readiness, exact four-path union, 16 linear commits with no merges,
+  and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, network, credentials, Nous, reset credits, push, and every
+  `neo` action remain closed.
