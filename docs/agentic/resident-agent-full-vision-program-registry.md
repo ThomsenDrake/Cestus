@@ -8561,3 +8561,15 @@ explicit implementation authorization.
 - Latest authenticated usage reports 36% used / 64% weekly remaining. All
   source/live/full/credential/reset-credit/`neo`/plan-integration actions remain
   closed pending both fresh approvals.
+
+## RV-1-E-278 — Explicit-consumer reviewer identities
+
+- Lifecycle/persistence reviewer `019f6537-7be8-73e1-b99b-68ab0deee332` and
+  authority/consumer reviewer `019f6537-7fc7-71d2-bc70-f5e2ede9b7f8` are
+  active on the exact CF-1R13 lineage and context recorded in RV-1-E-277. Both
+  use `gpt-5.6-terra` at `xhigh`, are read-only, and must return an explicit
+  unqualified verdict. The former traces restart/durable lifecycle and complete
+  executable gates; the latter traces private identity authority, cross-package
+  consumption, non-export boundaries, all live fixtures, and smoke bypasses.
+- Source dispatch and plan integration remain closed until both verdicts are
+  unqualified **APPROVED** and recorded in a later append-only registry entry.
