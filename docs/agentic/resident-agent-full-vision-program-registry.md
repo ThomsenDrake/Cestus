@@ -11663,3 +11663,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-427 — Task139 authority candidate rejected for bounded repair
+
+- Contract reviewer `019f6781-9954-7443-a672-aca81bb4e27c` and hostile-input/
+  secret-safety reviewer `019f6781-9bac-77e2-841a-f73b2996004e` independently
+  returned **NEEDS-CHANGES** for exact candidate
+  `20637b58798b93a2d94f85dda96e589291904e3d`. Both passed the 14/14 focused
+  suite, typecheck, diff checking, and factory readiness; the rejection is an
+  authority-contract failure, not a build failure.
+- The candidate can register a capability with no feasibility record, accepts
+  parseable/non-superseded feasibility without proving credential eligibility
+  or authoritative currentness, and exposes a caller-structural configuration
+  without mounting the canonical Task126 BYOK current-posture reader required
+  by W2-139.
+- Its invented endpoint-policy shape is also incompatible with Task126's exact
+  approved `exact-provider-model` policy and adapter-version binding. Existing
+  tests omit unassessed capability, revoked/unverified credential, stale
+  feasibility, canonical reader, source snapshot isolation, and registry
+  `require`/`match` counterfactuals.
+- Original author `019f676a-401d-7f63-a154-c0143783de67` is authorized for one
+  bounded same-three-path forward repair. The coordinator explicitly approves
+  task-scoped `superpowers:subagent-driven-development`, receiving-code-review,
+  systematic debugging, TDD, and verification-before-completion. The repair
+  must mount the existing canonical reader, reuse Task126's exact policy,
+  require one current fail-closed feasibility binding per capability, reject
+  ineligible credentials, preserve zero provider/secret-backend effects, and
+  rerun every focused/typecheck/diff/factory gate.
+- Exact candidate `20637b58798b93a2d94f85dda96e589291904e3d` is rejected and
+  must not be integrated. Fresh reviewers are required for any replacement.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
