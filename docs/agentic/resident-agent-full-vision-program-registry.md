@@ -8852,3 +8852,24 @@ explicit implementation authorization.
 - Latest authenticated usage reports 40% used / 60% weekly remaining, with no
   reset credits. The DRAIN threshold remains at 10% remaining and the hard
   pause threshold remains at 7%; reset credits must never be redeemed.
+
+## RV-1-E-294 — Ownership-separated candidate rejected; bounded CF-1R19
+
+- Both fresh reviewers returned **NEEDS-CHANGES** on exact 23-commit range
+  `0481c1e0^..85660558`. Lifecycle reviewer
+  `019f6591-ad58-7152-9db4-ad24f44a0c16` found that the strict P/R0/H
+  prerequisite maps omit newly mandatory `task117a` and `task135d` SHAs and
+  that Task117A's audit pipeline exits successfully when the selected embedded
+  oracle block is absent. Authority reviewer
+  `019f6591-e651-7440-a1a7-43678150c94b` found that Task137A's declared exact
+  six-file ceiling has no mechanical changed-path check, so an out-of-scope
+  authority-boundary edit could pass every listed gate.
+- The sole plan writer is authorized only for CF-1R19: enumerate `task117a` and
+  `task135d` in the immutable P/R0/H prerequisite sets and tests; make the
+  Task117A oracle extractor fail closed unless it selects exactly one nonempty
+  audit block; and add an exact tracked-plus-untracked changed-path equality
+  gate to Task137A's RED/GREEN/review command. Preserve every CF-1R18 ownership,
+  lifecycle, authority, file-ceiling, and no-live/no-source restriction.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending a committed docs-only repair and
+  two fresh independent unqualified approvals. No prior verdict carries.
