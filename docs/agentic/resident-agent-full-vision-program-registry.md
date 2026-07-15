@@ -11853,3 +11853,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-434 — Task136 recovery admitted to fresh exact-SHA review
+
+- Fresh recovery candidate `e24cc2003bf0ceebe0bb421b4bcb100573c2b7eb`
+  on `codex/task-136-interface-reconciliation-recovery-2` is a clean one-commit
+  append-only correction from rejected base
+  `3e7b1aa829299e6b8001dce300adffd1d2073475`. It changes exactly the Task136
+  plan and claim paths; coordinator admission passed exact-range diff checking
+  and factory readiness.
+- The correction specifies complete Task123 four-path and Task133.5 kernel-pair
+  release preflights, approved T120 readback types/parsers, a staged gateway
+  bootstrap, locator-only approval APIs, canonical Task126/Task139 provider
+  posture, a deterministic posture hash, and a concrete complete H readback
+  producer. No source implementation is authorized by this candidate.
+- Fresh architecture/authority/dependency reviewer
+  `019f67a3-77b4-77a0-9c26-a67aa56c4fa8` and fresh plan-executability/API
+  reviewer `019f67a3-77fa-78a0-8384-96774f0ac467` are pinned and read-only.
+  Both must return unqualified **APPROVED** verdicts for the exact candidate SHA
+  before coordinator integration.
+- Reviews must prove the graph is acyclic and task identifiers are unambiguous,
+  every preflight proves the intended integrated release rather than an
+  unrelated latest claim commit, every ABI has one producer owner, and every
+  RED/GREEN command can establish its named contract without implementer-
+  invented authority or missing regression coverage.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
