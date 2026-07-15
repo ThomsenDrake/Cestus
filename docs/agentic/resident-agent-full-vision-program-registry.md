@@ -9540,3 +9540,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   live/provider/network/credential/Nous activity, reset credits, and every
   `neo` action remain closed. Last authenticated usage remains 45% used / 55%
   weekly remaining with no reset credits.
+
+## RV-1-E-323 — Task117A independent reviews dispatched
+
+- Fresh lifecycle/executability reviewer
+  `019f6656-d9f1-7c12-903d-2ab9f8b44ae7` and fresh authority/import/bypass
+  reviewer `019f6656-d952-7883-ace8-b992631a2e08` are active, pinned, and
+  read-only in separate isolated worktrees detached at exact candidate
+  `f28e7be5399d9f266b34b6eab4342a99ea5d22b5`. Both use `gpt-5.6-terra` at
+  `xhigh` and carry no verdict from the author or any earlier reviewer.
+- Both review prompts pin source base, dispatch commit M, external sibling
+  attestation C, complete-freeze hash, audit hash, materialized-command hash,
+  exact changed paths, and the sole active `CESTUS_CF1R25_TASK117A` extraction
+  and execution procedure. Each must return exactly an unqualified
+  **APPROVED** or a concrete **NEEDS-CHANGES** verdict.
+- Reviewers may not edit, delegate, commit, merge, rebase, push, run full
+  verification, invoke live/provider/network/credential/Nous activity, use
+  reset credits, implement source, integrate the program, or touch `neo`.
+  Task117A integration and all downstream source fan-out remain closed until
+  both independent verdicts are explicit, unqualified approvals and are
+  durably recorded.
