@@ -8936,3 +8936,24 @@ explicit implementation authorization.
   two fresh independent unqualified approvals. No prior verdict or reviewer
   identity carries forward. Latest authenticated usage reports 41% used / 59%
   weekly remaining, with no reset credits.
+
+## RV-1-E-298 — Authenticated lineage candidate
+
+- The sole plan writer committed CF-1R20 candidate
+  `d42332403c52683d26d422956ce9be5220dff483`. Task117A now pins the exact
+  intended post-amendment audit digest in an immutable coordinator-only
+  claim-add commit before the freeze changes; Task135C binds the unique original
+  manifest/claim add rather than the latest touch; and Task137A enumerates every
+  non-merge commit with rename detection disabled while rejecting ignored
+  authority-path files.
+- All three CF-1R20 bash blocks pass `bash -n`; `git diff --check` and
+  `npm run factory:check` pass; the plan worktree is clean. The exact review
+  lineage is the 25-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..d42332403c52683d26d422956ce9be5220dff483`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required; every prior verdict and reviewer identity is
+  non-authorizing. Source dispatch, plan integration, live/provider/full/
+  credential/Nous/reset-credit/`neo` actions remain closed.
