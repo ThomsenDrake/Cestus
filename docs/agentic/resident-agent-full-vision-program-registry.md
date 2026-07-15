@@ -6581,3 +6581,34 @@ explicit implementation authorization.
   review. Full verification remains **CLOSED**, `neo` untouched, no provider/
   network/credential/Nous action is authorized, and usage remains 13% used /
   87% remaining with reset credits untouched.
+
+## RV-1-E-192 — Task119 CF-1R2 review correction and bounded v2 repair
+
+- Fresh independent Terra/xhigh review of `fae25d1d..544d95c9` returned
+  **NEEDS-CHANGES**. Preserve `544d95c9` as unintegrated history. The
+  coordinator independently ran standalone typecheck followed by the exact
+  focused/typecheck/diff/factory fail-fast chain at its clean head; both exited
+  `0`. Earlier observed TS4104 evidence is therefore not a current typecheck
+  failure, but the successful gate does not supersede the review defects.
+- Four Important defects are accepted. The v2 completed-result schema uses a
+  narrowed locally constructed H proxy rather than the full H-owned readback;
+  the ten hard budget maxima are merely nonnegative conservation equations;
+  invalid outcome/category combinations parse; and tool-step/replay validation
+  never proves a declared step or safe prerequisite graph. v1 remains intact
+  and all five v2 registrations exist, but the candidate is not review-ready
+  or integration-ready.
+- One bounded CF-1R2 repair is authorized only for the current Task119 claim,
+  `contracts.ts`, and its focused test. It must add causal REDs for a genuine
+  complete H readback versus every narrowed/forged proxy, hard maximum
+  violations, invalid category/outcome pairs, undeclared step ordinals, and
+  self/future/missing prerequisites. It must use the complete H contract
+  required by the governing handoff/bounded-loop plans without editing H or
+  creating a local replacement. The repair retains v1, all five v2 names, and
+  strict own-data behavior; it may not change Task120/136, H/W/P/gateway,
+  factory, provider, credential, or `neo` files.
+- The author has `superpowers:subagent-driven-development`, TDD, systematic
+  debugging, and verification-before-completion authority. It must run the
+  exact Task119 non-full `&&` gate before one forward commit, then stop for a
+  fresh independent Terra/xhigh review. Full verification remains **CLOSED**;
+  no self-review, self-integration, merge, provider/network/credential/Nous,
+  or `neo` action is authorized.
