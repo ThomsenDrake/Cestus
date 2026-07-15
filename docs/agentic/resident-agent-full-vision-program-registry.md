@@ -7306,3 +7306,34 @@ explicit implementation authorization.
   until reviewed/coordinator-integrated Task134A; Task140P/R0/H/R1, full
   verification, `neo`, provider/network/credential/Nous actions, reset-credit
   use, and child self-integration remain **CLOSED**.
+
+## RV-1-E-223 — Task133 and Task134A bounded-author dispatch
+
+- Coordinator prerequisite baseline on exact program head
+  `049de5bff428df204912d485baff57ca7f6d8cf3` exited 0: Task133's existing
+  prompt-artifact suite passed 1 file / 24 tests and Task134A's existing
+  specialist-runner-kernel suite passed 1 file / 38 tests, followed by
+  typecheck, whitespace, and factory readiness. The missing task-owned test
+  files are expected causal-RED surfaces, not a baseline failure.
+- Fresh Terra/xhigh-gated authors are authorized with
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion: Task133 owns only the prompt renderer,
+  its test, and claim in isolated
+  `/home/drake/.codex/worktrees/task-133-resident-full-vision-runtime-prompt-renderer`
+  on `codex/task-133-resident-full-vision-runtime-prompt-renderer` from exact
+  `049de5bff428df204912d485baff57ca7f6d8cf3`; Task134A owns only its
+  approved canonical-codec/nonterminal-preparation file set and claim in
+  `/home/drake/.codex/worktrees/task-134a-normalized-handoff-preparation`
+  on `codex/task-134a-normalized-handoff-preparation`.
+- The coordinator alone created Task134A's recovery staging commit
+  `6aaa5438a880bc4c211fe4790ffa196e030ab3c9` from exact program base
+  `049de5bff428df204912d485baff57ca7f6d8cf3`, staging only the preserved
+  rejected `b5d07b93fd58944bca7f0b21f954881de90f8883` runner source/test
+  snapshot. It is preserved forward-only. Any later review must read exact
+  `049de5bf..candidate-head`, including `6aaa5438`; a suffix review that
+  excludes staged source/test is inadmissible.
+- Both lanes must commit a durable claim, causal RED evidence, and the
+  authorized exact non-full fail-fast `&&` gate, then stop for a fresh
+  independent complete-range Terra/xhigh review. Full verification,
+  provider/network/credential/Nous action, reset-credit use, `neo`, and child
+  self-integration remain **CLOSED**.
