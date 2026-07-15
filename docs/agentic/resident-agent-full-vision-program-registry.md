@@ -8471,3 +8471,21 @@ explicit implementation authorization.
   including the historic registry file.
 - All source/live/full/credential/reset-credit/`neo`/integration actions remain
   closed pending docs validation, commit, and two fresh approvals.
+
+## RV-1-E-273 — Opaque nested-authority candidate and dual review
+
+- The sole plan writer committed CF-1R11 candidate
+  `db701238473e148b1b135afcab32099afaa63c3e`. It adds opaque mounted-v1
+  readback and hash-only approval-admission identity maps, requires H for every
+  production run including local engines, migrates smoke and both live Nous
+  tests to one portable resident acceptance harness, and repairs the two-review
+  range to `0481c1e0^..HEAD`. That exact range contains sixteen commits and
+  begins with the historic registry base commit. Post-commit docs validation
+  passed.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f6523-5444-76e1-ac79-b0efac9882f8` and authority/consumer reviewer
+  `019f6523-58d5-77e0-8a98-2ade6041e99d` are dispatched read-only against exact
+  range `0481c1e0^..db701238` and canonical source head `00472c75`. Exactly two
+  unqualified **APPROVED** verdicts remain required.
+- Latest authenticated usage reports 36% used / 64% weekly remaining. All
+  source/live/full/credential/reset-credit/`neo`/integration actions remain closed.
