@@ -8241,3 +8241,21 @@ explicit implementation authorization.
   lineage complete. Run only documentation validation, commit, then obtain two
   fresh full-lineage reviews. Task133/Task140 source remains frozen; all prior
   closed actions remain closed.
+
+## RV-1-E-262 — Task133 final-gate repair and replacement reviews
+
+- Forward documentation repair `4da19bc2` replaces the stale final Task133
+  command with one integrated Task133.1-.5 non-live gate, excludes the
+  env-sensitive live Nous test from Task140H's non-live command, and makes the
+  exact Git range the sole commit-lineage inventory. Candidate documentation
+  validation `git diff --check && npm run factory:check` exited `0`.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f64cb-9e9d-7a11-916d-a558310a0b17` and authority/consumer reviewer
+  `019f64cb-a277-7c60-b6e4-8b20720c754a` are dispatched read-only against exact
+  range `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..4da19bc2` and current source.
+  Both must return unqualified **APPROVED** before coordinator integration;
+  source implementation remains frozen.
+- Latest authenticated token-count event reports `used_percent=34`, therefore
+  66% weekly remaining. DRAIN and HARD PAUSE remain unchanged; reset credits
+  remain untouched. Full verification, provider/network/credential/Nous,
+  `neo`, self-review, self-integration, and merge remain closed.
