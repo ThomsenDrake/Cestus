@@ -1092,8 +1092,10 @@ caller-supplied derived hash is permitted.
 `packages/agent/src/prompt-artifacts.ts` remains the only owner of artifact
 envelope, serialization, parser, transfer assertion, audit DTO, and derived
 binding hashes. It must replace the unversioned production-binding object with
-this discriminated output union. Every field shown is required; v2 has no
-optional or defaulted exact-run, posture, or derived-hash field.
+this discriminated output union. Every persisted output field shown is
+required; v2 has no optional or defaulted exact-run, posture, or derived-hash
+field. Its distinct build-input shape accepts only raw inputs and must reject
+every persisted or lookalike output-hash field before builder acceptance.
 
 ```ts
 export interface PromptArtifactProductionBindingV1 {
@@ -1156,15 +1158,13 @@ export interface BuildPromptArtifactProductionBindingV2 {
   readonly schemaVersion: "agent-production-prompt-binding.v2";
   readonly rendererId: string;
   readonly rendererVersion: number;
-  readonly rendererHash: `sha256:${string}`;
-  readonly renderedPromptHash: `sha256:${string}`;
   readonly providerOutputSchemaId: string;
   readonly providerOutputSchemaVersion: number;
   readonly handoffSchemaId: string;
   readonly handoffSchemaVersion: number;
-  readonly scopeApplicabilityHash: `sha256:${string}`;
   readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
   readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
+  readonly scope: ProductionRunScope;
   readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
 }
 
@@ -1182,7 +1182,16 @@ branch is the explicit compatibility shape for every current caller.
 An unversioned production binding is invalid; the migration must add the v1
 discriminator at every current direct construction instead of using an
 optional `schemaVersion` or a parser default. V2 is the only exact-binding
-shape and cannot be synthesized from v1.
+shape and cannot be synthesized from v1. The v2 build shape deliberately
+omits every persisted derived hash: `rendererHash`, `renderedPromptHash`,
+`scopeApplicabilityHash`, `providerPostureHash`, and `exactRunBindingHash`.
+The builder accepts raw `scope` and raw `exactRun` instead; it verifies the
+named non-derived registration fields against the canonical registration and
+derives the persisted hashes from that canonical registration, the canonical
+scope/exact-run material, and the canonical rendered text. It must reject an
+otherwise-valid v2 object with any omitted hash field or any unknown
+hash-lookalike own property before constructing an envelope; it must never
+normalize, silently correct, or overwrite caller hash material.
 
 The module also owns these data-only operations:
 
@@ -1218,12 +1227,14 @@ export function parsePromptArtifactAuditMetadata(
 `createPromptArtifactExactRunBindingV2` normalizes the raw descriptor and
 posture as plain own-data before computing `workflowDescriptorHash` with the
 existing canonical agent hash. The build-only v2 production input contains the
-raw exact-run input and no derived hash fields. `buildPromptArtifact` creates
-both v2 hashes; `parsePromptArtifactEnvelope`,
+raw scope and raw exact-run input and no derived hash fields.
+`buildPromptArtifact` is the artifact owner: it derives `renderedPromptHash`
+from canonical rendered text, derives the canonical registration and scope
+hashes, and creates both exact-run/posture hashes. No caller may supply one of
+those values. `parsePromptArtifactEnvelope`,
 `serializePromptArtifactEnvelope`, `promptArtifactAuditMetadata`, and
 `parsePromptArtifactAuditMetadata` require the persisted v2 hashes and
-recompute them. No caller, including Task140R0, supplies
-`providerPostureHash` or `exactRunBindingHash`.
+recompute them. No caller, including Task140R0, supplies a v2 output hash.
 
 All v1/v2 parsers reject accessors, symbols, sparse or custom arrays,
 non-plain prototypes, unknown fields, missing discriminators, duplicate or
@@ -1353,7 +1364,12 @@ adding an agent-specific rebuild authority.
    posture/exact hashes, stable parse/serialize/audit round-trip, and rejection
    of every changed exact run/posture field and either derived hash. Cover a
    caller-supplied derived-hash property as an unknown build input, rather than
-   accepting or correcting it.
+   accepting or correcting it. Freeze and run named witnesses
+   `rejectsV2BuildInputWithRenderedPromptHashBeforeBuilderAcceptance` and
+   `rejectsV2BuildInputWithOutputHashLookalikeBeforeBuilderAcceptance`; each
+   supplies an otherwise-valid v2 build object augmented with the prohibited
+   own property, proves strict rejection before `buildPromptArtifact` accepts
+   it, and proves no silent correction or envelope formation occurs.
 2. Run:
 
    ```bash
@@ -1463,12 +1479,16 @@ npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/pro
 `npm run verify` remains closed. Do not run provider/network/credential/Nous
 actions, reset credits, `neo`, implementation in this planning worktree,
 self-review, self-integration, merge, or any live test. The fresh plan-review
-range is `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; the reviewer must
-read that complete amendment lineage, and `HEAD` must be the clean child
-documentation repair commit. A fresh independent Terra/xhigh reviewer must
-return an approval before the coordinator alone integrates it. Rejection
-requires another forward amendment; neither this branch nor a child
-implementation branch may merge itself.
+and final-gate review range is exactly
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. The reviewer must inspect
+every commit in that full lineage: `38c2456f1f935aca291d24447c31b6a1d0728fd1`,
+`ffc2dc81c189af3163ec7b573b4f6f4767660de7`,
+`d91f28a3f6434490246daaa97e399a905c902761` (the final pre-correction repair),
+`6f399c4d52d97bd2cc74a4800d065ce4bcb878bf`, and this forward correction at
+`HEAD`. A fresh independent Terra/xhigh reviewer must return an approval
+before the coordinator alone integrates it. Rejection requires another forward
+amendment; neither this branch nor a child implementation branch may merge
+itself.
 
 ### Task140R0 V2-Only Composition Replacement
 
