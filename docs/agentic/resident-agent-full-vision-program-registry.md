@@ -7620,3 +7620,52 @@ explicit implementation authorization.
   prior 26%/74% observation forward-only. No reset credit has been redeemed;
   the last confirmed five credits remain untouched. DRAIN remains <=10%
   remaining and HARD PAUSE <=7%.
+
+## RV-1-E-239 — Canonical compiler-process correction and bounded prerequisite repair
+
+- Fresh Task133 plan review of the complete
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ffc2dc81c189af3163ec7b573b4f6f4767660de7`
+  range returned **NEEDS-CHANGES**. Its source-backed findings are that the
+  declared five-file Task133 ceiling cannot supply the newly required binding
+  at existing specialist-runner and durable audit/projection call sites, and
+  that the amendment claim still names the superseded local-only renderer.
+  `ffc2dc81` remains unintegrated history; Task133 implementation remains
+  blocked pending a forward plan repair and fresh review.
+- A fresh single-process canonical `npm run typecheck` exited `2` with exactly
+  `packages/local-runtime/src/agent-runtime-factory.ts(104,38)` TS2677 (the
+  broad `FactoryHeldRegistrarEvidence` predicate is not assignable to the
+  producer-evidence union) and
+  `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts(94,5)`
+  TS2322 (the mutable dispatch retains literal `task_runtime`). This supersedes
+  prior Task132A/Task134A typecheck-green coordination evidence forward-only;
+  those assertions were contaminated by overlapping orphan `tsc` subprocesses
+  and wrapper-tail exit suppression. Historical commits and integrations are
+  preserved, but they are not evidence that the current program typecheck is
+  green.
+- Future exit-sensitive compiler gates must start only with no live `tsc`, run
+  one compiler process, wait for its actual process/exit, and reject a wrapper
+  completion that lacks that exit evidence. Newline/tail masking and live
+  compiler overlap are inadmissible. Full verification remains closed.
+- Task135A's dirty allowed claim/source/test is frozen without a commit in
+  `/home/drake/.codex/worktrees/task-135a-mounted-preparation-stores`; its
+  temporary dependency link was removed and its child was interrupted. After
+  a reviewed/coordinator-integrated prerequisite repair, the coordinator alone
+  will stash that dirty lane, merge the repaired program head forward without
+  rewriting history, restore its changes, update its base evidence, and rerun
+  the complete Task135A gate. No child may rebase or self-integrate.
+- One fresh bounded Terra/xhigh prerequisite repair author
+  `/root/task132a134_typecheck_repair`, session
+  `019f6438-8239-7912-9511-1ef65f17720f`, owns
+  `/home/drake/.codex/worktrees/task-132a134-typecheck-repair` on
+  `codex/task132a134-typecheck-repair`, based exactly on
+  `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3`. Its authoritative
+  `turn_context` at
+  `rollout-2026-07-15T01-20-52-019f6438-8239-7912-9511-1ef65f17720f.jsonl:8`
+  records Terra/xhigh. It may change only the two diagnosed files, must first
+  reproduce the standalone canonical typecheck RED, then run the focused
+  Task132A/Task134A non-full fail-fast gate with one actual compiler exit, and
+  stop for fresh independent review. The standing authorization includes
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion; it excludes full verify, provider/network/
+  credential/Nous action, reset credits, `neo`, child self-integration, and
+  out-of-scope repair.
