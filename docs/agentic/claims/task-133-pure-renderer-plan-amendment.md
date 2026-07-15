@@ -13,7 +13,8 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R12 owns fresh
+read backward only for sections it explicitly preserves. CF-1R13 owns the
+explicit internal approval consumer and smoke source gate; CF-1R12 owns fresh
 witness reissuance, all live fixture migration, and complete aggregate gates;
 CF-1R11 owns nested
 approval/readback authority, production-local admission, and resident live
@@ -414,6 +415,30 @@ serialized task.
 - CF-1R12 replaces every prior integrated Task133 and H.4 command with complete
   aggregate gates containing the mounted-readback and resident-acceptance
   suites plus non-export/direct-bypass assertions.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh unqualified Terra/xhigh approvals of
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required before
+  coordinator-only integration.
+
+## Forward Correction — Explicit Approval Consumer And Smoke Gate
+
+- Status remains **plan-repair candidate only**. Reviewer
+  `019f652c-76c9-7281-93c3-6d8da9f7b6d1` rejected `d4f290ad` because R0's
+  cross-package approval consumer was unowned and the final gate did not inspect
+  smoke source. The other approval cannot carry forward after this rejection.
+- CF-1R13 creates one non-index-exported approval-admission module. Approval
+  inspection privately registers the full proof; local R0 imports the exact
+  consume function by internal source path; exact identity and facts consume
+  once; structural/copied/reused tokens fail.
+- CF-1R13 replaces the P and R0 RED/GREEN commands with complete focused
+  commands containing the new admission suite and replaces the final H command
+  with one complete aggregate. No worker must reconstruct a gate from inherited
+  prose.
+- The final H gate positively requires `runResidentSpecialistAcceptance` in
+  smoke source and rejects every direct runtime model, renderer, kernel, or
+  workflow invocation there. Existing live-file and private-module assertions
+  remain.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh unqualified Terra/xhigh approvals of

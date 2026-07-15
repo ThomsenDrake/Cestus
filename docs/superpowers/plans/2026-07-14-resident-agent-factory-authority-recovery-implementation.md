@@ -3882,3 +3882,125 @@ use resident acceptance, and the two complete aggregate commands include every
 current suite and non-export/static assertion. Exactly two unqualified
 Terra/xhigh approvals permit coordinator-only plan integration. Source/full/
 live/credential/reset-credit/`neo`/self-integration/merge remain closed.
+
+## CF-1R13 Explicit Approval Consumer And Smoke Source Gate
+
+**Status:** This section supersedes CF-1R11 only where approval-admission
+production/consumption ownership was implicit and CF-1R12 only where its static
+gate omitted smoke source. It changes no other architecture. Source remains
+frozen pending two fresh approvals of
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
+
+### Package-internal approval-admission module
+
+Add to Task140P ownership:
+
+- Create `packages/agent/src/task-orchestrator-approval-admission.ts`
+- Create `packages/agent/test/task-orchestrator-approval-admission.test.ts`
+- Read only `packages/agent/src/index.ts`; the module must not be exported
+
+The internal module owns the approval WeakMap, token construction, and the sole
+consumer:
+
+```ts
+export interface TaskOrchestratorApprovalAdmission {
+  readonly schemaVersion: "agent-task-orchestrator.approval-admission.v1";
+  readonly approvalEventId: string;
+  readonly promptArtifactHash: `sha256:${string}`;
+  readonly providerPostureHash: `sha256:${string}`;
+}
+
+export function createTaskOrchestratorApprovalAdmission(input: {
+  readonly approvalEventId: string;
+  readonly proof: TaskOrchestratorProviderApprovalProof;
+  readonly providerPostureHash: `sha256:${string}`;
+}): TaskOrchestratorApprovalAdmission;
+
+export function consumeTaskOrchestratorApprovalAdmission(
+  admission: TaskOrchestratorApprovalAdmission,
+  expected: ResolveApprovedPromptBindingFacts
+): InternalTaskOrchestratorApprovalBinding | undefined;
+```
+
+`InternalTaskOrchestratorApprovalBinding` is exported only from this explicit
+internal source module and contains the exact full proof/current preview needed
+by R0; its structure is not authority. The approval adapter imports the create
+function directly and calls it only after current approval inspection. The
+local runtime factory imports the consume function and internal binding type by
+`../../agent/src/task-orchestrator-approval-admission.js`; it passes the exact
+admission from P plus exact hash facts. The module is absent from `index.ts`,
+routes, DTOs, logs, and serialization. Consumption compares every diagnostic/
+expected fact, deletes the WeakMap entry atomically, and succeeds once.
+
+Add exact-title REDs
+`creates admission only after current approval inspection`,
+`internal consumer returns full proof only for exact identity and facts`,
+`rejects structural copied swapped and reused approval admission`, and
+`r0 imports the internal consumer without public index export`.
+
+Task140P replaces its earlier RED and GREEN commands with this identical
+command:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected P RED: exit `1` because the package-internal module is absent, current
+approval inspection cannot create an identity-bound admission, or copied/
+swapped/reused objects are accepted. After implementing only throwing
+signatures, the identical command must remain RED on the valid admission and
+consumer controls. Expected P GREEN: exit `0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'task-orchestrator-approval-admission' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Task140R0 replaces its earlier RED and GREEN commands with this identical
+command:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected R0 RED: exit `1` because the production factory does not import the
+owned package-internal consumer, a copied token reaches the fixture, or the
+valid exact admission cannot yield its full private binding once. Expected R0
+GREEN: exit `0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'task-orchestrator-approval-admission' packages/agent/src/index.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/local-runtime packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+The P commit owns the new module/test and approval-adapter call. The later R0
+commit treats that module/test as read-only, modifies its already assigned
+`agent-runtime-factory.ts` and runtime tests, and imports the consumer only by
+the explicit internal source path. Both tasks stop for their required fresh
+reviews after their exact GREEN gate. R0 receives the full proof only through
+exact single-use identity.
+
+### Complete Task140H non-live gate with smoke source inspection
+
+This command replaces the complete CF-1R12 Task140H command. It retains every
+H.1-H.3, approval-admission, resident-acceptance, route, recovery, and smoke
+suite; excludes all three live tests; and makes every static/non-export
+assertion executable in one final gate:
+
+```bash
+npm test -- packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/resident-specialist-acceptance.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts && npm run typecheck && ! rg -n 'runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|prepareSpecialistRun|invokeSpecialistModel|runtime\.invokeModel|renderProductionSpecialistPrompt' packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts && rg -n 'runResidentSpecialistAcceptance' packages/local-runtime/src/agent-nous-smoke.ts && ! rg -n 'runtime\.invokeModel|renderProductionSpecialistPrompt|prepareSpecialistRun|invokeSpecialistModel|runEvidenceTriageWorkflow|runPrrNegotiationWorkflow' packages/local-runtime/src/agent-nous-smoke.ts && ! rg -n 'production-model-invocation-admission|production-prompt-readback|task-orchestrator-approval-admission' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Expected: exit `0`. The smoke test behaviorally proves one injected resident
+acceptance call and no alternate execution path. The positive source assertion
+proves the production smoke entry delegates to that harness; the negative
+assertion proves no direct model/renderer/kernel/workflow path remains. No
+provider/network/credential activity is permitted.
+
+### CF-1R13 review gate
+
+Two fresh independent reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Approval requires explicit
+confirmation that R0's full proof comes only from the owned internal consumer,
+the module is not index-exported, copied/reused tokens fail, and smoke source
+both positively delegates and has no bypass. Exactly two unqualified
+Terra/xhigh approvals permit coordinator-only plan integration. Source/full/
+live/credential/reset-credit/`neo`/self-integration/merge remain closed.
