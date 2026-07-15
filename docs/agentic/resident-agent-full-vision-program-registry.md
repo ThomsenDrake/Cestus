@@ -7880,3 +7880,29 @@ explicit implementation authorization.
   debugging, and verification-before-completion. Full verifier, provider/
   network/credential/Nous, reset credits, neo, self-integration, and merge
   remain closed.
+
+## RV-1-E-246 — Task133 full-lineage review correction and bounded documentation repair
+
+- Fresh independent Terra/xhigh review session
+  `019f644e-c42e-75c1-9beb-38a484ce6dee` returned **NEEDS-CHANGES** for the
+  complete `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d91f28a3f6434490246daaa97e399a905c902761`
+  plan lineage. `d91f28a3` is preserved as unintegrated/rejected history.
+  The reviewer confirmed the local-only retirement, canonical renderer path,
+  expanded migration boundaries, and one-way private R0 seam, but found two
+  exact contradictions.
+- First, the plan and claim regress their own required review range to the
+  inadmissible suffix `ffc2dc81..HEAD` and call it a single commit. They must
+  require the true three-commit `0481c1e0..HEAD` lineage. Second,
+  `BuildPromptArtifactProductionBindingV2` names caller-supplied
+  `renderedPromptHash` even though v2 forbids caller-derived hashes; the live
+  builder silently overwrites that field. The v2 build input must omit it, the
+  artifact owner must derive it, and tests must reject a supplied lookalike
+  rather than correct it.
+- A fresh Terra/xhigh documentation-only author may modify only the recovery
+  plan and Task133 amendment claim in the preserved worktree. It is explicitly
+  authorized for `superpowers:subagent-driven-development`, systematic
+  debugging, and verification-before-completion; it must make no source/test
+  implementation, run `git diff --check && npm run factory:check`, commit,
+  and stop for another true full-lineage independent review. Full verifier,
+  provider/network/credential/Nous, reset credits, neo, child integration,
+  and merge remain closed.
