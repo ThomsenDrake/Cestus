@@ -170,8 +170,8 @@ the local factory retains it beside the opaque witness and awaits it immediately
 before returning the context-ready hash. This validator rechecks current
 workspace/root/blob tuple, mount authority/process identity, and exact
 canonical bytes without exposing the witness from `packages/agent/src/index.ts`
-or consuming it early. Durable recovery now compares each full current context
-pack ref to the checkpoint binding as well as its existing ID/hash/size checks.
+or consuming it early. Durable recovery reconstructs each current context pack
+against the checkpoint's durable binding before V1 canonical-byte readback.
 
 The causal RED/GREEN evidence now includes:
 
@@ -196,3 +196,35 @@ symlink is removed before the candidate commit. Full verification, provider,
 network, credential, Nous, reset-credit, `neo`, merge/rebase/push, and
 self-integration remain excluded. This candidate stops for fresh coordinator
 admission and two new external reviews.
+
+## Coordinator admission rejection of `a262abe0` and compiler repair — 2026-07-15
+
+Candidate `a262abe0198e96698bfc01f698527683022136c4` is rejected before
+external review. The coordinator independently confirmed the focused suite
+(8 files, 97 tests), static gates, diff check, and factory readiness, but a
+fresh standalone typecheck found that the factory retained a validator typed
+as possibly returning `undefined`, recovery compared a nonexistent durable
+checkpoint `.ref`, and the new runtime test reached through an incomplete
+capability type while leaving several callback parameters implicit.
+
+The forward repair preserves the public/private authority boundary. The
+mounted read result now declares an optional *function* that always returns
+`Promise<void>` when present; factory code captures and narrows that lexical
+function before retaining it. Recovery compares exactly the durable binding
+fields that the append-only checkpoint actually contains—ordered pack ID,
+canonical hash, byte length, schema ID, and ordered provenance event IDs—then
+continues to have the mounted V1 readback verify the complete canonical ref and
+payload bytes. It does not fabricate or export authority.
+
+The factory mount-drift regression now runs the actual local runtime
+`tickTaskOrchestrator()` entry point. Its store double performs the workspace
+replacement immediately after real store readback and before the factory's
+non-consuming revalidation, proving no `context-ready` checkpoint. The
+restart fixture uses the concrete render/readback input type, a real
+`ontology-bootstrap` exclusion matching production, and a concrete changed
+evidence payload rather than a JSON-union spread or compiler-only casts.
+
+The repaired worktree's fresh standalone typecheck passed. The complete
+focused suite and final static evidence must be rerun from the final committed
+bytes; this replacement remains pending fresh coordinator admission and two
+external reviews.

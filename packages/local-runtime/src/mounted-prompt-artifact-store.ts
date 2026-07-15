@@ -29,7 +29,7 @@ export interface MountedPromptArtifactReadResult {
   readonly envelope: PromptArtifactEnvelope;
   readonly witness?: MountedProductionPromptReadbackWitness | undefined;
   /** Private factory handoff: rechecks the same mounted bytes without consumption. */
-  readonly revalidateCurrent?: () => Promise<void> | undefined;
+  readonly revalidateCurrent?: (() => Promise<void>) | undefined;
 }
 
 interface PortableTuple {
