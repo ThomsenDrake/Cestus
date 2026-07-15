@@ -1,60 +1,44 @@
 # Task133 discriminated-binding and Task140R0 plan-repair claim
 
-- Status: forward-repaired candidate pending the documentation gate and a fresh
-  independent defects-first plan review. The fresh review of full lineage
-  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..8169fc7f344ce40b0bbd91e60a66dab697d4446d`
-  returned `NEEDS-CHANGES` on two P1 plan defects; this child repair addresses
-  both without authorizing implementation.
+- Status: forward-repaired documentation candidate pending the docs-only gate
+  and two fresh independent defects-first full-lineage reviews. No source
+  implementation or integration is authorized.
 - Coordinator-owned forward repair on
-  `codex/task-133-pure-renderer-plan-amendment`, resumed from clean candidate
-  `8169fc7f344ce40b0bbd91e60a66dab697d4446d`; the full amendment lineage begins
-  at `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8`. Only this claim and the active
-  recovery plan are changed by this documentation task.
+  `codex/task-133-pure-renderer-plan-amendment`; the exact amendment lineage
+  begins at `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8` and ends at current
+  `HEAD`. Only this claim and the active recovery plan may change in this lane.
 
 ## Current Executable Contract
 
-The current contract is the appended `CF-1R5 Task133 Raw-V2 And Task140R0
-Data-Bridge Correction`, read with the preserved `CF-1R5 Task133 Discriminated
-Binding Migration And Exact Renderer Amendment`, in
-`docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`.
-The latest correction solely replaces the raw-v2 build contract/Task133.1
-steps and the Task140R0 file/interface/step/command overlay. Together these are
-the current executable contract. Earlier local-only, five-file, incomplete R0,
-and contradictory omitted-hash prose remains rejected Git history and must not
-be used as implementation instructions.
+The sole executable contract is the latest appended correction in
+`docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
+read backward only for sections it explicitly preserves. CF-1R9 owns the
+Task133 RED/GREEN sequence; CF-1R8 owns Task140H execution; CF-1R7 owns the
+private data-only model command; CF-1R6 owns receipt/recovery/proof ordering;
+and the post-approval lifecycle correction owns v1-to-v2 binding semantics.
+Any earlier raw-v2 renderer, pre-approval exact-v2 route, local-only bridge,
+five-file migration, or incomplete R0 contract is historical and
+non-authorizing.
 
-- `packages/agent/src/prompt-artifacts.ts` is the canonical data owner. It
-  must expose an explicit legacy production-binding v1 and strict exact v2;
-  v2 requires all exact-run/posture fields and canonical computed hashes. Its
-  build input supplies canonical raw renderer material, raw scope, exact-run
-  material, verified packs, and canonical rendered text rather than output
-  hashes. The artifact owner derives all five output hashes and table-rejects
-  `rendererHash`, `renderedPromptHash`, `scopeApplicabilityHash`,
-  `providerPostureHash`, `exactRunBindingHash`, and the `postureHash`
-  lookalike before builder acceptance. Unversioned bindings and
-  caller-supplied derived hashes are invalid; no value is corrected or
-  overwritten.
-- `packages/agent/src/production-specialist-prompts.ts` retains
-  `renderProductionSpecialistPrompt` as the deliberate v1 route for current
-  callers and adds `renderExactlyBoundProductionSpecialistPrompt` as the v2
-  route. Both use the same canonical text renderer once and the existing
-  artifact builder once.
-- `packages/agent/src/adapters/provider-byte-transfer.ts`, runtime event
-  mapping, agent projection, ontology contract parsing, and workspace rebuild
-  tests must strictly preserve both variants and the v2 hashes. No compatibility
-  default, local artifact upgrade, duplicated hash algorithm, or public
-  authority is permitted.
-- The local runtime factory's verifier, mounted-context types, registrations,
-  and capabilities remain private and out of Task133 scope. Task140R0 is the
-  sole future v2 consumer after its existing private prerequisites; it rejects
-  legacy and direct artifacts before any effect.
-- Task140R0 creates the previously absent composition test and extends the
-  agent-owned context-render path with required non-authoritative `attemptId`
-  and `generatedAt` data. Only the factory-private wrapper combines those with
-  captured workspace/mount/policy/provider authority to construct v2. Its
-  expanded file list, exact focused command, RED/GREEN steps, legacy/direct-v2
-  and swap matrix, and zero renderer/provider/ledger/runner/H/store/terminal
-  rejection boundary are frozen in the latest correction.
+- `renderProductionSpecialistPrompt` renders canonical v1 exactly once during
+  Task133.5 pre-approval context assembly. The portable mounted store persists
+  and reads back those byte-identical v1 envelope bytes before the
+  context-ready checkpoint.
+- `bindApprovedProductionSpecialistPromptV2` is the sole v2 constructor. It
+  accepts the exact parsed approved v1 artifact after consume-time approval,
+  preserves prompt bytes, derives every persisted hash, and performs zero
+  renderer calls. `renderExactlyBoundProductionSpecialistPrompt` is deleted or
+  never added and must not appear in source, tests, or implementation claims.
+- Task133.2 consumes current approval and provider-transfer facts; Task133.3
+  strictly preserves explicit v1/v2 and the hash-only prompt-bound receipt
+  through append/readback/projection/ontology/rebuild; Task133.5 owns portable
+  v1 persistence. The former standalone Task133.4 is retired, and its
+  deterministic-v1 caller witnesses belong to the Task133.1 atomic migration.
+- Task140P/R0 consume exact durable v1 and approval facts, bind/store/read v2,
+  append/read its hash-only receipt, and mint only ephemeral identity authority.
+  Task140H alone consumes that authority into the private data-only runtime
+  command. No public route, result, prompt artifact, proof, token, or model
+  provider is authority.
 
 ## Frozen Prerequisites And Scope
 
@@ -318,6 +302,32 @@ serialized task.
   commit, and fresh review. The final integrated non-live command includes all
   private-admission, proof, runtime, kernel, workflow, recovery, composition,
   route, and smoke suites while excluding the live Nous test.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exact review range remains
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; two fresh unqualified
+  Terra/xhigh approvals are required before coordinator integration.
+
+## Forward Correction — Executable Task133 Sequence And Sole Lifecycle
+
+- Status remains **plan-repair candidate only**. Full-lineage reviewer
+  `019f64f6-55c0-79c2-a4ca-e6cdf1fdffe9` rejected `7c536e21` because
+  Task133.2-.5 lacked causal RED evidence and identical GREEN reruns and this
+  claim's opening still labeled a superseded pre-approval v2 renderer current.
+- The opening now names only the latest render-v1-once, durable portable
+  readback, consume-time approval, bind-v2-without-rerender, prompt-bound
+  receipt, ephemeral admission, and private H lifecycle. The old
+  `renderExactlyBoundProductionSpecialistPrompt` route is explicitly forbidden.
+- CF-1R9 provides exact titled REDs, behavioral failure signatures, identical
+  GREEN commands, implementation steps, full file ownership, typecheck/diff/
+  factory gates, commit boundaries, and fresh review gates. Task133.1-.3 are
+  three TDD phases in one atomic discriminated-schema migration, with the sole
+  typecheck and commit after .3; Task133.5 owns a separate portable-store
+  commit. Task133.4 is retired as a non-causal standalone lane; its three
+  deterministic-v1 witnesses move into Task133.1's atomic migration.
+- The integrated Task133 gate aggregates binder, approval/transfer, event/
+  projection/ontology/rebuild, deterministic caller, context render, mounted
+  store, and restart suites and excludes live/provider-bearing tests.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exact review range remains

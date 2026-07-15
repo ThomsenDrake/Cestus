@@ -3103,3 +3103,270 @@ aggregates every new suite, and no live/provider activity is selected. Two
 unqualified independent Terra/xhigh approvals are
 required before coordinator-only plan integration. Rejection authorizes only
 another append-only documentation correction; it never authorizes source.
+
+## CF-1R9 Task133 Executable RED/GREEN And Sole-Lifecycle Correction
+
+**Status:** This section is the sole executable Task133.1-.5 sequence. It
+preserves CF-1R6 durable receipt/store semantics and the post-approval binder,
+but supersedes every earlier Task133 implementation step, command, standalone
+Task133.4 task, and any pre-approval exact-v2 renderer. Source remains frozen
+until two fresh full-lineage reviewers approve this combined contract and the
+coordinator integrates it.
+
+Task133.1-.3 are three TDD phases inside one atomic discriminated-schema
+migration: the new strict type can make transfer/runtime/projection consumers
+temporarily uncompilable, so no intermediate typecheck or commit is valid.
+After each phase, run its identical focused GREEN command; after Task133.3, run
+one typecheck/diff/factory gate, commit the complete .1-.3 file set, and stop
+for review. Task133.5 starts only after that reviewed integration and owns its
+own commit/review boundary.
+
+Each source phase starts in the same fresh worktree at the current integrated
+program head, receives a coordinator message that specifically approves
+`superpowers:subagent-driven-development`, writes the listed REDs first, runs
+the exact test-only command and records the named causal failure, implements
+only the listed files, and reruns the identical command to GREEN.
+An unrelated failure, a RED that already passes, or a missing prerequisite is
+a stop condition rather than implementation permission.
+
+### Task133.1 — Atomic v1 schema, post-approval binder, and legacy callers
+
+The former Task133.4 is retired as a standalone task. Its production behavior
+must not change, so it cannot own an honest post-Task133.1 RED. Its three
+compatibility witnesses move into this atomic schema/binder migration, where
+they causally fail on the old unversioned artifact and pass with explicit v1.
+
+**Files**
+
+- Modify `packages/agent/src/prompt-artifacts.ts`
+- Modify `packages/agent/src/production-specialist-prompts.ts`
+- Modify `packages/agent/test/prompt-artifacts.test.ts`
+- Modify `packages/agent/test/production-specialist-prompts.test.ts`
+- Modify `packages/agent/test/evidence-triage-workflow.test.ts`
+- Modify `packages/agent/test/prr-negotiation-workflow.test.ts`
+- Modify `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+- Create `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`
+
+- [ ] **Step 1: write causal REDs.** Add exact-title tests
+  `renders one explicit production binding v1`,
+  `binds approved v1 bytes to strict v2 without rendering`,
+  `derives every v2 output hash and rejects caller-supplied hashes`,
+  `rejects unversioned and hostile production bindings`, and in each migrated
+  workflow `legacy deterministic caller remains explicit v1`. The valid
+  witness counts one v1 renderer call and zero v2 renderer calls; every
+  prohibited-key row rejects before artifact creation or callback activity.
+
+- [ ] **Step 2: run RED.**
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts
+```
+
+Expected: exit `1` because current artifacts are unversioned and
+`bindApprovedProductionSpecialistPromptV2` does not exist. The deterministic
+caller assertions must report missing explicit v1, not a fixture/syntax error.
+
+- [ ] **Step 3: implement minimum schema/binder migration.** Add strict v1 and
+  exact v2 discriminants; derive all hashes inside the artifact owner; add the
+  byte-preserving post-approval binder; keep existing callers on the one-render
+  v1 path; delete or never add `renderExactlyBoundProductionSpecialistPrompt`.
+
+- [ ] **Step 4: rerun identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts
+```
+
+Expected: exit `0`, followed by
+`! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/agent/src packages/agent/test && git diff --check`.
+Do not typecheck or commit yet; continue directly to Task133.2 in the same
+atomic migration.
+
+### Task133.2 — Exact approval and provider-transfer derivation
+
+**Files**
+
+- Modify `packages/agent/src/specialist-runner-kernel.ts`
+- Modify `packages/agent/src/task-orchestrator-approval.ts`
+- Modify `packages/agent/src/adapters/provider-byte-transfer.ts`
+- Modify `packages/agent/test/specialist-runner-kernel.test.ts`
+- Modify `packages/agent/test/task-orchestrator-approval.test.ts`
+- Modify `packages/agent/test/provider-byte-transfer-adapter.test.ts`
+- Create `docs/agentic/claims/task-133-2-approval-transfer-binding.md`
+
+- [ ] **Step 1: write causal REDs.** Add exact-title tests
+  `accepts v2 only from the exact currently approved v1 bytes`,
+  `rejects direct v2 without current v1 approval proof`,
+  `rejects swapped source v1 and rerendered text`,
+  `rejects stale run provider context and approval facts`, and
+  `rejects every v2 hash and lookalike injection before transfer`. Rejection
+  counters require zero provider invocation, ledger append, runner dispatch,
+  H, store write, handoff, and terminal append. The valid control performs
+  validation/derivation only and still performs zero provider invocation.
+
+- [ ] **Step 2: run RED.**
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts
+```
+
+Expected: exit `1`; the exact-v2 valid control cannot derive transfer from the
+current v1 approval proof, or a direct/swapped v2 reaches current transfer
+validation. Only those named behavioral failures are accepted RED evidence.
+
+- [ ] **Step 3: implement minimum consume-time validation.** Reuse canonical
+  artifact parsing/hashing and current approval validation; prove exact source
+  v1 hash/bytes, task/attempt/run/provider/context/workflow/posture facts, and
+  owner-derived hashes before transfer. Add no provider call, duplicate parser,
+  public approval minter, boolean authority, or rerender path.
+
+- [ ] **Step 4: rerun identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts
+```
+
+Expected: exit `0`, followed by
+`git diff --check`. Do not typecheck or commit yet; continue directly to
+Task133.3 in the same atomic migration.
+
+### Task133.3 — Durable variants, prompt-bound receipt, projection, and rebuild
+
+**Files**
+
+- Modify `packages/agent/src/runtime.ts`
+- Modify `packages/agent/src/projection.ts`
+- Modify `packages/agent/src/projection-types.ts`
+- Modify `packages/agent/src/task-orchestrator-types.ts`
+- Modify `packages/agent/src/task-orchestrator-projection.ts`
+- Modify `packages/ontology/src/contracts.ts`
+- Modify `packages/agent/test/runtime.test.ts`
+- Modify `packages/agent/test/projection.test.ts`
+- Modify `packages/agent/test/task-orchestrator-events.test.ts`
+- Modify `packages/agent/test/task-orchestrator-projection.test.ts`
+- Modify `packages/ontology/test/agent-contracts.test.ts`
+- Modify `packages/workspace-ops/test/projection-rebuild.test.ts`
+- Create `docs/agentic/claims/task-133-3-durable-prompt-binding.md`
+
+- [ ] **Step 1: write causal REDs.** Add exact-title tests
+  `round trips explicit production binding v1 without defaulting`,
+  `round trips strict v2 with source v1 and all owner hashes`,
+  `rejects missing unknown or unversioned durable prompt binding`,
+  `appends and reads one strict hash-only prompt-bound receipt`,
+  `projection preserves the exact receipt without granting authority`, and
+  `ledger rebuild reproduces exact v1 v2 and receipt hashes`. The receipt tests
+  require approval-event-derived `generatedAt`, exact source/bound hashes,
+  receipt hash, run/provider/context/workspace/mount facts, and no bytes/path/
+  credential/token/proof/provider output.
+
+- [ ] **Step 2: run RED.**
+
+```bash
+npm test -- packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts
+```
+
+Expected: exit `1` because current ontology rejects `prompt-bound`, durable
+events do not preserve discriminated v1/v2, and no strict binding receipt can
+round-trip. Missing-module, fixture-only, or unrelated failures are not causal.
+
+- [ ] **Step 3: implement minimum durable migration.** Extend strict ontology,
+  event/runtime mapping, projection types/projector, and rebuild parsing for
+  explicit v1/v2 plus the receipt. Recompute receipt hashes on append/readback;
+  never default, upgrade, store prompt bytes, or make projection state
+  authority.
+
+- [ ] **Step 4: rerun identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts
+```
+
+Expected: exit `0`, followed by
+`npm run typecheck && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/agent/src packages/agent/test && git diff --check && npm run factory:check`.
+Commit the combined Task133.1-.3 listed files and claims as one atomic schema/
+approval/durable-event migration, then stop for fresh code and spec review.
+
+### Task133.4 — Retired non-causal lane
+
+There is no Task133.4 source or test commit. Its three deterministic caller
+witnesses are owned by Task133.1, where they fail causally on the old
+unversioned schema and turn GREEN with explicit v1. The coordinator records
+Task133.4 as `retired-into-task133.1`; no worker, branch, claim, or standalone
+approval may be created for it.
+
+### Task133.5 — Portable pre-approval v1 render/store/readback
+
+**Files**
+
+- Modify `packages/agent/src/task-orchestrator-types.ts`
+- Modify `packages/agent/src/task-orchestrator-context.ts`
+- Modify `packages/agent/src/task-orchestrator.ts`
+- Modify `packages/agent/test/task-orchestrator-context.test.ts`
+- Modify `packages/agent/test/task-orchestrator-evidence-triage.test.ts`
+- Modify `packages/local-runtime/src/agent-prompt-artifacts.ts`
+- Modify `packages/local-runtime/src/agent-runtime-factory.ts`
+- Create `packages/local-runtime/src/mounted-prompt-artifact-store.ts`
+- Modify `packages/local-runtime/test/agent-prompt-artifacts.test.ts`
+- Create `packages/local-runtime/test/mounted-prompt-artifact-store.test.ts`
+- Create `packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts`
+- Create `docs/agentic/claims/task-133-5-preapproval-prompt-store.md`
+
+- [ ] **Step 1: write causal REDs.** Add exact-title tests
+  `requires attempt id and generated at before context rendering`,
+  `renders v1 once and checkpoints only after exact mounted readback`,
+  `constructs resident prompt store only for a verified portable mount`,
+  `revalidates workspace root and blob tuple before and after every io`,
+  `accepts EEXIST only for byte-identical canonical envelope`,
+  `rejects corrupt or hash-mismatched readback without fallback`, and
+  `fresh runtime reads the same v1 after restart without rerendering`. Tuple
+  replacement tests mutate workspace ID, resolved root, and blob root both
+  before I/O and between I/O/post-check and count original/replacement access.
+  Every failure requires zero context-ready checkpoint, approval, provider,
+  H, handoff, or terminal activity.
+
+- [ ] **Step 2: run RED.**
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts
+```
+
+Expected: exit `1` because the mounted store test/module is absent and current
+resident prompt storage has in-memory/internal fallback and no remount tuple
+checks. After adding only interface skeletons that throw
+`blocked.portable-prompt-store-required`, rerun the identical command; it must
+still exit `1` on the valid render/store/readback/restart controls. Unrelated
+fixture failures are not accepted RED evidence.
+
+- [ ] **Step 3: implement minimum portable v1 path.** Snapshot exact attempt/
+  time before await; render v1 once; construct only from verified portable
+  mount; remount and exact-key compare the captured tuple before/after every
+  asynchronous put/read; use freshly returned blob root; canonical create-only
+  bytes with strict EEXIST verification; parse/hash/canonical-byte verify reads;
+  return exact readback; append context-ready only afterward; remove every
+  resident internal-disk and in-memory fallback.
+
+- [ ] **Step 4: rerun identical command to GREEN.**
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts
+```
+
+Expected: exit `0`, followed by
+`npm run typecheck && git diff --check && npm run factory:check`. Commit only
+the listed files/claim and stop for review.
+
+### CF-1R9 integrated Task133 gate
+
+After reviewed coordinator integration of Task133.1, .2, .3, and .5, run:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/ontology/test/agent-contracts.test.ts packages/workspace-ops/test/projection-rebuild.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-context.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts && npm run typecheck && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+Expected: exit `0`; no live/provider-bearing test is selected. Fresh reviewers
+must inspect exact full lineage
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`, confirm that the claim's
+opening names only this latest lifecycle, and return two unqualified
+Terra/xhigh approvals before coordinator-only plan integration. Full verify,
+provider/network/credential/Nous activity, reset credits, `neo`, source work in
+this plan branch, self-integration, and merge remain closed.
