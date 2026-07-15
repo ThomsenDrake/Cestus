@@ -9294,3 +9294,31 @@ explicit implementation authorization.
   full verification, provider/network/credential/Nous activity, reset credits,
   `neo`, self-review, plan integration, and merge remain closed pending a
   committed docs-only candidate and two fresh unqualified Terra/xhigh approvals.
+
+## RV-1-E-313 — Clean-shell and checker-byte authority candidate
+
+- The sole plan writer committed CF-1R25 candidate
+  `3b2636324c9ea59f4fd7e98a11f43110973df20a`. Its eight complete active
+  commands enter literal absolute-path clean shells, bind all supported physical
+  checkout path kinds while rejecting special entries, and authenticate the
+  exact prerequisite-checker bytes before every P/R0/H invocation.
+- All eight extracted heredocs pass `bash -n`, wrapper/checker cardinality
+  checks, and terminal-operation checks. Fresh adversarial fixtures prove that
+  forged functions, `PATH`, `BASH_ENV`, Git/Node/npm controls, and a Nous
+  credential cannot cross the envelope; a wrong checker hash fails before Node
+  executes; dependency contents are pruned while directory mode and symlink
+  identity remain bound; and FIFO, `readlink`, `stat`, `find`, `sort`, and
+  file-hash failures return nonzero without an authorizing digest.
+- `git diff --check` and `npm run factory:check` pass. Full verification and
+  every source/live/provider/network/credential/Nous action remain deliberately
+  closed. Both plan and program worktrees are clean before this registry entry.
+- The exact review lineage is the 30-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..3b2636324c9ea59f4fd7e98a11f43110973df20a`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`. Latest authenticated usage
+  reports 44% used / 56% weekly remaining, with no reset credits.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required; no earlier verdict or reviewer identity carries.
+  Source dispatch, plan integration, live/provider/full/credential/Nous/
+  reset-credit/`neo` actions remain closed.
