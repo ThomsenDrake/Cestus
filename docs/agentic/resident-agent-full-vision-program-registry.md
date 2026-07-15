@@ -10375,3 +10375,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   permitted focused/static/topology gate. No new implementer is authorized.
 - Full verification, providers, reset credits, integration, push, and every
   `neo` action remain closed.
+
+## RV-1-E-365 — Task133 authority-source schema conflict confirmed
+
+- The second atomic recovery stopped before causal tests or production repair.
+  Branch `codex/task-133-atomic-prompt-binding-review-recovery-2` remains at
+  original base `197c3ca528e9b666c02b9b87695bf900efa195b1` with exactly the
+  rejected 28-path patch staged and no replacement commit.
+- Consume-time Task133 currently lacks independent attempt, workspace, mount,
+  workflow/policy, selection-policy, and complete provider-posture authority.
+  The only complete tuple is caller-supplied proof/exact-run data; accepting it
+  or adding another structural tuple would recreate the review defect.
+- The active plan assigns those facts and opaque approval admission to later
+  Task140P and factory-private Task140R0. A docs-only append-only plan correction
+  is therefore authorized to define an explicit fail-closed Task133 boundary,
+  preserve schema/binder/durable migration work, move complete consume-time
+  acceptance to P/R0, and retain causal zero-effect and replay tests without
+  inventing authority.
+- Task133 source work remains frozen pending a reviewed plan correction. Full
+  verification, providers, reset credits, integration, push, and every `neo`
+  action remain closed.
