@@ -46,12 +46,10 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
   });
 };
 
-interface FactoryHeldRegistrarEvidence {
-  readonly descriptorHash: string;
-  readonly parserIdentity: string;
-  readonly producerIdentity: string;
-  readonly registrationIdentity: string;
-}
+type FactoryHeldRegistrarEvidence =
+  | NonNullable<ReturnType<typeof lookupPrrContextPackRegistrarEvidence>>
+  | NonNullable<ReturnType<typeof lookupOperationalContextPackRegistrarEvidence>>
+  | NonNullable<ReturnType<typeof lookupInvestigativeContextPackRegistrarEvidence>>;
 
 /**
  * This closure is deliberately lexical to the factory. Task132A records the
