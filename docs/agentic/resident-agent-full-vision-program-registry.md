@@ -7600,3 +7600,23 @@ explicit implementation authorization.
   **APPROVED** verdict.
 - Full verification, provider/network/credential/Nous action, reset-credit
   use, `neo`, and child self-integration remain **CLOSED**.
+
+## RV-1-E-238 — Task133 repaired complete-range review and usage monitor
+
+- Fresh independent defects-first reviewer
+  `/root/task133_canonical_renderer_plan_review`, session
+  `019f6431-88ac-70e2-8132-061b626163da`, is read-only on the exact complete
+  range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..ffc2dc81c189af3163ec7b573b4f6f4767660de7`.
+  Its review package is the complete two-commit artifact
+  `.superpowers/sdd/review-0481c1e0..ffc2dc81.diff`; it must include the prior
+  rejected amendment and assess every prior NEEDS-CHANGES defect against live
+  call sites. Its authoritative `turn_context` at
+  `rollout-2026-07-15T01-13-15-019f6431-88ac-70e2-8132-061b626163da.jsonl:8`
+  records `model=gpt-5.6-terra`, `reasoning_effort=xhigh`, and `effort=xhigh`.
+  No implementation or integration is authorized pending the verdict.
+- The latest authenticated app-server rate-limit event reports
+  `primary.used_percent=27.0`: **73% weekly remaining**. This supersedes the
+  prior 26%/74% observation forward-only. No reset credit has been redeemed;
+  the last confirmed five credits remain untouched. DRAIN remains <=10%
+  remaining and HARD PAUSE <=7%.
