@@ -7173,3 +7173,24 @@ explicit implementation authorization.
   It must commit only its eight-file scope, remove the temporary dependency
   link, and stop for fresh complete staged-base review. The authoritative wake
   thread ID is recorded here before any continued coordination.
+
+## RV-1-E-217 — Task132A nonproductive-child replacement and RED coverage freeze
+
+- The coordinator interrupted nonproductive reawakened child
+  `019f63ec-9d8e-7a30-a288-299871bd7119` after its bounded checkpoint expired
+  with no tracked RED, command, or source-backed blocker. One and only one
+  fresh replacement, `019f63f6-1091-79e1-be8e-839ebbdfc930`, now owns the same
+  existing `task-132a-boundary-reset-recovery` branch/worktree. No second
+  worktree/branch was created and `c7f36114` was not reset or discarded.
+- The replacement's focused RED exited 1 with exactly the expected two failures:
+  public `captureFactoryContextPackAttestation` remains exposed, and default
+  factory composition does not yet throw
+  `blocked.factory-context-attestation-required`. This is RED-only,
+  non-candidate evidence. Its two-test edit is unusually reductive (137
+  insertions / 689 deletions; attestation test 270→31 lines and context-pack
+  test 588→275), so all production expansion is frozen pending an exact mapping
+  of each removed category to the expressly retired Task132A acceptance, proof
+  that hostile-input/mounted-authority/duplicate/immutability coverage is not
+  silently lost elsewhere, and fresh `git diff --check` evidence. Unjustified
+  coverage must be restored before any source edit, GREEN, candidate gate, or
+  review. All Task132A scope and closed-gate restrictions remain in force.
