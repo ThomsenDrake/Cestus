@@ -6331,3 +6331,41 @@ explicit implementation authorization.
   **CLOSED**; no self-review, self-integration, merge, or `neo` action is
   allowed. Primary usage remains `usedPercent=11` / **89% remaining**, reset
   credits untouched, and DRAIN/HARD PAUSE controls remain in force.
+
+## RV-1-E-182 — Forward correction: authenticated usage guard
+
+- **Forward-only correction of the last usage figure.** The latest
+  authenticated app-server event is primary: `usedPercent=13`, or **87% weekly
+  remaining**. The prior `11` / 89% figures in RV-1-E-175 through RV-1-E-181
+  remain preserved historical readings and are not current usage claims.
+- Reset credits remain untouched and must never be redeemed. Normal operation
+  continues at 87% remaining; DRAIN begins at <=10% remaining and HARD PAUSE
+  at <=7% remaining. The full verifier remains **CLOSED** and `neo` remains
+  untouched.
+
+## RV-1-E-183 — Task134 review findings and bounded forward repair
+
+- Fresh independent Terra/xhigh review of Task134 range
+  `6846cafd..435602f3` returned **NEEDS-CHANGES**. It ran no tests or full
+  verifier; exact three-file scope and diff hygiene were clean. The candidate
+  is not review-ready or integration-ready.
+- Three Important defects are accepted. Mutable caller-owned dispatch objects
+  survive an `await` of caller-provided store verification and the original
+  object reaches the delegate; the durable result is only a delegate-supplied
+  shape while the actual injected H `readback` is never called; and the public
+  production capability accepts a structurally counterfeit store/provenance/H
+  tuple, with a factory-closed registry existing only inside test code. The
+  claim's candidate status must be corrected forward from in-progress/ready-
+  for-review evidence.
+- The original Task134 author is authorized for one bounded forward repair on
+  its existing claim, source, and test only. Add causal mutation-across-await,
+  forged-delegate-result/no-H-readback, and counterfeit-tuple RED tests. The
+  repair must normalize/freeze a trusted closed snapshot before any await,
+  invoke and exact-bind the real H readback rather than delegate-provided
+  shapes, and make production closure provenance non-forgeable without
+  importing Task135 or changing H/W/shared/factory/orchestrator files. If the
+  authorized Task134 boundary cannot establish a closed tuple, it must fail
+  closed before delegate/fallback activity rather than accept a public tuple.
+- The repair may use `superpowers:subagent-driven-development`, systematic
+  debugging, test-driven development, and verification-before-completion. It
+  must run exactly `npm test -- packages/local-runtime/test/agent-runtime-specialist-runners.test.ts packages/agent/test/specialist-runner-kernel.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain before one forward commit, then stop for fresh independent review. Full verification remains **CLOSED**; no provider/network/credential action, self-review, self-integration, merge, or `neo` action is authorized. Current primary usage is `usedPercent=13` / **87% remaining**, reset credits untouched, and DRAIN/HARD PAUSE controls remain in force.
