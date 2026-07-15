@@ -9131,3 +9131,28 @@ explicit implementation authorization.
   credit/`neo`/plan-integration actions remain closed pending a committed
   docs-only repair and two fresh independent unqualified approvals. No prior
   verdict or reviewer identity carries forward.
+
+## RV-1-E-307 — Post-command revalidation candidate
+
+- The sole plan writer committed CF-1R23 candidate
+  `da34e403c876995d9f3a8cc06032563a57d8bf4c`. Task117A now factors its
+  complete physical-root, hidden-state, immutable-claim, literal-attestation,
+  no-merge, exact-path, whole-freeze, extracted-audit, and diff checks into one
+  reusable assertion. Task137A does the same for its complete physical-root,
+  hidden-state, immutable-claim, no-merge, exact-six-path, and diff checks.
+- Each command runs its assertion before focused work and as the final command
+  after every audit, test, typecheck, static, and readiness operation. Clean
+  isolated fixtures pass; a post-audit freeze mutation and a post-test seventh
+  path both fail at the final assertion. Both CF-1R23 bash blocks pass
+  `bash -n`; `git diff --check` and `npm run factory:check` pass; the plan
+  worktree is clean.
+- The exact review lineage is the 28-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..da34e403c876995d9f3a8cc06032563a57d8bf4c`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`. Latest authenticated usage
+  reports 43% used / 57% weekly remaining, with no reset credits.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required; no prior verdict or reviewer identity carries.
+  Source dispatch, plan integration, live/provider/full/credential/Nous/reset-
+  credit/`neo` actions remain closed.
