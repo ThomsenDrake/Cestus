@@ -10668,3 +10668,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   required before coordinator-only plan integration.
 - Full verification, source, providers, reset credits, integration, push, and
   every `neo` action remain closed.
+
+## RV-1-E-384 — Task133 authority-split plan approved for integration
+
+- Authority/security reviewer
+  `019f66dc-9ee8-74b0-925e-93418ec8f638` returned unqualified
+  **APPROVED** for exact candidate
+  `f186e703a22e20c6936b25c846451e60ee687cb9`.
+- Registry-aware factory-plan reviewer
+  `019f66e1-580f-7620-8724-3c9ddca4016b` returned unqualified
+  **APPROVED** after verifying the durable historical `dcb863e2..7cadeaed`
+  and current `dcb863e2..f186e703` review layers, non-circular P/R0 boundary,
+  Task133 phase replay gate, ownership, commands, and explicit future
+  subagent-driven-development authorization.
+- The two-doc candidate is authorized for coordinator-only integration into
+  the program branch. Source remains frozen until that merge and its focused
+  documentation gate complete. Full verification, providers, reset credits,
+  push, and every `neo` action remain closed.
