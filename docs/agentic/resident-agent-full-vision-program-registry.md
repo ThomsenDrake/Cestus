@@ -9169,3 +9169,41 @@ explicit implementation authorization.
   carry forward any earlier verdict. Source dispatch and plan integration
   remain closed until both return explicit unqualified **APPROVED** verdicts
   and those verdicts are durably recorded.
+
+## RV-1-E-309 — Post-command candidate rejected; bounded CF-1R24
+
+- Lifecycle/executability reviewer
+  `019f65f0-2703-77d1-b23e-a3f164c903e7` and authority/import/bypass reviewer
+  `019f65f0-2649-77e2-a24c-5683e8245de0` both returned
+  **NEEDS-CHANGES** on exact 28-commit range `0481c1e0^..da34e403`. No prior
+  approval or reviewer identity carries forward.
+- Both reviewers reproduced fail-open ignored-path handling. Task117A and
+  Task137A inspect ignored files only below `packages`, `scripts`, and
+  `docs/agentic/claims`; ignored `docs/agentic` files, `dist` output, and a
+  root `.npmrc` created after focused work can survive the final assertion.
+  Task117A additionally honors caller-controlled `TMPDIR`, so its temporary
+  files and post-assertion cleanup can occur inside the repository.
+- The authority review proved three further post-command gaps: Task117A and
+  Task137A preserve only an allowed path union, so a changed already-allowed
+  source/claim byte or an empty commit can pass without rerunning the gate;
+  each Task135C P/R0/H review command validates C/M/base only before its
+  focused commands; and Task117A accepts an annotated-tag object whose peeled
+  commit satisfies its current attestation checks even though the literal
+  coordinator-issued C must itself be a commit object.
+- The sole plan writer is authorized only for CF-1R24: publish complete exact
+  Task117A and Task137A commands that snapshot and compare the complete
+  physical checkout, index, and literal HEAD before and after every audit,
+  test, typecheck, static, and readiness command; include ignored and standard
+  untracked bytes and paths while excluding only external dependency contents;
+  place Task117A temporary state at a verified literal outside-repository root
+  and sanitize inherited temporary-directory controls; require literal C to
+  resolve to itself as a commit object; and publish complete P/R0/H review
+  commands whose terminal authority function proves unchanged checkout/index/
+  HEAD state and reruns the byte-identical C/M/base prerequisite checker as its
+  final operation.
+- Preserve every other CF-1R18 through CF-1R23 ownership, lifecycle,
+  prerequisite, attestation, Git-environment, exact-path, no-live, and no-
+  source restriction. Source implementation, full verification, provider/
+  network/credential/Nous activity, reset credits, `neo`, self-review, plan
+  integration, and merge remain closed pending a committed docs-only candidate
+  and two fresh independent unqualified Terra/xhigh approvals.
