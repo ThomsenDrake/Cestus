@@ -7010,3 +7010,17 @@ explicit implementation authorization.
   review. Tasks133/134 remain blocked; full verify, `neo`, provider/network/
   credential/Nous action, reset-credit use, and child self-integration remain
   **CLOSED**.
+
+## RV-1-E-209 — Authenticated usage-monitor correction during bounded repairs
+
+- A newer authenticated account/rate-limits event supersedes RV-1-E-203's
+  20%-used record: current weekly use is `usedPercent=21`, so **79% weekly
+  remaining**. Five reset credits remain available and untouched; they must not
+  be redeemed. DRAIN remains <=10% remaining and HARD PAUSE remains <=7%.
+- The only active implementation lanes are the isolated Task119 causal-replay
+  repair and Task132A factory-closure/coverage repair. Both have explicit
+  Terra/xhigh, `superpowers:subagent-driven-development`, TDD, systematic
+  debugging, verification-before-completion, exact non-full `&&` gate, and no
+  self-integration authority. Tasks133/134, full verification, `neo`, and all
+  provider/network/credential/Nous action remain **CLOSED** pending their
+  governing review/integration gates.
