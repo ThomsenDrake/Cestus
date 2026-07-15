@@ -1,9 +1,11 @@
 import {
   contextPackDescriptorSchema,
   contextPackRefSchema,
-  createContextPackRegistry,
   hashAgentContextPack,
   hasVerifiedResolvedContextPackParserAuthority,
+  lookupInvestigativeContextPackRegistrarEvidence,
+  lookupOperationalContextPackRegistrarEvidence,
+  lookupPrrContextPackRegistrarEvidence,
   serializeContextPackPayload,
   type AgentContextPackJsonValue,
   type ContextPackDescriptor,
@@ -106,6 +108,11 @@ export interface MountedContextCapability {
   verifyForRun(input: VerifyMountedContextForRunInput): Promise<VerifiedContextBindingSet>;
 }
 
+export interface FactoryMountedContextCapabilityInput {
+  readonly authority: MountedWorkspaceRuntimeAuthority;
+  readonly registrations: readonly ContextRegistrationBinding[];
+}
+
 export interface VerifiedContextBindingSet {
   readonly schemaVersion: "verified-context-binding-set.v1";
   readonly workspaceId: string;
@@ -158,34 +165,70 @@ interface CanonicalAuthorityReverification {
 
 const mountedContextCapabilities = new WeakSet<object>();
 const verifiedContextBindingSets = new WeakSet<object>();
+const factoryContextAttestations = new WeakMap<object, FactoryContextAttestation>();
 const hashPattern = /^sha256:[a-f0-9]{64}$/;
 
+interface ContextPackRegistrarEvidence {
+  readonly descriptorHash: string;
+  readonly parserIdentity: string;
+  readonly producerIdentity: string;
+  readonly registrationIdentity: string;
+}
+
+interface FactoryContextAttestation {
+  readonly registry: ContextPackRegistry;
+  readonly registrationsById: ReadonlyMap<string, ContextPackRegistrarEvidence>;
+}
+
 /**
- * Creates a factory-owned, mounted context capability. The registry is
- * deliberately private: callers supply only a frozen registration manifest
- * and the factory registration callback, never a usable registry or cache.
+ * The former public structural constructor deliberately fails closed. Only a
+ * factory-held attestation can construct a mounted context capability.
  */
-export function createMountedAgentContextCapability(input: {
-  readonly authority: MountedWorkspaceRuntimeAuthority;
-  readonly registrations: readonly ContextRegistrationBinding[];
-  readonly registerBuilders: (registry: ContextPackRegistry) => void;
+export function createMountedAgentContextCapability(_input: unknown): MountedContextCapability {
+  throw blocked("factory-context-attestation-required");
+}
+
+/**
+ * Captures immutable package-owned registrar facts for one actual registry.
+ * A caller cannot fabricate this opaque token from a tuple, callback, local
+ * fallback, or a registry that the producer modules did not register.
+ */
+export function captureFactoryContextPackAttestation(registry: ContextPackRegistry): object {
+  const descriptors = factoryRegistryDescriptors(registry);
+  const registrationsById = new Map<string, ContextPackRegistrarEvidence>();
+  for (const descriptor of descriptors) {
+    const evidence = lookupContextPackRegistrarEvidence(registry, descriptor.contextPackId);
+    if (evidence === undefined || evidence.descriptorHash !== hashAgentContextPack(descriptor)) {
+      throw blocked("factory-context-attestation-required");
+    }
+    registrationsById.set(descriptor.contextPackId, Object.freeze({ ...evidence }));
+  }
+  const token = Object.freeze({});
+  factoryContextAttestations.set(token, Object.freeze({
+    registry,
+    registrationsById
+  }));
+  return token;
+}
+
+/** Factory-only construction consumes an opaque attestation captured above. */
+export function createFactoryHeldMountedAgentContextCapability(input: FactoryMountedContextCapabilityInput & {
+  readonly factoryContextAttestation: object;
 }): MountedContextCapability {
   const canonicalInput = ownDataRecord(input, "mounted-context-capability-input");
-  requireExactKeys(canonicalInput, ["authority", "registrations", "registerBuilders"], "mounted-context-capability-input");
-  if (typeof canonicalInput.registerBuilders !== "function") {
-    throw blocked("invalid-mounted-context-capability-input");
+  requireExactKeys(canonicalInput, ["authority", "registrations", "factoryContextAttestation"], "mounted-context-capability-input");
+  if (typeof canonicalInput.factoryContextAttestation !== "object" || canonicalInput.factoryContextAttestation === null) {
+    throw blocked("factory-context-attestation-required");
+  }
+  const factoryAttestation = factoryContextAttestations.get(canonicalInput.factoryContextAttestation);
+  if (factoryAttestation === undefined) {
+    throw blocked("factory-context-attestation-required");
   }
 
   const authority = canonicalAuthority(canonicalInput.authority);
   const registrations = canonicalRegistrations(canonicalInput.registrations, authority);
   const registrationsById = new Map(registrations.map((registration) => [registration.contextPackId, registration]));
-  const registry = createContextPackRegistry();
-  try {
-    canonicalInput.registerBuilders(registry);
-  } catch {
-    throw blocked("context-registration-failed");
-  }
-  assertExactFactoryRegistry(registry, registrations);
+  assertExactFactoryRegistry(factoryAttestation, registrations);
 
   const capability: MountedContextCapability = Object.freeze({
     capabilityVersion: "mounted-agent-context.v1" as const,
@@ -216,9 +259,9 @@ export function createMountedAgentContextCapability(input: {
       }
       assertReverificationMatchesMountedAuthority(reverification, authority, request);
 
-      // A retained registration callback cannot turn this private registry into
-      // a fallback/cache authority after it has been mounted.
-      assertExactFactoryRegistry(registry, registrations);
+      // Re-read package-owned evidence against the original registry before
+      // resolution; a captured tuple cannot become a fallback authority.
+      assertExactFactoryRegistry(factoryAttestation, registrations);
 
       const contextPacks: VerifiedResolvedContextPack[] = [];
       const bindings: VerifiedContextBinding[] = [];
@@ -230,7 +273,7 @@ export function createMountedAgentContextCapability(input: {
 
         let resolved: VerifiedResolvedContextPack;
         try {
-          resolved = await registry.buildResolved(contextPackId);
+          resolved = await factoryAttestation.registry.buildResolved(contextPackId);
         } catch {
           throw blocked("context-pack-resolution-failed");
         }
@@ -526,18 +569,12 @@ function assertReverificationMatchesMountedAuthority(
   }
 }
 
-function assertExactFactoryRegistry(
-  registry: ContextPackRegistry,
-  registrations: readonly ContextRegistrationBinding[]
-): void {
+function factoryRegistryDescriptors(registry: ContextPackRegistry): readonly ContextPackDescriptor[] {
   let rawDescriptors: readonly unknown[];
   try {
     rawDescriptors = ownDataArray(registry.listDescriptors(), "factory-context-descriptors");
   } catch {
-    throw blocked("context-registration-mismatch");
-  }
-  if (rawDescriptors.length !== registrations.length) {
-    throw blocked("context-registration-mismatch");
+    throw blocked("factory-context-attestation-required");
   }
   const descriptors = new Map<string, ContextPackDescriptor>();
   for (const rawDescriptor of rawDescriptors) {
@@ -545,21 +582,68 @@ function assertExactFactoryRegistry(
     try {
       descriptor = contextPackDescriptorSchema.parse(rawDescriptor);
     } catch {
-      throw blocked("context-registration-mismatch");
+      throw blocked("factory-context-attestation-required");
     }
     if (descriptors.has(descriptor.contextPackId)) {
-      throw blocked("context-registration-mismatch");
+      throw blocked("factory-context-attestation-required");
     }
     descriptors.set(descriptor.contextPackId, descriptor);
   }
+  return Object.freeze([...descriptors.values()]);
+}
+
+function assertExactFactoryRegistry(
+  factoryAttestation: FactoryContextAttestation,
+  registrations: readonly ContextRegistrationBinding[]
+): void {
+  const descriptors = factoryRegistryDescriptors(factoryAttestation.registry);
+  if (descriptors.length !== registrations.length || descriptors.length !== factoryAttestation.registrationsById.size) {
+    throw blocked("factory-context-attestation-required");
+  }
+  const descriptorsById = new Map(descriptors.map((descriptor) => [descriptor.contextPackId, descriptor]));
   for (const registration of registrations) {
-    const descriptor = descriptors.get(registration.contextPackId);
+    const descriptor = descriptorsById.get(registration.contextPackId);
+    const captured = factoryAttestation.registrationsById.get(registration.contextPackId);
+    const current = lookupContextPackRegistrarEvidence(factoryAttestation.registry, registration.contextPackId);
     if (descriptor === undefined || descriptor.version !== registration.version ||
       descriptor.sourceProjection !== registration.sourceProjection ||
-      hashAgentContextPack(descriptor) !== registration.descriptorHash) {
-      throw blocked("context-registration-mismatch");
+      hashAgentContextPack(descriptor) !== registration.descriptorHash ||
+      captured === undefined || current === undefined ||
+      !sameRegistrarEvidence(captured, current) ||
+      captured.descriptorHash !== registration.descriptorHash ||
+      captured.parserIdentity !== registration.parserIdentity ||
+      captured.producerIdentity !== registration.producerIdentity ||
+      captured.registrationIdentity !== registration.registrationIdentity) {
+      throw blocked("factory-context-attestation-required");
     }
   }
+}
+
+function lookupContextPackRegistrarEvidence(
+  registry: ContextPackRegistry,
+  contextPackId: string
+): ContextPackRegistrarEvidence | undefined {
+  const candidates: ContextPackRegistrarEvidence[] = [];
+  for (const candidate of [
+    lookupPrrContextPackRegistrarEvidence(registry, contextPackId),
+    lookupOperationalContextPackRegistrarEvidence(registry, contextPackId),
+    lookupInvestigativeContextPackRegistrarEvidence(registry, contextPackId)
+  ]) {
+    if (candidate !== undefined) {
+      candidates.push(candidate);
+    }
+  }
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function sameRegistrarEvidence(
+  left: ContextPackRegistrarEvidence,
+  right: ContextPackRegistrarEvidence
+): boolean {
+  return left.descriptorHash === right.descriptorHash &&
+    left.parserIdentity === right.parserIdentity &&
+    left.producerIdentity === right.producerIdentity &&
+    left.registrationIdentity === right.registrationIdentity;
 }
 
 function verifyMountedResolvedPack(
@@ -604,28 +688,28 @@ function verifyMountedResolvedPack(
 
   verifyBoundedSelectionProof(payload, ref, registration);
 
+  const selectionManifestHash = selectionManifestHashForProof(registration.selectionProof);
   const contextPack = value as VerifiedResolvedContextPack;
+  const binding: VerifiedContextBinding = Object.freeze({
+    contextPackId: ref.contextPackId,
+    version: ref.version,
+    descriptorHash: registration.descriptorHash,
+    parserIdentity: registration.parserIdentity,
+    producerIdentity: registration.producerIdentity,
+    registrationIdentity: registration.registrationIdentity,
+    sourceProjection: registration.sourceProjection,
+    scope: registration.scope,
+    contentHash: ref.contentHash,
+    sizeBytes: ref.sizeBytes,
+    sourceHighWaterMark: registration.sourceHighWaterMark,
+    selectionProof: registration.selectionProof,
+    ...(selectionManifestHash === undefined ? {} : { selectionManifestHash }),
+    policyVersion: registration.policyVersion,
+    provenanceRefs: registration.provenanceRefs
+  });
   return Object.freeze({
     contextPack,
-    binding: Object.freeze({
-      contextPackId: ref.contextPackId,
-      version: ref.version,
-      descriptorHash: registration.descriptorHash,
-      parserIdentity: registration.parserIdentity,
-      producerIdentity: registration.producerIdentity,
-      registrationIdentity: registration.registrationIdentity,
-      sourceProjection: registration.sourceProjection,
-      scope: registration.scope,
-      contentHash: ref.contentHash,
-      sizeBytes: ref.sizeBytes,
-      sourceHighWaterMark: registration.sourceHighWaterMark,
-      selectionProof: registration.selectionProof,
-      ...(selectionManifestHashForProof(registration.selectionProof) === undefined
-        ? {}
-        : { selectionManifestHash: selectionManifestHashForProof(registration.selectionProof) }),
-      policyVersion: registration.policyVersion,
-      provenanceRefs: registration.provenanceRefs
-    })
+    binding
   });
 }
 
@@ -762,7 +846,10 @@ function canonicalScope(value: unknown, label: string): ContextPackScope {
 }
 
 function ownDataRecord(value: unknown, label: string): Record<string, unknown> {
-  const prototype = typeof value === "object" && value !== null ? Object.getPrototypeOf(value) : undefined;
+  if (typeof value !== "object" || value === null) {
+    throw blocked(`invalid-${label}`);
+  }
+  const prototype = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) {
     throw blocked(`invalid-${label}`);
   }
