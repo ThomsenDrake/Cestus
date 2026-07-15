@@ -12739,3 +12739,49 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   such as destructured defaults from a protected callable.
 - The two delayed duplicate reviewers were archived after their findings were
   captured. They remain non-authoritative for approval or release.
+
+## RV-1-E-469 — Task133.5 Recovery-4 candidate rejected by typecheck
+
+- Candidate `21b1df36ebc84a889d56627fc15799f30c349dc2` passed all 98 focused tests
+  during fresh coordinator admission but failed standalone TypeScript
+  compilation on its committed bytes.
+- The recovery fixture widened `runType` to include unsupported
+  `ontology-bootstrap`, and its captured fresh readback was used before control
+  flow proved assignment. The recovery owner has the exact diagnostics and
+  must produce a compile-safe descendant without widening production contracts,
+  casts, or authority escape.
+- Candidate `21b1df36ebc84a889d56627fc15799f30c349dc2` must not enter review or
+  integration. Task-scoped subagent-driven development remains approved with
+  exactly one production writer and no scope expansion.
+
+## RV-1-E-470 — Task136 second candidate rejected by coordinator admission
+
+- Documentation candidate
+  `9ad0e49062ffaa75d9900e0de13ac10d6ed9efbd` passed three-path scope, diff,
+  factory readiness, a valid 28-record GREEN fixture, and every enumerated RED
+  mutation.
+- Every standalone card nevertheless declares `npm test -- --runInBand` as its
+  RED/GREEN command. Cestus uses Vitest 4.1.9, whose CLI rejects
+  `--runInBand` as an unknown option; no card can reach GREEN.
+- The sole checker is also only a JavaScript code block without a literal
+  no-input real-checkout extraction/invocation command, and active marker names
+  still conflict with the required v4 record-family naming.
+- Candidate `9ad0e49062ffaa75d9900e0de13ac10d6ed9efbd` must not enter external
+  review, integration, or Task139 resume.
+
+## RV-1-E-471 — Task136 Recovery-6 documentation owner dispatched
+
+- Fresh Terra/xhigh documentation owner
+  `019f6835-ea73-76b3-a782-81e1d8a2dbf8`, worktree
+  `/home/drake/.codex/worktrees/8708/Cestus`, starts from the rejected candidate
+  and must create `codex/task-136-interface-reconciliation-recovery-5`.
+- Ownership remains exactly the two plans and Task136 claim. Documentation work
+  does not authorize subagent-driven development or source implementation.
+- Recovery must provide one exact targeted Vitest command per node, a literal
+  no-input real-checkout checker command reused unchanged by fixtures, stable v4
+  naming, command-resolution validation, and all previously repaired graph,
+  transfer, ABI, authority, lineage, and fencing contracts.
+- Any replacement requires fresh coordinator admission and two exact-SHA
+  reviews. Full verification, live/provider/network/credential/Nous activity,
+  reset credits, push, program integration without coordinator review, and
+  every `neo` action remain closed.
