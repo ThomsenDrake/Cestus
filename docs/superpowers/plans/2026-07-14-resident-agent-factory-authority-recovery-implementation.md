@@ -869,3 +869,156 @@ and final non-full gate remain:
 Task140R0 remains blocked on all of its existing prerequisites; this amendment
 does not authorize its implementation, H sequencing, provider activity, or
 terminal behavior.
+
+## CF-1R5 Task133 Canonical Production Renderer Repair
+
+This section supersedes the preceding Task133 pure-input/local-only-envelope
+amendment in full. Do not implement
+`agent-runtime-prompt-render-input.ts`, `templateData`, `postureHash` as an
+input field, `renderPureAgentPrompt`, or a second local-only prompt artifact.
+Those shapes were rejected because they left prompt material untyped, made
+posture hashing circular, and required Task140R0 to create or upgrade a second
+artifact.
+
+Task133 instead extends the existing canonical agent-owned production prompt
+path. It remains pure and non-authoritative: rendering an artifact never proves
+mounted context, factory admission, provider approval, readiness, execution,
+or terminal state. Task140R0 remains the sole later owner of private runtime
+admission.
+
+### Exact canonical binding owner
+
+`packages/agent/src/prompt-artifacts.ts` owns these new frozen data contracts:
+
+```ts
+export interface PromptArtifactProviderPostureBinding {
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityIds: readonly string[];
+  readonly selectionPolicyVersion: string;
+  readonly readinessState: "ready";
+  readonly approvalRequirementId: string;
+}
+
+export interface PromptArtifactExactRunBinding {
+  readonly schemaVersion: "agent-production-prompt-exact-run-binding.v1";
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly runType: AgentSpecialistRunType;
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workflowDescriptorHash: `sha256:${string}`;
+  readonly policyVersion: string;
+  readonly providerPosture: PromptArtifactProviderPostureBinding;
+}
+```
+
+The same module exports exactly
+`normalizePromptArtifactProviderPostureBinding`,
+`hashPromptArtifactProviderPostureBinding`,
+`normalizePromptArtifactExactRunBinding`, and
+`hashPromptArtifactExactRunBinding`. The normalizers accept only exact-key,
+plain own-data, symbol-free records and dense plain arrays. Capability IDs must
+be unique and already in canonical lexical order. The posture hash is computed
+from normalized posture material; it is never supplied as input. The exact-run
+hash is computed from normalized exact-run material, including the nested
+normalized posture; it is never supplied as input. Neither hash includes prompt
+text, credentials, raw provider errors, local paths, or arbitrary template
+data.
+
+`PromptArtifactProductionBinding` gains required `exactRunBinding`,
+`exactRunBindingHash`, and `providerPostureHash` fields. Build, parse,
+serialize, freeze, transfer assertion, and audit metadata must normalize the
+binding and recompute both hashes. A stale, forged, swapped, missing, or
+noncanonical binding fails before an envelope is accepted or transferred.
+
+### Task133 canonical renderer extension
+
+Task133 changes exactly:
+
+- modify `packages/agent/src/prompt-artifacts.ts`;
+- modify `packages/agent/test/prompt-artifacts.test.ts`;
+- modify `packages/agent/src/production-specialist-prompts.ts`;
+- modify `packages/agent/test/production-specialist-prompts.test.ts`;
+- create `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`.
+
+`RenderProductionSpecialistPromptInput` gains the exact-run fields not already
+present: `attemptId`, `approvedRunId`, `residentAgentId`, `workspaceId`,
+`mountInstanceId`, `workflowDescriptorHash`, `policyVersion`, and
+`providerPosture`. Existing `taskId`, `runId`, `runType`, `generatedAt`,
+`scope`, and `resolvedContextPacks` remain the sole canonical rendering inputs.
+There is no `templateData`: the existing registered renderer and verified
+resolved packs remain the only text-rendering path. Existing
+`renderProductionSpecialistPrompt` normalizes the exact binding before text
+rendering, calls the canonical template renderer once, and creates exactly one
+provider-approved `PromptArtifactEnvelope` with the exact binding and computed
+hashes in its production manifest. No second builder, local-only upgrade, or
+Task140R0 renderer is permitted.
+
+Task133 tests must establish causal rejection of changed task, attempt,
+approved run, run, type, resident, workspace, mount, workflow descriptor,
+policy, provider/model/capabilities/selection policy/readiness/approval
+requirement, context ref/content hash, template/renderer/output/handoff schema,
+and parsed/serialized exact-binding hashes. They must also reject accessors,
+symbols, sparse/custom arrays, custom prototypes, duplicate or unsorted
+capabilities, supplied hash lookalikes, and prompt/secret-bearing diagnostic
+material. A valid artifact remains renderer-verified and provider-transfer
+eligible only at the artifact boundary; tests must prove it performs zero
+provider, approval, ledger, runner, H, store, or terminal effects.
+
+RED command:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/task-orchestrator-approval.test.ts
+```
+
+GREEN and final non-full fail-fast gate:
+
+```bash
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/task-orchestrator-approval.test.ts && npm run typecheck && git diff --check && npm run factory:check
+```
+
+Full verification remains **CLOSED**.
+
+### Frozen Task133 dispatch gate
+
+Before a fresh Task133 implementation author is dispatched, the coordinator
+must integrate an independently approved version of this amendment and create
+one new isolated branch from the then-current clean program head. That base
+must descend from Task120 `49c3490a262162bd1d7146994390a2a6b5052394`,
+Task126 `2e7a8a011ada9828f2978129ddc9f47719c33655`, Task127
+`93a93844a18343a3d49933a4bf9fb92190224aa5`, Task128
+`ba43f007c371229ca5ad96844f4b3bc08584702b`, Task129
+`d362d1a73f45b947bcd6e1c7915c9e7fd9f96d3a`, Task130
+`78f456263a9af1d010df494684ea2d0906134eb4`, and Task132A
+`7ec1eb6885716ac7324839c578677366fe1bb244`. The coordinator records the
+full resolved SHAs, plan-amendment integration SHA, exact program-base SHA,
+focused prerequisite result, author session, and file ceiling before source
+edits. Any mismatch blocks dispatch rather than creating a shadow type or
+rebasing a child.
+
+### One-way Task140R0 composition
+
+Task140R0 modifies only its already assigned factory and route/composition
+tests. After the factory's six live context checks and captured provider-policy
+checks pass, it rebuilds the actual package-verified
+`VerifiedResolvedContextPack[]` through its captured registry, constructs one
+`RenderProductionSpecialistPromptInput` from the exact claim/attempt/run,
+resident, mount, workflow, policy, provider posture, scope, and current time,
+and calls `renderProductionSpecialistPrompt` exactly once. It checks the
+artifact's exact-run and posture hashes before admitting only that artifact to
+the existing private orchestration route. It does not create, upgrade, or
+rebuild an envelope, render text, accept an artifact/binding from a caller, or
+return a verifier/capability/private binding set.
+
+Task140R0's existing focused suite must add one end-to-end causal path proving
+canonical render -> exact binding/hash readback -> private factory admission.
+Counterfactuals must prove every swapped exact-run/posture/context field and a
+direct otherwise-valid production artifact fail before renderer/provider/
+ledger/runner/H/store/terminal activity. Task133 has no Task140R0 dependency;
+Task140R0 depends on reviewed/coordinator-integrated Task133, so no cycle or
+conditional ownership remains. This section does not authorize Task140R0, H,
+provider activity, or terminal work.
