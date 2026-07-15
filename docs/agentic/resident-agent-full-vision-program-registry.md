@@ -10957,3 +10957,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, providers, network, credentials, Nous, reset credits,
   integration, push, registry edits, and every `neo` action remain closed to
   the author.
+
+## RV-1-E-400 — Task133 receipt-identity candidate admitted
+
+- Existing author `019f6660-2912-7622-a99a-0def4e19e051` produced amended
+  atomic candidate `e29c2c7e3b28d891817f024c40a532438fb85441` over exact source
+  base `197c3ca528e9b666c02b9b87695bf900efa195b1`.
+- Receipt material, strict schema, and canonical hash now include required
+  `taskId`, `attemptId`, and `runId`; canonical prompt-bound validation and
+  projection require exact receipt/checkpoint identity equality.
+- Coordinator-independent verification passed Task133.1 131/131,
+  Task133.2 78/78, Task133.3 140/140, `npm run typecheck`, forbidden-renderer
+  scan, diff check, factory readiness, exact 28-path scope, one non-merge
+  commit whose parent is the source base, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, network, credentials, Nous, reset credits, push, and every `neo`
+  action remain closed.
+
+## RV-1-E-401 — Task135D closed-loader candidate admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  forward candidate `9c783c495cff27bb6d17c80fc314eb25db8b7b19` over original base
+  `e532c35fd1b3a829dfbbd4f87d752f42304419f9`.
+- The production-root AST policy now recursively unwraps literal module
+  arguments, `module` receivers, and element keys, and fails closed only for
+  recognized standard loaders whose target is not statically resolvable.
+  Unrelated loaders and receivers remain outside the policy.
+- Coordinator-independent verification passed the exact 20/20 focused suite,
+  `npm run typecheck`, no-index assertion, diff check, factory readiness,
+  exact four-path original-base union, 14 linear commits with no merges, and
+  clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, network, credentials, Nous, reset credits, push, and every `neo`
+  action remain closed.
