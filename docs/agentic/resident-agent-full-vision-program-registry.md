@@ -6260,3 +6260,39 @@ explicit implementation authorization.
   `neo` action is authorized. Primary usage remains `usedPercent=11` / **89%
   remaining**, reset credits untouched, with DRAIN/HARD PAUSE controls in
   force.
+
+## RV-1-E-180 — Task130 forged-readback review finding and fresh recovery
+
+- Fresh independent Terra/xhigh review of full Task130 repair range
+  `64f11e2c..75e61f92` returned **NEEDS-CHANGES**. It found one Important
+  defect: the public constructor accepts a caller-supplied feasibility callback
+  and treats a structurally matching record plus patterned event IDs as a
+  mounted durable readback. A forged callback can echo copied evidence with
+  fake IDs and still cause `unavailable`. The review ran no tests or full
+  verifier; its exact source/test/claim scope and the RV-1-E-179 claim
+  correction otherwise passed review.
+- The coordinator verified this against the append-only/readback contract:
+  structural equality of untrusted callback output cannot establish a mounted
+  ledger append. Commit `75e61f92` remains preserved but is **not** review-ready
+  or integration-ready. The prior author has completed two focused repair
+  attempts (`bedd4ade`, `75e61f92`), so this recovery must use a **fresh**
+  author and a materially different forged-readback counterfactual.
+- A fresh Terra/xhigh recovery worker is authorized only for the existing
+  Task130 claim, source, and test, based on preserved `75e61f92`. It must add
+  a causal forged-exact-readback RED and remove the raw-callback route to
+  `unavailable`: require a non-forgeable authenticated/mounted readback
+  capability, or fail closed with no append and no unavailable result until
+  such an authority is actually available. It may not paper over the defect
+  with patterned IDs, a public test route, a fake store, a shared-contract
+  edit, or a fallback. The future Task139 configuration owner remains the only
+  authorized real mounting path.
+- The fresh worker may use `superpowers:subagent-driven-development`,
+  systematic debugging, test-driven development, and verification-before-
+  completion. It must run the focused suite and exactly `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck &&
+  git diff --check && npm run factory:check` as one fail-fast chain before one
+  forward commit, then stop for a new fresh independent review. Full verifier
+  remains **CLOSED**; no provider/network/credential action, self-review,
+  self-integration, merge, or `neo` action is authorized. Primary usage remains
+  `usedPercent=11` / **89% remaining**, reset credits untouched, and
+  DRAIN/HARD PAUSE controls remain in force.
