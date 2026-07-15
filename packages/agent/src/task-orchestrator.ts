@@ -749,11 +749,20 @@ async function checkpointContextOrBlock(
 
   let renderedPromptHash: string | undefined;
   try {
+    // Claim identity and the normalized tick time are Task133.5 render inputs.
+    // Capture them before any context resolution can suspend.
+    const attemptId = claim.payload.attemptId;
+    const generatedAt = tickedAt;
+    const taskId = claim.payload.taskId;
+    const runType = claim.payload.runType;
+    const scope = input.policy.scope ?? { kind: "task" as const, refs: [taskId] };
     const workflow = capabilities.workflowRegistry.require(claim.payload.runType);
     const assembled = await assembleTaskOrchestratorContext({
-      taskId: claim.payload.taskId,
-      runType: claim.payload.runType,
-      scope: input.policy.scope ?? { kind: "task", refs: [claim.payload.taskId] },
+      taskId,
+      attemptId,
+      generatedAt,
+      runType,
+      scope,
       workflow,
       contextRegistry: capabilities.contextRegistry,
       renderPrompt: async (renderInput) => {

@@ -6,7 +6,7 @@
 - Worktree: `/home/drake/.codex/worktrees/67b2/Cestus`.
 - Source base: `140bfd3a0552bcba9ce599bdffe01036a8d2d060`.
 - Claimed at (UTC): `2026-07-15T20:35:57Z`.
-- Status: `in-progress`.
+- Status: `ready-for-review`.
 
 ## Scope
 
@@ -43,3 +43,9 @@ readback witness is one-use identity authority only; it is not exported from
 the agent index. A fresh runtime rereads durable V1 and issues a distinct
 witness. This task performs no provider, network, credential, Nous, full
 verification, `neo`, merge, rebase, push, or self-integration activity.
+
+## Candidate Evidence
+
+- Focused CF-1R11/R12 command: 8 files passed, 84 tests passed.
+- `npm run typecheck`, the three required negative `rg` checks, `git diff --check`, and `npm run factory:check` passed on the candidate worktree.
+- Full verification, provider/network/credential/Nous activity, `neo`, merge/rebase/push, and self-integration remain excluded.
