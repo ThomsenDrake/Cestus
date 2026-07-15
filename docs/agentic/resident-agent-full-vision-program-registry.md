@@ -8411,3 +8411,23 @@ explicit implementation authorization.
 - Latest authenticated token-count event reports `used_percent=35`, therefore
   65% weekly remaining. DRAIN/HARD PAUSE and reset-credit policy remain
   unchanged. Source/live/full/credential/`neo`/integration actions remain closed.
+
+## RV-1-E-270 — Task140P/R0 and implicit-renderer rejection
+
+- Both fresh full-lineage reviewers returned **NEEDS-CHANGES** on exact range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d0b7e707`. Persistence reviewer
+  `019f6505-1e85-7813-a9d2-ade280b6843c` found that P/R0 still require stale
+  inherited renderer instructions, omit complete recovery RED/GREEN ownership,
+  and pass caller `generatedAt` despite approval-event time being sole
+  authority. Authority reviewer `019f6505-230f-70b0-854f-a272e48a3c77`
+  independently confirmed incomplete P/R0 execution and found canonical
+  `prepareSpecialistRun` still renders implicitly when no artifact is supplied,
+  bypassing Task133.5 mounted readback.
+- The sole plan writer is authorized only to append CF-1R10: add the kernel
+  fallback removal and direct-caller regression to Task133.5; replace all
+  inherited Task140P and Task140R0 instructions with complete files, exact
+  causal REDs, identical GREENs, implementation steps, typecheck/diff/factory
+  gates, and commit/review boundaries; remove caller `generatedAt` and derive
+  v2 time solely by reading the exact approval event `occurredAt`.
+- All source/live/full/credential/reset-credit/`neo`/integration actions remain
+  closed pending docs validation, commit, and two new full-lineage approvals.
