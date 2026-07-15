@@ -12512,3 +12512,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   network/credential/Nous activity, reset credits, push, child
   self-integration, program merge without coordinator review, and every `neo`
   action remain closed.
+
+## RV-1-E-457 — Task133.5 candidate rejected by coordinator typecheck
+
+- Task133.5 recovery candidate
+  `a262abe0198e96698bfc01f698527683022136c4` passed the exact eight focused
+  files at 97 tests, all three negative prompt-boundary searches, exact-range
+  diff checking, and factory readiness during fresh coordinator admission.
+- The same committed bytes then failed standalone TypeScript compilation with
+  nine errors: optional async currentness did not satisfy a required async
+  callback, recovered context-pack data was treated as though it had a `ref`,
+  the recovery test imported a nonexistent runtime-capability type, and several
+  test callbacks/arguments/spreads did not match the real current API.
+- Candidate `a262abe0198e96698bfc01f698527683022136c4` must not enter external
+  review or integration. The existing recovery owner has the exact diagnostics
+  and must repair against the actual public/private contracts without casts,
+  authority export, fallback state, or semantic weakening, then produce a new
+  clean descendant with amended claim evidence and fresh gates.
+- Task-scoped subagent-driven development remains approved with exactly one
+  production writer and the existing eight-path changed-file ceiling. Full
+  verification, live/provider/network/credential/Nous activity, reset credits,
+  push, child self-integration, program merge without coordinator review, and
+  every `neo` action remain closed.
