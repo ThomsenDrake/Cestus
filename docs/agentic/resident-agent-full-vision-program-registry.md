@@ -8779,3 +8779,16 @@ explicit implementation authorization.
   **APPROVED** verdicts are required; every prior verdict is non-authorizing.
 - All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
   integration actions remain closed pending both fresh approvals.
+
+## RV-1-E-290 — Factory-captured progression reviewer identities
+
+- Lifecycle/executability reviewer
+  `019f6583-f5ce-7482-ba56-f479d09589b7` and authority/import/bypass reviewer
+  `019f6584-403d-7932-b4b3-2fd76154193b` are active read-only on the exact
+  candidate, lineage, and canonical checkpoint in RV-1-E-289. Both use
+  `gpt-5.6-terra` at `xhigh` in fresh isolated worktrees and are pinned under
+  distinct review titles.
+- Neither may edit, run full/live/provider/credential gates, touch `neo`, or
+  carry forward any earlier verdict. Source dispatch and plan integration
+  remain closed until both return explicit unqualified **APPROVED** verdicts
+  and those verdicts are durably recorded.
