@@ -243,3 +243,32 @@ rejected and unintegrated.
   limited to the authorized claim, contract, and focused test. A reviewer
   distinct from this author and the reviewer that rejected `28b09362` must
   review before any integration.
+
+## CF-1R2 Versioned Contract-Reconciliation Authorization
+
+- Forward correction: the current strict v1 family and its preserved accepted
+  history are not the complete Task120/136 contract surface. Their historical
+  parser behavior remains immutable; no worker may silently widen a v1 payload
+  or relabel a v1 event. CF-1R2 authorizes exactly one fresh Terra/xhigh
+  author, distinct from all prior Task119 authors and reviewers, to add the
+  separate strict v2 five-event family recorded in the CF-1R2 coordinator
+  correction.
+- This is a changed-tactic recovery, not a third retry of the prior
+  public-boundary repair. The author owns only `packages/ontology/src/contracts.ts`,
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and this
+  append-only claim. It must first add a RED that proves v1 remains accepted
+  unchanged while each v2 parser rejects a missing or changed required
+  binding, then implement the smallest versioned strict parser/fixture change.
+  It must not add Task120's store/projection or any H/W/P/gateway/factory/UI/
+  provider/credential contract.
+- Required v2 coverage is the complete CF-1R2 identity, descriptor, policy,
+  ten-budget, source/context, mounted-authority, causation/correlation,
+  plan-readback, allowlist/effect/approval/artifact, suspension/resume-anchor,
+  and H lifecycle/provenance surface. The replay fixture must exercise exactly
+  one valid five-event v2 stream and negative mutations without relaxing v1.
+- Before one forward candidate commit, run exactly `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`. This is one fail-fast `&&` chain and must exit `0`. Stop for fresh independent Terra/xhigh review. Full verification remains **CLOSED**; no self-review, self-integration, merge, provider/network/credential/Nous, Task120 restart, Task136 work, or `neo` action is authorized.
+
+Status: in-progress only for this CF-1R2 recovery authorization. Earlier
+Task119 candidate/review records remain preserved historical evidence; they do
+not authorize a v1 rewrite or an integration without the new review and
+coordinator-only merge.
