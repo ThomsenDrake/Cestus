@@ -122,6 +122,19 @@ const v2BudgetCeilings = {
   approvalSuspensionMs: 86400000
 };
 
+const v2HardMaximums = {
+  planRevisions: 3,
+  observationRecords: 16,
+  toolSteps: 12,
+  providerInvocations: 3,
+  providerRequestBytes: 1048576,
+  providerResponseBytes: 1048576,
+  contextBytes: 1048576,
+  derivativeArtifactBytes: 16777216,
+  activeExecutionMs: 900000,
+  approvalSuspensionMs: 86400000
+};
+
 const v2BudgetConsumed = {
   planRevisions: 1,
   observationRecords: 2,
@@ -220,6 +233,14 @@ function v2FixtureEvents() {
         allowlistEntryHash: hash,
         expectedSafeOutputClass: "observation",
         prerequisiteStepOrdinals: []
+      }, {
+        ordinal: 2,
+        purpose: "record the bounded observation",
+        toolId: "tool_read_workspace",
+        toolVersion: "1.0.0",
+        allowlistEntryHash: hash,
+        expectedSafeOutputClass: "observation",
+        prerequisiteStepOrdinals: [1]
       }]
     }, 1),
     event(v2ObservationEventId, "agent.resident-observation.recorded.v2", {
@@ -307,16 +328,23 @@ function v2FixtureEvents() {
         outcome: "verified",
         handoffId: "handoff_001_1111111111111111",
         taskId: v2Binding.taskId,
-        attemptId: v2Binding.attemptId,
         runId: v2Binding.runId,
+        manifestSchemaVersion: "agent-specialist-handoff-manifest.v2",
         manifestHash: hash,
+        finalOutputStepId: "step_run_001_final_output",
         finalOutputEventId: "evt_final_output_001",
         preparedEventId: "evt_handoff_prepared_001",
         recordedEventId: "evt_handoff_recorded_001",
         terminalRunEventId: "evt_run_completed_001",
         taskStatusEventId: "evt_task_completed_001",
         authorityBinding: v2Binding.authority,
-        safeDiagnostics: [{ category: "handoff-recorded", nextSafeAction: "review-handoff" }]
+        diagnostics: [{
+          category: "terminal-status-conflict",
+          retry: "after-review",
+          safeMessage: "Review the verified handoff state.",
+          eventIds: ["evt_handoff_recorded_001"],
+          artifactHashes: [hash]
+        }]
       }
     }, 5)
   ] as const;
@@ -615,6 +643,150 @@ describe("resident loop ontology contracts v2", () => {
       expectValid(candidate);
     }
     expect(validateResidentLoopEventSequence(replay as never).success).toBe(true);
+  });
+
+  it.each(Object.entries(v2HardMaximums))(
+    "rejects a %s ceiling above its hard maximum even when accounting is conserved",
+    (field, hardMaximum) => {
+      const [plan] = v2FixtureEvents();
+      const candidate = {
+        ...plan,
+        payload: {
+          ...plan.payload,
+          budget: {
+            ...(plan.payload.budget as Record<string, unknown>),
+            ceilings: {
+              ...((plan.payload.budget as { ceilings: Record<string, unknown> }).ceilings),
+              [field]: hardMaximum + 1
+            },
+            consumed: {
+              ...((plan.payload.budget as { consumed: Record<string, unknown> }).consumed),
+              [field]: 0
+            },
+            remaining: {
+              ...((plan.payload.budget as { remaining: Record<string, unknown> }).remaining),
+              [field]: hardMaximum + 1
+            }
+          }
+        }
+      };
+      expect(validateKnowledgeEvent(candidate).success).toBe(false);
+    }
+  );
+
+  it.each([
+    ["failed handoff-recorded", "failed", "handoff-recorded", undefined],
+    ["resumable validation-failed", "resumable", "validation-failed", {
+      checkpointEventId: v2SuspensionEventId,
+      nextSafeAction: "repair-the-safe-boundary",
+      resumptionDeadlineAt: "2026-07-15T18:00:00.000Z"
+    }],
+    ["failed approval-required", "failed", "approval-required", undefined]
+  ] as const)("rejects an invalid %s outcome/category pair", (_label, outcome, category, resumeAnchor) => {
+    const result = v2FixtureEvents()[4]!;
+    const { handoffReadback: _handoffReadback, ...withoutHandoff } = result.payload;
+    expect(validateKnowledgeEvent({
+      ...result,
+      payload: {
+        ...withoutHandoff,
+        outcome,
+        category,
+        ...(resumeAnchor === undefined ? {} : { resumeAnchor })
+      }
+    }).success).toBe(false);
+  });
+
+  it.each([
+    ["undeclared ordinal", (replay: ReturnType<typeof v2FixtureEvents>) => [
+      ...replay.slice(0, 2),
+      { ...replay[2]!, payload: { ...replay[2]!.payload, stepOrdinal: 3 } },
+      ...replay.slice(3)
+    ]],
+    ["declared ordinal with swapped tool binding", (replay: ReturnType<typeof v2FixtureEvents>) => [
+      ...replay.slice(0, 2),
+      { ...replay[2]!, payload: { ...replay[2]!.payload, toolId: "tool_other_workspace" } },
+      ...replay.slice(3)
+    ]],
+    ["declared ordinal with swapped allowlist entry", (replay: ReturnType<typeof v2FixtureEvents>) => [
+      ...replay.slice(0, 2),
+      { ...replay[2]!, payload: { ...replay[2]!.payload, allowlistEntryHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222" } },
+      ...replay.slice(3)
+    ]]
+  ])("rejects a replayed tool step with %s", (_label, mutate) => {
+    expect(validateResidentLoopEventSequence(mutate(v2FixtureEvents()) as never).success).toBe(false);
+  });
+
+  it.each([
+    ["self prerequisite", (steps: Record<string, unknown>[]) => [
+      { ...steps[0]!, prerequisiteStepOrdinals: [1] },
+      steps[1]!
+    ]],
+    ["future prerequisite", (steps: Record<string, unknown>[]) => [
+      { ...steps[0]!, prerequisiteStepOrdinals: [2] },
+      steps[1]!
+    ]],
+    ["missing prerequisite", (steps: Record<string, unknown>[]) => [
+      { ...steps[0]!, prerequisiteStepOrdinals: [99] },
+      steps[1]!
+    ]]
+  ])("rejects a plan with a %s", (_label, mutate) => {
+    const [plan] = v2FixtureEvents();
+    expect(validateKnowledgeEvent({
+      ...plan,
+      payload: {
+        ...plan.payload,
+        steps: mutate(plan.payload.steps as Record<string, unknown>[])
+      }
+    }).success).toBe(false);
+  });
+
+  it.each([
+    ["manifest schema version", (handoff: Record<string, unknown>) => {
+      const { manifestSchemaVersion: _manifestSchemaVersion, ...narrow } = handoff;
+      return narrow;
+    }],
+    ["final output step ID", (handoff: Record<string, unknown>) => {
+      const { finalOutputStepId: _finalOutputStepId, ...narrow } = handoff;
+      return narrow;
+    }],
+    ["H diagnostics", (handoff: Record<string, unknown>) => {
+      const { diagnostics: _diagnostics, ...narrow } = handoff;
+      return narrow;
+    }],
+    ["H diagnostic retry", (handoff: Record<string, unknown>) => ({
+      ...handoff,
+      diagnostics: (handoff.diagnostics as Record<string, unknown>[]).map((diagnostic) => {
+        const { retry: _retry, ...narrow } = diagnostic;
+        return narrow;
+      })
+    })],
+    ["H diagnostic event IDs", (handoff: Record<string, unknown>) => ({
+      ...handoff,
+      diagnostics: (handoff.diagnostics as Record<string, unknown>[]).map((diagnostic) => {
+        const { eventIds: _eventIds, ...narrow } = diagnostic;
+        return narrow;
+      })
+    })],
+    ["H diagnostic artifact hashes", (handoff: Record<string, unknown>) => ({
+      ...handoff,
+      diagnostics: (handoff.diagnostics as Record<string, unknown>[]).map((diagnostic) => {
+        const { artifactHashes: _artifactHashes, ...narrow } = diagnostic;
+        return narrow;
+      })
+    })],
+    ["forged local safeDiagnostics proxy", (handoff: Record<string, unknown>) => {
+      const { diagnostics: _diagnostics, manifestSchemaVersion: _manifestSchemaVersion, finalOutputStepId: _finalOutputStepId, ...narrow } = handoff;
+      return { ...narrow, safeDiagnostics: [{ category: "handoff-recorded", nextSafeAction: "review-handoff" }] };
+    }]
+  ])("rejects a completed result with a narrowed %s H substitute", (_label, mutate) => {
+    const result = v2FixtureEvents()[4]!;
+    expect(validateKnowledgeEvent({
+      ...result,
+      payload: {
+        ...result.payload,
+        handoffReadback: mutate(result.payload.handoffReadback as Record<string, unknown>)
+      }
+    }).success).toBe(false);
   });
 
   it.each([

@@ -309,3 +309,48 @@ Status: ready-for-review only after the recorded exact CF-1R2 fail-fast gate
 exits `0` and the scoped forward candidate commits. No self-review,
 self-integration, merge, Task120 restart, Task136 work, provider/network/
 credential/Nous action, or `neo` action is authorized.
+
+## CF-1R2 Fresh-Review Bounded V2 Repair Evidence
+
+- Fresh recovery author: `/root/task119_cf1r2_review_repair` on
+  `codex/task-119-resident-full-vision-cf1r2-review-repair`, starting from
+  preserved rejected candidate `544d95c92ed3c3ebc8672d30137ac5718801846a`.
+  The authoritative child `turn_context` records `model=gpt-5.6-terra` and
+  `reasoning_effort=xhigh`; generic base prose was not used as model evidence.
+- Environment-only recovery: the isolated worktree lacked ignored Node
+  dependencies, so `npm ci --ignore-scripts` restored lockfile-pinned ignored
+  dependencies without tracked package or lockfile changes. The standalone
+  `npm run typecheck` and the authorized exact fail-fast chain at the rejected
+  clean candidate each exited `0`; that does not supersede its accepted review
+  defects. Full verification remains **CLOSED**.
+- RED: the focused ontology contract test first failed with 17 causal failures:
+  a genuine complete H readback was rejected in favor of the local
+  `attemptId`/`safeDiagnostics` proxy; all ten conserved-but-over-limit budget
+  ceilings parsed; invalid failed/resumable category pairs parsed; and
+  self/future/missing plan prerequisites parsed. After the full H readback
+  surface was restored, the same focused RED exposed the two replay failures
+  for an undeclared tool ordinal and a declared ordinal with a swapped tool
+  binding. These tests retain the accepted v1 fixture as valid.
+- GREEN: v2 now carries the complete H-owned completed readback surface from
+  the approved handoff contract—verified outcome, run/task/handoff identity,
+  manifest schema/hash, final-output step/event, prepared/recorded/terminal/
+  task-status events, exact authority binding, and diagnostics with category,
+  retry, safe message, event IDs, and artifact hashes. It does not invent an
+  L-owned `attemptId` or `safeDiagnostics` substitute. Counterfactuals reject
+  each narrowed diagnostic field and the forged proxy, each hard maximum,
+  invalid terminal/resumable category pairing, undeclared/swapped tool plan
+  binding, and self/future/missing prerequisites. The v2 replay remains the
+  same exact five event names; v1 behavior and strict own-data normalization
+  remain unchanged.
+- Pre-claim focused GREEN command:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+  exited `0` with **2 files / 117 tests** passing, then TypeScript, diff check,
+  and factory readiness passing. The same exact one-line `&&` command must be
+  rerun after this append before the single scoped forward commit.
+
+Status: in-progress only for this bounded repair until the post-append exact
+fail-fast gate exits `0` and a fresh independent Terra/xhigh reviewer receives
+the committed range. `544d95c9` remains preserved, unreviewed for integration,
+and unintegrated history; no self-review, self-integration, merge, full
+verification, provider/network/credential/Nous, Task120/136, or `neo` action
+is authorized.
