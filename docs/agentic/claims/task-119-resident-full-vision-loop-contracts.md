@@ -272,3 +272,40 @@ Status: in-progress only for this CF-1R2 recovery authorization. Earlier
 Task119 candidate/review records remain preserved historical evidence; they do
 not authorize a v1 rewrite or an integration without the new review and
 coordinator-only merge.
+
+## CF-1R2 Author RED/GREEN Evidence
+
+- Fresh author: `/root/task119_cf1r2_contracts` on
+  `codex/task-119-resident-full-vision-cf1r2`, starting from clean coordinator
+  authorization `fae25d1da52a1d6daa337a41d16cc712c77cf462`. Authoritative
+  session `turn_context` records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Environment-only checkpoint: the isolated worktree initially had no ignored
+  `vitest` binary. A temporary symlink to the canonical worktree's existing
+  ignored `node_modules` directory enabled local verification; it changes no
+  tracked dependency or lockfile and will be removed before handoff.
+- RED: `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts`
+  then ran with the v2 test fixture in place. The historical v1 coverage passed
+  (30 tests), while the required v2 registration assertion failed because all
+  five `agent.resident-*.v2` event contracts were absent. This causally proves
+  v1 remained accepted while the missing versioned parser family caused the
+  failure.
+- GREEN: the same focused suite passed **31 tests** after adding only the strict
+  v2 parser/contract/replay family. The v2 fixture covers one ordered five-event
+  stream; negative mutations reject missing or changed workspace/descriptor/
+  policy/authority/ten-budget/plan-readback/allowlist/preview/gateway/
+  checkpoint/H-proof/resume-anchor bindings, plus unknown and accessor-backed
+  own-data. No Task120 store/projection or H/W/P/gateway/factory/UI/provider/
+  credential source changed.
+- Companion focused evidence: `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts && npm run typecheck` exited
+  `0` with **2 files / 91 tests** passing. The required single pre-commit
+  fail-fast chain then exited `0` exactly as authorized:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It passed the same **2 files / 91 tests**, TypeScript, diff check, and factory
+  readiness. Full verification remains **CLOSED**.
+
+Status: ready-for-review only after the recorded exact CF-1R2 fail-fast gate
+exits `0` and the scoped forward candidate commits. No self-review,
+self-integration, merge, Task120 restart, Task136 work, provider/network/
+credential/Nous action, or `neo` action is authorized.
