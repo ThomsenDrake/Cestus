@@ -8160,3 +8160,41 @@ explicit implementation authorization.
   independent review. Full verification, provider/network/credential/Nous,
   reset credits, neo, Task140, self-review, self-integration, rebase, and merge
   remain closed.
+
+## RV-1-E-259 — Reboot reconciliation and Task133 implementation refreeze
+
+- Two fresh independent Terra/xhigh reviewers inspected the complete Task133
+  plan lineage `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..b93190f28b8d7058759f5b4fa70c06709797c04d`.
+  Persistence/lifecycle reviewer
+  `019f64ac-d0f6-7a61-b4df-dfa6e76d2b0c` and authority/consumer reviewer
+  `019f64ac-d47c-7c73-82a5-a5cac255f5f4` both returned
+  **NEEDS-CHANGES**. Their overlapping P1 finding is that the proposed private
+  admission token can be lost across the existing `runner-dispatching` crash
+  boundary: restart can remint a token, but the current checkpoint path returns
+  without consuming it and defines no append-only idempotency state preventing
+  duplicate provider/H effects.
+- The persistence review additionally requires a durable v2 binding receipt
+  that records the artifact locator/hash and the owner-derived timestamp needed
+  for byte-identical restart readback, plus factory-captured mounted-workspace
+  availability/identity revalidation immediately before and after every prompt
+  artifact put/read. The authority review requires Task140H to own or explicitly
+  fence the existing proof minter in `packages/agent/src/specialist-runner-kernel.ts`.
+  Both reviews require the absent
+  `packages/agent/test/production-specialist-invocation-proof.test.ts` to be
+  created and named in one exact runnable gate. The earlier Task140H steps must
+  be replaced in full so they cannot remain conflicting authority.
+- The rebooted Task133.1 worker
+  `019f647f-2f7f-7ba3-be1d-efc4b9ac8276` ended with a model-capacity system
+  error. Its isolated branch remains at preflight commit
+  `adc4470dcadba4b5f1357ad652d07d150e4fa8aa` with uncommitted changes limited
+  to the four claimed Task133.1 source/test files and an untracked dependency
+  link. Those changes are preserved as rejected historical input only: they
+  must not be committed, reviewed, rebased, integrated, or used as readiness
+  evidence while the governing plan is defective.
+- **Task133 source implementation is refrozen.** Plan endpoint `b93190f2` is a
+  documentation candidate, not authorization. The same plan worktree is the
+  sole writer for a forward correction covering durable recovery, v2 receipt
+  lookup, mounted-store currentness, proof-minter ownership, and the exact H
+  test/gate. Task140P/R0/H/R1 remain blocked. Full verification,
+  provider/network/credential/Nous action, reset credits, `neo`, worker
+  self-review, self-integration, and merge remain closed.
