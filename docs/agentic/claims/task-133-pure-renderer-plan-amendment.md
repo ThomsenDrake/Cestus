@@ -13,9 +13,10 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R13 owns the
-explicit internal approval consumer and smoke source gate; CF-1R12 owns fresh
-witness reissuance, all live fixture migration, and complete aggregate gates;
+read backward only for sections it explicitly preserves. CF-1R14 owns the
+consume-time admission transport, exact import allowlist, canonical handoff
+gates, and thin smoke boundary; CF-1R12 owns fresh
+witness reissuance, all live fixture migration, and the complete Task133 gate;
 CF-1R11 owns nested
 approval/readback authority, production-local admission, and resident live
 acceptance; CF-1R10 owns the
@@ -58,8 +59,15 @@ Task120 `49c3490a262162bd1d7146994390a2a6b5052394`, Task126
 `93a93844a18343a3d49933a4bf9fb92190224aa5`, Task128
 `ba43f007c371229ca5ad96844f4b3bc08584702b`, Task129
 `d362d1a73f45b947bcd6e1c7915c9e7fd9f96d3a`, Task130
-`78f456263a9af1d010df494684ea2d0906134eb4`, and Task132A
-`7ec1eb6885716ac7324839c578677366fe1bb244`. The implementation claim must
+`78f456263a9af1d010df494684ea2d0906134eb4`, Task132A
+`7ec1eb6885716ac7324839c578677366fe1bb244`, reviewed/coordinator-integrated
+Task134A `83a301d541e7fec5d0b29e6f2003566c06336158`, and reviewed/coordinator-
+integrated Task135A `ac3f91901da0c9b23722a046be73d95746f691da`. Before Task140P,
+its claim must additionally record the exact reviewed/coordinator-integrated
+full SHAs for Tasks136-139 and prove its base descends from every 132-139
+prerequisite; no branch name, placeholder, or candidate SHA is sufficient.
+R0 and H repeat that inventory plus each preceding Task140 SHA. The
+implementation claim must
 also record the integrated amendment SHA, exact program base, all frozen files,
 the causal RED evidence, and the required explicit coordinator approval and
 invocation of `superpowers:subagent-driven-development`.
@@ -439,6 +447,35 @@ serialized task.
   smoke source and rejects every direct runtime model, renderer, kernel, or
   workflow invocation there. Existing live-file and private-module assertions
   remain.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh unqualified Terra/xhigh approvals of
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required before
+  coordinator-only integration.
+
+## Forward Correction — Consume-Time Transport And Canonical Handoff Gate
+
+- Status remains **plan-repair candidate only**. Both fresh reviewers rejected
+  `550fb053`: P's GREEN depended on later R0 work; creation omitted private
+  full-fact capture; imports and mismatch consumption were underconstrained;
+  the token had no normal/resume transport; Task134A/135A and future 136-139
+  prerequisites/gates were incomplete; and smoke could retain its direct prompt
+  builder with internal-disk fallback.
+- CF-1R14 keeps ordinary inspection status-only and mints an admission only in
+  a second consume-time binding inspection inside the shared dispatch path.
+  Normal and both resume branches converge there after context readback. The
+  private binding snapshots every normalized fact before await, every consume
+  attempt burns identity, and no token enters a summary, DTO, route, log,
+  checkpoint, projection, or recovery record.
+- P owns module semantics and transport tests without any R0-import assertion.
+  R0 separately owns an exact source-import allowlist and is the sole consumer.
+  Its complete gate and H's aggregate include mounted preparation stores and
+  canonical handoff preparation/projection suites. Exact integrated Task134A/
+  Task135A SHAs are frozen; future exact reviewed 136-139 SHAs are mandatory
+  before P dispatch.
+- Smoke becomes a thin resident-acceptance adapter. Its test and static gate
+  reject the status prompt builder, direct runtime factory/model/workflow path,
+  and `.cestus/local/prompt-artifacts` fallback.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh unqualified Terra/xhigh approvals of
