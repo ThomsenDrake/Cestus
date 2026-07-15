@@ -4,6 +4,7 @@ import {
   lookupInvestigativeContextPackRegistrarEvidence,
   lookupOperationalContextPackRegistrarEvidence,
   lookupPrrContextPackRegistrarEvidence,
+  renderProductionSpecialistPrompt,
   specialistWorkflowDescriptorFor,
   type AgentApprovedToolExecutorDescriptor,
   type AgentTaskOrchestratorRuntimeCapabilities,
@@ -13,7 +14,9 @@ import type { ActorRef } from "../../ontology/src/contracts.js";
 import { createTaskOrchestratorProviderApprovalAdapter } from "../../agent/src/task-orchestrator-approval.js";
 import { createTaskOrchestratorHandoffCapability } from "../../agent/src/task-orchestrator.js";
 import { createLocalAgentProviderConfiguration } from "./agent-provider-readiness.js";
+import { createMountedPromptArtifactStore } from "./mounted-prompt-artifact-store.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import type { MountedProductionPromptReadbackWitness } from "../../agent/src/production-prompt-readback.js";
 
 export interface LocalAgentRuntimeFactoryInput {
   readonly handle: LocalRuntimeHandle;
@@ -42,7 +45,7 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     identityLifecycleReady: () => input.handle.residentIdentity.ready(),
     providers: configuredProviders.providers,
     approvedToolExecutors: input.approvedToolExecutors ?? [],
-    taskOrchestratorCapabilities: createLocalTaskOrchestratorCapabilities(configuredProviders, contextRegistry)
+    taskOrchestratorCapabilities: createLocalTaskOrchestratorCapabilities(configuredProviders, contextRegistry, input.handle)
   });
 };
 
@@ -105,21 +108,63 @@ function packageOwnedRegistrarEvidence(
 
 function createLocalTaskOrchestratorCapabilities(
   configuredProviders: ReturnType<typeof createLocalAgentProviderConfiguration>,
-  contextRegistry: ReturnType<typeof createContextPackRegistry>
+  contextRegistry: ReturnType<typeof createContextPackRegistry>,
+  handle: LocalRuntimeHandle
 ): AgentTaskOrchestratorRuntimeCapabilities {
+  let mountedStore: ReturnType<typeof createMountedPromptArtifactStore> | undefined;
+  const storeForRender = (): ReturnType<typeof createMountedPromptArtifactStore> => {
+    mountedStore ??= createMountedPromptArtifactStore({ handle });
+    return mountedStore;
+  };
+  // This remains lexical to the local factory. Later runner composition can
+  // consume only an exact witness placed here by the post-readback renderer.
+  const mountedReadbacks = new Map<string, MountedProductionPromptReadbackWitness>();
   return Object.freeze({
     schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1",
     workflowRegistry: { require: specialistWorkflowDescriptorFor },
     contextRegistry,
     promptRendererRegistry: {
-      render() {
-        throw new Error("Local task orchestrator prompt rendering requires an approved provider run binding.");
+      async render(input) {
+        const artifact = renderProductionSpecialistPrompt({
+          taskId: input.taskId,
+          runId: input.attemptId,
+          runType: input.runType,
+          generatedAt: input.generatedAt,
+          scope: input.scope,
+          resolvedContextPacks: input.resolvedContextPacks
+        });
+        const store = await storeForRender();
+        await store.put(artifact);
+        const readback = await store.read({
+          inputArtifactHash: artifact.manifest.inputArtifactHash as `sha256:${string}`,
+          authoritativeResolvedContextPacks: input.resolvedContextPacks,
+          taskId: input.taskId,
+          attemptId: input.attemptId,
+          runType: input.runType,
+          generatedAt: input.generatedAt,
+          scope: input.scope
+        });
+        if (readback.witness === undefined) {
+          throw new Error("Local task orchestrator requires mounted v1 prompt readback authority.");
+        }
+        mountedReadbacks.set(`${input.taskId}:${input.attemptId}`, readback.witness);
+        return readback.envelope;
       }
     },
     providerRegistry: configuredProviders.readinessRegistry,
     approvalReader: createTaskOrchestratorProviderApprovalAdapter(),
     runnerRegistry: {
-      async dispatch() {
+      async dispatch(input) {
+        // Task133.5 stops at the pre-approval mounted readback boundary. The
+        // later owned admission runner consumes the lexical witness; it must
+        // never ask a kernel to render a replacement prompt.
+        const witness = mountedReadbacks.get(`${input.taskId}:${input.attemptId}`);
+        if (witness === undefined) {
+          throw new Error("Local task orchestrator requires the exact mounted context-ready prompt readback.");
+        }
+        // Keep the exact one-use witness lexical until the later owned
+        // admission runner receives it. Do not serialize or reconstruct it.
+        void witness;
         throw new Error("Local task orchestrator specialist runner is not configured for autonomous dispatch.");
       }
     },

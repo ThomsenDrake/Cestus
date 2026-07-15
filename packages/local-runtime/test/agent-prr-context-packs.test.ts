@@ -9,6 +9,7 @@ import {
   createContextPackRegistry,
   prepareSpecialistRun,
   productionSpecialistPromptRegistrationFor,
+  renderProductionSpecialistPrompt,
   verifyResolvedContextPack,
   type AgentContextPackJsonValue,
   type ContextPackPayloadParser,
@@ -19,9 +20,11 @@ import {
 import { registerContextPackPayloadParserAuthority } from "../../agent/src/context-packs.js";
 import { prrReadModelPayloadParser } from "../../agent/src/prr-context-packs.js";
 import { PrrLifecycleService } from "../../prr/src/lifecycle.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
 import { registerLocalRuntimeSelectedPrrContextPacks } from "../src/agent-prr-context-packs.js";
+import { createMountedPromptArtifactStore } from "../src/mounted-prompt-artifact-store.js";
 
 const tempDirs: string[] = [];
 const now = () => "2026-07-10T12:00:00.000Z";
@@ -37,6 +40,40 @@ afterEach(() => {
 });
 
 describe("local runtime selected PRR context pack registration", () => {
+  it("local prr preparation supplies the stored v1 instead of using kernel fallback", async () => {
+    const handle = createPortableTestHandle(["prr_req_selected"]);
+    try {
+      await createDraft(handle, "Selected Agency", "Safe selected request summary.");
+      const registry = createContextPackRegistry();
+      registerLocalRuntimeSelectedPrrContextPacks({ registry, handle, prrRequestId: "prr_req_selected", now });
+      registerRemainingPrrNegotiationContextPacks(registry);
+      const resolved = await Promise.all(productionSpecialistPromptRegistrationFor("prr-negotiation").contextRequirements
+        .filter((requirement) => requirement.requirementMode === "always" || true)
+        .map(async (requirement) => await registry.buildResolved(requirement.contextPackId)));
+      const prompt = (await import("../../agent/src/production-specialist-prompts.js")).renderProductionSpecialistPrompt({
+        taskId: "task_prr_preapproval",
+        runId: "attempt_prr_preapproval",
+        runType: "prr-negotiation",
+        generatedAt: now(),
+        scope: selectedPrrRunScope("prr_req_selected"),
+        resolvedContextPacks: resolved
+      });
+      const store = await createMountedPromptArtifactStore({ handle });
+      await store.put(prompt);
+      const readback = await store.read({
+        inputArtifactHash: prompt.manifest.inputArtifactHash,
+        authoritativeResolvedContextPacks: resolved,
+        taskId: "task_prr_preapproval",
+        attemptId: "attempt_prr_preapproval",
+        runType: "prr-negotiation",
+        generatedAt: now(),
+        scope: selectedPrrRunScope("prr_req_selected")
+      });
+      expect(readback.witness.inputArtifactHash).toBe(prompt.manifest.inputArtifactHash);
+    } finally {
+      handle.close();
+    }
+  });
   it("registers only selected-request PRR packs without leaking unrelated request IDs", async () => {
     const handle = createTestHandle(["prr_req_selected", "prr_unrelated_sensitive"]);
     try {
@@ -92,7 +129,7 @@ describe("local runtime selected PRR context pack registration", () => {
   });
 
   it("binds selected correspondence and evidence hashes without exposing provider metadata", async () => {
-    const handle = createTestHandle(["prr_req_selected"]);
+    const handle = createPortableTestHandle(["prr_req_selected"]);
     try {
       await createDraft(handle, "Selected Agency", "Safe selected request summary.");
       await appendEvidence(handle, "ev_selected_attachment", selectedEvidenceHash);
@@ -135,7 +172,7 @@ describe("local runtime selected PRR context pack registration", () => {
   });
 
   it("renders selected payload sentinels after hash verification and blocks missing or mismatched resolution before provider invocation", async () => {
-    const handle = createTestHandle(["prr_req_selected"]);
+    const handle = createPortableTestHandle(["prr_req_selected"]);
     try {
       await createDraft(handle, "Selected Agency", "Safe selected request summary.");
 
@@ -156,7 +193,7 @@ describe("local runtime selected PRR context pack registration", () => {
       expect(JSON.stringify(jurisdictionResolved.payload)).toContain("federal-determination-20-working-days");
 
       const agentRuntime = createAgentRuntime({ ledger: handle.ledger, actor, now });
-      await agentRuntime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+      await agentRuntime.initializeDefaultIdentity({ workspaceId: "ws_prr_context_portable" });
       await agentRuntime.createTask({
         taskId: "task_prr_negotiation",
         title: "Negotiate selected PRR",
@@ -174,6 +211,13 @@ describe("local runtime selected PRR context pack registration", () => {
         .toBe("prr_req_selected");
 
       const runtime = fakeInvoker();
+      const mountedPromptReadbackWitness = await mountedPrrReadbackWitness({
+        handle,
+        registry,
+        taskId: "task_prr_negotiation",
+        runId: "run_prr_negotiation",
+        scope: selectedScope
+      });
       const prepared = await prepareSpecialistRun({
         ledger: handle.ledger,
         actor,
@@ -190,7 +234,8 @@ describe("local runtime selected PRR context pack registration", () => {
           kind: "local-no-secret"
         },
         runtime,
-        providerReadiness: { cards: [readyProviderCard()] }
+        providerReadiness: { cards: [readyProviderCard()] },
+        mountedPromptReadbackWitness
       }, "prr-negotiation");
 
       expect(prepared.promptArtifact.text).toContain("2026-08-07");
@@ -214,7 +259,10 @@ describe("local runtime selected PRR context pack registration", () => {
           kind: "local-no-secret"
         },
         runtime,
-        providerReadiness: { cards: [readyProviderCard()] }
+        providerReadiness: { cards: [readyProviderCard()] },
+        mountedPromptReadbackWitness: await mountedPrrReadbackWitness({
+          handle, registry, taskId: "task_prr_negotiation", runId: "run_prr_negotiation", scope: selectedScope
+        })
       }, "prr-negotiation")).rejects.toThrow(/payload-hash-mismatch|payload-schema-mismatch|forged/i);
       expect(runtime.invokeModel).not.toHaveBeenCalled();
 
@@ -239,7 +287,10 @@ describe("local runtime selected PRR context pack registration", () => {
           kind: "local-no-secret"
         },
         runtime,
-        providerReadiness: { cards: [readyProviderCard()] }
+        providerReadiness: { cards: [readyProviderCard()] },
+        mountedPromptReadbackWitness: await mountedPrrReadbackWitness({
+          handle, registry, taskId: "task_prr_negotiation", runId: "run_prr_negotiation", scope: selectedScope
+        })
       }, "prr-negotiation")).rejects.toThrow(/prr-read-model|not registered|missing/i);
       expect(runtime.invokeModel).not.toHaveBeenCalled();
     } finally {
@@ -297,8 +348,69 @@ function createTestHandle(requestIds: readonly string[] = []): LocalRuntimeHandl
   });
 }
 
+function createPortableTestHandle(requestIds: readonly string[] = []): LocalRuntimeHandle {
+  const workspaceRoot = mkdtempSync(join(tmpdir(), "cestus-portable-prr-context-"));
+  const cwd = mkdtempSync(join(tmpdir(), "cestus-portable-prr-context-cwd-"));
+  tempDirs.push(workspaceRoot, cwd);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId: "ws_prr_context_portable",
+    label: "Portable PRR context test",
+    createdAt: now(),
+    createdBy: actor.id
+  });
+  let requestIndex = 0;
+  return createSqlitePrrRuntime({
+    config: {
+      ...resolveLocalRuntimeConfig({ cwd, env: {} }),
+      storage: {
+        strategy: "portable-workspace",
+        workspaceRoot,
+        expectedWorkspaceId: "ws_prr_context_portable",
+        sqlitePath: join(workspaceRoot, "ledger", "ontology.sqlite")
+      }
+    },
+    actor,
+    now,
+    requestIdFactory: () => requestIds[requestIndex++] ?? `prr_generated_${requestIndex}`
+  });
+}
+
 function selectedPrrRunScope(prrRequestId: string) {
   return { kind: "investigation", refs: [prrRequestId, "ws_case_001"], associatedPrrRequestId: prrRequestId } as const;
+}
+
+async function mountedPrrReadbackWitness(input: {
+  readonly handle: LocalRuntimeHandle;
+  readonly registry: ContextPackRegistry;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly scope: ReturnType<typeof selectedPrrRunScope>;
+}) {
+  const resolvedContextPacks = await Promise.all(productionSpecialistPromptRegistrationFor("prr-negotiation").contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || input.scope.associatedPrrRequestId !== undefined)
+    .map(async (requirement) => await input.registry.buildResolved(requirement.contextPackId)));
+  const prompt = renderProductionSpecialistPrompt({
+    taskId: input.taskId,
+    runId: input.runId,
+    runType: "prr-negotiation",
+    generatedAt: now(),
+    scope: input.scope,
+    resolvedContextPacks
+  });
+  const store = await createMountedPromptArtifactStore({ handle: input.handle });
+  await store.put(prompt);
+  const readback = await store.read({
+    inputArtifactHash: prompt.manifest.inputArtifactHash,
+    authoritativeResolvedContextPacks: resolvedContextPacks,
+    taskId: input.taskId,
+    attemptId: input.runId,
+    runType: "prr-negotiation",
+    generatedAt: now(),
+    scope: input.scope
+  });
+  if (readback.witness === undefined) throw new Error("Expected mounted PRR prompt readback witness.");
+  return readback.witness;
 }
 
 function registerRemainingPrrNegotiationContextPacks(

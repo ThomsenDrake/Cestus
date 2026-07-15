@@ -26,10 +26,89 @@ import {
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import {
+  registerMountedProductionPromptReadback
+} from "../src/production-prompt-readback.js";
 import { ConcurrencyConflictError, InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 
 describe("specialist runner artifact serialization", () => {
+  it("rejects missing mounted context-ready prompt instead of rendering", async () => {
+    const fixture = await runnerFixture({ includeWitness: false });
+
+    await expect(prepareSpecialistRun(fixture.input, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("accepts the exact supplied context-ready v1 without another render", async () => {
+    const fixture = await runnerFixture();
+    const rendered = await renderedRunnerPrompt(fixture.input);
+    const witness = registerMountedProductionPromptReadback({
+      envelope: rendered,
+      serializedEnvelope: agent.serializePromptArtifactEnvelope(rendered),
+      authoritativeResolvedContextPacks: rendered.resolvedContextPacks,
+      ...mountedReadbackRegistration(fixture.input, rendered),
+      workspaceId: "ws_runner_test",
+      rootDir: "/portable/ws_runner_test",
+      blobRoot: "/portable/ws_runner_test/blobs",
+      mountInstanceId: "process_runner_test"
+    });
+
+    const prepared = await prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage");
+
+    expect(prepared.promptArtifact.manifest.inputArtifactHash).toBe(rendered.manifest.inputArtifactHash);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("rejects structurally valid v1 without mounted readback membership", async () => {
+    const fixture = await runnerFixture();
+    const rendered = await renderedRunnerPrompt(fixture.input);
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: undefined, promptArtifact: rendered }, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+  });
+
+  it("rejects copied swapped and reused mounted readback witness", async () => {
+    const fixture = await runnerFixture();
+    const rendered = await renderedRunnerPrompt(fixture.input);
+    const witness = registerMountedProductionPromptReadback({
+      envelope: rendered,
+      serializedEnvelope: agent.serializePromptArtifactEnvelope(rendered),
+      authoritativeResolvedContextPacks: rendered.resolvedContextPacks,
+      ...mountedReadbackRegistration(fixture.input, rendered),
+      workspaceId: "ws_runner_test",
+      rootDir: "/portable/ws_runner_test",
+      blobRoot: "/portable/ws_runner_test/blobs",
+      mountInstanceId: "process_runner_test"
+    });
+    const copied = { ...witness };
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: copied }, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { inputArtifactHash: rendered.manifest.inputArtifactHash } } });
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .rejects.toThrow(/consumed|mounted.*prompt.*readback/i);
+  });
+
+  it("consumes one exact post-mount-check v1 witness without rendering", async () => {
+    const fixture = await runnerFixture();
+    const rendered = await renderedRunnerPrompt(fixture.input);
+    const witness = registerMountedProductionPromptReadback({
+      envelope: rendered,
+      serializedEnvelope: agent.serializePromptArtifactEnvelope(rendered),
+      authoritativeResolvedContextPacks: rendered.resolvedContextPacks,
+      ...mountedReadbackRegistration(fixture.input, rendered),
+      workspaceId: "ws_runner_test",
+      rootDir: "/portable/ws_runner_test",
+      blobRoot: "/portable/ws_runner_test/blobs",
+      mountInstanceId: "process_runner_test"
+    });
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { production: { schemaVersion: "agent-production-prompt-binding.v1" } } } });
+  });
   it("serializes plain JSON deterministically with sorted object keys", () => {
     expect(serializeSpecialistLocalArtifact({
       beta: 2,
@@ -308,7 +387,7 @@ describe("production specialist run preparation", () => {
       safeSummary: "Test-only prompt artifact."
     });
     await expect(prepareSpecialistRun({ ...fixture.input, promptArtifact: genericArtifact }, "evidence-triage"))
-      .rejects.toThrow(/production binding|production specialist prompt artifact/i);
+      .rejects.toThrow(/consumed|mounted.*prompt.*readback/i);
     expect(fixture.invocationCount()).toBe(0);
   });
 
@@ -1368,6 +1447,7 @@ async function runnerFixture(patch: {
   readonly runId?: string;
   readonly taskId?: string;
   readonly workspaceId?: string;
+  readonly includeWitness?: boolean;
 } = {}) {
   const runId = patch.runId ?? "run_runner_test_001";
   const taskId = patch.taskId ?? "task_runner_test_001";
@@ -1391,7 +1471,7 @@ async function runnerFixture(patch: {
   });
 
   let invocations = 0;
-  const input: SpecialistRunnerBaseInput = {
+  const baseInput: SpecialistRunnerBaseInput = {
       ledger,
       actor,
       now,
@@ -1424,9 +1504,51 @@ async function runnerFixture(patch: {
         }]
       }
   };
+  const rendered = await renderedRunnerPrompt({ ...baseInput, contextPacks: runnerContextPackRegistry() });
+  const witness = registerMountedProductionPromptReadback({
+    envelope: rendered,
+    serializedEnvelope: agent.serializePromptArtifactEnvelope(rendered),
+    authoritativeResolvedContextPacks: rendered.resolvedContextPacks,
+    ...mountedReadbackRegistration(baseInput, rendered),
+    workspaceId,
+    rootDir: `/portable/${workspaceId}`,
+    blobRoot: `/portable/${workspaceId}/blobs`,
+    mountInstanceId: `process_${workspaceId}`
+  });
+  const input: SpecialistRunnerBaseInput = patch.includeWitness === false
+    ? baseInput
+    : { ...baseInput, mountedPromptReadbackWitness: witness };
   return {
     input,
     invocationCount: () => invocations
+  };
+}
+
+async function renderedRunnerPrompt(input: SpecialistRunnerBaseInput) {
+  const runType = "evidence-triage" as const;
+  const scope = input.scope ?? { kind: "task" as const, refs: [input.taskId] };
+  const registration = productionSpecialistPromptRegistrationFor(runType);
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || scope.associatedPrrRequestId !== undefined)
+    .map(async (requirement) => await input.contextPacks.buildResolved(requirement.contextPackId)));
+  return agent.renderProductionSpecialistPrompt({
+    taskId: input.taskId,
+    runId: input.runId,
+    runType,
+    generatedAt: input.now(),
+    scope,
+    resolvedContextPacks
+  });
+}
+
+function mountedReadbackRegistration(input: SpecialistRunnerBaseInput, rendered: Awaited<ReturnType<typeof renderedRunnerPrompt>>) {
+  return {
+    taskId: input.taskId,
+    runId: input.runId,
+    runType: "evidence-triage" as const,
+    generatedAt: input.now(),
+    scope: input.scope ?? { kind: "task" as const, refs: [input.taskId] },
+    contextPackRefs: rendered.manifest.contextPackRefs
   };
 }
 

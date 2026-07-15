@@ -40,6 +40,10 @@ export interface TaskOrchestratorContextDiagnostic {
 
 export interface TaskOrchestratorContextRenderInput {
   readonly taskId: string;
+  /** Captured claim identity; renderers must not derive it after an await. */
+  readonly attemptId: string;
+  /** Captured normalized orchestrator tick time; renderers must not call a clock. */
+  readonly generatedAt: string;
   readonly runType: TaskOrchestratorRunType;
   readonly scope: ProductionRunScope;
   readonly workflow: SpecialistWorkflowDescriptor;
@@ -48,6 +52,10 @@ export interface TaskOrchestratorContextRenderInput {
 
 export interface AssembleTaskOrchestratorContextInput {
   readonly taskId: string;
+  /** Required when a caller asks this assembly to render a production prompt. */
+  readonly attemptId?: string | undefined;
+  /** Required when a caller asks this assembly to render a production prompt. */
+  readonly generatedAt?: string | undefined;
   readonly runType: TaskOrchestratorRunType;
   readonly scope: ProductionRunScope;
   readonly workflow: SpecialistWorkflowDescriptor;
