@@ -6559,8 +6559,13 @@ assert_git_authority_context
 task140p_checker='scripts/check-resident-task-prerequisites.mjs'
 task140p_checker_sha='PREREQUISITE_CHECKER_SHA256'
 printf '%s\n' "$task140p_checker_sha" | grep -Eq '^[0-9a-f]{64}$'
-test "$(sha256sum "$task140p_checker" | awk '{print $1}')" = "$task140p_checker_sha"
-node "$task140p_checker" --task task140p --phase preflight --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+task140p_checker_payload="$(base64 -w0 -- "$task140p_checker")" || exit 72
+test -n "$task140p_checker_payload"
+task140p_checker_payload_sha="$(printf '%s' "$task140p_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" || exit 72
+printf '%s\n' "$task140p_checker_payload_sha" | grep -Eq '^[0-9a-f]{64}$'
+test "$task140p_checker_payload_sha" = "$task140p_checker_sha"
+run_task140p_checker() { set -o pipefail; printf '%s' "$task140p_checker_payload" | base64 -d | node --input-type=module - "$@"; }
+run_task140p_checker --task task140p --phase preflight --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
 CESTUS_CF1R25_TASK140P_PREFLIGHT
 ```
 
@@ -6573,8 +6578,13 @@ assert_git_authority_context
 task140r0_checker='scripts/check-resident-task-prerequisites.mjs'
 task140r0_checker_sha='PREREQUISITE_CHECKER_SHA256'
 printf '%s\n' "$task140r0_checker_sha" | grep -Eq '^[0-9a-f]{64}$'
-test "$(sha256sum "$task140r0_checker" | awk '{print $1}')" = "$task140r0_checker_sha"
-node "$task140r0_checker" --task task140r0 --phase preflight --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+task140r0_checker_payload="$(base64 -w0 -- "$task140r0_checker")" || exit 72
+test -n "$task140r0_checker_payload"
+task140r0_checker_payload_sha="$(printf '%s' "$task140r0_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" || exit 72
+printf '%s\n' "$task140r0_checker_payload_sha" | grep -Eq '^[0-9a-f]{64}$'
+test "$task140r0_checker_payload_sha" = "$task140r0_checker_sha"
+run_task140r0_checker() { set -o pipefail; printf '%s' "$task140r0_checker_payload" | base64 -d | node --input-type=module - "$@"; }
+run_task140r0_checker --task task140r0 --phase preflight --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
 CESTUS_CF1R25_TASK140R0_PREFLIGHT
 ```
 
@@ -6587,8 +6597,13 @@ assert_git_authority_context
 task140h_checker='scripts/check-resident-task-prerequisites.mjs'
 task140h_checker_sha='PREREQUISITE_CHECKER_SHA256'
 printf '%s\n' "$task140h_checker_sha" | grep -Eq '^[0-9a-f]{64}$'
-test "$(sha256sum "$task140h_checker" | awk '{print $1}')" = "$task140h_checker_sha"
-node "$task140h_checker" --task task140h --phase preflight --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+task140h_checker_payload="$(base64 -w0 -- "$task140h_checker")" || exit 72
+test -n "$task140h_checker_payload"
+task140h_checker_payload_sha="$(printf '%s' "$task140h_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" || exit 72
+printf '%s\n' "$task140h_checker_payload_sha" | grep -Eq '^[0-9a-f]{64}$'
+test "$task140h_checker_payload_sha" = "$task140h_checker_sha"
+run_task140h_checker() { set -o pipefail; printf '%s' "$task140h_checker_payload" | base64 -d | node --input-type=module - "$@"; }
+run_task140h_checker --task task140h --phase preflight --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
 CESTUS_CF1R25_TASK140H_PREFLIGHT
 ```
 
@@ -6924,10 +6939,15 @@ assert_git_authority_context
 task140p_checker='scripts/check-resident-task-prerequisites.mjs'
 task140p_checker_sha='PREREQUISITE_CHECKER_SHA256'
 printf '%s\n' "$task140p_checker_sha" | grep -Eq '^[0-9a-f]{64}$'
-test "$(sha256sum "$task140p_checker" | awk '{print $1}')" = "$task140p_checker_sha"
-node scripts/check-resident-task-prerequisites.mjs --task task140p --phase review --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+task140p_checker_payload="$(base64 -w0 -- "$task140p_checker")" || exit 72
+test -n "$task140p_checker_payload"
+task140p_checker_payload_sha="$(printf '%s' "$task140p_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" || exit 72
+printf '%s\n' "$task140p_checker_payload_sha" | grep -Eq '^[0-9a-f]{64}$'
+test "$task140p_checker_payload_sha" = "$task140p_checker_sha"
+run_task140p_checker() { set -o pipefail; printf '%s' "$task140p_checker_payload" | base64 -d | node --input-type=module - "$@"; }
+run_task140p_checker --task task140p --phase review --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
 task140p_checkout_snapshot="$(snapshot_physical_checkout)"
-assert_task140p_review_authority() { assert_git_authority_context; test "$(snapshot_physical_checkout)" = "$task140p_checkout_snapshot"; test "$(sha256sum "$task140p_checker" | awk '{print $1}')" = "$task140p_checker_sha"; node "$task140p_checker" --task task140p --phase review --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA; }
+assert_task140p_review_authority() { assert_git_authority_context; test "$(snapshot_physical_checkout)" = "$task140p_checkout_snapshot"; test "$(printf '%s' "$task140p_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" = "$task140p_checker_sha"; run_task140p_checker --task task140p --phase review --manifest docs/agentic/claims/task-140-p-prerequisites.json --claim docs/agentic/claims/task-140-p-private-prompt-admission.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA; }
 npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts
 npm run typecheck
 ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts
@@ -6947,10 +6967,15 @@ assert_git_authority_context
 task140r0_checker='scripts/check-resident-task-prerequisites.mjs'
 task140r0_checker_sha='PREREQUISITE_CHECKER_SHA256'
 printf '%s\n' "$task140r0_checker_sha" | grep -Eq '^[0-9a-f]{64}$'
-test "$(sha256sum "$task140r0_checker" | awk '{print $1}')" = "$task140r0_checker_sha"
-node scripts/check-resident-task-prerequisites.mjs --task task140r0 --phase review --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+task140r0_checker_payload="$(base64 -w0 -- "$task140r0_checker")" || exit 72
+test -n "$task140r0_checker_payload"
+task140r0_checker_payload_sha="$(printf '%s' "$task140r0_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" || exit 72
+printf '%s\n' "$task140r0_checker_payload_sha" | grep -Eq '^[0-9a-f]{64}$'
+test "$task140r0_checker_payload_sha" = "$task140r0_checker_sha"
+run_task140r0_checker() { set -o pipefail; printf '%s' "$task140r0_checker_payload" | base64 -d | node --input-type=module - "$@"; }
+run_task140r0_checker --task task140r0 --phase review --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
 task140r0_checkout_snapshot="$(snapshot_physical_checkout)"
-assert_task140r0_review_authority() { assert_git_authority_context; test "$(snapshot_physical_checkout)" = "$task140r0_checkout_snapshot"; test "$(sha256sum "$task140r0_checker" | awk '{print $1}')" = "$task140r0_checker_sha"; node "$task140r0_checker" --task task140r0 --phase review --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA; }
+assert_task140r0_review_authority() { assert_git_authority_context; test "$(snapshot_physical_checkout)" = "$task140r0_checkout_snapshot"; test "$(printf '%s' "$task140r0_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" = "$task140r0_checker_sha"; run_task140r0_checker --task task140r0 --phase review --manifest docs/agentic/claims/task-140-r0-prerequisites.json --claim docs/agentic/claims/task-140-r0-factory-prompt-binding.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA; }
 npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts
 npm run typecheck
 ! rg -n 'task-orchestrator-approval-admission|task-orchestrator-handoff-port' packages/agent/src/index.ts
@@ -6971,10 +6996,15 @@ assert_git_authority_context
 task140h_checker='scripts/check-resident-task-prerequisites.mjs'
 task140h_checker_sha='PREREQUISITE_CHECKER_SHA256'
 printf '%s\n' "$task140h_checker_sha" | grep -Eq '^[0-9a-f]{64}$'
-test "$(sha256sum "$task140h_checker" | awk '{print $1}')" = "$task140h_checker_sha"
-node scripts/check-resident-task-prerequisites.mjs --task task140h --phase review --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
+task140h_checker_payload="$(base64 -w0 -- "$task140h_checker")" || exit 72
+test -n "$task140h_checker_payload"
+task140h_checker_payload_sha="$(printf '%s' "$task140h_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" || exit 72
+printf '%s\n' "$task140h_checker_payload_sha" | grep -Eq '^[0-9a-f]{64}$'
+test "$task140h_checker_payload_sha" = "$task140h_checker_sha"
+run_task140h_checker() { set -o pipefail; printf '%s' "$task140h_checker_payload" | base64 -d | node --input-type=module - "$@"; }
+run_task140h_checker --task task140h --phase review --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA
 task140h_checkout_snapshot="$(snapshot_physical_checkout)"
-assert_task140h_review_authority() { assert_git_authority_context; test "$(snapshot_physical_checkout)" = "$task140h_checkout_snapshot"; test "$(sha256sum "$task140h_checker" | awk '{print $1}')" = "$task140h_checker_sha"; node "$task140h_checker" --task task140h --phase review --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA; }
+assert_task140h_review_authority() { assert_git_authority_context; test "$(snapshot_physical_checkout)" = "$task140h_checkout_snapshot"; test "$(printf '%s' "$task140h_checker_payload" | base64 -d | sha256sum | awk '{print $1}')" = "$task140h_checker_sha"; run_task140h_checker --task task140h --phase review --manifest docs/agentic/claims/task-140-h-prerequisites.json --claim docs/agentic/claims/task-140-h-private-resident-invocation.md --coordinator-attestation COORDINATOR_ATTESTATION_SHA; }
 npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-mounted-authority.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/resident-live-acceptance-adapters.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/task-orchestrator-handoff-port-imports.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/resident-specialist-acceptance.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts
 npm run typecheck
 rg -n 'runEvidenceTriageResidentLiveAcceptance' packages/agent/test/evidence-triage-nous-live.test.ts
@@ -7041,6 +7071,48 @@ contains no inherited function/PATH/BASH_ENV/provider/credential state, a
 find/sort/read/hash failure yields no authorizing digest, wrong checker bytes
 fail before the first call and after focused work, and every preserved CF-1R24
 counterfactual remains rejected. Exactly two fresh independent Terra/xhigh
+approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` permit coordinator-
+only plan integration. Source, full/live/provider/credential/Nous/reset-credit/
+`neo`/self-integration/merge remain closed.
+
+## CF-1R26 - Same-payload checker execution
+
+This terminal correction supersedes CF-1R25 only where the six active P/R0/H
+preflight/review blocks authenticate and invoke the Task135C checker. Hashing a
+mutable checkout path and then asking Node to reopen that path is forbidden.
+Each clean-shell block instead reads the checker exactly once with
+`base64 -w0`, retains the encoded payload in a task-specific shell variable,
+decodes and hashes that payload against C's literal coordinator-issued SHA, and
+executes the same decoded variable through `node --input-type=module -`. Neither
+the first nor terminal invocation reopens the checker path. The terminal review
+function rehashes the retained decoded payload after the checkout snapshot
+comparison and invokes the same task-specific payload runner as its final
+operation.
+
+Task135C must therefore implement
+`scripts/check-resident-task-prerequisites.mjs` as a standalone stdin-compatible
+ES module. It parses CLI values only from `process.argv.slice(2)`, uses only
+static `node:` imports, does not read stdin as data, does not depend on
+`import.meta.url`, and has no relative, absolute, package, dynamic-import, or
+CommonJS dependency. Its focused test suite must invoke the checker through the
+exact base64/decode/module-stdin runner as well as exercise its ordinary CLI
+parser. Task135C review statically rejects `process.stdin`, descriptor-zero
+reads, `import.meta.url`, `require`, dynamic `import()`, and any import specifier
+that does not begin with `node:`.
+
+Credential-free fixtures for all six checker-bearing commands must prove: an
+approved payload runs normally; a wrong expected hash and malformed retained
+payload fail without executing Node; replacing or rewriting the checker path
+after capture but before the first invocation still executes only the approved
+captured bytes; replacing or rewriting it after focused work but before the
+terminal invocation cannot execute substituted bytes; restoring the path does
+not change the retained payload; and changing the retained payload itself is
+rejected by the terminal rehash. Rerun every CF-1R25 environment, snapshot,
+special-entry, producer-failure, and terminal-operation counterfactual.
+
+The external-sibling-C, mutable-evidence-suffix, attestation, Task117A,
+Task137A, clean-shell, physical-checkout, and every other CF-1R18 through
+CF-1R25 contract remain unchanged. Exactly two fresh independent Terra/xhigh
 approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` permit coordinator-
 only plan integration. Source, full/live/provider/credential/Nous/reset-credit/
 `neo`/self-integration/merge remain closed.
