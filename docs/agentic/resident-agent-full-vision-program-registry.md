@@ -9737,3 +9737,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   defect. Any new substantive failure stops again. Static ABI, diff, and
   factory gates remain mandatory; full verification, provider activity, reset
   credits, integration, and every `neo` action remain closed.
+
+## RV-1-E-332 — Task135C and Task135E candidates admitted to review
+
+- Task135C recovery candidate
+  `5e3645f62d5f384ad6902883fa7112c0eaa59d26` is clean with no merge commits.
+  Its complete original-base range
+  `197c3ca528e9b666c02b9b87695bf900efa195b1..5e3645f62d5f384ad6902883fa7112c0eaa59d26`
+  changes exactly the checker, its focused test, and its claim. Independent
+  coordinator verification passed 14/14 counterfactual tests, confirmed only
+  static `node:` imports and no forbidden runtime-import mechanisms, passed
+  range diff checking, and passed factory readiness.
+- Task135C now binds external C's declared checker hash to SHA-256 of immutable
+  `C:scripts/check-resident-task-prerequisites.mjs` bytes while retained-payload
+  execution separately authenticates and executes the same captured bytes.
+  It is admitted only to fresh authority/bypass and static/executability review.
+- Task135E candidate
+  `4e3510ff00380a5fa5c5d3cd4502c2c946fd3f9d` is clean with no merge commits.
+  Range
+  `3aeebe7e7fe3e79f99ed7cbc59f58899c5cd068b..4e3510ff00380a5fa5c5d3cd4502c2c946fd3f9d`
+  changes exactly the resident-identity test and repair claim. Independent
+  coordinator verification passed all 9 lifecycle tests, typecheck, range diff
+  checking, and factory readiness.
+- Task135E changes no production code and leaves the default factory-held
+  context fail-closed boundary intact. It is admitted only to fresh independent
+  test-isolation review. Neither candidate is authorized for integration,
+  full verification, provider activity, reset credits, or any `neo` action.
