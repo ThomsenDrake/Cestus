@@ -3904,7 +3904,9 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
             issues.push(`replan prior readback must preserve preceding ${field}`);
           }
         }
-        if (payload.planId === priorPlanPayload.planId) issues.push("replans require a fresh plan ID");
+        if (plans.some((record) => (record.payload as Record<string, unknown>).planId === payload.planId)) {
+          issues.push("replans require a fresh plan ID");
+        }
         if (finalObservation === undefined || replanObservationReadback?.observationEventId !== finalObservation.id) {
           issues.push("replan must bind the exact preceding durable observation event");
         }

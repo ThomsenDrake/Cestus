@@ -518,3 +518,34 @@ Status: ready for one fresh independent complete-range Terra/xhigh review after
 the scoped forward commit. No self-review, self-integration, merge, Task120
 restart, Task136 work, provider/network/credential/Nous action, or `neo` action
 is authorized.
+
+## RV-1-E-202 Complete-Range Plan-ID Repair
+
+- Fresh repair author: `/root/task119_plan_id_repair` on
+  `codex/task-119-resident-full-vision-plan-id-repair`, starting from preserved
+  unintegrated `2b1c6f193024d5a4aa7f02d829df88e896d35a12`. Authoritative
+  session metadata at
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T22-39-09-019f63a4-72da-7621-b228-dc53312fdd1f.jsonl:8`
+  records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Fresh complete-range review finding: the v2 replay validator retained prior
+  plan records but compared a replan ID only with the immediately preceding
+  plan. It therefore accepted `plan_001 -> plan_002 -> plan_001` when all
+  revisions, plan/observation readbacks, and durable budget transitions were
+  otherwise valid.
+- Causal RED: `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts`
+  exited `1` with 1 failed and 133 passed tests. The new complete replay
+  counterfactual was individually valid yet `validateResidentLoopEventSequence`
+  returned `true` for the reused earlier ID.
+- GREEN: replay now rejects a replan when its plan ID appears in any prior plan
+  record, while preserving the existing initial-plus-three accounting,
+  predecessor observation causation, executed-prerequisite, H proof, v1,
+  exact v2 names, strict own-data, budget/anchor/category, provenance, and
+  no-effect contracts. The focused v2 suite passed 74 tests. The authorized
+  non-full fail-fast chain is the only remaining pre-commit gate; full
+  verification remains **CLOSED**.
+
+Status: in-progress pending the one authorized exact non-full fail-fast chain,
+one scoped forward commit, and a new fresh complete-range independent
+Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
+Task136 work, provider/network/credential/Nous action, or `neo` action is
+authorized.
