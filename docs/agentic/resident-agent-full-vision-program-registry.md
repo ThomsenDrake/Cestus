@@ -9418,3 +9418,27 @@ explicit implementation authorization.
   carry forward an earlier verdict. Source dispatch and plan integration remain
   closed until both return explicit unqualified **APPROVED** verdicts and those
   verdicts are durably recorded.
+
+## RV-1-E-318 — Same-payload candidate approved
+
+- Lifecycle/executability reviewer
+  `019f6638-81de-7c02-8e91-bfe7cf36a164` and authority/import/bypass reviewer
+  `019f6638-c5de-7a83-8292-fc40a222d33e` both returned explicit unqualified
+  **APPROVED** verdicts on exact 31-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..3c55c676c078d68c917649d1a90b936bf1ed2abd`.
+  Both worktrees are clean detached at the candidate; no earlier verdict or
+  reviewer identity contributed authority.
+- The authority review reproduced the superseded path-reopen race, then
+  validated retained-payload execution, base64/error behavior, module-stdin
+  argv semantics, all eight clean-shell blocks, and preserved authority
+  invariants. The lifecycle review independently validated the eight commands,
+  terminal ordering, Task135C ABI, and external-C/evidence-suffix lifecycle.
+- A read-only three-way merge preview from current program head produced tree
+  `907efb868d7c87d228d3b45c3d6c3e4c1ba8b66b` with exactly two changed paths:
+  the approved Task133 claim and authority-recovery plan. All Task134A/135A and
+  shared agent/local-runtime source blobs remain byte-identical to current
+  program head despite the plan branch's older fork point.
+- Coordinator-only no-ff plan integration into the program branch is now
+  authorized after a fresh merge preview and docs gates. Source dispatch,
+  full/live/provider/network/credential/Nous/reset-credit activity and all
+  `neo` actions remain closed until the integrated plan's next explicit gate.
