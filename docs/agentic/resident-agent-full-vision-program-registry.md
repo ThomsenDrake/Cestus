@@ -7945,3 +7945,23 @@ explicit implementation authorization.
   candidate readiness may be inferred from its extra assertions. Full verifier,
   provider/network/credential/Nous, reset credits, neo, self-integration, and
   merge remain closed.
+
+## RV-1-E-249 — Task133 full-lineage plan review approval
+
+- Fresh independent Terra/xhigh reviewer
+  `/root/task133_final_full_lineage_plan_review`, session
+  `019f6461-2072-70d2-82dc-a02c0ada8d48`, returned **APPROVED** with no
+  defects, missing tests, or spec drift for the exact full five-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..8169fc7f344ce40b0bbd91e60a66dab697d4446d`.
+  Its authoritative `turn_context` at
+  `rollout-2026-07-15T02-05-14-019f6461-2072-70d2-82dc-a02c0ada8d48.jsonl:8`
+  records `model=gpt-5.6-terra` and `effort=xhigh`.
+- The review confirms strict v1/v2 discrimination, no caller-derived v2 hash
+  fields, a single canonical renderer/artifact formation path, named
+  transfer/runtime/ontology/projection/rebuild migration boundaries, no
+  retired local-only or public authority route, and Task140R0's sole private
+  one-render composition with causal zero-effect counterfactuals. Coordinator
+  documentation validation, coordinator-only no-ff plan integration, and
+  post-merge documentation validation are now authorized; Task133 source
+  implementation remains blocked until that integration is recorded and its
+  frozen prerequisite gate is re-established.
