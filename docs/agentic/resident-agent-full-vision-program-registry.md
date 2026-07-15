@@ -6230,3 +6230,33 @@ explicit implementation authorization.
 - Primary usage remains `usedPercent=11` / **89% remaining**, reset credits
   untouched; DRAIN/HARD PAUSE controls remain in force. No credential, network,
   provider, or Nous action is authorized by this local runtime slice.
+
+## RV-1-E-179 — Correction: Task130 and Task132 non-full gates failed
+
+- **Forward-only correction of both candidate handoffs.** Task130 repair
+  `bedd4ade` is **not ready for review or integration**: its focused suite
+  passed 23/23, but its claimed exact fail-fast chain exited `2` at
+  `xai-subscription-harness.ts(495,56)` (number-not-object) and
+  `xai-subscription-harness.test.ts(62,45)` (implicit `any`). Task132
+  candidate `2832657f` is likewise **not ready for review or integration**:
+  its focused suites passed 53/53, but its claimed exact chain exited `2` at
+  `agent-runtime-context-packs.test.ts(170,94)` (JSON-union property access).
+  Their focused-only observations do not supersede these typecheck failures.
+- The new Task130 and Task132 reviewer threads are stopped before a verdict;
+  no review outcome, merge, integration, full verifier, or `neo` action is
+  accepted from either candidate. Preserve commits `bedd4ade` and `2832657f`
+  as append-only historical candidates. Their claims contain false complete-gate
+  evidence and require a forward append that records this correction; do not
+  rewrite prior claim history.
+- The original authors are each authorized for one disjoint forward repair on
+  their existing branches and only their existing claim/source/test files.
+  First reproduce the named TypeScript failure under fail-fast semantics, then
+  make the smallest type-safe change and retain/add causal focused coverage.
+  Task130 must run exactly `npm test -- packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck && git diff --check && npm run factory:check`; Task132 must run exactly `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/agent/test/context-packs.test.ts && npm run typecheck && git diff --check && npm run factory:check`. Each is one exit-sensitive `&&` chain and must exit `0` before a new fresh independent Terra/xhigh review can begin.
+- This recovery uses `superpowers:subagent-driven-development`, systematic
+  debugging, test-driven development, and verification-before-completion.
+  Full verification remains **CLOSED** (`npm run verify` forbidden); no
+  provider/network/credential action, self-review, self-integration, merge, or
+  `neo` action is authorized. Primary usage remains `usedPercent=11` / **89%
+  remaining**, reset credits untouched, with DRAIN/HARD PAUSE controls in
+  force.
