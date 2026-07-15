@@ -311,6 +311,15 @@ or weakening terminal durability.
    sole H sequencing. The codec has no capability, authority, store object,
    provenance, recorded/lifecycle/terminal field, or public mint route; a
    parseable/hash-valid object remains untrusted until the H owner rebinds it.
+6. `packages/agent/src/task-orchestrator-handoff-port.ts` is H-owned and keeps
+   factory-provided execution closures in a module-private registry keyed by
+   the exact runner-registry object. Task135 supplies only mounted store-
+   binding data; it neither writes material/manifest nor supplies execution
+   objects. Task140H rechecks canonical data and obtains real stores only from
+   that registry before sole H sequencing; Task140R alone captures/registers
+   the closure. Public runtime `handoffCapability` injection is functionally
+   retired in H and removed from local factory composition in R; a caller tuple
+   or lookalike never registers the port.
 
 The bounded amendment at
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`

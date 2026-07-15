@@ -6714,3 +6714,31 @@ explicit implementation authorization.
   integration, merge, provider/network/credential/Nous, or `neo` action is
   authorized. Usage guard remains `usedPercent=13` / **87% remaining**, reset
   credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-197 — CF-1R5 execution-port and rebase-gate correction
+
+- Fresh independent Terra/xhigh review of `be1ceae7..e05f860c` returned
+  **NEEDS-CHANGES**. It accepted the agent-owned pure preparation codec and
+  isolated candidate-base correction, but found three remaining defects: the
+  hashes did not carry an untrusted material candidate or private execution
+  relookup path to H; the public structural H capability remained functional
+  through task-orchestrator/runtime/runtime-types/local factory; and dispatch
+  gates omitted frozen predecessor SHAs. No review action modified source, ran
+  a verifier, merged, or touched neo/provider/network/credential/Nous.
+- The coordinator verified the findings against source. Current H requires
+  actual material and manifest stores plus `SpecialistHandoffMaterial`; runtime
+  duck-types and forwards public `handoffCapability`, and local factory
+  constructs it. CF-1R5 therefore adds an H-owned, non-indexed
+  `WeakMap`-registered factory execution port: Task134 carries only parsed
+  untrusted material data, Task135 only data-only mounted store-binding
+  readback, H alone writes material/manifest/readback/terminal state after
+  registry relookup, and R alone captures/registers the actual closure while
+  removing factory injection. No shaped tuple can populate the map.
+- The amended plan now requires claims to record exact CF-1 integration
+  `48c9cbcdcf723bcc74868f782bc2375bae565ae6`, reviewed Task120/125 and
+  Task121–124 predecessor SHAs as applicable, current program/staged-base
+  SHAs, and later every accepted Task132–139 SHA before Task140. A new fresh
+  plan review is mandatory before Task132A/134A/135A dispatch. Full
+  verification remains **CLOSED**, neo untouched, no external/provider action,
+  and authenticated use is `usedPercent=13` / **87% remaining, reset credits
+  untouched, DRAIN <=10%, HARD PAUSE <=7%.
