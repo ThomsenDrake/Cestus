@@ -43,6 +43,7 @@ import {
   type SpecialistHandoffManifestStore
 } from "./specialist-runner-kernel.js";
 import type { SpecialistHandoffMaterial } from "./specialist-handoff-manifest.js";
+import type { UntrustedSpecialistHandoffPreparationV1 } from "./specialist-handoff-preparation.js";
 import type { ContextPackRegistry } from "./context-packs.js";
 import type { SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
 import type { PromptArtifactEnvelope } from "./prompt-artifacts.js";
@@ -112,7 +113,13 @@ export interface TaskOrchestratorRunnerDurableHandoffResult {
   readonly handoffMaterial: SpecialistHandoffMaterial;
 }
 
+export interface TaskOrchestratorRunnerPreparationResult {
+  readonly schemaVersion: "agent.task-orchestrator.runner-preparation.v1";
+  readonly preparation: UntrustedSpecialistHandoffPreparationV1;
+}
+
 export interface TaskOrchestratorRunnerDispatchResult {
+  readonly preparation?: TaskOrchestratorRunnerPreparationResult;
   readonly durableHandoff?: TaskOrchestratorRunnerDurableHandoffResult;
 }
 
