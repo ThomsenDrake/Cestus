@@ -10548,3 +10548,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both reviewers are read-only and pinned at exact candidate
   `7cadeaed3c26f59a36e28ea34afcdff33af5e591`. Two unqualified approvals are
   required before coordinator-only plan integration or renewed Task133 source.
+
+## RV-1-E-376 — Task133 plan held for immutable review range
+
+- Authority/security reviewer
+  `019f66d5-e796-7cd1-9e73-c96a94399afc` returned unqualified
+  **APPROVED**: Task133 remains pure and zero-effect, P remains opaque and
+  zero-transfer, R0 owns the first complete current-authority transfer, and
+  receipts remain audit facts.
+- Factory-plan reviewer `019f66d5-e8f3-7091-a8b9-a056906f9a45` returned
+  **NEEDS-CHANGES** because the candidate's two review commands still use
+  mutable `dcb863e2..HEAD` ranges instead of the immutable exact candidate
+  delta required by RV-1-E-372 and the review dispatch.
+- Candidate `7cadeaed3c26f59a36e28ea34afcdff33af5e591` is rejected and
+  preserved. The existing docs author is authorized for one two-path forward
+  repair replacing only those mutable ranges with
+  `dcb863e2bf258205308cdb35955f10ef71fdc501..7cadeaed3c26f59a36e28ea34afcdff33af5e591`.
+  Two fresh plan approvals remain required on the replacement bytes.
+- Full verification, source, providers, reset credits, integration, push, and
+  every `neo` action remain closed.
