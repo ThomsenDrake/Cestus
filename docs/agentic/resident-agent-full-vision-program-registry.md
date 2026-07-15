@@ -10807,3 +10807,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   by amending the sole atomic commit before rerunning every permitted gate.
 - Full verification, providers, reset credits, integration, push, and every
   `neo` action remain closed.
+
+## RV-1-E-393 — Task135D held for production roots and AST wrappers
+
+- Private-authority/lifecycle reviewer
+  `019f66f0-1cf6-7123-92f7-6ae002ff78d7` returned unqualified
+  **APPROVED** for exact candidate
+  `b80b28abc2ca19eedef6f7a8f9e13def7019303d` after passing the complete
+  permitted gate.
+- AST import-authority reviewer `019f66f0-1dc3-7110-9d4f-1ea42f0ed9a8`
+  returned **NEEDS-CHANGES**: scanner inventory excludes executable
+  `packages/*/bin` roots, and the AST walk omits exact-target `ImportTypeNode`
+  references plus transparent wrappers around `require`/`module.require`.
+- Coordinator inspection confirmed both gaps against the current scanner and
+  existing package entrypoints. Candidate
+  `b80b28abc2ca19eedef6f7a8f9e13def7019303d` is rejected and preserved.
+- The existing author is authorized for one two-path forward TDD repair in the
+  import scanner test and claim only, preserving exact root-bound identity,
+  unrelated-loader negatives, production runtime bytes, the four-path
+  original-base union, and the complete focused/typecheck/no-index/diff/
+  factory/topology gate before two fresh reviews.
+- Full verification, providers, reset credits, integration, push, and every
+  `neo` action remain closed.
