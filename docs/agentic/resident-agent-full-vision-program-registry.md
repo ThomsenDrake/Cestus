@@ -6878,3 +6878,17 @@ explicit implementation authorization.
 - The last authenticated usage record remains `usedPercent=13` / **87% weekly
   remaining** pending the next authenticated monitor event. DRAIN remains
   <=10% remaining, HARD PAUSE <=7%, and reset credits remain untouched.
+
+## RV-1-E-203 — Authenticated usage-monitor correction after reboot recovery
+
+- A newer authenticated app-server usage event supersedes the stale
+  `usedPercent=13` / 87%-remaining record in RV-1-E-202: current weekly use is
+  `usedPercent=20`, so **80% weekly remaining**. Five reset credits remain
+  untouched. DRAIN remains <=10% remaining and HARD PAUSE remains <=7%; no
+  reset credit may be redeemed.
+- Task119's causal three-plan reuse RED and Task132A's restoration of the exact
+  788-line `agent-runtime-context-packs.test.ts` are in-progress recovery
+  evidence only. Neither candidate is integrated-ready until its exact
+  fail-fast non-full gate and fresh independent review are complete. Full
+  verification, provider/network/credential/Nous action, `neo`, and child
+  self-integration remain **CLOSED**.
