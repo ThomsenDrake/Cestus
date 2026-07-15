@@ -6637,3 +6637,28 @@ explicit implementation authorization.
 - Full verification remains **CLOSED**, `neo` untouched, no provider/network/
   credential/Nous action is authorized, authenticated use is `usedPercent=13`
   / **87% remaining, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-194 — Task119 second v2 review correction and fresh recovery
+
+- Fresh independent Terra/xhigh review of `544d95c9..5bf4c289` returned
+  **NEEDS-CHANGES**. Preserve `5bf4c289` as unintegrated history. The
+  coordinator independently observed its standalone typecheck followed by the
+  exact focused/typecheck/diff/factory `&&` chain exit `0`; that non-full gate
+  does not supersede the durable-state defects.
+- Three Important defects are accepted. Replay compares each event's whole
+  budget snapshot to the plan and never proves per-action consumption or the
+  four-record/three-replan hard progression. A resumable result merely has an
+  anchor and need not exactly bind the preceding suspension checkpoint,
+  deadline, and next safe action. Its result taxonomy also collapses required
+  stale-authority/context, allowlist, provenance, and secret-detection safe
+  categories into a non-exhaustive union. The full H readback and declared-step
+  repair are sound; v1 remains unchanged.
+- The v2 candidate plus its one bounded repair are exhausted. A fresh
+  Terra/xhigh author with a different replay-state tactic is authorized only
+  for Task119 claim, `contracts.ts`, and its focused test. It must add causal
+  REDs for over-limit plan revision, missing per-event budget consumption,
+  unrelated resume anchor/checkpoint/deadline/action, and every omitted
+  category/outcome pair; preserve all prior accepted v1/v2/H/step work. One
+  exact non-full `&&` gate and fresh independent review are mandatory before
+  integration. Full verification remains **CLOSED**; no self-review,
+  self-integration, merge, provider/network/credential/Nous, or `neo` action.
