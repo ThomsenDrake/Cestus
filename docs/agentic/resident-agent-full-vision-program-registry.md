@@ -11013,3 +11013,90 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - All reviewers are read-only and pinned at their exact candidates. Each
   candidate requires two unqualified approvals before coordinator-only
   integration into the program branch.
+
+## RV-1-E-403 — Task133 held for owner-bound receipt construction and causal strictness
+
+- Prompt-authority/security reviewer
+  `019f6711-fa63-7321-831c-1eba1d42375b` and durable-replay/factory reviewer
+  `019f6711-fa67-7131-b408-e0f74d4385e6` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `e29c2c7e3b28d891817f024c40a532438fb85441` after the complete permitted
+  Task133 gate passed.
+- The authority reviewer found that
+  `buildTaskOrchestratorPromptBindingReceipt` is a publicly exported generic
+  receipt-minting path whose caller supplies `taskId`, `attemptId`, and
+  `runId`, rather than an owner-bound construction boundary that derives those
+  identities from the authoritative enclosing checkpoint.
+- Both reviews found missing causal negatives. Identity-transplant coverage
+  changes the checkpoint while retaining the original receipt hash, so it
+  does not prove rejection of a malicious receipt whose task, attempt, or run
+  identity was changed and whose `receiptHash` was recomputed. The ontology
+  strictness test mutates a sibling `production` field rather than proving
+  direct rejection of an unknown receipt key and missing or v0 receipt
+  `schemaVersion` under an otherwise valid checkpoint.
+- The Task133.2 and Task133.3 claims also retain pre-replacement wording that
+  says the replacement amendment is pending. Candidate
+  `e29c2c7e3b28d891817f024c40a532438fb85441` is rejected and preserved.
+- Existing author `019f6660-2912-7622-a99a-0def4e19e051` is authorized for one
+  bounded TDD amendment within the frozen 28-path Task133 union. Remove or
+  owner-bind every generic production receipt constructor; all production
+  construction must derive task, attempt, and run identity from its
+  authoritative enclosing owner. Add task/attempt/run counterfactuals that
+  mutate the receipt, recompute `receiptHash`, retain the enclosing checkpoint,
+  and prove rejection through canonical validation, direct projection, and
+  actual append-only ledger replay/rebuild. Add direct unknown-key and
+  missing/v0 receipt-version negatives under a valid outer checkpoint, and
+  refresh both stale claims to identify the amended candidate as verified and
+  awaiting review/integration.
+- The author must preserve one non-merge commit directly over source base
+  `197c3ca528e9b666c02b9b87695bf900efa195b1`, exact 28-path scope, and clean
+  status; rerun all three focused Task133 suites, typecheck, forbidden-renderer
+  scan, diff check, factory readiness, and topology checks before two fresh
+  reviews. The coordinator explicitly approves
+  `superpowers:subagent-driven-development` where relevant, plus
+  receiving-code-review, systematic-debugging, test-driven development, and
+  verification-before-completion. No additional implementation subagent is
+  required for this bounded repair.
+- Full verification, providers, network, credentials, Nous, reset credits,
+  merge, rebase, push, registry edits, and every `neo` action remain closed to
+  the author.
+
+## RV-1-E-404 — Task135D held for one-shot capture and lexical loader identity
+
+- Private-lifecycle reviewer `019f6712-0114-78f0-b661-fb129d9b66c2` and
+  exhaustive-AST reviewer `019f6712-034f-7d83-a415-9d4e9c8f4eb0`
+  independently returned **NEEDS-CHANGES** for exact candidate
+  `9c783c495cff27bb6d17c80fc314eb25db8b7b19` after the complete permitted
+  Task135D gate passed.
+- The lifecycle reviewer confirmed that a capture remains inspectable more
+  than once. This contradicts the frozen Task137A contract that a reused
+  capture fail before filesystem or ledger I/O; the focused test currently
+  asserts two successful inspections of the same capture.
+- The AST reviewer found that identifier-text matching treats lexically
+  shadowed local or parameter bindings named `require` or `module` as the
+  standard CommonJS loaders. A computed target then fails closed even though
+  the call belongs to an unrelated loader or receiver, violating the frozen
+  negative boundary. Existing negatives use only identifiers named `loader`
+  and do not cover lexical shadowing.
+- Candidate `9c783c495cff27bb6d17c80fc314eb25db8b7b19` is rejected and
+  preserved. Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` is
+  authorized for one bounded forward TDD repair within the exact four-path
+  original-base union. Consume or revoke a private capture on its first
+  inspection and prove any reuse fails before filesystem or ledger I/O while
+  immutable nested snapshots, hostile mutation, currentness, close, and
+  non-leakage remain intact. Make the static policy recognize only unshadowed
+  standard CommonJS `require` and `module.require`; add causal local/parameter
+  shadow negatives for both names while preserving fail-closed computed-target
+  behavior for the genuine unshadowed loaders.
+- The author must preserve production semantics outside the frozen private
+  capture lifecycle, exact four-path original-base scope, linear no-merge
+  topology, and clean status; rerun the focused Task135D suite, typecheck,
+  no-index assertion, diff check, factory readiness, and topology checks before
+  two fresh reviews. The coordinator explicitly approves
+  `superpowers:subagent-driven-development` where relevant, plus
+  receiving-code-review, systematic-debugging, test-driven development, and
+  verification-before-completion. No additional implementation subagent is
+  required for this bounded repair.
+- Full verification, providers, network, credentials, Nous, reset credits,
+  integration, push, registry edits, and every `neo` action remain closed to
+  the author.
