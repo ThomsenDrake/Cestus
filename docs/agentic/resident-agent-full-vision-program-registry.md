@@ -12003,3 +12003,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-439 — Task139 recovery admitted to exact-SHA review
+
+- Fresh Task139 recovery candidate
+  `fae87a3c3de21c89e5094b178946dfc86e1160a9` on
+  `codex/task-139-provider-configuration-recovery-2` is a clean one-commit
+  correction from rejected parent
+  `2592e18e0ed37dc90c5059adf397b439f4a530fa` and changes exactly the three
+  authorized Task139 paths.
+- Fresh coordinator admission passed 2 focused files / 23 tests, standalone
+  typecheck, exact-range diff checking, and factory readiness. No provider,
+  network, credential resolution, secret-backend, or Nous effect occurred.
+- Fresh provider-authority reviewer
+  `019f67b7-5751-72b2-ba4e-488a1fc9aac6` and fresh hostile-input/secret-safety
+  reviewer `019f67b7-6797-7cc1-a36e-12e8a17eeab6` are pinned and read-only on
+  the exact candidate. Both must return unqualified **APPROVED** verdicts before
+  coordinator integration.
+- Reviews must prove fail-closed canonical Task126 admission for every remote,
+  OpenAI-compatible, or API-key lane; explicit local/official-harness
+  exemptions only; exact assessed model scope; one current provenance-bound
+  feasibility record per capability; immutable one-time normalization; and
+  recursive URL/secret/hostile-input rejection before any effect.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
