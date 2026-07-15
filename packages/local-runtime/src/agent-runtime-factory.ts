@@ -164,10 +164,13 @@ function createLocalTaskOrchestratorCapabilities(
         if (readback === undefined || readback.envelope !== rendered) {
           throw new Error("Local task orchestrator requires exact mounted prompt readback before context-ready.");
         }
-        // The final mounted tuple/process/byte revalidation belongs directly
-        // before the orchestrator receives this hash for its append.
-        await readback.revalidateCurrent();
-        return readback.envelope.manifest.inputArtifactHash;
+        // Retain the opaque witness only in this closure. The orchestrator
+        // invokes it after its final context-ready stream read and immediately
+        // before append; no mount/authority facts cross the package boundary.
+        return Object.freeze({
+          inputArtifactHash: readback.envelope.manifest.inputArtifactHash,
+          revalidateAfterFinalLedgerRead: readback.revalidateCurrent
+        });
       }
     },
     providerRegistry: configuredProviders.readinessRegistry,
