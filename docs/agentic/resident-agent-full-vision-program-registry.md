@@ -11470,3 +11470,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reset-credit use, push, self-integration, merge into the program branch, and
   every `neo` action remain closed. Only task-focused suites, typecheck where
   named, `git diff --check`, and factory readiness are authorized.
+
+## RV-1-E-421 — Post-reboot parallel frontier dispatched
+
+- All four Terra/xhigh tasks start from exact clean program checkpoint
+  `288bdb56b520a58501cb7f270dc6018711a8041f` and are pinned for coordinator
+  monitoring. Their prompts explicitly approve task-scoped use of
+  `superpowers:subagent-driven-development` where relevant, TDD or docs
+  validation, verification-before-completion, fresh independent review, and
+  coordinator-only integration.
+- Task133.5 implementation is thread
+  `019f6769-a2f2-7961-8eeb-ec27feb8d184`, worktree
+  `/home/drake/.codex/worktrees/00a1/Cestus`, branch
+  `codex/task-133-5-preapproval-prompt-store`. It owns only the complete
+  CF-1R9/R10/R11/R12 portable prompt-store and mounted-readback scope.
+- Task137A implementation is thread
+  `019f676a-3ce7-7b70-9578-0bbf8b88da96`, worktree
+  `/home/drake/.codex/worktrees/1020/Cestus`, task branch
+  `codex/task-137a-mounted-artifact-authority-operation`. Its worktree was
+  initially detached at the correct checkpoint; the coordinator required a
+  branch switch before any edit and repeated the immutable claim-only first-
+  commit rule with literal parent
+  `288bdb56b520a58501cb7f270dc6018711a8041f`.
+- Task139 implementation is thread
+  `019f676a-401d-7f63-a154-c0143783de67`, worktree
+  `/home/drake/.codex/worktrees/aa94/Cestus`, task branch
+  `codex/task-139-resident-provider-configuration`. Its detached checkout was
+  likewise ordered onto the named branch before edits.
+- Task136 documentation reconciliation is thread
+  `019f676a-434c-7c91-a2fb-c860a7f4ecea`, worktree
+  `/home/drake/.codex/worktrees/0c39/Cestus`, branch
+  `codex/task-136-interface-reconciliation`. It may edit only the bounded-loop
+  implementation plan and its reconciliation claim; source/tests remain
+  forbidden.
+- Full verification, live/provider/network/credential/Nous actions, reset
+  credits, child self-integration, push, program merge, and every `neo` action
+  remain closed while these candidates develop.
