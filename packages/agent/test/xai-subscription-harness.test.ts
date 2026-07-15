@@ -59,7 +59,7 @@ function createHarness(input: {
   return createXaiSubscriptionHarness({
     currentPosture: currentPosture(),
     feasibilityAuthority: {
-      appendOfficialFlowUnavailable: async (evidence) => {
+      appendOfficialFlowUnavailable: async (evidence: XaiOfficialFlowUnavailableEvidence) => {
         input.appended.push(evidence);
         return input.append?.(evidence) ?? mountedReadback(evidence);
       }

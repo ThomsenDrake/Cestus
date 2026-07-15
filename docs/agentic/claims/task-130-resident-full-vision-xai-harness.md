@@ -125,3 +125,30 @@ independent review.
   required before any coordinator integration; no self-review, merge,
   credential/provider/network action, fallback, material read, or `neo`
   action occurred.
+
+## RV-1-E-179 Forward Correction And Type Repair
+
+- Forward correction: the prior `bedd4ade` claim that its exact fail-fast
+  chain exited `0` was false. The focused suite passed 23/23, but the chain
+  stopped at TypeScript exit `2`: `xai-subscription-harness.ts(495,56)` used a
+  number as an object, and `xai-subscription-harness.test.ts(62,45)` had an
+  implicit `any`. `bedd4ade` is preserved as historical candidate evidence;
+  this entry does not rewrite it.
+- Causal compiler reproduction: the descriptor-map `.length` property was the
+  structural numeric array length, not the own `"length"` property descriptor,
+  so checking `"value" in lengthDescriptor` was ill-typed. Separately,
+  `createXaiSubscriptionHarness` deliberately accepts `unknown`, leaving the
+  test fake's append callback without contextual inference.
+- Narrow repair: array normalization now asks
+  `Object.getOwnPropertyDescriptor(value, "length")` directly, preserving the
+  descriptor-only hostile-array boundary. The test fake explicitly types its
+  evidence parameter as `XaiOfficialFlowUnavailableEvidence`; it remains free
+  to supply malformed unknown readbacks for the existing fail-closed tests.
+- Final exact fail-fast chain: `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck &&
+  git diff --check && npm run factory:check` exited `0`, with **1 focused file
+  / 23 tests passing**. No full verifier ran. The temporary ignored
+  `node_modules` symlink is removed before this forward repair commit.
+- Status: ready-for-review. Stop for a new fresh independent Terra/xhigh
+  review; no integration, merge, provider/network/credential/material action,
+  fallback, or `neo` action occurred.
