@@ -579,6 +579,7 @@ serialized task.
 
 
 
+
 ## Forward Correction — Factory-Captured State And Run-Bound Progression
 
 - Status remains **plan-repair candidate only**. Fresh reviewers
@@ -679,6 +680,34 @@ serialized task.
   disabled; and then unions staged, unstaged, and standard untracked paths.
   Reverted intermediate edits and rename concealment therefore cannot satisfy
   the exact six-file ceiling.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
+
+## Forward Correction — Whole-Freeze And Attested Dispatch Authority
+
+- Status remains **plan-repair candidate only**. Fresh reviewers
+  `019f65b0-fed3-7f00-9f15-fecb992da288` and
+  `019f65b1-482d-7cb1-8c57-c23d1459a334` rejected `d4233240` because Task117A
+  did not hash the whole intended freeze or reject ignored authority files;
+  Task117A/137A trusted assume-unchanged and skip-worktree index visibility;
+  coordinator-only dispatch lacked a pinned durable attestation; and Task135B's
+  older binding-only return contradicted its later separate controller transport.
+- CF-1R21 pins distinct whole-freeze and audit SHA-256 values before Task117A
+  changes. Task117A and Task137A reject ignored authority paths, hidden index
+  flags, grafts, and shallow history before and after their focused commands.
+- Every Task117A and Task135C dispatch commit is now bound to a literal
+  coordinator-issued program-registry attestation commit SHA repeated verbatim
+  in worker and reviewer commands. The attestation binds exact task, M, source
+  base, paths, bytes, and hashes; author/committer text is explicitly not a
+  trust source and workers may not choose or substitute the attestation SHA.
+- Task135B now has one exact source-private producer result with separate
+  data/store binding and opaque non-callable controller identities. Only the
+  lexical runtime factory consumes the pair and forms the private closure that
+  R0 transfers into the H-port WeakMap; no binding, DTO, route, projection,
+  logger, serializer, or caller receives controller authority.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
