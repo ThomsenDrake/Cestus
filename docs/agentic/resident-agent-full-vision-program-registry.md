@@ -6952,3 +6952,29 @@ explicit implementation authorization.
   coordinator-only merge. Tasks133 and 134 remain blocked. Full verification,
   `neo`, provider/network/credential/Nous action, reset-credit use, and child
   self-integration remain **CLOSED**.
+
+## RV-1-E-207 — Task119 full-lineage review rejects stale-observation reuse
+
+- Fresh true-lineage Terra/xhigh review
+  `019f63b4-a6ce-71f1-bf67-24b806d83d3f` reviewed exact
+  `fae25d1d..e1afd3fc` and returned **NEEDS-CHANGES**. Preserve
+  `e1afd3fc3c68ae543a4d08dbfb8d690e9b0fa9ce` and every earlier Task119 commit
+  as unintegrated history. Although the plan-ID repair correctly rejects
+  `plan_001 -> plan_002 -> plan_001`, replay retains `finalObservation` after
+  accepting a new plan and checks only its event ID. A parser-valid three-plan
+  stream can omit the intermediate observation, reuse the earlier observation
+  ID, spoof the intervening plan's readback identity, recount budgets, and pass
+  replay; suspension/result readbacks have the same causal gap.
+- One fresh Terra/xhigh author is authorized for a bounded Task119 causal repair
+  from `e1afd3fc`, owning only the Task119 claim, `contracts.ts`, and
+  `agent-resident-loop-contracts.test.ts`. It must follow explicit
+  `superpowers:subagent-driven-development`, systematic debugging, TDD, and
+  verification-before-completion: first add/run a causal three-plan RED that
+  removes the intermediate observation while using the old ID and parser-valid
+  forged current-plan fields; then make the smallest root-cause correction that
+  rejects it without weakening valid revisions, readbacks, observation/
+  prerequisite causality, or initial-plus-three accounting. It must run its
+  focused GREEN and then the exact non-full `&&` gate, commit, and stop for a
+  fresh true-lineage review. Full verification, `neo`, provider/network/
+  credential/Nous action, reset-credit use, and child self-integration remain
+  **CLOSED**.
