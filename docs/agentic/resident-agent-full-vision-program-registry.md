@@ -7024,3 +7024,27 @@ explicit implementation authorization.
   self-integration authority. Tasks133/134, full verification, `neo`, and all
   provider/network/credential/Nous action remain **CLOSED** pending their
   governing review/integration gates.
+
+## RV-1-E-210 — Task119 stale-observation repair candidate admitted to review
+
+- Bounded Task119 causal-replay repair candidate
+  `4d6659844263756ad2a7b6ce93d282d11f9194e3` preserves prior candidates
+  forward and changes only its claim, `contracts.ts`, and focused loop test.
+  Its causal RED made a parser-valid three-plan stream omit the intermediate
+  observation, reuse the stale earlier event ID with current-plan-shaped
+  readback fields, recount sequence/budgets, and demonstrate erroneous replay
+  acceptance. The smallest correction clears the consumed active observation
+  when the new plan becomes active; valid accounting/readback/prerequisite
+  checks remain in scope.
+- The coordinator independently reran the authorized exact non-full `&&` gate
+  at `4d665984`: 135 focused tests passed, followed by typecheck, whitespace,
+  and factory readiness, all exit 0. The author's later post-cleanup exit-127
+  attempt had no dependency link and is explicitly non-evidence; no files
+  changed. The coordinator's temporary link was removed after its run. This
+  candidate is **unintegrated** pending a fresh read-only Terra/xhigh true
+  full-lineage review of exact
+  `fae25d1da52a1d6daa337a41d16cc712c77cf462..4d6659844263756ad2a7b6ce93d282d11f9194e3`.
+  Coordinator-only merge remains forbidden until that exact review is APPROVED
+  and a post-review gate exits 0. Full verify, `neo`, provider/network/
+  credential/Nous action, reset-credit use, and child self-integration remain
+  **CLOSED**.
