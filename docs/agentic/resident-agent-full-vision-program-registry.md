@@ -7242,3 +7242,27 @@ explicit implementation authorization.
   before coordinator-only integration. Tasks133/134 remain blocked; full
   verify, `neo`, provider/network/credential/Nous action, reset-credit use,
   and child self-integration remain **CLOSED**.
+
+## RV-1-E-220 — Task132A complete-integration-lineage correction
+
+- RV-1-E-219's `f66c1005..812e5899` review description is corrected forward:
+  that range omits the initial staged source/test introduced by `f66c1005` and
+  is inadmissible as an integration review. The candidate's true merge base
+  against the program branch is
+  `6d4839865166df9e17ca219b856abf1b81b18fc8`; the only admissible complete
+  review range is exact
+  `6d4839865166df9e17ca219b856abf1b81b18fc8..812e5899f339eda84bf187033e08c44ff7ba945f`.
+  It must inspect all three commits—`f66c1005`, `c7f36114`, and `812e5899`—and
+  the approved observability amendment history `4d745e0c..655e428f`. The prior
+  f66-based review dispatch was interrupted before a verdict and has no
+  acceptance force.
+- The coordinator reran the exact candidate non-full `&&` gate after this
+  correction: 3 focused files / 55 tests, typecheck, whitespace, and factory
+  readiness all exited 0; the temporary dependency link was removed. Candidate
+  remains review-only until a fresh independent Terra/xhigh reviewer explicitly
+  approves the complete merge-base range. No merge or release is authorized.
+- New authenticated usage is `usedPercent=24`, **76% weekly remaining**, with
+  five reset credits untouched. DRAIN remains <=10% remaining, HARD PAUSE <=7%,
+  and reset credits must not be redeemed. All full-verifier, `neo`, provider/
+  network/credential/Nous, child self-integration, and downstream-task closures
+  remain in force.
