@@ -10990,3 +10990,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Candidate remains review-only and unintegrated. Full verification,
   providers, network, credentials, Nous, reset credits, push, and every `neo`
   action remain closed.
+
+## RV-1-E-402 — Task133 and Task135D replacement reviews dispatched
+
+- Fresh Terra/xhigh Task133 prompt-authority/security reviewer
+  `019f6711-fa63-7321-831c-1eba1d42375b` audits strict prompt authority,
+  byte preservation, zero-effect transfer blocking, authoritative receipt
+  construction, identity-bound hashes, and malicious rehashed transplants.
+- Fresh Terra/xhigh Task133 durable-replay/factory reviewer
+  `019f6711-fa67-7131-b408-e0f74d4385e6` audits canonical event parsing,
+  strict receipt schemas, direct projection, actual ledger replay/rebuild,
+  transplant counterfactuals, claims, and exact atomic topology.
+- Fresh Terra/xhigh Task135D private-lifecycle reviewer
+  `019f6712-0114-78f0-b661-fb129d9b66c2` audits factory-issued identity,
+  snapshots, mutation/currentness, close revocation, non-leakage, unchanged
+  production runtime behavior, and computed-loader policy false positives.
+- Fresh Terra/xhigh Task135D exhaustive-AST reviewer
+  `019f6712-034f-7d83-a415-9d4e9c8f4eb0` audits every production root,
+  import/loader family, recursive transparent wrapper position, computed
+  standard-loader closure, exact identity negatives, allowlist, and
+  performance.
+- All reviewers are read-only and pinned at their exact candidates. Each
+  candidate requires two unqualified approvals before coordinator-only
+  integration into the program branch.
