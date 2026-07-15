@@ -7412,3 +7412,23 @@ explicit implementation authorization.
   prior 24%/76% observation forward-only. The five known reset credits remain
   untouched and must not be redeemed. DRAIN remains at <=10% remaining and
   HARD PAUSE at <=7%; all current work remains above those thresholds.
+
+## RV-1-E-228 — Task134A staged-test coverage audit
+
+- Before production edits, Task134A's large staged-test reduction was audited:
+  frozen factory-closure/readiness, public tuple, injected-H/readback, and
+  durable-terminal semantics are explicitly retired/deferred to Task132A,
+  Task135A, and Task140R0/H; replacement runner/preparation tests retain
+  hostile caller-tuple rejection, public dispatch normalization before await,
+  preparation-only output, and no H/store/terminal claim. The staged suite had
+  no provider fixture.
+- The first dependency-provisioned focused RED exited 1 only for the three
+  intentionally missing new canonical-codec/preparation modules while the
+  existing specialist-runner-kernel suite passed 38 tests. Initial exit 127
+  without local Vitest is environment evidence only; the temporary compatible
+  dependency link is not completion evidence and must be removed.
+- Before any GREEN source edit, the author must add causal fake-provider
+  zero-call and durable-looking-delegate-as-preparation-only REDs, rerun the
+  focused RED, and record the exact failure. The removal mapping and those
+  results belong in the Task134A claim. No default factory, H, store,
+  provider/network, or terminal scope is authorized.
