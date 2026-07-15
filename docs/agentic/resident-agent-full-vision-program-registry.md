@@ -12661,3 +12661,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   implementation. Full verification, live/provider/network/credential/Nous
   activity, reset credits, push, child self-integration, program merge without
   coordinator review, and every `neo` action remain closed.
+
+## RV-1-E-464 — Task133.5 corrected candidate rejected by both reviews
+
+- Mounted-prompt authority/durable-restart reviewer
+  `019f6812-89b7-7291-a76a-37c2d65497a8` and adversarial TypeScript/hostile-
+  input/integration reviewer `019f6812-8f92-7263-bbea-6719bb43f20b`
+  independently returned **NEEDS-CHANGES** for exact candidate
+  `8250f9720ecb7f79e3f13fcb24e167da2533562c` after all 97 focused tests,
+  standalone typecheck, static, diff, and factory gates passed.
+- Mounted bytes are validated before `appendContextReadyCheckpoint()` performs
+  its awaited ledger read, leaving a final swap window before the durable
+  context-ready append.
+- The claimed restart vertical still builds a bespoke orchestrator and directly
+  rereads a known artifact hash. It does not exercise the production local-
+  runtime factory's `recoverMountedContextReadyWitness` path in a fresh
+  process/runtime from durable checkpoint, context-pack, and artifact state.
+- Candidate `8250f9720ecb7f79e3f13fcb24e167da2533562c` must not be integrated.
+
+## RV-1-E-465 — Task133.5 Recovery-4 owner dispatched
+
+- Fresh Terra/xhigh recovery owner
+  `019f6819-8b96-76d0-8ac2-175df1c6c5b3`, worktree
+  `/home/drake/.codex/worktrees/d876/Cestus`, starts from the rejected candidate
+  and must create `codex/task-133-5-preapproval-prompt-store-recovery-4`.
+- The coordinator explicitly approves task-scoped subagent-driven development
+  with exactly one production writer. Recovery is bounded to the existing
+  Task133.5 scope and must revalidate after the final ledger read immediately
+  before append, plus prove genuine production-factory recovery in a fresh
+  process without known-hash or WeakMap shortcuts.
+- Any replacement requires fresh coordinator admission and two new independent
+  exact-SHA reviews. Full verification, live/provider/network/credential/Nous
+  activity, reset credits, push, child self-integration, program merge without
+  coordinator review, and every `neo` action remain closed.
