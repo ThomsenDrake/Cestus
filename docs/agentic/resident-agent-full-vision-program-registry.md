@@ -11123,3 +11123,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Candidate remains review-only and unintegrated. Full verification,
   providers, network, credentials, Nous, reset credits, push, and every
   `neo` action remain closed.
+
+## RV-1-E-406 — Task135D final replacement reviews dispatched
+
+- The post-reboot project worktree creator rejected both the requested
+  `gpt-5.6-terra` target and the host-default target before creating any task.
+  To preserve the already established Terra/xhigh reviewer configuration,
+  the coordinator created new same-directory forks of the two completed,
+  independent Task135D reviewer tasks and rebound both to exact immutable
+  candidate `cba50ab1de0477ff9e2e85f321567f544884a889`.
+- Final private-lifecycle reviewer
+  `019f672f-3d06-7b72-b690-0fb05964b5ec` audits one-shot consumption before
+  currentness or I/O, zero-I/O reuse rejection, factory identity, immutable
+  snapshots, mutation/currentness/close/non-leakage, private exports, and
+  lexical-loader false positives.
+- Final exhaustive-AST reviewer
+  `019f672f-48db-7440-ae2b-9d4272aeb72a` audits every production root and
+  extension, static loader family, wrapper and target form, fail-closed
+  computed targets, lexical scope and hoisting, exact-target negatives,
+  allowlist, performance, and the anonymous-class narrowing.
+- Both new review tasks are pinned and read-only. Historical verdicts do not
+  carry forward. Two unqualified approvals of the exact SHA remain required
+  before coordinator-only integration; all full/live/provider/credential/
+  Nous/reset-credit/push/`neo` actions remain closed.
