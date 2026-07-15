@@ -450,3 +450,49 @@ self-integration, and program-registry edits remain closed.
 - Focused GREEN: the prescribed three-file command exited `0` with 21 tests
   passed. The remaining permitted candidate gates are pending at this claim
   checkpoint.
+
+### RV-1-E-409 consolidated pre-admission scope audit
+
+- Coordinator audit added three adjacent scanner cases to this same bounded
+  repair: class-expression decorator/modifier traversal, `switch` case-block
+  lexical declarations, and real-versus-erased TypeScript namespace bindings.
+  No production capture bytes or scanner roots/extensions changed.
+- Causal RED: syntax-valid decorated class expressions with unshadowed
+  `require(target)` and `module.require(target)` were omitted, while direct
+  case-block `const require`/`const module` and non-ambient `namespace
+  require`/`namespace module` fixtures were falsely counted. The exact focused
+  suite exited `1` only in the import-policy test (1 failed, 20 passed): the
+  received set had 75 importers instead of the expected 73, with the two
+  decorator fixtures missing and the four shadowed cases extra. Ambient
+  namespace fixtures remained protected importer positives.
+- The public-AST walker now visits every class-expression modifier with the
+  class self-binding, applies that same binding to heritage and members,
+  collects lexical statements across each `CaseBlock`, and treats only
+  non-ambient identifier-named `ModuleDeclaration`s as runtime shadows.
+  Genuine unshadowed computed loaders remain fail-closed; type-only imports,
+  erased `declare namespace`, existing var hoisting, and all root-bound target
+  rules are unchanged. No TypeChecker or program-wide analysis was introduced.
+- Focused GREEN: the prescribed three-file command exited `0` with 21 tests
+  passed. The remaining permitted candidate gates are pending at this claim
+  checkpoint.
+
+### RV-1-E-409 TypeChecker-backed decorator binding correction
+
+- Before final commit, the coordinator verified with the public TypeChecker
+  that a named class expression's `require`/`module` self-binding resolves the
+  same identifier in its decorators, heritage, and members. The prior audit
+  wording that sent modifiers through the inherited scope was therefore
+  corrected before handoff.
+- Causal RED: syntax-valid decorated named class-expression fixtures for both
+  `class require` and `class module` were added while retaining the positive
+  decorated `class Loader` fixtures. The exact focused suite exited `1` only
+  in the import-policy test (1 failed, 20 passed), with exactly those two
+  named-decorator fixtures falsely counted as importers.
+- The class self-binding now flows uniformly to modifiers/decorators, heritage
+  clauses, and members; type parameters retain the inherited non-runtime
+  traversal. Positive outer-loader decorators, case-block lexical shadows,
+  runtime/ambient namespace distinctions, and all existing root-bound loader
+  policy remain covered.
+- Focused GREEN: the prescribed three-file command exited `0` with 21 tests
+  passed. The remaining permitted candidate gates are pending at this claim
+  checkpoint.
