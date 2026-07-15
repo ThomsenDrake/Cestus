@@ -7727,6 +7727,39 @@ explicit implementation authorization.
   **APPROVED** verdict. Coordinator-only integration remains conditional on
   that verdict and another actual-process gate. Task135A remains frozen.
 
+## RV-1-E-242 — Compiler repair integration, Task133 review, and Task135A resume
+
+- Fresh independent reviewer `019f6442-b684-7720-a058-0c01459d5e4e`
+  returned unqualified **APPROVED** on exact
+  `34fd8d08f28cd4d90b644f4bae255caaca8cbbf3..52bb8e5e`. A fresh post-review
+  candidate gate then passed 7 focused files / 101 tests and the same actual
+  process session exited `0` after typecheck, whitespace, and factory
+  readiness. Coordinator-only no-ff program integration is
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7`. The identical post-merge gate
+  passed on that actual program checkout with one observed compiler process
+  and exit `0`; prior contaminated compiler evidence remains superseded.
+- Task133 third forward-repair candidate
+  `d91f28a3f6434490246daaa97e399a905c902761` is clean and docs-only in the
+  preserved plan worktree. Fresh read-only Terra/xhigh reviewer
+  `/root/task133_v2_compatibility_plan_review`, session
+  `019f6449-b800-7af3-b5a1-7abcddc20dd1`, is bound to the complete amendment
+  lineage
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d91f28a3f6434490246daaa97e399a905c902761`.
+  No Task133 implementation or plan integration is authorized without an
+  unqualified **APPROVED** verdict.
+- The coordinator stashed Task135A's exact dirty three-file state, merged
+  compiler-repaired program head `271406fc` forward into its branch without
+  rebase/history rewrite, restored the stash without conflict, and confirmed
+  no temporary dependency link remains. Fresh sole writer
+  `/root/task135a_mounted_preparation_stores_resume`, session
+  `019f644a-a969-7571-9dd4-f72ff3cbbd9c`, has explicit approval for
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion. It owns only the claim, mounted store
+  source, and mounted store test, must preserve the full authority-mismatch
+  zero-activity matrix, capture one actual compiler exit in the exact non-full
+  gate, commit, and stop for fresh review. Self-integration and every closed
+  gate remain prohibited.
+
 ## RV-1-E-242 — Compiler-repair review approval and post-review gate authorization
 
 - The fresh independent review session `019f6442-b684-7720-a058-0c01459d5e4e`
