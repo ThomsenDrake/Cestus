@@ -8259,3 +8259,24 @@ explicit implementation authorization.
   66% weekly remaining. DRAIN and HARD PAUSE remain unchanged; reset credits
   remain untouched. Full verification, provider/network/credential/Nous,
   `neo`, self-review, self-integration, and merge remain closed.
+
+## RV-1-E-263 — Task140H public invocation-carrier rejection
+
+- Authority/consumer reviewer
+  `019f64cb-a277-7c60-b6e4-8b20720c754a` returned **NEEDS-CHANGES** on exact
+  range `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..4da19bc2`. It confirmed the
+  new proof test, non-live H gate, and kernel-mint ownership corrections, but
+  found one remaining P1: package-exported `InvokeAgentModelInput` still carries
+  `promptArtifact` bytes and `productionInvocationProof` into public
+  `runtime.invokeModel`, leaving a caller-facing carrier even if minting moves.
+- Persistence replacement reviewer
+  `019f64cb-9e9d-7a11-916d-a558310a0b17` ended with model-capacity error and
+  supplied no verdict. It is closed and contributes no approval evidence.
+- The sole plan writer is authorized only for a forward correction that removes
+  prompt envelope/proof fields from the package-exported invocation command,
+  binds exact command-object identity to v2/proof in a non-index-exported
+  private admission module, makes structural/copied public commands fail before
+  ledger/provider effects, and migrates the direct Nous smoke caller to the
+  resident H path. The repair must enumerate all source/test ownership and an
+  exact non-live gate, run docs validation, commit, and stop for two fresh
+  full-lineage reviews. Source work and all other closed actions remain closed.
