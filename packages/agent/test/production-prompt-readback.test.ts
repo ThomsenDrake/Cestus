@@ -24,7 +24,8 @@ describe("mounted production prompt readback authority", () => {
       mountInstanceId: "process_readback_test"
     } as const;
 
-    expect(() => consumeMountedProductionPromptReadbackWitness(structural)).toThrow(/mounted.*prompt.*readback|required/i);
+    expect(() => Reflect.apply(consumeMountedProductionPromptReadbackWitness, undefined, [structural]))
+      .toThrow(/mounted.*prompt.*readback|required/i);
   });
 
   it("rejects copied swapped and reused mounted readback witness", async () => {

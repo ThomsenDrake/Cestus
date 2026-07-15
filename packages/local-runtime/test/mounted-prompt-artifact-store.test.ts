@@ -35,7 +35,7 @@ describe("mounted prompt artifact store", () => {
       const store = await createMountedPromptArtifactStore({ handle });
       const prompt = promptEnvelope();
       await store.put(prompt);
-      await expect(store.read({ inputArtifactHash: prompt.manifest.inputArtifactHash })).resolves.toMatchObject({
+      await expect(store.read({ inputArtifactHash: prompt.manifest.inputArtifactHash as `sha256:${string}` })).resolves.toMatchObject({
         envelope: { manifest: { inputArtifactHash: prompt.manifest.inputArtifactHash } }
       });
     } finally {

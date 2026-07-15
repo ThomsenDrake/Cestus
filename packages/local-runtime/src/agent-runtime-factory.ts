@@ -124,7 +124,10 @@ function createLocalTaskOrchestratorCapabilities(
     workflowRegistry: { require: specialistWorkflowDescriptorFor },
     contextRegistry,
     promptRendererRegistry: {
-      async render(input) {
+      async render(input: Parameters<AgentTaskOrchestratorRuntimeCapabilities["promptRendererRegistry"]["render"]>[0]) {
+        if (input.runType === "ontology-bootstrap") {
+          throw new Error("Local task orchestrator production prompt rendering does not support ontology-bootstrap.");
+        }
         const artifact = renderProductionSpecialistPrompt({
           taskId: input.taskId,
           runId: input.attemptId,
@@ -154,7 +157,7 @@ function createLocalTaskOrchestratorCapabilities(
     providerRegistry: configuredProviders.readinessRegistry,
     approvalReader: createTaskOrchestratorProviderApprovalAdapter(),
     runnerRegistry: {
-      async dispatch(input) {
+      async dispatch(input: Parameters<AgentTaskOrchestratorRuntimeCapabilities["runnerRegistry"]["dispatch"]>[0]) {
         // Task133.5 stops at the pre-approval mounted readback boundary. The
         // later owned admission runner consumes the lexical witness; it must
         // never ask a kernel to render a replacement prompt.
