@@ -9782,3 +9782,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   full verification, invoke providers, use reset credits, or touch `neo`.
 - Both Task135C approvals and the Task135E approval are required before any
   coordinator merge preview. All integrations remain closed.
+
+## RV-1-E-334 — Task135E independently approved
+
+- Fresh test-isolation reviewer `019f6679-589e-7f13-803f-581fac30c06f`
+  returned explicit unqualified **APPROVED** for exact candidate
+  `4e3510ff00380a5fa5c5d3cd4502c2c946fd3f9d`.
+- The reviewer independently reproduced the exact two-path range, no-merge and
+  clean-state checks, all 9 resident-identity tests, typecheck, range diff
+  checking, and factory readiness. The injected fixture runtime preserves the
+  exact mounted ledger, actor, clock, lifecycle, and readiness seam without
+  changing production default-factory or context-attestation behavior.
+- Task135E is eligible only for a fresh coordinator merge preview and
+  coordinator-only integration into the program branch. It is not authorized
+  for `neo`; full verification, provider activity, and reset credits remain
+  closed.
