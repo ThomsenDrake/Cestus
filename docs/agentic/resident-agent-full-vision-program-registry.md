@@ -12292,3 +12292,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-449 — Task133.5 mounted prompt recovery admitted to exact-SHA review
+
+- Repaired Task133.5 candidate
+  `9710909961d4579006c73d7781c094cec4b00e45` on
+  `codex/task-133-5-preapproval-prompt-store-recovery-2` is clean and changes
+  only five paths inside the complete Task133.5 ceiling relative to rejected
+  compiler candidate `04dcad1b97c07a3582bfc0732b2407e756d4d782`.
+- Fresh coordinator admission passed the exact eight-file suite at 86 tests,
+  standalone typecheck, all three negative prompt-boundary searches, exact-
+  range diff checking, factory readiness, and clean-checkout verification.
+- Fresh mounted-prompt authority/restart reviewer
+  `019f67df-1bea-7f13-897e-73775dfee74f` and adversarial TypeScript/hostile-
+  input/integration reviewer `019f67df-2bc1-72e3-9b0c-22971e0959ed` are pinned
+  and read-only on the exact candidate. Both must return unqualified
+  **APPROVED** verdicts before coordinator integration.
+- Reviews cover the full source-base range from
+  `140bfd3a0552bcba9ce599bdffe01036a8d2d060`, including mounted canonical V1
+  bytes, private fresh-runtime readback authority, currentness after awaits,
+  exact durable context-pack recovery, delayed-resume time, hostile inputs,
+  one-use witnesses, no renderer/hash/internal-disk fallback, and causal tests.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
+
+## RV-1-E-450 — Task137A authority operation admitted to exact-SHA review
+
+- Repaired Task137A candidate
+  `be38fada212e3f9905f028dca071d8122da342b2` on
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-2` is clean and
+  changes only four paths inside its six-path ceiling relative to rejected
+  candidate `eea13305c957dc73d88fd616fa4fc1bb4d5f78b1`.
+- Fresh coordinator admission passed the literal terminal **Complete
+  Task137A** clean-shell gate at 6 files / 74 tests, both its internal and a
+  separate standalone typecheck, semantic/static policy, lineage, hidden-state,
+  physical-checkout, diff, and factory-readiness checks. A first wrapper exit
+  was non-reproducible; an instrumented unchanged run and the final literal run
+  both exited `0` through the final physical resnapshot.
+- Fresh mounted-authority architecture/lifecycle reviewer
+  `019f67e1-3703-7c30-977d-d37493923e18` and adversarial semantic-policy/
+  compiler/test reviewer `019f67e1-2333-7841-bfa7-8b0d512e5e5e` are pinned and
+  read-only on the exact candidate. Both must return unqualified **APPROVED**
+  verdicts before coordinator integration.
+- Reviews cover the full dispatch-base range from
+  `e0ac8eba4c1e9df6a3f0e0d860b67ad272a027ff`, including sole-inspector
+  authority, exact factory issuer, every TypeScript import/re-export form,
+  descriptor normalization, one-shot burn, capture liveness after close or
+  rotation, current mounted/high-water truth across awaits, and no shadow or
+  fallback authority.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
