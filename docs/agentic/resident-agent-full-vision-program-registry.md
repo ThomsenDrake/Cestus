@@ -9103,3 +9103,31 @@ explicit implementation authorization.
   carry forward any earlier verdict. Source dispatch and plan integration
   remain closed until both return explicit unqualified **APPROVED** verdicts
   and those verdicts are durably recorded.
+
+## RV-1-E-306 — Physical-checkout candidate rejected; bounded CF-1R23
+
+- Authority/import/bypass reviewer
+  `019f65de-b9c4-7243-a300-e5ce79e2e074` returned **APPROVED**, but lifecycle/
+  executability reviewer `019f65de-badd-74f3-9d20-a6406c091aa9` returned
+  **NEEDS-CHANGES** on exact 27-commit range `0481c1e0^..784efede`. One
+  approval cannot authorize plan integration and does not carry forward.
+- The lifecycle review reproduced two post-check mutation gaps: Task137A
+  accepts a seventh committed, staged, unstaged, or untracked path created by
+  its focused command because the exact-six union is not recomputed afterward;
+  and Task117A accepts a whole-freeze mutation performed by its embedded audit
+  because the complete freeze and extracted-audit hashes are not revalidated
+  afterward.
+- The sole plan writer is authorized only for CF-1R23: factor Task117A's full
+  physical-root, hidden-state, immutable-claim, literal-attestation, no-merge,
+  exact-path, whole-freeze, extracted-audit, and diff checks into one reusable
+  assertion run before and after the audit plus readiness gate; and factor
+  Task137A's equivalent physical-root, hidden-state, immutable-claim, no-merge,
+  exact-six-path, and diff checks into one reusable assertion run before and
+  after all focused, typecheck, static, and readiness commands. No authority-
+  relevant command may run after the final assertion.
+- Preserve every other CF-1R18 through CF-1R22 ownership, lifecycle,
+  prerequisite, attestation, Git-environment, file-ceiling, no-live, and no-
+  source restriction. All source/live/full/provider/credential/Nous/reset-
+  credit/`neo`/plan-integration actions remain closed pending a committed
+  docs-only repair and two fresh independent unqualified approvals. No prior
+  verdict or reviewer identity carries forward.
