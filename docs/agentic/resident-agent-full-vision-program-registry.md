@@ -13551,3 +13551,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, Task139 resumption, and every `neo` action
   remain closed.
+
+## RV-1-E-506 — Task136 Recovery-13 assigned to a fresh owner
+
+- Fresh documentation owner `019f6ae0-dfc0-7130-9cea-00cc3444edfb` is active
+  and pinned in isolated worktree `/home/drake/.codex/worktrees/5021/Cestus`,
+  starting from exact rejected candidate
+  `1693e9fa4f4664567e3fb82a228bc914c2aca785` and creating branch
+  `codex/task-136-interface-reconciliation-recovery-10`.
+- The owner must begin with the executable indirect re-export bridge GREEN,
+  add direct and alias or multi-hop forwarding REDs, and make protected-
+  operation provenance transitive across every fixture module while preserving
+  exact governed input types, private mounted state, all prior gates, graph
+  direction, currentness, revocation, and secret safety.
+- Documentation-only work does not authorize subagent-driven development.
+  Disposable work must use a uniquely guarded home-cache path and may remove
+  only that exact path.
+- The owner must return one immutable three-document candidate for coordinator
+  admission and two fresh exact-SHA reviews. Full verification, source
+  dispatch, live/provider/network/credential/Nous activity, reset credits,
+  push, Task139 resumption, and every `neo` action remain closed.
