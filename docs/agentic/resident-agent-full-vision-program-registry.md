@@ -13114,3 +13114,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   one clean candidate for fresh exact-SHA reviews. Full verification,
   live/provider/network/credential/Nous activity, reset credits, push, and every
   `neo` action remain closed.
+
+## RV-1-E-488 — Task137A Recovery-8 candidate admitted to review
+
+- Candidate `80b14e9204375244fe273f5ff8265ed46c4f4ff6` is one clean descendant
+  of rejected `3a2fe83141500c31c9e13b7929d5e308fb16a5ec` and changes only the
+  Task137A claim and test-owned import-policy analyzer. It replaces the two
+  optional-chain write predicates with explicit `binding !== undefined`
+  narrowing and changes no semantic fixture or production authority policy.
+- Fresh coordinator admission from committed bytes passed the literal Task137A
+  clean-shell gate at six files and 83 tests, its embedded typecheck, source
+  boundaries, factory readiness, historical six-path lineage and physical
+  checkout assertion. A separate standalone typecheck, exact-range diff,
+  one-commit/two-path scope, factory readiness, exact HEAD, clean checkout, and
+  absent dependency-link checks also passed.
+- Two entirely fresh exact-SHA reviews are required: one for mounted authority,
+  lifecycle, committed-byte gates, and scope; one for adversarial TypeScript
+  semantic import policy, fixpoint behavior, and false positives. Both must
+  return unqualified **APPROVED** before coordinator integration.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, and every `neo` action remain closed.
