@@ -12965,3 +12965,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   entirely new exact-SHA reviews. Full verification, live/provider/network/
   credential/Nous activity, reset credits, push, and every `neo` action remain
   closed.
+
+## RV-1-E-482 — Task136 Recovery-8 candidate admitted to review
+
+- The authoritative candidate is Git commit
+  `a96253ee85ed8c969b539653e159ed5b5cdd9203`, one clean descendant of
+  rejected `980844b9a0745fd37f8779efd72f2d1b22c0c8e1`. The owner thread's final
+  prose reported a different full SHA, so coordinator admission deliberately
+  uses repository state rather than the chat summary.
+- The range changes exactly the bounded-loop plan, provider-credentials plan,
+  and Task136 reconciliation claim. The literal no-input runner exits 1 only
+  at the intentionally absent active-v4 registry closure; the unchanged-runner
+  fixture proves 28 canonical GREEN records and rejects all 18 named RED
+  mutations; the command validator resolves all 28 exact Vitest commands.
+- The source-only opaque-ABI audit proves a nameable runtime-factory-to-PM
+  assembly-token bridge and a nameable tool-gateway-to-scheduler completion
+  claim type while retaining private issuers, inspectors, brands, identity
+  maps, and no barrel exports. `git diff --check`, factory readiness, ancestry,
+  exact three-path scope, exact HEAD, and clean-checkout checks passed.
+- Two entirely fresh exact-SHA reviews are required: one for release authority,
+  graph closure, and mounted/provider safety; one for source-level TypeScript
+  linkability, import policy, and dispatch executability. Both must return
+  unqualified **APPROVED** before integration or Task139 resume. Full
+  verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
