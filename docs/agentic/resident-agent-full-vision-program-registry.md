@@ -16718,3 +16718,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   inspect only the final corrected exact revision. Full verification,
   integration, releases, Task139, providers, network, credentials, external
   services, push, reset, and every `neo` action remain closed.
+
+## RV-1-E-639 — Corrected Task129 candidate admitted and re-review dispatched
+
+- Recorded at: 2026-07-16T21:44:25Z
+- Task129 forward repair committed exact candidate
+  `6387c735cd2168f1546cf05a9ffd27136a345e54` over prior candidate
+  `829e4043505c8d141c716834957644ac16808a75`. A causal typecheck RED exited
+  `2` on the unused mismatched-tuple `@ts-expect-error`; GREEN typecheck passed
+  after the blocked result became the design's exact correlated mapped union.
+- The fixed 16-test corpus now directly proves zero invocation for supplied
+  persistence callbacks, fail-closed revoked record input, rejection of a
+  self-consistent xAI posture, and rejection of a mismatched interface-only
+  flow ID without adding a seventeenth test. The latest claim status is exactly
+  `ready-for-review`.
+- Independent coordinator admission passed **1 file / 16 tests**, typecheck,
+  diff checking, factory readiness, exact cumulative three-path scope, clean
+  state, and non-symlinked dependencies. Full verification was not run.
+- Fresh read-only architecture/invariant reviewer
+  `019f6ce3-2e50-7561-a67c-3ad557940d15` and executability/adversarial
+  reviewer `019f6ce3-3482-7d62-bed6-5f99b2e2cf8d` use Terra/xhigh and are
+  bound to exact candidate `6387c735cd2168f1546cf05a9ffd27136a345e54`.
+  Review work does not authorize SDD, edits, full verification, integration,
+  releases, Task139, providers, network, credentials, external services,
+  push, reset, or any `neo` action.
