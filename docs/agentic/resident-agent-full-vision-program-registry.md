@@ -17058,3 +17058,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development, edits, full
   verification, integration, release records, Task139, providers, network,
   credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-649 — Task135B one-admission review findings repaired
+
+- Recorded at: 2026-07-16T23:24:00Z
+- Architecture reviewer `019f6d14-c08a-7db3-9846-f68e76e5f773`
+  and executability reviewer `019f6d14-c44d-7de0-840c-68129a9fde16`
+  both returned **NEEDS-CHANGES** for exact revision
+  `a31a3c28e01c4a3d7c71df3db496baaf4259e3c3`; no approval carries
+  forward. Both completed review tasks are closed.
+- The architecture finding required orchestration handoff readback to bind the
+  exact handoff ID and verification timestamp in addition to manifest hash and
+  recorded event. Executability findings required an immutable companion-doc
+  revision for the preserved candidate branch, zero store I/O in the hostile
+  normalization RED, and literal integration range/blob-equality commands.
+- Exact repair revision
+  `6b203d03d2342cee2c8d8712710a3ad61600a98a` addresses all four findings.
+  It also makes canonical encoding explicitly traverse only frozen normalized
+  own data and never apply `JSON.stringify` to an object or array.
+- The corrected plan requires the implementation prompt to supply the exact
+  dual-approved correction revision through `TASK135B_CORRECTION_SHA`; the
+  worker validates and reads both governing documents from that Git object
+  while preserving candidate HEAD and the exact three-path implementation
+  ceiling.
+- One entirely fresh read-only architecture reviewer and one entirely fresh
+  read-only executability reviewer must return unqualified **APPROVED** for
+  exact repair revision `6b203d03d2342cee2c8d8712710a3ad61600a98a`
+  before Task135B implementation resumes.
+- Review work does not authorize subagent-driven development, edits, full
+  verification, integration, release records, Task139, providers, network,
+  credentials, external services, push, reset, or any `neo` action.
