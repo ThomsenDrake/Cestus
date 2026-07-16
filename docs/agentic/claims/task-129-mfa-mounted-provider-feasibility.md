@@ -104,3 +104,36 @@ mode markers are `29/1/20/29/1/15`.
 - All eleven owned paths are the only changed paths, `node_modules` is not a
   symlink, and no public package index or package export names the private
   inspection seams. Full `npm run verify` was intentionally not run.
+
+## Review Repair Evidence
+
+- Status: ready-for-review.
+- Architecture/invariant reviewer `019f6c61-3f65-7980-a415-887f359a5282` and
+  executability/adversarial reviewer `019f6c61-4341-7263-8bdb-043bf52c0394`
+  returned `NEEDS-CHANGES` for candidate
+  `62ea0bb703b296f1735ae5b754a5e4052ffcbf16`; coordinator dispatch
+  `RV-1-E-613` verified all four findings against the frozen contract.
+- Finding 1, noncanonical selected-field source lookalikes, is covered by
+  `blocks mismatched or noncanonical checkpoint source evidence without
+  appending`; it requires `persistence-unconfirmed` and zero appended
+  feasibility records.
+- Finding 2, feasibility causation provenance, is covered by `requires
+  nonempty feasibility provenance with causation inside the source set`; an
+  otherwise valid event whose causation is absent from `sourceEventIds` must
+  fail the canonical ontology parser.
+- Finding 3, concurrent duplicate disagreement, is covered by `fails closed
+  when concurrent reread includes exact and conflicting same-key records`; it
+  requires `record-conflict` with retry `none` and no reappend.
+- Finding 4, secret-safe posture and correlation boundaries, is covered by
+  `rejects unknown, credential, and raw cookie-header posture values`,
+  `rejects secret-shaped provider feasibility material`, and `normalizes
+  external invocation input and rejects raw cookie-header correlation
+  material`.
+- Causal RED used the exact five-file command from this claim. It reported
+  `3 failed | 2 passed` files and `6 failed | 123 passed (129)` tests, with
+  exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- Final identical GREEN reported `5 passed (5)` files and `129 passed (129)`
+  tests, with exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`
+  marker.
+- This forward repair remains within the original eleven-path cumulative
+  scope; it changes seven owned paths and does not run `npm run verify`.

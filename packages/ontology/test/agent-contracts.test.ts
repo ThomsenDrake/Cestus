@@ -1155,11 +1155,15 @@ describe("resident agent event contracts", () => {
     }).success).toBe(false);
   });
 
-  it("requires nonempty feasibility provenance", () => {
+  it("requires nonempty feasibility provenance with causation inside the source set", () => {
     const event = providerFeasibilityEvent();
     expect(validateKnowledgeEvent({
       ...event,
       payload: { ...event.payload, sourceEventIds: [] }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      context: { ...event.context, causationId: "evt_other" }
     }).success).toBe(false);
   });
 
@@ -1168,6 +1172,10 @@ describe("resident agent event contracts", () => {
     expect(validateKnowledgeEvent({
       ...event,
       payload: { ...event.payload, modelId: unsafeCredentialHeaderMarker() }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      context: { ...event.context, correlationId: "Cookie: session=abc" }
     }).success).toBe(false);
   });
 });
