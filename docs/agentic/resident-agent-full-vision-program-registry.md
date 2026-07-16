@@ -13654,3 +13654,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   independent findings, but cannot reverse this rejection. Full verification,
   integration, external-service activity, reset credits, push, and every
   `neo` action remain closed.
+
+## RV-1-E-511 — Task137A Recovery-13 assigned with both review findings
+
+- Fresh owner `019f6af9-91df-7320-9154-13ab7eefa2f7` is active and pinned in
+  isolated worktree `/home/drake/.codex/worktrees/6af7/Cestus`, starting from
+  exact rejected candidate
+  `cbf3035ea44d843f2f8a21f51a6a24f50c1b6cb4` and creating branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-13`.
+- In addition to the indirect evaluator-alias finding in RV-1-E-510,
+  lifecycle reviewer `019f6af3-aabb-7670-b82a-7ec38990c64c` found that a
+  comma-expression call around an otherwise recognized loader is not
+  normalized before classification. Its guarded fixture produced no record;
+  the 89-test and static gates otherwise passed.
+- The owner must repair both call-classification forms with focused failing
+  fixtures and harmless controls while preserving all existing behavior,
+  termination, and the historical six-path ceiling. Task-scoped subagent-
+  driven development is explicitly approved if relevant with exactly one
+  production writer.
+- Both completed review threads are archived and no approval carries forward.
+  The owner must return one immutable candidate for fresh admission and review.
+  Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
