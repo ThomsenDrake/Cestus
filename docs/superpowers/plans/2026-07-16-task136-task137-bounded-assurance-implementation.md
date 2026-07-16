@@ -387,7 +387,7 @@ categories. Append the contract versions and `RV-1-E-545` pointer to the claim.
 
 - [ ] **Step 6: Run the identical GREEN command**
 
-Run the exact Step 2 command. Expected: six files pass and the policy test
+Run the exact Step 3 command. Expected: six files pass and the policy test
 prints the exact corpus marker.
 
 - [ ] **Step 7: Verify and commit**
@@ -506,7 +506,10 @@ candidate="$(git rev-parse HEAD)"
 test -z "$(git status --porcelain)"
 test ! -L node_modules
 node --test scripts/resident-agent/assurance/task137-terminal-gate.test.mjs
-output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"
+if ! output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"; then
+  echo "Task137 terminal gate exited nonzero" >&2
+  exit 1
+fi
 markers="$(printf '%s\n' "$output" | grep '^TASK137_GATE_')"
 expected="$(printf '%s\n' \
   'TASK137_GATE_STAGE_OK tests' \
@@ -586,7 +589,10 @@ test -z "$(git status --porcelain)"
 test ! -L node_modules
 npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/agent/test/wake-supervisor.test.ts
 npm run typecheck
-output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"
+if ! output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"; then
+  echo "Task137 terminal gate exited nonzero" >&2
+  exit 1
+fi
 printf '%s\n' "$output"
 markers="$(printf '%s\n' "$output" | grep '^TASK137_GATE_')"
 expected="$(printf '%s\n' \
