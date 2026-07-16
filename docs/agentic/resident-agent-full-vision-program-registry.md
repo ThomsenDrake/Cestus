@@ -17106,3 +17106,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development, edits, full
   verification, integration, release records, Task139, providers, network,
   credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-651 — Task135B one-admission correction dual-approved
+
+- Recorded at: 2026-07-16T23:34:00Z
+- Architecture/invariant reviewer
+  `019f6d1b-925e-7ba3-87d4-696b3dccbcbe` and
+  executability/finite-scope reviewer
+  `019f6d1b-96bd-7c12-a14b-40af6784ec8d` both returned unqualified
+  **APPROVED** for exact correction revision
+  `6b203d03d2342cee2c8d8712710a3ad61600a98a`.
+- Both independently confirmed the released one-admission Task137A boundary,
+  fresh-operation restart, exact handoff readback, resident/run/attempt/artifact
+  binding, hook-free normalization, zero-observation/zero-I/O hostile gate,
+  immutable companion-doc retrieval, reproducible RED lineage, exact 20/120
+  counts, three-path ownership, executable integration blob equality, and the
+  Task136 29/found-9 checkpoint.
+- Diff checking and factory readiness passed in both immutable detached review
+  worktrees. The review tasks are closed. Exact revision
+  `6b203d03d2342cee2c8d8712710a3ad61600a98a` is now the literal
+  `TASK135B_CORRECTION_SHA` for implementation.
+- One fresh implementation worker may resume the preserved Task135B branch at
+  `bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14`. Its prompt must
+  explicitly approve task-scoped subagent-driven development and TDD, require
+  the test-only RED commit before the GREEN commit, and preserve the exact
+  three-path ceiling.
+- Full verification, integration, release records, Task139, providers,
+  network, credentials, external services, push, reset, and every `neo` action
+  remain closed pending candidate admission and two fresh exact-SHA reviews.
