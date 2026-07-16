@@ -14272,3 +14272,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Implementation dispatch, full verification, integration, external-service
   activity, reset credits, push, Task139 resumption, and every `neo` action
   remain closed.
+
+## RV-1-E-547 — Bounded-assurance review findings repaired
+
+- Both reviewers returned **NEEDS-CHANGES** for exact revision
+  `bd8f58c79c4f3922e1a637ff7144b5cf37c39359`; no approval carries forward.
+- Architecture review found that the coarse `Function` identifier prohibition
+  rejected an existing harmless production type annotation and that Lane B's
+  starting revision did not contain the six Task137 paths named by its command.
+- Executability review found that coordinator admission counted generic stage
+  markers without proving exact names/order and that a `tee` pipeline could
+  mask the real gate's exit status.
+- Exact repair revision
+  `65fce57564ecfc54e76d6e0b04fac3823b7f8bef` narrows evaluator prohibition to
+  direct invocation, explicitly reconstructs the preserved six-path Task137
+  tree onto the current program branch, compares all seven gate markers in
+  exact order, and captures the gate directly so its nonzero exit cannot be
+  hidden.
+- A fresh independent review pair must approve the repaired exact revision
+  before implementation starts. Full verification, implementation,
+  integration, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
