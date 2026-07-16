@@ -716,6 +716,56 @@ const agentTaskOrchestrationCheckpointedPayloadSchema = z.object({
   }
 });
 
+const agentProviderFeasibilityObservedPayloadSchema = z.object({
+  recordVersion: z.literal("agent-provider-feasibility.v1"),
+  residentAgentId: z.literal("agent_default"),
+  workspaceId: agentWorkspaceIdSchema,
+  mountInstanceId: secretSafeStringSchema.regex(/^mount_[a-zA-Z0-9_-]+$/),
+  admissionGenerationId: secretSafeStringSchema.min(1),
+  workspaceIdentityEventId: eventIdSchema,
+  mountEvidenceId: secretSafeStringSchema.min(1),
+  authorityEvidenceId: secretSafeStringSchema.min(1),
+  ledgerStoreEvidenceId: secretSafeStringSchema.min(1),
+  policyVersion: secretSafeStringSchema.min(1),
+  policyDigest: secretSafeStringSchema.min(1),
+  lockStateDigest: secretSafeStringSchema.min(1),
+  highWaterMark: secretSafeStringSchema.min(1),
+  highWaterOrdinal: z.number().int().nonnegative(),
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  providerFamily: z.enum(["codex", "xai"]),
+  providerId: agentProviderIdSchema,
+  modelId: secretSafeStringSchema.min(1),
+  capabilityHash: contentHashSchema,
+  credentialRefId: agentCredentialRefIdSchema,
+  credentialKind: z.enum(["subscription-oauth", "device-code-oauth"]),
+  capabilityScopes: z.array(secretSafeStringSchema.min(1)).min(1),
+  officialFlowId: secretSafeStringSchema.min(1),
+  approvalClass: z.literal("provider-byte-transfer"),
+  approvalBindingHash: contentHashSchema,
+  posture: z.literal("unavailable"),
+  category: z.literal("official-flow-unavailable"),
+  classification: z.literal("official-flow-absent"),
+  classificationHash: contentHashSchema,
+  sourceEventIds: z.array(eventIdSchema).min(1),
+  idempotencyKey: contentHashSchema,
+  observedAt: z.string().datetime()
+}).strict().superRefine((record, ctx) => {
+  if (new Set(record.capabilityScopes).size !== record.capabilityScopes.length) {
+    ctx.addIssue({ code: "custom", path: ["capabilityScopes"], message: "capabilityScopes must be duplicate-free" });
+  }
+  if (new Set(record.sourceEventIds).size !== record.sourceEventIds.length) {
+    ctx.addIssue({ code: "custom", path: ["sourceEventIds"], message: "sourceEventIds must be duplicate-free" });
+  }
+  if (
+    (record.providerFamily === "codex" && (!record.providerId.startsWith("provider_openai_codex_") || !record.officialFlowId.startsWith("codex-"))) ||
+    (record.providerFamily === "xai" && (!record.providerId.startsWith("provider_xai_") || !record.officialFlowId.startsWith("xai-")))
+  ) {
+    ctx.addIssue({ code: "custom", path: ["providerFamily"], message: "provider family must match provider and official flow" });
+  }
+});
+
 const agentTaskOrchestrationReleaseReasonSchema = z.enum([
   "approval-suspended",
   "stale-recovered",
@@ -2613,6 +2663,7 @@ export const payloadSchemas = {
   "agent.task.status.changed": agentTaskStatusChangedPayloadSchema,
   "agent.task.orchestration.claimed": agentTaskOrchestrationClaimedPayloadSchema,
   "agent.task.orchestration.checkpointed": agentTaskOrchestrationCheckpointedPayloadSchema,
+  "agent.provider.feasibility.observed.v1": agentProviderFeasibilityObservedPayloadSchema,
   "agent.task.orchestration.released": agentTaskOrchestrationReleasedPayloadSchema,
   "agent.task.orchestration.completed": agentTaskOrchestrationCompletedPayloadSchema,
   "agent.task.orchestration.failed": agentTaskOrchestrationFailedPayloadSchema,
@@ -2841,6 +2892,17 @@ export const eventContracts = {
       "approval-wait checkpoints require exact run, tool request, approval, context, source, input artifact, prompt, provider, and lock metadata",
       "context bindings are refs and hashes only",
       "checkpoint events do not hold the worker lease indefinitely"
+    ]
+  },
+  "agent.provider.feasibility.observed.v1": {
+    type: "agent.provider.feasibility.observed.v1",
+    version: 1,
+    description: "Records mounted, advisory evidence that a strict provider classifier found no supplied official flow.",
+    agentGuidance: "Append only through the mounted feasibility recorder after exact current-source and human-approval readback. This record grants no provider transfer, tool approval, workspace authority, task completion, or accepted ontology mutation.",
+    invariants: [
+      "stream binds task, attempt, run, and provider identity",
+      "source event IDs are explicit and nonempty",
+      "record is advisory and cannot bypass current approvals or mounted authority"
     ]
   },
   "agent.task.orchestration.released": {
@@ -3542,6 +3604,10 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
 
   const agentPayload = payload as Record<string, unknown>;
 
+  if (type === "agent.provider.feasibility.observed.v1") {
+    return `agent_provider_feasibility_${agentPayload.taskId}_${agentPayload.attemptId}_${agentPayload.runId}_${agentPayload.providerId}`;
+  }
+
   if (type.startsWith("agent.identity.")) {
     return `agent_identity_${agentPayload.residentAgentId}`;
   }
@@ -3752,6 +3818,23 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
         message: "human-gated events require a human context actor",
         path: ["context", "actor", "kind"]
       });
+    }
+
+    if (event.type === "agent.provider.feasibility.observed.v1") {
+      if (event.context.actor.kind !== "agent" || event.context.actor.id !== "agent_default") {
+        ctx.addIssue({
+          code: "custom",
+          message: "provider feasibility observations require the default resident agent actor",
+          path: ["context", "actor"]
+        });
+      }
+      if (event.context.causationId === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: "provider feasibility observations require a causation event",
+          path: ["context", "causationId"]
+        });
+      }
     }
 
     const agentStreamId = expectedAgentStreamId(event.type, payload.data);
