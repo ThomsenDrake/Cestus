@@ -900,6 +900,10 @@ export function parseTask136ReleaseRecords(registryText, contract = loadContract
 }
 
 function assertBlob(adapter, commitish, path, expectedBlobSha, cardId) {
+  const objectType = adapter.objectType(commitish, path);
+  if (objectType !== "blob") {
+    throw new Error(`path is not a Git blob: ${cardId}:${path}`);
+  }
   const actualBlobSha = adapter.blobSha(commitish, path);
   if (actualBlobSha !== expectedBlobSha) {
     throw new Error(`blob mismatch: ${cardId}:${path}`);
@@ -1003,6 +1007,9 @@ function createRepositoryAdapter() {
     },
     blobSha(commitish, path) {
       return gitOutput(["rev-parse", `${commitish}:${path}`]);
+    },
+    objectType(commitish, path) {
+      return gitOutput(["cat-file", "-t", `${commitish}:${path}`]);
     },
     runNpmTest(args) {
       execFileSync("npm", ["test", "--", ...args], { stdio: ["ignore", "inherit", "inherit"] });

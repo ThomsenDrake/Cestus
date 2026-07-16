@@ -71,3 +71,24 @@ RV-1-E-577 supersession:
   regression and is not a gate for this three-path candidate.
 - Full verification is explicitly closed for this task and was not run after
   the rebase.
+
+RV-1-E-581 bounded repair:
+- Continuation authority: `RV-1-E-581`.
+- Rejected candidate evidence only:
+  `a501f3c4e01b3ec8adef37211b0d348a7a84f380`.
+- Rebased onto current program revision:
+  `9cb7c926a8234c5bfe7c7da22710124f5fe29186`.
+- Defect repaired: real Git path evidence must prove literal object type
+  `blob`, not only compare the object ID returned by
+  `git rev-parse <commit>:<path>`.
+- RED command:
+  `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+- RED result: failed `1/11`; the new non-blob owned-path test was missing the
+  expected exception for the candidate check, proving a `tree` object could
+  pass before command execution.
+- GREEN command:
+  `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+- GREEN result: passed `11/11`, including candidate, integration, and
+  applicable current-HEAD non-blob rejection before release commands.
+- Replacement status: `ready-for-review` under the corrected targeted gates.
+- Full verification remains explicitly closed and was not run for this repair.
