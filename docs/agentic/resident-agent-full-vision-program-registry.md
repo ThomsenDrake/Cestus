@@ -16817,3 +16817,76 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize SDD, edits, full verification, integration,
   releases, Task139, providers, network, credentials, external services,
   push, reset, or any `neo` action.
+
+## RV-1-E-643 — Provider classifiers approved and integrated in graph order
+
+- Recorded at: 2026-07-16T22:03:46Z
+- Task130 architecture/invariant reviewer
+  `019f6cf1-0458-7660-bf5b-edcddbae4443` and executability/adversarial
+  reviewer `019f6cf1-0867-7c01-b4f7-ee0c95c29354` both returned unqualified
+  `APPROVED` for exact immutable candidate
+  `172e8ec8052baf4f042dfed7c4d737b488b66201`. Both reported no findings and
+  independent 18-test plus bounded static-check evidence.
+- The coordinator cherry-picked Task129's exact two-commit chain first.
+  Task129 integration revision is
+  `eb21d466a54ebdf2a8397c08d54167411bfddde2`. It then cherry-picked Task130's
+  exact four-commit chain. Task130 integration revision is
+  `95c13101d61c250fa0008a53caa2976053af46e8`.
+- Integrated admission passed Task129 at 16 tests, Task130 at 18 tests,
+  typecheck, diff checking, factory readiness, literal candidate/integration
+  blob equality for all six owned paths, clean state, non-symlinked
+  dependencies, and Task136 contract markers `29/1/20/29/1/15`. Before either
+  release record, repository mode failed at the exact expected `29/6`
+  checkpoint. Full verification was not run.
+- Task129 is released below first with exact Task129-MFA prerequisite evidence.
+  Task130 remains integrated but unreleased until its following separate
+  registry commit. Task139, providers, network, credentials, external
+  services, push, reset, and every `neo` action remain closed.
+
+## Task136 dispatch release v4: Task129
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task129",
+  "candidateSha": "6387c735cd2168f1546cf05a9ffd27136a345e54",
+  "reviews": [
+    {
+      "threadId": "019f6ce3-2e50-7561-a67c-3ad557940d15",
+      "candidateSha": "6387c735cd2168f1546cf05a9ffd27136a345e54",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6ce3-3482-7d62-bed6-5f99b2e2cf8d",
+      "candidateSha": "6387c735cd2168f1546cf05a9ffd27136a345e54",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "eb21d466a54ebdf2a8397c08d54167411bfddde2",
+  "releaseEventId": "task136-release-v4-Task129",
+  "prerequisites": [
+    {
+      "cardId": "Task129-MFA",
+      "integrationSha": "c599f9d7c9e08de155bfb98f49462ad01416ec40",
+      "releaseEventId": "task136-release-v4-Task129-MFA"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/codex-subscription-harness.ts",
+      "disposition": "owned",
+      "blobSha": "0c81bdf241a132c4a2c3d934417c51f63c09ebaa"
+    },
+    {
+      "path": "packages/agent/test/codex-subscription-harness.test.ts",
+      "disposition": "owned",
+      "blobSha": "1b19276e32761b8dc914d669eca71e58c3510320"
+    },
+    {
+      "path": "docs/agentic/claims/task-129-resident-full-vision-codex-harness.md",
+      "disposition": "owned",
+      "blobSha": "2253e160c51bfe9362d4c700a6479eb8286e7ae5"
+    }
+  ]
+}
+```
