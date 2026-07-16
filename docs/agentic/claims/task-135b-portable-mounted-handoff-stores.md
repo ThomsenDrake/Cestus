@@ -124,3 +124,26 @@ backed by module-private maps.
   coordinator handoff revision.
 - `npm run verify`, review, integration, provider/network/credential activity,
   Task139 work, push, reset, rebase, and `neo` actions were not run.
+
+## RV-1-E-655 path-safe error repair
+
+- **Status:** ready-for-review
+- **Registry finding:** `RV-1-E-655`
+- **Starting candidate:** `2747e42e7c182e027164c1c2ad503d3af7637c35`
+- **Review finding:** when authority and currentness remained valid,
+  `inspectAround` rethrew a raw `FileBlobStore` missing-blob error whose
+  `ENOENT` message exposed the mounted workspace derivative root.
+- **Causal RED receipt:** `npm test --
+  packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `1` with `1` file / `20` tests. The existing frozen path-hiding-store
+  case caught the valid missing-blob error and proved that its raw message
+  contained both the workspace root and derivative root.
+- **Repair:** after the existing post-operation currentness reinspection
+  succeeds, non-authority store-operation failures now become a fresh
+  `Error("Mounted handoff artifact store operation failed.")`. The repair does
+  not copy the raw message, cause, path, code, syscall, filename, or other
+  store-error properties; a failed reinspection still returns `authorityError`.
+- **Focused GREEN receipt:** the identical focused command exited `0` with
+  `1` file / `20` tests. The regression asserts the fixed data-free error,
+  no copied Node error fields, and no workspace or derivative-root path.
+- **Forward repair commit:** recorded after the final candidate is created.
