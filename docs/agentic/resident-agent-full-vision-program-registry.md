@@ -15120,3 +15120,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `W1-123-H-SHARED-SCHEMA` remain approved but unreleasable until every prior
   graph card has a valid strict v4 record. Task139, full verification,
   external services, push, reset, and every `neo` action remain closed.
+
+## Task136 dispatch release v4: Task126
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task126",
+  "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "reviews": [
+    {
+      "threadId": "019f6bda-4dd3-76e2-892d-37e3737a4dfd",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6bda-4edf-7413-9333-fda7683cd60e",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "releaseEventId": "task136-release-v4-Task126",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "docs/agentic/claims/task-126-resident-full-vision-byok-provider.md",
+      "disposition": "owned",
+      "blobSha": "9f3d130699f114e07908aa156cedd2d36c1690f0"
+    },
+    {
+      "path": "packages/agent/src/byok-provider.ts",
+      "disposition": "transferred",
+      "blobSha": "947af4d4a3c62fe5a1f274d0a1b682e77918f53d"
+    },
+    {
+      "path": "packages/agent/test/byok-provider.test.ts",
+      "disposition": "transferred",
+      "blobSha": "29d0582fa9f99a51fb62b67a7076ef80360bf7a1"
+    }
+  ]
+}
+```
