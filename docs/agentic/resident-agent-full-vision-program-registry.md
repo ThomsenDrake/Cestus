@@ -13443,3 +13443,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development. Full
   verification, integration, live/provider/network/credential/Nous activity,
   reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-502 — Task137A mounted review invalidated and replaced
+
+- Mounted-lifecycle reviewer `019f68b6-bb5e-7f51-afb4-4b2dd0117736`
+  invalidated its review after an unsafe broad scratch-cleanup command created
+  external data-loss risk. The exact candidate worktree remained clean and
+  unchanged, but no finding, gate, or verdict from that review is admissible.
+  The invalid review is archived and unpinned.
+- Replacement mounted-lifecycle reviewer
+  `019f68bd-b8e6-7903-b104-798ce51b2a31` is active, pinned, read-only, and
+  independently reviewing exact candidate
+  `3e8738c984a4a78d3d8f82eb3661f5b53a352869` from a fresh worktree. Any
+  disposable counterexample must use a guarded unique path beneath the
+  reviewer's home cache and may remove only that exact path.
+- Semantic-policy reviewer `019f68b7-0b4b-7bb0-873d-71d4c7aae5ed` was told
+  to discard all prior scratch evidence and reproduce from a fresh guarded
+  home-cache copy while revalidating exact candidate HEAD and cleanliness.
+- Two valid fresh unqualified **APPROVED** verdicts remain required. Full
+  verification, integration, live/provider/network/credential/Nous activity,
+  reset credits, push, and every `neo` action remain closed.
