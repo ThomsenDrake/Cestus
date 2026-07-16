@@ -16235,3 +16235,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   providers, network, credentials, external services, push, reset, or any
   `neo` action. Both verdicts must be unqualified `APPROVED` before admission
   may continue.
+
+## RV-1-E-622 — Task129-MFA final fail-closed repair authorized
+
+- Recorded at: 2026-07-16T20:33:05Z
+- Architecture/invariant reviewer
+  `019f6c9a-8f97-7af2-80c9-ab5efe24440a` and
+  executability/adversarial reviewer
+  `019f6c9a-88ef-7c70-b249-0471625f09fc` both returned
+  `NEEDS-CHANGES` for exact candidate
+  `525f5602dc2aeb755c2a5fb3e368b4cb56012db2`.
+- The coordinator accepted two frozen-contract findings. A hostile value
+  rejected by `ledger.append` can make `isConcurrencyConflict` throw during
+  the catch path and escape the fail-closed result. Separately, the
+  source-local classifier accepts `oauth`, `credential`, and raw-key-like
+  identifier fragments that the mounted boundary must reject before any
+  ledger access.
+- The reported missing
+  `docs/agentic/contracts/task137-authority-boundary-policy-v2.json` is not a
+  candidate defect. That path was mistakenly named only in the coordinator's
+  review prompt; the frozen design defines
+  `task137-authority-import-grammar.v2` and
+  `task137-authority-import-corpus.v2` in the existing bounded test-support
+  policy, and neither the approved design nor plan requires a JSON artifact.
+- One fresh worker may add one forward repair commit over the exact candidate.
+  It owns only classifier source/test, ontology contract/test, mounted recorder
+  source/test, and the Task129-MFA claim. It must add causal cases inside
+  existing tests so the allocation remains `16/70/17/4/22 = 129`.
+- This repair explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development. It
+  must align secret-shaped text rejection across classifier, ontology, and
+  recorder, prove zero ledger access for newly rejected issued metadata, and
+  make hostile append rejection resolve `persistence-unconfirmed` after the
+  currentness check without adding a reread, reappend, loop, or raw error.
+- Completion requires exact 129-test GREEN, one 8/20 marker, typecheck, diff
+  checking, factory readiness, Task136 markers `29/1/20/29/1/15`, cumulative
+  eleven-path scope, private-export and non-symlink checks, and a clean forward
+  commit. Full verification, providers, network, credentials, OAuth, external
+  services, live Nous, Task139, integration, release records, push, reset, and
+  every `neo` action remain closed.
