@@ -14697,3 +14697,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   proves a valid release record.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed pending the Task136 result.
+
+## RV-1-E-569 — Bounded reset complete; Task139 held on release closure
+
+- Task136 repository mode ran on the integrated program branch and emitted all
+  four exact finite-assurance markers:
+  `TASK136_RELEASE_GRAPH_OK records=28`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=28`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.
+- The command then exited nonzero with the finite prerequisite
+  `repository release closure incomplete: expected 28 records, found 0`.
+  Task136's static contract is valid, but the mutable program registry does not
+  yet contain the 28 required task release records.
+- The Task136/Task137 bounded-contract reset is complete. No Recovery-N lane,
+  acceptance expansion, implementation repair, or Task139 work is authorized.
+  Task139 remains blocked until ordinary program execution produces all 28
+  release records and Task136 repository mode passes unchanged.
+- The program branch remains the sole integration target for this work. Full
+  verification, external-service activity, reset credits, push, and every
+  `neo` action remain closed.
