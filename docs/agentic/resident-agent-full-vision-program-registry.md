@@ -16184,3 +16184,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repair paths in one forward commit. Full verification, providers, network,
   credentials, OAuth, external services, live Nous, Task139, integration,
   release records, push, reset, and every `neo` action remain closed.
+
+## RV-1-E-620 — Task129-MFA hostile-boundary candidate admitted for final review
+
+- Recorded at: 2026-07-16T20:24:15Z
+- Type-recovery worker `019f6c92-623d-7382-83c2-d0ecdc0a24ef`
+  produced clean forward revision
+  `525f5602dc2aeb755c2a5fb3e368b4cb56012db2` with parent
+  `c4b656f56fdc56bec0528d860ed2b1874bb28437` on
+  `codex/task129-mounted-provider-feasibility-authority-recovery`.
+- The cumulative candidate is five forward commits from exact base
+  `2b81a542c6ea391bfb901443acfc04366bd4f3f5` and changes exactly the
+  original eleven Task129-MFA owned paths. The final seven-path repair closes
+  throwing-proxy input normalization, canonical append-result normalization,
+  post-await mounted-authority currentness precedence, and `X-Cookie`
+  rejection while preserving the fixed 129-test allocation.
+- Coordinator admission independently passed the exact five-file command at
+  five files and 129 tests with one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker, typecheck, diff
+  checking, factory readiness, Task136 markers `29/1/20/29/1/15`, exact
+  ancestry and cumulative scope, clean tracked state, private-export audit,
+  non-symlinked dependencies, and no provider, network, credential, OAuth, or
+  external-service execution path. Full verification was not run.
+- Two entirely fresh read-only reviewers must review this exact revision:
+  one for architecture and invariants and one for executability and hostile
+  boundaries. Both must return unqualified `APPROVED` before program-branch
+  integration or release recording.
+- Review work does not authorize edits, subagent-driven development,
+  integration, release records, Task129, Task130, Task139, full verification,
+  providers, network, credentials, external services, push, reset, or any
+  `neo` action.
