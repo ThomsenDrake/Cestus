@@ -16338,3 +16338,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   providers, network, credentials, external services, push, reset, or any
   `neo` action. Both verdicts must be unqualified `APPROVED` before admission
   may continue.
+
+## RV-1-E-626 — Task129-MFA finite cross-layer repair authorized
+
+- Recorded at: 2026-07-16T20:51:06Z
+- Architecture/invariant reviewer
+  `019f6cab-81a4-7432-9e34-c013e47aa889` and
+  executability/adversarial reviewer
+  `019f6cab-86d8-7ba3-8c88-1071721c7fda` both returned
+  `NEEDS-CHANGES` for exact candidate
+  `ab33c40f408e4234cbfedfa7e37d90bdfbf92a86`.
+- The coordinator accepted four finite findings inside existing frozen
+  categories. Prefixed raw `X-Cookie:` and `session=` material can bypass the
+  three feasibility predicates; assignment-shaped `auth=...` is not rejected;
+  ontology feasibility capability scopes use a different secret-safe schema
+  from the classifier; and scope normalization uses UTF-16 code-unit order
+  instead of the design's Unicode code-point order.
+- One bounded forward repair may touch only classifier source/test, ontology
+  contract/test, mounted recorder source/test, and the Task129-MFA claim. It
+  must add assertions inside existing test blocks, preserve the fixed 129-test
+  allocation and 8/20 Task137 marker, and make no Task137 grammar change.
+- This repair explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development. The
+  causal counterfactuals are exact: reject `auth=raw`, prefixed raw cookie and
+  session material, and raw-key-like capability scopes at all relevant
+  boundaries; accept the existing safe OAuth/credential controls; and sort
+  `U+E000` after `U+10000` by Unicode code point before hashing.
+- Completion requires one clean forward commit, exact 129-test GREEN,
+  typecheck, diff checking, factory readiness, Task136 markers
+  `29/1/20/29/1/15`, cumulative eleven-path scope, private-export and
+  non-symlink checks. Full verification, providers, network, credentials,
+  OAuth, external services, live Nous, Task139, integration, release records,
+  push, reset, and every `neo` action remain closed.
