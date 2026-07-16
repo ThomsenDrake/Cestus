@@ -16093,3 +16093,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Full verification, providers, network, credentials, OAuth, external
   services, live Nous, Task139, integration, release records, push, reset, and
   every `neo` action remain closed.
+
+## RV-1-E-617 — Task129-MFA normalized candidate admitted and final reviews dispatched
+
+- Recorded at: 2026-07-16T20:00:05Z
+- Final normalization repair
+  `c4b656f56fdc56bec0528d860ed2b1874bb28437` is a clean forward
+  child of `bdc157ada7ff51fd9fcb7b8094fda6579b9b712b`. The cumulative
+  candidate is four forward commits from exact base
+  `2b81a542c6ea391bfb901443acfc04366bd4f3f5` and still changes
+  exactly the original eleven Task129-MFA paths.
+- Recorder input normalization now rejects the full feasibility-event secret
+  vocabulary, including credential and OAuth material, and uses the canonical
+  ontology event datetime parser before any `await`. Existing coverage proves
+  accessor, cookie, credential, OAuth, and parseable-but-noncanonical time
+  inputs return `unsafe-input` with zero ledger reads and zero appends.
+- Coordinator admission independently passed the exact five-file command at
+  five files and 129 tests with one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker, typecheck, diff
+  checking, factory readiness, Task136 markers `29/1/20/29/1/15`, exact
+  ancestry and cumulative scope, clean tracked state, private-export audit,
+  non-symlinked dependencies, and no provider/network/credential execution
+  path. Full verification was not run.
+- Fresh architecture/invariant reviewer
+  `019f6c83-b68b-7242-8c54-998d25517a13` and fresh
+  executability/adversarial reviewer
+  `019f6c83-baca-7ad3-a364-15c3d52c650c` are read-only at exact
+  revision `c4b656f56fdc56bec0528d860ed2b1874bb28437`. Both must return
+  unqualified `APPROVED` before integration.
+- Review work does not authorize edits, SDD, integration, release records,
+  Task129, Task130, Task139, full verification, providers, network,
+  credentials, external services, push, reset, or any `neo` action.
