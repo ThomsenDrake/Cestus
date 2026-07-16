@@ -14082,3 +14082,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   unqualified **APPROVED** before integration.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-537 — Task137A Recovery-16 exact-SHA reviews active
+
+- Lifecycle reviewer `019f6b3b-c2a9-72c2-a9a9-e8440af734ea` and analysis
+  reviewer `019f6b3b-e27c-7793-8dca-9cfba0f50dc3` are active, pinned,
+  read-only, and independently reviewing exact candidate
+  `dae77fc5a2a8e254dfce9234333aa27a9178361f` from separate worktrees.
+- Both must independently run the literal Task137A gate, standalone typecheck,
+  exact revision, scope, and clean-state checks, inspect the complete candidate,
+  and add one isolated negative fixture. Both must return unqualified
+  **APPROVED** before integration.
+- Review work does not authorize subagent-driven development. Full
+  verification, integration, external-service activity, reset credits, push,
+  and every `neo` action remain closed.
