@@ -75,6 +75,19 @@ describe("official-flow feasibility", () => {
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "authorization: bearer secret" }))).toThrow();
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "Cookie: session=abc" }))).toThrow();
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "X-Cookie: raw" }))).toThrow();
+    for (const [field, value] of [
+      ["modelId", "oauth=raw"],
+      ["officialFlowId", "codex-credential=raw"],
+      ["credentialRefId", "agent_credref_sk_live_abc"]
+    ] as const) {
+      expect(() => createOfficialFlowAbsenceWitness(patchInput({ [field]: value }))).toThrow();
+    }
+    expect(() => createOfficialFlowAbsenceWitness(patchInput({
+      modelId: "oauth-capability-review",
+      officialFlowId: "codex-credential-migration",
+      credentialRefId: "agent_credref_subscription_oauth_reference",
+      credentialKind: "subscription-oauth"
+    }))).not.toThrow();
   });
 
   it("rejects accessor custom-prototype symbol and sparse external values", () => {

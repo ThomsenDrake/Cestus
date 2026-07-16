@@ -36,7 +36,7 @@ type OfficialFlowAbsencePostureV1 = Omit<
 >;
 
 const witnessClassifications = new WeakMap<object, OfficialFlowAbsenceClassificationV1>();
-const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)/i;
+const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?(?:oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
 
 export function createOfficialFlowAbsenceWitness(input: unknown): OfficialFlowAbsenceWitnessV1 {
   const normalized = normalizePlainOwnData(input);

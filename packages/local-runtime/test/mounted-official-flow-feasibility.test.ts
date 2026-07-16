@@ -260,6 +260,15 @@ describe("mounted official-flow feasibility", () => {
     const fixture = await feasibilityFixture();
     const ledger = fixture.handle.ledger;
     let appendAttempt = 0;
+    let readAllCalls = 0;
+    const readAll = ledger.readAll.bind(ledger);
+    Object.defineProperty(ledger, "readAll", {
+      configurable: true,
+      value: async () => {
+        readAllCalls += 1;
+        return await readAll();
+      }
+    });
     Object.defineProperty(ledger, "append", {
       configurable: true,
       value: async (event: AppendableKnowledgeEvent) => {
@@ -273,9 +282,14 @@ describe("mounted official-flow feasibility", () => {
           Object.defineProperty(accessor, "id", { enumerable: true, get: () => { throw new Error("hostile append id"); } });
           return accessor as unknown as KnowledgeEvent;
         }
-        return new Proxy({ ...event, id: "evt_fake_proxy", sequence: 1 }, {
-          getOwnPropertyDescriptor() { throw new Error("hostile append proxy"); }
-        }) as unknown as KnowledgeEvent;
+        if (appendAttempt === 4) {
+          return new Proxy({ ...event, id: "evt_fake_proxy", sequence: 1 }, {
+            getOwnPropertyDescriptor() { throw new Error("hostile append proxy"); }
+          }) as unknown as KnowledgeEvent;
+        }
+        throw new Proxy({}, {
+          getPrototypeOf() { throw new Error("hostile append rejection prototype"); }
+        });
       }
     });
     for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -283,6 +297,12 @@ describe("mounted official-flow feasibility", () => {
         kind: "blocked", category: "persistence-unconfirmed", retry: "after-ledger-refresh"
       });
     }
+    const readsBeforeHostileRejection = readAllCalls;
+    await expect(record(fixture)).resolves.toMatchObject({
+      kind: "blocked", category: "persistence-unconfirmed", retry: "after-ledger-refresh"
+    });
+    expect(appendAttempt).toBe(5);
+    expect(readAllCalls).toBe(readsBeforeHostileRejection + 1);
   });
 
   it("rechecks current mounted authority after the source-ledger await", async () => {
@@ -478,7 +498,7 @@ describe("mounted official-flow feasibility", () => {
     }, {
       getPrototypeOf() { throw new Error("hostile invocation prototype"); }
     }));
-    for (const correlationId of ["Cookie: session=abc", "X-Cookie: raw", "X-Credential: raw", "oauth=raw"]) {
+    for (const correlationId of ["Cookie: session=abc", "X-Cookie: raw", "X-Credential: raw", "oauth=raw", "agent_credref_sk_live_abc"]) {
       await expectUnsafeInput({
         operation: fixture.operation,
         witness: fixture.witness,
@@ -486,6 +506,7 @@ describe("mounted official-flow feasibility", () => {
         correlationId
       });
     }
+    expect(await record(fixture, { correlationId: "credential-migration" })).toMatchObject({ kind: "unavailable" });
     await expectUnsafeInput({
       operation: fixture.operation,
       witness: fixture.witness,
