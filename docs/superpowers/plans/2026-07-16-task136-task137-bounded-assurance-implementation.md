@@ -46,7 +46,9 @@ Bash, Vitest, JSON, Markdown, Git.
   `4776f12689133b0eea855e6c39347306bebd68bc`,
   `cfb82c6dd940ae6ba0339b8b2b8637bcc472aea2`, and
   `5701c863210f1892186e944beda8a4059388b26c` remain preserved evidence and are
-  not implementation bases.
+  not accepted integration bases. Lane B reconstructs the exact six-path tree
+  state from `cfb82c6d...` onto the current program branch before applying the
+  bounded policy; no historical recovery commit is merged directly.
 
 ## Parallel Topology
 
@@ -69,7 +71,7 @@ integrated and their release records are valid.
 | --- | --- |
 | 1 | `docs/agentic/contracts/task136-bounded-assurance-v1.json`; `docs/agentic/claims/task-136-interface-reconciliation.md`; `docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md`; `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` |
 | 2 | `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`; `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` |
-| 3 | `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`; `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`; `docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md` |
+| 3 | `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`; `docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md`; `packages/local-runtime/src/mounted-artifact-authority-operation.ts`; `packages/local-runtime/src/portable-workspace-lifecycle.ts`; `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`; `packages/local-runtime/test/mounted-artifact-authority-operation.test.ts`; `packages/local-runtime/test/portable-workspace-lifecycle.test.ts` |
 | 4 | `scripts/resident-agent/assurance/task137-terminal-gate.sh`; `scripts/resident-agent/assurance/task137-terminal-gate.test.mjs`; `docs/agentic/claims/task-137-terminal-gate-v2.md`; `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md` |
 | 5-7 | Coordinator-only append to `docs/agentic/resident-agent-full-vision-program-registry.md`; no reviewer writes |
 
@@ -296,7 +298,11 @@ git commit -m "test: add finite task136 assurance gate"
 
 **Files:**
 - Create: `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`
+- Create from preserved candidate tree: `packages/local-runtime/src/mounted-artifact-authority-operation.ts`
+- Modify from preserved candidate tree: `packages/local-runtime/src/portable-workspace-lifecycle.ts`
 - Modify: `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+- Create from preserved candidate tree: `packages/local-runtime/test/mounted-artifact-authority-operation.test.ts`
+- Modify from preserved candidate tree: `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`
 - Modify: `docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md`
 
 **Interfaces:**
@@ -313,7 +319,34 @@ export const task137CorpusVersion: "task137-authority-import-corpus.v1";
 export function inspectTask137AuthorityBoundary(root: string): readonly Task137PolicyViolation[];
 ```
 
-- [ ] **Step 1: Add the finite corpus tests first**
+- [ ] **Step 1: Reconstruct the preserved six-path Task137 baseline**
+
+From a clean branch at the current program revision, restore exactly these six
+paths from `cfb82c6dd940ae6ba0339b8b2b8637bcc472aea2`:
+
+```bash
+git restore --source=cfb82c6dd940ae6ba0339b8b2b8637bcc472aea2 -- \
+  docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md \
+  packages/local-runtime/src/mounted-artifact-authority-operation.ts \
+  packages/local-runtime/src/portable-workspace-lifecycle.ts \
+  packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts \
+  packages/local-runtime/test/mounted-artifact-authority-operation.test.ts \
+  packages/local-runtime/test/portable-workspace-lifecycle.test.ts
+git diff --check
+git add docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md \
+  packages/local-runtime/src/mounted-artifact-authority-operation.ts \
+  packages/local-runtime/src/portable-workspace-lifecycle.ts \
+  packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts \
+  packages/local-runtime/test/mounted-artifact-authority-operation.test.ts \
+  packages/local-runtime/test/portable-workspace-lifecycle.test.ts
+git commit -m "chore: reconstruct task137 authority baseline"
+```
+
+Verify the committed blobs for all six paths equal the preserved candidate
+blobs. This commit reconstructs evidence; it does not carry prior review or
+approval.
+
+- [ ] **Step 2: Add the finite corpus tests first**
 
 Replace reviewer-generated mutation tests with a table containing exactly eight
 allowed fixtures and 20 rejected fixtures from the design. Assert category,
@@ -324,7 +357,7 @@ fixture under two seconds, and marker:
 TASK137_POLICY_CORPUS_OK allowed=8 rejected=20
 ```
 
-- [ ] **Step 2: Run the causal RED command**
+- [ ] **Step 3: Run the causal RED command**
 
 ```bash
 npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/agent/test/wake-supervisor.test.ts
@@ -333,29 +366,31 @@ npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.tes
 Expected RED: module not found for
 `test/support/task137-authority-boundary-policy.js`.
 
-- [ ] **Step 3: Implement the coarse policy**
+- [ ] **Step 4: Implement the coarse policy**
 
 Walk only production TypeScript under `packages/**/src`. Parse each file once
-with the TypeScript compiler API. Reject direct syntax categories and exact
-identifier prohibitions; do not construct binding, assignment, alias, closure,
-or evaluator-flow state. Permit only the two exact dynamic-import exemptions
-and the five direct, unaliased named-import roles from the design. Inspect root
-and package manifests for protected exports and inspect barrels for protected
-re-exports.
+with the TypeScript compiler API. Reject direct loader syntax, direct
+`eval(...)`/`globalThis.eval(...)` calls, and direct `Function(...)`,
+`new Function(...)`, or `globalThis.Function(...)` invocation; allow the
+existing harmless `Function` type annotation. Do not construct binding,
+assignment, alias, closure, or evaluator-flow state. Permit only the two exact
+dynamic-import exemptions and the five direct, unaliased named-import roles
+from the design. Inspect root and package manifests for protected exports and
+inspect barrels for protected re-exports.
 
-- [ ] **Step 4: Remove the general analyzer**
+- [ ] **Step 5: Remove the general analyzer**
 
 Delete alias/evaluator/reassignment/bind tracking and arbitrary reviewer
 fixture generation from the existing test. Keep mounted-workspace currentness,
 lifecycle, provenance, role, and package/export assertions that fit the frozen
 categories. Append the contract versions and `RV-1-E-545` pointer to the claim.
 
-- [ ] **Step 5: Run the identical GREEN command**
+- [ ] **Step 6: Run the identical GREEN command**
 
 Run the exact Step 2 command. Expected: six files pass and the policy test
 prints the exact corpus marker.
 
-- [ ] **Step 6: Verify and commit**
+- [ ] **Step 7: Verify and commit**
 
 ```bash
 npm run typecheck
@@ -472,8 +507,16 @@ test -z "$(git status --porcelain)"
 test ! -L node_modules
 node --test scripts/resident-agent/assurance/task137-terminal-gate.test.mjs
 output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"
-test "$(printf '%s\n' "$output" | grep -c '^TASK137_GATE_STAGE_OK ')" -eq 6
-test "$(printf '%s\n' "$output" | grep -c '^TASK137_GATE_COMPLETE stages=6$')" -eq 1
+markers="$(printf '%s\n' "$output" | grep '^TASK137_GATE_')"
+expected="$(printf '%s\n' \
+  'TASK137_GATE_STAGE_OK tests' \
+  'TASK137_GATE_STAGE_OK typecheck' \
+  'TASK137_GATE_STAGE_OK source-policy' \
+  'TASK137_GATE_STAGE_OK package-boundary' \
+  'TASK137_GATE_STAGE_OK factory-readiness' \
+  'TASK137_GATE_STAGE_OK checkout' \
+  'TASK137_GATE_COMPLETE stages=6')"
+test "$markers" = "$expected"
 git diff --check "${candidate}^" "$candidate"
 npm run factory:check
 ```
@@ -543,10 +586,18 @@ test -z "$(git status --porcelain)"
 test ! -L node_modules
 npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/agent/test/wake-supervisor.test.ts
 npm run typecheck
-timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null | tee /tmp/cestus-task137-gate.out
-test "$(grep -c '^TASK137_GATE_STAGE_OK ' /tmp/cestus-task137-gate.out)" -eq 6
-test "$(grep -c '^TASK137_GATE_COMPLETE stages=6$' /tmp/cestus-task137-gate.out)" -eq 1
-rm -f /tmp/cestus-task137-gate.out
+output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"
+printf '%s\n' "$output"
+markers="$(printf '%s\n' "$output" | grep '^TASK137_GATE_')"
+expected="$(printf '%s\n' \
+  'TASK137_GATE_STAGE_OK tests' \
+  'TASK137_GATE_STAGE_OK typecheck' \
+  'TASK137_GATE_STAGE_OK source-policy' \
+  'TASK137_GATE_STAGE_OK package-boundary' \
+  'TASK137_GATE_STAGE_OK factory-readiness' \
+  'TASK137_GATE_STAGE_OK checkout' \
+  'TASK137_GATE_COMPLETE stages=6')"
+test "$markers" = "$expected"
 git diff --check
 npm run factory:check
 ```
