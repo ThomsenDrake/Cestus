@@ -14475,3 +14475,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   admission remains held until Lane C integrates and Lane B rebases.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-558 — Task136 and Task137 gate candidates admitted to review
+
+- Coordinator admission independently passed for exact Task136 candidate
+  `467371018350f14f4183dae0cee33887b888efff`: exact six-path scope, four Node
+  tests, ordered release/composition/command-card/ABI markers, diff check,
+  factory readiness, clean checkout, and absent dependency link.
+- Coordinator admission independently passed for exact terminal-gate candidate
+  `4592c95e1cbfef43321b32d358fc235802165a83`: exact four-path scope, controlled
+  old-versus-new regression 2/2, diff check, factory readiness, clean checkout,
+  and absent dependency link. Real gate evidence remains explicitly deferred
+  to rebased Lane B.
+- Each exact candidate now requires two fresh independent read-only reviews.
+  Both reviewers per candidate must return unqualified **APPROVED** before
+  coordinator integration. Review work does not authorize subagent-driven
+  development or acceptance-scope expansion.
+- Lane B candidate remains preserved and held. Integration, full verification,
+  external-service activity, reset credits, push, Task139 resumption, and every
+  `neo` action remain closed.
