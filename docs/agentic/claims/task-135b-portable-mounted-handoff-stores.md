@@ -93,3 +93,34 @@ backed by module-private maps.
   scans, `git diff --check`, and `npm run factory:check` exited `0`.
 - **GREEN commit:** the forward candidate containing this receipt is recorded
   as the final Task135B handoff revision.
+
+## Coordinator compiler admission repair
+
+- **Status:** ready-for-review
+- **Admitted candidate:** `6b0f61f4cf20b1de3f38ad04d63153863dcc8b47`
+- **Coordinator reauthorization:** task-scoped
+  `superpowers:subagent-driven-development`,
+  `superpowers:test-driven-development`, and one forward compiler-repair
+  commit are explicitly authorized for this bounded repair.
+- **Admission evidence retained:** reproducible RED passed its contract with
+  `20` tests / `4` named failures; focused GREEN passed `20/20`; aggregate
+  GREEN passed `120/120` with one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- **Coordinator failure:** standalone `npm run typecheck` exited `2` at the
+  admitted candidate. It reported `TS2456` for the recursive
+  `NormalizedJson` alias and `TS2352` for the two intentionally partial
+  prepared/recorded handoff event casts.
+- **Repair:** JSON recursion now passes through named readonly array and
+  string-index record interfaces, with missing indexed fields continuing
+  through the existing fail-closed validators. Only the two deliberate
+  prepared/recorded event casts bridge through `unknown`. Runtime behavior and
+  public signatures are unchanged.
+- **Compiler repair receipt:** `npm run typecheck` exited `0` with
+  `typecheck passed`.
+- **Behavioral repair receipts:** the focused command exited `0` with `1` file
+  / `20` tests; the prescribed aggregate command exited `0` with `9` files /
+  `120` tests and one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- **Repair commit:** the forward candidate containing this receipt is the
+  coordinator handoff revision.
+- `npm run verify`, review, integration, provider/network/credential activity,
+  Task139 work, push, reset, rebase, and `neo` actions were not run.
