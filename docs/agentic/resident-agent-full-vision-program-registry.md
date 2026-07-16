@@ -13811,3 +13811,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward.
 - Full verification, source dispatch, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-520 — Task136 Recovery-14 candidate admitted to review
+
+- Candidate `9fc7f6e8a8393b1e1a24b7458718689276b6de1b` is one clean descendant
+  of rejected `8bee4b0f8ad774329b2301895316c96c4e21794f` and changes exactly the
+  Task136 claim and two active v4 plans.
+- Coordinator admission independently passed all four literal Task136 checks,
+  including the 28 records, 28 command cards, and the expanded executable
+  fixture. Exact revision, one-commit ancestry, three-path scope, diff, clean
+  checkout, and absent dependency-link checks passed.
+- Two fresh independent exact-SHA reviews are required. Both must return
+  unqualified **APPROVED** before integration or Task139 resumption.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-521 — Task137A Recovery-14 candidate admitted to review
+
+- Candidate `0d78305a343f6ae2e49ee8c68147895d9947fdcb` is one clean descendant
+  of rejected `609e6b6f68d8f60e1aae2d1030692ad7a3b33962` and changes only the
+  Task137A claim and its import-policy test within the historical six-path
+  ceiling.
+- Coordinator admission independently passed the literal committed-byte gate
+  with 6 files and 92 tests, its embedded checks, and a separate standalone
+  typecheck. Exact revision, scope, diff, clean checkout, and absent dependency
+  link checks passed.
+- Two fresh independent exact-SHA reviews are required. Both must return
+  unqualified **APPROVED** before integration.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
