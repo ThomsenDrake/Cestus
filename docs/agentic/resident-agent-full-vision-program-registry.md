@@ -13274,3 +13274,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Documentation-only work does not authorize subagent-driven development.
   Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-495 — Task136 Recovery-11 assigned to a fresh owner
+
+- Fresh documentation owner `019f6898-4661-7b33-9da1-16d00133ccc5` is active
+  in isolated worktree `/home/drake/.codex/worktrees/1e1f/Cestus`, starting
+  from exact rejected candidate
+  `8e92d090e747eebcada57da2247cb3021ccc4d7f` and creating branch
+  `codex/task-136-interface-reconciliation-recovery-8`.
+- The owner received the exact ABI finding and must first reproduce caller-
+  minted runtime authority, then repair only the three documentation paths with
+  a private mounted-state executable fixture and named public-mint RED
+  mutations while preserving every previously admitted gate.
+- Documentation-only work does not authorize subagent-driven development. The
+  owner must return one immutable candidate for coordinator admission and two
+  entirely fresh exact-SHA reviews; Task139 remains held.
+- Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
