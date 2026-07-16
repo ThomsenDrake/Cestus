@@ -13134,3 +13134,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   return unqualified **APPROVED** before coordinator integration.
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, and every `neo` action remain closed.
+
+## RV-1-E-489 — Task136 Recovery-9 rejected at the frozen no-input boundary
+
+- Fresh documentation owner `019f686b-4e80-78a0-ad03-adb0c1cf163f`
+  produced candidate `725324faef67e0c058bfc321929abbd1797f9e9b`, one clean
+  descendant of rejected `a96253ee85ed8c969b539653e159ed5b5cdd9203`
+  that changes exactly the bounded-loop plan, provider-credentials plan, and
+  Task136 reconciliation claim.
+- Coordinator verification from committed bytes passed the same-runner fixture
+  with 28 valid records and all 18 existing plus two timing RED mutations, the
+  dependency-mounted 28-command validator, and the executable extracted-module
+  compile/link fixture with one GREEN and all four named REDs. `git diff
+  --check`, factory readiness, ancestry, exact three-path scope, exact HEAD,
+  clean checkout, and absent dependency-link checks also passed.
+- The literal no-input real-checkout runner exited 1 at `missing 28-record v4
+  closure`. The frozen admission boundary requires it to fail only at
+  `unknown, duplicate, reordered, or missing active record`, as recorded in
+  RV-1-E-478 and preserved by RV-1-E-485. The candidate also rewrites its prose
+  and claim to bless the new earlier failure, so it is a contract regression,
+  not an equivalent diagnostic.
+- Candidate `725324faef67e0c058bfc321929abbd1797f9e9b` must not be reviewed,
+  integrated, or used to resume Task139. The same fresh owner has one bounded
+  Recovery-10 authorization on the same three documentation paths: restore the
+  frozen unreleased-checkout failure boundary while preserving the accepted
+  cycle-free PM and gateway value graphs, final-consumer import-policy timing,
+  28-card closure, all 20 fixture REDs, all 28 exact commands, and executable
+  compile/link proof. Documentation-only work does not authorize subagent-
+  driven development.
+- Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
