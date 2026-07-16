@@ -16473,3 +16473,109 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   branch only, followed by coordinator re-admission and a strict
   `task136-dispatch-release.v4` record. Push, `neo`, providers, external
   services, and Task139 remain closed.
+
+## RV-1-E-632 — Task129-MFA integrated admission complete
+
+- Recorded at: 2026-07-16T21:13:44Z
+- The complete seven-commit candidate range from
+  `62ea0bb703b296f1735ae5b754a5e4052ffcbf16` through
+  `38dbb91a883f5c91e7d07f8fefdfa7bd6ab199f7` was cherry-picked in order into
+  the program branch only. Integration revision is
+  `c599f9d7c9e08de155bfb98f49462ad01416ec40`.
+- Coordinator integrated admission passed the exact five-file command at 129
+  tests with one 8/20 Task137 marker, typecheck, diff checking, factory
+  readiness, Task136 markers `29/1/20/29/1/15`, clean tracked state,
+  non-symlinked dependencies, and literal blob equality for all eleven owned
+  paths between candidate and integration. Full verification was not run.
+- Task129-MFA is released below with exact Task137A prerequisite evidence and
+  the two frozen-corpus approvals. Task129 and Task130 may now begin in
+  parallel from this integration. Task139, push, every `neo` action,
+  providers, network, credentials, and external services remain closed.
+
+## Task136 dispatch release v4: Task129-MFA
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task129-MFA",
+  "candidateSha": "38dbb91a883f5c91e7d07f8fefdfa7bd6ab199f7",
+  "reviews": [
+    {
+      "threadId": "019f6cc0-3df6-76b3-a93b-e9f81f337416",
+      "candidateSha": "38dbb91a883f5c91e7d07f8fefdfa7bd6ab199f7",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6cc0-423b-7ef0-bdb9-63ca7de8e34b",
+      "candidateSha": "38dbb91a883f5c91e7d07f8fefdfa7bd6ab199f7",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "c599f9d7c9e08de155bfb98f49462ad01416ec40",
+  "releaseEventId": "task136-release-v4-Task129-MFA",
+  "prerequisites": [
+    {
+      "cardId": "Task137A",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task137A"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/official-flow-feasibility.ts",
+      "disposition": "owned",
+      "blobSha": "93ab57abeae5ce875f200bfb853dac378d499d62"
+    },
+    {
+      "path": "packages/agent/test/official-flow-feasibility.test.ts",
+      "disposition": "owned",
+      "blobSha": "6b7040235ffa2827e23df76dc2d9ec87d0844d73"
+    },
+    {
+      "path": "packages/ontology/src/contracts.ts",
+      "disposition": "owned",
+      "blobSha": "0331b31cbf98f330853a006f82f82f40cc0a83b5"
+    },
+    {
+      "path": "packages/ontology/test/agent-contracts.test.ts",
+      "disposition": "owned",
+      "blobSha": "197d247612843188140490e30cdf16e39d8c4564"
+    },
+    {
+      "path": "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+      "disposition": "owned",
+      "blobSha": "138d588949ddc9e361bbcca5c90352548d29f3e8"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts",
+      "disposition": "owned",
+      "blobSha": "7ed979eef048ab648a69272b4ae055ead6d5d120"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "e4376726ac1449804010e1c923eb52d3ab776642"
+    },
+    {
+      "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+      "disposition": "owned",
+      "blobSha": "f0a50a5663f2a8a92e78dc66ec098697a2b098b2"
+    },
+    {
+      "path": "packages/local-runtime/src/mounted-official-flow-feasibility.ts",
+      "disposition": "owned",
+      "blobSha": "5f6d360bdf604e0a828f6f1dcf149cf82ba101af"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-official-flow-feasibility.test.ts",
+      "disposition": "owned",
+      "blobSha": "7ac47a36aea0994c29541cb75314e9a939274620"
+    },
+    {
+      "path": "docs/agentic/claims/task-129-mfa-mounted-provider-feasibility.md",
+      "disposition": "owned",
+      "blobSha": "91a57eee8fec872770c61d21c68e69a9de7da567"
+    }
+  ]
+}
+```
