@@ -15968,3 +15968,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, SDD, integration, release records,
   Task129, Task130, Task139, full verification, providers, network,
   credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-613 — Task129-MFA bounded review repair dispatched
+
+- Recorded at: 2026-07-16T19:28:28Z
+- Architecture/invariant reviewer
+  `019f6c61-3f65-7980-a415-887f359a5282` and
+  executability/adversarial reviewer
+  `019f6c61-4341-7263-8bdb-043bf52c0394` both returned
+  `NEEDS-CHANGES` for exact candidate
+  `62ea0bb703b296f1735ae5b754a5e4052ffcbf16`.
+- The coordinator verified four unique findings against the frozen design:
+  normalized ledger records must also pass the canonical ontology event parser
+  before source inspection; feasibility-event causation must belong to its
+  payload source set; one-reread concurrency must reject any differing
+  same-idempotency-key record even when an exact record also exists; and raw
+  cookie/header material must be rejected at posture and correlation
+  boundaries.
+- Fresh repair worker `019f6c66-c842-7bc3-8632-e551f23b82bb` starts from the
+  clean reviewed candidate and owns only the classifier source/test, ontology
+  contract/test, mounted recorder source/test, and Task129-MFA claim. It must
+  add one forward repair commit without amending or resetting history.
+- This prompt explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for the
+  bounded review repair only. Causal RED cases must be added inside existing
+  tests so the frozen allocation remains exactly `16/70/17/4/22 = 129`, with
+  one unchanged 8/20 Task137 marker.
+- Completion requires exact 129-test GREEN, typecheck, diff checking, factory
+  readiness, Task136 markers `29/1/20/29/1/15`, cumulative eleven-path scope,
+  private-export and non-symlink checks, and a clean forward commit. Full
+  verification, providers, network, credentials, OAuth, external services,
+  live Nous, Task139, integration, release records, push, reset, and every
+  `neo` action remain closed.
