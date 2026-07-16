@@ -5,16 +5,17 @@ import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const contractPath = "docs/agentic/contracts/task136-bounded-assurance-v1.json";
+const contractPath = "docs/agentic/contracts/task136-bounded-assurance-v2.json";
 
 const expectedCardIds = Object.freeze([
   "Task126",
   "Task127",
   "Task128",
-  "Task129",
-  "Task130",
   "Task135D",
   "Task137A",
+  "Task129-MFA",
+  "Task129",
+  "Task130",
   "Task135B",
   "T120-R",
   "Task137B-W",
@@ -38,7 +39,7 @@ const expectedCardIds = Object.freeze([
   "Task136"
 ]);
 
-const expectedReleaseGraphHash = "07e5f070a3657694a63d80bcdf3d69be087418a235d77e6875e604d9636ce83f";
+const expectedReleaseGraphHash = "9e88c5f9fa12bac40a5df6cc3fc0cc6a2b1f14e0c1fc8ad30da1da61e76864ab";
 const releaseRecordSchemaVersion = "task136-dispatch-release.v4";
 const releaseRecordKeys = Object.freeze([
   "schemaVersion",
@@ -179,18 +180,18 @@ function assertThreadId(value, label) {
 
 function assertContractShape(contract) {
   assertExactKeys(contract, ["authority", "compositionCorpus", "compositionGrammar", "releaseGraph", "schemaVersion"], "contract");
-  if (contract.schemaVersion !== "task136-bounded-assurance.v1") {
+  if (contract.schemaVersion !== "task136-bounded-assurance.v2") {
     throw new Error("schema version");
   }
   assertExactKeys(contract.authority, ["registryPath", "resetEvent"], "authority");
   if (contract.authority.registryPath !== "docs/agentic/resident-agent-full-vision-program-registry.md") {
     throw new Error("authority registry path");
   }
-  if (contract.authority.resetEvent !== "RV-1-E-545") {
+  if (contract.authority.resetEvent !== "RV-1-E-597") {
     throw new Error("authority reset event");
   }
   assertExactKeys(contract.releaseGraph, ["cards", "version"], "releaseGraph");
-  if (contract.releaseGraph.version !== "task136-release-graph.v1") {
+  if (contract.releaseGraph.version !== "task136-release-graph.v2") {
     throw new Error("graph version");
   }
   assertArray(contract.releaseGraph.cards, "releaseGraph.cards");
@@ -277,7 +278,7 @@ export function verifyStaticGraph(contract = loadContract()) {
 
   const graph = new Map(cards.map((card) => [card.id, card]));
   if (graph.size !== cards.length || cards.length !== expectedCardIds.length) {
-    throw new Error("exactly 28 unique cards required");
+    throw new Error("exactly 29 unique cards required");
   }
 
   const finalOwners = new Map();
@@ -894,7 +895,7 @@ export function parseTask136ReleaseRecords(registryText, contract = loadContract
     index = nextIndex - 1;
   }
   if (records.length !== expectedCardIds.length) {
-    throw new Error(`repository release closure incomplete: expected 28 records, found ${records.length}`);
+    throw new Error(`repository release closure incomplete: expected 29 records, found ${records.length}`);
   }
   return records;
 }
