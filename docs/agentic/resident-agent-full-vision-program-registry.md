@@ -14914,3 +14914,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   adversarial-test reviewer.
 - Candidate SHA, base SHA, review independence, commands, stop conditions, and
   every closure remain unchanged. This correction grants no new authority.
+
+## RV-1-E-581 — Verifier candidate rejected for non-blob Git object admission
+
+- Executability/adversarial-test reviewer
+  `019f6bc6-d165-70b3-ba64-6c5768949c0f` returned unqualified **APPROVED** for
+  exact candidate `a501f3c4e01b3ec8adef37211b0d348a7a84f380` after all
+  targeted gates passed.
+- Architecture/invariant reviewer
+  `019f6bc6-d17b-7702-b77c-1ae8ec7f9308` returned **NEEDS-CHANGES** for one
+  Important defect. The real repository adapter uses `git rev-parse
+  <commit>:<path>` and compares only the resulting object ID; Git may return a
+  tree or gitlink for that expression, so the record can satisfy an owned-path
+  identity check without proving the contract's required Git blob.
+- Candidate `a501f3c4e01b3ec8adef37211b0d348a7a84f380` is rejected and must not be
+  integrated. The existing implementation owner may make one bounded TDD
+  repair within the same three owned paths: add a causal non-blob-object RED,
+  require object type `blob` for candidate, integration, and current-HEAD path
+  checks, rerun the corrected targeted gates, and return one replacement
+  candidate. Task-scoped subagent-driven development remains explicitly
+  approved when relevant with one production writer.
+- Any replacement requires fresh coordinator admission and two fresh exact-SHA
+  reviews. Full verification, release records, external-service activity,
+  Task139, push, reset credit, and every `neo` action remain closed.
