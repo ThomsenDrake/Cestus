@@ -1,10 +1,14 @@
+import {
+  createOfficialFlowAbsenceWitness,
+  type OfficialFlowAbsenceWitnessV1
+} from "./official-flow-feasibility.js";
 import { isAgentSecretSafeText } from "./secret-safety.js";
 
 const hashPattern = /^sha256:[a-f0-9]{64}$/;
-const workspaceIdPattern = /^workspace_[a-zA-Z0-9_-]+$/;
+const workspaceIdPattern = /^ws_[a-zA-Z0-9_-]+$/;
 const mountInstanceIdPattern = /^mount_[a-zA-Z0-9_-]+$/;
 const taskIdPattern = /^task_[a-zA-Z0-9_-]+$/;
-const attemptIdPattern = /^attempt_[a-zA-Z0-9_-]+$/;
+const attemptIdPattern = /^attempt_[a-f0-9]{64}$/;
 const runIdPattern = /^run_[a-zA-Z0-9_-]+$/;
 const providerIdPattern = /^provider_[a-zA-Z0-9_-]+$/;
 const credentialRefIdPattern = /^agent_credref_[a-zA-Z0-9_-]+$/;
@@ -25,36 +29,15 @@ const forbiddenOfficialFlowKinds = new Set([
   "subscription-token-as-api-key"
 ]);
 
-export interface CodexOfficialFlowUnavailableEvidence {
-  readonly recordVersion: "agent-provider-feasibility.v1";
-  readonly providerId: string;
-  readonly modelId: string;
-  readonly capabilityHash: string;
-  readonly credentialRefId: string;
-  readonly posture: "unavailable";
-  readonly category: "official-flow-unavailable";
-  readonly policyVersion: string;
-  readonly workspaceId: string;
-  readonly mountInstanceId: string;
-  readonly runId: string;
-  readonly approvalClass: "provider-byte-transfer";
-  readonly sourceEventIds: readonly string[];
-  readonly documentationHash: string | undefined;
-  readonly idempotencyKey: string;
-}
-
 export interface CodexSubscriptionHarness {
   assess(input: unknown): Promise<CodexSubscriptionHarnessResult>;
 }
 
 export type CodexSubscriptionHarnessResult =
   | {
-    readonly kind: "unavailable";
-    readonly category: "official-flow-unavailable";
-    readonly providerId: string;
-    readonly modelId: string;
-    readonly capabilityHash: string;
-    readonly safeDiagnosticCodes: readonly ["official-flow-unavailable"];
+    readonly kind: "official-flow-absence-classified";
+    readonly category: "official-flow-absent";
+    readonly witness: OfficialFlowAbsenceWitnessV1;
   }
   | {
     readonly kind: "interface-demonstrated";
@@ -67,26 +50,15 @@ export type CodexSubscriptionHarnessResult =
   }
   | {
     readonly kind: "blocked";
-    readonly category:
-      | "unsafe-input"
-      | "posture-mismatch"
-      | "prohibited-credential-source"
-      | "feasibility-append-unavailable";
+    readonly category: "unsafe-input" | "posture-mismatch" | "prohibited-credential-source";
     readonly providerId: string;
     readonly modelId: string;
     readonly capabilityHash: string;
-    readonly safeDiagnosticCodes: readonly [
-      "unsafe-input" | "posture-mismatch" | "prohibited-credential-source" | "feasibility-append-unavailable"
-    ];
+    readonly safeDiagnosticCodes: readonly ["unsafe-input" | "posture-mismatch" | "prohibited-credential-source"];
   };
 
 export interface CreateCodexSubscriptionHarnessInput {
   readonly currentPosture: CodexSubscriptionHarnessPosture;
-  readonly feasibilityAuthority: CodexFeasibilityAuthority;
-}
-
-export interface CodexFeasibilityAuthority {
-  appendOfficialFlowUnavailable(evidence: CodexOfficialFlowUnavailableEvidence): Promise<unknown>;
 }
 
 export interface CodexSubscriptionHarnessPosture {
@@ -103,6 +75,7 @@ export interface CodexSubscriptionHarnessPosture {
   readonly policy: CodexHarnessPolicy;
   readonly approval: CodexHarnessApproval;
   readonly sourceEventIds: readonly string[];
+  readonly causationEventId: string;
 }
 
 export interface CodexHarnessCredentialReference {
@@ -130,7 +103,6 @@ export interface CodexHarnessApproval {
 
 interface NormalizedCreateInput {
   readonly currentPosture: NormalizedPosture;
-  readonly feasibilityAuthority: CodexFeasibilityAuthority;
 }
 
 interface NormalizedPosture {
@@ -145,18 +117,19 @@ interface NormalizedPosture {
   readonly capabilityHash: string;
   readonly credentialRefId: string;
   readonly credentialKind: "subscription-oauth" | "device-code-oauth";
-  readonly credentialScopeIdentity: string;
+  readonly capabilityScopes: readonly string[];
   readonly policyVersion: string;
   readonly officialFlowId: string;
   readonly approvalClass: "provider-byte-transfer";
   readonly approvalBindingHash: string;
   readonly sourceEventIds: readonly string[];
+  readonly causationEventId: string;
   readonly identity: string;
 }
 
 type NormalizedOfficialFlow =
   | { readonly kind: "absent" }
-  | { readonly kind: "test-interface"; readonly officialFlowId: string; readonly documentationHash: string }
+  | { readonly kind: "test-interface"; readonly officialFlowId: string }
   | { readonly kind: "prohibited" }
   | { readonly kind: "invalid" };
 
@@ -170,9 +143,8 @@ const unavailableModelId = "codex-unavailable";
 const unavailableHash = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
 /**
- * This adapter has no network, secret-resolution, token, or provider-request
- * port. It can only record safe unavailable feasibility through its supplied
- * mounted authority or demonstrate a credential-free test interface route.
+ * This adapter is a pure classifier. It has no authority, storage, provider,
+ * network, credential-resolution, or append port.
  */
 export function createCodexSubscriptionHarness(input: unknown): CodexSubscriptionHarness {
   const configured = normalizeCreateInput(input);
@@ -202,40 +174,34 @@ export function createCodexSubscriptionHarness(input: unknown): CodexSubscriptio
         return interfaceDemonstrated(configured.currentPosture);
       }
 
-      const evidence = unavailableEvidence(configured.currentPosture);
       try {
-        await configured.feasibilityAuthority.appendOfficialFlowUnavailable(evidence);
+        const witness = createOfficialFlowAbsenceWitness({
+          configuredPosture: toOfficialFlowAbsencePosture(configured.currentPosture),
+          assessedPosture: toOfficialFlowAbsencePosture(assessment.posture),
+          officialFlow: undefined
+        });
+        return Object.freeze({
+          kind: "official-flow-absence-classified" as const,
+          category: "official-flow-absent" as const,
+          witness
+        });
       } catch {
-        return blocked("feasibility-append-unavailable", configured.currentPosture);
+        return blocked("unsafe-input", configured.currentPosture);
       }
-      return unavailable(configured.currentPosture);
     }
   });
 }
 
 function normalizeCreateInput(value: unknown): NormalizedCreateInput | undefined {
   const record = plainOwnDataRecord(value);
-  if (record === undefined || !hasExactKeys(record, ["currentPosture", "feasibilityAuthority"])) {
+  if (record === undefined || !hasExactKeys(record, ["currentPosture"])) {
     return undefined;
   }
   const currentPosture = normalizePosture(record.currentPosture);
-  const feasibilityAuthority = normalizeFeasibilityAuthority(record.feasibilityAuthority);
-  if (currentPosture === undefined || feasibilityAuthority === undefined) {
+  if (currentPosture === undefined) {
     return undefined;
   }
-  return Object.freeze({ currentPosture, feasibilityAuthority });
-}
-
-function normalizeFeasibilityAuthority(value: unknown): CodexFeasibilityAuthority | undefined {
-  const record = plainOwnDataRecord(value);
-  if (record === undefined ||
-      !hasExactKeys(record, ["appendOfficialFlowUnavailable"]) ||
-      typeof record.appendOfficialFlowUnavailable !== "function") {
-    return undefined;
-  }
-  return Object.freeze({
-    appendOfficialFlowUnavailable: record.appendOfficialFlowUnavailable as CodexFeasibilityAuthority["appendOfficialFlowUnavailable"]
-  });
+  return Object.freeze({ currentPosture });
 }
 
 function normalizeAssessment(value: unknown): NormalizedAssessment | undefined {
@@ -258,6 +224,7 @@ function normalizeOfficialFlow(value: unknown): NormalizedOfficialFlow {
   if (hasProhibitedOfficialFlowKind(value)) {
     return Object.freeze({ kind: "prohibited" });
   }
+
   const record = plainOwnDataRecord(value);
   if (record === undefined || typeof record.kind !== "string") {
     return Object.freeze({ kind: "invalid" });
@@ -271,18 +238,13 @@ function normalizeOfficialFlow(value: unknown): NormalizedOfficialFlow {
   }
   return Object.freeze({
     kind: "test-interface",
-    officialFlowId: record.officialFlowId,
-    documentationHash: record.documentationHash
+    officialFlowId: record.officialFlowId
   });
 }
 
 function hasProhibitedOfficialFlowKind(value: unknown): boolean {
   try {
-    if (value === null || typeof value !== "object") {
-      return false;
-    }
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) {
+    if (value === null || typeof value !== "object" || Object.getPrototypeOf(value) !== Object.prototype) {
       return false;
     }
     const kind = Object.getOwnPropertyDescriptor(value, "kind");
@@ -308,7 +270,8 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
     "credentialReference",
     "policy",
     "approval",
-    "sourceEventIds"
+    "sourceEventIds",
+    "causationEventId"
   ])) {
     return undefined;
   }
@@ -319,6 +282,7 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
       !isSafeId(record.attemptId, attemptIdPattern) ||
       !isSafeId(record.runId, runIdPattern) ||
       !isSafeId(record.providerId, providerIdPattern) ||
+      !record.providerId.startsWith("provider_openai_codex_") ||
       !isSafeId(record.modelId, modelIdPattern) ||
       !isSafeHash(record.capabilityHash)) {
     return undefined;
@@ -329,6 +293,8 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
   const approval = normalizeApproval(record.approval);
   const sourceEventIds = plainSafeStringArray(record.sourceEventIds, eventIdPattern);
   if (credential === undefined || policy === undefined || approval === undefined || sourceEventIds === undefined ||
+      !isSafeId(record.causationEventId, eventIdPattern) ||
+      !sourceEventIds.includes(record.causationEventId) ||
       credential.providerId !== record.providerId ||
       policy.providerId !== record.providerId ||
       policy.modelId !== record.modelId ||
@@ -348,18 +314,17 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
     capabilityHash: record.capabilityHash,
     credentialRefId: credential.credentialRefId,
     credentialKind: credential.credentialKind,
-    credentialScopeIdentity: JSON.stringify(credential.capabilityScopes),
+    capabilityScopes: credential.capabilityScopes,
     policyVersion: policy.policyVersion,
     officialFlowId: policy.officialFlowId,
     approvalClass: approval.approvalClass,
     approvalBindingHash: approval.bindingHash,
     sourceEventIds,
-    identity: ""
+    causationEventId: record.causationEventId
   };
-  normalized.identity = JSON.stringify(normalized);
   return Object.freeze({
     ...normalized,
-    sourceEventIds: Object.freeze([...sourceEventIds])
+    identity: JSON.stringify(normalized)
   });
 }
 
@@ -379,19 +344,20 @@ function normalizeCredentialReference(value: unknown): {
   ]) ||
       !isSafeId(record.credentialRefId, credentialRefIdPattern) ||
       !isSafeId(record.providerId, providerIdPattern) ||
+      !record.providerId.startsWith("provider_openai_codex_") ||
       (record.credentialKind !== "subscription-oauth" && record.credentialKind !== "device-code-oauth") ||
       record.status !== "healthy") {
     return undefined;
   }
-  const scopes = plainSafeStringArray(record.capabilityScopes, /^[a-z-]+$/);
-  if (scopes === undefined || !scopes.includes("harness-execution")) {
+  const capabilityScopes = plainSafeStringArray(record.capabilityScopes, /^[a-z-]+$/);
+  if (capabilityScopes === undefined || !capabilityScopes.includes("harness-execution")) {
     return undefined;
   }
   return Object.freeze({
     credentialRefId: record.credentialRefId,
     providerId: record.providerId,
     credentialKind: record.credentialKind,
-    capabilityScopes: Object.freeze([...scopes])
+    capabilityScopes
   });
 }
 
@@ -413,6 +379,7 @@ function normalizePolicy(value: unknown): {
   ]) ||
       !isSafeId(record.policyVersion, policyVersionPattern) ||
       !isSafeId(record.providerId, providerIdPattern) ||
+      !record.providerId.startsWith("provider_openai_codex_") ||
       !isSafeId(record.modelId, modelIdPattern) ||
       !isSafeHash(record.capabilityHash) ||
       record.allowOfficialCodexHarness !== true ||
@@ -442,35 +409,28 @@ function normalizeApproval(value: unknown): {
   return Object.freeze({ approvalClass: "provider-byte-transfer", bindingHash: record.bindingHash });
 }
 
-function unavailableEvidence(posture: NormalizedPosture): CodexOfficialFlowUnavailableEvidence {
-  return Object.freeze({
-    recordVersion: "agent-provider-feasibility.v1",
+function toOfficialFlowAbsencePosture(posture: NormalizedPosture): object {
+  return {
+    residentAgentId: posture.residentAgentId,
+    workspaceId: posture.workspaceId,
+    mountInstanceId: posture.mountInstanceId,
+    taskId: posture.taskId,
+    attemptId: posture.attemptId,
+    runId: posture.runId,
+    providerFamily: "codex",
     providerId: posture.providerId,
     modelId: posture.modelId,
     capabilityHash: posture.capabilityHash,
     credentialRefId: posture.credentialRefId,
-    posture: "unavailable",
-    category: "official-flow-unavailable",
+    credentialKind: posture.credentialKind,
+    capabilityScopes: posture.capabilityScopes,
     policyVersion: posture.policyVersion,
-    workspaceId: posture.workspaceId,
-    mountInstanceId: posture.mountInstanceId,
-    runId: posture.runId,
-    approvalClass: "provider-byte-transfer",
-    sourceEventIds: Object.freeze([...posture.sourceEventIds]),
-    documentationHash: undefined,
-    idempotencyKey: [posture.providerId, posture.officialFlowId, posture.policyVersion, posture.mountInstanceId].join("|")
-  });
-}
-
-function unavailable(posture: NormalizedPosture): CodexSubscriptionHarnessResult {
-  return Object.freeze({
-    kind: "unavailable",
-    category: "official-flow-unavailable",
-    providerId: posture.providerId,
-    modelId: posture.modelId,
-    capabilityHash: posture.capabilityHash,
-    safeDiagnosticCodes: Object.freeze(["official-flow-unavailable"] as const)
-  });
+    officialFlowId: posture.officialFlowId,
+    approvalClass: posture.approvalClass,
+    approvalBindingHash: posture.approvalBindingHash,
+    sourceEventIds: posture.sourceEventIds,
+    causationEventId: posture.causationEventId
+  };
 }
 
 function interfaceDemonstrated(posture: NormalizedPosture): CodexSubscriptionHarnessResult {
@@ -509,10 +469,7 @@ function isSafeId(value: unknown, pattern: RegExp): value is string {
 
 function plainSafeStringArray(value: unknown, itemPattern: RegExp): readonly string[] | undefined {
   try {
-    if (!Array.isArray(value)) {
-      return undefined;
-    }
-    if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length > 0) {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length > 0) {
       return undefined;
     }
     const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
@@ -522,9 +479,8 @@ function plainSafeStringArray(value: unknown, itemPattern: RegExp): readonly str
         lengthDescriptor.value < 1 || !Number.isSafeInteger(lengthDescriptor.value)) {
       return undefined;
     }
-    const length = lengthDescriptor.value;
     const values: string[] = [];
-    for (let index = 0; index < length; index += 1) {
+    for (let index = 0; index < lengthDescriptor.value; index += 1) {
       const descriptor = descriptors[String(index)];
       if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable ||
           !isSafeId(descriptor.value, itemPattern)) {
@@ -532,22 +488,36 @@ function plainSafeStringArray(value: unknown, itemPattern: RegExp): readonly str
       }
       values.push(descriptor.value);
     }
-    if (Object.keys(descriptors).length !== length + 1) {
+    if (Object.keys(descriptors).length !== lengthDescriptor.value + 1) {
       return undefined;
     }
-    return Object.freeze(values);
+    const normalized = [...values].sort(compareUnicodeCodePointSequences);
+    if (new Set(normalized).size !== normalized.length) {
+      return undefined;
+    }
+    return Object.freeze(normalized);
   } catch {
     return undefined;
   }
 }
 
+function compareUnicodeCodePointSequences(left: string, right: string): number {
+  const leftSequence = Array.from(left, (character) => character.codePointAt(0) ?? 0);
+  const rightSequence = Array.from(right, (character) => character.codePointAt(0) ?? 0);
+  const length = Math.min(leftSequence.length, rightSequence.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftCodePoint = leftSequence[index];
+    const rightCodePoint = rightSequence[index];
+    if (leftCodePoint === rightCodePoint) continue;
+    return leftCodePoint! < rightCodePoint! ? -1 : 1;
+  }
+  return leftSequence.length - rightSequence.length;
+}
+
 function plainOwnDataRecord(value: unknown): Record<string, unknown> | undefined {
   try {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) {
-      return undefined;
-    }
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null || Object.getOwnPropertySymbols(value).length > 0) {
+    if (value === null || typeof value !== "object" || Array.isArray(value) ||
+        Object.getPrototypeOf(value) !== Object.prototype || Object.getOwnPropertySymbols(value).length > 0) {
       return undefined;
     }
     const descriptors = Object.getOwnPropertyDescriptors(value);
@@ -556,7 +526,12 @@ function plainOwnDataRecord(value: unknown): Record<string, unknown> | undefined
       if (key === "__proto__" || !descriptor.enumerable || !("value" in descriptor)) {
         return undefined;
       }
-      copy[key] = descriptor.value;
+      Object.defineProperty(copy, key, {
+        value: descriptor.value,
+        enumerable: true,
+        writable: false,
+        configurable: false
+      });
     }
     return Object.freeze(copy);
   } catch {

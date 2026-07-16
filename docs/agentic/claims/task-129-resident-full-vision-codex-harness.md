@@ -13,7 +13,8 @@
   `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md@285657a7879cdc47e321152c2bc5feb0ebe6088f`;
   `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` Task 129.
 - Claimed at: `2026-07-14T22:08:56Z`.
-- Status: merged (coordinator non-full typecheck repair integration at `d362d1a7`).
+- Status: ready-for-review (Task 5A pure-classifier candidate from released
+  Task129-MFA revision `419da41b`).
 
 ## Exclusive Scope
 
@@ -21,7 +22,7 @@
 - `packages/agent/src/codex-subscription-harness.ts`
 - `packages/agent/test/codex-subscription-harness.test.ts`
 
-## Contract
+## Legacy Contract (Superseded By Task 5A)
 
 This task models Codex only as an `openai-codex-harness` provider backend. It
 implements an official-flow-only feasibility boundary: a capability may be
@@ -116,3 +117,60 @@ review after the one clean owned-files commit.
   under fail-fast command semantics, then records causal RED/GREEN evidence.
 - Full verification remains closed. No provider, credential, network, merge,
   self-integration, registry, or `neo` action is permitted in this repair.
+
+## Task 5A Pure Classifier Evidence
+
+- Recovery worker and worktree: `codex/task129-pure-codex-official-flow-classifier`
+  at `/home/drake/.codex/worktrees/task129-pure-codex-official-flow-classifier`.
+- Exact released start: `419da41b71df7e044e00822b16a796a15889fe5d`.
+- Owned paths remain only this claim,
+  `packages/agent/src/codex-subscription-harness.ts`, and
+  `packages/agent/test/codex-subscription-harness.test.ts`.
+- The Codex harness now consumes `agent-official-flow-absence.v1` as a pure
+  classifier. Its exact create input is a current posture only; an absent
+  official flow returns the shared opaque Codex witness and cannot append,
+  persist, acquire authority, access a mounted owner, ledger, runtime handle,
+  provider, network, credential, or alternate backend.
+- Posture normalization requires the canonical `ws_` workspace prefix, the
+  64-hex `attempt_` identifier, Codex provider/official-flow bindings, a
+  required causation event included in the canonical source set, the approved
+  provider-byte-transfer binding, and equal configured/assessed snapshots.
+  Prohibited sources, malformed values, swapped posture bindings, extra keys,
+  callbacks, authority objects, mounted owners, ledgers, and runtime handles
+  fail closed. The interface-only branch remains explicitly non-feasible.
+
+### Causal RED
+
+```text
+npm test -- packages/agent/test/codex-subscription-harness.test.ts
+Test Files  1 failed (1)
+Tests  16 failed (16)
+```
+
+The legacy harness required `feasibilityAuthority`, accepted the provisional
+`workspace_` posture, and returned only the old unavailable/blocked union, so
+the new witness, canonical-posture, and pure-boundary expectations all failed
+for the intended pre-production reason.
+
+### GREEN And Bounded Gates
+
+```text
+npm test -- packages/agent/test/codex-subscription-harness.test.ts
+Test Files  1 passed (1)
+Tests  16 passed (16)
+
+npm run typecheck
+typecheck passed
+
+git diff --check
+no output
+
+npm run factory:check
+factory-readiness passed
+```
+
+The worktree began clean at the released revision; `node_modules` is a real
+directory rather than a symlink. Full `npm run verify` was intentionally not
+run under the approved Task 5A bounded-verification contract. This candidate
+is ready for a fresh independent defects-first review; it does not integrate,
+append release records, push, or touch `neo`.
