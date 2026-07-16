@@ -12802,3 +12802,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production writer. Full verification, live/provider/network/credential/Nous
   activity, reset credits, push, program integration without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-473 — Task133.5 compiler-safe candidate admitted to review
+
+- Candidate `bd3b8ed3e287a6a598dfb246524e36ca2a345438` is a clean descendant of
+  rejected `21b1df36ebc84a889d56627fc15799f30c349dc2` and changes only the claim,
+  orchestrator, runtime factory, and production-recovery test relative to
+  Recovery-4's dispatch base.
+- Fresh coordinator admission passed the exact eight focused files at 98 tests,
+  standalone typecheck, all three negative prompt-boundary searches, exact-
+  range diff, factory readiness, and clean-checkout checks.
+- Fresh mounted-authority/append/durable-restart reviewer
+  `019f683e-56f8-7170-bbda-5da5584325f7` and adversarial TypeScript/hostile-
+  input/integration reviewer `019f683e-528c-7c82-9030-cf5efed98a64` are pinned
+  and read-only on the exact candidate. Both must return unqualified
+  **APPROVED** verdicts before integration.
+- Reviews must prove final-read-to-append currentness, genuine production-
+  factory/runner fresh-runtime recovery, durable corruption rejection, one-use
+  authority, prompt secrecy, and all no-fallback/provenance gates.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, program integration without coordinator review, and every
+  `neo` action remain closed.
