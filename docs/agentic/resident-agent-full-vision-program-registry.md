@@ -16434,3 +16434,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `APPROVED`. Review work does not authorize edits, SDD, integration, release
   records, Task129, Task130, Task139, full verification, providers, network,
   credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-630 — Task129-MFA frozen-corpus release reviews dispatched
+
+- Recorded at: 2026-07-16T21:06:11Z
+- Fresh architecture/invariant reviewer
+  `019f6cc0-3df6-76b3-a93b-e9f81f337416` and fresh
+  executability/command reviewer
+  `019f6cc0-423b-7ef0-bdb9-63ca7de8e34b` are read-only at exact
+  candidate `38dbb91a883f5c91e7d07f8fefdfa7bd6ab199f7` against exact base
+  `2b81a542c6ea391bfb901443acfc04366bd4f3f5`.
+- Both prompts enumerate the complete frozen review corpus through
+  `RV-1-E-629`, require exact counts and markers, and prohibit unilateral
+  mutation or acceptance-scope expansion. Outside-model observations are
+  proposed hardening unless they demonstrate an explicit frozen prohibition
+  remains ineffective.
+- Review work is read-only and does not authorize SDD, full verification,
+  integration, release records, Task129, Task130, Task139, providers, network,
+  credentials, external services, push, reset, or any `neo` action. Both
+  verdicts must be unqualified `APPROVED` before integration.
