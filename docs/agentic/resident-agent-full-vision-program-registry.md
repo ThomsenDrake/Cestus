@@ -14415,3 +14415,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Each lane stops at one immutable candidate for coordinator admission. No
   worker may review, integrate, push, run full verification, use external
   services, resume Task139, or touch `neo`.
+
+## RV-1-E-555 — Bounded-assurance candidates checkpointed; gate dependency corrected
+
+- Lane A stopped cleanly at Task136 candidate
+  `467371018350f14f4183dae0cee33887b888efff` with six owned paths. Its
+  contract, four-test checker, exact 28/1/20/28/1/15 markers, diff check, and
+  factory readiness passed.
+- Lane B stopped cleanly at Task137 finite-policy candidate
+  `09e80c4661cc3dafe6d369d4ee033b7dd526b9da` with seven owned paths. Its
+  six-file/74-test focused command, `allowed=8 rejected=20` marker, typecheck,
+  diff check, factory readiness, clean checkout, and absent dependency link
+  passed.
+- Lane C stopped cleanly at terminal-gate candidate
+  `4592c95e1cbfef43321b32d358fc235802165a83` with four owned paths. Its
+  controlled old-versus-new regression passed 2/2 tests and asserted all seven
+  ordered markers; diff check, factory readiness, and clean checkout passed.
+- Coordinator pre-admission found one finite sequencing mismatch: the
+  standalone gate candidate cannot run the real Task137 suite because the
+  reconstructed Task137 files are intentionally owned by Lane B and are not in
+  the current program branch. The design and plan now admit/review Lane C with
+  the controlled regression, integrate it first, then require the real gate on
+  Lane B after it rebases onto that integration. Controlled evidence cannot
+  substitute for the real Task137 receipt.
+- The dependency correction requires two fresh read-only design/plan approvals
+  before candidate admission. Integration, full verification, external-service
+  activity, reset credits, push, Task139 resumption, and every `neo` action
+  remain closed.

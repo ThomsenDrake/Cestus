@@ -251,9 +251,14 @@ TASK137_GATE_COMPLETE stages=6
 
 Exit 0 without all seven markers is failure. A regression test must prove the
 old standard-input form stops before later stages and the committed script
-reaches every stage with controlled command doubles. Coordinator admission
-also runs the real script, checks marker order/count, and rejects dirty or
-linked checkouts.
+reaches every stage with controlled command doubles. The standalone gate
+candidate is admitted and reviewed through that controlled regression because
+the current program branch does not yet contain the reconstructed Task137
+production/test tree. After the approved gate is integrated, the Task137 policy
+candidate rebases onto it; coordinator admission and both exact-revision policy
+reviews then run the real script, check marker order/count, and reject dirty or
+linked checkouts. A controlled gate pass is not accepted as the real runtime
+gate receipt.
 
 ## Review Contract
 
