@@ -13237,3 +13237,16 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   return unqualified **APPROVED** before integration or Task139 resumption.
 - Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-493 — Task136 Recovery-10 exact-SHA reviews active
+
+- Release-authority and mounted/provider-safety reviewer
+  `019f6892-81ae-7750-b84c-69c4f3823ee8` and adversarial TypeScript ABI/
+  dispatch reviewer `019f6892-8f1e-7692-b49c-b93327d247cc` are active,
+  pinned, read-only, and independently verifying exact candidate
+  `8e92d090e747eebcada57da2247cb3021ccc4d7f` from separate worktrees.
+- Both reviewers must rerun all four literal gates, exact scope and clean-state
+  checks, inspect the complete active v4 contract, and return an unqualified
+  **APPROVED** before coordinator integration or Task139 resumption.
+- Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
