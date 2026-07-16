@@ -15288,3 +15288,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, subagent-driven development,
   integration, release records, full verification, external activity,
   Task139, push, reset, or any `neo` action.
+
+## RV-1-E-592 — Task129 candidate is safe but not releasable
+
+- Architecture/invariant reviewer
+  `019f6bea-ef7a-7643-81ad-e6f7a7f3fefb` and executability/adversarial
+  reviewer `019f6bea-f3b8-7a80-9d41-17eab674f348` both returned
+  **NEEDS-CHANGES** for exact candidate
+  `f10512b1070fb3a92305844653a530e45fa57cb7`.
+- Both confirmed that the candidate closes the false-completion defect, passes
+  17 focused tests, typecheck, diff checking, factory readiness, exact scope,
+  ancestry, clean-checkout, and dependency-topology checks. Full verification
+  was not run.
+- Both identified the same finite dependency conflict: Task129's frozen release
+  contract requires append-only durable `official-flow-unavailable` evidence,
+  but the candidate removes that result because no authenticated mounted
+  append/readback operation exists in its current authority boundary. A safe
+  blocked result cannot be relabeled as completed Task129 evidence.
+- The candidate remains preserved and unintegrated. The next recovery scope is
+  the smallest non-forgeable mounted feasibility authority that appends and
+  reads back the exact committed evidence before Task129 returns unavailable.
+  Another callback-only or fail-closed-only Task129 retry is not authorized.
+- Strict release records remain complete only through `Task128`. Full
+  verification, external services, Task139, push, reset, and every `neo`
+  action remain closed.
