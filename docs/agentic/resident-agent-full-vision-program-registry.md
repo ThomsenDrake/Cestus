@@ -14442,3 +14442,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   before candidate admission. Integration, full verification, external-service
   activity, reset credits, push, Task139 resumption, and every `neo` action
   remain closed.
+
+## RV-1-E-556 — Gate dependency-correction reviews active
+
+- Architecture/invariant reviewer
+  `019f6b7d-b7c0-7f12-8834-a675c1ef0dc5` and
+  executability/dependency reviewer
+  `019f6b7d-b87e-7650-bb9a-9c75241b5786` are active, read-only, and reviewing
+  exact correction revision `2b8dd1518cc8c26c787472dca1deed72d4d74df0`.
+- Both must verify that Lane C controlled evidence cannot substitute for the
+  real gate, Lane B supplies the first real seven-stage receipt after rebasing,
+  and the integration/review order is acyclic. Both must return unqualified
+  **APPROVED** before candidate admission resumes.
+- Review work does not authorize subagent-driven development. Integration,
+  full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
