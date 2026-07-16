@@ -14308,3 +14308,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, implementation, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain
   closed.
+
+## RV-1-E-549 — Final command-review findings repaired
+
+- Architecture reviewer `019f6b65-2ea1-7e42-9647-85d8e5cc8841` returned
+  unqualified **APPROVED** for exact revision
+  `dfc205f63e8368991b63e4372b4e433994a55ba5`. Executability reviewer
+  `019f6b65-2e9e-76a2-9fc5-b4f4aa4a6db6` returned **NEEDS-CHANGES**, so dual
+  approval was not met and no approval carries forward.
+- The remaining findings were finite plan defects: coordinator snippets did
+  not explicitly stop on a nonzero captured gate exit, and Task137 GREEN
+  referenced the wrong numbered RED step.
+- Exact repair revision
+  `c1c5b5d61d761c99128ffefbf679eb546cfe961c` adds explicit nonzero-exit
+  failure to both real-gate admissions and corrects the RED/GREEN reference.
+- One final fresh independent review pair must return unqualified
+  **APPROVED** before implementation starts. Full verification,
+  implementation, integration, external-service activity, reset credits,
+  push, Task139 resumption, and every `neo` action remain closed.
