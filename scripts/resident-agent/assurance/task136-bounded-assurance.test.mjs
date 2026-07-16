@@ -105,7 +105,12 @@ test("preserves v1 bytes and rejects the bounded v2 topology and ownership regre
 
   const adapter = fakeRepositoryAdapter(releaseRecordsFor(contract));
   assert.throws(
-    () => verifyReleaseClosure(contract, readFileSync(registryPath, "utf8"), adapter),
+    () =>
+      verifyReleaseClosure(
+        contract,
+        releaseRecordMarkdown(releaseRecordsFor(contract).slice(0, 3)),
+        adapter
+      ),
     /repository release closure incomplete: expected 29 records, found 3/
   );
   assert.equal(adapter.commandCalls.length, 0);
