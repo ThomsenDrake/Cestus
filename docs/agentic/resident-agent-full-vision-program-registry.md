@@ -13367,3 +13367,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Documentation review does not authorize subagent-driven development. Full
   verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-499 — Task136 Recovery-11 rejected for external-caller minting
+
+- Private mounted-authority reviewer
+  `019f68a6-488e-74d2-997f-39c770d09431` and adversarial TypeScript ABI/import-
+  policy reviewer `019f68a6-5acb-7e12-8a7d-c263ea2bfe2e` both returned
+  **NEEDS-CHANGES** for exact candidate
+  `7856505c58df91dcfdd4d288d19e39448588eb8e`. No coordinator admission or
+  prior approval carries forward.
+- Both reviewers extracted the candidate's executable fixture, added an
+  external module that value-imports `prepareRuntimeFactoryProviderMountGrant`
+  and `mountProviderAuthority`, supplied arbitrary scalar IDs, compiled it, and
+  executed a valid grant-to-mounted-authority path. The fixture's own caller
+  check scans only the fixed module map, so its GREEN and six REDs do not prove
+  the active contract's sole-FC-Core caller or caller-unmintable boundary.
+- The fixture also replaces the documented `AgentProviderConfigurationV2`,
+  `CredentialReferenceV2`, and `OntologyEventId` preparation inputs with
+  ungoverned scalar stand-ins. This hides rather than exercises the exact
+  source-level ABI and current governed readback promised by the provider plan.
+- Candidate `7856505c58df91dcfdd4d288d19e39448588eb8e` must not be integrated or
+  used to resume Task139. The same fresh owner is authorized for one bounded
+  Recovery-12 attempt on the same three documentation paths. Documentation-
+  only work does not authorize subagent-driven development.
+- Recovery-12 must begin with the reviewers' executable external-import
+  counterexample; add it as a named RED to the unchanged compile/link harness,
+  make the source-level sole-caller/import-policy boundary inspect every fixture
+  module including injected adversaries, and use the exact governed
+  configuration, credential-reference, and event input types rather than
+  arbitrary scalar substitutes. Preserve the private mounted runtime, all
+  prior gates and REDs, cycle-free graphs, frozen no-input boundary, exact
+  ownership, secret safety, and currentness/revocation requirements.
+- Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
