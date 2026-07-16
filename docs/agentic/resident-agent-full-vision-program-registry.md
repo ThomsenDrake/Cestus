@@ -13676,3 +13676,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   The owner must return one immutable candidate for fresh admission and review.
   Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-512 — Task136 Recovery-13 candidate admitted to review
+
+- Candidate `8bee4b0f8ad774329b2301895316c96c4e21794f` is one clean descendant
+  of rejected `1693e9fa4f4664567e3fb82a228bc914c2aca785` and changes exactly the
+  Task136 claim, bounded-loop plan, and provider-credentials plan.
+- Coordinator admission independently passed all four literal document-derived
+  gates. The release boundary behaved as specified; the 28-record fixture and
+  all 20 negative cases passed; all 28 targeted commands resolved; and the
+  executable module fixture passed its baseline plus 12 negative cases.
+- Exact one-commit ancestry, three-path scope, diff, HEAD, clean checkout, and
+  absent dependency-link checks passed. The candidate now models module
+  ownership transitively across direct, alias, namespace, star, and multi-hop
+  forwarding forms.
+- Two fresh independent exact-SHA reviews are required: one for release graph
+  and ownership consistency, and one for executable TypeScript composition.
+  Both must return unqualified **APPROVED** before integration or Task139
+  resumption.
+- Full verification, source dispatch, external-service activity, reset credits,
+  push, Task139 resumption, and every `neo` action remain closed.
