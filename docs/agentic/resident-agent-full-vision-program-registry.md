@@ -14110,3 +14110,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   unqualified **APPROVED** before integration or Task139 resumption.
 - Full verification, source dispatch, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-539 — Task136 Recovery-16 exact-SHA reviews active
+
+- Graph reviewer `019f6b3e-e47f-7dc3-a4e0-35b3bd86670f` and composition
+  reviewer `019f6b3f-052c-75e1-81be-c64d625918a4` are active, pinned,
+  read-only, and independently reviewing exact candidate
+  `9b2af110b1b9745df09c480a66a241459f53d3f6` from separate worktrees.
+- Both must independently run all four Task136 checks, exact revision, scope,
+  and clean-state checks, inspect the complete candidate, and add one isolated
+  negative fixture. Both must return unqualified **APPROVED** before integration
+  or Task139 resumption.
+- Review work does not authorize subagent-driven development. Full
+  verification, integration, external-service activity, reset credits, push,
+  Task139 resumption, and every `neo` action remain closed.
