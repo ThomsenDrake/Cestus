@@ -15432,3 +15432,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   implementation-plan correction now proceed under the already approved
   mounted-authority/provider requirements. No implementation is authorized
   until both documents receive two fresh read-only approvals.
+
+## RV-1-E-598 — Mounted feasibility recovery contract drafted
+
+- The coordinator wrote a bounded design and measurable implementation plan
+  for the finite dependency correction identified by RV-1-E-597. The selected
+  architecture keeps Codex/xAI harnesses as pure provider-specific absence
+  classifiers and makes one local-runtime bridge the sole component that can
+  append, reread, and expose durable `official-flow-unavailable` posture.
+- The bridge reuses the exact Task137A factory-issued mounted authority
+  operation, adds one strict ontology feasibility event, validates exact
+  source-event provenance, performs one bounded concurrency reread, and
+  rechecks mounted currentness after every asynchronous boundary. It accepts
+  no caller-supplied ledger, owner, append callback, readback callback, runtime
+  handle, provider, credential, or network port.
+- The corrected immutable Task136 contract is v2 with 29 cards and one new
+  `Task129-MFA` prerequisite between Task137A and Task129/Task130/Task135B.
+  The three existing Task126/Task127/Task128 strict v4 records remain
+  byte-for-byte unchanged; the v4 mutable record schema remains unchanged.
+- Task137 receives only a versioned finite owner-map amendment. Its grammar and
+  corpus become v2 while retaining exactly eight accepted fixtures, twenty
+  rejected mutations, and the existing terminal marker. No general language
+  analyzer or review-scope expansion is authorized.
+- Two fresh read-only design/plan reviewers are required: one for architecture
+  and invariants, one for executability and finite scope. Review work does not
+  authorize edits or subagent-driven development. Task139, full verification,
+  providers, network, credentials, external services, push, reset, and every
+  `neo` action remain closed.
