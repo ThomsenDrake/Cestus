@@ -14787,3 +14787,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   coordinator-only integration.
 - Record population, Task139, external-service activity, push, reset credit,
   and every `neo` action remain closed until the verifier integrates.
+
+## RV-1-E-574 — Evidence-bound release verifier implementation active
+
+- Implementation task `019f6bb0-3682-7363-aa40-e7df24734443` is active in an
+  isolated worktree from exact program base
+  `af8560d7e7cf92a2f3555064150156cbc7e5e6c7` on branch
+  `codex/task136-release-closure-verifier`.
+- Its prompt explicitly approves Task 1 only with task-scoped
+  `superpowers:subagent-driven-development`, test-driven development,
+  verification before completion, fresh review, and coordinator-only
+  integration. It owns only the assurance script, its Node test, and the new
+  verifier claim.
+- The implementer stops at one clean committed candidate. Registry writes,
+  release records, Task139, external-service activity, push, reset credit, and
+  every `neo` action remain closed.
