@@ -259,3 +259,39 @@ mode markers are `29/1/20/29/1/15`.
   its pre-existing missing TypeScript source-map warning, but exited `0`.
 - `npm run typecheck` passed. Full `npm run verify` remains intentionally
   unrun under this bounded authorization.
+
+## Finite Cross-Layer Boundary Repair Evidence
+
+- Starting point: clean exact reviewed-repair head
+  `ab33c40f408e4234cbfedfa7e37d90bdfbf92a86`, with every prior forward
+  repair preserved.
+- Causal RED (2026-07-16) used the exact five-file command in this claim and
+  reported `3 failed | 2 passed (5)` files and `3 failed | 126 passed (129)`
+  tests, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The existing
+  classifier, ontology, and mounted-recorder test blocks proved that prefixed
+  raw cookie/session values and `auth=raw` reached boundaries that should
+  reject them; the ontology feasibility scope also accepted `sk_live_abc`.
+- Repair: the three provider-feasibility predicates add bounded prefixed
+  cookie/session and auth-assignment rejection while preserving all earlier
+  coarse secret rejection and safe OAuth/credential controls. Ontology
+  feasibility `capabilityScopes` now uses the same provider-feasibility
+  secret-safe schema as issued classification and mounted recording.
+- Ordering correction: the initial repair prompt repeated the reviewer's
+  reversed U+E000/U+10000 expectation. The coordinator clarified that the
+  approved design governs: numeric Unicode code-point order places U+E000
+  (`57344`) before U+10000 (`65536`). The explicit locale-independent
+  comparator compares numeric `codePointAt(0)` sequences directly; the causal
+  vector now requires `harness-execution`, U+E000, U+10000 and the deterministic
+  hash
+  `sha256:45f50b8363698ece659914d4ea6f4fa7d6f7abaa6ecde090ff4707bd64d57f18`.
+- Final identical GREEN (2026-07-16) reported `5 passed (5)` files and
+  `129 passed (129)` tests with the fixed `16/70/17/4/22` allocation and
+  exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The
+  runner emitted its pre-existing missing TypeScript source-map warning but
+  exited `0`.
+- Bounded gates passed: `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check`; Task136 contract mode emitted exact markers
+  `29/1/20/29/1/15`. Cumulative scope remains the original eleven Task129-MFA
+  paths, private seams remain unindexed, and `node_modules` is not a symlink.
+  Full `npm run verify` was intentionally not run.

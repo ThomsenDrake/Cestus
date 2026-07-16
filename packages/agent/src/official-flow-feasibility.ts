@@ -36,7 +36,7 @@ type OfficialFlowAbsencePostureV1 = Omit<
 >;
 
 const witnessClassifications = new WeakMap<object, OfficialFlowAbsenceClassificationV1>();
-const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?(?:oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
+const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?cookie\s*:\s*\S+|session\s*=\s*\S+|(?:(?:x|set)-)?(?:auth|oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
 
 export function createOfficialFlowAbsenceWitness(input: unknown): OfficialFlowAbsenceWitnessV1 {
   const normalized = normalizePlainOwnData(input);
@@ -160,9 +160,22 @@ function normalizePosture(value: unknown): OfficialFlowAbsencePostureV1 {
 function sortedUniqueStrings(value: unknown, nonempty: boolean, pattern?: RegExp): readonly string[] {
   if (!Array.isArray(value) || (nonempty && value.length === 0)) throw invalidInput();
   const values = value.map((item) => stringValue(item, pattern));
-  const sorted = [...values].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  const sorted = [...values].sort(compareUnicodeCodePointSequences);
   if (new Set(sorted).size !== sorted.length) throw invalidInput();
   return Object.freeze(sorted);
+}
+
+function compareUnicodeCodePointSequences(left: string, right: string): number {
+  const leftSequence = Array.from(left, (character) => character.codePointAt(0) ?? 0);
+  const rightSequence = Array.from(right, (character) => character.codePointAt(0) ?? 0);
+  const length = Math.min(leftSequence.length, rightSequence.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftCodePoint = leftSequence[index];
+    const rightCodePoint = rightSequence[index];
+    if (leftCodePoint === rightCodePoint) continue;
+    return leftCodePoint! < rightCodePoint! ? -1 : 1;
+  }
+  return leftSequence.length - rightSequence.length;
 }
 
 function stringValue(value: unknown, pattern?: RegExp): string {

@@ -498,7 +498,16 @@ describe("mounted official-flow feasibility", () => {
     }, {
       getPrototypeOf() { throw new Error("hostile invocation prototype"); }
     }));
-    for (const correlationId of ["Cookie: session=abc", "X-Cookie: raw", "X-Credential: raw", "oauth=raw", "agent_credref_sk_live_abc"]) {
+    for (const correlationId of [
+      "Cookie: session=abc",
+      "X-Cookie: raw",
+      "corr-X-Cookie: raw",
+      "corr-session=abc",
+      "X-Credential: raw",
+      "oauth=raw",
+      "auth=raw",
+      "agent_credref_sk_live_abc"
+    ]) {
       await expectUnsafeInput({
         operation: fixture.operation,
         witness: fixture.witness,

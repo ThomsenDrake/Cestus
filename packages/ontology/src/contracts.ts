@@ -6,7 +6,7 @@ const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secr
 const secretSafeStringSchema = z.string().refine((value) => !credentialShapedTextPattern.test(value), {
   message: "must not contain credential-shaped text"
 });
-const providerFeasibilitySecretMaterialPattern = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?(?:oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
+const providerFeasibilitySecretMaterialPattern = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?cookie\s*:\s*\S+|session\s*=\s*\S+|(?:(?:x|set)-)?(?:auth|oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
 const providerFeasibilitySecretSafeStringSchema = z.string().refine((value) => !providerFeasibilitySecretMaterialPattern.test(value), {
   message: "must not contain provider feasibility secret material"
 });
@@ -749,7 +749,7 @@ const agentProviderFeasibilityObservedPayloadSchema = z.object({
   capabilityHash: contentHashSchema,
   credentialRefId: agentProviderFeasibilityCredentialRefIdSchema,
   credentialKind: z.enum(["subscription-oauth", "device-code-oauth"]),
-  capabilityScopes: z.array(secretSafeStringSchema.min(1)).min(1),
+  capabilityScopes: z.array(providerFeasibilitySecretSafeStringSchema.min(1)).min(1),
   officialFlowId: providerFeasibilitySecretSafeStringSchema.min(1),
   approvalClass: z.literal("provider-byte-transfer"),
   approvalBindingHash: contentHashSchema,

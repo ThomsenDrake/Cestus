@@ -1182,6 +1182,12 @@ describe("resident agent event contracts", () => {
       ...event,
       context: { ...event.context, correlationId: "X-Cookie: raw" }
     }).success).toBe(false);
+    for (const correlationId of ["corr-X-Cookie: raw", "corr-session=abc", "auth=raw"]) {
+      expect(validateKnowledgeEvent({
+        ...event,
+        context: { ...event.context, correlationId }
+      }).success).toBe(false);
+    }
     for (const [field, value] of [
       ["modelId", "oauth=raw"],
       ["officialFlowId", "codex-credential=raw"],
@@ -1201,6 +1207,14 @@ describe("resident agent event contracts", () => {
         credentialRefId: "agent_credref_subscription_oauth_reference",
         credentialKind: "subscription-oauth"
       }
+    }).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, capabilityScopes: ["harness-execution", "sk_live_abc"] }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, capabilityScopes: ["harness-execution", "oauth-capability-review"] }
     }).success).toBe(true);
   });
 });
