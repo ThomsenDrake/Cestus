@@ -13350,3 +13350,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integration or Task139 resumption.
 - Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-498 — Task136 Recovery-11 exact-SHA reviews active
+
+- Private mounted-runtime/provider-authority and release-graph reviewer
+  `019f68a6-488e-74d2-997f-39c770d09431` and executable TypeScript ABI/import-
+  policy/adversarial-caller reviewer
+  `019f68a6-5acb-7e12-8a7d-c263ea2bfe2e` are active, pinned, read-only, and
+  independently verifying exact candidate
+  `7856505c58df91dcfdd4d288d19e39448588eb8e` from separate worktrees.
+- Both reviewers must rerun all four literal gates, exact scope and clean-state
+  checks, inspect the complete active v4 contract, and return an unqualified
+  **APPROVED** before coordinator integration or Task139 resumption. The ABI
+  review explicitly tests whether any unauthorized external module can call the
+  source-exported narrow preparation operation and obtain mounted authority.
+- Documentation review does not authorize subagent-driven development. Full
+  verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
