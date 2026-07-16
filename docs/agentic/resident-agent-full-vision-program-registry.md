@@ -15076,3 +15076,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   full verification, record population, Task139, push, reset, or `neo`. Strict
   v4 records may be appended only after the exact re-attestation revision is
   dual-approved and coordinator evidence is independently rechecked.
+
+## RV-1-E-588 — Seven-card root re-attestation reviews active
+
+- Architecture/invariant reviewer
+  `019f6bda-4dd3-76e2-892d-37e3737a4dfd` and executability/adversarial
+  reviewer `019f6bda-4edf-7413-9333-fda7683cd60e` are active, read-only, and
+  independently reviewing exact re-attestation checkpoint
+  `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`.
+- Each reviewer must return a separate literal verdict for `Task126`,
+  `Task127`, `Task128`, `Task129`, `Task130`, `T120-R`, and
+  `W1-123-H-SHARED-SCHEMA`. An unqualified **APPROVED** binds that exact
+  checkpoint as both candidate and already-integrated program revision for
+  the named zero-prerequisite card.
+- Both reviewers must inspect every static owned path, literal Git blob,
+  transfer disposition, package/public boundary, and invariant, and run all
+  seven frozen commands. Local-cache-only dependency installation is allowed
+  if the isolated worktree lacks Vitest; network and external services remain
+  forbidden.
+- Review work does not authorize edits, subagent-driven development, full
+  verification, release records, Task139, push, reset, or any `neo` action.
+  The coordinator alone may use dual card-level approvals as strict v4
+  evidence after independent revalidation.
