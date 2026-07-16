@@ -16579,3 +16579,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-633 — Task129 and Task130 pure-classifier implementations dispatched
+
+- Recorded at: 2026-07-16T21:15:20Z
+- Task129 worker `019f6cc8-9ca9-7e52-bcda-2028229d85fc` owns only the Codex
+  harness source, test, and claim on
+  `codex/task129-pure-codex-official-flow-classifier`, starting from exact
+  released Task129-MFA head `419da41b`.
+- Task130 worker `019f6cc8-a075-7df2-81a4-90a262a5a1e9` owns only the xAI
+  harness source, test, and claim on
+  `codex/task130-pure-xai-official-flow-classifier`, starting from the same
+  exact released head. Their write sets are disjoint and may run in parallel.
+- Both prompts explicitly authorize task-scoped
+  `superpowers:subagent-driven-development` and test-driven development. Each
+  must prove causal RED, exact focused GREEN at 16 Codex or 18 xAI tests,
+  typecheck, diff checking, factory readiness, exact three-path scope,
+  non-symlinked dependencies, and one clean commit.
+- Both implementations are pure provider-family classifiers. They may not
+  append unavailable evidence, accept persistence/authority/runtime inputs,
+  add provider or network execution, run full verification, integrate, append
+  releases, work on Task139, push, reset, or touch `neo`.
