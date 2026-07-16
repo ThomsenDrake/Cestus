@@ -59,16 +59,17 @@ function agentEvent(id: string, type: string, streamId: string, payload: Record<
 
 describe("resident agent event contracts", () => {
   it("accepts agent.task.orchestration.claimed with stable attempt and lease generation", () => {
-    expect(
-      validateKnowledgeEvent(
-        agentEvent(
-          "evt_agent_task_orchestration_claimed",
-          "agent.task.orchestration.claimed",
-          orchestratorStreamId,
-          taskOrchestrationClaimedPayload()
-        )
-      ).success
-    ).toBe(true);
+    const claimed = agentEvent(
+      "evt_agent_task_orchestration_claimed",
+      "agent.task.orchestration.claimed",
+      orchestratorStreamId,
+      taskOrchestrationClaimedPayload()
+    );
+    expect(validateKnowledgeEvent(claimed).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      ...claimed,
+      context: { ...claimed.context, correlationId: "credential-migration" }
+    }).success).toBe(true);
   });
 
   it("accepts agent.task.orchestration.checkpointed without raw context payload", () => {

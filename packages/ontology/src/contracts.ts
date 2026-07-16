@@ -19,7 +19,7 @@ export const eventContextSchema = z.object({
   actor: actorRefSchema,
   occurredAt: z.string().datetime(),
   causationId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).optional(),
-  correlationId: secretSafeStringSchema.min(3),
+  correlationId: z.string().min(3),
   coreVersion: z.string().min(1),
   packVersions: z.record(z.string(), z.string())
 }).strict();
@@ -3837,6 +3837,13 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
           code: "custom",
           message: "provider feasibility observations require causation inside sourceEventIds",
           path: ["context", "causationId"]
+        });
+      }
+      if (!secretSafeStringSchema.safeParse(event.context.correlationId).success) {
+        ctx.addIssue({
+          code: "custom",
+          message: "provider feasibility observations require a secret-safe correlation ID",
+          path: ["context", "correlationId"]
         });
       }
     }
