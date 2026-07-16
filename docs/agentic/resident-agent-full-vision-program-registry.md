@@ -16370,3 +16370,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   non-symlink checks. Full verification, providers, network, credentials,
   OAuth, external services, live Nous, Task139, integration, release records,
   push, reset, and every `neo` action remain closed.
+
+## RV-1-E-627 — Task129-MFA finite cross-layer worker resumed
+
+- Recorded at: 2026-07-16T20:51:46Z
+- Repair worker `019f6ca2-97a8-7443-81de-ed7c82491298` was resumed at exact
+  clean parent `ab33c40f408e4234cbfedfa7e37d90bdfbf92a86` for the finite
+  four-counterfactual scope in `RV-1-E-626`.
+- The new prompt explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development,
+  assertions inside existing test blocks, causal RED, identical GREEN, and one
+  forward commit. It requires an explicit locale-independent Unicode
+  code-point comparator and aligned cross-layer feasibility predicates.
+- The worker may not change Task137 grammar/corpus, run full verification,
+  integrate, append release records, work on Task129, Task130, or Task139, use
+  providers or external services, push, reset, or touch `neo`.
