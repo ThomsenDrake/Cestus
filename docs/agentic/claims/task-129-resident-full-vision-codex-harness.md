@@ -13,8 +13,7 @@
   `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md@285657a7879cdc47e321152c2bc5feb0ebe6088f`;
   `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` Task 129.
 - Claimed at: `2026-07-14T22:08:56Z`.
-- Status: ready-for-review (Task 5A pure-classifier candidate from released
-  Task129-MFA revision `419da41b`).
+- Status: ready-for-review.
 
 ## Exclusive Scope
 
@@ -174,3 +173,32 @@ directory rather than a symlink. Full `npm run verify` was intentionally not
 run under the approved Task 5A bounded-verification contract. This candidate
 is ready for a fresh independent defects-first review; it does not integrate,
 append release records, push, or touch `neo`.
+
+## Forward Review-Repair
+
+- Status: ready-for-review.
+
+### Review Repair Evidence
+
+- Causal compile-time RED: the test-file fixture supplied
+  `category: "unsafe-input"` with
+  `safeDiagnosticCodes: ["posture-mismatch"]` under `@ts-expect-error`.
+  Before the source change, `npm run typecheck` exited `2` with only
+  `TS2578: Unused '@ts-expect-error' directive`, proving the prior independent
+  unions accepted the mismatched pair.
+- Runtime characterization before the production type repair: the exact
+  focused command exited `0` with one file and exactly `16` tests passing. The
+  added direct assertions establish that supplied persistence callbacks have
+  zero invocations; a revoked assessment record fails closed without throwing;
+  a self-consistent xAI provider posture is rejected; and a mismatched
+  interface-only `officialFlowId` fails closed. These behaviors already held
+  at runtime, so this run is coverage characterization rather than a claimed
+  runtime RED.
+- Repair: `OfficialFlowClassifierBlocked` is now the design's mapped
+  discriminator, so each blocked category carries only `readonly [C]` for that
+  same category. The initial post-change typecheck located the expected error
+  on the object property rather than the enclosing call; moving the directive
+  to that property produced the intended GREEN without changing production
+  behavior.
+- GREEN: `npm run typecheck` exited `0` with `typecheck passed`; the exact
+  focused suite exited `0` with one file and exactly `16` tests passing.

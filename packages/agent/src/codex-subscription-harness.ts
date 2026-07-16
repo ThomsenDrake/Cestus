@@ -33,6 +33,22 @@ export interface CodexSubscriptionHarness {
   assess(input: unknown): Promise<CodexSubscriptionHarnessResult>;
 }
 
+type OfficialFlowClassifierBlockedCategory =
+  | "unsafe-input"
+  | "posture-mismatch"
+  | "prohibited-credential-source";
+
+type OfficialFlowClassifierBlocked = {
+  [C in OfficialFlowClassifierBlockedCategory]: {
+    readonly kind: "blocked";
+    readonly category: C;
+    readonly providerId: string;
+    readonly modelId: string;
+    readonly capabilityHash: string;
+    readonly safeDiagnosticCodes: readonly [C];
+  }
+}[OfficialFlowClassifierBlockedCategory];
+
 export type CodexSubscriptionHarnessResult =
   | {
     readonly kind: "official-flow-absence-classified";
@@ -48,14 +64,7 @@ export type CodexSubscriptionHarnessResult =
     readonly capabilityHash: string;
     readonly safeDiagnosticCodes: readonly ["official-flow-interface-only"];
   }
-  | {
-    readonly kind: "blocked";
-    readonly category: "unsafe-input" | "posture-mismatch" | "prohibited-credential-source";
-    readonly providerId: string;
-    readonly modelId: string;
-    readonly capabilityHash: string;
-    readonly safeDiagnosticCodes: readonly ["unsafe-input" | "posture-mismatch" | "prohibited-credential-source"];
-  };
+  | OfficialFlowClassifierBlocked;
 
 export interface CreateCodexSubscriptionHarnessInput {
   readonly currentPosture: CodexSubscriptionHarnessPosture;
@@ -445,18 +454,25 @@ function interfaceDemonstrated(posture: NormalizedPosture): CodexSubscriptionHar
   });
 }
 
-function blocked(
-  category: Extract<CodexSubscriptionHarnessResult, { readonly kind: "blocked" }>["category"],
+function blocked<C extends OfficialFlowClassifierBlockedCategory>(
+  category: C,
   posture?: NormalizedPosture
-): CodexSubscriptionHarnessResult {
+): {
+  readonly kind: "blocked";
+  readonly category: C;
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityHash: string;
+  readonly safeDiagnosticCodes: readonly [C];
+} {
   return Object.freeze({
-    kind: "blocked",
+    kind: "blocked" as const,
     category,
     providerId: posture?.providerId ?? unavailableProviderId,
     modelId: posture?.modelId ?? unavailableModelId,
     capabilityHash: posture?.capabilityHash ?? unavailableHash,
-    safeDiagnosticCodes: Object.freeze([category])
-  }) as CodexSubscriptionHarnessResult;
+    safeDiagnosticCodes: Object.freeze([category] as [C])
+  });
 }
 
 function isSafeHash(value: unknown): value is string {

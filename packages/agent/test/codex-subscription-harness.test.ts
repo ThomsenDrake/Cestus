@@ -3,12 +3,25 @@ import {
   inspectOfficialFlowAbsenceWitness
 } from "../src/official-flow-feasibility.js";
 import {
-  createCodexSubscriptionHarness
+  createCodexSubscriptionHarness,
+  type CodexSubscriptionHarnessResult
 } from "../src/codex-subscription-harness.js";
 
 const capabilityHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const approvalBindingHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const documentationHash = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+
+function assertBlockedResultType(_result: CodexSubscriptionHarnessResult): void {}
+
+assertBlockedResultType({
+  kind: "blocked",
+  category: "unsafe-input",
+  providerId: "provider_openai_codex_primary",
+  modelId: "codex-latest",
+  capabilityHash,
+  // @ts-expect-error blocked diagnostics must use the matching category.
+  safeDiagnosticCodes: ["posture-mismatch"]
+});
 
 function currentPosture(overrides: Record<string, unknown> = {}) {
   return {
@@ -226,13 +239,17 @@ describe("official Codex subscription harness", () => {
   });
 
   it("rejects persistence ports, malformed postures, causation faults, and extra keys", async () => {
-    const append = async () => ({ kind: "appended" as const });
+    const callbackCalls = [0, 0, 0, 0, 0];
+    const persistenceCallback = (index: number) => async () => {
+      callbackCalls[index] = (callbackCalls[index] ?? 0) + 1;
+      return { kind: "appended" as const };
+    };
     const persistencePorts = [
-      { append },
-      { feasibilityAuthority: { append } },
-      { mountedOwner: {} },
-      { ledger: {} },
-      { runtimeHandle: {} }
+      { append: persistenceCallback(0) },
+      { feasibilityAuthority: { appendOfficialFlowUnavailable: persistenceCallback(1) } },
+      { mountedOwner: { append: persistenceCallback(2) } },
+      { ledger: { append: persistenceCallback(3) } },
+      { runtimeHandle: { persist: persistenceCallback(4) } }
     ];
     for (const port of persistencePorts) {
       const result = await createHarness({ currentPosture: currentPosture(), ...port }).assess(absentAssessment());
@@ -263,6 +280,31 @@ describe("official Codex subscription harness", () => {
       expect(result).toMatchObject({ kind: "blocked", category: "unsafe-input", safeDiagnosticCodes: ["unsafe-input"] });
     }
 
+    const revokedAssessment = Proxy.revocable(absentAssessment(), {});
+    revokedAssessment.revoke();
+    await expect(harness.assess(revokedAssessment.proxy)).resolves.toMatchObject({
+      kind: "blocked",
+      category: "unsafe-input",
+      safeDiagnosticCodes: ["unsafe-input"]
+    });
+
+    const xaiPosture = currentPosture({
+      providerId: "provider_xai_primary",
+      credentialReference: {
+        ...currentPosture().credentialReference,
+        providerId: "provider_xai_primary"
+      },
+      policy: {
+        ...currentPosture().policy,
+        providerId: "provider_xai_primary"
+      }
+    });
+    await expect(createHarness({ currentPosture: xaiPosture }).assess(absentAssessment(xaiPosture))).resolves.toMatchObject({
+      kind: "blocked",
+      category: "unsafe-input",
+      safeDiagnosticCodes: ["unsafe-input"]
+    });
+
     await expect(harness.assess(absentAssessment(currentPosture({
       causationEventId: "evt_approval_primary"
     })))).resolves.toMatchObject({
@@ -270,10 +312,25 @@ describe("official Codex subscription harness", () => {
       category: "posture-mismatch",
       safeDiagnosticCodes: ["posture-mismatch"]
     });
+    expect(callbackCalls).toEqual([0, 0, 0, 0, 0]);
   });
 
   it("permits a test-only official route to demonstrate the interface without claiming Codex feasibility", async () => {
     const harness = createHarness();
+
+    await expect(harness.assess({
+      posture: currentPosture(),
+      officialFlow: {
+        kind: "test-official-codex-route",
+        officialFlowId: "codex-official-mismatched-workflow.v1",
+        documentationHash,
+        interfaceOnly: true
+      }
+    })).resolves.toMatchObject({
+      kind: "blocked",
+      category: "posture-mismatch",
+      safeDiagnosticCodes: ["posture-mismatch"]
+    });
 
     const result = await harness.assess({
       posture: currentPosture(),
