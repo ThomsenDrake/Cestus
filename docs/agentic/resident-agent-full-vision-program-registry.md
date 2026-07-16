@@ -14888,3 +14888,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or self-integration.
 - Full verification, release records, external-service activity, Task139,
   push, reset credit, and every `neo` action remain closed.
+
+## RV-1-E-579 — Evidence-bound verifier exact-SHA reviews active
+
+- Architecture/invariant reviewer
+  `019f6bc6-d165-70b3-ba64-6c5768949c0f` and executability/adversarial-test
+  reviewer `019f6bc6-d17b-7702-b77c-1ae8ec7f9308` are active, read-only, and
+  independently reviewing exact candidate
+  `a501f3c4e01b3ec8adef37211b0d348a7a84f380` from exact base
+  `a8054fda1605c2f796d538f195a77b59d496d375`.
+- Both must rerun the corrected targeted admission gates, verify exact
+  three-path scope and clean state, inspect the finite strict-record and Git
+  evidence implementation, and return unqualified **APPROVED** before
+  coordinator integration.
+- Review work does not authorize edits, subagent-driven development, full
+  verification, acceptance expansion, release records, external-service
+  activity, Task139, push, reset credit, or any `neo` action.
