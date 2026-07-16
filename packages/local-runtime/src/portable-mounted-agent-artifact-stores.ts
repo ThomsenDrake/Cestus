@@ -428,14 +428,18 @@ async function inspectAround<T>(cursor: CursorState, operation: () => Promise<T>
     const result = await operation();
     await inspectCursor(cursor);
     return result;
-  } catch (error) {
+  } catch {
     try {
       await inspectCursor(cursor);
     } catch {
       throw authorityError();
     }
-    throw error;
+    throw artifactStoreOperationError();
   }
+}
+
+function artifactStoreOperationError(): Error {
+  return new Error("Mounted handoff artifact store operation failed.");
 }
 
 function deriveInitialState(events: readonly NormalizedJson[], binding: RunBinding): {

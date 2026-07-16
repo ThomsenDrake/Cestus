@@ -77,6 +77,23 @@ describe("portable mounted agent artifact stores", () => {
     const material = Buffer.from("portable handoff material", "utf8");
     const stored = await result.binding.materialStore.put(material);
     expect(await result.binding.materialStore.get(stored.contentHash)).toEqual(material);
+
+    const missingBlobError = await result.binding.manifestStore.get(hash("f")).then(
+      () => new Error("expected missing blob lookup to fail"),
+      (error: unknown) => error
+    );
+    expect(missingBlobError).toBeInstanceOf(Error);
+    const safeError = missingBlobError as Error & Record<string, unknown>;
+    expect(safeError.name).toBe("Error");
+    expect(safeError.message).toBe("Mounted handoff artifact store operation failed.");
+    expect(Object.keys(safeError)).toEqual([]);
+    for (const field of ["cause", "path", "code", "syscall", "filename"] as const) {
+      expect(field in safeError).toBe(false);
+    }
+    expect(safeError.message).not.toContain(fixture.workspaceRoot);
+    expect(safeError.message).not.toContain(join(fixture.workspaceRoot, "derivatives"));
+    expect(String(safeError)).not.toContain(fixture.workspaceRoot);
+    expect(String(safeError)).not.toContain(join(fixture.workspaceRoot, "derivatives"));
   });
 
   it("binds exactly once and rejects copied controller identities before authority activity", async () => {
