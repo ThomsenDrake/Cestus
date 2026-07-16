@@ -285,6 +285,15 @@ function fakeRepositoryAdapter(records, options = {}) {
       }
       return blobSha;
     },
+    objectType(commitish, path) {
+      if (options.nonBlobObject && commitish === options.nonBlobObject.commitish && path === options.nonBlobObject.path) {
+        return options.nonBlobObject.type;
+      }
+      if (!pathBlobByCommit.has(`${commitish}:${path}`)) {
+        throw new Error(`fixture object missing: ${commitish}:${path}`);
+      }
+      return "blob";
+    },
     runNpmTest(args, card) {
       if (options.commandFailureCardId === card.id) {
         throw new Error("fixture command failed");
@@ -517,6 +526,35 @@ test("rejects frozen repository-evidence and execution mutations", () => {
       testCase.message,
       testCase.id
     );
+  }
+});
+
+test("rejects non-blob owned-path Git objects before release commands", () => {
+  const contract = loadContract();
+  const validRecords = releaseRecordsFor(contract);
+  const task126 = validRecords.find((record) => record.cardId === "Task126");
+  const ownedPath = "docs/agentic/claims/task-126-resident-full-vision-byok-provider.md";
+
+  const cases = [
+    { id: "candidate", commitish: task126.candidateSha },
+    { id: "integration", commitish: task126.integrationSha },
+    { id: "current HEAD", commitish: "HEAD" }
+  ];
+
+  for (const testCase of cases) {
+    const adapter = fakeRepositoryAdapter(validRecords, {
+      nonBlobObject: {
+        commitish: testCase.commitish,
+        path: ownedPath,
+        type: "tree"
+      }
+    });
+    assert.throws(
+      () => verifyReleaseClosure(contract, releaseRecordMarkdown(validRecords), adapter),
+      /path is not a Git blob: Task126:docs\/agentic\/claims\/task-126-resident-full-vision-byok-provider\.md/,
+      testCase.id
+    );
+    assert.equal(adapter.commandCalls.length, 0, testCase.id);
   }
 });
 
