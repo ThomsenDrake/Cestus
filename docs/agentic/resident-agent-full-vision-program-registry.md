@@ -15019,3 +15019,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   after independently verifying each **PROVEN** row. Full verification,
   external-service activity, Task139, push, reset credit, and every `neo`
   action remain closed until the graph reaches the governing release point.
+
+## RV-1-E-586 — Four release-evidence audits active
+
+- Provider and credential/provider-composition auditor
+  `019f6bd3-e79c-7c53-acd9-085fb6c49f4a` owns 10 assigned cards;
+  mounted-runtime/wake auditor
+  `019f6bd4-2a56-7e53-a3e3-9683c30b0160` owns six; durable-handoff auditor
+  `019f6bd4-2a72-7fd0-9e6f-6a854ca4976b` owns seven; bounded-loop auditor
+  `019f6bd4-3636-7e23-83ae-e6a2be1b4374` owns five. Together their disjoint
+  assignments cover all 28 frozen graph cards exactly once.
+- All four are read-only at exact program revision
+  `40ee71c981fd73df41918a57ce0e23d5837a5475`. Each must return one row per
+  assigned card with exact candidate, two exact-candidate review verdicts,
+  integration, prerequisite release evidence, literal Git blob identities,
+  fresh frozen-command result, and either **PROVEN** or one finite missing
+  fact.
+- Passing commands, claims, file presence, and prose summaries do not make a
+  row **PROVEN**. Auditors may not edit, append release records, use
+  subagent-driven development, run full verification, use external services,
+  resume Task139, push, reset, or touch `neo`.
+- The coordinator will independently verify returned rows and may append only
+  evidence-complete records in graph order. Every other row defines the
+  earliest ordinary graph task still required.
