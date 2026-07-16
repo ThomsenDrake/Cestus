@@ -1,6 +1,6 @@
 # Task 136 Release Closure Verifier Claim
 
-Status: blocked-on-program-baseline
+Status: ready-for-review
 
 Plan: `docs/superpowers/plans/2026-07-16-task136-release-closure-implementation.md`
 Task: Task 1, Implement Strict Release Closure
@@ -58,3 +58,16 @@ Blocked checkpoint evidence:
 - Conclusion: inherited program-baseline failure, not a Task136 verifier regression.
 - Task136 targeted verifier command remains green: `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
 - This checkpoint is intentionally blocked pending coordinator base repair and later rebase/resume.
+
+RV-1-E-577 supersession:
+- Continuation authority: `RV-1-E-575` through `RV-1-E-577`.
+- Prior checkpoint: `10fcc6d74f2174d5b5608fc0280592ffc3254b83`.
+- Rebased onto current program revision: `a8054fda1605c2f796d538f195a77b59d496d375`.
+- The `blocked-on-program-baseline` status above is superseded by
+  `ready-for-review` under `RV-1-E-577` because the dual-approved correction
+  removes `npm run verify` from this task's admission gates.
+- The diagnostic `12` files / `67` tests full-suite failure remains preserved
+  as non-admission baseline evidence only. It is not a Task136 verifier
+  regression and is not a gate for this three-path candidate.
+- Full verification is explicitly closed for this task and was not run after
+  the rebase.
