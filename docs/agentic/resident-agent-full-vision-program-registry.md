@@ -17516,3 +17516,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   providers, network, credentials, external services, push, reset, rebase,
   and every `neo` action remain closed. A candidate requires coordinator
   admission and two fresh exact-revision reviews before integration.
+
+## RV-1-E-662 — Task137B-W stopped on missing canonical wake schemas
+
+- Recorded at: 2026-07-17T01:16:00Z
+- Worker `019f6d54-bc6e-7362-99c7-e86b38298c16` stopped at preflight with
+  **BLOCKED** after the coordinator independently found a schema/ownership
+  conflict. All seven CF1-W lifecycle event names have zero matches in the
+  released `packages/ontology/src/contracts.ts` and zero matches anywhere
+  under `packages/`; no canonical parser or fixture exists elsewhere.
+- The worker remained at exact base
+  `f830fd08be93cfa437b5c5b370f8e4bd796ec863` with a clean checkout and no
+  claim, test, production, or shadow-schema edit. It is closed and its clean
+  worktree remains preserved until the correction is integrated.
+- Root cause: the v2 ownership amendment asserted Task129-MFA had already made
+  the wake behavior available while removing the central ontology contract
+  from Task137B-W. Task129-MFA actually added only provider-feasibility
+  contracts. The original Task137B plan still requires the wake runtime to
+  append and read back seven canonical lifecycle events.
+- A bounded v3 correction must preserve v2 unchanged, transfer only
+  `packages/ontology/src/contracts.ts` from Task129-MFA to Task137B-W, retain
+  every existing release record through one explicit historical-disposition
+  compatibility declaration, and add that path to Task137B-W's write ceiling.
+  No graph order, prerequisite, command, composition grammar, composition
+  corpus, ABI corpus, or mutable v4 release-record schema may change.
+- Task137B-W implementation, Task139, full verification, providers, network,
+  credentials, external services, push, reset, rebase, and every `neo` action
+  remain closed pending a dual-approved correction design and plan.
