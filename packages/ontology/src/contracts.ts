@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { validateGovernancePolicy } from "./governance-policy.js";
 
-const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|(?:^|[\s;])(?:(?:set-)?cookie\s*:|session\s*=\s*\S+)/i;
+const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)/i;
 const secretSafeStringSchema = z.string().refine((value) => !credentialShapedTextPattern.test(value), {
   message: "must not contain credential-shaped text"
 });

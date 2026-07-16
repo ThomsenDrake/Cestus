@@ -198,3 +198,34 @@ mode markers are `29/1/20/29/1/15`.
   no public index or package export exposes the recorder or private inspection
   seam. Full `npm run verify` was intentionally not run.
 - Status: ready-for-review.
+
+## Type-Only Recovery Evidence
+
+- Predecessor stop: worker `019f6c8b-5a80-7710-951c-ae5d4cb96f1c` left the
+  intended hostile-boundary repair uncommitted at exact base
+  `c4b656f56fdc56bec0528d860ed2b1874bb28437`. This recovery preserves those
+  six modified source/test paths; no reset, revert, amend, merge, or external
+  activity was performed.
+- Recovery identity: `Codex Task129-MFA fresh type-only recovery worker` on
+  `codex/task129-mounted-provider-feasibility-authority-recovery` in
+  `/home/drake/.codex/worktrees/task129-mounted-provider-feasibility-authority-recovery`.
+- Causal RED (2026-07-16): `npm run typecheck` failed only with `TS2322` at
+  `packages/local-runtime/test/mounted-official-flow-feasibility.test.ts:371`.
+  The generic `AppendableKnowledgeEvent` callback constructed a conflicting
+  payload containing feasibility-only `classificationHash` before narrowing
+  `event.type`.
+- Repair: the conflicting concurrency callback now guards
+  `event.type === "agent.provider.feasibility.observed.v1"` before constructing
+  the conflicting feasibility payload. No production code or runtime behavior
+  changed, and no broad type assertion was introduced.
+- GREEN (2026-07-16): `npm run typecheck` passed. The exact five-file command
+  passed `5` files and `129` tests, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- Final bounded gates (2026-07-16): `git diff --check` passed;
+  `npm run factory:check` reported `factory-readiness passed`; and Task136
+  contract mode emitted the exact `29/1/20/29/1/15` markers. The cumulative
+  change set is within the original eleven Task129-MFA paths, private package
+  indexes and exports do not expose the recorder or inspection seam, and
+  `node_modules` is not a symlink.
+- Status: ready-for-review. Full `npm run verify` was intentionally not run
+  under the bounded recovery authorization.

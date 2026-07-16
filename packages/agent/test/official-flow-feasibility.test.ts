@@ -74,6 +74,7 @@ describe("official-flow feasibility", () => {
     } as never)).toThrow();
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "authorization: bearer secret" }))).toThrow();
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "Cookie: session=abc" }))).toThrow();
+    expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "X-Cookie: raw" }))).toThrow();
   });
 
   it("rejects accessor custom-prototype symbol and sparse external values", () => {
