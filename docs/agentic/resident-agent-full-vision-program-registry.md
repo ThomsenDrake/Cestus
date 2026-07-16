@@ -13775,3 +13775,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-518 — Task136 Recovery-13 rejected; Recovery-14 required
+
+- Graph reviewer `019f6aff-9760-77e1-afd8-c9a4c8833994` returned
+  **APPROVED**, while composition reviewer
+  `019f6aff-b770-7021-bbff-d757306e0a19` returned **NEEDS-CHANGES** for exact
+  candidate `8bee4b0f8ad774329b2301895316c96c4e21794f`. Dual approval was not met;
+  no prior admission or approval carries forward.
+- The composition review found that the executable ownership fixture models
+  ESM forwarding but does not classify equivalent CommonJS and dynamic module
+  loading paths. Its isolated negative fixture passed when the contract
+  requires rejection. All four literal checks and exact revision/scope checks
+  otherwise passed.
+- A fresh documentation owner must start from the exact rejected candidate,
+  add this focused negative case and harmless controls to the executable
+  fixture, preserve the approved release graph and command cards, keep the
+  three-path ceiling, and return one immutable candidate for fresh coordinator
+  admission and two new reviews.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
