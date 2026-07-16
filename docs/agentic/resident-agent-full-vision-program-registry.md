@@ -13463,3 +13463,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Two valid fresh unqualified **APPROVED** verdicts remain required. Full
   verification, integration, live/provider/network/credential/Nous activity,
   reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-503 — Task137A Recovery-10 rejected for object-root export bypass
+
+- Adversarial semantic-policy reviewer
+  `019f68b7-0b4b-7bb0-873d-71d4c7aae5ed` returned **NEEDS-CHANGES** for
+  exact candidate `3e8738c984a4a78d3d8f82eb3661f5b53a352869`. No admission or
+  prior approval carries forward; the candidate must not be integrated.
+- From a fresh guarded home-cache copy, the reviewer assigned protected
+  authority to `holder.authority`, retained direct and rest aliases, replaced
+  the current binding root, and exported the aliases. The analyzer returned no
+  violation under a 15-second bound. Changing only the sink to a direct
+  `staleAlias.authority` export produced the expected violation, and a harmless
+  property-root control remained permitted.
+- The causal gap is at the analyzer's root-export sink: property assignment
+  taints only the reachable root property, while exporting a holder or alias
+  consults only the lexical binding's scalar taint. Protected authority can
+  therefore leave through an exported object even though direct property reads
+  are detected. The literal 88-test gate, standalone typecheck, scope, diff,
+  factory, clean-checkout, and absent-link checks all passed and do not cover
+  this bypass.
+- The Recovery-9/Recovery-10 owner exhausted two rejected candidates. A fresh
+  owner is required for Recovery-11 from exact rejected candidate
+  `3e8738c984a4a78d3d8f82eb3661f5b53a352869`. It must begin with the exact
+  direct-alias/rest-alias/stale-alias export counterexample, preserve harmless
+  controls and fixpoint termination, and remain within the historical six-path
+  ceiling. Task-scoped subagent-driven development is explicitly approved if
+  relevant with exactly one production writer.
+- Replacement mounted-lifecycle review
+  `019f68bd-b8e6-7903-b104-798ce51b2a31` may finish to provide additional
+  independent findings, but no approval can reverse this rejection.
+- Full verification, integration, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
