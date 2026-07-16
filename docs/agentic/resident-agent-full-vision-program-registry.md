@@ -17256,3 +17256,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   self-review, integration, release records, Task139, providers, network,
   credentials, external services, push, reset, rebase, and every `neo` action
   remain closed.
+
+## RV-1-E-657 — Task135B path-safe candidate readmitted for final review
+
+- Recorded at: 2026-07-17T00:38:00Z
+- Fresh worker produced one forward path-safe repair commit and exact candidate
+  `23cf539ca9c84980bd6d36001cf60df69b611d74` over preserved parent
+  `2747e42e7c182e027164c1c2ad503d3af7637c35`. The repair maps
+  still-current blob-store failures to a fresh fixed data-free error while
+  preserving authority reinspection and authority-loss failure.
+- Independent coordinator admission passed from exact committed bytes:
+  focused 1 file/20 tests, the literal aggregate 9 files/120 tests with
+  `mounted-agent-artifact-stores.test.ts` as suite six and exactly one Task137
+  8/20 marker, typecheck, both static boundaries, exact cumulative three-path
+  scope, diff checking, factory readiness, clean state, and non-symlinked
+  dependencies. Full verification was not run.
+- Fresh architecture/invariant reviewer
+  `019f6d45-dd76-7d41-8f6f-3f923602a9b5` and
+  executability/adversarial reviewer
+  `019f6d45-e253-7201-879b-ef8e55d456c3` are read-only in separate
+  detached worktrees at exact candidate
+  `23cf539ca9c84980bd6d36001cf60df69b611d74` using Terra/xhigh.
+- Both must verify the RV-1-E-655 error boundary and every preserved Task135B
+  gate, then return unqualified **APPROVED** for the same exact candidate.
+  Review work does not authorize SDD, edits, full verification, integration,
+  release records, Task139, providers, network, credentials, external
+  services, push, reset, or any `neo` action.
