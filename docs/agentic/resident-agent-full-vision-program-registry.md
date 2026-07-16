@@ -14210,3 +14210,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   authorize subagent-driven development.
 - Full verification, source edits, integration, external-service activity,
   reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-545 — Task136/Task137 bounded-contract reset checkpoint
+
+- Open-ended Task136/Task137 recovery dispatch is stopped. No further
+  Recovery-N successor, implementation reviewer, or Task139 work may start
+  until the bounded-assurance design and plan are dual-approved.
+- Task136 Recovery-17 stopped cleanly at exact candidate
+  `4776f12689133b0eea855e6c39347306bebd68bc` on
+  `codex/task-136-interface-reconciliation-recovery-14`. It changes exactly
+  `docs/agentic/claims/task-136-interface-reconciliation.md`,
+  `docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md`,
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md`.
+  Coordinator admission independently passed the frozen release, fixture,
+  command-card, and ABI checks plus exact ancestry, three-path scope, diff,
+  factory-readiness, clean-checkout, and absent-dependency-link checks. The
+  candidate is preserved but is not admitted for review under the superseded
+  open-ended contract.
+- Task137A Recovery-17 code stopped cleanly at exact candidate
+  `cfb82c6dd940ae6ba0339b8b2b8637bcc472aea2` on
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-17`. It
+  changes exactly
+  `docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md` and
+  `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`.
+  Its focused six-file/94-test suite, standalone typecheck, historical scope,
+  diff, factory-readiness, clean-checkout, and absent-dependency-link checks
+  passed. It remains preserved, unreviewed, and unintegrated pending the frozen
+  Task137 contract.
+- The literal-gate lane stopped cleanly at evidence-only revision
+  `5701c863210f1892186e944beda8a4059388b26c` on
+  `codex/task137-literal-gate-execution-repair`. It changes only
+  `docs/agentic/claims/task-137a-literal-gate-execution-repair.md` and
+  `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`.
+  `git diff --check` and factory readiness passed. The materialized-script
+  experiment still terminated after the focused tests without proving later
+  stages, so the active gate was restored and no repair claim was made.
+- The bounded reset must replace duplicated Task136 lineage with one authority,
+  freeze finite Task136 and Task137 grammars and mutation corpora, make gate
+  termination independently observable, and constrain fresh reviewers to the
+  approved model. Current branches and evidence remain preserved.
+- Full verification, integration, external-service activity, reset credits,
+  push, Task139 resumption, and every `neo` action remain closed.
