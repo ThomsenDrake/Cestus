@@ -16671,3 +16671,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   verification, integration, releases, Task139, providers, network,
   credentials, external services, push, reset, and every `neo` action remain
   closed.
+
+## RV-1-E-637 — Task129 exact-contract repair dispatched
+
+- Recorded at: 2026-07-16T21:34:02Z
+- Task129 architecture/invariant reviewer
+  `019f6cd3-6f8a-7ec3-a4e9-09f2f01ad7fe` returned unqualified `APPROVED` for
+  exact candidate `829e4043505c8d141c716834957644ac16808a75` after an
+  independent 16-test run. Its approval becomes historical when the following
+  forward repair changes the exact revision.
+- Task129 executability/adversarial reviewer
+  `019f6cd3-7538-7683-accc-16755ce12176` returned `NEEDS-CHANGES` with two
+  approved-contract findings: the blocked result uses independent category and
+  diagnostic unions rather than the design's exact correlated mapped union,
+  and the fixed 16-test corpus lacks direct assertions for non-invocation of
+  supplied persistence callbacks, hostile record input, a self-consistent xAI
+  posture, and a mismatched interface-only flow ID.
+- Repair worker `019f6cd9-be53-7dd0-95f5-d8fa9b5c8160` owns only the same
+  Task129 source, focused test, and claim. Its prompt explicitly approves
+  task-scoped SDD and TDD, requires a causal compile-time RED, preserves
+  exactly 16 tests, adds the assertions inside existing tests, records the
+  canonical `ready-for-review` status, and creates one forward commit.
+- The corrected Task129 revision must receive two entirely fresh exact-revision
+  reviews. Full verification, integration, releases, Task139, providers,
+  network, credentials, external services, push, reset, and every `neo`
+  action remain closed.
