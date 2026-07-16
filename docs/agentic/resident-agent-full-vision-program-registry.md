@@ -17310,7 +17310,7 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   checkpoint must advance from eight to nine valid records while the remaining
   20 cards remain closed.
 
-## Task136 dispatch release v4: Task135B
+## Rejected Task136 dispatch release v4 draft: Task135B
 
 ```json
 {
@@ -17336,6 +17336,72 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
       "cardId": "Task137A",
       "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
       "releaseEventId": "task136-release-v4-Task137A"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+      "disposition": "owned",
+      "blobSha": "c45f2681715cf1422178464f82b02cf6687fe468"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+      "disposition": "owned",
+      "blobSha": "b6e5f0c7df2e2bb2002813ac800778922136b92a"
+    },
+    {
+      "path": "docs/agentic/claims/task-135b-portable-mounted-handoff-stores.md",
+      "disposition": "owned",
+      "blobSha": "5374a9e536dad9db29b67655e5366abd71d90b46"
+    }
+  ]
+}
+```
+
+## RV-1-E-659 — Task135B release prerequisite corrected to v2 authority
+
+- Recorded at: 2026-07-17T00:55:00Z
+- The finite repository checker rejected the RV-1-E-658 release draft after
+  emitting all four contract markers because its prerequisite was copied from
+  the obsolete v1 graph. The authoritative
+  `task136-bounded-assurance.v2` card requires `Task129-MFA`, not `Task137A`.
+- The rejected JSON remains unchanged above as forensic evidence under a
+  parser-ignored heading. This forward correction does not alter Task135B's
+  candidate, approvals, integration revision, owned-path blobs, or prior
+  admission evidence.
+- The corrected canonical record below binds the already released
+  `Task129-MFA` prerequisite at integration
+  `c599f9d7c9e08de155bfb98f49462ad01416ec40` and release event
+  `task136-release-v4-Task129-MFA`. The finite repository checkpoint must now
+  advance from eight to nine valid records and then stop with the expected
+  incomplete-closure result for the remaining 20 cards.
+
+## Task136 dispatch release v4: Task135B
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task135B",
+  "candidateSha": "23cf539ca9c84980bd6d36001cf60df69b611d74",
+  "reviews": [
+    {
+      "threadId": "019f6d45-dd76-7d41-8f6f-3f923602a9b5",
+      "candidateSha": "23cf539ca9c84980bd6d36001cf60df69b611d74",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6d45-e253-7201-879b-ef8e55d456c3",
+      "candidateSha": "23cf539ca9c84980bd6d36001cf60df69b611d74",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "908d26fa252989c9217cb40e1f22a5b9f583aa8f",
+  "releaseEventId": "task136-release-v4-Task135B",
+  "prerequisites": [
+    {
+      "cardId": "Task129-MFA",
+      "integrationSha": "c599f9d7c9e08de155bfb98f49462ad01416ec40",
+      "releaseEventId": "task136-release-v4-Task129-MFA"
     }
   ],
   "ownedPathBlobs": [
