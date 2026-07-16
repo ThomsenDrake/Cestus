@@ -13994,3 +13994,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development. Full
   verification, integration, external-service activity, reset credits, push,
   Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-532 — Task137A Recovery-15 rejected; Recovery-16 required
+
+- Both independent reviewers returned **NEEDS-CHANGES** for exact candidate
+  `f47084d5772d460e47d073a915aa013722952ed8`; no prior admission or approval
+  carries forward.
+- Lifecycle review found that a source-bound evaluator loses its bound source
+  through a second bind. Analysis review independently found that reassignment
+  from a source-less bound evaluator to a source-bound evaluator retains the
+  earlier incomplete binding state.
+- The literal 6-file/93-test gate, standalone typecheck, exact revision/scope,
+  clean-state, dependency-link cleanup, and coordinator admission otherwise
+  passed.
+- A fresh owner must start from the exact rejected candidate, model evaluator
+  identity and bound-source state across repeated binding and assignment,
+  begin with both focused fixtures and harmless controls, preserve termination
+  and all existing Task137A behavior, stay within the historical six-path
+  ceiling, and return one immutable candidate for fresh admission and review.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
