@@ -15878,3 +15878,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   providers, network, credentials, OAuth, external services, live Nous,
   Task139, integration, release records, push, reset, and every `neo` action
   remain closed.
+
+## RV-1-E-610 — Task129-MFA vector-fixture recovery dispatched
+
+- Recorded at: 2026-07-16T19:08:35Z
+- Initial worker `019f6c46-9917-7080-ab84-5dfa75b8d00c` stopped correctly at
+  the two-focused-repair limit without committing. It left all and only the
+  eleven owned paths in the isolated worktree. Causal RED was established;
+  the latest focused run passed 128 of 129 tests with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- The sole failure is the mounted idempotency-vector test. The immutable design
+  vector intentionally uses fixed abstract classification and admission values,
+  while a real issued fixture binds runtime-generated source event IDs and
+  admission generation. Its live classification hash and resulting
+  idempotency key therefore vary; comparing the live result to a stale literal
+  is not a valid production assertion.
+- Fresh recovery worker `019f6c54-9766-7df2-a876-1f150aae5c81` takes over the
+  preserved worktree without reset or revert. The narrow repair may modify
+  only the mounted feasibility test and Task129-MFA claim: preserve the exact
+  frozen `sha256:91c31db4ab3a77ef41b43b0f9237c53cf0614ca861349ca98669af6dc5abaaca`
+  assertion, derive the exact live preimage from the source-private witness and
+  mounted-operation inspections in the frozen property order, and require the
+  returned key to match that derived SHA-256.
+- This prompt explicitly reauthorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for the
+  bounded Task129-MFA recovery only. The worker must finish the original
+  eleven-path candidate with exact 129-test GREEN, typecheck, diff checking,
+  factory readiness, Task136 markers `29/1/20/29/1/15`, and a clean commit.
+- Full verification, providers, network, credentials, OAuth, external
+  services, live Nous, Task139, integration, release records, push, reset, and
+  every `neo` action remain closed.
