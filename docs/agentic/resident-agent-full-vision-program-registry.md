@@ -15753,3 +15753,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## Task136 dispatch release v4: Task137A
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task137A",
+  "candidateSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+  "reviews": [
+    {
+      "threadId": "019f6c36-dcbc-7833-ba6a-c1b44760f22e",
+      "candidateSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6c36-cf1a-7a21-8191-65bad0064e39",
+      "candidateSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+  "releaseEventId": "task136-release-v4-Task137A",
+  "prerequisites": [
+    {
+      "cardId": "Task135D",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task135D"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/portable-workspace-lifecycle.ts",
+      "disposition": "owned",
+      "blobSha": "5197322a772c322f3f917069ab82da677ea09f5e"
+    },
+    {
+      "path": "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+      "disposition": "transferred",
+      "blobSha": "771f28a610367efdd5f0c75fee398ee032476360"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-workspace-lifecycle.test.ts",
+      "disposition": "owned",
+      "blobSha": "a90695bbb54c04ade6685c0d1b0bbf8a8856709d"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts",
+      "disposition": "transferred",
+      "blobSha": "ca98d6b733d6386f94c3a00f2844e111ecf123ff"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+      "disposition": "transferred",
+      "blobSha": "235d413ac165a2780ed7e0c768d393b4936c6665"
+    },
+    {
+      "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+      "disposition": "transferred",
+      "blobSha": "926772074124e5fb31a13a0cdb8d9add200fa98f"
+    },
+    {
+      "path": "docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md",
+      "disposition": "owned",
+      "blobSha": "3745f684e0905c176627df816ca18be52dd98031"
+    }
+  ]
+}
+```
