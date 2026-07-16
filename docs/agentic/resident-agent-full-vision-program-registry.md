@@ -13840,3 +13840,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   unqualified **APPROVED** before integration.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-522 — Task136 Recovery-14 exact-SHA reviews active
+
+- Graph reviewer `019f6b1c-6474-73f3-b7b1-8a7c632d3cdf` and composition
+  reviewer `019f6b1c-83a0-7fd0-a29a-7059d8194f3a` are active, pinned,
+  read-only, and independently reviewing exact candidate
+  `9fc7f6e8a8393b1e1a24b7458718689276b6de1b` from separate worktrees.
+- Both must independently run all four Task136 checks, exact revision, scope,
+  and clean-state checks, inspect the complete candidate, and add one isolated
+  negative fixture. Both must return unqualified **APPROVED** before integration
+  or Task139 resumption.
+- Review work does not authorize subagent-driven development. Full
+  verification, integration, external-service activity, reset credits, push,
+  Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-523 — Task137A Recovery-14 exact-SHA reviews active
+
+- Lifecycle reviewer `019f6b1c-9dc8-7170-a9b0-9bbbb1e9582b` and analysis
+  reviewer `019f6b1c-cff1-7d22-90e5-3b80a5cff829` are active, pinned,
+  read-only, and independently reviewing exact candidate
+  `0d78305a343f6ae2e49ee8c68147895d9947fdcb` from separate worktrees.
+- Both must independently run the literal Task137A gate, standalone typecheck,
+  exact revision, scope, and clean-state checks, inspect the complete candidate,
+  and add one isolated negative fixture. Both must return unqualified
+  **APPROVED** before integration.
+- Review work does not authorize subagent-driven development. Full
+  verification, integration, external-service activity, reset credits, push,
+  and every `neo` action remain closed.
