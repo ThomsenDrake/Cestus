@@ -13887,3 +13887,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   one immutable candidate for fresh admission and two new reviews.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-525 — Task137A Recovery-15 assigned
+
+- Fresh owner `019f6b21-a1e0-7301-a0c9-2a1a3e0f59d8` is active and pinned in
+  an isolated worktree from exact rejected candidate
+  `0d78305a343f6ae2e49ee8c68147895d9947fdcb`, creating branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-15`.
+- The owner must resolve RV-1-E-524 with a focused fixture and harmless
+  controls while preserving all existing behavior, termination, and the
+  historical six-path ceiling. Task-scoped subagent-driven development is
+  explicitly approved if relevant with one production writer.
+- The completed Recovery-14 reviewers are archived. The owner must return one
+  immutable candidate for fresh admission and review; no approval carries
+  forward.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
