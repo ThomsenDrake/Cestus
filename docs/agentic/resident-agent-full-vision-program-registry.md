@@ -15908,3 +15908,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, providers, network, credentials, OAuth, external
   services, live Nous, Task139, integration, release records, push, reset, and
   every `neo` action remain closed.
+
+## RV-1-E-611 — Task129-MFA type-only recovery reauthorized
+
+- Recorded at: 2026-07-16T19:18:18Z
+- Recovery worker `019f6c54-9766-7df2-a876-1f150aae5c81` completed the
+  bounded vector repair: the exact focused command is GREEN at five files and
+  129 tests with one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+  The frozen classification and idempotency vectors remain unchanged, and the
+  live result is now checked against an exact derived live preimage.
+- Final typecheck exposed three static-shape errors inside the original
+  eleven-path ownership set: two test fixture spreads treated
+  `configuredPosture`/`assessedPosture` as `unknown`, and one recorder local was
+  declared non-optional before assignment from a normalizer whose `undefined`
+  result is already handled fail-closed on the next line. No runtime,
+  schema, authority, or product decision is implicated.
+- The same recovery worker is explicitly reauthorized to use task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for a
+  type-only repair in exactly the classification test, mounted recorder source,
+  and Task129-MFA claim. It may add a precise local fixture return type and
+  reflect the normalizer's optional result in the local variable; no behavior,
+  boundary typing, or other path may change.
+- Completion still requires typecheck, the exact 129-test command and 8/20
+  marker, diff checking, factory readiness, Task136 markers
+  `29/1/20/29/1/15`, exact eleven-path scope, private-export and non-symlink
+  checks, and one clean candidate commit. Full verification, providers,
+  network, credentials, OAuth, external services, live Nous, Task139,
+  integration, release records, push, reset, and every `neo` action remain
+  closed.
