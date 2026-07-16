@@ -200,3 +200,52 @@ independent review.
   program branch, then ran `npm test -- packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain successfully (18 focused tests). The full verifier remains closed.
 - Status: merged, non-full-verified. No child self-integration, provider,
   credential, network, material, fallback, or `neo` action occurred.
+
+## Task 5B Pure Official-Flow Classifier Recovery
+
+- Recovery base: `419da41b71df7e044e00822b16a796a15889fe5d`
+  (`docs: release task129 mfa mounted authority`).
+- Branch and worktree: `codex/task130-pure-xai-official-flow-classifier` /
+  `/home/drake/.codex/worktrees/task130-pure-xai-official-flow-classifier`.
+- Governing recovery design and plan:
+  `docs/superpowers/specs/2026-07-16-mounted-provider-feasibility-authority-recovery-design.md`;
+  `docs/superpowers/plans/2026-07-16-mounted-provider-feasibility-authority-recovery-implementation.md`
+  Task 5B.
+- Exclusive scope: this claim, `packages/agent/src/xai-subscription-harness.ts`,
+  and `packages/agent/test/xai-subscription-harness.test.ts`.
+- Status: in-progress. The causal RED will precede any production change.
+- Contract: consume the released `agent-official-flow-absence.v1` witness as a
+  pure xAI classifier; do not accept or invoke persistence, authority, ledger,
+  runtime, provider, network, credential, secret, or alternate-backend ports;
+  do not return durable unavailable evidence.
+
+## Task 5B RED/GREEN And Candidate Evidence
+
+- Causal RED: `npm test -- packages/agent/test/xai-subscription-harness.test.ts`
+  exited `1` with **1 file / 18 tests: 10 failed, 8 passed**. The released
+  harness rejected the canonical `ws_` posture as unsafe, still accepted the
+  provisional workspace contract, and returned its old unavailable-adjacent
+  classification instead of the shared absence witness.
+- Narrow implementation: replace the persistence-unavailable branch with the
+  released `createOfficialFlowAbsenceWitness` call; require the canonical
+  workspace, xAI provider family, exact nested provider/policy/credential/
+  approval bindings, nonempty duplicate-free source membership, and a required
+  causation event. The public result union now has only the opaque
+  `official-flow-absence-classified` outcome and bounded blocked outcomes.
+  The harness has no append, authority, ledger, runtime, provider, network,
+  secret, or generic API-key fallback port.
+- GREEN: the identical focused command exited `0` with **1 file / 18 tests**.
+  It retains every xAI prohibited-source fixture, proves no material reads,
+  validates the exact opaque xAI witness and classification hash, rejects
+  malformed or swapped posture/causation inputs, and rejects all supplied raw
+  authority/readback shapes without invocation.
+- Candidate gates before commit: `npm run typecheck` exited `0`; working-tree
+  `git diff --check` exited `0`; `npm run factory:check` exited `0` with
+  `factory-readiness passed`. The changed-file audit found exactly the three
+  owned paths, and `node_modules` is a real directory rather than a symlink.
+- Full verification was not run, as this recovery explicitly prohibits
+  `npm run verify`. No provider, network, credential, OAuth, append,
+  persistence, alternate-backend, integration, registry, Task139, push,
+  reset, or `neo` action occurred.
+- Status: ready for fresh independent architecture/invariant and
+  executability/adversarial review after the one scoped candidate commit.
