@@ -25,6 +25,7 @@ const runtimeFactorySource = "packages/local-runtime/src/runtime-factory.ts";
 const registrarSource = "packages/local-runtime/src/wake-supervisor-runtime.ts";
 const issuerSource = "packages/local-runtime/src/agent-runtime-factory.ts";
 const portableStoreSource = "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts";
+const mountedFeasibilitySource = "packages/local-runtime/src/mounted-official-flow-feasibility.ts";
 const temporaryFixtureRoots: string[] = [];
 
 const allowedFixtures: readonly FixtureCase[] = [
@@ -67,12 +68,18 @@ const allowedFixtures: readonly FixtureCase[] = [
     }
   },
   {
-    label: "portable store imports private inspection authority",
+    label: "authorized consumers import their private inspection authority",
     files: {
       [portableStoreSource]: [
         'import { inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores, type MountedArtifactAuthorityOperation, type PortableMountedArtifactAuthorityOperationInspection } from "./mounted-artifact-authority-operation.js";',
         "void inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores;",
         "type Allowed = [MountedArtifactAuthorityOperation, PortableMountedArtifactAuthorityOperationInspection];",
+        "void (0 as unknown as Allowed);"
+      ].join("\n"),
+      [mountedFeasibilitySource]: [
+        'import { inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility, type MountedArtifactAuthorityOperation } from "./mounted-artifact-authority-operation.js";',
+        "void inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility;",
+        "type Allowed = MountedArtifactAuthorityOperation;",
         "void (0 as unknown as Allowed);"
       ].join("\n")
     }
@@ -104,12 +111,12 @@ const allowedFixtures: readonly FixtureCase[] = [
 
 const rejectedFixtures: readonly RejectedFixtureCase[] = [
   {
-    label: "unauthorized owner",
+    label: "unauthorized owner imports the feasibility inspection symbol",
     category: "unauthorized-owner",
     path: "packages/agent/src/authority-consumer.ts",
     files: {
       "packages/agent/src/authority-consumer.ts":
-        'import { registerMountedArtifactAuthorityIssuerForWakeRuntime } from "../../local-runtime/src/mounted-artifact-authority-operation.js";\nvoid registerMountedArtifactAuthorityIssuerForWakeRuntime;\n'
+        'import { inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility } from "../../local-runtime/src/mounted-artifact-authority-operation.js";\nvoid inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility;\n'
     }
   },
   {
@@ -287,8 +294,8 @@ afterEach(() => {
 
 describe("Task137 mounted artifact authority import policy", () => {
   it("exports the frozen contract versions", () => {
-    expect(task137GrammarVersion).toBe("task137-authority-import-grammar.v1");
-    expect(task137CorpusVersion).toBe("task137-authority-import-corpus.v1");
+    expect(task137GrammarVersion).toBe("task137-authority-import-grammar.v2");
+    expect(task137CorpusVersion).toBe("task137-authority-import-corpus.v2");
   });
 
   it("passes the current repository policy within the bounded runtime", () => {

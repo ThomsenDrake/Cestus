@@ -39,6 +39,9 @@ export interface MountedArtifactAuthoritySnapshot {
 const portableMountedArtifactAuthorityOperationInspectionBrand = Symbol(
   "portable-mounted-artifact-authority-operation-inspection"
 );
+const mountedOfficialFlowFeasibilityInspectionBrand = Symbol(
+  "mounted-official-flow-feasibility-inspection"
+);
 
 /**
  * Private Task135B handoff. It is intentionally neither indexed nor accepted
@@ -51,6 +54,17 @@ export interface PortableMountedArtifactAuthorityOperationInspection {
   readonly mountedWorkspace: NonNullable<LocalRuntimeHandle["mountedWorkspace"]>;
   readonly workspace: FactoryIssuedMountedWorkspaceSnapshot;
   readonly sourceHighWater: FactoryIssuedMountedRuntimeSourceHighWater;
+}
+
+/**
+ * This is a source-private capability bridge for mounted feasibility evidence.
+ * It deliberately omits the runtime handle, workspace paths, and any caller
+ * supplied append/read callbacks.
+ */
+export interface MountedOfficialFlowFeasibilityOperationInspection {
+  readonly [mountedOfficialFlowFeasibilityInspectionBrand]: "mounted-official-flow-feasibility-inspection.v1";
+  readonly snapshot: MountedArtifactAuthoritySnapshot;
+  readonly ledger: LocalRuntimeHandle["ledger"];
 }
 
 interface WakeRuntimeRegistration {
@@ -156,6 +170,18 @@ export function inspectMountedArtifactAuthorityOperationForPortableMountedAgentA
     mountedWorkspace: captured.mountedWorkspace,
     workspace: captured.workspace,
     sourceHighWater: captured.sourceHighWater
+  });
+}
+
+export function inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(
+  operation: MountedArtifactAuthorityOperation
+): MountedOfficialFlowFeasibilityOperationInspection {
+  const state = currentOperationState(operation);
+  const captured = inspectAndRememberMountedRuntime(state);
+  return Object.freeze({
+    [mountedOfficialFlowFeasibilityInspectionBrand]: "mounted-official-flow-feasibility-inspection.v1" as const,
+    snapshot: snapshotFor(state.facts, state.admission),
+    ledger: captured.ledger
   });
 }
 

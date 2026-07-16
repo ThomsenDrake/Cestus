@@ -10,6 +10,7 @@ import type {
 } from "../../agent/src/wake-supervisor.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
+  inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility,
   inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores,
   inspectMountedArtifactAuthorityOperation,
   issueMountedArtifactAuthorityOperationForFactory,
@@ -341,6 +342,78 @@ describe("mounted artifact authority operation", () => {
     expect(Object.keys(operation)).toEqual(["schemaVersion"]);
     expect(operation.schemaVersion).toBe("mounted-artifact-authority-operation.v1");
     expect(Object.isFrozen(operation)).toBe(true);
+  });
+
+  it("hands only the mounted ledger and current snapshot to the feasibility bridge", async () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    await admit(fixture, "wake");
+    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+
+    const inspection = inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation);
+    expect(inspection.snapshot).toEqual(inspectMountedArtifactAuthorityOperation(operation));
+    expect(inspection.ledger).toBe(fixture.handle.ledger);
+    expect(Object.isFrozen(inspection)).toBe(true);
+    expect((inspection as unknown as Record<string, unknown>).runtimeHandle).toBeUndefined();
+    expect((inspection as unknown as Record<string, unknown>).mountedWorkspace).toBeUndefined();
+  });
+
+  it("rejects copied serialized and forged operations at the feasibility bridge", async () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    await admit(fixture, "wake");
+    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+
+    expect(() => inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility({ ...operation })).toThrow(/operation/i);
+    expect(() => inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(JSON.parse(JSON.stringify(operation)))).toThrow(/operation/i);
+    expect(() => inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility({ schemaVersion: operation.schemaVersion })).toThrow(/operation/i);
+  });
+
+  it("burns the feasibility bridge after admission invalidation", async () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    await admit(fixture, "wake");
+    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+    expect(inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation).ledger).toBe(fixture.handle.ledger);
+
+    fixture.ports.authority.invalidate!("shutdown");
+    await admit(fixture, "recovery");
+    expect(() => inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation)).toThrow(/current|burned/i);
+  });
+
+  it("burns the feasibility bridge after the factory runtime closes", async () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    await admit(fixture, "wake");
+    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+    expect(inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation).snapshot.workspaceId).toBe(fixture.workspaceId);
+
+    fixture.handle.close();
+    expect(() => inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation)).toThrow(/current|burned/i);
+  });
+
+  it("keeps the feasibility inspection seam private to direct source imports", () => {
+    const source = readFileSync(new URL("../src/mounted-artifact-authority-operation.ts", import.meta.url), "utf8");
+    expect(source).toMatch(/inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility/);
+    expect(source).not.toMatch(/export\s*\{[^}]*inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility/);
+  });
+
+  it("returns a fresh feasibility snapshot while retaining the factory-captured ledger", async () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    await admit(fixture, "wake");
+    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+
+    const first = inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation);
+    const second = inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation);
+    expect(first).not.toBe(second);
+    expect(first.snapshot).not.toBe(second.snapshot);
+    expect(first.ledger).toBe(second.ledger);
   });
 });
 
