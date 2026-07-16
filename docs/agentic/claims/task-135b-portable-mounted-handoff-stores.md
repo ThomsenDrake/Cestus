@@ -1,6 +1,6 @@
 # Task135B Claim: Portable Mounted Handoff Stores
 
-- **Status:** in-progress
+- **Status:** ready-for-review
 - **Task:** Task135B component-only, operation-bound portable mounted handoff-store producer
 - **Claimed at (UTC):** 2026-07-16T22:08:48Z
 - **Worker:** Codex Task135B implementation owner
@@ -48,3 +48,15 @@ backed by module-private maps.
 - Commit the claim first, commit implementation/evidence in forward history,
   update this claim's latest status to exactly `ready-for-review`, then stop for
   two fresh exact-revision reviews.
+
+## Verification Evidence
+
+- RED: `npm test -- packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `1` because `portable-mounted-agent-artifact-stores.js` was absent;
+  Vitest collected no tests.
+- GREEN: the identical focused command passed `1` file and `13` tests.
+- Prescribed aggregate review command passed `9` files and `113` tests;
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`, `typecheck passed`, and
+  `factory-readiness passed` were observed.
+- `npm run verify`, provider/network/credential activity, Task139 work,
+  integration, release, push, reset, rebase, and `neo` actions were not run.
