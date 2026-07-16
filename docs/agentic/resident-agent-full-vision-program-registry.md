@@ -14143,3 +14143,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ceiling, and return one immutable candidate for fresh admission and review.
 - Full verification, source dispatch, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-541 — Task136 Recovery-17 assigned
+
+- Fresh documentation owner `019f6b46-c31a-76f1-9324-e8783fbbcfe6` is active
+  and pinned in an isolated worktree from exact rejected candidate
+  `9b2af110b1b9745df09c480a66a241459f53d3f6`, creating branch
+  `codex/task-136-interface-reconciliation-recovery-14`.
+- The owner must resolve RV-1-E-540 by completing the provider-plan lineage
+  text without changing executable checker, runner, command-card, or fixture
+  bytes while preserving the approved graph and three-path ceiling.
+  Documentation work does not authorize subagent-driven development.
+- The completed Recovery-16 reviewers are archived. The owner must return one
+  immutable candidate for fresh admission and review; no approval carries
+  forward.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
