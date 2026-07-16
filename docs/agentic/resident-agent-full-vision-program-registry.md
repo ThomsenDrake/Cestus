@@ -14617,3 +14617,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Recovery-N lane is authorized.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-565 — Public-handle correction reviews active
+
+- Architecture/invariant reviewer
+  `019f6b97-7f7f-78e1-83c9-f09579684b88` and
+  executability/finite-scope reviewer
+  `019f6b97-7de5-70e0-beb8-ef3008ee914f` are active, read-only, and reviewing
+  exact design/plan correction revision
+  `d0df37df414a84e9d5d162f5bea335a6842cffc4`.
+- Both must verify the public-handle/protected-trigger distinction against the
+  current production imports and exact policy candidate without moving its
+  HEAD. The architecture reviewer owns authority and invariant semantics; the
+  executability reviewer owns unchanged versions, counts, markers, ownership,
+  and integration order.
+- Review work does not authorize subagent-driven development. Both must return
+  unqualified **APPROVED** before candidate review resumes.
+- Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
