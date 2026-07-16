@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,15 +18,20 @@ const {
 
 const scriptPath = fileURLToPath(new URL("./task136-bounded-assurance.mjs", import.meta.url));
 const releaseSchemaVersion = "task136-dispatch-release.v4";
+const v1ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v1.json";
+const v2ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v2.json";
+const registryPath = "docs/agentic/resident-agent-full-vision-program-registry.md";
+const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 
 const expectedIds = [
   "Task126",
   "Task127",
   "Task128",
-  "Task129",
-  "Task130",
   "Task135D",
   "Task137A",
+  "Task129-MFA",
+  "Task129",
+  "Task130",
   "Task135B",
   "T120-R",
   "Task137B-W",
@@ -50,16 +55,62 @@ const expectedIds = [
   "Task136"
 ];
 
-test("verifies the 28-card topological graph and exact commands", () => {
+test("verifies the 29-card topological graph and exact commands", () => {
   const contract = loadContract();
   const result = verifyStaticGraph(contract);
 
-  assert.equal(result.records, 28);
+  assert.equal(contract.schemaVersion, "task136-bounded-assurance.v2");
+  assert.equal(contract.releaseGraph.version, "task136-release-graph.v2");
+  assert.equal(result.records, 29);
   assert.deepEqual(result.ids, expectedIds);
   assert.equal(
-    result.commands.get("Task136-FC-Ports"),
-    "npm test -- packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts"
+    result.commands.get("Task129-MFA"),
+    "npm test -- packages/agent/test/official-flow-feasibility.test.ts packages/ontology/test/agent-contracts.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/mounted-official-flow-feasibility.test.ts"
   );
+});
+
+test("preserves v1 bytes and rejects the bounded v2 topology and ownership regressions", () => {
+  const v1Before = readFileSync(v1ContractPath);
+  const v1 = JSON.parse(v1Before.toString("utf8"));
+  const v2 = JSON.parse(readFileSync(v2ContractPath, "utf8"));
+  const contract = loadContract();
+
+  assert.equal(createHash("sha256").update(v1Before).digest("hex"), v1ContractSha256);
+  assert.equal(v2.schemaVersion, "task136-bounded-assurance.v2");
+  assert.equal(v2.releaseGraph.version, "task136-release-graph.v2");
+  assert.deepEqual(v2.compositionGrammar, v1.compositionGrammar);
+  assert.deepEqual(v2.compositionCorpus, v1.compositionCorpus);
+
+  const missingMfa = clone(contract);
+  missingMfa.releaseGraph.cards = missingMfa.releaseGraph.cards.filter((card) => card.id !== "Task129-MFA");
+  assert.throws(() => verifyStaticGraph(missingMfa), /card order/);
+
+  const missingTask129Prerequisite = clone(contract);
+  missingTask129Prerequisite.releaseGraph.cards.find((card) => card.id === "Task129").prerequisiteIds = [];
+  assert.throws(() => verifyStaticGraph(missingTask129Prerequisite), /release graph fingerprint/);
+
+  const missingTask137ATransfer = clone(contract);
+  missingTask137ATransfer.releaseGraph.cards.find((card) => card.id === "Task137A").transferToIds = [];
+  assert.throws(() => verifyStaticGraph(missingTask137ATransfer), /undeclared transfer: Task137A/);
+
+  const task137BReclaimsOntology = clone(contract);
+  task137BReclaimsOntology.releaseGraph.cards.find((card) => card.id === "Task137B-W").ownedPaths.push({
+    disposition: "owned",
+    path: "packages/ontology/src/contracts.ts"
+  });
+  assert.throws(
+    () => verifyStaticGraph(task137BReclaimsOntology),
+    /final ownership overlap: Task129-MFA:Task137B-W:packages\/ontology\/src\/contracts\.ts/
+  );
+
+  const adapter = fakeRepositoryAdapter(releaseRecordsFor(contract));
+  assert.throws(
+    () => verifyReleaseClosure(contract, readFileSync(registryPath, "utf8"), adapter),
+    /repository release closure incomplete: expected 29 records, found 3/
+  );
+  assert.equal(adapter.commandCalls.length, 0);
+  assert.deepEqual(readFileSync(v1ContractPath), v1Before);
+  assert.equal(createHash("sha256").update(readFileSync(v1ContractPath)).digest("hex"), v1ContractSha256);
 });
 
 test("accepts one generated composition and rejects the frozen 20 mutations", () => {
@@ -91,10 +142,10 @@ test("accepts one generated composition and rejects the frozen 20 mutations", ()
   ]);
 });
 
-test("reports exactly 28 command cards", () => {
+test("reports exactly 29 command cards", () => {
   const result = verifyCommandCards(loadContract());
 
-  assert.equal(result.cards, 28);
+  assert.equal(result.cards, 29);
   assert.equal(
     result.commands.get("Task137A"),
     "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts"
@@ -197,7 +248,7 @@ function makeTempRepository(registryText) {
   mkdirSync(join(dir, "docs/agentic/contracts"), { recursive: true });
   mkdirSync(join(dir, "docs/agentic"), { recursive: true });
   writeFileSync(
-    join(dir, "docs/agentic/contracts/task136-bounded-assurance-v1.json"),
+    join(dir, "docs/agentic/contracts/task136-bounded-assurance-v2.json"),
     JSON.stringify(loadContract(), null, 2)
   );
   writeFileSync(join(dir, "docs/agentic/resident-agent-full-vision-program-registry.md"), registryText);
@@ -303,7 +354,7 @@ function fakeRepositoryAdapter(records, options = {}) {
   };
 }
 
-test("rejects exactly 28 heading-only release records before Git checks", () => {
+test("rejects exactly 29 heading-only release records before Git checks", () => {
   const contract = loadContract();
   const registryText = headingOnlyMarkdown(contract);
 
@@ -325,7 +376,7 @@ test("parses strict task136 dispatch release v4 records in graph order", () => {
   const records = releaseRecordsFor(contract);
   const parsed = parseReleaseRecords(releaseRecordMarkdown(records), contract);
 
-  assert.equal(parsed.length, 28);
+  assert.equal(parsed.length, 29);
   assert.deepEqual(parsed.map((record) => record.cardId), expectedIds);
   assert.equal(parsed[0].schemaVersion, releaseSchemaVersion);
 });
@@ -461,9 +512,9 @@ test("verifies release records against Git evidence and argument-array commands"
   const adapter = fakeRepositoryAdapter(records);
   const result = verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter);
 
-  assert.equal(result.records, 28);
-  assert.equal(result.commands, 28);
-  assert.equal(adapter.commandCalls.length, 28);
+  assert.equal(result.records, 29);
+  assert.equal(result.commands, 29);
+  assert.equal(adapter.commandCalls.length, 29);
   assert.deepEqual(adapter.commandCalls[0], {
     cardId: "Task126",
     args: ["packages/agent/test/byok-provider.test.ts"]
