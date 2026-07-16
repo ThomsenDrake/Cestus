@@ -14635,3 +14635,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   unqualified **APPROVED** before candidate review resumes.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-566 — Public-handle correction dual-approved
+
+- Architecture/invariant reviewer
+  `019f6b97-7f7f-78e1-83c9-f09579684b88` and
+  executability/finite-scope reviewer
+  `019f6b97-7de5-70e0-beb8-ef3008ee914f` both returned unqualified
+  **APPROVED** for exact correction revision
+  `d0df37df414a84e9d5d162f5bea335a6842cffc4`.
+- Both confirmed that `LocalRuntimeHandle` alone carries no mounted authority,
+  current production imports it only as a type, and exact candidate
+  `9500011940ed27dd8b9738cd5cef218752fe96ad` already uses only the five
+  capture/inspection names as protected runtime-factory triggers. A
+  trigger-containing declaration remains subject to the operation role.
+- Grammar/corpus versions, 8/20 counts, five roles, two exemptions, candidate
+  bytes, terminal markers, ownership, and integration order remain unchanged.
+  `git diff --check` and factory readiness passed in both review worktrees.
+- The exact candidate may now receive one fresh architecture review and one
+  fresh command review under the corrected contract. No implementation repair
+  is required.
+- Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
