@@ -14996,3 +14996,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   program branch is authorized. Full verification, release-record population,
   external-service activity, Task139, push, reset credit, and every `neo`
   action remain closed pending successful integrated admission.
+
+## RV-1-E-585 — Evidence-bound Task136 verifier integrated
+
+- Exact replacement candidate
+  `d2256ed42c4933902d173ad9a689e1bb9d69efbb` was integrated into the program
+  branch as the four-commit series ending at integration revision
+  `49a1a28480d46ae12d5ef3226ac2d148bdf09ab6`. The integrated change remains
+  limited to the verifier claim, assurance script, and Node test.
+- Coordinator integrated admission passed the 11-test targeted suite, exact
+  `28/1/20/28/1/15` contract markers, expected zero-record repository failure,
+  diff checking, factory readiness, clean tracked checkout, and absent
+  dependency link. The completion marker was
+  `TASK136_INTEGRATED_ADMISSION_OK tests=11 records=0 full_verify=not-run`.
+- The strict Task136 verifier is now authoritative on the program branch.
+  Four read-only evidence audits may inspect provider, mounted-runtime/wake,
+  durable-handoff, and bounded-loop card families. Auditors may classify a
+  card **PROVEN** only with exact candidate, two exact-revision reviews,
+  integration, released prerequisites, owned-path blob evidence, and frozen
+  command evidence; otherwise they must return one finite missing fact.
+- The coordinator alone may append strict v4 release records in graph order
+  after independently verifying each **PROVEN** row. Full verification,
+  external-service activity, Task139, push, reset credit, and every `neo`
+  action remain closed until the graph reaches the governing release point.
