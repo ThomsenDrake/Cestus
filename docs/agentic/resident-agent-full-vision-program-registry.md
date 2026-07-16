@@ -16000,3 +16000,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   verification, providers, network, credentials, OAuth, external services,
   live Nous, Task139, integration, release records, push, reset, and every
   `neo` action remain closed.
+
+## RV-1-E-614 — Task129-MFA coordinator admission repair dispatched
+
+- Recorded at: 2026-07-16T19:38:56Z
+- Review-repair worker `019f6c66-c842-7bc3-8632-e551f23b82bb`
+  produced forward revision
+  `8936a6ee587b744ed2f1291a4080f793329a27a8` with exact 129-test
+  GREEN, typecheck, diff checking, factory readiness, Task136 markers, and
+  clean cumulative eleven-path scope.
+- Coordinator readmission confirmed all four reviewer findings were repaired,
+  then identified two bounded admission regressions before redispatching
+  reviews: the correlation secret predicate was attached to the global event
+  context instead of only provider-feasibility observations, and the
+  conflicting-concurrency regression replaced rather than supplemented the
+  required clean exact-concurrent recovery path.
+- The same worker is explicitly reauthorized to use task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for a
+  four-path admission repair only: ontology contract/test, mounted recorder
+  test, and Task129-MFA claim. A non-feasibility event with a harmless
+  `credential-migration` correlation supplies causal RED for the overbroad
+  global refinement. Both clean and conflicting concurrent reread scenarios
+  must coexist inside one existing test so the total remains 129.
+- The worker must add one forward commit, preserve the event-specific cookie
+  rejection and every prior repair, and rerun exact GREEN, typecheck, diff
+  checking, factory readiness, Task136 markers `29/1/20/29/1/15`, cumulative
+  scope, private-export, and non-symlink checks. Full verification, providers,
+  network, credentials, OAuth, external services, live Nous, Task139,
+  integration, release records, push, reset, and every `neo` action remain
+  closed.
