@@ -15264,3 +15264,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, network, providers, credentials, external services,
   self-review, self-integration, Task139, push, reset, and every `neo` action
   remain prohibited.
+
+## RV-1-E-591 — Task129 fail-closed candidate under exact review
+
+- Worker `019f6be3-8d53-7810-8fd2-d78527c13cfe` produced exact candidate
+  `f10512b1070fb3a92305844653a530e45fa57cb7` from exact base
+  `5bb540d63d3255c511c38bec72be613db0a3311b` in one clean three-path commit.
+- The candidate removes the caller-supplied feasibility persistence port and
+  refuses to return `official-flow-unavailable` without a genuinely
+  non-forgeable mounted append/readback authority. Absent such authority it
+  returns the secret-safe blocked category `feasibility-append-unavailable`;
+  the credential-free interface-only route remains non-feasible.
+- Coordinator admission independently passed the 17-test Task129 focused
+  suite, typecheck, diff checking, factory readiness, exact three-path scope,
+  base ancestry, clean tracked checkout, and non-symlinked local dependencies.
+  Full verification was not run.
+- Architecture/invariant reviewer
+  `019f6bea-ef7a-7643-81ad-e6f7a7f3fefb` and executability/adversarial
+  reviewer `019f6bea-f3b8-7a80-9d41-17eab674f348` are active and read-only at
+  the exact candidate. Both must decide whether fail-closed deferral satisfies
+  the frozen Task129 release contract or whether removal of durable
+  unavailable evidence exposes a finite schema/dependency conflict.
+- Review work does not authorize edits, subagent-driven development,
+  integration, release records, full verification, external activity,
+  Task139, push, reset, or any `neo` action.
