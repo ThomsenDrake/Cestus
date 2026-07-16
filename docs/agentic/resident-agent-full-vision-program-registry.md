@@ -13164,3 +13164,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   driven development.
 - Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-490 — Task137A Recovery-8 rejected by both independent reviews
+
+- Mounted-authority/lifecycle reviewer
+  `019f6884-01b3-7e40-b440-be1147479670` and adversarial TypeScript semantic-
+  policy reviewer `019f6884-1502-7682-8a90-676923830796` both returned
+  **NEEDS-CHANGES** for exact candidate
+  `80b14e9204375244fe273f5ff8265ed46c4f4ff6`. No approval or coordinator
+  admission evidence carries forward.
+- The semantic analyzer keeps the first object root assigned to a binding. An
+  initially clean `holder` that is later reassigned to `{ secret: captured }`
+  therefore exports `holder.secret` without a protected-authority violation.
+- The import-policy analyzer also admits evaluator-created protected imports,
+  including `eval('import(...)')` and the equivalent `Function` form, because
+  neither expression is an AST import node nor a recognized loader flow.
+- Runtime factory strongly retains every unconsumed capture. A stale operation
+  is currently burned before the operation source inspects and consumes its
+  capture, so repeated issue/invalidate/revalidate cycles retain captures until
+  process close. The repair must consume stale captures through the existing
+  Task137A-owned operation boundary and prove zero stale append/external effect;
+  it must not widen the frozen six-path lineage to `runtime-factory.ts`.
+- Candidate `80b14e9204375244fe273f5ff8265ed46c4f4ff6` must not be integrated.
+  Its owner produced two bounded candidates in the same recovery thread, so a
+  fresh owner is required for Recovery-9. That owner must add causal failing
+  counterexamples first, preserve lexical shadowing and fixpoint termination,
+  stay within the terminal six-path ceiling, pass the literal 83-plus-new-test
+  Task137A gate and standalone typecheck from committed bytes, and return one
+  clean candidate for two entirely fresh exact-SHA reviews. Task-scoped
+  subagent-driven development is explicitly approved if relevant with exactly
+  one production writer.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, and every `neo` action remain closed.
