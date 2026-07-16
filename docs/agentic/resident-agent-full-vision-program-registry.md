@@ -13039,3 +13039,53 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   development. Full verification, source dispatch, live/provider/network/
   credential/Nous activity, reset credits, push, and every `neo` action remain
   closed.
+
+## RV-1-E-485 — Task136 Recovery-9 assigned to a fresh owner
+
+- The final sentence of RV-1-E-484 that assigned Recovery-9 to the same
+  documentation owner is superseded. That owner produced two consecutively
+  rejected focused candidates in one task thread, so the factory's repair-count
+  rule requires a fresh owner and a different mechanical proof strategy.
+- Fresh documentation owner `019f686b-4e80-78a0-ad03-adb0c1cf163f` owns
+  Recovery-9 from exact rejected candidate
+  `a96253ee85ed8c969b539653e159ed5b5cdd9203` on branch
+  `codex/task-136-interface-reconciliation-recovery-6`. Its scope is exactly
+  the bounded-loop plan, provider-credentials plan, and Task136 reconciliation
+  claim; documentation-only work does not authorize subagent-driven
+  development.
+- Recovery-9 must define a complete cycle-free PM/provider authority value
+  graph, an executable scheduler-to-sole-gateway completion path, final-consumer
+  import-policy ownership, and an executable compile/link proof while preserving
+  the 28-card v4 closure, all 18 existing RED mutations, and all 28 exact
+  targeted commands.
+- Delayed pre-reboot dispatch `019f686e-6786-7f23-b5a0-7dd06efb7e36`
+  materialized after the canonical owner and stopped before editing or
+  committing. It is not an alternate owner. Task139 remains held; full
+  verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-486 — Task137A Recovery-6 rejected for semantic analyzer escapes
+
+- Mounted-authority/lifecycle reviewer
+  `019f6866-940e-7aa3-91f9-2d7bfa0525b9` returned unqualified **APPROVED**,
+  but adversarial TypeScript semantic-policy reviewer
+  `019f6866-d3b4-7132-9dd4-7a2c375b776c` returned **NEEDS-CHANGES** for exact
+  candidate `e01e8b77546ba139bad96e280ce3a689f271885f`.
+- The analyzer fails to propagate CommonJS loader identity through missing-
+  property and parameter defaults, through assignment and array destructuring,
+  and through non-identifier nested property receivers. The reviewer reproduced
+  escapes for object and parameter defaults, object assignment, array binding,
+  and `holder.nested.require(...)`.
+- Candidate `e01e8b77546ba139bad96e280ce3a689f271885f` must not be integrated. The
+  preceding owner produced two rejected focused candidates, so fresh owner
+  `019f686e-d299-7280-ad6b-f93267e11b18` owns Recovery-7 on branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-7`, scoped to
+  the Task137A claim and test-owned semantic import-policy analyzer. Task-scoped
+  subagent-driven development is explicitly approved if relevant with exactly
+  one writer.
+- Recovery-7 must add failing counterexamples before repair, preserve lexical
+  shadowing and exact-optional semantics, prove monotone terminating analysis,
+  and return one clean candidate for fresh coordinator admission and two
+  entirely new exact-SHA reviews. Full verification, live/provider/network/
+  credential/Nous activity, reset credits, push, and every `neo` action remain
+  closed.
