@@ -14592,3 +14592,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   receive two fresh exact-revision reviews before integration.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-564 — Task137 public-handle contract correction
+
+- The bounded implementation probe authorized by `RV-1-E-563` exposed a
+  design/source conflict before any correction commit: current production
+  modules legitimately import `LocalRuntimeHandle` as a shared type without
+  receiving mounted-workspace authority. Enforcing it as a protected trigger
+  would require unrelated production migrations and make the repository gate
+  contradict its approved baseline.
+- The policy boundary is corrected without expanding its grammar or corpus:
+  the five capture/inspection names in the `runtime-factory.js` role are
+  protected triggers; `LocalRuntimeHandle` is a public companion type. An
+  import declaration containing a protected trigger must match the operation
+  role and may include the companion. A handle-only type import carries no
+  authority and remains outside the policy.
+- The implementation owner was stopped before commit and instructed to return
+  its worktree clean at exact candidate
+  `9500011940ed27dd8b9738cd5cef218752fe96ad`. The grammar/corpus versions,
+  eight allowed fixtures, 20 rejected fixtures, five roles, two exemptions,
+  gate markers, and candidate bytes remain unchanged.
+- Two fresh read-only reviewers must approve this exact design/plan correction
+  before the candidate is re-reviewed. No implementation successor or
+  Recovery-N lane is authorized.
+- Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
