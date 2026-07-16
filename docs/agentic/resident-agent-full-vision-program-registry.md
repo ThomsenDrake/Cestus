@@ -14674,3 +14674,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   expansion. Both must return unqualified **APPROVED** before integration.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-568 — Task137 bounded policy integrated
+
+- Architecture/invariant reviewer
+  `019f6b9b-dba2-7312-95bc-0e972dec38a4` and
+  executability/command reviewer
+  `019f6b9b-db10-7500-b8a1-270db351cc97` both returned unqualified
+  **APPROVED** for exact candidate
+  `9500011940ed27dd8b9738cd5cef218752fe96ad` under the dual-approved
+  public-handle correction.
+- The coordinator cherry-picked the candidate's two commits in order onto the
+  program branch. Exact integration revision is
+  `71f4e8477075fae39294fba77bf8e20215891ef7`.
+- After local-cache-only dependency setup, integrated verification passed: six
+  files/74 tests, `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`, standalone
+  typecheck, the real committed gate, all six ordered stage markers plus
+  `TASK137_GATE_COMPLETE stages=6`, exact marker comparison, diff check,
+  factory readiness, clean checkout, and absent dependency link.
+- Task137's gate and bounded policy are now integrated. Task136 repository mode
+  is the next finite admission check. Task139 remains blocked unless that mode
+  proves a valid release record.
+- Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed pending the Task136 result.
