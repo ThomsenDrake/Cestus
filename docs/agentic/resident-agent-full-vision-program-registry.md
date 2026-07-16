@@ -14534,3 +14534,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Lane B may now rebase onto the current program branch and run the real
   seven-stage gate. Full verification, external-service activity, reset
   credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-561 — Rebased Task137 policy candidate admitted to review
+
+- Lane B rebased cleanly onto exact program revision
+  `979844ec29ddd2bba2646287bc972e35521bd347`; its new exact candidate is
+  `9500011940ed27dd8b9738cd5cef218752fe96ad` with the same seven owned paths.
+- Coordinator admission independently passed the six-file/74-test focused
+  command with `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`, standalone
+  typecheck, the real committed terminal script, all six ordered stage markers
+  plus `TASK137_GATE_COMPLETE stages=6`, exact scope, diff check, factory
+  readiness, clean checkout, and absent dependency link.
+- The real receipt is now bound to the candidate containing both the integrated
+  gate and reconstructed finite policy; controlled Lane C evidence was not
+  substituted.
+- Two fresh independent exact-candidate-SHA read-only reviews are required.
+  Both must rerun the real gate and return unqualified **APPROVED** before
+  integration. Review work does not authorize subagent-driven development.
+- Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
