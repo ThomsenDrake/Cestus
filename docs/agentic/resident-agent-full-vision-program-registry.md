@@ -15851,3 +15851,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   explicit task-scoped SDD/TDD authorization. Task139, providers, network,
   credentials, external services, full verification, push, reset, and every
   `neo` action remain closed.
+
+## RV-1-E-609 — Task129-MFA mounted feasibility authority dispatched
+
+- Recorded at: 2026-07-16T18:53:18Z
+- Sole implementation worker `019f6c46-9917-7080-ab84-5dfa75b8d00c`
+  starts from exact clean program base
+  `2b81a542c6ea391bfb901443acfc04366bd4f3f5` in isolated worktree
+  `/home/drake/.codex/worktrees/task129-mounted-provider-feasibility-authority-recovery`
+  on branch `codex/task129-mounted-provider-feasibility-authority-recovery`.
+  The older Task129 candidate attached to the shared checkout remains
+  preserved and untouched.
+- Ownership is the exact eleven Task129-MFA paths frozen in the approved
+  implementation plan: shared classification source/test, ontology
+  contract/test, mounted operation and three policy/operation test paths, new
+  mounted recorder source/test, and the Task129-MFA claim. The worker may not
+  edit the program registry or any package index.
+- The dispatch explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for
+  Task129-MFA only. Required causal RED and identical GREEN use the frozen
+  five-file command; GREEN must be exactly 129 tests with one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- Candidate admission is bounded to the focused command, typecheck, diff
+  checking, factory readiness, Task136 contract markers `29/1/20/29/1/15`,
+  clean tracked state, and non-symlinked dependencies. Full verification,
+  providers, network, credentials, OAuth, external services, live Nous,
+  Task139, integration, release records, push, reset, and every `neo` action
+  remain closed.
