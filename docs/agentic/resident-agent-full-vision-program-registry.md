@@ -13616,3 +13616,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Both must return unqualified **APPROVED** before integration.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-509 — Task137A Recovery-12 exact-SHA reviews active
+
+- Lifecycle reviewer `019f6af3-aabb-7670-b82a-7ec38990c64c` and data-flow
+  reviewer `019f6af3-aaf5-7093-83a2-99ca12a97b4e` are active, pinned,
+  read-only, and independently reviewing exact candidate
+  `cbf3035ea44d843f2f8a21f51a6a24f50c1b6cb4` from separate worktrees.
+- Both must rerun the literal 6-file/89-test command, standalone typecheck,
+  exact scope and clean-state checks, inspect the complete candidate, and add
+  an isolated negative fixture. Both must return unqualified **APPROVED**
+  before integration.
+- Review work does not authorize subagent-driven development. Full
+  verification, integration, external-service activity, reset credits, push,
+  and every `neo` action remain closed.
