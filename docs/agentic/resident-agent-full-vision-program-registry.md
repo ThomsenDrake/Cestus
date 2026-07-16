@@ -16600,3 +16600,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   append unavailable evidence, accept persistence/authority/runtime inputs,
   add provider or network execution, run full verification, integrate, append
   releases, work on Task139, push, reset, or touch `neo`.
+
+## RV-1-E-634 — Task129 and Task130 pure-classifier candidates admitted
+
+- Recorded at: 2026-07-16T21:26:27Z
+- Task129 produced exact candidate
+  `829e4043505c8d141c716834957644ac16808a75` with exact parent
+  `419da41b71df7e044e00822b16a796a15889fe5d`. Its scope is exactly the Codex
+  harness source, focused test, and claim. Coordinator admission passed the
+  focused suite at **1 file / 16 tests**, typecheck, diff checking, factory
+  readiness, clean state, and a real non-symlinked dependency directory.
+- Task130 produced exact candidate
+  `dbbf0794625554f9bc3b45901853a17c4aedf166` with the same exact parent. Its
+  scope is exactly the xAI harness source, focused test, and claim.
+  Coordinator admission passed the focused suite at **1 file / 18 tests**,
+  typecheck, diff checking, factory readiness, clean state, and a real
+  non-symlinked dependency directory.
+- Both candidates consume only the released shared opaque absence witness,
+  retain provider-family-specific posture and prohibited-source handling, and
+  expose no local-runtime, persistence, mounted-authority, ledger, provider,
+  network, credential-material, or generic API-key execution port. Neither
+  candidate returns durable unavailable evidence.
+- Both candidates now require separate fresh architecture/invariant and
+  executability/adversarial reviews bound to their exact revision. Review work
+  is read-only and does not authorize SDD, implementation edits, full
+  verification, integration, releases, Task139, providers, network,
+  credentials, external services, push, reset, or any `neo` action.
