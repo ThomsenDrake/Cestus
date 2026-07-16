@@ -16890,3 +16890,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-644 — Task130 pure classifier released
+
+- Recorded at: 2026-07-16T22:04:48Z
+- Exact Task130 candidate
+  `172e8ec8052baf4f042dfed7c4d737b488b66201` is released below with its two
+  final exact-revision approvals, integration revision
+  `95c13101d61c250fa0008a53caa2976053af46e8`, exact Task129-MFA prerequisite,
+  and literal candidate blobs for all three owned paths.
+- Task129 and Task130 are now both integrated and released after the common
+  Task129-MFA authority card. The finite repository checkpoint must advance
+  from seven to eight valid records while the remaining 21 cards stay closed.
+- Full verification, Task139, providers, network, credentials, external
+  services, push, reset, and every `neo` action remain closed. The next
+  ordinary graph frontier is Task135B.
+
+## Task136 dispatch release v4: Task130
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task130",
+  "candidateSha": "172e8ec8052baf4f042dfed7c4d737b488b66201",
+  "reviews": [
+    {
+      "threadId": "019f6cf1-0458-7660-bf5b-edcddbae4443",
+      "candidateSha": "172e8ec8052baf4f042dfed7c4d737b488b66201",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6cf1-0867-7c01-b4f7-ee0c95c29354",
+      "candidateSha": "172e8ec8052baf4f042dfed7c4d737b488b66201",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "95c13101d61c250fa0008a53caa2976053af46e8",
+  "releaseEventId": "task136-release-v4-Task130",
+  "prerequisites": [
+    {
+      "cardId": "Task129-MFA",
+      "integrationSha": "c599f9d7c9e08de155bfb98f49462ad01416ec40",
+      "releaseEventId": "task136-release-v4-Task129-MFA"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/xai-subscription-harness.ts",
+      "disposition": "owned",
+      "blobSha": "71635ee0466b208006d12d18d3e74f8c05276886"
+    },
+    {
+      "path": "packages/agent/test/xai-subscription-harness.test.ts",
+      "disposition": "owned",
+      "blobSha": "a5949174ab8d2b58614330bca14219c86ab2b061"
+    },
+    {
+      "path": "docs/agentic/claims/task-130-resident-full-vision-xai-harness.md",
+      "disposition": "owned",
+      "blobSha": "d7b04d0a41b0b184ff2dcea31ad6379e6dd92eda"
+    }
+  ]
+}
+```
