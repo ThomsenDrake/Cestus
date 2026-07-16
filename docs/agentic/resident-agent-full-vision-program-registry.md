@@ -17423,3 +17423,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-660 — T120-R re-attested root card released
+
+- Recorded at: 2026-07-17T01:02:00Z
+- Architecture/invariant reviewer
+  `019f6bda-4dd3-76e2-892d-37e3737a4dfd` and executability/adversarial
+  reviewer `019f6bda-4edf-7413-9333-fda7683cd60e` each returned a literal
+  unqualified **APPROVED** verdict for `T120-R` at exact re-attestation and
+  integration checkpoint `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`.
+- Fresh coordinator admission proved that checkpoint is an ancestor of the
+  current program revision, all five owned paths are literal Git blobs whose
+  current identities still equal the reviewed identities, and the frozen
+  command passes **2 files / 9 tests**. Diff checking, factory readiness,
+  clean tracked state, and non-symlinked dependencies also passed.
+- `T120-R` has no prerequisites. Its strict release record below advances the
+  finite graph from nine to ten valid records and makes `Task137B-W` the sole
+  next card in parser order. Full verification, Task139, providers, network,
+  credentials, external services, push, reset, and every `neo` action remain
+  closed.
+
+## Task136 dispatch release v4: T120-R
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "T120-R",
+  "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "reviews": [
+    {
+      "threadId": "019f6bda-4dd3-76e2-892d-37e3737a4dfd",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6bda-4edf-7413-9333-fda7683cd60e",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "releaseEventId": "task136-release-v4-T120-R",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/plan-observation-contracts.ts",
+      "disposition": "owned",
+      "blobSha": "549c7a830252dca6fa11bd27566dc762680e9872"
+    },
+    {
+      "path": "packages/agent/src/plan-observation-projection.ts",
+      "disposition": "owned",
+      "blobSha": "d9f2f32575f69e71bf4461f1b20e95185136ac2e"
+    },
+    {
+      "path": "packages/agent/test/plan-observation-contracts.test.ts",
+      "disposition": "owned",
+      "blobSha": "9bfd1b204e80790e88fb10ff96ca3816a9a2fea1"
+    },
+    {
+      "path": "packages/agent/test/plan-observation-projection.test.ts",
+      "disposition": "owned",
+      "blobSha": "cd4cbf84b9f578822d8c197e0bce4217e18d34d9"
+    },
+    {
+      "path": "docs/agentic/claims/task-120-resident-full-vision-plan-observation-contracts.md",
+      "disposition": "owned",
+      "blobSha": "fedf554dde00c0f9b8821fd488aee6bb168cc6b5"
+    }
+  ]
+}
+```
