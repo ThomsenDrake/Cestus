@@ -15643,3 +15643,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   same-checkpoint re-attestation for Task135D and Task137A before the
   coordinator appends either strict v4 record. Task139, providers, network,
   external services, push, reset, and every `neo` action remain closed.
+
+## RV-1-E-606 — Task135D and Task137A post-v2 re-attestation dispatched
+
+- Recorded at: 2026-07-16T18:36:11Z
+- Exact frozen checkpoint:
+  `85e5c6cbc86f4d636702ce825baf21eb7d7ac89c` on the isolated program
+  branch, after Task136 v2 integration evidence and before either new release
+  record.
+- Coordinator baseline passed Task135D's exact two-file command with 12 tests,
+  Task137A's exact three-file command with 26 tests and one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker, typecheck, Task136
+  v2 contract markers `29/1/20/29/1/15`, repository early stop 29/3, diff
+  checking, factory readiness, clean tracked state, and non-symlinked
+  dependency checks.
+- Task135D literal blobs are runtime factory
+  `42822b2d549ae20bd353151583d63dc988397191`, mounted-authority test
+  `0ac5c386302e38d246ab0911beb85541e47d88df`, claim
+  `e4f406240d802649c9a29193111ff0ed81cba000`, and transferred import-policy
+  test `18ad548f0be550e6180b5509d38289971dad48dd`.
+- Task137A literal blobs are lifecycle source
+  `5197322a772c322f3f917069ab82da677ea09f5e`, transferred mounted operation
+  `771f28a610367efdd5f0c75fee398ee032476360`, lifecycle test
+  `a90695bbb54c04ade6685c0d1b0bbf8a8856709d`, transferred operation test
+  `ca98d6b733d6386f94c3a00f2844e111ecf123ff`, transferred import-policy test
+  `235d413ac165a2780ed7e0c768d393b4936c6665`, transferred boundary policy
+  `926772074124e5fb31a13a0cdb8d9add200fa98f`, and claim
+  `3745f684e0905c176627df816ca18be52dd98031`.
+- Fresh architecture/invariant reviewer
+  `019f6c36-dcbc-7833-ba6a-c1b44760f22e` and fresh
+  executability/adversarial reviewer
+  `019f6c36-cf1a-7a21-8191-65bad0064e39` are read-only at that same
+  checkpoint. Each must separately return unqualified `APPROVED` for both
+  Task135D and Task137A before either strict v4 record is appended.
+- Re-attestation does not authorize edits, SDD, full verification, release
+  records by reviewers, Task129-MFA, Task139, providers/network/external
+  activity, push, reset, or any `neo` action.
