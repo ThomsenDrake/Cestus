@@ -13571,3 +13571,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   admission and two fresh exact-SHA reviews. Full verification, source
   dispatch, live/provider/network/credential/Nous activity, reset credits,
   push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-507 — Task137A Recovery-11 rejected at committed-byte typecheck
+
+- Recovery-11 owner `019f68c1-8fac-72b3-938d-a65ddcd5b350` produced exact
+  candidate `ef16077d8f4d0bce4da5d72180b5c20dcf92fac4`, one clean descendant
+  of rejected `3e8738c984a4a78d3d8f82eb3661f5b53a352869` changing only the
+  Task137A claim and owned import-policy test.
+- Coordinator admission reran the literal committed-byte Task137A gate. All
+  six files and 89 tests passed, but the embedded typecheck failed at
+  `mounted-artifact-authority-operation-imports.test.ts:812` with TS2345:
+  `Binding | undefined` was passed where `Binding` is required.
+- The cause is a repeated `declarationBinding(statement, analysis)` lookup.
+  Testing the first call for `undefined` does not narrow the independent second
+  call. The candidate therefore cannot enter review or integration despite its
+  green behavioral fixtures. Exact HEAD and scope remained clean, and the
+  temporary dependency link was removed.
+- The same fresh owner is authorized for one bounded Recovery-12 attempt from
+  exact rejected candidate `ef16077d8f4d0bce4da5d72180b5c20dcf92fac4`.
+  It must resolve the lookup once into a locally narrowed value or equivalent
+  helper, preserve the 89-test behavior and historical six-path ceiling, and
+  rerun the literal gate plus standalone typecheck from one immutable commit.
+  Task-scoped subagent-driven development remains explicitly approved if
+  relevant with exactly one production writer.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
