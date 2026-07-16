@@ -15162,3 +15162,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## Task136 dispatch release v4: Task127
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task127",
+  "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "reviews": [
+    {
+      "threadId": "019f6bda-4dd3-76e2-892d-37e3737a4dfd",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6bda-4edf-7413-9333-fda7683cd60e",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "releaseEventId": "task136-release-v4-Task127",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/os-secret-store.ts",
+      "disposition": "owned",
+      "blobSha": "c1303fd21cdf222d48e3331d9bf982d7229db8e8"
+    },
+    {
+      "path": "packages/agent/test/os-secret-store.test.ts",
+      "disposition": "owned",
+      "blobSha": "8e776d3cf2ca2a9c81d2c4467f06b52d770c0273"
+    },
+    {
+      "path": "docs/agentic/claims/task-127-resident-full-vision-os-secret-store.md",
+      "disposition": "owned",
+      "blobSha": "89acad18ce461aeb1df2425614fdfc955a8478af"
+    }
+  ]
+}
+```
