@@ -13516,3 +13516,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   two fresh exact-SHA reviews. Full verification, integration, live/provider/
   network/credential/Nous activity, reset credits, push, and every `neo` action
   remain closed.
+
+## RV-1-E-505 — Task136 Recovery-12 rejected for indirect re-export minting
+
+- Recovery-12 owner `019f6898-4661-7b33-9da1-16d00133ccc5` produced exact
+  candidate `1693e9fa4f4664567e3fb82a228bc914c2aca785`, one clean descendant
+  of rejected `7856505c58df91dcfdd4d288d19e39448588eb8e` changing exactly the
+  Task136 claim, bounded-loop plan, and provider-credentials plan.
+- Coordinator admission independently passed all four literal gates from
+  committed bytes: the no-input checker stopped only at the frozen missing-
+  release boundary; the 28-record fixture retained all 20 REDs; command
+  validation resolved all 28 cards; and the executable ABI fixture retained
+  one GREEN plus ten named REDs. Diff, one-commit scope, exact HEAD, clean
+  checkout, and absent dependency-link checks passed.
+- A fresh guarded coordinator mutation added an intermediary module that
+  re-exported `prepareRuntimeFactoryProviderMountGrant` and
+  `mountProviderAuthority`, then imported and called them from an external
+  module using the exact governed input types. The executable fixture printed
+  `GREEN external re-export bridge`: compilation, execution, and the current
+  AST policy all passed, proving external mounted-authority minting remains.
+- The causal defect is that `assertProtectedOperationOwnership` scans direct
+  named imports only. It ignores export declarations and transitive value-flow,
+  so a bridge hides both protected imports and outside calls while FC-Core's
+  direct call count remains one. Candidate
+  `1693e9fa4f4664567e3fb82a228bc914c2aca785` must not be reviewed,
+  integrated, or used to resume Task139.
+- This owner exhausted two rejected candidates. A fresh documentation owner is
+  required for Recovery-13 on the exact same three paths. It must begin with
+  the executable re-export bridge RED and make protected-operation ownership
+  transitive across re-exports and aliases while preserving every existing
+  literal gate, exact governed types, private runtime, graph direction, and
+  currentness/revocation checks. Documentation-only work does not authorize
+  subagent-driven development.
+- Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, Task139 resumption, and every `neo` action
+  remain closed.
