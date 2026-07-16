@@ -6918,6 +6918,25 @@ already-allowed source byte, index-only mutation, empty commit, ignored
 `docs/agentic` path, ignored root `.npmrc`, and ignored `dist` output created by
 each focused/readiness command.
 
+### Task137 terminal gate v2 bounded command
+
+<!-- TASK137-TERMINAL-GATE-V2-BEGIN -->
+
+The 2026-07-16 bounded-assurance reset supersedes the preceding standard-input
+Task137A terminal gate for future Task137 terminal-gate dispatch. Mutable
+lineage remains in `docs/agentic/resident-agent-full-vision-program-registry.md`
+under `RV-1-E-545`; this section records only the materialized
+`task137-terminal-gate.v2` command:
+
+```bash
+timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null
+```
+
+Historical standard-input gate prose remains append-only evidence and is not
+the dispatch body for the v2 terminal gate.
+
+<!-- TASK137-TERMINAL-GATE-V2-END -->
+
 ### Complete P/R0/H review commands
 
 Before dispatch, the coordinator replaces each literal
