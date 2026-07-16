@@ -17543,3 +17543,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Task137B-W implementation, Task139, full verification, providers, network,
   credentials, external services, push, reset, rebase, and every `neo` action
   remain closed pending a dual-approved correction design and plan.
+
+## RV-1-E-663 — Task137B-W v3 correction design and plan under review
+
+- Recorded at: 2026-07-17T01:28:00Z
+- The bounded correction design was committed at
+  `afbfcec406750a215332b0ad72933a9d7eb796bf`; its measurable implementation
+  plan was committed at exact review revision
+  `42721604a412b32144bed3610e72d4c075cca6d4`.
+- The selected correction preserves v1/v2 and every existing release record,
+  adds one exact historical-disposition compatibility tuple in v3, transfers
+  only the central ontology contract from Task129-MFA to Task137B-W, and gives
+  Task137B-W a direct Task129-MFA prerequisite plus the restored eighth path.
+- Fresh architecture/invariant reviewer
+  `019f6d5a-d58f-7131-b32e-afc4b0f346dd` and finite-executability/command
+  reviewer `019f6d5a-da39-7721-bb7a-c37d8f49db86` are read-only at exact
+  revision `42721604a412b32144bed3610e72d4c075cca6d4` on Terra/xhigh.
+- Review work does not authorize SDD, edits, implementation, integration,
+  release records, Task139, full verification, providers, network,
+  credentials, external services, push, reset, rebase, or any `neo` action.
+  Both reviewers must return unqualified **APPROVED** before Task 1 starts.
