@@ -247,5 +247,6 @@ independent review.
   `npm run verify`. No provider, network, credential, OAuth, append,
   persistence, alternate-backend, integration, registry, Task139, push,
   reset, or `neo` action occurred.
-- Status: ready for fresh independent architecture/invariant and
-  executability/adversarial review after the one scoped candidate commit.
+- Status: ready-for-review.
+- Next review gate: fresh independent architecture/invariant and
+  executability/adversarial review of the one scoped candidate commit.
