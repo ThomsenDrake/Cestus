@@ -15402,3 +15402,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   approved provider implementation plan. No Task129/130 implementation or
   release-record work resumes until that plan correction has two fresh
   read-only approvals.
+
+## RV-1-E-597 — Mounted feasibility mapping complete
+
+- Mounted trust-root mapper `019f6c02-6d5d-7251-9d36-4c4e63874ecd`
+  confirmed that neither harness has a production caller and that no provider
+  feasibility ledger event currently exists. Task129's raw callback is
+  forgeable; Task130 is safely fail-closed but cannot satisfy durable
+  unavailable-feasibility acceptance.
+- The required trust root is Task137A's existing
+  `MountedArtifactAuthorityOperation`: it is factory-issued, private-WeakMap
+  backed, tied to exact current admission and mounted runtime capture, and
+  burns on copy, staleness, invalidation, or closed runtime state. A new
+  local-runtime-only bridge must derive posture from mounted facts, append a
+  dedicated provider-feasibility ledger event, reread the exact event, and
+  revalidate currentness before exposing unavailable posture.
+- Release-contract mapper `019f6c02-7219-77c2-97c3-1ccf940e0a08` selected a
+  29-card `task136-release-graph.v2` with new card `Task129-MFA` after
+  `Task137A`. Task129, Task130, and Task135B depend on `Task129-MFA`; all later
+  prerequisites remain equivalent. Task135B stays a handoff-store producer and
+  does not absorb provider feasibility.
+- The three existing strict v4 records for Task126, Task127, and Task128 remain
+  byte-for-byte valid as the unchanged graph prefix. The release-record schema,
+  heading prefix, and event-ID format remain v4. The v1 assurance contract is
+  preserved as history; a new immutable v2 contract and verifier fingerprint
+  govern the unreleased suffix and require 29 records.
+- Task129 and Task130 require fresh post-Task129-MFA candidates and reviews;
+  neither old root candidate can satisfy prerequisite ancestry. Design and
+  implementation-plan correction now proceed under the already approved
+  mounted-authority/provider requirements. No implementation is authorized
+  until both documents receive two fresh read-only approvals.
