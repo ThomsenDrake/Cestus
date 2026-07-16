@@ -14031,3 +14031,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-534 — Task136 Recovery-15 rejected; Recovery-16 required
+
+- Composition reviewer `019f6b2f-cb53-70d2-950e-4f8a196e6c49` returned
+  **APPROVED**, while graph reviewer `019f6b2f-a96f-7a10-8d66-4612ffabb047`
+  returned **NEEDS-CHANGES** for exact candidate
+  `c7512a4f962014a5e71bf41b1116db8190181209`. Dual approval was not met; no
+  prior admission or approval carries forward.
+- The active v4 bounded-loop section still identifies itself as Recovery-14 and
+  names the prior rejected revision and registry event. Its executable checks
+  are current, but its lineage text contradicts the Recovery-15 claim.
+- All four Task136 checks, exact revision/scope, diff, factory readiness, clean
+  checkout, and absent dependency-link checks otherwise passed.
+- A fresh documentation owner must start from the exact rejected candidate,
+  make the active v4 lineage text current and internally consistent across all
+  three owned documents, preserve the approved graph, checks, and command
+  cards, keep the three-path ceiling, and return one immutable candidate for
+  fresh admission and review.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
