@@ -15587,3 +15587,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness. Full verification, providers, network, credentials, external
   services, later cards, Task139, integration, release records, push, reset,
   and every `neo` action remain closed.
+
+## RV-1-E-604 — Task136 v2 candidate admitted and dual review dispatched
+
+- Recorded at: 2026-07-16T18:27:51Z
+- Worker `019f6c28-4ae0-7252-b331-601cc659e2b1` produced exact one-commit
+  candidate `fb8e2412c2e1cc11976af88ac349dd5f3a4edcb2` with parent
+  `2dbb697c43e1d638ec4050c5da25eb4fa5e74199` on
+  `codex/task136-v2-mounted-feasibility-release-graph`.
+- Exact scope is four paths: immutable v2 contract, Task136 checker, Task136
+  Node test, and Task136 v2 claim. The v1 contract remains Git blob
+  `558822735645741d755214c5a1644ca7e4a0add0` and SHA-256
+  `d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed`.
+  Task126/127/128 JSON-block SHA-256 values remain respectively
+  `1b1fc2171278866b38f6aa96889b822f22ab2abd34f460b304fe7fc2c3a0b58d`,
+  `18199ad9bfdcf3582ad13f6637bfbcc72949f1407271fa6c325612abcd226951`,
+  and `fe29c10c5dbe3d8c1596f20db7b95b62df8dd98d379ade09d2ed85822ce51d92`.
+- Coordinator admission independently passed exact scope/ancestry, 12 focused
+  Node tests, contract markers `29/1/20/29/1/15`, graph fingerprint
+  `9e88c5f9fa12bac40a5df6cc3fc0cc6a2b1f14e0c1fc8ad30da1da61e76864ab`,
+  repository early stop `expected 29 records, found 3`, diff checking, factory
+  readiness, clean tracked state, and non-symlinked dependency checks. Full
+  verification was not run.
+- Fresh architecture/invariant reviewer
+  `019f6c2f-488e-7cd3-83e5-85c08ca86998` and fresh
+  executability/adversarial reviewer
+  `019f6c2f-4474-7e10-8ec2-d2be748ba948` are read-only at the exact
+  candidate. Both must return unqualified `APPROVED` before integration.
+- Review work does not authorize edits, SDD, later cards, Task139, full
+  verification, provider/network/external activity, integration, release
+  records, push, reset, or any `neo` action.
