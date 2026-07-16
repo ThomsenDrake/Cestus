@@ -16159,3 +16159,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Full verification, providers, network, credentials, OAuth, external
   services, live Nous, Task139, integration, release records, push, reset, and
   every `neo` action remain closed.
+
+## RV-1-E-619 — Task129-MFA hostile-boundary type recovery dispatched
+
+- Recorded at: 2026-07-16T20:16:10Z
+- Hostile-boundary worker `019f6c8b-5a80-7710-951c-ae5d4cb96f1c`
+  completed the functional repair and stopped at its focused-attempt limit
+  without committing. Exact targeted tests are GREEN at 129 with one 8/20
+  marker; diff checking, factory readiness, and Task136 contract mode pass.
+- The sole remaining failure is test-only `TS2322`: a conflicting-concurrency
+  callback declares its input as the full `AppendableKnowledgeEvent` union and
+  adds feasibility-only `classificationHash` without first discriminating the
+  event type. Production behavior and the hostile-boundary tests are otherwise
+  green.
+- Fresh recovery worker `019f6c92-623d-7382-83c2-d0ecdc0a24ef` preserves the
+  uncommitted repair and owns only the mounted feasibility test and
+  Task129-MFA claim for new edits. The prompt explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for a
+  precise type-only recovery: add the exact feasibility event-type guard, use
+  no broad cast, and change no behavior.
+- The worker must rerun typecheck, exact 129-test GREEN and 8/20 marker, diff
+  checking, factory readiness, Task136 markers `29/1/20/29/1/15`, cumulative
+  scope, private-export and non-symlink checks, then commit the seven intended
+  repair paths in one forward commit. Full verification, providers, network,
+  credentials, OAuth, external services, live Nous, Task139, integration,
+  release records, push, reset, and every `neo` action remain closed.
