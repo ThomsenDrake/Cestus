@@ -14768,3 +14768,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   revision before implementation. No implementation, records, Task139, full
   verification, external-service activity, push, reset credit, or `neo` action
   is authorized yet.
+
+## RV-1-E-573 — Evidence-bound release closure dual-approved
+
+- Architecture/invariant reviewer
+  `019f6baa-aa8b-7b30-89d8-e21959987660` and
+  executability/finite-scope reviewer
+  `019f6baa-a980-78a0-bf9d-6d159926cbae` both returned unqualified
+  **APPROVED** for repaired exact revision
+  `1d55807aee6361ae2df35d4df21b92a1a85030f8`.
+- Both accepted the strict JSON record grammar, Git evidence checks, transfer
+  semantics, argument-array command execution, finite failure order,
+  coordinator-only registry ownership, and unchanged 28-card scope.
+  `git diff --check` and factory readiness passed in both review worktrees.
+- The three-file verifier implementation may start. Its prompt must explicitly
+  approve task-scoped subagent-driven development, test-driven development,
+  verification before completion, fresh exact-candidate reviews, and
+  coordinator-only integration.
+- Record population, Task139, external-service activity, push, reset credit,
+  and every `neo` action remain closed until the verifier integrates.
