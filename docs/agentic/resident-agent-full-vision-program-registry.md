@@ -14340,3 +14340,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, implementation, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain
   closed.
+
+## RV-1-E-551 — Registry-only lineage repair
+
+- Executability reviewer `019f6b69-8ea2-7e42-8023-20ada36f23d9` returned
+  unqualified **APPROVED** for exact revision
+  `a687a169eb951b8d534c0f4195c759786af21d81`. Architecture reviewer
+  `019f6b69-8df0-7f32-ac7a-7d63d4670bea` returned **NEEDS-CHANGES**, so dual
+  approval was not met and no approval carries forward.
+- The active plan copied the preserved evidence revisions even though the
+  design makes this registry their sole mutable authority.
+- Exact repair revision
+  `20bf4a48baafe734dc09850eb8dece93c260e157` removes every preserved evidence
+  SHA from the plan. The coordinator now resolves the applicable source from
+  `RV-1-E-545` at dispatch, and the worker validates and records it once as
+  immutable claim evidence.
+- A fresh independent review pair must return unqualified **APPROVED** before
+  implementation starts. Full verification, implementation, integration,
+  external-service activity, reset credits, push, Task139 resumption, and every
+  `neo` action remain closed.
