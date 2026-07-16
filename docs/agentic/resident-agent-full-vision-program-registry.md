@@ -16319,3 +16319,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integration, release records, Task129, Task130, Task139, full verification,
   providers, network, credentials, external services, push, reset, or any
   `neo` action.
+
+## RV-1-E-625 — Task129-MFA fail-closed exact-revision reviews dispatched
+
+- Recorded at: 2026-07-16T20:43:34Z
+- Fresh architecture/invariant reviewer
+  `019f6cab-81a4-7432-9e34-c013e47aa889` and fresh
+  executability/adversarial reviewer
+  `019f6cab-86d8-7ba3-8c88-1071721c7fda` are read-only at exact
+  revision `ab33c40f408e4234cbfedfa7e37d90bdfbf92a86` against exact base
+  `2b81a542c6ea391bfb901443acfc04366bd4f3f5`.
+- Both reviewers must recheck every earlier defect plus the additive secret
+  controls and hostile concurrency-classifier rejection. The corrected
+  Task137 reference is the finite v2 grammar/corpus in the bounded
+  test-support policy; no absent JSON artifact is in scope.
+- Review work is read-only and does not authorize subagent-driven development,
+  full verification, integration, release records, Task129, Task130, Task139,
+  providers, network, credentials, external services, push, reset, or any
+  `neo` action. Both verdicts must be unqualified `APPROVED` before admission
+  may continue.
