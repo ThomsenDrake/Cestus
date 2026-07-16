@@ -12879,3 +12879,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The temporary ignored dependency link was removed after verification. This
   integration does not authorize push, `neo`, full verification, or live/
   provider/network/credential/Nous activity.
+
+## RV-1-E-478 — Task136 Recovery-7 candidate admitted to review
+
+- Documentation candidate
+  `980844b9a0745fd37f8779efd72f2d1b22c0c8e1` is one clean descendant of
+  rejected `9ad0e49062ffaa75d9900e0de13ac10d6ed9efbd` and changes exactly the
+  bounded-loop plan, provider-credentials plan, and Task136 reconciliation
+  claim.
+- Fresh coordinator admission proved the literal no-input v4 runner fails only
+  at the intentionally absent `unknown, duplicate, reordered, or missing active
+  record` gate; the unchanged-runner fixture proved one valid 28-record GREEN
+  and all 18 named RED mutations; and the dependency-mounted validator resolved
+  all 28 exact targeted Vitest commands without running a suite.
+- `git diff --check`, factory readiness, ancestry, exact three-path scope, exact
+  HEAD, and clean worktree checks passed. Release-authority reviewer
+  `019f684b-c8f9-7e63-90fe-9b90c2b3d94a` and dispatch-executability reviewer
+  `019f684b-cd1e-7550-a8e4-b942b10f5a77` are pinned and read-only on the exact
+  candidate.
+- Both reviewers must return unqualified **APPROVED** verdicts before any
+  coordinator integration or Task139 resume. Full verification, live/provider/
+  network/credential/Nous activity, reset credits, push, and every `neo` action
+  remain closed.
