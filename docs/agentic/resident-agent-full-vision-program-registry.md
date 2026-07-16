@@ -14512,3 +14512,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   that candidate integrates. Full verification, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain
   closed.
+
+## RV-1-E-560 — Task137 gate and Task136 bounded assurance integrated
+
+- Task137 gate reviewers `019f6b81-bc09-7172-a092-d07e1d12be44` and
+  `019f6b81-bb9e-7373-9466-a4c25b658296` both returned unqualified
+  **APPROVED** for exact candidate
+  `4592c95e1cbfef43321b32d358fc235802165a83`. Coordinator integrated its two
+  commits in order; exact integration revision is
+  `ebba27602376df87c432c7543a77981508d62fa9`. The controlled 2/2 regression,
+  diff check, factory readiness, clean checkout, and absent dependency link
+  passed on the integrated program branch. Real receipt remains pending Lane B.
+- Task136 reviewers `019f6b81-adae-77f1-8d84-bedcc56422c3` and
+  `019f6b81-adaa-7cd0-b1d0-e37b4922b9eb` both returned unqualified
+  **APPROVED** for exact candidate
+  `467371018350f14f4183dae0cee33887b888efff`. Coordinator integrated its two
+  commits in order; exact integration revision is
+  `ac22b4dfa4c57a97302aa528961b6b48d2854e65`. Four Node tests and all four
+  exact 28/1/20/28/1/15 markers, diff check, factory readiness, clean checkout,
+  and absent dependency link passed on the integrated program branch.
+- Lane B may now rebase onto the current program branch and run the real
+  seven-stage gate. Full verification, external-service activity, reset
+  credits, push, Task139 resumption, and every `neo` action remain closed.
