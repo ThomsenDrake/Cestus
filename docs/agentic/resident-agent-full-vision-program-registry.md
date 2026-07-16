@@ -17211,3 +17211,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   before coordinator integration. Review work does not authorize SDD, edits,
   full verification, integration, release records, Task139, providers,
   network, credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-655 — Task135B path-safe error repair assigned to fresh worker
+
+- Recorded at: 2026-07-17T00:27:00Z
+- Executability reviewer `019f6d36-4b5e-7270-80f6-3b3f328bf414`
+  returned unqualified **APPROVED** for exact candidate
+  `2747e42e7c182e027164c1c2ad503d3af7637c35` after withdrawing an
+  initial 138-test finding caused by substituting `wake-supervisor.test.ts`
+  for the governing `mounted-agent-artifact-stores.test.ts`. The corrected
+  literal aggregate passed 9 files/120 tests with one Task137 8/20 marker.
+- Architecture reviewer `019f6d36-476b-77f2-bc3b-5076bde706cd`
+  returned **NEEDS-CHANGES** for one frozen-contract defect: when currentness
+  remains valid, Task135B rethrows raw `FileBlobStore` errors, and a missing
+  blob's `ENOENT` exposes the mounted derivative path. No approval carries
+  forward for the candidate.
+- Every other architecture and command gate passed. The exact candidate and
+  review worktrees remain preserved until the repair is admitted.
+- The original implementation worker is closed after its implementation and
+  compiler-repair passes. Under the repair-count checkpoint rule, a fresh
+  worker must make one bounded forward repair from exact candidate
+  `2747e42e7c182e027164c1c2ad503d3af7637c35`: add the missing-blob
+  path-leak assertion inside an existing focused case so the frozen count stays
+  exactly 20, replace raw store error propagation with a fixed data-free error,
+  update the claim, and rerun every 20/120/type/static/diff/factory/scope/clean
+  gate.
+- The fresh repair prompt must explicitly approve task-scoped SDD and TDD.
+  Full verification, integration, release records, Task139, providers,
+  network, credentials, external services, push, reset, rebase, and every
+  `neo` action remain closed.
