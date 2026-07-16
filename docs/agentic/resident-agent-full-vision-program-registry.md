@@ -15042,3 +15042,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The coordinator will independently verify returned rows and may append only
   evidence-complete records in graph order. Every other row defines the
   earliest ordinary graph task still required.
+
+## RV-1-E-587 — Root-card evidence audit complete
+
+- All four read-only auditors returned complete rows for their 28 disjoint
+  assignments at exact audit revision
+  `40ee71c981fd73df41918a57ce0e23d5837a5475`. No auditor edited its checkout,
+  expanded the graph, ran full verification, used external services, resumed
+  Task139, pushed, reset, or touched `neo`.
+- The audit isolated nine zero-prerequisite cards. `Task135D` and
+  `W1-133.5-PREAPPROVAL-PROMPT-STORE` already have two identifiable
+  exact-candidate unqualified reviews, integration ancestry, and matching
+  literal Git blob evidence. `Task126`, `Task127`, `Task128`, `Task129`,
+  `Task130`, `T120-R`, and `W1-123-H-SHARED-SCHEMA` lack the required pair of
+  distinct exact-candidate Codex review task IDs with literal **APPROVED**
+  verdicts.
+- Audit worktrees had no installed Vitest binary and therefore reported exit
+  127 for card commands. The coordinator reran all nine exact frozen commands
+  from the clean program checkout: `Task126` passed 11 tests; `Task127` 21;
+  `Task128` 23; `Task129` 16; `Task130` 18; `Task135D` 12; `T120-R` 9;
+  `W1-123-H-SHARED-SCHEMA` 34; and
+  `W1-133.5-PREAPPROVAL-PROMPT-STORE` 49. Diff checking, factory readiness,
+  clean tracked state, and absent dependency link also passed. The completion
+  marker was `ROOT_CARD_GATE_SUMMARY status=0`.
+- Two fresh independent read-only reviewers may re-attest the seven missing
+  root cards against one exact current program revision. Each reviewer must
+  return a separate unqualified verdict per card, bind the exact candidate,
+  inspect every static owned path and transfer disposition, and run the seven
+  frozen commands. Local-cache-only dependency installation is permitted if
+  its isolated worktree lacks Vitest; network and external services remain
+  forbidden.
+- Re-attestation review does not authorize edits, subagent-driven development,
+  full verification, record population, Task139, push, reset, or `neo`. Strict
+  v4 records may be appended only after the exact re-attestation revision is
+  dual-approved and coordinator evidence is independently rechecked.
