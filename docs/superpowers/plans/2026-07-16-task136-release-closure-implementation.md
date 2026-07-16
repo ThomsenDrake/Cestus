@@ -26,6 +26,14 @@ Vitest commands from `task136-release-graph.v1`, Markdown registry records.
 - Never merge or push to `neo` without explicit user authorization.
 - Implementation prompts must explicitly approve task-scoped
   `superpowers:subagent-driven-development` when relevant.
+- This bounded release-closure slice uses only the exact targeted, contract,
+  repository-mode, diff, factory-readiness, clean-checkout, and dependency-
+  topology gates named below. It does not run or require `npm run verify`.
+  Full verification remains closed by the governing bounded-assurance design
+  until ordinary graph execution has released the prerequisite-owned runtime
+  and workflow paths. A red full-suite result from that intentionally partial
+  program state is diagnostic evidence, not a candidate admission gate and not
+  authorization to widen this verifier task.
 
 ## Ownership
 
@@ -110,14 +118,17 @@ printf '%s\n' "$repository_output" | grep -F \
   'repository release closure incomplete: expected 28 records, found 0'
 git diff --check
 npm run factory:check
-npm run verify
 test -z "$(git status --porcelain --untracked-files=no)"
 test ! -L node_modules
 ```
 
 Contract mode must emit the unchanged 28/1/20/28/1/15 markers. The explicit
 repository-mode command must exit nonzero with the exact zero-record closure
-message until coordinator-owned release records exist.
+message until coordinator-owned release records exist. Do not run full
+verification in this task. If a prior diagnostic full-suite run exists, record
+its exact baseline revision and failure counts as inherited program evidence,
+but do not repair those failures or make this three-path candidate wait on
+unreleased downstream graph cards.
 
 - [ ] **Step 7: Commit and stop for coordinator admission**
 
@@ -128,8 +139,9 @@ git add scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
 git commit -m "test: bind task136 release closure evidence"
 ```
 
-Report exact SHA, changed paths, RED/GREEN evidence, marker output, full verify,
-and expected repository-mode failure. Do not review, integrate, push, populate
+Report exact SHA, changed paths, RED/GREEN evidence, marker output, explicit
+confirmation that full verification was not part of admission, and the
+expected repository-mode failure. Do not review, integrate, push, populate
 records, dispatch Task139, or touch `neo`.
 
 ### Task 2: Review And Integrate The Verifier
@@ -190,6 +202,9 @@ the next graph successor named by the program registry.
   non-ancestral integration, changed owned blob, unavailable dependency,
   verifier failure after two focused repairs, or schema conflict stops that
   card and returns it to the coordinator.
+- An inherited failure in a downstream card whose frozen prerequisite release
+  is absent does not widen this verifier task and does not replace the targeted
+  admission gates above.
 - No auditor or implementer may self-release a card.
 - No external service, provider credential, portable ontology mutation, push,
   or `neo` action is authorized by this plan.

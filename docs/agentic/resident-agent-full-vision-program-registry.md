@@ -14802,3 +14802,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The implementer stops at one clean committed candidate. Registry writes,
   release records, Task139, external-service activity, push, reset credit, and
   every `neo` action remain closed.
+
+## RV-1-E-575 — Verifier checkpoint preserved; admission-gate conflict corrected
+
+- Task136 verifier implementation task
+  `019f6bb0-3682-7363-aa40-e7df24734443` stopped cleanly at exact checkpoint
+  `10fcc6d74f2174d5b5608fc0280592ffc3254b83` on
+  `codex/task136-release-closure-verifier`. It changes exactly the assurance
+  script, its Node test, and the verifier claim. The targeted suite passed
+  `10/10`, contract mode preserved the exact `28/1/20/28/1/15` markers, and
+  clean-checkpoint repository mode failed at the expected finite prerequisite:
+  `repository release closure incomplete: expected 28 records, found 0`.
+- A diagnostic `npm run verify` on that worktree failed in 12 downstream test
+  files / 67 tests. The coordinator reproduced the same 12/67 result on the
+  untouched program revision
+  `719d764bee5bc6fa2842f1ebe955d01471c0e8e7`; the repeated first error is the
+  mounted production prompt readback witness required by the already released
+  Task133.5 boundary.
+- Root-cause tracing maps those failures to ordinary graph work whose frozen
+  prerequisites are not yet released, including `CF1-HR` before Task121,
+  Task122, bootstrap handoff, and downstream runtime composition. The current
+  partial program baseline is therefore not a valid completion gate for this
+  isolated verifier and must not be repaired inside its three-path scope.
+- The release-closure plan is corrected to match its governing design and the
+  bounded-reset contract: candidate admission uses the exact targeted,
+  contract, expected-failing repository, diff, factory-readiness, clean-state,
+  and dependency-topology gates only. Full verification remains closed until
+  the release graph reaches the program acceptance stage.
+- Two fresh read-only design/plan reviewers must return unqualified
+  **APPROVED** for this exact finite gate correction before the checkpoint may
+  be resumed as a candidate. Review work does not authorize subagent-driven
+  development. Release records, Task139, external-service activity, push,
+  reset credit, and every `neo` action remain closed.
