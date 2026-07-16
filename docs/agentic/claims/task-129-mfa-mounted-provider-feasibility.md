@@ -229,3 +229,33 @@ mode markers are `29/1/20/29/1/15`.
   `node_modules` is not a symlink.
 - Status: ready-for-review. Full `npm run verify` was intentionally not run
   under the bounded recovery authorization.
+
+## Final Fail-Closed Repair Evidence
+
+- Starting point: clean reviewed candidate
+  `525f5602dc2aeb755c2a5fb3e368b4cb56012db2` with parent
+  `c4b656f56fdc56bec0528d860ed2b1874bb28437`.
+- Causal RED (2026-07-16) used the exact five-file command in this claim and
+  reported `3 failed | 2 passed (5)` files and `4 failed | 125 passed (129)`
+  tests, with exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`
+  marker. The failures were the unguarded `isConcurrencyConflict` call on a
+  throwing-prototype append rejection, acceptance of raw-key-like classifier
+  metadata, and feasibility-only rejection of harmless bounded identifiers.
+- Repair: the append catch now checks mounted currentness first, catches a
+  hostile concurrency classification locally, and returns
+  `persistence-unconfirmed` without a reread, reappend, loop, or raw error.
+  The classifier, feasibility event payload, and recorder retain the prior
+  coarse rejection of API-key, authorization, bearer, token, secret, password,
+  private-key, cookie/header, and session material while adding bounded OAuth
+  or credential assignments and raw-key-like ID fragments. The feasibility
+  schema uses that same bounded predicate for its payload and correlation ID;
+  `subscription-oauth`, `oauth-capability-review`,
+  `codex-credential-migration`,
+  `agent_credref_subscription_oauth_reference`, and the non-feasibility
+  `credential-migration` control remain valid.
+- Causal GREEN (2026-07-16) reran the identical command and reported
+  `5 passed (5)` files and `129 passed (129)` tests, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The runner emitted
+  its pre-existing missing TypeScript source-map warning, but exited `0`.
+- `npm run typecheck` passed. Full `npm run verify` remains intentionally
+  unrun under this bounded authorization.

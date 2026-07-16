@@ -6,6 +6,10 @@ const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secr
 const secretSafeStringSchema = z.string().refine((value) => !credentialShapedTextPattern.test(value), {
   message: "must not contain credential-shaped text"
 });
+const providerFeasibilitySecretMaterialPattern = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?(?:oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
+const providerFeasibilitySecretSafeStringSchema = z.string().refine((value) => !providerFeasibilitySecretMaterialPattern.test(value), {
+  message: "must not contain provider feasibility secret material"
+});
 
 export const actorRefSchema = z.object({
   id: secretSafeStringSchema.min(3),
@@ -152,6 +156,11 @@ const agentPermissionIdSchema = agentSecretSafeIdSchema(/^perm_[a-zA-Z0-9_-]+$/)
 const agentLockIdSchema = agentSecretSafeIdSchema(/^lock_[a-zA-Z0-9_-]+$/);
 const agentProviderIdSchema = agentSecretSafeIdSchema(/^provider_[a-zA-Z0-9_-]+$/);
 const agentCredentialRefIdSchema = agentSecretSafeIdSchema(/^agent_credref_[a-zA-Z0-9_-]+$/);
+const agentProviderFeasibilityCredentialRefIdSchema = providerFeasibilitySecretSafeStringSchema
+  .regex(/^agent_credref_[a-zA-Z0-9_-]+$/)
+  .refine((value) => !secretLikeIdFragmentPattern.test(value), {
+    message: "must not contain secret-looking ID fragments"
+  });
 const agentInvocationIdSchema = agentSecretSafeIdSchema(/^inv_[a-zA-Z0-9_-]+$/);
 const agentArtifactHashSchema = contentHashSchema;
 const agentTaskStatusSchema = z.enum([
@@ -736,12 +745,12 @@ const agentProviderFeasibilityObservedPayloadSchema = z.object({
   runId: agentRunIdSchema,
   providerFamily: z.enum(["codex", "xai"]),
   providerId: agentProviderIdSchema,
-  modelId: secretSafeStringSchema.min(1),
+  modelId: providerFeasibilitySecretSafeStringSchema.min(1),
   capabilityHash: contentHashSchema,
-  credentialRefId: agentCredentialRefIdSchema,
+  credentialRefId: agentProviderFeasibilityCredentialRefIdSchema,
   credentialKind: z.enum(["subscription-oauth", "device-code-oauth"]),
   capabilityScopes: z.array(secretSafeStringSchema.min(1)).min(1),
-  officialFlowId: secretSafeStringSchema.min(1),
+  officialFlowId: providerFeasibilitySecretSafeStringSchema.min(1),
   approvalClass: z.literal("provider-byte-transfer"),
   approvalBindingHash: contentHashSchema,
   posture: z.literal("unavailable"),
@@ -3839,7 +3848,7 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
           path: ["context", "causationId"]
         });
       }
-      if (!secretSafeStringSchema.safeParse(event.context.correlationId).success) {
+      if (!providerFeasibilitySecretSafeStringSchema.safeParse(event.context.correlationId).success) {
         ctx.addIssue({
           code: "custom",
           message: "provider feasibility observations require a secret-safe correlation ID",
