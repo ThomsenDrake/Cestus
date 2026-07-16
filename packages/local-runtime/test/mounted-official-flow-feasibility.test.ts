@@ -325,8 +325,40 @@ describe("mounted official-flow feasibility", () => {
     });
   });
 
-  it("normalizes external invocation input and rejects raw cookie-header correlation material", async () => {
+  it("normalizes external invocation input and rejects secret or noncanonical correlation material", async () => {
     const fixture = await feasibilityFixture();
+    const ledger = fixture.handle.ledger;
+    const readAll = ledger.readAll.bind(ledger);
+    const append = ledger.append.bind(ledger);
+    let readAllCalls = 0;
+    let appendCalls = 0;
+    Object.defineProperty(ledger, "readAll", {
+      configurable: true,
+      value: async () => {
+        readAllCalls += 1;
+        return await readAll();
+      }
+    });
+    Object.defineProperty(ledger, "append", {
+      configurable: true,
+      value: async (event: AppendableKnowledgeEvent, options?: { expectedGlobalEventCount?: number }) => {
+        appendCalls += 1;
+        return await append(event, options);
+      }
+    });
+    const expectUnsafeInput = async (input: unknown) => {
+      readAllCalls = 0;
+      appendCalls = 0;
+      const result = await recordMountedOfficialFlowUnavailability(input);
+      expect.soft(result).toEqual({
+        kind: "blocked",
+        category: "unsafe-input",
+        retry: "none",
+        safeDiagnosticCodes: ["unsafe-input"]
+      });
+      expect.soft(readAllCalls).toBe(0);
+      expect.soft(appendCalls).toBe(0);
+    };
     const input = {} as Record<string, unknown>;
     Object.defineProperties(input, {
       operation: { enumerable: true, get: () => fixture.operation },
@@ -334,11 +366,20 @@ describe("mounted official-flow feasibility", () => {
       occurredAt: { enumerable: true, value: "2026-07-16T00:00:00.000Z" },
       correlationId: { enumerable: true, value: "corr_feasibility" }
     });
-    expect(await recordMountedOfficialFlowUnavailability(input)).toMatchObject({
-      kind: "blocked", category: "unsafe-input", retry: "none"
-    });
-    expect(await record(fixture, { correlationId: "Cookie: session=abc" })).toMatchObject({
-      kind: "blocked", category: "unsafe-input", retry: "none"
+    await expectUnsafeInput(input);
+    for (const correlationId of ["Cookie: session=abc", "X-Credential: raw", "oauth=raw"]) {
+      await expectUnsafeInput({
+        operation: fixture.operation,
+        witness: fixture.witness,
+        occurredAt: "2026-07-16T00:00:00.000Z",
+        correlationId
+      });
+    }
+    await expectUnsafeInput({
+      operation: fixture.operation,
+      witness: fixture.witness,
+      occurredAt: "2026-07-16T00:00:00",
+      correlationId: "corr_feasibility"
     });
   });
 
