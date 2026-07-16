@@ -161,29 +161,76 @@ describe("mounted official-flow feasibility", () => {
     expect(await record(fixture)).toMatchObject({ kind: "blocked", category: "record-conflict", retry: "none" });
   });
 
-  it("fails closed when concurrent reread includes exact and conflicting same-key records", async () => {
-    const fixture = await feasibilityFixture();
-    const ledger = fixture.handle.ledger;
-    const append = ledger.append.bind(ledger);
-    let conflicted = false;
-    Object.defineProperty(ledger, "append", {
+  it("recovers one exact concurrent record and rejects exact-plus-conflicting same-key records", async () => {
+    const cleanFixture = await feasibilityFixture();
+    const cleanLedger = cleanFixture.handle.ledger;
+    const cleanAppend = cleanLedger.append.bind(cleanLedger);
+    const cleanReadAll = cleanLedger.readAll.bind(cleanLedger);
+    let cleanConflicted = false;
+    let cleanAppendAttempts = 0;
+    let cleanReadAllCalls = 0;
+    Object.defineProperty(cleanLedger, "readAll", {
+      configurable: true,
+      value: async () => {
+        cleanReadAllCalls += 1;
+        return await cleanReadAll();
+      }
+    });
+    Object.defineProperty(cleanLedger, "append", {
       configurable: true,
       value: async (event: AppendableKnowledgeEvent, options?: { expectedGlobalEventCount?: number }) => {
-        if (!conflicted && event.type === "agent.provider.feasibility.observed.v1") {
-          conflicted = true;
-          await append(event, options);
-          await append({
+        if (!cleanConflicted && event.type === "agent.provider.feasibility.observed.v1") {
+          cleanConflicted = true;
+          cleanAppendAttempts += 1;
+          await cleanAppend(event, options);
+          throw new ConcurrencyConflictError("test conflict after exact durable append");
+        }
+        return await cleanAppend(event, options);
+      }
+    });
+    expect(await record(cleanFixture)).toMatchObject({ kind: "unavailable" });
+    expect(cleanConflicted).toBe(true);
+    expect(cleanAppendAttempts).toBe(1);
+    expect(cleanReadAllCalls).toBe(2);
+    expect((await cleanFixture.handle.ledger.readStream(feasibilityStream())).filter((event) =>
+      event.type === "agent.provider.feasibility.observed.v1"
+    )).toHaveLength(1);
+
+    const conflictFixture = await feasibilityFixture();
+    const conflictLedger = conflictFixture.handle.ledger;
+    const conflictAppend = conflictLedger.append.bind(conflictLedger);
+    const conflictReadAll = conflictLedger.readAll.bind(conflictLedger);
+    let conflictInjected = false;
+    let conflictAppendAttempts = 0;
+    let conflictReadAllCalls = 0;
+    Object.defineProperty(conflictLedger, "readAll", {
+      configurable: true,
+      value: async () => {
+        conflictReadAllCalls += 1;
+        return await conflictReadAll();
+      }
+    });
+    Object.defineProperty(conflictLedger, "append", {
+      configurable: true,
+      value: async (event: AppendableKnowledgeEvent, options?: { expectedGlobalEventCount?: number }) => {
+        if (!conflictInjected && event.type === "agent.provider.feasibility.observed.v1") {
+          conflictInjected = true;
+          conflictAppendAttempts += 1;
+          await conflictAppend(event, options);
+          await conflictAppend({
             ...event,
             payload: { ...event.payload, classificationHash: hashD }
           });
           throw new ConcurrencyConflictError("test conflict after durable append");
         }
-        return await append(event, options);
+        return await conflictAppend(event, options);
       }
     });
-    expect(await record(fixture)).toMatchObject({ kind: "blocked", category: "record-conflict", retry: "none" });
-    expect(conflicted).toBe(true);
-    expect((await fixture.handle.ledger.readStream(feasibilityStream())).filter((event) =>
+    expect(await record(conflictFixture)).toMatchObject({ kind: "blocked", category: "record-conflict", retry: "none" });
+    expect(conflictInjected).toBe(true);
+    expect(conflictAppendAttempts).toBe(1);
+    expect(conflictReadAllCalls).toBe(2);
+    expect((await conflictFixture.handle.ledger.readStream(feasibilityStream())).filter((event) =>
       event.type === "agent.provider.feasibility.observed.v1"
     )).toHaveLength(2);
   });

@@ -137,3 +137,30 @@ mode markers are `29/1/20/29/1/15`.
   marker.
 - This forward repair remains within the original eleven-path cumulative
   scope; it changes seven owned paths and does not run `npm run verify`.
+
+## Coordinator Admission Repair Evidence
+
+- Starting point: clean exact reviewed-repair head
+  `8936a6ee587b744ed2f1291a4080f793329a27a8`.
+- Admission finding 1: global `eventContextSchema.correlationId` validation
+  rejected harmless non-feasibility labels. The existing
+  `agent.task.orchestration.claimed` test now proves
+  `credential-migration` remains valid; only
+  `agent.provider.feasibility.observed.v1` applies
+  `secretSafeStringSchema` to correlation IDs. The existing feasibility
+  cookie-header rejection remains covered.
+- Admission finding 2: the fixed-count mounted concurrency test now proves
+  both a single exact concurrent durable append recovers as `unavailable`
+  with one feasibility event, and an exact-plus-differing same-key reread
+  returns `record-conflict` with retry `none` and two events. Each phase
+  asserts one append attempt and exactly one bounded reread after the initial
+  source read.
+- Causal RED used the exact five-file command and reported `1 failed | 4
+  passed` files with `1 failed | 128 passed (129)` tests, plus exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- Final identical GREEN reported `5 passed (5)` files, `129 passed (129)`
+  tests, and exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`
+  marker.
+- Status: ready-for-review. This admission repair changes only four owned
+  paths, retains the original eleven-path cumulative scope, and does not run
+  `npm run verify`.
