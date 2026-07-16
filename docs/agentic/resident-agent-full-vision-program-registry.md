@@ -13400,3 +13400,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ownership, secret safety, and currentness/revocation requirements.
 - Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-500 — Task137A Recovery-10 candidate admitted to review
+
+- Recovery-10 owner `019f688c-e4d2-7251-a97b-e694d3c977c1` produced exact
+  candidate `3e8738c984a4a78d3d8f82eb3661f5b53a352869`, one clean descendant
+  of rejected `8180a8687e195252b82409e3dc256e79a03caa50` on branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-10`.
+  The recovery commit changes only the Task137A claim and the owned
+  import-policy test; the complete historical range remains within the exact
+  six-path ceiling.
+- Coordinator admission reran the literal committed-byte Task137A gate: all
+  six files and 88 tests passed, together with embedded typecheck, static
+  authority boundaries, factory readiness, lineage, diff, and terminal
+  physical-checkout assertions. A separate standalone `npm run typecheck`
+  passed. Exact HEAD, clean checkout, and absent dependency-link checks also
+  passed.
+- Source inspection confirmed that object-root writes are keyed by stable
+  source positions, reads select the latest preceding write, prior aliases
+  preserve their historical roots, and array-rest roots are cached by syntax
+  site, input-root identity, and index. The model contains no iteration cap or
+  suppressed change notification and preserves the Recovery-9 evaluator and
+  stale-capture repairs.
+- Two entirely fresh exact-SHA reviews are required: one for mounted lifecycle,
+  one-shot capture consumption, and operation safety; one for adversarial
+  TypeScript semantic-policy soundness and fixpoint termination. Both must
+  return unqualified **APPROVED** before integration.
+- Full verification, integration, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
