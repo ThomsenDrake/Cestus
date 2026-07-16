@@ -263,11 +263,39 @@ npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/loca
 Expected: exactly **9 files / 123 tests** pass with exactly one
 `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
 
-- [ ] **Step 6: Run bounded static admission and commit**
+- [ ] **Step 6: Commit GREEN, then run bounded static admission**
+
+Stage exactly the eight owned paths and commit the GREEN candidate before the
+materialized gate. The gate's checkout stage intentionally rejects uncommitted
+or staged changes.
 
 ```bash
 npm run typecheck
-timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null
+git add packages/local-runtime/src/wake-supervisor-runtime.ts \
+  packages/local-runtime/src/mounted-wake-lifecycle-store.ts \
+  packages/local-runtime/test/wake-supervisor-runtime.test.ts \
+  packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts \
+  packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts \
+  packages/ontology/src/contracts.ts \
+  packages/ontology/test/resident-wake-contracts.test.ts \
+  docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md
+git commit -m "feat: add mounted wake supervisor runtime"
+candidate="$(git rev-parse HEAD)"
+if ! output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"; then
+  printf '%s\n' "$output" >&2
+  exit 1
+fi
+printf '%s\n' "$output"
+markers="$(printf '%s\n' "$output" | grep '^TASK137_GATE_')"
+expected="$(printf '%s\n' \
+  'TASK137_GATE_STAGE_OK tests' \
+  'TASK137_GATE_STAGE_OK typecheck' \
+  'TASK137_GATE_STAGE_OK source-policy' \
+  'TASK137_GATE_STAGE_OK package-boundary' \
+  'TASK137_GATE_STAGE_OK factory-readiness' \
+  'TASK137_GATE_STAGE_OK checkout' \
+  'TASK137_GATE_COMPLETE stages=6')"
+test "$markers" = "$expected"
 git diff --check "$TASK2_BASE" HEAD
 npm run factory:check
 test "$(git diff --name-only "$TASK2_BASE" HEAD | wc -l)" -eq 8
@@ -275,9 +303,8 @@ test -z "$(git status --porcelain=v1)"
 test ! -L node_modules
 ```
 
-The materialized gate must emit exactly one
-`TASK137_GATE_COMPLETE stages=6`. Commit only the eight paths. No full verifier
-runs.
+The materialized gate must emit the exact ordered marker sequence above, with
+one `TASK137_GATE_COMPLETE stages=6`. No full verifier runs.
 
 - [ ] **Step 7: Dual review and coordinator integration**
 
@@ -313,6 +340,7 @@ and blob IDs, exact command counts, static markers, and no-full-verify fact.
 ```bash
 git diff --check
 npm run factory:check
+git add docs/agentic/resident-agent-full-vision-program-registry.md
 git commit -m "docs: release task137b wake runtime"
 set +e
 output="$(node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository 2>&1)"
