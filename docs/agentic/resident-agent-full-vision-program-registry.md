@@ -15936,3 +15936,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   network, credentials, OAuth, external services, live Nous, Task139,
   integration, release records, push, reset, and every `neo` action remain
   closed.
+
+## RV-1-E-612 — Task129-MFA candidate admitted and dual review dispatched
+
+- Recorded at: 2026-07-16T19:22:35Z
+- Recovery worker `019f6c54-9766-7df2-a876-1f150aae5c81` produced exact
+  one-commit candidate `62ea0bb703b296f1735ae5b754a5e4052ffcbf16`
+  with parent `2b81a542c6ea391bfb901443acfc04366bd4f3f5` on
+  `codex/task129-mounted-provider-feasibility-authority-recovery`.
+- The commit contains exactly the eleven Task129-MFA owned paths. It adds the
+  source-private classification witness, advisory ontology event, mounted
+  recorder, currentness/readback/idempotency/concurrency enforcement, finite
+  Task137 v2 owner-map change, focused tests, and claim. Neither private
+  inspection seam is exported through a package index, and no provider,
+  network, credential, OAuth, or external-service path exists.
+- Coordinator admission independently passed the exact five-file command at
+  five files and 129 tests with one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker, typecheck, diff
+  checking, factory readiness, Task136 markers `29/1/20/29/1/15`, one-commit
+  ancestry, exact path scope, clean tracked state, and non-symlinked
+  dependency checks. Frozen classification and idempotency vectors remain
+  `sha256:bdae51eff3aedbc86bdec0de666fde4019fc6f920ae23ba09ac06211fa9eb8b6`
+  and
+  `sha256:91c31db4ab3a77ef41b43b0f9237c53cf0614ca861349ca98669af6dc5abaaca`.
+  Full verification was not run.
+- Fresh architecture/invariant reviewer
+  `019f6c61-3f65-7980-a415-887f359a5282` and fresh
+  executability/adversarial reviewer
+  `019f6c61-4341-7263-8bdb-043bf52c0394` are read-only at the exact
+  candidate. Both must return unqualified `APPROVED` before integration.
+- Review work does not authorize edits, SDD, integration, release records,
+  Task129, Task130, Task139, full verification, providers, network,
+  credentials, external services, push, reset, or any `neo` action.
