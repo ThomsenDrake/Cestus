@@ -33,7 +33,8 @@ Vitest commands from `task136-release-graph.v1`, Markdown registry records.
 | --- | --- | --- |
 | 1 | Verifier implementer | `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`; `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`; `docs/agentic/claims/task-136-release-closure-verifier.md` |
 | 2 | Coordinator | Append-only `docs/agentic/resident-agent-full-vision-program-registry.md` only |
-| 3 | Read-only auditors | No files |
+| 3A | Read-only auditors | No files |
+| 3B | Coordinator | Append-only `docs/agentic/resident-agent-full-vision-program-registry.md` only |
 
 ### Task 1: Implement Strict Release Closure
 
@@ -101,6 +102,12 @@ Expected: all prior four tests plus the finite release-record suite pass.
 
 ```bash
 node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode contract
+if repository_output="$(node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository 2>&1)"; then
+  echo "repository mode unexpectedly passed before release population" >&2
+  exit 1
+fi
+printf '%s\n' "$repository_output" | grep -F \
+  'repository release closure incomplete: expected 28 records, found 0'
 git diff --check
 npm run factory:check
 npm run verify
@@ -108,8 +115,9 @@ test -z "$(git status --porcelain --untracked-files=no)"
 test ! -L node_modules
 ```
 
-Contract mode must emit the unchanged 28/1/20/28/1/15 markers. Repository mode
-is expected to remain nonzero until coordinator-owned release records exist.
+Contract mode must emit the unchanged 28/1/20/28/1/15 markers. The explicit
+repository-mode command must exit nonzero with the exact zero-record closure
+message until coordinator-owned release records exist.
 
 - [ ] **Step 7: Commit and stop for coordinator admission**
 
@@ -149,7 +157,8 @@ Do not merge or push to `neo`.
 
 ### Task 3: Audit And Populate Releases
 
-**Owner:** Coordinator; auditors are read-only.
+**Owner:** Read-only auditors produce handoffs; the coordinator alone appends
+and commits registry records.
 
 - [ ] **Step 1: Dispatch four parallel evidence audits**
 
