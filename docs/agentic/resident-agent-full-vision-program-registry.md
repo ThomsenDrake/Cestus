@@ -15459,3 +15459,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   authorize edits or subagent-driven development. Task139, full verification,
   providers, network, credentials, external services, push, reset, and every
   `neo` action remain closed.
+
+## RV-1-E-599 — Mounted feasibility recovery dual review dispatched
+
+- Recorded at: 2026-07-16T18:01:22Z
+- Exact design/plan candidate:
+  `c837249a19ec0abdad4e0e9c3de190acf8443be9` on
+  `codex/resident-agent-full-vision-program-watchdog-recovery`.
+- Architecture/invariant reviewer
+  `019f6c17-0608-7123-a120-0af3098c7fde` is reviewing the mounted operation
+  trust root, package direction, advisory event semantics, append/readback
+  proof, provenance, idempotency, concurrency, post-await currentness,
+  Task137 owner-map amendment, Task136 dependency graph, immutable prefix, and
+  Task139 closure.
+- Executability/finite-scope reviewer
+  `019f6c17-0a26-73a1-85e0-a028f5da80f7` is reviewing exact ownership,
+  nonoverlapping writers, RED/GREEN commands, test and marker counts, v2
+  migration, repository stopping points, finite retry/termination, ancestry,
+  and review/admission gates.
+- Both reviewers are fresh, read-only, and bound to the same exact revision.
+  They may return only an unqualified `APPROVED` or concrete
+  `NEEDS-CHANGES` findings inside the frozen contract. Proposed hardening
+  outside the frozen model is nonblocking unless the coordinator approves a
+  contract revision.
+- Review work does not authorize edits, subagent-driven development, full
+  verification, provider/network/external activity, Task139, integration,
+  release records, push, reset, or any `neo` action.
