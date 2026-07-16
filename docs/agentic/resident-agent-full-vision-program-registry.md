@@ -15706,3 +15706,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   graph order. Full verification, Task129-MFA implementation, Task139,
   providers/network/external activity, push, reset, and every `neo` action
   remain closed.
+
+## Task136 dispatch release v4: Task135D
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task135D",
+  "candidateSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+  "reviews": [
+    {
+      "threadId": "019f6c36-dcbc-7833-ba6a-c1b44760f22e",
+      "candidateSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6c36-cf1a-7a21-8191-65bad0064e39",
+      "candidateSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+  "releaseEventId": "task136-release-v4-Task135D",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/runtime-factory.ts",
+      "disposition": "owned",
+      "blobSha": "42822b2d549ae20bd353151583d63dc988397191"
+    },
+    {
+      "path": "packages/local-runtime/test/runtime-handle-mounted-authority.test.ts",
+      "disposition": "owned",
+      "blobSha": "0ac5c386302e38d246ab0911beb85541e47d88df"
+    },
+    {
+      "path": "docs/agentic/claims/task-135d-runtime-handle-mounted-authority.md",
+      "disposition": "owned",
+      "blobSha": "e4f406240d802649c9a29193111ff0ed81cba000"
+    },
+    {
+      "path": "packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts",
+      "disposition": "transferred",
+      "blobSha": "18ad548f0be550e6180b5509d38289971dad48dd"
+    }
+  ]
+}
+```
