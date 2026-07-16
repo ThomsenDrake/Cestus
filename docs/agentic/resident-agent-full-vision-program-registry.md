@@ -15540,3 +15540,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, subagent-driven development, full
   verification, providers, network, credentials, external services, Task139,
   integration, release records, push, reset, or any `neo` action.
+
+## RV-1-E-602 — Mounted feasibility recovery contract dual-approved
+
+- Recorded at: 2026-07-16T18:19:30Z
+- Exact approved design/plan revision:
+  `020cb0ac9b30013ac7d5417735b4e6dc15efca67`.
+- Fresh architecture/invariant reviewer
+  `019f6c23-0e1b-7211-85df-e3b3f2b1f509` returned unqualified
+  `APPROVED` with no findings. It verified the WeakMap witness, exact
+  checkpoint/approval bindings, sole mounted authority, bounded
+  append/readback/currentness, finite Task137 owner map, 29-card Task136
+  graph, unchanged three-record prefix, and Task139 closure.
+- Fresh executability/finite-scope reviewer
+  `019f6c23-12e6-7a81-b060-cc655559ed9b` returned unqualified `APPROVED`
+  with no findings. It verified exact APIs and source predicates, closed
+  category/retry mapping, one-reread termination, disjoint ownership,
+  RED/GREEN commands, dual-review gates, and exact baseline/count arithmetic:
+  Task136 11, re-attestation 12 plus 26, pre-MFA core 77, harnesses 16 plus
+  18, and planned Task129-MFA 129.
+- Both reviewers independently reproduced classification hash
+  `sha256:bdae51eff3aedbc86bdec0de666fde4019fc6f920ae23ba09ac06211fa9eb8b6`
+  and idempotency hash
+  `sha256:91c31db4ab3a77ef41b43b0f9237c53cf0614ca861349ca98669af6dc5abaaca`.
+- The finite implementation plan is admitted. Task136 v2 may start with an
+  explicit task-scoped SDD/TDD authorization. No later card, full
+  verification, provider/network/external activity, Task139, push, reset, or
+  any `neo` action is authorized by this approval.
