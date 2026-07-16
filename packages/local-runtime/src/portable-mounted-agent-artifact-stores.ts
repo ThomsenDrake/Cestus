@@ -122,8 +122,14 @@ type NormalizedJson =
   | boolean
   | number
   | string
-  | readonly NormalizedJson[]
-  | Readonly<Record<string, NormalizedJson>>;
+  | NormalizedJsonArray
+  | NormalizedJsonRecord;
+
+interface NormalizedJsonArray extends ReadonlyArray<NormalizedJson> {}
+
+interface NormalizedJsonRecord {
+  readonly [field: string]: NormalizedJson;
+}
 
 interface CanonicalHandoffBinding {
   readonly finalOutputEventId: string;
@@ -744,7 +750,7 @@ function requireTerminalCanonical(value: CanonicalHandoffBinding | undefined): R
 }
 
 function samePreparedHandoffBinding(
-  payload: Readonly<Record<string, NormalizedJson>>,
+  payload: NormalizedJsonRecord,
   canonical: ReturnType<typeof requirePreparedCanonical>
 ): boolean {
   const promptArtifactHash = Object.hasOwn(payload, "promptArtifactHash") ? requiredHash(payload.promptArtifactHash) : undefined;
@@ -982,7 +988,7 @@ function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   return left.byteLength === right.byteLength && left.every((value, index) => value === right[index]);
 }
 
-function normalizedOwnDataRecord(value: NormalizedJson): Readonly<Record<string, NormalizedJson>> {
+function normalizedOwnDataRecord(value: NormalizedJson | undefined): NormalizedJsonRecord {
   if (value === null || typeof value !== "object" || Array.isArray(value) || Object.getPrototypeOf(value) !== null || Object.getOwnPropertySymbols(value).length !== 0) {
     throw authorityError();
   }
@@ -990,10 +996,10 @@ function normalizedOwnDataRecord(value: NormalizedJson): Readonly<Record<string,
     const descriptor = Object.getOwnPropertyDescriptor(value, field);
     if (field === "toJSON" || descriptor === undefined || !("value" in descriptor)) throw authorityError();
   }
-  return value;
+  return value as NormalizedJsonRecord;
 }
 
-function normalizedStringArray(value: NormalizedJson): readonly string[] {
+function normalizedStringArray(value: NormalizedJson | undefined): readonly string[] {
   if (!Array.isArray(value)) throw authorityError();
   const copy: string[] = [];
   for (let index = 0; index < value.length; index += 1) {
@@ -1004,7 +1010,7 @@ function normalizedStringArray(value: NormalizedJson): readonly string[] {
   return Object.freeze(copy);
 }
 
-function normalizedHashArray(value: NormalizedJson): readonly string[] {
+function normalizedHashArray(value: NormalizedJson | undefined): readonly string[] {
   const hashes = normalizedStringArray(value);
   if (hashes.some((hash) => !isHash(hash))) throw authorityError();
   return hashes;

@@ -671,7 +671,7 @@ function preparedHandoffEvent(patch: Record<string, unknown> = {}): KnowledgeEve
     context: eventContext({ causationId: "evt_final_portable_handoff" }),
     payload: handoffBindingPayload(),
     ...patch
-  } as KnowledgeEvent;
+  } as unknown as KnowledgeEvent;
 }
 
 function recordedHandoffEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
@@ -687,7 +687,7 @@ function recordedHandoffEvent(patch: Record<string, unknown> = {}): KnowledgeEve
       verifiedAt: "2026-07-16T00:00:00.000Z"
     },
     ...patch
-  } as KnowledgeEvent;
+  } as unknown as KnowledgeEvent;
 }
 
 function completedRunEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
