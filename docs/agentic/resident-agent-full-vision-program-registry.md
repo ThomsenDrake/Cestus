@@ -14849,3 +14849,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, subagent-driven development, full
   verification, external-service activity, release records, Task139, push,
   reset credit, or any `neo` action.
+
+## RV-1-E-577 — Verifier admission correction dual-approved
+
+- Architecture/invariant reviewer
+  `019f6bc1-191b-79a0-bbc1-74b2a3869bb3` and executability/finite-scope
+  reviewer `019f6bc1-1aac-75e2-9a3d-2e4109f74312` both returned unqualified
+  **APPROVED** for exact correction revision
+  `c060f472a4af194eea453e243c691a324616980e`.
+- Both verified the exact detached revision, clean diff, and factory readiness.
+  They confirmed that the plan now matches both governing bounded designs,
+  preserves every targeted release-evidence and clean-state gate, keeps the
+  28-card closure unchanged, and does not unlock Task139.
+- Existing verifier checkpoint
+  `10fcc6d74f2174d5b5608fc0280592ffc3254b83` may now rebase onto the current
+  program branch, update only its owned claim evidence, rerun the corrected
+  targeted admission commands, and stop at one immutable candidate. Its
+  implementation prompt continues to explicitly approve task-scoped
+  subagent-driven development when relevant with one production writer.
+- Full verification, release records, external-service activity, Task139,
+  push, reset credit, and every `neo` action remain closed.
