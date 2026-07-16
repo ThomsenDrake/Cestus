@@ -17134,3 +17134,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, integration, release records, Task139, providers,
   network, credentials, external services, push, reset, and every `neo` action
   remain closed pending candidate admission and two fresh exact-SHA reviews.
+
+## RV-1-E-652 — Task135B one-admission repair worker active
+
+- Recorded at: 2026-07-16T23:38:00Z
+- Fresh implementation worker
+  `019f6d1f-fa56-7390-a178-a7354947eff9` is the sole writer in
+  `/home/drake/.codex/worktrees/task135b-portable-mounted-handoff-stores` on
+  `codex/task135b-portable-mounted-handoff-stores`, starting from exact clean
+  rejected candidate `bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14`.
+- The prompt pins dual-approved `TASK135B_CORRECTION_SHA`
+  `6b203d03d2342cee2c8d8712710a3ad61600a98a`, explicitly approves
+  task-scoped subagent-driven development and TDD, and requires one
+  test/claim-only reproducible RED commit followed by one production/claim
+  GREEN commit.
+- The write ceiling remains exactly the Task135B source, focused test, and
+  claim. Required final evidence is 20 focused tests, 120 aggregate tests, one
+  Task137 8/20 marker, typecheck, static boundaries, diff checking, factory
+  readiness, exact cumulative scope, clean state, and non-symlinked
+  dependencies.
+- Full verification, self-review, integration, release records, Task139,
+  providers, network, credentials, external services, push, reset, rebase, and
+  every `neo` action remain closed.
