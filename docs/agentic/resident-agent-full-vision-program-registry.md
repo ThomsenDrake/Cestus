@@ -17002,3 +17002,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   not authorize SDD, edits, integration, release records, full verification,
   Task139, providers, network, credentials, external services, push, reset,
   rebase, or any `neo` action.
+
+## RV-1-E-647 — Task135B review findings and one-admission conflict checkpoint
+
+- Recorded at: 2026-07-16T23:05:00Z
+- Architecture/invariant reviewer
+  `019f6d06-a0ed-7dd1-b568-c58384507a12` and
+  executability/adversarial reviewer
+  `019f6d06-a566-7fc0-bb8b-945798ad4f68` both returned
+  **NEEDS-CHANGES** for exact candidate
+  `bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14`. No approval carries
+  forward. The completed review tasks are closed.
+- The frozen three-path candidate remains clean and preserved. Both reviews
+  confirmed the exact base and scope, operation-only input, no public index
+  export, focused 13-test GREEN, complete 9-file/113-test GREEN, typecheck,
+  static boundaries, diff checking, factory readiness, and non-symlinked
+  dependencies. Full verification was not run.
+- Blocking findings are finite: require the resident actor ID and exact
+  attempt/final-output/prepared/recorded/terminal bindings; normalize hostile
+  ledger objects before serialization; add the approved causal RED categories;
+  and resolve the strict-successor requirement.
+- The successor finding exposes a contract/API conflict, not another ordinary
+  implementation defect. Released Task137A intentionally issues a one-admission
+  `MountedArtifactAuthorityOperation` and permanently burns it whenever the
+  current admission identity changes. Task135B's exact three-file ceiling and
+  finite Task137 import policy permit only the private inspection seam, so
+  Task135B cannot observe or mint the later admission required by its newer
+  in-place successor language.
+- No successor repair worker or new implementation reviewer is authorized at
+  this checkpoint. The coordinator will write a bounded correction that keeps
+  the released one-admission authority model: an admission change burns the
+  controller and requires a fresh factory-issued operation, producer, and
+  exact run bind. That correction must receive two fresh read-only design/plan
+  approvals before one forward Task135B repair may start.
+- Task139, full verification, providers, network, credentials, external
+  services, push, reset, and every `neo` action remain closed.
