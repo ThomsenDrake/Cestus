@@ -34,25 +34,31 @@ export interface XaiSubscriptionHarness {
   assess(input: unknown): Promise<XaiSubscriptionHarnessResult>;
 }
 
+type OfficialFlowClassifierBlockedCategory =
+  | "unsafe-input"
+  | "posture-mismatch"
+  | "prohibited-credential-source";
+
+type OfficialFlowClassifierBlockedMember<C extends OfficialFlowClassifierBlockedCategory> = {
+  readonly kind: "blocked";
+  readonly category: C;
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityHash: string;
+  readonly safeDiagnosticCodes: readonly [C];
+};
+
+type OfficialFlowClassifierBlocked = {
+  [C in OfficialFlowClassifierBlockedCategory]: OfficialFlowClassifierBlockedMember<C>;
+}[OfficialFlowClassifierBlockedCategory];
+
 export type XaiSubscriptionHarnessResult =
   | {
     readonly kind: "official-flow-absence-classified";
     readonly category: "official-flow-absent";
     readonly witness: OfficialFlowAbsenceWitnessV1;
   }
-  | {
-    readonly kind: "blocked";
-    readonly category:
-      | "unsafe-input"
-      | "posture-mismatch"
-      | "prohibited-credential-source";
-    readonly providerId: string;
-    readonly modelId: string;
-    readonly capabilityHash: string;
-    readonly safeDiagnosticCodes: readonly [
-      "unsafe-input" | "posture-mismatch" | "prohibited-credential-source"
-    ];
-  };
+  | OfficialFlowClassifierBlocked;
 
 export interface XaiSubscriptionHarnessPosture {
   readonly residentAgentId: "agent_default";
@@ -354,18 +360,20 @@ function asOfficialFlowAbsencePosture(posture: NormalizedPosture): object {
   });
 }
 
-function blocked(
-  category: Extract<XaiSubscriptionHarnessResult, { readonly kind: "blocked" }>["category"],
+function blocked<C extends OfficialFlowClassifierBlockedCategory>(
+  category: C,
   posture?: NormalizedPosture
-): XaiSubscriptionHarnessResult {
+): OfficialFlowClassifierBlockedMember<C> {
+  const safeDiagnosticCodes: readonly [C] = [category];
+
   return Object.freeze({
-    kind: "blocked",
+    kind: "blocked" as const,
     category,
     providerId: posture?.providerId ?? blockedProviderId,
     modelId: posture?.modelId ?? blockedModelId,
     capabilityHash: posture?.capabilityHash ?? blockedHash,
-    safeDiagnosticCodes: Object.freeze([category])
-  }) as XaiSubscriptionHarnessResult;
+    safeDiagnosticCodes
+  });
 }
 
 function isSafeHash(value: unknown): value is string {

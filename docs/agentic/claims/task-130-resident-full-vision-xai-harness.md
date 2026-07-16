@@ -250,3 +250,27 @@ independent review.
 - Status: ready-for-review.
 - Next review gate: fresh independent architecture/invariant and
   executability/adversarial review of the one scoped candidate commit.
+
+## Forward Exact-Contract Correlation Repair
+
+- Repair parent: `fc3111ef34a1f92d029f75cce2ac43f60b01f929`.
+- Root cause: the xAI pure classifier represented the blocked category and its
+  sole safe diagnostic code as independent unions. A structurally valid result
+  could therefore pair `unsafe-input` with `posture-mismatch`, contrary to the
+  approved mapped `OfficialFlowClassifierBlocked` contract.
+- Causal RED: after adding the compile-time mismatched tuple fixture, `npm run
+  typecheck` exited `2` only because TypeScript reported the fixture's
+  `@ts-expect-error` as unused. The old independent union accepted the invalid
+  category/diagnostic pair.
+- Narrow repair: the xAI harness now defines
+  `OfficialFlowClassifierBlockedCategory` and the mapped
+  `OfficialFlowClassifierBlocked` union from the recovery design. Its public
+  result uses that union, and the generic blocked helper returns a
+  category-specific member with a `readonly [C]` diagnostic tuple without a
+  broad result cast.
+- GREEN: `npm run typecheck` exited `0`, consuming the fixture's expected
+  mismatch error. `npm test -- packages/agent/test/xai-subscription-harness.test.ts`
+  exited `0` with **1 file / 18 tests**; the fixture adds no runtime test.
+- Status: ready-for-review.
+- Next review gate: two fresh exact-revision architecture/invariant and
+  executability/adversarial reviews before any coordinator integration.
