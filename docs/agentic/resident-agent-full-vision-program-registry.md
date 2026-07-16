@@ -17282,3 +17282,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Review work does not authorize SDD, edits, full verification, integration,
   release records, Task139, providers, network, credentials, external
   services, push, reset, or any `neo` action.
+
+## RV-1-E-658 — Task135B dual-approved, integrated, and released
+
+- Recorded at: 2026-07-17T00:48:00Z
+- Architecture/invariant reviewer
+  `019f6d45-dd76-7d41-8f6f-3f923602a9b5` and
+  executability/adversarial reviewer
+  `019f6d45-e253-7201-879b-ef8e55d456c3` both returned unqualified
+  **APPROVED** for exact path-safe candidate
+  `23cf539ca9c84980bd6d36001cf60df69b611d74`.
+- Both independently passed focused 1 file/20 tests, the literal aggregate
+  9 files/120 tests with exactly one Task137 8/20 marker, typecheck, static
+  boundaries, exact lineage and three-path scope, diff checking, factory
+  readiness, clean state, and non-symlinked dependencies. They confirmed the
+  missing-blob error has no raw Node fields or mounted path and authority loss
+  remains an authority failure.
+- The coordinator cherry-picked the exact six-commit Task135B chain in order
+  onto program base `e3a1bfc24c2468dce00eccbb4484754c2235457a`.
+  Exact integration revision is
+  `908d26fa252989c9217cb40e1f22a5b9f583aa8f`. Integrated admission
+  repeated the same 20/120/type/static/diff/factory/clean gates and proved all
+  three candidate blobs equal their integrated blobs.
+- Task135B is released below with exact Task137A prerequisite evidence. Full
+  verification, Task139, providers, network, credentials, external services,
+  push, reset, and every `neo` action remain closed. The finite repository
+  checkpoint must advance from eight to nine valid records while the remaining
+  20 cards remain closed.
+
+## Task136 dispatch release v4: Task135B
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task135B",
+  "candidateSha": "23cf539ca9c84980bd6d36001cf60df69b611d74",
+  "reviews": [
+    {
+      "threadId": "019f6d45-dd76-7d41-8f6f-3f923602a9b5",
+      "candidateSha": "23cf539ca9c84980bd6d36001cf60df69b611d74",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6d45-e253-7201-879b-ef8e55d456c3",
+      "candidateSha": "23cf539ca9c84980bd6d36001cf60df69b611d74",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "908d26fa252989c9217cb40e1f22a5b9f583aa8f",
+  "releaseEventId": "task136-release-v4-Task135B",
+  "prerequisites": [
+    {
+      "cardId": "Task137A",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task137A"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+      "disposition": "owned",
+      "blobSha": "c45f2681715cf1422178464f82b02cf6687fe468"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+      "disposition": "owned",
+      "blobSha": "b6e5f0c7df2e2bb2002813ac800778922136b92a"
+    },
+    {
+      "path": "docs/agentic/claims/task-135b-portable-mounted-handoff-stores.md",
+      "disposition": "owned",
+      "blobSha": "5374a9e536dad9db29b67655e5366abd71d90b46"
+    }
+  ]
+}
+```
