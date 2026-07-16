@@ -15333,3 +15333,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, network, providers, credentials, external services,
   self-review, self-integration, Task139, push, reset, and every `neo` action
   remain prohibited.
+
+## RV-1-E-594 — Task129 opaque authority candidate under review
+
+- Worker `019f6bf0-5493-7a83-a97b-ec5637f3b905` produced exact candidate
+  `8085b390dbe77313b74d6a001f3c0eef91ac5fc1` from exact parent
+  `7dc7104638dd91e6219d8d59146fb1da4f1bece9` in one clean three-path commit.
+- Coordinator admission independently passed the 26-test Task129 focused
+  suite, typecheck, diff checking, factory readiness, exact scope, ancestry,
+  clean tracked checkout, and non-symlinked dependency checks. Full
+  verification was not run.
+- The candidate introduces a module-issued, private-WeakMap, one-shot authority
+  operation over one atomic mounted-owner append/readback port. It restores
+  durable unavailable evidence only after exact post-await readback validation
+  and fails closed for no-op, forged, copied, stale, mismatched, hostile, or
+  reused authority evidence.
+- Architecture/invariant reviewer
+  `019f6bfb-183d-7001-9888-9b54c06292cd` and executability/adversarial
+  reviewer `019f6bfb-1c7c-7cc2-8d2f-f4f13c488f8a` are active and read-only at
+  the exact candidate. Both must inspect the exported issuance trust root,
+  mounted-authority semantics, append/readback provenance, hostile async
+  boundaries, public API compatibility, and the frozen Task129 contract.
+- Review work does not authorize edits, SDD, integration, release records,
+  full verification, external activity, Task139, push, reset, or any `neo`
+  action.
