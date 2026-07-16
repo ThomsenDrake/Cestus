@@ -16953,3 +16953,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-645 — Task135B portable mounted handoff stores dispatched
+
+- Recorded at: 2026-07-16T22:06:50Z
+- Worker `019f6cf7-c9a0-7ee0-a592-211047d379b7` owns exact Task135B in isolated
+  worktree `/home/drake/.codex/worktrees/task135b-portable-mounted-handoff-stores`
+  on branch `codex/task135b-portable-mounted-handoff-stores`, starting from
+  exact clean eight-record program checkpoint
+  `44db1ca0c34076c7235da229109614d59ddb4457`.
+- Its write ceiling is exactly the new portable mounted store producer, focused
+  component test, and Task135B claim. The prompt pins Task117A attestation
+  `1cde7adb1a3b9fb1621b75410c203eec631a45ba`, released Task137A
+  `85e5c6cbc86f4d636702ce825baf21eb7d7ac89c`, and Task129-MFA integration
+  `c599f9d7c9e08de155bfb98f49462ad01416ec40`.
+- The prompt explicitly approves task-scoped SDD/TDD and directs the worker to
+  the final component-only, operation-bound, opaque-controller overlays. It
+  requires a claim-first commit, causal focused RED, identical focused GREEN,
+  the complete cross-boundary review command, exact three-path scope, no index
+  export, clean state, and non-symlinked dependencies.
+- Full verification, integration, release records, Task139, providers,
+  network, credentials, external services, push, reset, rebase, and every
+  `neo` action remain closed. Two fresh exact-revision reviews are required
+  before coordinator integration.
