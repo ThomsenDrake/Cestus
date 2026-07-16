@@ -15821,3 +15821,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-608 — Task136 v2 prefix fixture repaired and dual-approved
+
+- Recorded at: 2026-07-16T18:52:04Z
+- After the valid Task135D and Task137A release records increased the live
+  registry prefix from three to five records, the immutable Task136 v2 Node
+  suite produced a causal `11/12` RED: its fixed `29/3` regression incorrectly
+  read the mutable live registry and observed `29/5`.
+- Exact repair `b4c45b665e1dc81f9d07711cda358e5c5cd98854` changes only
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. The
+  regression now materializes the first three deterministic synthetic v4
+  records from the frozen contract. The production checker, immutable v1
+  bytes, frozen corpora, release schema, release records, exact `29/3`
+  assertion, and zero-command-execution assertion are unchanged.
+- Coordinator GREEN passed exactly 12 Node tests, contract markers
+  `29/1/20/29/1/15`, live repository early stop
+  `repository release closure incomplete: expected 29 records, found 5`, diff
+  checking, factory readiness, clean tracked state, and non-symlinked
+  dependency checks. Full verification was not run.
+- Fresh architecture/invariant reviewer
+  `019f6c44-1075-7360-8d23-195eed1bae45` and fresh
+  executability/finite-scope reviewer
+  `019f6c44-1539-7d13-a136-7233d7425c65` independently returned unqualified
+  `APPROVED` for exact revision
+  `b4c45b665e1dc81f9d07711cda358e5c5cd98854` with no defects.
+- The Task136 v2 assurance gate is again stable under append-only release
+  progress. Task129-MFA may start from the next clean program checkpoint with
+  explicit task-scoped SDD/TDD authorization. Task139, providers, network,
+  credentials, external services, full verification, push, reset, and every
+  `neo` action remain closed.
