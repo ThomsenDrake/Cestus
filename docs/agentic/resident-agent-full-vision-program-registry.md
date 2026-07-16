@@ -13696,3 +13696,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   resumption.
 - Full verification, source dispatch, external-service activity, reset credits,
   push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-513 — Task136 Recovery-13 exact-SHA reviews active
+
+- Reviewers `019f6aff-9760-77e1-afd8-c9a4c8833994` and
+  `019f6aff-b770-7021-bbff-d757306e0a19` are active, pinned, read-only, and
+  independently reviewing exact candidate
+  `8bee4b0f8ad774329b2301895316c96c4e21794f` from separate worktrees.
+- Both must independently run the four literal Task136 checks, exact revision,
+  scope, and clean-state checks, inspect the complete candidate, and add one
+  isolated negative fixture. Both must return unqualified **APPROVED** before
+  integration or Task139 resumption.
+- Review work does not authorize subagent-driven development. Full
+  verification, integration, external-service activity, reset credits, push,
+  Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-514 — Task137A Recovery-13 candidate admitted to review
+
+- Candidate `609e6b6f68d8f60e1aae2d1030692ad7a3b33962` is one clean descendant
+  of rejected `cbf3035ea44d843f2f8a21f51a6a24f50c1b6cb4` and changes only the
+  Task137A claim and its import-policy test within the historical six-path
+  ceiling.
+- Coordinator admission independently passed the literal committed-byte gate
+  with 6 files and 90 tests, its embedded checks, and a separate standalone
+  typecheck. Exact revision, scope, diff, clean checkout, and absent dependency
+  link checks passed.
+- Two fresh independent exact-SHA reviews are required: one for mounted
+  lifecycle/currentness behavior and one for static-analysis correctness and
+  termination. Both must return unqualified **APPROVED** before integration.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
