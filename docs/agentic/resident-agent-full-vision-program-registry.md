@@ -17156,3 +17156,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, self-review, integration, release records, Task139,
   providers, network, credentials, external services, push, reset, rebase, and
   every `neo` action remain closed.
+
+## RV-1-E-653 — Task135B first coordinator admission repair required
+
+- Recorded at: 2026-07-16T23:45:00Z
+- The worker produced reproducible RED commit
+  `53ae6bd6d518de49b2611d5c5314d58f0c74a967` and first GREEN candidate
+  `6b0f61f4cf20b1de3f38ad04d63153863dcc8b47`. Coordinator
+  independently reproduced the RED at exactly 20 tests with the four named
+  failures and observed focused 20-test and aggregate 120-test GREEN with one
+  Task137 8/20 marker.
+- Final admission stopped at standalone typecheck. Production has one illegal
+  recursive `NormalizedJson` alias, and the focused test has two direct
+  `KnowledgeEvent` casts whose intermediate shapes do not sufficiently overlap.
+  The compiler exited `2`; static, diff, factory, and review dispatch did not
+  continue. The candidate remains clean and preserved.
+- This is the first finite admission repair. The same worker may add one
+  forward commit changing only the Task135B source, focused test, and claim:
+  split the recursive JSON union through named recursive interfaces and make
+  the two intentionally mutated fixture casts explicit through `unknown`.
+  It must rerun the identical 20-test and 120-test commands, typecheck, static
+  boundaries, diff checking, factory readiness, exact scope, clean-state, and
+  non-symlink checks.
+- The repair prompt explicitly reauthorizes task-scoped subagent-driven
+  development and TDD for this compiler correction only. Full verification,
+  review dispatch, integration, release records, Task139, providers, network,
+  credentials, external services, push, reset, rebase, and every `neo` action
+  remain closed.
