@@ -20,6 +20,7 @@ import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   afterMountedHandoffAuthorityAppend,
   beforeMountedHandoffAuthorityEffect,
+  consumeMountedHandoffAuthorityController,
   createPortableMountedAgentArtifactStoreProducer,
   type FactoryPortableMountedAgentHandoffProducerResultV1,
   type MountedHandoffAuthorityController
@@ -113,7 +114,50 @@ describe("portable mounted agent artifact stores", () => {
       .resolves.toBeUndefined();
   });
 
-  it("derives an exact resumed cursor phase without reopening its one-shot bind", async () => {
+  it("canonical material final output manifest projection and terminal advances one authority cursor", async () => {
+    const fixture = authorityFixture();
+    const events = [startedEvent()];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+    const { result } = await issuedBinding(fixture);
+
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).resolves.toBeUndefined();
+    events.push(finalOutputEvent());
+    await expect(afterMountedHandoffAuthorityAppend(result.controller, "final-output", "evt_final_portable_handoff"))
+      .resolves.toBeUndefined();
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "handoff-prepared")).resolves.toBeUndefined();
+    events.push(preparedHandoffEvent());
+    await expect(afterMountedHandoffAuthorityAppend(result.controller, "handoff-prepared", "evt_prepared_portable_handoff"))
+      .resolves.toBeUndefined();
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "handoff-recorded")).resolves.toBeUndefined();
+    events.push(recordedHandoffEvent());
+    await expect(afterMountedHandoffAuthorityAppend(result.controller, "handoff-recorded", "evt_recorded_portable_handoff"))
+      .resolves.toBeUndefined();
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "run-terminal")).resolves.toBeUndefined();
+    events.push(completedRunEvent());
+    await expect(afterMountedHandoffAuthorityAppend(result.controller, "run-terminal", "evt_completed_portable_handoff"))
+      .resolves.toBeUndefined();
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "orchestration-completed")).resolves.toBeUndefined();
+    events.push(orchestrationCompletedEvent());
+    await expect(afterMountedHandoffAuthorityAppend(result.controller, "orchestration-completed", "evt_orchestration_portable_handoff"))
+      .resolves.toBeUndefined();
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "task-status")).resolves.toBeUndefined();
+    events.push(taskStatusEvent());
+    await expect(afterMountedHandoffAuthorityAppend(result.controller, "task-status", "evt_status_portable_handoff"))
+      .resolves.toBeUndefined();
+    await expect(consumeMountedHandoffAuthorityController(result.controller, [
+      "evt_final_portable_handoff",
+      "evt_prepared_portable_handoff",
+      "evt_recorded_portable_handoff",
+      "evt_completed_portable_handoff",
+      "evt_orchestration_portable_handoff",
+      "evt_status_portable_handoff"
+    ])).resolves.toMatchObject({ schemaVersion: "mounted-handoff-authority-consumed-receipt.v1" });
+  });
+
+  it("exact resumed handoff derives its phase and remains one shot", async () => {
     const fixture = authorityFixture();
     const events = [startedEvent(), finalOutputEvent()];
     Object.defineProperty(fixture.handle.ledger, "readAll", {
@@ -144,7 +188,37 @@ describe("portable mounted agent artifact stores", () => {
     expect(fixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
   });
 
-  it("old operation cannot revive after same tuple revalidation", async () => {
+  it("admission change burns old controller and fresh operation resumes canonical prefix", async () => {
+    const fixture = authorityFixture();
+    const events = [startedEvent(), finalOutputEvent()];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      wakeRuntime,
+      lifecyclePorts: fixture.ports,
+      runtimeHandle: fixture.handle
+    });
+    await admit(fixture, "wake");
+    const old = await createPortableMountedAgentArtifactStoreProducer(
+      issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+    ).bind(dispatch);
+    fixture.ports.authority.invalidate!("authority-loss");
+    await admit(fixture, "recovery");
+
+    await expect(beforeMountedHandoffAuthorityEffect(old.controller, "handoff-prepared"))
+      .rejects.toThrow(/authority/i);
+    const freshOperation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+    const fresh = await createPortableMountedAgentArtifactStoreProducer(freshOperation).bind(dispatch);
+    await expect(beforeMountedHandoffAuthorityEffect(fresh.controller, "handoff-prepared"))
+      .resolves.toBeUndefined();
+    await expect(beforeMountedHandoffAuthorityEffect(old.controller, "handoff-prepared"))
+      .rejects.toThrow(/authority/i);
+  });
+
+  it("identical visible tuple under new admission cannot rotate or revive authority cursor", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
     registerMountedArtifactAuthorityIssuerForWakeRuntime({
@@ -153,11 +227,14 @@ describe("portable mounted agent artifact stores", () => {
       runtimeHandle: fixture.handle
     });
     await admit(fixture, "wake");
-    const oldOperation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+    const old = await createPortableMountedAgentArtifactStoreProducer(
+      issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+    ).bind(dispatch);
     fixture.ports.authority.invalidate!("authority-loss");
     await admit(fixture, "recovery");
 
-    expect(() => createPortableMountedAgentArtifactStoreProducer(oldOperation)).toThrow(/current|burned|authority/i);
+    await expect(beforeMountedHandoffAuthorityEffect(old.controller, "final-output")).rejects.toThrow(/authority/i);
+    await expect(beforeMountedHandoffAuthorityEffect(old.controller, "final-output")).rejects.toThrow(/authority/i);
   });
 
   it.each([
@@ -213,6 +290,115 @@ describe("portable mounted agent artifact stores", () => {
     expect(Object.getOwnPropertyDescriptor(result.binding, "controller")).toBeUndefined();
     expect(Object.getOwnPropertyDescriptor(result.controller, "beforeEffect")).toBeUndefined();
     expect(Object.getOwnPropertyDescriptor(result.controller, "afterAppend")).toBeUndefined();
+  });
+
+  it("foreign resident actor cannot advance canonical handoff authority", async () => {
+    const fixture = authorityFixture();
+    const events = [startedEvent({ context: eventContext({ actorId: "agent_foreign" }) })];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+
+    await expect(issuedBinding(fixture)).rejects.toThrow(/authority/i);
+  });
+
+  it("attempt swapped orchestration cannot advance task status authority", async () => {
+    const fixture = authorityFixture();
+    const events = canonicalHandoffEvents();
+    events.push(orchestrationCompletedEvent({ attemptId: "attempt_swapped_portable_handoff" }), taskStatusEvent());
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+
+    await expect(issuedBinding(fixture)).rejects.toThrow(/authority/i);
+  });
+
+  it("mismatched final prepared recorded and terminal artifacts burn authority", async () => {
+    const mismatches: readonly ((events: KnowledgeEvent[]) => void)[] = [
+      (events) => {
+        events[1] = finalOutputEvent({ outputArtifactHashes: [hash("1")] });
+      },
+      (events) => {
+        events[3] = recordedHandoffEvent({ outputArtifactHashes: [hash("2")] });
+      },
+      (events) => {
+        events[4] = completedRunEvent({ outputArtifactHashes: [hash("3")] });
+      }
+    ];
+    for (const mismatch of mismatches) {
+      const fixture = authorityFixture();
+      const events = canonicalHandoffEvents();
+      mismatch(events);
+      Object.defineProperty(fixture.handle.ledger, "readAll", {
+        configurable: true,
+        value: async () => events.map((event) => structuredClone(event))
+      });
+
+      await expect(issuedBinding(fixture)).rejects.toThrow(/authority/i);
+    }
+  });
+
+  it("policy lock foreign run and arbitrary wake suffixes return no receipt or terminal authority", async () => {
+    const suffixes = [
+      { ...startedEvent(), id: "evt_policy_portable_handoff", type: "agent.policy.installed", payload: { taskId: dispatch.taskId } },
+      { ...startedEvent(), id: "evt_lock_portable_handoff", type: "agent.lock.activated", payload: { taskId: dispatch.taskId } },
+      { ...finalOutputEvent(), id: "evt_foreign_run_portable_handoff", payload: { ...finalOutputEvent().payload, runId: "run_foreign_portable_handoff" } },
+      { ...unrelatedEvent(), payload: { ...unrelatedEvent().payload, taskId: dispatch.taskId } }
+    ] as const;
+    for (const suffix of suffixes) {
+      const fixture = authorityFixture();
+      const events = [startedEvent()];
+      Object.defineProperty(fixture.handle.ledger, "readAll", {
+        configurable: true,
+        value: async () => events.map((event) => structuredClone(event))
+      });
+      const { result } = await issuedBinding(fixture);
+      events.push(suffix as KnowledgeEvent);
+
+      await expect(beforeMountedHandoffAuthorityEffect(result.controller, "run-terminal")).rejects.toThrow(/authority/i);
+      await expect(consumeMountedHandoffAuthorityController(result.controller, [])).rejects.toThrow(/authority/i);
+    }
+  });
+
+  it("hostile ledger values fail before serialization observation or store io", async () => {
+    const hostileEvents = [
+      (observed: { value: number }) => accessorHostileFinalOutputEvent(observed),
+      (observed: { value: number }) => symbolHostileFinalOutputEvent(observed),
+      (observed: { value: number }) => sparseArrayHostileFinalOutputEvent(observed),
+      (observed: { value: number }) => customPrototypeHostileFinalOutputEvent(observed),
+      (observed: { value: number }) => toJsonHostileFinalOutputEvent(observed)
+    ] as const;
+    for (const createHostile of hostileEvents) {
+      const fixture = authorityFixture();
+      const events: KnowledgeEvent[] = [startedEvent()];
+      Object.defineProperty(fixture.handle.ledger, "readAll", {
+        configurable: true,
+        value: async () => events
+      });
+      const { result } = await issuedBinding(fixture);
+      const observed = { value: 0 };
+      const hostile = createHostile(observed);
+      let storeIo = 0;
+      const originalPut = FileBlobStore.prototype.put;
+      Object.defineProperty(FileBlobStore.prototype, "put", {
+        configurable: true,
+        value: async function(this: FileBlobStore, content: Buffer) {
+          storeIo += 1;
+          return await originalPut.call(this, content);
+        }
+      });
+      try {
+        events.push(hostile);
+        await expect(result.binding.materialStore.put(Buffer.from("must-not-observe", "utf8")))
+          .rejects.toThrow(/authority/i);
+      } finally {
+        Object.defineProperty(FileBlobStore.prototype, "put", { configurable: true, value: originalPut });
+      }
+      expect(observed.value).toBe(0);
+      expect(storeIo).toBe(0);
+    }
   });
 });
 
@@ -428,7 +614,11 @@ async function invalidateDuringFileBlobOperation(
   expect(invoked).toBe(true);
 }
 
-function startedEvent(): KnowledgeEvent {
+function canonicalHandoffEvents(): KnowledgeEvent[] {
+  return [startedEvent(), finalOutputEvent(), preparedHandoffEvent(), recordedHandoffEvent(), completedRunEvent()];
+}
+
+function startedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
   return {
     id: "evt_started_portable_handoff",
     type: "agent.specialist-run.started",
@@ -444,11 +634,12 @@ function startedEvent(): KnowledgeEvent {
       taskId: dispatch.taskId,
       sourceEventIds: ["evt_source_portable_handoff"],
       inputArtifactHashes: [`sha256:${"a".repeat(64)}`]
-    }
+    },
+    ...patch
   } as KnowledgeEvent;
 }
 
-function finalOutputEvent(): KnowledgeEvent {
+function finalOutputEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
   return {
     ...startedEvent(),
     id: "evt_final_portable_handoff",
@@ -464,8 +655,176 @@ function finalOutputEvent(): KnowledgeEvent {
       handoffMaterialArtifactHash: `sha256:${"b".repeat(64)}`,
       inputArtifactHashes: [`sha256:${"a".repeat(64)}`],
       outputArtifactHashes: [`sha256:${"c".repeat(64)}`]
-    }
+    },
+    ...patch
   } as KnowledgeEvent;
+}
+
+function preparedHandoffEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_prepared_portable_handoff",
+    type: "agent.specialist-handoff.prepared",
+    sequence: 3,
+    context: eventContext({ causationId: "evt_final_portable_handoff" }),
+    payload: handoffBindingPayload(),
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function recordedHandoffEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...preparedHandoffEvent(),
+    id: "evt_recorded_portable_handoff",
+    type: "agent.specialist-handoff.recorded",
+    sequence: 4,
+    context: eventContext({ causationId: "evt_prepared_portable_handoff" }),
+    payload: {
+      ...handoffBindingPayload(),
+      preparedEventId: "evt_prepared_portable_handoff",
+      verifiedAt: "2026-07-16T00:00:00.000Z"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function completedRunEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_completed_portable_handoff",
+    type: "agent.specialist-run.completed",
+    sequence: 5,
+    context: eventContext({ causationId: "evt_recorded_portable_handoff" }),
+    payload: {
+      runId: dispatch.approvedRunId,
+      completedAt: "2026-07-16T00:00:00.000Z",
+      outputArtifactHashes: [hash("c")],
+      relatedEventIds: ["evt_recorded_portable_handoff"]
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function orchestrationCompletedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_orchestration_portable_handoff",
+    type: "agent.task.orchestration.completed",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 6,
+    context: eventContext({ causationId: "evt_completed_portable_handoff" }),
+    payload: {
+      taskId: dispatch.taskId,
+      runType: dispatch.runType,
+      attemptId: dispatch.attemptId,
+      retryGeneration: 0,
+      runId: dispatch.approvedRunId,
+      completedAt: "2026-07-16T00:00:00.000Z",
+      specialistRunCompletedEventId: "evt_completed_portable_handoff",
+      finalOutputStepEventId: "evt_final_portable_handoff",
+      handoffPreparedEventId: "evt_prepared_portable_handoff",
+      handoffRecordedEventId: "evt_recorded_portable_handoff",
+      handoffReadback: {
+        handoffId: "handoff_portable_handoff_0123456789abcdef",
+        handoffManifestHash: hash("d"),
+        handoffRecordedEventId: "evt_recorded_portable_handoff",
+        verifiedAt: "2026-07-16T00:00:00.000Z"
+      }
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function taskStatusEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_status_portable_handoff",
+    type: "agent.task.status.changed",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 7,
+    context: eventContext({ causationId: "evt_orchestration_portable_handoff" }),
+    payload: {
+      taskId: dispatch.taskId,
+      runId: dispatch.approvedRunId,
+      status: "completed",
+      changedBy: "agent_default"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function handoffBindingPayload(): Record<string, unknown> {
+  return {
+    handoffId: "handoff_portable_handoff_0123456789abcdef",
+    handoffRevision: 1,
+    idempotencyKey: `specialist-handoff:${dispatch.approvedRunId}:${dispatch.taskId}:${dispatch.runType}:ready-for-review:${hash("d")}`,
+    handoffManifestHash: hash("d"),
+    handoffDtoHash: hash("e"),
+    handoffMaterialArtifactHash: hash("b"),
+    runId: dispatch.approvedRunId,
+    taskId: dispatch.taskId,
+    runType: dispatch.runType,
+    residentAgentId: "agent_default",
+    status: "ready-for-review",
+    safeSummary: "Portable handoff is ready for review.",
+    finalOutputStepId: "step_final_portable_handoff",
+    finalOutputEventId: "evt_final_portable_handoff",
+    contextPackHashes: [hash("f")],
+    outputArtifactHashes: [hash("c")],
+    toolRequestIds: ["toolreq_portable_handoff"],
+    sourceEventIds: ["evt_source_portable_handoff"],
+    relatedEventIds: ["evt_final_portable_handoff"]
+  };
+}
+
+function accessorHostileFinalOutputEvent(observed: { value: number }): KnowledgeEvent {
+  const event = finalOutputEvent() as unknown as Record<string, unknown>;
+  const payload = event.payload as Record<string, unknown>;
+  Object.defineProperty(payload, "outputArtifactHashes", {
+    enumerable: true,
+    configurable: true,
+    get() {
+      observed.value += 1;
+      return [hash("c")];
+    }
+  });
+  return event as unknown as KnowledgeEvent;
+}
+
+function symbolHostileFinalOutputEvent(_observed: { value: number }): KnowledgeEvent {
+  const event = finalOutputEvent() as unknown as Record<string | symbol, unknown>;
+  event[Symbol("hostile")] = true;
+  return event as unknown as KnowledgeEvent;
+}
+
+function sparseArrayHostileFinalOutputEvent(_observed: { value: number }): KnowledgeEvent {
+  const event = finalOutputEvent() as unknown as Record<string, unknown>;
+  const payload = event.payload as Record<string, unknown>;
+  const sparse: string[] = [];
+  sparse[1] = hash("c");
+  payload.outputArtifactHashes = sparse;
+  return event as unknown as KnowledgeEvent;
+}
+
+function customPrototypeHostileFinalOutputEvent(_observed: { value: number }): KnowledgeEvent {
+  const event = finalOutputEvent() as unknown as Record<string, unknown>;
+  const payload = event.payload as Record<string, unknown>;
+  payload.handoffMaterialArtifactHash = Object.create({ inherited: hash("b") });
+  return event as unknown as KnowledgeEvent;
+}
+
+function toJsonHostileFinalOutputEvent(observed: { value: number }): KnowledgeEvent {
+  const event = finalOutputEvent() as unknown as Record<string, unknown>;
+  const payload = event.payload as Record<string, unknown>;
+  payload.toJSON = () => {
+    observed.value += 1;
+    return {};
+  };
+  return event as unknown as KnowledgeEvent;
+}
+
+function hash(fill: string): `sha256:${string}` {
+  return `sha256:${fill.repeat(64)}`;
 }
 
 function historicalEvent(): KnowledgeEvent {
@@ -496,13 +855,14 @@ function unrelatedEvent(): KnowledgeEvent {
   } as unknown as KnowledgeEvent;
 }
 
-function eventContext() {
+function eventContext(patch: { readonly actorId?: string; readonly causationId?: string } = {}) {
   return {
-    actor: { id: "agent_default", kind: "agent" as const, label: "Cestus resident" },
+    actor: { id: patch.actorId ?? "agent_default", kind: "agent" as const, label: "Cestus resident" },
     occurredAt: "2026-07-16T00:00:00.000Z",
     correlationId: "corr_portable_handoff",
     coreVersion: "0.1.0",
-    packVersions: { core: "0.1.0", agent: "0.1.0" }
+    packVersions: { core: "0.1.0", agent: "0.1.0" },
+    ...(patch.causationId === undefined ? {} : { causationId: patch.causationId })
   };
 }
 

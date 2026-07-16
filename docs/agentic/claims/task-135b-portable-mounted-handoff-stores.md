@@ -60,3 +60,26 @@ backed by module-private maps.
   `factory-readiness passed` were observed.
 - `npm run verify`, provider/network/credential activity, Task139 work,
   integration, release, push, reset, rebase, and `neo` actions were not run.
+
+## Task135B one-admission correction
+
+- **Status:** in-progress
+- **Correction authority:** `RV-1-E-647`
+- **Starting candidate:** `bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14`
+- **TASK135B_CORRECTION_SHA:** `6b203d03d2342cee2c8d8712710a3ad61600a98a`
+- **Governing design:** `docs/superpowers/specs/2026-07-16-task135b-one-admission-cursor-design.md`
+- **Governing plan:** `docs/superpowers/plans/2026-07-16-task135b-one-admission-cursor-implementation.md`
+- **Exact ceiling:** `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`,
+  `packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`, and
+  `docs/agentic/claims/task-135b-portable-mounted-handoff-stores.md`
+- **Coordinator authorization:** task-scoped
+  `superpowers:subagent-driven-development` and
+  `superpowers:test-driven-development` are explicitly authorized for this
+  correction. This record does not claim an approval.
+- **RED receipt:** `npm test --
+  packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `1` with `1` file / `20` tests. Named review-gap failures were
+  `foreign resident actor cannot advance canonical handoff authority`,
+  `attempt swapped orchestration cannot advance task status authority`,
+  `mismatched final prepared recorded and terminal artifacts burn authority`,
+  and `hostile ledger values fail before serialization observation or store io`.
