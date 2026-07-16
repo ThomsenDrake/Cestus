@@ -13903,3 +13903,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-526 — Task136 Recovery-14 rejected; Recovery-15 required
+
+- Both independent reviewers returned **NEEDS-CHANGES** for exact candidate
+  `9fc7f6e8a8393b1e1a24b7458718689276b6de1b`; no prior admission or approval
+  carries forward.
+- Both reviews found the same remaining module-loading case: direct
+  `module.require(...)` property access is outside the current literal-loader
+  classifier even though the equivalent identifier form is covered.
+- All four Task136 checks and exact revision/scope checks otherwise passed.
+  The reviewers could not read RV-1-E-520 from their candidate branches; future
+  review prompts must point to the coordinator registry checkout explicitly.
+- A fresh documentation owner must start from the exact rejected candidate,
+  add the focused executable case and harmless controls, preserve the approved
+  graph and command cards, keep the three-path ceiling, and return one immutable
+  candidate for fresh coordinator admission and two new reviews.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
