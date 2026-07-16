@@ -31,13 +31,16 @@ import type { AgentApprovedToolPreviewResult } from "./scheduler-types.js";
 import { specialistWorkflowDescriptorFor, type SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
 import type { AgentSpecialistRunType } from "./specialists.js";
 import {
+  evaluateProductionContextRequirements,
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations,
-  renderProductionSpecialistPrompt,
-  verifyProductionSpecialistPromptArtifact,
   type ProductionRunScope,
   type ProductionSpecialistPromptRegistration
 } from "./production-specialist-prompts.js";
+import {
+  consumeMountedProductionPromptReadbackWitness,
+  type MountedProductionPromptReadbackWitness
+} from "./production-prompt-readback.js";
 import { mintProductionSpecialistInvocationProof } from "./production-specialist-invocation-proof.js";
 import { hashAgentToolPreview } from "./tool-gateway.js";
 import {
@@ -189,6 +192,8 @@ export interface SpecialistRunnerBaseInput {
   readonly runtime: SpecialistRunnerModelInvoker;
   readonly providerReadiness: SpecialistRunnerProviderReadiness;
   readonly providerTransferApproval?: SpecialistRunnerProviderTransferApprovalProof;
+  /** Internal mounted-store authority; public prompt objects are inert here. */
+  readonly mountedPromptReadbackWitness?: MountedProductionPromptReadbackWitness | undefined;
   readonly promptArtifact?: PromptArtifactEnvelope;
   readonly derivativeStore?: SpecialistDerivativeArtifactStore | undefined;
 }
@@ -203,17 +208,19 @@ interface PreparedSpecialistRunBinding {
   readonly input: SpecialistRunnerBaseInput;
   readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
   readonly generatedAt: string;
+  readonly revalidateMountedReadback: () => Promise<void>;
 }
 
 interface CurrentProductionSpecialistRun {
   readonly descriptor: SpecialistWorkflowDescriptor;
   readonly contextPackRefs: readonly ContextPackRef[];
+  readonly workspaceId: string;
   readonly renderInput: {
     readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
     readonly runId: string;
     readonly taskId: string;
-    readonly generatedAt: string;
     readonly scope: ProductionRunScope;
+    readonly scopeApplicabilityHash: `sha256:${string}`;
     readonly resolvedContextPacks: ReturnType<typeof assertResolvedContextPacksForExecution>;
   };
 }
@@ -297,32 +304,54 @@ export async function prepareSpecialistRun(
   input: SpecialistRunnerBaseInput,
   runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">
 ): Promise<PreparedSpecialistRun> {
-  const current = await currentProductionSpecialistRun(input, runType, input.now());
-  const promptArtifact = input.promptArtifact === undefined
-    ? renderProductionSpecialistPrompt(current.renderInput)
-    : verifyProductionSpecialistPromptArtifact({ ...current.renderInput, artifact: input.promptArtifact });
+  const witness = input.mountedPromptReadbackWitness;
+  if (witness === undefined) {
+    throw new Error("A current mounted production prompt readback witness is required before specialist preparation.");
+  }
+  const current = await currentProductionSpecialistRun(input, runType);
+  // A direct envelope cannot enter this boundary. Missing authority rejected
+  // above performs no ledger/provider work; a present witness is consumed only
+  // after exact current task/run/context facts are available for comparison.
+  const consumed = await consumeMountedProductionPromptReadbackWitness(witness, {
+    workspaceId: current.workspaceId,
+    taskId: current.renderInput.taskId,
+    runId: current.renderInput.runId,
+    runType: current.renderInput.runType,
+    scopeApplicabilityHash: current.renderInput.scopeApplicabilityHash,
+    contextPackRefs: current.contextPackRefs
+  });
+  const promptArtifact = assertMountedReadbackPromptMatchesCurrent(consumed.envelope, current, consumed.generatedAt);
   const prepared = Object.freeze({
     descriptor: current.descriptor,
     contextPackRefs: Object.freeze(current.contextPackRefs),
     promptArtifact
   });
-  preparedSpecialistRunBindings.set(prepared, Object.freeze({ input, runType, generatedAt: current.renderInput.generatedAt }));
+  preparedSpecialistRunBindings.set(prepared, Object.freeze({
+    input,
+    runType,
+    generatedAt: consumed.generatedAt,
+    revalidateMountedReadback: consumed.revalidateCurrent
+  }));
   return prepared;
 }
 
 async function currentProductionSpecialistRun(
   input: SpecialistRunnerBaseInput,
-  runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">,
-  generatedAt: string
+  runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">
 ): Promise<CurrentProductionSpecialistRun> {
   const descriptor = specialistWorkflowDescriptorFor(runType);
   const registration = productionRegistrationFor(input, runType, descriptor);
-  const run = buildAgentProjection(await input.ledger.readAll()).runs.get(input.runId);
+  const projection = buildAgentProjection(await input.ledger.readAll());
+  const run = projection.runs.get(input.runId);
   if (run === undefined || run.runType !== runType || run.residentAgentId !== "agent_default") {
     throw new Error("Specialist workflow requires a matching agent_default run.");
   }
   if (run.taskId !== input.taskId) {
     throw new Error("Specialist workflow task does not match the target run.");
+  }
+  const workspaceId = projection.identity?.workspaceId;
+  if (workspaceId === undefined) {
+    throw new Error("Specialist workflow requires a current mounted resident workspace identity.");
   }
 
   const scope: ProductionRunScope = input.scope ?? Object.freeze({ kind: "task", refs: Object.freeze([input.taskId]) });
@@ -334,15 +363,58 @@ async function currentProductionSpecialistRun(
   );
   const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
   const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution(contextPackRefs, resolvedContextPacks);
+  const evaluated = evaluateProductionContextRequirements({
+    runType,
+    taskId: input.taskId,
+    scope,
+    resolvedContextPacks: verifiedResolvedContextPacks
+  });
   const renderInput = {
     runType,
     runId: input.runId,
     taskId: input.taskId,
-    generatedAt,
     scope,
+    scopeApplicabilityHash: evaluated.scopeApplicabilityHash,
     resolvedContextPacks: verifiedResolvedContextPacks
   };
-  return Object.freeze({ descriptor, contextPackRefs: Object.freeze(contextPackRefs), renderInput });
+  return Object.freeze({ descriptor, contextPackRefs: Object.freeze(contextPackRefs), workspaceId, renderInput });
+}
+
+/**
+ * This is deliberately verification-only: it never calls a renderer. The
+ * witness registrar already reparsed canonical bytes; this checks the current
+ * run's immutable facts against that exact V1 payload before any provider use.
+ */
+function assertMountedReadbackPromptMatchesCurrent(
+  artifact: PromptArtifactEnvelope,
+  current: CurrentProductionSpecialistRun,
+  authoritativeGeneratedAt: string
+): PromptArtifactEnvelope {
+  const metadata = promptArtifactAuditMetadata(artifact);
+  const production = metadata.production;
+  const registration = productionSpecialistPromptRegistrationFor(current.renderInput.runType);
+  if (production?.schemaVersion !== "agent-production-prompt-binding.v1") {
+    throw new Error("Mounted prompt readback must contain an exact production v1 artifact.");
+  }
+  if (
+    metadata.inputArtifactHash !== artifact.manifest.inputArtifactHash ||
+    metadata.runType !== current.renderInput.runType ||
+    metadata.promptTemplateId !== registration.promptTemplateId ||
+    metadata.promptTemplateVersion !== registration.promptTemplateVersion ||
+    artifact.manifest.generatedAt !== authoritativeGeneratedAt ||
+    production.rendererId !== registration.rendererId ||
+    production.rendererVersion !== registration.rendererVersion ||
+    production.rendererHash !== registration.rendererHash ||
+    production.providerOutputSchemaId !== registration.providerOutputSchemaId ||
+    production.providerOutputSchemaVersion !== registration.providerOutputSchemaVersion ||
+    production.handoffSchemaId !== registration.handoffSchemaId ||
+    production.handoffSchemaVersion !== registration.handoffSchemaVersion ||
+    production.scopeApplicabilityHash !== current.renderInput.scopeApplicabilityHash ||
+    JSON.stringify(metadata.contextPackRefs) !== JSON.stringify(current.contextPackRefs)
+  ) {
+    throw new Error("Mounted prompt readback does not match the current task, run, or context tuple.");
+  }
+  return artifact;
 }
 
 export async function invokeSpecialistModel(
@@ -358,9 +430,13 @@ export async function invokeSpecialistModel(
   if (binding === undefined || binding.input !== input) {
     throw new Error("Prepared specialist run does not belong to the current invocation input.");
   }
-  const current = await currentProductionSpecialistRun(input, binding.runType, binding.generatedAt);
-  verifyProductionSpecialistPromptArtifact({ ...current.renderInput, artifact: prepared.promptArtifact });
+  await binding.revalidateMountedReadback();
+  const current = await currentProductionSpecialistRun(input, binding.runType);
+  await binding.revalidateMountedReadback();
+  assertMountedReadbackPromptMatchesCurrent(prepared.promptArtifact, current, binding.generatedAt);
+  await binding.revalidateMountedReadback();
   await assertProviderReadinessAllowsInvocation(input, prepared.promptArtifact);
+  await binding.revalidateMountedReadback();
   const productionInvocationProof = mintProductionSpecialistInvocationProof({
     runId: input.runId,
     taskId: input.taskId,
@@ -382,6 +458,7 @@ export async function invokeSpecialistModel(
     productionInvocationProof,
     returnOutputText: true
   });
+  await binding.revalidateMountedReadback();
   if (!result.ok || result.outputText === undefined) {
     throw new Error("Configured provider invocation failed safely.");
   }

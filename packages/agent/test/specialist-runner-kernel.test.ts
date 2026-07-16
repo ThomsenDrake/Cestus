@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import * as agent from "../src/index.js";
 import {
   bindApprovedProductionSpecialistPromptV2,
@@ -26,10 +29,118 @@ import {
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import {
+  createMountedProductionPromptReadbackAuthority,
+  issueMountedProductionPromptReadback
+} from "../src/production-prompt-readback.js";
+import { serializePromptArtifactEnvelope } from "../src/prompt-artifacts.js";
 import { ConcurrencyConflictError, InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { resolveLocalRuntimeConfig } from "../../local-runtime/src/config.js";
+import { createMountedPromptArtifactStore } from "../../local-runtime/src/mounted-prompt-artifact-store.js";
+import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../../local-runtime/src/runtime-factory.js";
+
+const mountedRunnerDirs: string[] = [];
+const mountedRunnerHandles: LocalRuntimeHandle[] = [];
+
+afterEach(() => {
+  for (const handle of mountedRunnerHandles.splice(0)) handle.close();
+  for (const dir of mountedRunnerDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 describe("specialist runner artifact serialization", () => {
+  it("rejects missing mounted context-ready prompt instead of rendering", async () => {
+    const fixture = await runnerFixture({ includeWitness: false });
+
+    await expect(prepareSpecialistRun(fixture.input, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("accepts the exact supplied context-ready v1 without another render", async () => {
+    const fixture = await runnerFixture();
+    const prepared = await prepareSpecialistRun(fixture.input, "evidence-triage");
+
+    expect(prepared.promptArtifact.manifest.inputArtifactHash).toBe(fixture.rendered.manifest.inputArtifactHash);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("rejects structurally valid v1 without mounted readback membership", async () => {
+    const fixture = await runnerFixture();
+    const rendered = await renderedRunnerPrompt(fixture.input);
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: undefined, promptArtifact: rendered }, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+  });
+
+  it("rejects copied swapped and reused mounted readback witness", async () => {
+    const fixture = await runnerFixture();
+    const witness = fixture.input.mountedPromptReadbackWitness;
+    if (witness === undefined) throw new Error("Expected mounted witness.");
+    const copied = { ...witness };
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: copied }, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { inputArtifactHash: fixture.rendered.manifest.inputArtifactHash } } });
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .rejects.toThrow(/consumed|mounted.*prompt.*readback/i);
+  });
+
+  it("consumes one exact post-mount-check v1 witness without rendering", async () => {
+    const fixture = await runnerFixture();
+    const witness = fixture.input.mountedPromptReadbackWitness;
+    if (witness === undefined) throw new Error("Expected mounted witness.");
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { production: { schemaVersion: "agent-production-prompt-binding.v1" } } } });
+  });
+
+  it("concurrent mounted witness preparation yields at most one provider-preparable run", async () => {
+    const fixture = await runnerFixture({ includeWitness: false });
+    const canonical = Buffer.from(serializePromptArtifactEnvelope(fixture.rendered));
+    const rereadStarted = deferred<void>();
+    const rereadRelease = deferred<Uint8Array>();
+    let deferConsumption = false;
+    let rereadCount = 0;
+    const authority = createMountedProductionPromptReadbackAuthority({
+      currentMount: () => ({ workspaceId: "ws_runner_test", rootDir: "/runner", blobRoot: "/runner/blobs" })
+    });
+    const witness = await issueMountedProductionPromptReadback({
+      serializedEnvelope: canonical,
+      authoritativeResolvedContextPacks: fixture.rendered.resolvedContextPacks,
+      authority,
+      rereadCanonicalBytes: async () => {
+        rereadCount += 1;
+        if (!deferConsumption) return canonical;
+        rereadStarted.resolve();
+        return await rereadRelease.promise;
+      }
+    });
+    const input = { ...fixture.input, mountedPromptReadbackWitness: witness };
+
+    deferConsumption = true;
+    const first = prepareSpecialistRun(input, "evidence-triage");
+    const second = prepareSpecialistRun(input, "evidence-triage");
+    await rereadStarted.promise;
+    for (let microtask = 0; microtask < 20; microtask += 1) await Promise.resolve();
+
+    expect(rereadCount).toBe(2);
+    rereadRelease.resolve(canonical);
+    await expect(first).resolves.toMatchObject({ promptArtifact: { manifest: { inputArtifactHash: fixture.rendered.manifest.inputArtifactHash } } });
+    await expect(second).rejects.toThrow(/already consumed|mounted.*readback/i);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("preserves the authoritative artifact timestamp across delayed approval resume", async () => {
+    let resumedNow = "2026-07-11T08:00:00.000Z";
+    const fixture = await runnerFixture({ now: () => resumedNow });
+    resumedNow = "2026-07-12T09:30:00.000Z";
+
+    await expect(prepareSpecialistRun(fixture.input, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { generatedAt: "2026-07-11T08:00:00.000Z" } } });
+  });
   it("serializes plain JSON deterministically with sorted object keys", () => {
     expect(serializeSpecialistLocalArtifact({
       beta: 2,
@@ -308,7 +419,7 @@ describe("production specialist run preparation", () => {
       safeSummary: "Test-only prompt artifact."
     });
     await expect(prepareSpecialistRun({ ...fixture.input, promptArtifact: genericArtifact }, "evidence-triage"))
-      .rejects.toThrow(/production binding|production specialist prompt artifact/i);
+      .rejects.toThrow(/consumed|mounted.*prompt.*readback/i);
     expect(fixture.invocationCount()).toBe(0);
   });
 
@@ -1363,18 +1474,26 @@ const runnerContextPackIds = [
   "jurisdiction-pack-summary.v1"
 ] as const;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
+
 async function runnerFixture(patch: {
   readonly contextPacks?: ContextPackRegistry;
   readonly runId?: string;
   readonly taskId?: string;
   readonly workspaceId?: string;
+  readonly includeWitness?: boolean;
+  readonly now?: () => string;
 } = {}) {
   const runId = patch.runId ?? "run_runner_test_001";
   const taskId = patch.taskId ?? "task_runner_test_001";
   const workspaceId = patch.workspaceId ?? "ws_runner_test";
   const ledger = new InMemoryEventLedger();
   const actor = { id: "actor_runner_test", kind: "agent" as const, label: "Runner Test" };
-  const now = () => "2026-07-11T08:00:00.000Z";
+  const now = patch.now ?? (() => "2026-07-11T08:00:00.000Z");
   const lifecycle = createAgentRuntime({ ledger, actor, now, providers: [] });
   await lifecycle.initializeDefaultIdentity({ workspaceId });
   await lifecycle.createTask({
@@ -1391,7 +1510,7 @@ async function runnerFixture(patch: {
   });
 
   let invocations = 0;
-  const input: SpecialistRunnerBaseInput = {
+  const baseInput: SpecialistRunnerBaseInput = {
       ledger,
       actor,
       now,
@@ -1424,10 +1543,69 @@ async function runnerFixture(patch: {
         }]
       }
   };
+  const rendered = await renderedRunnerPrompt({ ...baseInput, contextPacks: runnerContextPackRegistry() });
+  const handle = mountedRunnerHandle(workspaceId);
+  const store = await createMountedPromptArtifactStore({ handle });
+  await store.put(rendered);
+  const readback = await store.read({
+    inputArtifactHash: rendered.manifest.inputArtifactHash as `sha256:${string}`,
+    authoritativeResolvedContextPacks: rendered.resolvedContextPacks
+  });
+  if (readback.witness === undefined) throw new Error("Expected mounted V1 prompt witness.");
+  const witness = readback.witness;
+  const input: SpecialistRunnerBaseInput = patch.includeWitness === false
+    ? baseInput
+    : { ...baseInput, mountedPromptReadbackWitness: witness };
   return {
     input,
+    rendered,
     invocationCount: () => invocations
   };
+}
+
+async function renderedRunnerPrompt(input: SpecialistRunnerBaseInput) {
+  const runType = "evidence-triage" as const;
+  const scope = input.scope ?? { kind: "task" as const, refs: [input.taskId] };
+  const registration = productionSpecialistPromptRegistrationFor(runType);
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || scope.associatedPrrRequestId !== undefined)
+    .map(async (requirement) => await input.contextPacks.buildResolved(requirement.contextPackId)));
+  return agent.renderProductionSpecialistPrompt({
+    taskId: input.taskId,
+    runId: input.runId,
+    runType,
+    generatedAt: input.now(),
+    scope,
+    resolvedContextPacks
+  });
+}
+
+function mountedRunnerHandle(workspaceId: string): LocalRuntimeHandle {
+  const root = mkdtempSync(join(tmpdir(), "cestus-runner-mounted-"));
+  const cwd = mkdtempSync(join(tmpdir(), "cestus-runner-mounted-cwd-"));
+  mountedRunnerDirs.push(root, cwd);
+  createPortableWorkspace({
+    rootDir: root,
+    workspaceId,
+    label: "Runner mounted prompt fixture",
+    createdAt: "2026-07-11T08:00:00.000Z",
+    createdBy: "actor_runner_test"
+  });
+  const handle = createSqlitePrrRuntime({
+    config: {
+      ...resolveLocalRuntimeConfig({ cwd, env: {} }),
+      storage: {
+        strategy: "portable-workspace",
+        workspaceRoot: root,
+        expectedWorkspaceId: workspaceId,
+        sqlitePath: join(root, "ledger", "ontology.sqlite")
+      }
+    },
+    actor: { id: "actor_runner_test", kind: "system", label: "Runner Test" },
+    now: () => "2026-07-11T08:00:00.000Z"
+  });
+  mountedRunnerHandles.push(handle);
+  return handle;
 }
 
 async function boundRunnerPromptFixture(patch: {
