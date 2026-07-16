@@ -12785,3 +12785,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reviews. Full verification, live/provider/network/credential/Nous activity,
   reset credits, push, program integration without coordinator review, and
   every `neo` action remain closed.
+
+## RV-1-E-472 — Task137A Recovery-4 candidate rejected by typecheck
+
+- Candidate `18a7990de750c35cc51e4994d5ff14f9ac676a25` passed the literal six-file
+  authority suite at 81 tests during fresh coordinator admission, then failed
+  TypeScript compilation on its committed bytes.
+- The rewritten analyzer does not narrow string-literal export names or optional
+  function bodies, assigns explicit `undefined` into exact-optional state
+  properties, and loses an element-access narrowing before reading its argument.
+- Candidate `18a7990de750c35cc51e4994d5ff14f9ac676a25` must not enter external review
+  or integration. The recovery owner has the exact six diagnostics and must
+  produce a compile-safe descendant without casts, policy weakening, removed
+  counterfactuals, or source-authority changes.
+- Task-scoped subagent-driven development remains approved with exactly one
+  production writer. Full verification, live/provider/network/credential/Nous
+  activity, reset credits, push, program integration without coordinator
+  review, and every `neo` action remain closed.
