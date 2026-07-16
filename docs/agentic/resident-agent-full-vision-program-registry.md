@@ -14159,3 +14159,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward.
 - Full verification, source dispatch, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-542 — Task137A Recovery-16 rejected; code and gate repairs split
+
+- Both independent reviewers returned **NEEDS-CHANGES** for exact candidate
+  `dae77fc5a2a8e254dfce9234333aa27a9178361f`; no prior admission or approval
+  carries forward.
+- Analysis review found that repeated binding of a `Function` constructor is
+  modeled like `eval`, making an earlier body string incorrectly sticky when a
+  later binding changes the effective body. The next code owner must model the
+  two evaluator kinds separately and add the focused harmless control.
+- Lifecycle review found that the literal Task137A shell gate returns after its
+  test segment when executed from standard input. Coordinator reproduction
+  confirmed exit 0 with no embedded typecheck or factory-check evidence. The
+  gate itself therefore requires an independent documentation repair and review.
+- Recovery-17 code work and the gate repair may proceed in parallel. Code work
+  remains within the historical Task137A path ceiling and stops after focused
+  checks. Gate work owns only a new claim and the factory-authority recovery
+  plan. Fresh Task137A reviews may begin only after the corrected gate is
+  independently approved and integrated into this program branch.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
