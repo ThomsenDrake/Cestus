@@ -16646,3 +16646,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Review work does not authorize SDD, edits, full verification, integration,
   releases, Task139, providers, network, credentials, external services,
   push, reset, or any `neo` action.
+
+## RV-1-E-636 — Task130 canonical claim-status repair dispatched
+
+- Recorded at: 2026-07-16T21:31:00Z
+- Task130 architecture/invariant reviewer
+  `019f6cd3-79b7-7d93-bb5d-b2459d5c8dc8` returned `NEEDS-CHANGES` for exact
+  candidate `dbbf0794625554f9bc3b45901853a17c4aedf166`. Its only finding is
+  that the latest Task5B claim status used explanatory prose instead of the
+  canonical durable `ready-for-review` value required by
+  `docs/agentic/software-factory.md`.
+- The finding is valid and claim-only. The completed reviewer and still-running
+  Task130 executability reviewer were stopped because any forward correction
+  makes their exact-revision scope stale. No Task130 production or test defect
+  was reported; the reviewer independently observed the 18-test suite passing.
+- Repair worker `019f6cd6-f4d2-7df1-8740-8d399c8f72cb` owns only
+  `docs/agentic/claims/task-130-resident-full-vision-xai-harness.md` in the
+  existing candidate worktree. Its prompt explicitly approves task-scoped SDD
+  if relevant and requires one forward commit, canonical status, 18 focused
+  tests, typecheck, diff checking, factory readiness, exact cumulative
+  three-path scope, clean state, and non-symlinked dependencies.
+- After coordinator admission, Task130 receives two entirely fresh reviews at
+  the corrected exact revision. Task129 reviews continue independently. Full
+  verification, integration, releases, Task139, providers, network,
+  credentials, external services, push, reset, and every `neo` action remain
+  closed.
