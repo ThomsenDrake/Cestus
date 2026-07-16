@@ -15679,3 +15679,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Re-attestation does not authorize edits, SDD, full verification, release
   records by reviewers, Task129-MFA, Task139, providers/network/external
   activity, push, reset, or any `neo` action.
+
+## RV-1-E-607 — Task135D and Task137A post-v2 re-attestation approved
+
+- Recorded at: 2026-07-16T18:46:20Z
+- Architecture/invariant reviewer
+  `019f6c36-dcbc-7833-ba6a-c1b44760f22e` returned unqualified
+  `APPROVED` for both Task135D and Task137A at exact checkpoint
+  `85e5c6cbc86f4d636702ce825baf21eb7d7ac89c`.
+- Executability/adversarial reviewer
+  `019f6c36-cf1a-7a21-8191-65bad0064e39` initially proposed computed
+  `module["require"]` access as a blocker. The coordinator applied the frozen
+  bounded-assurance review contract: arbitrary computed expressions are
+  explicitly outside the v1 model, while the active corpus prohibits the
+  exact direct `require` and `module.require` forms and may not gain a
+  twenty-first mutation during review. The reviewer then returned unqualified
+  `APPROVED` for Task135D, Task137A, and overall at the same checkpoint.
+- Computed CommonJS element access is retained as proposed nonblocking
+  hardening for a future coordinator-approved policy version. No active
+  grammar, corpus, source, test, marker, ownership, or acceptance scope changed.
+- Both exact commands, 12 and 26 test counts, the single 8/20 policy marker,
+  typecheck, diff checking, factory readiness, Task136 markers
+  `29/1/20/29/1/15`, repository 29/3 stop, literal blobs, clean state, and
+  non-symlinked dependency checks are approved for strict release evidence.
+- The coordinator may append Task135D and then Task137A strict v4 records in
+  graph order. Full verification, Task129-MFA implementation, Task139,
+  providers/network/external activity, push, reset, and every `neo` action
+  remain closed.
