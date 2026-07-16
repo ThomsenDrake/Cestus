@@ -14657,3 +14657,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   is required.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-567 — Corrected-contract candidate reviews active
+
+- Architecture/invariant reviewer
+  `019f6b9b-dba2-7312-95bc-0e972dec38a4` and
+  executability/command reviewer
+  `019f6b9b-db10-7500-b8a1-270db351cc97` are active, read-only, and reviewing
+  exact candidate `9500011940ed27dd8b9738cd5cef218752fe96ad` under the
+  dual-approved public-handle correction.
+- Both must run the focused six-file suite, standalone typecheck, real
+  seven-stage terminal gate with exact marker comparison, exact scope, diff,
+  factory, clean-checkout, and absent-link checks. The architecture reviewer
+  additionally verifies protected-trigger/public-companion semantics.
+- Review work does not authorize subagent-driven development or acceptance
+  expansion. Both must return unqualified **APPROVED** before integration.
+- Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
