@@ -12901,3 +12901,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   coordinator integration or Task139 resume. Full verification, live/provider/
   network/credential/Nous activity, reset credits, push, and every `neo` action
   remain closed.
+
+## RV-1-E-479 — Task136 Recovery-7 rejected for un-linkable ABIs
+
+- Release-authority reviewer `019f684b-c8f9-7e63-90fe-9b90c2b3d94a`
+  returned unqualified **APPROVED**, but independent dispatch-executability
+  reviewer `019f684b-cd1e-7550-a8e4-b942b10f5a77` returned
+  **NEEDS-CHANGES** for exact candidate
+  `980844b9a0745fd37f8779efd72f2d1b22c0c8e1`.
+- The active provider contract requires `mounted-provider-authority.ts` to name
+  runtime-factory token and mounted-workspace types that it simultaneously says
+  are non-exported, and `mountProviderAuthority` lacks the assembly token needed
+  to prove permit authority. The active gateway contract likewise requires a
+  separate scheduler-completion module to name a source-local, non-exported
+  `GatewayIssuedExecutionClaim`.
+- Candidate `980844b9a0745fd37f8779efd72f2d1b22c0c8e1` must not be integrated or
+  used to resume Task139. The same documentation owner has a bounded Recovery-8
+  authorization to make both ABIs linkable through source-only opaque nominal
+  types, exact sole-importer policy, and a complete assembly-token bridge while
+  preserving the validated v4 checker, fixture, graph, and command closure.
+
+## RV-1-E-480 — Task137A Recovery-5 candidate admitted to review
+
+- Candidate `9206637ebd9725132978039c5ae2870e7edfba51` is one clean descendant
+  of rejected `d89532efd8dae50dd23813d16d8c32e637d42771`; relative to that base it
+  changes only the Task137A claim and import-policy test helper while preserving
+  the complete six-path Task137A lineage ceiling.
+- Fresh coordinator admission from a separate detached checkout passed the
+  literal CF-1R25 gate at six files and 81 tests, its embedded typecheck,
+  negative source-index search, factory readiness, lineage and physical-
+  checkout assertions, plus a separate standalone typecheck, exact-range diff,
+  and clean-checkout checks.
+- Mounted-authority/lifecycle reviewer
+  `019f6850-9464-7171-b090-4889729e72b2` and adversarial TypeScript semantic-
+  policy reviewer `019f6850-9f83-72c1-948c-480a9558dc1d` are pinned and read-
+  only on the exact candidate. Both must return unqualified **APPROVED** before
+  coordinator integration.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, and every `neo` action remain closed.
