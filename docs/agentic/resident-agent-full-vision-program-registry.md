@@ -16626,3 +16626,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   is read-only and does not authorize SDD, implementation edits, full
   verification, integration, releases, Task139, providers, network,
   credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-635 — Pure-classifier exact-revision reviews dispatched
+
+- Recorded at: 2026-07-16T21:27:14Z
+- Task129 exact candidate
+  `829e4043505c8d141c716834957644ac16808a75` is under fresh read-only
+  architecture/invariant review `019f6cd3-6f8a-7ec3-a4e9-09f2f01ad7fe`
+  and executability/adversarial review
+  `019f6cd3-7538-7683-accc-16755ce12176`.
+- Task130 exact candidate
+  `dbbf0794625554f9bc3b45901853a17c4aedf166` is under fresh read-only
+  architecture/invariant review `019f6cd3-79b7-7d93-bb5d-b2459d5c8dc8`
+  and executability/adversarial review
+  `019f6cd3-8039-7341-8977-54d249d19446`.
+- All four reviews use Terra/xhigh and exact parent
+  `419da41b71df7e044e00822b16a796a15889fe5d`. Each must finish with an
+  unqualified `APPROVED`; any unresolved finding blocks only its candidate.
+  Review work does not authorize SDD, edits, full verification, integration,
+  releases, Task139, providers, network, credentials, external services,
+  push, reset, or any `neo` action.
