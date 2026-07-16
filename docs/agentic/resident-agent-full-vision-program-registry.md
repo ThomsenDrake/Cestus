@@ -14904,3 +14904,13 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, subagent-driven development, full
   verification, acceptance expansion, release records, external-service
   activity, Task139, push, reset credit, or any `neo` action.
+
+## RV-1-E-580 — Exact-SHA reviewer role-label correction
+
+- RV-1-E-579 transposed the two reviewer role labels during asynchronous task
+  creation. The immutable prompts and actual responsibilities govern:
+  `019f6bc6-d17b-7702-b77c-1ae8ec7f9308` is the architecture/invariant
+  reviewer, and `019f6bc6-d165-70b3-ba64-6c5768949c0f` is the executability/
+  adversarial-test reviewer.
+- Candidate SHA, base SHA, review independence, commands, stop conditions, and
+  every closure remain unchanged. This correction grants no new authority.
