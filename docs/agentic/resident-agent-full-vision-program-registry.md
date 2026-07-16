@@ -16290,3 +16290,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   run full verification, integrate, append a release record, work on Task129,
   Task130, or Task139, use providers or external services, push, reset, or
   touch `neo`.
+
+## RV-1-E-624 — Task129-MFA fail-closed candidate admitted for final review
+
+- Recorded at: 2026-07-16T20:42:54Z
+- Repair worker `019f6ca2-97a8-7443-81de-ed7c82491298` produced clean
+  forward revision `ab33c40f408e4234cbfedfa7e37d90bdfbf92a86` with parent
+  `525f5602dc2aeb755c2a5fb3e368b4cb56012db2`. Its seven-path repair preserves
+  the cumulative original eleven-path Task129-MFA scope from exact base
+  `2b81a542c6ea391bfb901443acfc04366bd4f3f5`.
+- The repair guards hostile concurrency classification, aligns additive
+  provider-feasibility secret-material checks across classifier, ontology,
+  and recorder, retains all earlier coarse secret rejection, and keeps safe
+  OAuth/credential labels valid. Causal RED was three failed files and four
+  failed assertions inside the fixed allocation; identical GREEN is five
+  files and 129 tests with one 8/20 Task137 marker.
+- Coordinator admission independently passed exact 129-test GREEN, typecheck,
+  diff checking, factory readiness, Task136 markers `29/1/20/29/1/15`, exact
+  ancestry and cumulative scope, clean tracked state, private-export audit,
+  non-symlinked dependencies, and no provider, network, credential, OAuth, or
+  external-service execution path. Full verification was not run.
+- Two entirely fresh read-only reviewers must approve this exact revision.
+  Their Task137 reference is the finite
+  `task137-authority-import-grammar.v2` and
+  `task137-authority-import-corpus.v2` in the bounded test-support policy; no
+  Task137 JSON contract is required or permitted.
+- Review work does not authorize edits, subagent-driven development,
+  integration, release records, Task129, Task130, Task139, full verification,
+  providers, network, credentials, external services, push, reset, or any
+  `neo` action.
