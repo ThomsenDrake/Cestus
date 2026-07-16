@@ -13089,3 +13089,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   entirely new exact-SHA reviews. Full verification, live/provider/network/
   credential/Nous activity, reset credits, push, and every `neo` action remain
   closed.
+
+## RV-1-E-487 — Task137A Recovery-7 rejected by committed-byte typecheck
+
+- Fresh owner `019f686e-d299-7280-ad6b-f93267e11b18` produced candidate
+  `3a2fe83141500c31c9e13b7929d5e308fb16a5ec`, one clean descendant of
+  rejected `e01e8b77546ba139bad96e280ce3a689f271885f` that changes only the
+  Task137A claim and test-owned import-policy analyzer.
+- Coordinator admission removed the leftover ignored dependency symlink and
+  ran the exact literal Task137A command from committed HEAD. All six files and
+  83 tests passed, but the command then failed strict typecheck with TS18048 at
+  import-policy analyzer lines 1028 and 1033: an optional-chain predicate does
+  not narrow `binding: Binding | undefined` before assigning its constant and
+  object-root fields.
+- Candidate `3a2fe83141500c31c9e13b7929d5e308fb16a5ec` must not be integrated or
+  reviewed. The same fresh owner has one bounded Recovery-8 authorization for
+  a minimal compiler-safe repair on branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-8` while
+  preserving all semantic counterexamples and 83 tests. Task-scoped
+  subagent-driven development remains explicitly approved if relevant with one
+  writer.
+- Recovery-8 must pass standalone typecheck and the literal Task137A gate from
+  final committed bytes, remove the temporary dependency symlink, and return
+  one clean candidate for fresh exact-SHA reviews. Full verification,
+  live/provider/network/credential/Nous activity, reset credits, push, and every
+  `neo` action remain closed.
