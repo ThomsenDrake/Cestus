@@ -13795,3 +13795,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   admission and two new reviews.
 - Full verification, source dispatch, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-519 — Task136 Recovery-14 assigned
+
+- Fresh documentation owner `019f6b0c-8192-7b12-8804-b78a4dccbd7e` is active
+  and pinned in an isolated worktree from exact rejected candidate
+  `8bee4b0f8ad774329b2301895316c96c4e21794f`, creating branch
+  `codex/task-136-interface-reconciliation-recovery-11`.
+- The owner must resolve RV-1-E-518 with a focused executable fixture and
+  harmless controls while preserving the approved release graph, command
+  cards, and three-path ceiling. Documentation work does not authorize
+  subagent-driven development.
+- The completed Recovery-13 reviewers are archived. The owner must return one
+  immutable candidate for fresh admission and review; no approval carries
+  forward.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
