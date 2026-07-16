@@ -16742,3 +16742,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Review work does not authorize SDD, edits, full verification, integration,
   releases, Task139, providers, network, credentials, external services,
   push, reset, or any `neo` action.
+
+## RV-1-E-640 — Task129 approved and corrected Task130 candidate under review
+
+- Recorded at: 2026-07-16T21:48:47Z
+- Task129 architecture/invariant reviewer
+  `019f6ce3-2e50-7561-a67c-3ad557940d15` and executability/adversarial
+  reviewer `019f6ce3-3482-7d62-bed6-5f99b2e2cf8d` both returned unqualified
+  `APPROVED` for exact candidate
+  `6387c735cd2168f1546cf05a9ffd27136a345e54`. Both reported no findings,
+  exact three-path scope, clean ancestry, and independent 16-test evidence;
+  the bounded static gates also passed.
+- Task130 exact-contract repair committed candidate
+  `192a0707cca0a107caaf1d41eff163408e1868b7` over status repair
+  `fc3111ef34a1f92d029f75cce2ac43f60b01f929`. Its causal typecheck RED proved
+  the old independent blocked unions accepted a mismatched diagnostic; GREEN
+  uses the design's correlated mapped union without changing the exact
+  18-test runtime count. The latest claim status remains `ready-for-review`.
+- Independent coordinator admission passed **1 file / 18 tests**, typecheck,
+  diff checking, factory readiness, exact cumulative three-path scope, clean
+  state, and non-symlinked dependencies. Full verification was not run.
+- Fresh read-only Task130 architecture/invariant reviewer
+  `019f6ce7-0809-7201-8ebf-5c36ca034db8` and executability/adversarial
+  reviewer `019f6ce7-0d57-7891-9ca9-ff8640a27e17` use Terra/xhigh and are
+  bound to exact candidate `192a0707cca0a107caaf1d41eff163408e1868b7`.
+- Task129 is eligible for integration only after Task130 also receives both
+  required approvals, preserving graph-order integration of both candidates.
+  Reviews do not authorize SDD, edits, full verification, integration,
+  releases, Task139, providers, network, credentials, external services,
+  push, reset, or any `neo` action.
