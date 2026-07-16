@@ -17088,3 +17088,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development, edits, full
   verification, integration, release records, Task139, providers, network,
   credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-650 — Task135B corrected contract reviews active
+
+- Recorded at: 2026-07-16T23:28:00Z
+- Fresh architecture/invariant reviewer
+  `019f6d1b-925e-7ba3-87d4-696b3dccbcbe` and
+  executability/finite-scope reviewer
+  `019f6d1b-96bd-7c12-a14b-40af6784ec8d` are read-only in separate
+  detached worktrees at exact repaired revision
+  `6b203d03d2342cee2c8d8712710a3ad61600a98a` using Terra/xhigh.
+- Both must confirm every RV-1-E-649 finding is repaired, the one-admission
+  model remains coherent with released Task137A, and no new upstream or public
+  capability is introduced. Both must return unqualified **APPROVED** before
+  the implementation prompt may supply this revision as
+  `TASK135B_CORRECTION_SHA`.
+- Review work does not authorize subagent-driven development, edits, full
+  verification, integration, release records, Task139, providers, network,
+  credentials, external services, push, reset, or any `neo` action.
