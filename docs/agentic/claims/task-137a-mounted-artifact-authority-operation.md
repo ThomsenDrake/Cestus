@@ -21,7 +21,7 @@ Status: ready-for-gate-repair-integration (Recovery-17 code candidate)
 
 ## Bounded v1 Task137 Authority Policy
 
-Status: in-progress
+Status: ready-for-coordinator-admission
 
 Plan: `docs/superpowers/plans/2026-07-16-task136-task137-bounded-assurance-implementation.md`, Task 3.
 Branch: `codex/task137-authority-boundary-v1`.
@@ -41,6 +41,22 @@ Owned files:
 Baseline reconstruction: the six preserved Task137 paths were restored from the
 source evidence above onto the current program revision. This is evidence
 reconstruction only; prior review and approval do not carry forward.
+
+Contract versions:
+
+- `task137-authority-import-grammar.v1`
+- `task137-authority-import-corpus.v1`
+
+Task 3 RED/GREEN evidence:
+
+- RED: the exact six-file Task137 focused command failed because
+  `./support/task137-authority-boundary-policy.js` was not present; the other
+  five files passed with 70 tests.
+- GREEN: the exact six-file Task137 focused command passed with 74 tests and
+  emitted `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`.
+- Verification: `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` passed. Full verification, integration, push,
+  external services, `neo`, and Task139 were not run or touched.
 
 Verification evidence:
 
