@@ -13011,3 +13011,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Both must return unqualified **APPROVED** before integration. Full
   verification, live/provider/network/credential/Nous activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-484 — Task136 Recovery-8 rejected for incomplete value-flow contracts
+
+- Release-authority reviewer `019f6862-aee4-7720-87ac-f71ce15a2803`
+  returned unqualified **APPROVED**, but independent dispatch-ABI reviewer
+  `019f6862-f619-7f01-8f04-ea96649a8edf` returned **NEEDS-CHANGES** for exact
+  candidate `a96253ee85ed8c969b539653e159ed5b5cdd9203`.
+- The PM authority contract is not executable as written: the runtime factory
+  must supply live assembly/workspace state to PM while PM value-imports the
+  runtime factory, and neither the factory nor FC-Core/P2 owns a declared
+  cycle-free operation that produces and carries the live provider authority.
+- Scheduler completion likewise receives only an opaque claim plus run/request
+  IDs; the actual completion locator remains in tool-gateway private state, and
+  no declared injected operation lets scheduler completion invoke the sole
+  `gateway.completeTool` route.
+- Import-policy verification is temporally incomplete. Task135D's imports test
+  runs before its required PM importer exists, and G136-SC's imports test runs
+  before G136-R's locator consumer exists; no final-owner command reruns those
+  policies after the later consumer files land.
+- Candidate `a96253ee85ed8c969b539653e159ed5b5cdd9203` must not be integrated or
+  used to resume Task139. The same documentation owner has one bounded
+  Recovery-9 authorization to define complete cycle-free value bridges,
+  executable completion flow, and final-consumer import-policy ownership while
+  preserving the 28-card v4 closure, 18 REDs, 28 commands, and all prior safety
+  contracts. Documentation-only work does not authorize subagent-driven
+  development. Full verification, source dispatch, live/provider/network/
+  credential/Nous activity, reset credits, push, and every `neo` action remain
+  closed.
