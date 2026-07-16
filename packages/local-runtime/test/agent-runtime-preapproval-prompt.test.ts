@@ -21,7 +21,10 @@ import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
-import { createMountedPromptArtifactStore } from "../src/mounted-prompt-artifact-store.js";
+import {
+  createMountedPromptArtifactStore,
+  type MountedPromptArtifactReadResult
+} from "../src/mounted-prompt-artifact-store.js";
 
 const dirs: string[] = [];
 const handles: LocalRuntimeHandle[] = [];
@@ -216,12 +219,13 @@ describe("local runtime portable pre-approval prompt", () => {
     if (claim === undefined || claim.type !== "agent.task.orchestration.claimed" || production?.schemaVersion !== "agent-production-prompt-binding.v1") {
       throw new Error("Expected final-read regression mounted prompt claim facts.");
     }
+    const claimedWorkflow = specialistWorkflowDescriptorFor(claim.payload.runType);
     const { consumeMountedProductionPromptReadbackWitness } = await import("../../agent/src/production-prompt-readback.js");
     await expect(consumeMountedProductionPromptReadbackWitness(deferredWitness, {
       workspaceId,
       taskId: claim.payload.taskId,
       runId: claim.payload.attemptId,
-      runType: claim.payload.runType,
+      runType: claimedWorkflow.runType,
       scopeApplicabilityHash: production.scopeApplicabilityHash,
       contextPackRefs: deferredEnvelope.manifest.contextPackRefs
     })).rejects.toThrow(/mount|process|current/i);
@@ -421,9 +425,7 @@ describe("local runtime portable pre-approval prompt", () => {
     let freshRunner: import("../../agent/src/task-orchestrator.js").TaskOrchestratorRunnerRegistry | undefined;
     let freshStoreReads = 0;
     let lastRecoveredArtifactHash: `sha256:${string}` | undefined;
-    let freshReadback: Awaited<ReturnType<typeof createMountedPromptArtifactStore>> extends infer Store
-      ? Store extends { read: (...args: never[]) => infer Result } ? Awaited<Result> : never
-      : never;
+    let freshReadback: MountedPromptArtifactReadResult | undefined;
     vi.doMock("../../agent/src/index.js", async () => {
       const actual = await vi.importActual<typeof import("../../agent/src/index.js")>("../../agent/src/index.js");
       const registrarEvidence = Object.freeze({
@@ -456,7 +458,7 @@ describe("local runtime portable pre-approval prompt", () => {
               freshStoreReads += 1;
               lastRecoveredArtifactHash = readInput.inputArtifactHash;
               const result = await store.read(readInput);
-              freshReadback = result as typeof freshReadback;
+              freshReadback = result;
               return result;
             }
           });
@@ -488,26 +490,31 @@ describe("local runtime portable pre-approval prompt", () => {
       approvedRunId: "run_preapproval_factory_boundary"
     });
     await expect(freshRunner.dispatch(recoveryDispatch)).rejects.toThrow(/not configured for autonomous dispatch/i);
-    if (freshReadback?.witness === undefined) throw new Error("Expected fresh factory recovery to issue a mounted V1 witness.");
-    expect(freshReadback.witness).not.toBe(firstWitness);
-    const production = freshReadback.envelope.manifest.production;
+    const recoveredReadback = freshReadback;
+    if (recoveredReadback === undefined || recoveredReadback.witness === undefined) {
+      throw new Error("Expected fresh factory recovery to issue a mounted V1 witness.");
+    }
+    const freshWitness = recoveredReadback.witness;
+    expect(freshWitness).not.toBe(firstWitness);
+    const production = recoveredReadback.envelope.manifest.production;
     if (production?.schemaVersion !== "agent-production-prompt-binding.v1") {
       throw new Error("Expected factory recovery V1 artifact.");
     }
+    const recoveredWorkflow = specialistWorkflowDescriptorFor(recoveryDispatch.runType);
     const expectedRecovered = {
       workspaceId,
       taskId: checkpoint.payload.taskId,
       runId: checkpoint.payload.attemptId,
-      runType: checkpoint.payload.runType,
+      runType: recoveredWorkflow.runType,
       scopeApplicabilityHash: production.scopeApplicabilityHash,
-      contextPackRefs: freshReadback.envelope.manifest.contextPackRefs
+      contextPackRefs: recoveredReadback.envelope.manifest.contextPackRefs
     };
     const { consumeMountedProductionPromptReadbackWitness: consumeFreshWitness } = await import("../../agent/src/production-prompt-readback.js");
     await expect(consumeFreshWitness(firstWitness, expectedRecovered)).rejects.toThrow(/mounted.*prompt.*readback|required/i);
     await expect(consumeFreshWitness(copiedOldWitness, expectedRecovered)).rejects.toThrow(/mounted.*prompt.*readback|required/i);
-    await expect(consumeFreshWitness(freshReadback.witness, expectedRecovered))
+    await expect(consumeFreshWitness(freshWitness, expectedRecovered))
       .resolves.toMatchObject({ envelope: { manifest: { inputArtifactHash: checkpoint.payload.promptArtifactHash } } });
-    await expect(consumeFreshWitness(freshReadback.witness, expectedRecovered)).rejects.toThrow(/consumed|required/i);
+    await expect(consumeFreshWitness(freshWitness, expectedRecovered)).rejects.toThrow(/consumed|required/i);
 
     vi.doUnmock("../../agent/src/index.js");
     vi.doUnmock("../src/mounted-prompt-artifact-store.js");

@@ -299,3 +299,45 @@ Final candidate evidence from the uncommitted replacement bytes:
 - The temporary ignored `node_modules` symlink is removed before commit.
 - Full verification, provider/network/credential/Nous/reset-credit/`neo`,
   merge/rebase/push, and self-integration remain excluded.
+
+## Coordinator admission rejection of `21b1df36` and fixture-only compiler repair — 2026-07-15
+
+Coordinator admission rejected `21b1df36ebc84a889d56627fc15799f30c349dc2`
+before external review. Its independent focused suite passed 98 tests, but the
+coordinator's fresh standalone typecheck reported that the recovery fixture
+passed the broad `TaskOrchestratorRunType` from checkpoint/claim payloads where
+the mounted readback consumer deliberately accepts only the six production
+specialist run types. The fixture also declared `freshReadback` through a
+conditional type that omitted `undefined`, so its post-dispatch capture was
+reported as used before assignment. The widened expected-recovery object
+produced the same production-run-type failure at every witness-consumption
+call.
+
+The local canonical dependency link used for this bounded repair did not
+reproduce those diagnostics on the rejected bytes: its standalone
+`npm run typecheck` exited 0 before editing. That compiler-version or resolved
+dependency mismatch is recorded rather than treated as a reason to leave the
+contract implicit.
+
+The fixture repair does not alter production authority code. It derives each
+mounted-readback expectation run type from
+`specialistWorkflowDescriptorFor` applied to the real claimed/recovered run,
+whose descriptor cannot represent `ontology-bootstrap`. It captures the fresh
+production-store result as an explicit
+`MountedPromptArtifactReadResult | undefined`, returns the actual result from
+the production store seam without a cast, and narrows a local recovered result
+after the factory runner dispatch before consuming its witness. Thus the
+fresh factory recovery and final-ledger-read mount-drift regressions retain
+their same production paths and counterfactuals, while TypeScript can prove
+the post-dispatch witness capture by control flow.
+
+Precommit replacement evidence from the repaired bytes is: the exact focused
+eight-file CF-1R11/R12 suite passed 98 tests; a fresh standalone
+`npm run typecheck` exited 0; all three required negative `rg` gates passed;
+`git diff --check` passed; and `npm run factory:check` reported
+`factory-readiness passed`. The temporary ignored `node_modules` symlink to
+the canonical dependency tree was removed before this candidate commit. The
+coordinator must still inspect the committed exact range, run its fresh
+standalone typecheck from committed bytes, and obtain fresh external reviews.
+Full verification, provider/network/credential/Nous/reset-credit/`neo`,
+merge/rebase/push, and self-integration remain excluded.
