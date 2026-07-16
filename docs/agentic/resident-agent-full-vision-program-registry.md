@@ -13324,3 +13324,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   typecheck from one immutable candidate before coordinator admission.
 - Full verification, integration, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-497 — Task136 Recovery-11 candidate admitted to review
+
+- Candidate `7856505c58df91dcfdd4d288d19e39448588eb8e` is one clean
+  descendant of rejected `8e92d090e747eebcada57da2247cb3021ccc4d7f` and changes exactly
+  the Task136 reconciliation claim, bounded-loop plan, and provider-credentials
+  plan. The candidate removes the executable fixture's public mounted-runtime
+  constructor and caller-supplied runtime grant path, while adding two named
+  RED mutations that restore those routes.
+- Fresh coordinator admission from committed bytes proved that the literal
+  no-input runner exits 1 only at the frozen `unknown, duplicate, reordered, or
+  missing active record` boundary. The same-runner fixture retained one valid
+  28-record GREEN and all 18 existing plus two timing REDs; the command
+  validator resolved all 28 exact Vitest commands; and the extracted
+  TypeScript fixture retained one executable GREEN plus the four prior and two
+  new public-mint REDs.
+- `git diff --check`, factory readiness, exact one-commit ancestry, exact
+  three-path scope, exact HEAD, clean checkout, and absent dependency-link
+  checks passed. The coordinator's gate extractors wrote no candidate files.
+- Two entirely fresh exact-SHA reviews are required: one for private mounted
+  runtime/provider authority and release-graph safety; one for executable
+  TypeScript ABI, source-level import policy, dispatchability, and adversarial
+  external-caller routes. Both must return unqualified **APPROVED** before
+  integration or Task139 resumption.
+- Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
