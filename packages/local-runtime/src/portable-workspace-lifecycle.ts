@@ -70,6 +70,22 @@ interface ActiveAdmission {
   readonly verifiedLease?: ClaimReconciliationAdmissionTuple["verifiedLease"];
 }
 
+interface MountedArtifactAuthorityLifecycleState {
+  readonly currentAdmission: () => ActiveAdmission | undefined;
+  readonly currentRevision: () => number;
+  readonly hasPendingReconciliation: () => boolean;
+}
+
+export interface CurrentMountedArtifactAuthorityAdmission {
+  readonly admission: WorkspaceAdmissionSnapshot;
+  readonly facts: PortableWorkspaceMountedFacts;
+}
+
+const mountedArtifactAuthorityLifecycleStates = new WeakMap<
+  PortableWorkspaceLifecyclePorts,
+  MountedArtifactAuthorityLifecycleState
+>();
+
 /**
  * Creates the availability façade without exposing a ledger, writer, provider,
  * tool, runtime, or fallback store. A generation is issued for one admission
@@ -204,7 +220,13 @@ export function createPortableWorkspaceLifecyclePorts(
     }
   });
 
-  return Object.freeze({ authority, supervisorLease, activeClaimReconciliation });
+  const ports: PortableWorkspaceLifecyclePorts = Object.freeze({ authority, supervisorLease, activeClaimReconciliation });
+  mountedArtifactAuthorityLifecycleStates.set(ports, {
+    currentAdmission: () => active,
+    currentRevision: () => revision,
+    hasPendingReconciliation: () => pendingOutage !== undefined || pendingOutageClaim !== undefined
+  });
+  return ports;
 
   function requireCurrentAdmission(admission: WorkspaceAdmissionSnapshot): ActiveAdmission {
     const current = active;
@@ -306,6 +328,54 @@ export function createPortableWorkspaceLifecyclePorts(
       pendingOutageClaim = undefined;
     }
   }
+}
+
+/** Source-path-only membership check for the mounted artifact authority. */
+export function assertPortableWorkspaceLifecyclePortsForMountedArtifactAuthority(
+  lifecyclePorts: PortableWorkspaceLifecyclePorts
+): void {
+  if (!mountedArtifactAuthorityLifecycleStates.has(lifecyclePorts)) {
+    throw new Error("portable workspace lifecycle ports are not registered");
+  }
+}
+
+/**
+ * Returns no caller-supplied admission. The exact Task125-issued admission is
+ * retained privately while mounted facts are copied at this inspection boundary.
+ */
+export function inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority(
+  lifecyclePorts: PortableWorkspaceLifecyclePorts
+): CurrentMountedArtifactAuthorityAdmission {
+  const state = mountedArtifactAuthorityLifecycleStates.get(lifecyclePorts);
+  if (state === undefined) {
+    throw new Error("portable workspace lifecycle ports are not registered");
+  }
+  const current = state.currentAdmission();
+  if (
+    current === undefined
+    || current.revision !== state.currentRevision()
+    || current.verifiedLease === undefined
+    || state.hasPendingReconciliation()
+  ) {
+    throw new Error("portable workspace admission is not currently complete");
+  }
+  return Object.freeze({
+    admission: current.snapshot,
+    facts: copyMountedFactsForAuthority(current.facts)
+  });
+}
+
+function copyMountedFactsForAuthority(facts: PortableWorkspaceMountedFacts): PortableWorkspaceMountedFacts {
+  if (facts.observedActiveClaim === undefined) {
+    return Object.freeze({ ...facts });
+  }
+  return Object.freeze({
+    ...facts,
+    observedActiveClaim: Object.freeze({
+      ...facts.observedActiveClaim,
+      causation: Object.freeze({ ...facts.observedActiveClaim.causation })
+    })
+  });
 }
 
 export function createPortableWorkspaceAvailabilityAuthority(

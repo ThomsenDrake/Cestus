@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createPortableWorkspaceLifecyclePorts,
+  inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority,
   type PortableWorkspaceLifecycleInput
 } from "../src/portable-workspace-lifecycle.js";
 import type {
@@ -20,6 +21,30 @@ const revalidate = (operation: "wake" | "resume" | "recovery") => ({
 });
 
 describe("portable workspace lifecycle authority", () => {
+  it("inspects only an exact fully leased current lifecycle admission for mounted artifact authority", async () => {
+    const fixture = createFixture({ issueLeaseReadback: true });
+    const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
+    const grant = await ports.authority.revalidate(revalidate("wake"));
+    if (!grant.ok) throw new Error("fixture must issue an admission");
+    const lease = await ports.supervisorLease.readOrAcquire(leaseInput(grant.admission));
+    if (lease.outcome !== "acquired-and-read-back") {
+      throw new Error("fixture must issue a mounted lease readback");
+    }
+
+    const inspection = inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority(ports);
+
+    expect(inspection.admission).toBe(grant.admission);
+    expect(inspection.facts).toMatchObject({
+      workspaceId: fixture.workspaceId,
+      mountInstanceId: "mount-instance:1",
+      highWaterOrdinal: 5
+    });
+    expect(Object.isFrozen(inspection.facts)).toBe(true);
+    expect(() => inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority({ ...ports })).toThrow(
+      "portable workspace lifecycle ports are not registered"
+    );
+  });
+
   it("rejects a freshly constructed matching admission before either mounted port is called", async () => {
     const fixture = createFixture();
     const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
