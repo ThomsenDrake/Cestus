@@ -13630,3 +13630,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development. Full
   verification, integration, external-service activity, reset credits, push,
   and every `neo` action remain closed.
+
+## RV-1-E-510 — Task137A Recovery-12 rejected for indirect evaluator alias
+
+- Data-flow reviewer `019f6af3-aaf5-7093-83a2-99ca12a97b4e` returned
+  **NEEDS-CHANGES** for exact candidate
+  `cbf3035ea44d843f2f8a21f51a6a24f50c1b6cb4`. No coordinator admission or
+  prior approval carries forward.
+- A guarded negative fixture assigned the global evaluator to a local alias and
+  invoked a static module-loading expression through that alias. The analyzer
+  produced no record because any bound callee is currently treated as an
+  ordinary local function rather than preserving evaluator identity.
+- The literal 6-file/89-test command, standalone typecheck, factory readiness,
+  exact range, diff, HEAD, clean checkout, and absent dependency-link checks
+  all passed. Those checks do not cover the indirect alias form.
+- The Recovery-11/Recovery-12 owner exhausted two rejected candidates. A fresh
+  owner is required from exact candidate
+  `cbf3035ea44d843f2f8a21f51a6a24f50c1b6cb4`. It must begin with the exact
+  alias fixture, preserve harmless local-evaluator controls and all existing
+  root, loader, lifecycle, and termination behavior, and remain within the
+  historical six-path ceiling.
+- Lifecycle review `019f6af3-aabb-7670-b82a-7ec38990c64c` may finish to add
+  independent findings, but cannot reverse this rejection. Full verification,
+  integration, external-service activity, reset credits, push, and every
+  `neo` action remain closed.
