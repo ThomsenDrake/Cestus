@@ -15312,3 +15312,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Strict release records remain complete only through `Task128`. Full
   verification, external services, Task139, push, reset, and every `neo`
   action remain closed.
+
+## RV-1-E-593 — Task129 opaque authority-operation repair active
+
+- Fresh worker `019f6bf0-5493-7a83-a97b-ec5637f3b905` is active from exact
+  program revision `82cd5281` with exclusive ownership of the Task129 harness
+  source, focused test, and append-only claim.
+- The new tactic is an opaque module-issued one-shot operation with private
+  capability state and one atomic mounted-owner append-and-readback port. Raw
+  append callbacks, independent mutually forgeable callbacks, plain/copied
+  operations, and event-shaped append returns are not authority.
+- The operation must bind exact normalized posture and return unavailable only
+  after strict post-await readback proves exact committed evidence plus safe,
+  distinct feasibility and readback event IDs. No-op, stale, swapped, forged,
+  accessor-backed, proxy, or malformed results must fail closed.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved. The worker must run the exact Task129 focused test,
+  typecheck, diff checking, and factory readiness, commit one clean three-path
+  candidate, and stop for two fresh exact-revision reviews.
+- Full verification, network, providers, credentials, external services,
+  self-review, self-integration, Task139, push, reset, and every `neo` action
+  remain prohibited.
