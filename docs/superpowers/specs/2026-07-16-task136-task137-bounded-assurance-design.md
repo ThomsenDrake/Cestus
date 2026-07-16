@@ -192,7 +192,7 @@ imports in these roles:
 | Owner module | Imported module | Permitted names |
 | --- | --- | --- |
 | `mounted-artifact-authority-operation.ts` | `portable-workspace-lifecycle.js` | `assertPortableWorkspaceLifecyclePortsForMountedArtifactAuthority`, `inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority`, `PortableWorkspaceLifecyclePorts`, `PortableWorkspaceMountedFacts` |
-| `mounted-artifact-authority-operation.ts` | `runtime-factory.js` | `captureFactoryIssuedMountedRuntime`, `inspectFactoryIssuedMountedRuntimeCapture`, `FactoryIssuedMountedRuntimeCapture`, `FactoryIssuedMountedRuntimeSourceHighWater`, `FactoryIssuedMountedWorkspaceSnapshot`, `LocalRuntimeHandle` |
+| `mounted-artifact-authority-operation.ts` | `runtime-factory.js` | `captureFactoryIssuedMountedRuntime`, `inspectFactoryIssuedMountedRuntimeCapture`, `FactoryIssuedMountedRuntimeCapture`, `FactoryIssuedMountedRuntimeSourceHighWater`, `FactoryIssuedMountedWorkspaceSnapshot`, plus companion type `LocalRuntimeHandle` |
 | `wake-supervisor-runtime.ts` | `mounted-artifact-authority-operation.js` | `registerMountedArtifactAuthorityIssuerForWakeRuntime` |
 | `agent-runtime-factory.ts` | `mounted-artifact-authority-operation.js` | `issueMountedArtifactAuthorityOperationForFactory` |
 | `portable-mounted-agent-artifact-stores.ts` | `mounted-artifact-authority-operation.js` | `inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores`, `MountedArtifactAuthorityOperation`, `PortableMountedArtifactAuthorityOperationInspection` |
@@ -202,9 +202,21 @@ namespace imports, import queries, re-exports, barrels, package subpath exports,
 and imports from any other owner module are rejected. The root and package
 manifests may not export a protected module or protected symbol.
 
+`LocalRuntimeHandle` is a public carrier type, not a protected authority
+symbol. Current production modules legitimately use direct type-only imports
+of it without receiving or exercising mounted-workspace authority. The five
+other names in the `runtime-factory.js` row are the protected trigger names.
+When an import declaration contains one of those trigger names, the whole
+declaration must match the operation-module role, where `LocalRuntimeHandle`
+is permitted as a companion type. A declaration that imports only
+`LocalRuntimeHandle` is outside the authority grammar and remains allowed in
+other production owners. This distinction is part of v1 and prevents the
+coarse policy from treating a widely shared type annotation as authority.
+
 ### Frozen Task137 corpus
 
-The v1 corpus has eight allowed fixtures: the five role imports above, an
+The v1 corpus has eight allowed fixtures: the five role imports above (the
+runtime-factory role includes the public `LocalRuntimeHandle` companion), an
 unrelated static import, a harmless comment/string containing a protected file
 name, and the two exact dynamic-import exemptions counted as one exemption
 fixture.
@@ -215,7 +227,8 @@ star re-export; import query; unauthorized type import; protected literal
 dynamic import; computed dynamic import; extra dynamic-import occurrence;
 direct `require`; `module.require`; `import = require`; direct `createRequire`;
 aliased `createRequire`; direct evaluator call; and direct `Function`
-constructor invocation.
+constructor invocation. `Unauthorized owner` and `wrong role symbol` concern
+protected trigger names; a handle-only type import is not a rejected fixture.
 
 The success marker is:
 

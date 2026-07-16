@@ -385,8 +385,12 @@ with the TypeScript compiler API. Reject direct loader syntax, direct
 existing harmless `Function` type annotation. Do not construct binding,
 assignment, alias, closure, or evaluator-flow state. Permit only the two exact
 dynamic-import exemptions and the five direct, unaliased named-import roles
-from the design. Inspect root and package manifests for protected exports and
-inspect barrels for protected re-exports.
+from the design. For `runtime-factory.js`, treat the five capture/inspection
+names as protected triggers and `LocalRuntimeHandle` as a public companion
+type: a declaration containing a trigger must match the operation role, while
+a handle-only type import remains outside the authority grammar. Inspect root
+and package manifests for protected exports and inspect barrels for protected
+re-exports.
 
 - [ ] **Step 5: Remove the general analyzer**
 
@@ -614,11 +618,14 @@ npm run factory:check
 
 - [ ] **Step 3: Dispatch two exact-revision reviews**
 
-Architecture reviewer verifies the five static roles, mounted-workspace and
-lifecycle invariants, and package/export boundary. Command reviewer verifies
-eight allowed, 20 rejected, two exact dynamic-import exemptions, time bounds,
-the real terminal gate, and removal of general value-flow analysis. Both bind
-the exact SHA and use the frozen-review rule.
+Architecture reviewer verifies the five static roles, the distinction between
+the five protected runtime-factory trigger names and public companion type
+`LocalRuntimeHandle`, mounted-workspace and lifecycle invariants, and the
+package/export boundary. A handle-only type import is not authority and is not
+a blocking mutation. Command reviewer verifies eight allowed, 20 rejected,
+two exact dynamic-import exemptions, time bounds, the real terminal gate, and
+removal of general value-flow analysis. Both bind the exact SHA and use the
+frozen-review rule.
 
 - [ ] **Step 4: Integrate after dual approval and evaluate Task139**
 
