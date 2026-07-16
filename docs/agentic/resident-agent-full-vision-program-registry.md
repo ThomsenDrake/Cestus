@@ -16385,3 +16385,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The worker may not change Task137 grammar/corpus, run full verification,
   integrate, append release records, work on Task129, Task130, or Task139, use
   providers or external services, push, reset, or touch `neo`.
+
+## RV-1-E-628 — Task129-MFA Unicode counterfactual corrected
+
+- Recorded at: 2026-07-16T21:00:04Z
+- Worker `019f6ca2-97a8-7443-81de-ed7c82491298` stopped cleanly without a
+  commit after the coordinator's causal expectation contradicted numeric
+  Unicode code-point order. The uncommitted finite repair is preserved.
+- The approved design's code-point order is authoritative: `U+E000` has value
+  57344 and precedes `U+10000` at 65536. JavaScript UTF-16 comparison places
+  the non-BMP value first and is the behavior the repair must replace. The
+  earlier reviewer correctly identified the implementation category but
+  misstated the expected order; the coordinator prompt repeated that error.
+- The same worker was resumed with explicit task-scoped SDD/TDD authorization
+  to retain the numeric comparator, correct the existing causal assertion to
+  `U+E000` before `U+10000`, record the prompt correction in the claim, rerun
+  the exact 129-test and bounded gates, and commit the preserved repair.
+- Scope and prohibitions remain unchanged: no Task137 grammar change, full
+  verification, providers, external services, Task139, integration, release
+  records, push, reset, or `neo` action.
