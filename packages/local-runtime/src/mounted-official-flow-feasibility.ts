@@ -6,8 +6,7 @@ import {
 import {
   eventContextSchema,
   validateKnowledgeEvent,
-  type AppendableKnowledgeEvent,
-  type KnowledgeEvent
+  type AppendableKnowledgeEvent
 } from "../../ontology/src/contracts.js";
 import { isConcurrencyConflict, type EventLedger } from "../../ontology/src/event-ledger.js";
 import {
@@ -87,7 +86,7 @@ interface MountedAuthoritySnapshot {
   readonly admissionGenerationId: string;
 }
 
-const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|private[_ -]?key|(?:^|[\s;])(?:(?:set-)?cookie\s*:|session\s*=\s*\S+)/i;
+const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)/i;
 
 export async function recordMountedOfficialFlowUnavailability(input: unknown): Promise<MountedOfficialFlowFeasibilityResult> {
   const invocation = normalizeInvocation(input);
@@ -103,19 +102,23 @@ export async function recordMountedOfficialFlowUnavailability(input: unknown): P
 
   let records: readonly SafeLedgerRecord[] | undefined;
   try {
-    records = normalizeLedgerRecords(await initial.ledger.readAll());
+    const sourceRecords = await initial.ledger.readAll();
+    const afterSourceRead = inspectCurrent(invocation.operation);
+    if (afterSourceRead === undefined || !sameInspection(initial, afterSourceRead)) {
+      return blocked("mounted-authority-stale");
+    }
+    records = normalizeLedgerRecords(sourceRecords);
   } catch {
+    const afterFailedSourceRead = inspectCurrent(invocation.operation);
+    if (afterFailedSourceRead === undefined || !sameInspection(initial, afterFailedSourceRead)) {
+      return blocked("mounted-authority-stale");
+    }
     return blocked("persistence-unconfirmed");
   }
   if (records === undefined) return blocked("persistence-unconfirmed");
 
   const sourceStatus = inspectSources(records, classification);
   if (sourceStatus !== "ok") return blocked(sourceStatus);
-
-  const afterSourceRead = inspectCurrent(invocation.operation);
-  if (afterSourceRead === undefined || !sameInspection(initial, afterSourceRead)) {
-    return blocked("mounted-authority-stale");
-  }
 
   const idempotencyKey = idempotencyKeyFor(classification, initial.snapshot);
   const expected = expectedEvent(classification, initial.snapshot, invocation, idempotencyKey);
@@ -126,18 +129,38 @@ export async function recordMountedOfficialFlowUnavailability(input: unknown): P
     if (matching.some((record) => !sameExpectedEvent(record, expected))) return blocked("record-conflict");
     const event = matching[0];
     if (event === undefined) return blocked("record-conflict");
-    return await readBackExpected(afterSourceRead.ledger, invocation.operation, afterSourceRead, expected, event.id, idempotencyKey, classification);
+    return await readBackExpected(initial.ledger, invocation.operation, initial, expected, event.id, idempotencyKey, classification);
   }
 
-  let appended: KnowledgeEvent;
   try {
-    appended = await initial.ledger.append(expected, { expectedGlobalEventCount: records.length });
+    const appendResult: unknown = await initial.ledger.append(expected, { expectedGlobalEventCount: records.length });
+    const afterAppend = inspectCurrent(invocation.operation);
+    if (afterAppend === undefined || !sameInspection(initial, afterAppend)) {
+      return blocked("mounted-authority-stale");
+    }
+    const appended = normalizeLedgerRecords([appendResult])?.[0];
+    if (appended === undefined) return blocked("persistence-unconfirmed");
+    return await readBackExpected(afterAppend.ledger, invocation.operation, afterAppend, expected, appended.id, idempotencyKey, classification);
   } catch (error) {
+    const afterFailedAppend = inspectCurrent(invocation.operation);
+    if (afterFailedAppend === undefined || !sameInspection(initial, afterFailedAppend)) {
+      return blocked("mounted-authority-stale");
+    }
     if (!isConcurrencyConflict(error)) return blocked("persistence-unconfirmed");
     let concurrent: readonly SafeLedgerRecord[] | undefined;
+    let afterConcurrentRead: { readonly snapshot: MountedAuthoritySnapshot; readonly ledger: EventLedger } | undefined;
     try {
-      concurrent = normalizeLedgerRecords(await initial.ledger.readAll());
+      const concurrentRecords = await afterFailedAppend.ledger.readAll();
+      afterConcurrentRead = inspectCurrent(invocation.operation);
+      if (afterConcurrentRead === undefined || !sameInspection(initial, afterConcurrentRead)) {
+        return blocked("mounted-authority-stale");
+      }
+      concurrent = normalizeLedgerRecords(concurrentRecords);
     } catch {
+      const afterFailedConcurrentRead = inspectCurrent(invocation.operation);
+      if (afterFailedConcurrentRead === undefined || !sameInspection(initial, afterFailedConcurrentRead)) {
+        return blocked("mounted-authority-stale");
+      }
       return blocked("concurrency-conflict");
     }
     if (concurrent === undefined) return blocked("concurrency-conflict");
@@ -147,21 +170,16 @@ export async function recordMountedOfficialFlowUnavailability(input: unknown): P
     if (matching.some((record) => !sameExpectedEvent(record, expected))) return blocked("record-conflict");
     const event = matching.find((record) => sameExpectedEvent(record, expected));
     if (event === undefined) return blocked("concurrency-conflict");
-    const current = inspectCurrent(invocation.operation);
-    if (current === undefined || !sameInspection(initial, current)) return blocked("mounted-authority-stale");
-    return await readBackExpected(current.ledger, invocation.operation, current, expected, event.id, idempotencyKey, classification);
+    if (afterConcurrentRead === undefined) return blocked("mounted-authority-stale");
+    return await readBackExpected(afterConcurrentRead.ledger, invocation.operation, afterConcurrentRead, expected, event.id, idempotencyKey, classification);
   }
-
-  const afterAppend = inspectCurrent(invocation.operation);
-  if (afterAppend === undefined || !sameInspection(initial, afterAppend)) return blocked("mounted-authority-stale");
-  return await readBackExpected(afterAppend.ledger, invocation.operation, afterAppend, expected, appended.id, idempotencyKey, classification);
 }
 
 function normalizeInvocation(value: unknown): Invocation | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
-    return undefined;
-  }
   try {
+    if (typeof value !== "object" || value === null || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
+      return undefined;
+    }
     const expected = ["operation", "witness", "occurredAt", "correlationId"] as const;
     const keys = Reflect.ownKeys(value);
     if (keys.length !== expected.length || keys.some((key) => typeof key !== "string" || !expected.includes(key as typeof expected[number]))) {
@@ -358,15 +376,18 @@ async function readBackExpected(
   if (beforeReadback === undefined || !sameInspection(inspection, beforeReadback)) return blocked("mounted-authority-stale");
   let records: readonly SafeLedgerRecord[] | undefined;
   try {
-    records = normalizeLedgerRecords(await ledger.readStream(expected.streamId));
+    const readbackRecords = await ledger.readStream(expected.streamId);
+    const afterReadback = inspectCurrent(operation);
+    if (afterReadback === undefined || !sameInspection(inspection, afterReadback)) return blocked("mounted-authority-stale");
+    records = normalizeLedgerRecords(readbackRecords);
   } catch {
+    const afterFailedReadback = inspectCurrent(operation);
+    if (afterFailedReadback === undefined || !sameInspection(inspection, afterFailedReadback)) return blocked("mounted-authority-stale");
     return blocked("persistence-unconfirmed");
   }
   if (records === undefined) return blocked("persistence-unconfirmed");
   const record = records.find((candidate) => candidate.id === eventId);
   if (record === undefined || !sameExpectedEvent(record, expected)) return blocked("persistence-unconfirmed");
-  const afterReadback = inspectCurrent(operation);
-  if (afterReadback === undefined || !sameInspection(inspection, afterReadback)) return blocked("mounted-authority-stale");
   if (!record.id.startsWith("evt_") || !Number.isInteger(record.sequence) || record.sequence < 1) return blocked("persistence-unconfirmed");
   return Object.freeze({
     kind: "unavailable" as const,

@@ -259,34 +259,137 @@ describe("mounted official-flow feasibility", () => {
   it("rejects an event-shaped append result that lacks durable readback", async () => {
     const fixture = await feasibilityFixture();
     const ledger = fixture.handle.ledger;
+    let appendAttempt = 0;
     Object.defineProperty(ledger, "append", {
       configurable: true,
-      value: async (event: AppendableKnowledgeEvent) => ({
-        ...event,
-        id: "evt_fake_append",
-        sequence: 1
-      } as unknown as KnowledgeEvent)
+      value: async (event: AppendableKnowledgeEvent) => {
+        appendAttempt += 1;
+        if (appendAttempt === 1) {
+          return { ...event, id: "evt_fake_append", sequence: 1 } as unknown as KnowledgeEvent;
+        }
+        if (appendAttempt === 2) return undefined as unknown as KnowledgeEvent;
+        if (appendAttempt === 3) {
+          const accessor = { ...event, sequence: 1 } as Record<string, unknown>;
+          Object.defineProperty(accessor, "id", { enumerable: true, get: () => { throw new Error("hostile append id"); } });
+          return accessor as unknown as KnowledgeEvent;
+        }
+        return new Proxy({ ...event, id: "evt_fake_proxy", sequence: 1 }, {
+          getOwnPropertyDescriptor() { throw new Error("hostile append proxy"); }
+        }) as unknown as KnowledgeEvent;
+      }
     });
-    expect(await record(fixture)).toMatchObject({
-      kind: "blocked", category: "persistence-unconfirmed", retry: "after-ledger-refresh"
-    });
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await expect(record(fixture)).resolves.toMatchObject({
+        kind: "blocked", category: "persistence-unconfirmed", retry: "after-ledger-refresh"
+      });
+    }
   });
 
   it("rechecks current mounted authority after the source-ledger await", async () => {
-    const fixture = await feasibilityFixture();
-    const ledger = fixture.handle.ledger;
-    const readAll = ledger.readAll.bind(ledger);
-    Object.defineProperty(ledger, "readAll", {
+    const expectStale = async (fixture: Awaited<ReturnType<typeof feasibilityFixture>>) => {
+      await expect(record(fixture)).resolves.toMatchObject({
+        kind: "blocked", category: "mounted-authority-stale", retry: "after-remount"
+      });
+    };
+
+    const sourceFixture = await feasibilityFixture();
+    const sourceReadAll = sourceFixture.handle.ledger.readAll.bind(sourceFixture.handle.ledger);
+    Object.defineProperty(sourceFixture.handle.ledger, "readAll", {
       configurable: true,
       value: async () => {
-        const events = await readAll();
-        fixture.ports.authority.invalidate!("shutdown");
+        const events = await sourceReadAll();
+        sourceFixture.ports.authority.invalidate!("shutdown");
         return events;
       }
     });
-    expect(await record(fixture)).toMatchObject({
-      kind: "blocked", category: "mounted-authority-stale", retry: "after-remount"
+    await expectStale(sourceFixture);
+
+    const failedSourceFixture = await feasibilityFixture();
+    Object.defineProperty(failedSourceFixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => {
+        failedSourceFixture.ports.authority.invalidate!("shutdown");
+        throw new Error("source readback fault");
+      }
     });
+    await expectStale(failedSourceFixture);
+
+    const failedAppendFixture = await feasibilityFixture();
+    Object.defineProperty(failedAppendFixture.handle.ledger, "append", {
+      configurable: true,
+      value: async () => {
+        failedAppendFixture.ports.authority.invalidate!("shutdown");
+        throw new Error("append fault");
+      }
+    });
+    await expectStale(failedAppendFixture);
+
+    const failedRereadFixture = await feasibilityFixture();
+    const failedRereadReadAll = failedRereadFixture.handle.ledger.readAll.bind(failedRereadFixture.handle.ledger);
+    let failedRereadCalls = 0;
+    let failedRereadAppends = 0;
+    Object.defineProperty(failedRereadFixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => {
+        failedRereadCalls += 1;
+        if (failedRereadCalls === 2) {
+          failedRereadFixture.ports.authority.invalidate!("shutdown");
+          throw new Error("concurrent reread fault");
+        }
+        return await failedRereadReadAll();
+      }
+    });
+    Object.defineProperty(failedRereadFixture.handle.ledger, "append", {
+      configurable: true,
+      value: async () => {
+        failedRereadAppends += 1;
+        throw new ConcurrencyConflictError("concurrency fault");
+      }
+    });
+    await expectStale(failedRereadFixture);
+    expect(failedRereadCalls).toBe(2);
+    expect(failedRereadAppends).toBe(1);
+
+    const conflictingRereadFixture = await feasibilityFixture();
+    const conflictingReadAll = conflictingRereadFixture.handle.ledger.readAll.bind(conflictingRereadFixture.handle.ledger);
+    const conflictingAppend = conflictingRereadFixture.handle.ledger.append.bind(conflictingRereadFixture.handle.ledger);
+    let conflictingRereadCalls = 0;
+    let conflictingRereadAppends = 0;
+    Object.defineProperty(conflictingRereadFixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => {
+        conflictingRereadCalls += 1;
+        const events = await conflictingReadAll();
+        if (conflictingRereadCalls === 2) conflictingRereadFixture.ports.authority.invalidate!("shutdown");
+        return events;
+      }
+    });
+    Object.defineProperty(conflictingRereadFixture.handle.ledger, "append", {
+      configurable: true,
+      value: async (event: AppendableKnowledgeEvent, options?: { expectedGlobalEventCount?: number }) => {
+        conflictingRereadAppends += 1;
+        if (event.type === "agent.provider.feasibility.observed.v1") {
+          await conflictingAppend({ ...event, payload: { ...event.payload, classificationHash: hashD } }, options);
+        }
+        throw new ConcurrencyConflictError("conflicting concurrency fault");
+      }
+    });
+    await expectStale(conflictingRereadFixture);
+    expect(conflictingRereadCalls).toBe(2);
+    expect(conflictingRereadAppends).toBe(1);
+
+    const failedReadbackFixture = await feasibilityFixture();
+    Object.defineProperty(failedReadbackFixture.handle.ledger, "readStream", {
+      configurable: true,
+      value: async (streamId: string) => {
+        if (streamId === feasibilityStream()) {
+          failedReadbackFixture.ports.authority.invalidate!("shutdown");
+          throw new Error("stream readback fault");
+        }
+        return [];
+      }
+    });
+    await expectStale(failedReadbackFixture);
   });
 
   it("rejects a closed mounted authority operation", async () => {
@@ -367,7 +470,15 @@ describe("mounted official-flow feasibility", () => {
       correlationId: { enumerable: true, value: "corr_feasibility" }
     });
     await expectUnsafeInput(input);
-    for (const correlationId of ["Cookie: session=abc", "X-Credential: raw", "oauth=raw"]) {
+    await expectUnsafeInput(new Proxy({
+      operation: fixture.operation,
+      witness: fixture.witness,
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      correlationId: "corr_feasibility"
+    }, {
+      getPrototypeOf() { throw new Error("hostile invocation prototype"); }
+    }));
+    for (const correlationId of ["Cookie: session=abc", "X-Cookie: raw", "X-Credential: raw", "oauth=raw"]) {
       await expectUnsafeInput({
         operation: fixture.operation,
         witness: fixture.witness,

@@ -1178,6 +1178,10 @@ describe("resident agent event contracts", () => {
       ...event,
       context: { ...event.context, correlationId: "Cookie: session=abc" }
     }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      context: { ...event.context, correlationId: "X-Cookie: raw" }
+    }).success).toBe(false);
   });
 });
 
