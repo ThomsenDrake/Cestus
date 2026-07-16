@@ -14734,3 +14734,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Design review does not authorize subagent-driven development. No release
   records, Task139 work, full verification, external-service activity, push,
   reset credit, or `neo` action is authorized yet.
+
+## RV-1-E-571 — Release-closure correction reviews active
+
+- Architecture/invariant reviewer
+  `019f6baa-aa8b-7b30-89d8-e21959987660` and
+  executability/finite-scope reviewer
+  `019f6baa-a980-78a0-bf9d-6d159926cbae` are active, read-only, and reviewing
+  exact design/plan revision
+  `bb798aeaf6c4d87738a4b7cb7ba894673a9f349b`.
+- Both are constrained to the existing 28-card graph and evidence-bound v4
+  release contract. Review work does not authorize subagent-driven
+  development, implementation, record population, or Task139.
+- Both must return unqualified **APPROVED** before the verifier implementation
+  may start. Full verification, external-service activity, push, reset credit,
+  and every `neo` action remain closed.
