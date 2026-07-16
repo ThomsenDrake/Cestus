@@ -14834,3 +14834,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   be resumed as a candidate. Review work does not authorize subagent-driven
   development. Release records, Task139, external-service activity, push,
   reset credit, and every `neo` action remain closed.
+
+## RV-1-E-576 — Verifier admission-correction reviews active
+
+- Architecture/invariant reviewer
+  `019f6bc1-191b-79a0-bbc1-74b2a3869bb3` and executability/finite-scope
+  reviewer `019f6bc1-1aac-75e2-9a3d-2e4109f74312` are active, read-only, and
+  independently reviewing exact correction revision
+  `c060f472a4af194eea453e243c691a324616980e`.
+- Both must verify that removing the accidental full-suite admission command
+  restores the governing bounded contract without weakening targeted release
+  evidence, command execution, clean-state checks, or Task139 closure. Both
+  must return unqualified **APPROVED** before the verifier checkpoint resumes.
+- Review work does not authorize edits, subagent-driven development, full
+  verification, external-service activity, release records, Task139, push,
+  reset credit, or any `neo` action.
