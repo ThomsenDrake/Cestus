@@ -12823,3 +12823,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, program integration without coordinator review, and every
   `neo` action remain closed.
+
+## RV-1-E-474 — Task137A second compiler candidate rejected
+
+- Candidate `d89532efd8dae50dd23813d16d8c32e637d42771` preserved the semantic
+  redesign and passed the literal six-file suite at 81 tests, but committed-byte
+  typecheck still failed on two `exactOptionalPropertyTypes` violations.
+- The analyzer helper receives explicit `undefined` for optional constant,
+  loader, and object-root fields instead of omitting absent fields. Candidate
+  `d89532efd8dae50dd23813d16d8c32e637d42771` must not enter review or
+  integration.
+
+## RV-1-E-475 — Task137A Recovery-5 owner dispatched
+
+- Fresh Terra/xhigh recovery owner
+  `019f6844-8858-7ed2-9c74-3e9182688b4d`, worktree
+  `/home/drake/.codex/worktrees/a248/Cestus`, starts from the rejected candidate
+  and must create
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-5`.
+- Task-scoped subagent-driven development is explicitly approved if relevant,
+  with exactly one production writer. The bounded repair must omit absent exact-
+  optional fields or model the helper honestly without casts, widening,
+  counterexample loss, or semantic authority changes.
+- Any replacement requires fresh coordinator admission and two independent
+  exact-SHA reviews. Full verification, live/provider/network/credential/Nous
+  activity, reset credits, push, program integration without coordinator
+  review, and every `neo` action remain closed.
