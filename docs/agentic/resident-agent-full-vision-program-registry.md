@@ -14096,3 +14096,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development. Full
   verification, integration, external-service activity, reset credits, push,
   and every `neo` action remain closed.
+
+## RV-1-E-538 — Task136 Recovery-16 candidate admitted to review
+
+- Candidate `9b2af110b1b9745df09c480a66a241459f53d3f6` is one clean descendant
+  of rejected `c7512a4f962014a5e71bf41b1116db8190181209` and changes exactly the
+  Task136 claim and two active v4 plans.
+- Coordinator admission independently passed all four literal Task136 checks.
+  Exact revision, one-commit ancestry, three-path scope, diff, clean checkout,
+  and absent dependency-link checks passed; active v4 lineage now names the
+  current recovery, rejected parent, and registry event consistently.
+- Two fresh independent exact-SHA reviews are required. Both must return
+  unqualified **APPROVED** before integration or Task139 resumption.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
