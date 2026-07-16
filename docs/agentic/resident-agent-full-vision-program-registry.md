@@ -16771,3 +16771,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Reviews do not authorize SDD, edits, full verification, integration,
   releases, Task139, providers, network, credentials, external services,
   push, reset, or any `neo` action.
+
+## RV-1-E-641 — Task130 blocked-tuple runtime immutability repair dispatched
+
+- Recorded at: 2026-07-16T21:52:51Z
+- Task130 architecture/invariant reviewer
+  `019f6ce7-0809-7201-8ebf-5c36ca034db8` returned unqualified `APPROVED` for
+  exact candidate `192a0707cca0a107caaf1d41eff163408e1868b7` after 18 tests,
+  typecheck, diff checking, factory readiness, exact ancestry, and three-path
+  scope. That approval becomes historical when the following forward repair
+  changes the exact revision.
+- Task130 executability/adversarial reviewer
+  `019f6ce7-0d57-7891-9ca9-ff8640a27e17` returned `NEEDS-CHANGES`: the mapped
+  blocked result is type-correlated, but its `safeDiagnosticCodes` tuple is
+  mutable at runtime because only the containing result is frozen. A caller
+  can therefore recreate a category/diagnostic mismatch after return.
+- Repair worker `019f6cea-fbcf-7e41-85ab-145bcb4e0c31` owns only the same
+  Task130 source, focused test, and claim. Its prompt explicitly approves
+  task-scoped SDD/TDD, requires a causal mutation RED inside the existing
+  18-test corpus, freezes the exact generic tuple, preserves canonical claim
+  status, and creates one forward commit.
+- The corrected Task130 candidate must receive two entirely fresh exact-
+  revision reviews. Full verification, integration, releases, Task139,
+  providers, network, credentials, external services, push, reset, and every
+  `neo` action remain closed.
