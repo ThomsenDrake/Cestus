@@ -13428,3 +13428,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   return unqualified **APPROVED** before integration.
 - Full verification, integration, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-501 — Task137A Recovery-10 exact-SHA reviews active
+
+- Mounted-lifecycle and operation-safety reviewer
+  `019f68b6-bb5e-7f51-afb4-4b2dd0117736` and adversarial TypeScript semantic-
+  policy/fixpoint reviewer `019f68b7-0b4b-7bb0-873d-71d4c7aae5ed` are active,
+  pinned, read-only, and independently verifying exact candidate
+  `3e8738c984a4a78d3d8f82eb3661f5b53a352869` from separate worktrees.
+- Both reviewers must rerun the literal 6-file/88-test gate, standalone
+  typecheck, exact scope and clean-state checks, inspect the complete candidate,
+  and attempt a causally relevant isolated counterexample. No earlier approval
+  carries forward; both must return unqualified **APPROVED** before integration.
+- Review work does not authorize subagent-driven development. Full
+  verification, integration, live/provider/network/credential/Nous activity,
+  reset credits, push, and every `neo` action remain closed.
