@@ -4,6 +4,7 @@ import {
   type OfficialFlowAbsenceClassificationV1
 } from "../../agent/src/official-flow-feasibility.js";
 import {
+  eventContextSchema,
   validateKnowledgeEvent,
   type AppendableKnowledgeEvent,
   type KnowledgeEvent
@@ -86,7 +87,7 @@ interface MountedAuthoritySnapshot {
   readonly admissionGenerationId: string;
 }
 
-const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:set-)?cookie\s*:|session\s*=\s*\S+)/i;
+const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|private[_ -]?key|(?:^|[\s;])(?:(?:set-)?cookie\s*:|session\s*=\s*\S+)/i;
 
 export async function recordMountedOfficialFlowUnavailability(input: unknown): Promise<MountedOfficialFlowFeasibilityResult> {
   const invocation = normalizeInvocation(input);
@@ -177,7 +178,7 @@ function normalizeInvocation(value: unknown): Invocation | undefined {
     }
     if (
       typeof values.operation !== "object" || values.operation === null ||
-      typeof values.occurredAt !== "string" || !isDateTime(values.occurredAt) ||
+      typeof values.occurredAt !== "string" || !eventContextSchema.shape.occurredAt.safeParse(values.occurredAt).success ||
       typeof values.correlationId !== "string" || values.correlationId.length < 3 || secretLikeText.test(values.correlationId)
     ) {
       return undefined;
@@ -478,10 +479,6 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isDateTime(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value));
 }
 
 function hash(value: object): `sha256:${string}` {

@@ -164,3 +164,37 @@ mode markers are `29/1/20/29/1/15`.
 - Status: ready-for-review. This admission repair changes only four owned
   paths, retains the original eleven-path cumulative scope, and does not run
   `npm run verify`.
+
+## Final Normalization Repair Evidence
+
+- Starting point: clean exact reviewed-repair head
+  `bdc157ada7ff51fd9fcb7b8094fda6579b9b712b`. Reviewer provenance retained in
+  this claim: architecture/invariant reviewer
+  `019f6c61-3f65-7980-a415-887f359a5282` and executability/adversarial reviewer
+  `019f6c61-4341-7263-8bdb-043bf52c0394`. This follow-on repair addresses the
+  fresh pre-await normalization defects reported to the worker.
+- The existing invocation-normalization test now instruments `readAll` and
+  `append` after fixture setup. It requires each hostile input to return the
+  exact `unsafe-input`/`none` blocked tuple with zero reads and appends:
+  accessor-backed input, `Cookie: session=abc`, `X-Credential: raw`,
+  `oauth=raw`, and timezone-less `2026-07-16T00:00:00`.
+- Causal RED (2026-07-16): the exact five-file command reported one failing
+  test and 128 passing tests (129 total), with nine soft assertion failures:
+  the missing `credential`/`oauth` terms and noncanonical timestamp each
+  reached ledger read/append work and returned `persistence-unconfirmed`.
+  It emitted exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`
+  marker.
+- Repair: recorder correlation filtering now includes the ontology feasibility
+  event's `oauth` and `credential` terms while retaining its existing
+  cookie/header and secret checks. `occurredAt` now uses
+  `eventContextSchema.shape.occurredAt.safeParse`, so recorder normalization
+  shares the canonical ontology datetime parser.
+- GREEN (2026-07-16): the identical five-file command passed 5 files and 129
+  tests with exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`
+  marker.
+- Bounded admission passed: `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check`. Task136 contract mode emitted exact markers
+  `29/1/20/29/1/15`; cumulative scope remains the original eleven paths; and
+  no public index or package export exposes the recorder or private inspection
+  seam. Full `npm run verify` was intentionally not run.
+- Status: ready-for-review.
