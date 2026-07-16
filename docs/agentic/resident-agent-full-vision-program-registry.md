@@ -15384,3 +15384,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Strict release records remain complete only through `Task128`. Full
   verification, external services, Task139, push, reset, and every `neo`
   action remain closed.
+
+## RV-1-E-596 — Mounted feasibility contract mapping active
+
+- Mounted trust-root mapper `019f6c02-6d5d-7251-9d36-4c4e63874ecd` is
+  read-only at exact program revision `2a6d6f1b` and is identifying the
+  smallest implementation that reuses Cestus's existing unforgeable mounted
+  runtime operation for Codex and xAI unavailable-feasibility append/readback.
+- Release-contract mapper `019f6c02-7219-77c2-97c3-1ccf940e0a08` is read-only
+  at the same revision and is determining the finite Task136 graph/schema
+  correction, append-only treatment of the three existing v4 records, exact
+  prerequisite order, and verifier migration.
+- Both mappers must return finite architecture evidence only. They may not
+  edit, use SDD, run full verification, use external services, resume Task139,
+  push, reset, or touch `neo`.
+- The coordinator will use their disjoint findings to amend the already
+  approved provider implementation plan. No Task129/130 implementation or
+  release-record work resumes until that plan correction has two fresh
+  read-only approvals.
