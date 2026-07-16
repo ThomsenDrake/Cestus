@@ -15567,3 +15567,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   explicit task-scoped SDD/TDD authorization. No later card, full
   verification, provider/network/external activity, Task139, push, reset, or
   any `neo` action is authorized by this approval.
+
+## RV-1-E-603 — Task136 v2 implementation dispatched
+
+- Recorded at: 2026-07-16T18:20:12Z
+- Task136 v2 worker `019f6c28-4ae0-7252-b331-601cc659e2b1` starts from exact
+  program base `2dbb697c43e1d638ec4050c5da25eb4fa5e74199` and approved
+  design/plan revision `020cb0ac9b30013ac7d5417735b4e6dc15efca67`.
+- Sole owned paths are the new immutable v2 contract, Task136 checker, Task136
+  Node test, and Task136 v2 claim. Every other path, including the v1 contract,
+  mutable v4 schema, program registry, package source/tests, and release
+  records, is forbidden.
+- This prompt explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for
+  Task136 v2 only. The worker must produce causal RED, identical GREEN with
+  exactly 12 Node tests, contract markers `29/1/20/29/1/15`, and repository
+  failure `expected 29 records, found 3` before any card command executes.
+- The worker may run only focused Task136 tests, diff checking, and factory
+  readiness. Full verification, providers, network, credentials, external
+  services, later cards, Task139, integration, release records, push, reset,
+  and every `neo` action remain closed.
