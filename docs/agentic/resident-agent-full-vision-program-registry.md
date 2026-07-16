@@ -14553,3 +14553,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integration. Review work does not authorize subagent-driven development.
 - Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-562 — Task137 policy exact-SHA reviews active
+
+- Architecture/invariant reviewer
+  `019f6b89-b8f3-76d3-af4e-8d4ce36f8885` and
+  executability/command reviewer
+  `019f6b89-b5bb-7802-8d4a-1b7ff0cc7c8b` are active, read-only, and reviewing
+  exact candidate `9500011940ed27dd8b9738cd5cef218752fe96ad`.
+- Both must run the focused suite, standalone typecheck, and real seven-stage
+  terminal gate, then verify exact scope, diff, factory readiness, clean
+  checkout, and absent dependency link. Review work does not authorize
+  subagent-driven development or acceptance-scope expansion.
+- Both must return unqualified **APPROVED** before coordinator integration.
+  Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
