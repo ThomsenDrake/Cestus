@@ -13291,3 +13291,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   entirely fresh exact-SHA reviews; Task139 remains held.
 - Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-496 — Task137A Recovery-9 rejected at coordinator admission
+
+- Recovery-9 owner `019f688c-e4d2-7251-a97b-e694d3c977c1` produced exact
+  candidate `8180a8687e195252b82409e3dc256e79a03caa50`, one clean descendant
+  of rejected `80b14e9204375244fe273f5ff8265ed46c4f4ff6` changing only the
+  Task137A claim, mounted-artifact authority operation, and its two focused
+  test files. The coordinator independently passed the literal six-file gate
+  at 86 tests, embedded and standalone typechecks, factory readiness, exact
+  scope and lineage, diff, clean-checkout, and absent dependency-link checks.
+- Source inspection found a non-monotone fixpoint transition in the test-owned
+  import-policy analyzer: every assignment with a different object root
+  replaces `binding.objectRoot` and marks the analysis changed. Two sequential
+  replacement assignments therefore toggle the same binding between their
+  cached literal roots on every whole-file pass.
+- The coordinator reproduced the defect causally from an isolated archive of
+  the exact committed SHA by adding only a focused fixture with declaration,
+  tainted replacement, clean replacement, and final property read. The focused
+  Vitest invocation was bounded by `timeout 15s` and exited `124` without a
+  verdict. The disposable archive and dependency link were removed; the
+  candidate checkout remained immutable.
+- Candidate `8180a8687e195252b82409e3dc256e79a03caa50` must not enter review or
+  integration. The same fresh owner is authorized for one bounded Recovery-10
+  attempt within the existing six-path ceiling. Task-scoped subagent-driven
+  development remains explicitly approved if relevant with exactly one
+  production writer.
+- Recovery-10 must begin with the multiple-sequential-reassignment timeout RED,
+  replace the non-monotone single-root swap with a terminating analysis model,
+  preserve prior-alias and current-binding semantics, retain the evaluator and
+  stale-capture repairs, and rerun the literal Task137A gate plus standalone
+  typecheck from one immutable candidate before coordinator admission.
+- Full verification, integration, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
