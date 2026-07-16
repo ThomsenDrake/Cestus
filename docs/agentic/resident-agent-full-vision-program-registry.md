@@ -13596,3 +13596,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   relevant with exactly one production writer.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-508 — Task137A Recovery-12 candidate admitted to review
+
+- Candidate `cbf3035ea44d843f2f8a21f51a6a24f50c1b6cb4` is one clean descendant
+  of rejected `ef16077d8f4d0bce4da5d72180b5c20dcf92fac4` and changes only the
+  Task137A claim and owned import-policy test. The complete history remains
+  within the terminal six-path ceiling.
+- Coordinator admission reran the literal committed-byte Task137A command:
+  all six files and 89 tests passed together with embedded typecheck, static
+  boundaries, factory readiness, lineage, diff, and physical-checkout checks.
+  A separate standalone typecheck passed afterward.
+- Source inspection confirms the follow-up resolves the optional declaration
+  binding once before use and leaves the reachable-root analysis and behavioral
+  fixtures unchanged. Exact HEAD, clean checkout, and absent dependency-link
+  checks passed.
+- Two fresh independent exact-SHA reviews are required: one for mounted
+  lifecycle behavior and one for static-analysis correctness and termination.
+  Both must return unqualified **APPROVED** before integration.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
