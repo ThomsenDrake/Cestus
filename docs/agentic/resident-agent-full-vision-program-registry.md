@@ -14494,3 +14494,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Lane B candidate remains preserved and held. Integration, full verification,
   external-service activity, reset credits, push, Task139 resumption, and every
   `neo` action remain closed.
+
+## RV-1-E-559 — Task136 and Task137 gate exact-SHA reviews active
+
+- Task136 architecture reviewer
+  `019f6b81-adae-77f1-8d84-bedcc56422c3` and command reviewer
+  `019f6b81-adaa-7cd0-b1d0-e37b4922b9eb` are active, read-only, and reviewing
+  exact candidate `467371018350f14f4183dae0cee33887b888efff`.
+- Task137 gate architecture reviewer
+  `019f6b81-bc09-7172-a092-d07e1d12be44` and command reviewer
+  `019f6b81-bb9e-7373-9466-a4c25b658296` are active, read-only, and reviewing
+  exact candidate `4592c95e1cbfef43321b32d358fc235802165a83`.
+- Reviewers are constrained to the frozen categories. Gate reviewers use the
+  controlled regression and must not claim it as the deferred real receipt.
+  Review work does not authorize subagent-driven development.
+- Both reviewers for a candidate must return unqualified **APPROVED** before
+  that candidate integrates. Full verification, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain
+  closed.
