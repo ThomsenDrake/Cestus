@@ -364,7 +364,7 @@ function blocked<C extends OfficialFlowClassifierBlockedCategory>(
   category: C,
   posture?: NormalizedPosture
 ): OfficialFlowClassifierBlockedMember<C> {
-  const safeDiagnosticCodes: readonly [C] = [category];
+  const safeDiagnosticCodes = Object.freeze<[C]>([category]);
 
   return Object.freeze({
     kind: "blocked" as const,
