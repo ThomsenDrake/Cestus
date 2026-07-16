@@ -17183,3 +17183,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   review dispatch, integration, release records, Task139, providers, network,
   credentials, external services, push, reset, rebase, and every `neo` action
   remain closed.
+
+## RV-1-E-654 — Task135B final candidate admitted and reviews active
+
+- Recorded at: 2026-07-16T23:54:00Z
+- One forward compiler-repair commit produced exact final candidate
+  `2747e42e7c182e027164c1c2ad503d3af7637c35` over initial GREEN
+  `6b0f61f4cf20b1de3f38ad04d63153863dcc8b47`, reproducible RED
+  `53ae6bd6d518de49b2611d5c5314d58f0c74a967`, and original rejected
+  candidate `bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14`.
+- Independent coordinator admission passed from final committed bytes: focused
+  **1 file / 20 tests**, aggregate **9 files / 120 tests**, exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker, standalone
+  typecheck, both static boundaries, exact cumulative three-path scope from
+  dispatch base `44db1ca0c34076c7235da229109614d59ddb4457`, diff checking,
+  factory readiness, clean state, and non-symlinked dependencies. Full
+  verification was not run.
+- Fresh architecture/invariant reviewer
+  `019f6d36-476b-77f2-bc3b-5076bde706cd` and
+  executability/adversarial reviewer
+  `019f6d36-4b5e-7270-80f6-3b3f328bf414` are read-only in separate
+  detached worktrees at exact candidate
+  `2747e42e7c182e027164c1c2ad503d3af7637c35` using Terra/xhigh.
+  The executability reviewer must also reproduce the immutable RED's four
+  named failures.
+- Both reviewers must return unqualified **APPROVED** for this exact candidate
+  before coordinator integration. Review work does not authorize SDD, edits,
+  full verification, integration, release records, Task139, providers,
+  network, credentials, external services, push, reset, or any `neo` action.
