@@ -15517,3 +15517,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   development, full verification, providers, network, credentials, external
   services, Task139, integration, release records, push, reset, and every
   `neo` action remain closed pending two new unqualified design/plan reviews.
+
+## RV-1-E-601 — Repaired mounted feasibility contract review dispatched
+
+- Recorded at: 2026-07-16T18:14:31Z
+- Exact repaired candidate:
+  `020cb0ac9b30013ac7d5417735b4e6dc15efca67` on
+  `codex/resident-agent-full-vision-program-watchdog-recovery`.
+- Fresh architecture/invariant reviewer
+  `019f6c23-0e1b-7211-85df-e3b3f2b1f509` is verifying the WeakMap witness,
+  prompt-bound checkpoint and human approval semantics, mounted trust root,
+  package direction, append/readback/currentness, hash vectors, finite owner
+  map, release graph, and Task139 closure.
+- Fresh executability/finite-scope reviewer
+  `019f6c23-12e6-7a81-b060-cc655559ed9b` is verifying exact APIs, causation
+  input, result/category/retry contracts, source-event checks, ownership,
+  RED/GREEN commands, counts, markers, repository stopping points, and the
+  unqualified dual-review gates.
+- Both reviewers are read-only and bound to the same exact revision. They must
+  independently reproduce both frozen hash vectors and may return only an
+  unqualified `APPROVED` or concrete in-contract `NEEDS-CHANGES` findings.
+- Review work does not authorize edits, subagent-driven development, full
+  verification, providers, network, credentials, external services, Task139,
+  integration, release records, push, reset, or any `neo` action.
