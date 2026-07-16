@@ -111,7 +111,8 @@ strictly ordered and adds these bindings:
   must list the recorded handoff in its related events.
 - Orchestration completion: exact task, run, run type, and `attemptId`; exact
   final-output, handoff-prepared, handoff-recorded, and run-terminal event IDs;
-  exact handoff readback; and causation from the run terminal.
+  exact handoff readback including handoff ID, manifest hash, recorded event
+  ID, and verification timestamp; and causation from the run terminal.
 - Task status: exact task and run, resident `changedBy`, terminal-consistent
   status, and causation from the orchestration event. Its authority to complete
   the attempt is inherited only from the immediately preceding orchestration
@@ -131,13 +132,15 @@ before any currentness check, serialization, or later I/O. Normalization:
 - rejects accessors, symbols, sparse/custom arrays, unexpected prototypes,
   functions, boxed values, and own or inherited serialization hooks;
 - snapshots every accepted value recursively into a newly allocated frozen
-  plain-data tree; and
+  plain-data tree whose record nodes have no inherited serialization hook; and
 - reuses only that snapshot for phase derivation, suffix validation, and
   canonical byte encoding.
 
-No getter, `toJSON`, proxy-like observable hook, or caller mutation may run
-during byte comparison. Prefix equality remains byte-for-byte over the frozen
-normalized snapshots.
+Canonical byte encoding walks only the normalized snapshot's own frozen data
+and encodes primitive strings directly; it never applies `JSON.stringify` to
+an object or array and therefore cannot discover an inherited `toJSON` hook.
+No getter, `toJSON`, or caller mutation may run during byte comparison. Prefix
+equality remains byte-for-byte over the frozen normalized snapshots.
 
 ## Frozen Test Matrix
 
@@ -163,7 +166,8 @@ categories are:
 18. Final-output/prepared/recorded/terminal artifact mismatch rejection.
 19. Policy, lock, foreign-run, and arbitrary-wake rejection.
 20. Hostile arrays/objects/accessors/symbols/custom prototypes/`toJSON`
-    rejection before observable serialization or store I/O.
+    rejection before observable serialization or store I/O, with both an
+    observation counter and the underlying store-I/O counter fixed at zero.
 
 The focused command must report `1 file / 20 tests`. The unchanged aggregate
 must report `9 files / 120 tests` and the existing Task137

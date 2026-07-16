@@ -26,6 +26,11 @@ before serialization and validated as one exact causal handoff chain.
 - Review checkpoint: program registry event `RV-1-E-647`.
 - Preserved starting candidate:
   `bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14`.
+- The implementation prompt must supply `TASK135B_CORRECTION_SHA`, the exact
+  lowercase 40-character program revision recorded by the dual-approval
+  registry event. The worker reads both governing correction documents with
+  `git show "$TASK135B_CORRECTION_SHA:<path>"`; it does not expect them in the
+  preserved candidate tree or depend on an unstated external checkout.
 - Branch/worktree: `codex/task135b-portable-mounted-handoff-stores` at
   `/home/drake/.codex/worktrees/task135b-portable-mounted-handoff-stores`.
 - The implementation ceiling is exactly three paths:
@@ -69,6 +74,16 @@ before serialization and validated as one exact causal handoff chain.
 test "$(git rev-parse HEAD)" = "bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14"
 test -z "$(git status --porcelain)"
 test ! -L node_modules
+: "${TASK135B_CORRECTION_SHA:?coordinator must supply dual-approved correction revision}"
+case "$TASK135B_CORRECTION_SHA" in (*[!0-9a-f]*|'') exit 1;; esac
+test "${#TASK135B_CORRECTION_SHA}" -eq 40
+test "$(git rev-parse "${TASK135B_CORRECTION_SHA}^{commit}")" = "$TASK135B_CORRECTION_SHA"
+task135b_companion_dir="$(mktemp -d)"
+trap 'rm -rf "$task135b_companion_dir"' EXIT
+git show "$TASK135B_CORRECTION_SHA:docs/superpowers/specs/2026-07-16-task135b-one-admission-cursor-design.md" > "$task135b_companion_dir/design.md"
+git show "$TASK135B_CORRECTION_SHA:docs/superpowers/plans/2026-07-16-task135b-one-admission-cursor-implementation.md" > "$task135b_companion_dir/plan.md"
+test -s "$task135b_companion_dir/design.md"
+test -s "$task135b_companion_dir/plan.md"
 ```
 
 Expected: all commands exit `0`.
@@ -77,9 +92,10 @@ Expected: all commands exit `0`.
 
 Append a `Task135B one-admission correction` section to the existing claim.
 Record the design and plan paths, `RV-1-E-647`, the exact starting candidate,
-the three-path ceiling, status `in-progress`, and the explicit coordinator
-authorization for task-scoped `superpowers:subagent-driven-development` and
-TDD. Do not copy a mutable recovery number or claim an approval.
+the literal `TASK135B_CORRECTION_SHA`, the three-path ceiling, status
+`in-progress`, and the explicit coordinator authorization for task-scoped
+`superpowers:subagent-driven-development` and TDD. Do not copy a mutable
+recovery number or claim an approval.
 
 - [ ] **Step 3: Freeze exactly 20 focused cases**
 
@@ -111,9 +127,12 @@ await expect(beforeMountedHandoffAuthorityEffect(old.controller, "handoff-prepar
 ```
 
 The hostile-value fixture must increment an observation counter from an
-accessor or `toJSON` method and assert that the counter remains `0`. Construct
-each hostile form without reading it in the test setup. The production code,
-not a test pre-parser, must reject it.
+accessor or `toJSON` method and a separate store-I/O counter from a temporary
+`FileBlobStore.prototype.put` wrapper. Bind a safe controller first, inject the
+hostile suffix, call the controller-bound material store, and assert that both
+counters remain `0`. Construct each hostile form without reading it in the
+test setup. The production code, not a test pre-parser, must reject it before
+the wrapped store method runs.
 
 - [ ] **Step 4: Run the causal RED command**
 
@@ -177,8 +196,13 @@ function normalizeLedgerEvents(value: unknown): readonly NormalizedJson[] {
 Do not call `JSON.stringify`, inspect event fields, run currentness checks, or
 perform store I/O until `normalizeLedgerEvents` returns. In `inspectCursor`,
 use only the frozen normalized result for `deriveInitialState`, suffix
-iteration, and byte encoding. `encodeEvents` serializes only normalized copies
-and never rereads the ledger result.
+iteration, and byte encoding. Record nodes in the normalized tree use a null
+prototype and are read through a separate internal
+`normalizedOwnDataRecord()` helper; caller-facing binding normalization keeps
+its existing Object-prototype requirement. `encodeEvents` recursively writes
+JSON punctuation and primitive encodings from own normalized data, uses
+`JSON.stringify` only for primitive strings, never applies it to an object or
+array, and never rereads the ledger result.
 
 - [ ] **Step 2: Bind the one resident identity**
 
@@ -208,6 +232,7 @@ interface CanonicalHandoffBinding {
   readonly handoffRevision?: number;
   readonly handoffManifestHash?: string;
   readonly handoffDtoHash?: string;
+  readonly verifiedAt?: string;
   readonly preparedEventId?: string;
   readonly recordedEventId?: string;
   readonly terminalEventId?: string;
@@ -237,6 +262,8 @@ payload.handoffRecordedEventId === canonical.recordedEventId
 payload.specialistRunCompletedEventId === canonical.terminalEventId
 payload.handoffReadback.handoffRecordedEventId === canonical.recordedEventId
 payload.handoffReadback.handoffManifestHash === canonical.handoffManifestHash
+payload.handoffReadback.handoffId === canonical.handoffId
+payload.handoffReadback.verifiedAt === canonical.verifiedAt
 context.causationId === canonical.terminalEventId
 ```
 
@@ -379,10 +406,38 @@ return unqualified `APPROVED` for the exact same candidate.
 - [ ] **Step 1: Integrate only after dual approval**
 
 On `codex/resident-agent-full-vision-program-watchdog-recovery`, cherry-pick the
-two exact Task135B commits in order. Do not merge or push. Rerun Task 3 Step 2
-against the integrated revision, substituting the integrated program base for
-the candidate-range check and verifying candidate/integration blob equality
-for all three owned paths.
+two exact Task135B commits in order. Do not merge or push. Capture and verify
+the immutable inputs, then prove exact integrated scope and candidate blob
+identity:
+
+```bash
+: "${TASK135B_CANDIDATE_SHA:?coordinator must supply dual-approved Task135B candidate}"
+case "$TASK135B_CANDIDATE_SHA" in (*[!0-9a-f]*|'') exit 1;; esac
+test "${#TASK135B_CANDIDATE_SHA}" -eq 40
+candidate="$TASK135B_CANDIDATE_SHA"
+test "$(git rev-parse "${candidate}^{commit}")" = "$candidate"
+red_commit="$(git rev-parse "${candidate}^")"
+test "$(git rev-parse "${red_commit}^")" = "bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14"
+integration_base="$(git rev-parse HEAD)"
+git cherry-pick "$red_commit" "$candidate"
+integration_sha="$(git rev-parse HEAD)"
+test "$(git rev-list --count "${integration_base}..${integration_sha}")" -eq 2
+expected_paths="$(printf '%s\n' \
+  docs/agentic/claims/task-135b-portable-mounted-handoff-stores.md \
+  packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts \
+  packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts | LC_ALL=C sort)"
+actual_paths="$(git diff --name-only "${integration_base}..${integration_sha}" | LC_ALL=C sort)"
+test "$actual_paths" = "$expected_paths"
+while IFS= read -r path; do
+  candidate_blob="$(git rev-parse "${candidate}:${path}")"
+  integrated_blob="$(git rev-parse "${integration_sha}:${path}")"
+  test "$candidate_blob" = "$integrated_blob"
+done <<< "$expected_paths"
+```
+
+Rerun Task 3 Step 2 against `integration_sha`, omitting only the old dispatch-
+base range assertion because the exact integration range and blob equality are
+proved above.
 
 - [ ] **Step 2: Append the v4 release record**
 
