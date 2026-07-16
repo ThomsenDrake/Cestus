@@ -14869,3 +14869,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   subagent-driven development when relevant with one production writer.
 - Full verification, release records, external-service activity, Task139,
   push, reset credit, and every `neo` action remain closed.
+
+## RV-1-E-578 — Evidence-bound release verifier admitted to exact-SHA review
+
+- Existing implementation checkpoint was rebased cleanly onto exact program
+  revision `a8054fda1605c2f796d538f195a77b59d496d375`; immutable candidate
+  `a501f3c4e01b3ec8adef37211b0d348a7a84f380` changes exactly the verifier
+  claim, assurance script, and Node test.
+- Fresh coordinator admission passed the 10-test targeted suite, all four exact
+  `28/1/20/28/1/15` contract markers, the expected zero-record repository-mode
+  failure, exact three-path scope and ancestry, diff checking, factory
+  readiness, clean tracked checkout, and absent dependency link. Full
+  verification was not run, as required by the corrected bounded plan.
+- One fresh architecture/invariant reviewer and one fresh executability/
+  adversarial-test reviewer must independently review this exact candidate and
+  return unqualified **APPROVED** before coordinator integration. Review work
+  does not authorize edits, subagent-driven development, acceptance expansion,
+  or self-integration.
+- Full verification, release records, external-service activity, Task139,
+  push, reset credit, and every `neo` action remain closed.
