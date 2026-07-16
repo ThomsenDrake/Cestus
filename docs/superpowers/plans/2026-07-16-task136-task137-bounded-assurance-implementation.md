@@ -42,13 +42,13 @@ Bash, Vitest, JSON, Markdown, Git.
 - Reviewers may block only an in-grammar failure or an ineffective explicit
   prohibition. Other findings are proposed hardening for a later contract
   version.
-- Existing candidate branches
-  `4776f12689133b0eea855e6c39347306bebd68bc`,
-  `cfb82c6dd940ae6ba0339b8b2b8637bcc472aea2`, and
-  `5701c863210f1892186e944beda8a4059388b26c` remain preserved evidence and are
-  not accepted integration bases. Lane B reconstructs the exact six-path tree
-  state from `cfb82c6d...` onto the current program branch before applying the
-  bounded policy; no historical recovery commit is merged directly.
+- Registry event `RV-1-E-545` is the sole selector for the preserved Task136,
+  Task137, and gate-evidence revisions. Before dispatch, the coordinator reads
+  those exact revisions from the registry and supplies them as
+  `TASK136_SOURCE_SHA`, `TASK137_SOURCE_SHA`, or
+  `TASK137_GATE_EVIDENCE_SHA` only to the applicable worker. The worker records
+  its source revision once in its immutable claim evidence. This plan does not
+  copy the values and no historical recovery commit is merged directly.
 
 ## Parallel Topology
 
@@ -89,15 +89,17 @@ integrated and their release records are valid.
 
 **Interfaces:**
 - Consumes: registry authority `RV-1-E-545` and the 28 active-v4 card
-  definitions preserved at candidate `4776f12689133b0eea855e6c39347306bebd68bc`.
+  definitions at the claim-bound `TASK136_SOURCE_SHA` selected by that event.
 - Produces: `Task136BoundedAssuranceContractV1`, the sole static input to Task
   2's checker.
 
 - [ ] **Step 1: Create the task claim and record in-progress state**
 
-Append a bounded-v1 section to the existing Task136 claim. It must name this
-plan, branch, four owned files, `RV-1-E-545`, and status `in-progress`. It must
-not copy a recovery number, rejected SHA, or reviewer session.
+The coordinator supplies `TASK136_SOURCE_SHA` from `RV-1-E-545`. Verify it is
+one lowercase 40-character commit. Append it once as immutable source evidence
+inside the existing Task136 claim's bounded-v1 section. The section must name
+this plan, branch, four owned files, `RV-1-E-545`, and status `in-progress`.
+It must not copy a recovery number, rejected predecessor, or reviewer session.
 
 - [ ] **Step 2: Run the causal RED contract command**
 
@@ -172,9 +174,10 @@ interface Task136BoundedAssuranceContractV1 {
 ```
 
 Copy the exact 28 card IDs, dependency order, owned/transferred paths, and
-literal commands from the active-v4 checker at `4776f126...`; do not copy its
-mutable lineage prose. Freeze exactly the 20 rejected category IDs from the
-design in design order, using lowercase kebab-case IDs.
+literal commands from the active-v4 checker at the claim-bound
+`TASK136_SOURCE_SHA`; do not copy its mutable lineage prose. Freeze exactly the
+20 rejected category IDs from the design in design order, using lowercase
+kebab-case IDs.
 
 - [ ] **Step 4: Append stable bounded sections**
 
@@ -321,11 +324,18 @@ export function inspectTask137AuthorityBoundary(root: string): readonly Task137P
 
 - [ ] **Step 1: Reconstruct the preserved six-path Task137 baseline**
 
-From a clean branch at the current program revision, restore exactly these six
-paths from `cfb82c6dd940ae6ba0339b8b2b8637bcc472aea2`:
+From a clean branch at the current program revision, require the coordinator-
+supplied `TASK137_SOURCE_SHA` selected from `RV-1-E-545`, verify it is one
+lowercase 40-character commit, and restore exactly these six paths from it.
+Append the same value once to the bounded-v1 section of the restored claim as
+immutable source evidence before committing:
 
 ```bash
-git restore --source=cfb82c6dd940ae6ba0339b8b2b8637bcc472aea2 -- \
+: "${TASK137_SOURCE_SHA:?coordinator must supply TASK137_SOURCE_SHA from RV-1-E-545}"
+case "$TASK137_SOURCE_SHA" in (*[!0-9a-f]*|'') exit 1;; esac
+test "${#TASK137_SOURCE_SHA}" -eq 40
+test "$(git rev-parse "${TASK137_SOURCE_SHA}^{commit}")" = "$TASK137_SOURCE_SHA"
+git restore --source="$TASK137_SOURCE_SHA" -- \
   docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md \
   packages/local-runtime/src/mounted-artifact-authority-operation.ts \
   packages/local-runtime/src/portable-workspace-lifecycle.ts \
@@ -468,10 +478,11 @@ Append a bounded-v2 section to the recovery plan that names only this command:
 timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null
 ```
 
-The new claim records the failed standard-input evidence revision
-`5701c863210f1892186e944beda8a4059388b26c`, the v2 contract, owned files, RED
-receipt, and GREEN marker contract. It does not claim the evidence-only branch
-was approved.
+The coordinator supplies `TASK137_GATE_EVIDENCE_SHA` from `RV-1-E-545`. The
+new claim validates and records that value once as immutable failed standard-
+input evidence, together with the v2 contract, owned files, RED receipt, and
+GREEN marker contract. It does not claim the evidence-only branch was
+approved.
 
 - [ ] **Step 5: Run the identical GREEN command**
 
