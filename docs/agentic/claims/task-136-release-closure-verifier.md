@@ -1,6 +1,6 @@
 # Task 136 Release Closure Verifier Claim
 
-Status: in-progress
+Status: blocked-on-program-baseline
 
 Plan: `docs/superpowers/plans/2026-07-16-task136-release-closure-implementation.md`
 Task: Task 1, Implement Strict Release Closure
@@ -43,3 +43,18 @@ Scope limits:
 - Do not dispatch or resume Task139.
 - Do not integrate, push, use external services, touch `neo`, or self-release any card.
 - Repository mode is expected to fail until coordinator-owned release records exist.
+
+TDD evidence:
+- RED command: `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`
+- RED result: failed because exactly 28 heading-only release headings still let repository mode exit `0`, and the strict release parser/verifier exports were absent.
+- GREEN command: `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`
+- GREEN result: `10` tests passed, including the existing four marker suites and the finite release-record mutation suite.
+
+Blocked checkpoint evidence:
+- Coordinator baseline comparison completed after the initial full-verify failure.
+- Untouched program branch baseline: `719d764bee5bc6fa2842f1ebe955d01471c0e8e7`.
+- Baseline command: `npm run verify`.
+- Baseline result: failed with the same `12` failing files and `67` failing tests observed in this task worktree.
+- Conclusion: inherited program-baseline failure, not a Task136 verifier regression.
+- Task136 targeted verifier command remains green: `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+- This checkpoint is intentionally blocked pending coordinator base repair and later rebase/resume.
