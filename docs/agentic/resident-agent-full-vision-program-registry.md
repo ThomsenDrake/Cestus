@@ -13196,3 +13196,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   one production writer.
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, and every `neo` action remain closed.
+
+## RV-1-E-491 — Task137A Recovery-9 assigned to a fresh owner
+
+- Fresh owner `019f688c-e4d2-7251-a97b-e694d3c977c1` is active in isolated
+  worktree `/home/drake/.codex/worktrees/c723/Cestus`, starting from exact
+  rejected candidate `80b14e9204375244fe273f5ff8265ed46c4f4ff6` and creating
+  branch `codex/task-137a-mounted-artifact-authority-operation-recovery-9`.
+- The owner received all three exact review findings, causal failing-test-first
+  requirements, the terminal six-path lineage ceiling, and the instruction to
+  consume stale captures through the existing mounted-artifact operation
+  boundary rather than editing `runtime-factory.ts`.
+- Task-scoped subagent-driven development is explicitly approved if relevant
+  with exactly one production writer. One clean candidate must pass the literal
+  Task137A committed-byte gate and standalone typecheck before coordinator
+  admission and two entirely fresh reviews.
+- Full verification, integration, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
