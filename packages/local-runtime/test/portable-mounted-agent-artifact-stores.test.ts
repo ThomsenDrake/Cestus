@@ -306,7 +306,9 @@ describe("portable mounted agent artifact stores", () => {
   it("attempt swapped orchestration cannot advance task status authority", async () => {
     const fixture = authorityFixture();
     const events = canonicalHandoffEvents();
-    events.push(orchestrationCompletedEvent({ attemptId: "attempt_swapped_portable_handoff" }), taskStatusEvent());
+    events.push(orchestrationCompletedEvent({
+      payload: { ...orchestrationCompletedEvent().payload, attemptId: "attempt_swapped_portable_handoff" }
+    }), taskStatusEvent());
     Object.defineProperty(fixture.handle.ledger, "readAll", {
       configurable: true,
       value: async () => events.map((event) => structuredClone(event))
@@ -318,13 +320,13 @@ describe("portable mounted agent artifact stores", () => {
   it("mismatched final prepared recorded and terminal artifacts burn authority", async () => {
     const mismatches: readonly ((events: KnowledgeEvent[]) => void)[] = [
       (events) => {
-        events[1] = finalOutputEvent({ outputArtifactHashes: [hash("1")] });
+        events[1] = finalOutputEvent({ payload: { ...finalOutputEvent().payload, outputArtifactHashes: [hash("1")] } });
       },
       (events) => {
-        events[3] = recordedHandoffEvent({ outputArtifactHashes: [hash("2")] });
+        events[3] = recordedHandoffEvent({ payload: { ...recordedHandoffEvent().payload, outputArtifactHashes: [hash("2")] } });
       },
       (events) => {
-        events[4] = completedRunEvent({ outputArtifactHashes: [hash("3")] });
+        events[4] = completedRunEvent({ payload: { ...completedRunEvent().payload, outputArtifactHashes: [hash("3")] } });
       }
     ];
     for (const mismatch of mismatches) {

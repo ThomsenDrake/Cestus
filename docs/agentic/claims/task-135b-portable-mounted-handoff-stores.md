@@ -63,7 +63,7 @@ backed by module-private maps.
 
 ## Task135B one-admission correction
 
-- **Status:** in-progress
+- **Status:** ready-for-review
 - **Correction authority:** `RV-1-E-647`
 - **Starting candidate:** `bdf7d2a9eb75499d273a5ee2b7900dc3fc3c5d14`
 - **TASK135B_CORRECTION_SHA:** `6b203d03d2342cee2c8d8712710a3ad61600a98a`
@@ -83,3 +83,13 @@ backed by module-private maps.
   `attempt swapped orchestration cannot advance task status authority`,
   `mismatched final prepared recorded and terminal artifacts burn authority`,
   and `hostile ledger values fail before serialization observation or store io`.
+- **RED commit:** `53ae6bd6d518de49b2611d5c5314d58f0c74a967`
+- **Focused GREEN receipt:** the identical focused command exited `0` with
+  `1` file / `20` tests.
+- **Aggregate GREEN receipt:** the prescribed nine-file command exited `0`
+  with `9` files / `120` tests and one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- **Static receipt:** `npm run typecheck`, both prescribed forbidden-boundary
+  scans, `git diff --check`, and `npm run factory:check` exited `0`.
+- **GREEN commit:** the forward candidate containing this receipt is recorded
+  as the final Task135B handoff revision.

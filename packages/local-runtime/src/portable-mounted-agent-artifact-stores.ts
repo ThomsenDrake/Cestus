@@ -1,6 +1,5 @@
 import { join } from "node:path";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { mountPortableWorkspace } from "../../workspace/src/index.js";
 import type { SpecialistHandoffManifestStore } from "../../agent/src/specialist-runner-kernel.js";
 import {
@@ -118,6 +117,41 @@ interface RunBinding {
   readonly runType: string;
 }
 
+type NormalizedJson =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly NormalizedJson[]
+  | Readonly<Record<string, NormalizedJson>>;
+
+interface CanonicalHandoffBinding {
+  readonly finalOutputEventId: string;
+  readonly finalOutputStepId: string;
+  readonly finalOutputIdempotencyKey: string;
+  readonly stepSchemaId: string;
+  readonly handoffMaterialArtifactHash: string;
+  readonly inputArtifactHashes: readonly string[];
+  readonly outputArtifactHashes: readonly string[];
+  readonly handoffId?: string;
+  readonly handoffRevision?: number;
+  readonly handoffIdempotencyKey?: string;
+  readonly handoffManifestHash?: string;
+  readonly handoffDtoHash?: string;
+  readonly handoffStatus?: string;
+  readonly safeSummary?: string;
+  readonly contextPackHashes?: readonly string[];
+  readonly promptArtifactHash?: string;
+  readonly toolRequestIds?: readonly string[];
+  readonly sourceEventIds?: readonly string[];
+  readonly relatedEventIds?: readonly string[];
+  readonly verifiedAt?: string;
+  readonly preparedEventId?: string;
+  readonly recordedEventId?: string;
+  readonly terminalEventId?: string;
+  readonly terminalStatus?: "completed" | "failed";
+}
+
 type CursorPhase =
   | "initial"
   | "started"
@@ -134,6 +168,7 @@ interface CursorState {
   readonly binding: RunBinding;
   accepted: readonly Uint8Array[] | undefined;
   phase: CursorPhase;
+  canonical: CanonicalHandoffBinding | undefined;
   lastRelevantEventId: string | undefined;
   readonly handoffEventIds: string[];
   burned: boolean;
@@ -161,6 +196,7 @@ export function createPortableMountedAgentArtifactStoreProducer(
           binding,
           accepted: undefined,
           phase: "initial",
+          canonical: undefined,
           lastRelevantEventId: undefined,
           handoffEventIds: [],
           burned: false
@@ -297,12 +333,13 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
   if (cursor.burned) throw authorityError();
   try {
     assertOriginCurrent(cursor);
-    const events = await cursor.origin.ledger.readAll();
+    const events = normalizeLedgerEvents(await cursor.origin.ledger.readAll());
     assertOriginCurrent(cursor);
     const encoded = encodeEvents(events);
     if (cursor.accepted === undefined) {
       const initial = deriveInitialState(events, cursor.binding);
       cursor.phase = initial.phase;
+      cursor.canonical = initial.canonical;
       cursor.lastRelevantEventId = initial.lastRelevantEventId;
       cursor.handoffEventIds.push(...initial.handoffEventIds);
       cursor.accepted = encoded;
@@ -313,18 +350,21 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
       if (!sameBytes(cursor.accepted[index]!, encoded[index]!)) throw authorityError();
     }
     let phase = cursor.phase;
+    let canonical = cursor.canonical;
     let lastRelevantEventId = cursor.lastRelevantEventId;
     const newEventIds: string[] = [];
     for (const event of events.slice(cursor.accepted.length)) {
       const previousPhase = phase;
-      const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId);
+      const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical);
       phase = advanced.phase;
+      canonical = advanced.canonical;
       lastRelevantEventId = advanced.eventId;
       if (!(previousPhase === "initial" && advanced.phase === "started")) {
         newEventIds.push(advanced.eventId);
       }
     }
     cursor.phase = phase;
+    cursor.canonical = canonical;
     cursor.lastRelevantEventId = lastRelevantEventId;
     cursor.handoffEventIds.push(...newEventIds.filter((eventId) => eventId !== `evt_started_${cursor.binding.approvedRunId}`));
     cursor.accepted = encoded;
@@ -392,19 +432,22 @@ async function inspectAround<T>(cursor: CursorState, operation: () => Promise<T>
   }
 }
 
-function deriveInitialState(events: readonly KnowledgeEvent[], binding: RunBinding): {
+function deriveInitialState(events: readonly NormalizedJson[], binding: RunBinding): {
   readonly phase: CursorPhase;
+  readonly canonical: CanonicalHandoffBinding | undefined;
   readonly lastRelevantEventId: string | undefined;
   readonly handoffEventIds: readonly string[];
 } {
   let phase: CursorPhase = "initial";
+  let canonical: CanonicalHandoffBinding | undefined;
   let lastRelevantEventId: string | undefined;
   const handoffEventIds: string[] = [];
   for (const event of events) {
     if (!isBoundEvent(event, binding)) continue;
     const previousPhase = phase;
-    const advanced = advancePhase(phase, event, binding, lastRelevantEventId);
+    const advanced = advancePhase(phase, event, binding, lastRelevantEventId, canonical);
     phase = advanced.phase;
+    canonical = advanced.canonical;
     lastRelevantEventId = advanced.eventId;
     if (!(previousPhase === "initial" && advanced.phase === "started")) {
       handoffEventIds.push(advanced.eventId);
@@ -412,6 +455,7 @@ function deriveInitialState(events: readonly KnowledgeEvent[], binding: RunBindi
   }
   return Object.freeze({
     phase,
+    canonical,
     lastRelevantEventId,
     handoffEventIds: Object.freeze(handoffEventIds)
   });
@@ -419,20 +463,22 @@ function deriveInitialState(events: readonly KnowledgeEvent[], binding: RunBindi
 
 function advancePhase(
   phase: CursorPhase,
-  event: KnowledgeEvent,
+  event: NormalizedJson,
   binding: RunBinding,
-  predecessor: string | undefined
-): { readonly phase: CursorPhase; readonly eventId: string } {
-  const record = ownDataRecord(event);
-  const payload = ownDataRecord(record.payload);
-  const context = ownDataRecord(record.context);
-  const actor = ownDataRecord(context.actor);
+  predecessor: string | undefined,
+  canonical: CanonicalHandoffBinding | undefined
+): { readonly phase: CursorPhase; readonly eventId: string; readonly canonical: CanonicalHandoffBinding | undefined } {
+  const record = normalizedOwnDataRecord(event);
+  const payload = normalizedOwnDataRecord(record.payload);
+  const context = normalizedOwnDataRecord(record.context);
+  const actor = normalizedOwnDataRecord(context.actor);
   if (
     record.version !== 1
     || typeof record.id !== "string"
     || !/^evt_[a-zA-Z0-9_-]+$/.test(record.id)
     || typeof record.streamId !== "string"
     || actor.kind !== "agent"
+    || actor.id !== "agent_default"
   ) {
     throw authorityError();
   }
@@ -445,10 +491,11 @@ function advancePhase(
       || payload.taskId !== binding.taskId
       || payload.runType !== binding.runType
       || payload.residentAgentId !== "agent_default"
+      || payload.startedBy !== "agent_default"
     ) {
       throw authorityError();
     }
-    return { phase: "started", eventId: record.id };
+    return { phase: "started", eventId: record.id, canonical: undefined };
   }
   if (type === "agent.specialist-run.step.recorded") {
     if (
@@ -458,83 +505,267 @@ function advancePhase(
       || payload.stepKind !== "final-output"
       || typeof payload.stepId !== "string"
       || typeof payload.stepSchemaId !== "string"
+      || typeof payload.idempotencyKey !== "string"
       || !isHash(payload.handoffMaterialArtifactHash)
     ) {
       throw authorityError();
     }
-    return { phase: "final-output", eventId: record.id };
+    return {
+      phase: "final-output",
+      eventId: record.id,
+      canonical: Object.freeze({
+        finalOutputEventId: record.id,
+        finalOutputStepId: payload.stepId,
+        finalOutputIdempotencyKey: payload.idempotencyKey,
+        stepSchemaId: payload.stepSchemaId,
+        handoffMaterialArtifactHash: payload.handoffMaterialArtifactHash,
+        inputArtifactHashes: normalizedHashArray(payload.inputArtifactHashes),
+        outputArtifactHashes: normalizedHashArray(payload.outputArtifactHashes)
+      })
+    };
   }
   if (type === "agent.specialist-handoff.prepared") {
+    const finalOutput = requireCanonical(canonical);
     if (
       phase !== "final-output"
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.taskId !== binding.taskId
       || payload.runType !== binding.runType
-      || payload.finalOutputEventId !== predecessor
+      || payload.residentAgentId !== "agent_default"
+      || payload.finalOutputEventId !== finalOutput.finalOutputEventId
+      || payload.finalOutputStepId !== finalOutput.finalOutputStepId
+      || payload.handoffMaterialArtifactHash !== finalOutput.handoffMaterialArtifactHash
+      || !sameStringArrays(normalizedHashArray(payload.outputArtifactHashes), finalOutput.outputArtifactHashes)
       || context.causationId !== predecessor
     ) {
       throw authorityError();
     }
-    return { phase: "handoff-prepared", eventId: record.id };
+    return {
+      phase: "handoff-prepared",
+      eventId: record.id,
+      canonical: Object.freeze({
+        ...finalOutput,
+        handoffId: requiredText(payload.handoffId),
+        handoffRevision: requiredPositiveInteger(payload.handoffRevision),
+        handoffIdempotencyKey: requiredText(payload.idempotencyKey),
+        handoffManifestHash: requiredHash(payload.handoffManifestHash),
+        handoffDtoHash: requiredHash(payload.handoffDtoHash),
+        handoffStatus: requiredText(payload.status),
+        safeSummary: requiredText(payload.safeSummary),
+        contextPackHashes: normalizedHashArray(payload.contextPackHashes),
+        ...(Object.hasOwn(payload, "promptArtifactHash") ? { promptArtifactHash: requiredHash(payload.promptArtifactHash) } : {}),
+        toolRequestIds: normalizedStringArray(payload.toolRequestIds),
+        sourceEventIds: normalizedStringArray(payload.sourceEventIds),
+        relatedEventIds: normalizedStringArray(payload.relatedEventIds),
+        preparedEventId: record.id
+      })
+    };
   }
   if (type === "agent.specialist-handoff.recorded") {
+    const prepared = requirePreparedCanonical(canonical);
     if (
       phase !== "handoff-prepared"
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.taskId !== binding.taskId
       || payload.runType !== binding.runType
-      || payload.preparedEventId !== predecessor
-      || context.causationId !== predecessor
+      || payload.residentAgentId !== "agent_default"
+      || payload.preparedEventId !== prepared.preparedEventId
+      || context.causationId !== prepared.preparedEventId
+      || !samePreparedHandoffBinding(payload, prepared)
     ) {
       throw authorityError();
     }
-    return { phase: "handoff-recorded", eventId: record.id };
+    return {
+      phase: "handoff-recorded",
+      eventId: record.id,
+      canonical: Object.freeze({
+        ...prepared,
+        recordedEventId: record.id,
+        verifiedAt: requiredText(payload.verifiedAt)
+      })
+    };
   }
-  if (type === "agent.specialist-run.completed" || type === "agent.specialist-run.failed") {
+  if (type === "agent.specialist-run.completed") {
+    const recorded = requireRecordedCanonical(canonical);
     if (
       phase !== "handoff-recorded"
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
-      || context.causationId !== predecessor
+      || context.causationId !== recorded.recordedEventId
+      || !sameStringArrays(normalizedHashArray(payload.outputArtifactHashes), recorded.outputArtifactHashes)
     ) {
       throw authorityError();
     }
-    return { phase: "run-terminal", eventId: record.id };
+    return {
+      phase: "run-terminal",
+      eventId: record.id,
+      canonical: Object.freeze({ ...recorded, terminalEventId: record.id, terminalStatus: "completed" })
+    };
+  }
+  if (type === "agent.specialist-run.failed") {
+    const recorded = requireRecordedCanonical(canonical);
+    const relatedEventIds = normalizedStringArray(payload.relatedEventIds);
+    if (
+      phase !== "handoff-recorded"
+      || record.streamId !== `agent_run_${binding.approvedRunId}`
+      || payload.runId !== binding.approvedRunId
+      || context.causationId !== recorded.recordedEventId
+      || !relatedEventIds.includes(recorded.recordedEventId)
+    ) {
+      throw authorityError();
+    }
+    return {
+      phase: "run-terminal",
+      eventId: record.id,
+      canonical: Object.freeze({ ...recorded, terminalEventId: record.id, terminalStatus: "failed" })
+    };
   }
   if (type === "agent.task.orchestration.completed") {
+    const terminal = requireTerminalCanonical(canonical);
+    const handoffReadback = normalizedOwnDataRecord(payload.handoffReadback);
     if (
       phase !== "run-terminal"
       || record.streamId !== `agent_task_${binding.taskId}`
       || payload.taskId !== binding.taskId
       || payload.runId !== binding.approvedRunId
-      || context.causationId !== predecessor
+      || payload.runType !== binding.runType
+      || payload.attemptId !== binding.attemptId
+      || payload.finalOutputStepEventId !== terminal.finalOutputEventId
+      || payload.handoffPreparedEventId !== terminal.preparedEventId
+      || payload.handoffRecordedEventId !== terminal.recordedEventId
+      || payload.specialistRunCompletedEventId !== terminal.terminalEventId
+      || handoffReadback.handoffId !== terminal.handoffId
+      || handoffReadback.handoffManifestHash !== terminal.handoffManifestHash
+      || handoffReadback.handoffRecordedEventId !== terminal.recordedEventId
+      || handoffReadback.verifiedAt !== terminal.verifiedAt
+      || context.causationId !== terminal.terminalEventId
     ) {
       throw authorityError();
     }
-    return { phase: "orchestration-completed", eventId: record.id };
+    return { phase: "orchestration-completed", eventId: record.id, canonical: terminal };
   }
   if (type === "agent.task.status.changed") {
+    const terminal = requireTerminalCanonical(canonical);
     if (
       phase !== "orchestration-completed"
       || record.streamId !== `agent_task_${binding.taskId}`
       || payload.taskId !== binding.taskId
       || payload.runId !== binding.approvedRunId
-      || (payload.status !== "completed" && payload.status !== "failed")
+      || payload.changedBy !== "agent_default"
+      || payload.status !== terminal.terminalStatus
       || context.causationId !== predecessor
     ) {
       throw authorityError();
     }
-    return { phase: "task-status", eventId: record.id };
+    return { phase: "task-status", eventId: record.id, canonical: terminal };
   }
   throw authorityError();
 }
 
-function isBoundEvent(event: KnowledgeEvent, binding: RunBinding): boolean {
-  const record = ownDataRecord(event);
-  const payload = ownDataRecord(record.payload);
+function isBoundEvent(event: NormalizedJson, binding: RunBinding): boolean {
+  const record = normalizedOwnDataRecord(event);
+  const payload = normalizedOwnDataRecord(record.payload);
   return payload.runId === binding.approvedRunId || payload.taskId === binding.taskId;
+}
+
+function requireCanonical(value: CanonicalHandoffBinding | undefined): CanonicalHandoffBinding {
+  if (value === undefined) throw authorityError();
+  return value;
+}
+
+function requirePreparedCanonical(value: CanonicalHandoffBinding | undefined): CanonicalHandoffBinding & {
+  readonly handoffId: string;
+  readonly handoffRevision: number;
+  readonly handoffIdempotencyKey: string;
+  readonly handoffManifestHash: string;
+  readonly handoffDtoHash: string;
+  readonly handoffStatus: string;
+  readonly safeSummary: string;
+  readonly contextPackHashes: readonly string[];
+  readonly toolRequestIds: readonly string[];
+  readonly sourceEventIds: readonly string[];
+  readonly relatedEventIds: readonly string[];
+  readonly preparedEventId: string;
+} {
+  const canonical = requireCanonical(value);
+  if (
+    canonical.handoffId === undefined
+    || canonical.handoffRevision === undefined
+    || canonical.handoffIdempotencyKey === undefined
+    || canonical.handoffManifestHash === undefined
+    || canonical.handoffDtoHash === undefined
+    || canonical.handoffStatus === undefined
+    || canonical.safeSummary === undefined
+    || canonical.contextPackHashes === undefined
+    || canonical.toolRequestIds === undefined
+    || canonical.sourceEventIds === undefined
+    || canonical.relatedEventIds === undefined
+    || canonical.preparedEventId === undefined
+  ) {
+    throw authorityError();
+  }
+  return canonical as CanonicalHandoffBinding & {
+    readonly handoffId: string;
+    readonly handoffRevision: number;
+    readonly handoffIdempotencyKey: string;
+    readonly handoffManifestHash: string;
+    readonly handoffDtoHash: string;
+    readonly handoffStatus: string;
+    readonly safeSummary: string;
+    readonly contextPackHashes: readonly string[];
+    readonly toolRequestIds: readonly string[];
+    readonly sourceEventIds: readonly string[];
+    readonly relatedEventIds: readonly string[];
+    readonly preparedEventId: string;
+  };
+}
+
+function requireRecordedCanonical(value: CanonicalHandoffBinding | undefined): ReturnType<typeof requirePreparedCanonical> & {
+  readonly recordedEventId: string;
+  readonly verifiedAt: string;
+} {
+  const canonical = requirePreparedCanonical(value);
+  if (canonical.recordedEventId === undefined || canonical.verifiedAt === undefined) throw authorityError();
+  return canonical as ReturnType<typeof requirePreparedCanonical> & { readonly recordedEventId: string; readonly verifiedAt: string };
+}
+
+function requireTerminalCanonical(value: CanonicalHandoffBinding | undefined): ReturnType<typeof requireRecordedCanonical> & {
+  readonly terminalEventId: string;
+  readonly terminalStatus: "completed" | "failed";
+} {
+  const canonical = requireRecordedCanonical(value);
+  if (canonical.terminalEventId === undefined || canonical.terminalStatus === undefined) throw authorityError();
+  return canonical as ReturnType<typeof requireRecordedCanonical> & {
+    readonly terminalEventId: string;
+    readonly terminalStatus: "completed" | "failed";
+  };
+}
+
+function samePreparedHandoffBinding(
+  payload: Readonly<Record<string, NormalizedJson>>,
+  canonical: ReturnType<typeof requirePreparedCanonical>
+): boolean {
+  const promptArtifactHash = Object.hasOwn(payload, "promptArtifactHash") ? requiredHash(payload.promptArtifactHash) : undefined;
+  return (
+    payload.handoffId === canonical.handoffId
+    && payload.handoffRevision === canonical.handoffRevision
+    && payload.idempotencyKey === canonical.handoffIdempotencyKey
+    && payload.handoffManifestHash === canonical.handoffManifestHash
+    && payload.handoffDtoHash === canonical.handoffDtoHash
+    && payload.handoffMaterialArtifactHash === canonical.handoffMaterialArtifactHash
+    && payload.status === canonical.handoffStatus
+    && payload.safeSummary === canonical.safeSummary
+    && payload.finalOutputStepId === canonical.finalOutputStepId
+    && payload.finalOutputEventId === canonical.finalOutputEventId
+    && promptArtifactHash === canonical.promptArtifactHash
+    && sameStringArrays(normalizedHashArray(payload.contextPackHashes), canonical.contextPackHashes)
+    && sameStringArrays(normalizedHashArray(payload.outputArtifactHashes), canonical.outputArtifactHashes)
+    && sameStringArrays(normalizedStringArray(payload.toolRequestIds), canonical.toolRequestIds)
+    && sameStringArrays(normalizedStringArray(payload.sourceEventIds), canonical.sourceEventIds)
+    && sameStringArrays(normalizedStringArray(payload.relatedEventIds), canonical.relatedEventIds)
+  );
 }
 
 function isExpectedPredecessor(phase: CursorPhase, kind: MountedHandoffAuthorityEffectKind): boolean {
@@ -594,20 +825,96 @@ function normalizeEventIds(value: readonly string[]): readonly string[] {
   return Object.freeze(eventIds);
 }
 
-function encodeEvents(value: unknown): readonly Uint8Array[] {
-  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length !== 0) {
+function normalizeLedgerEvents(value: unknown): readonly NormalizedJson[] {
+  const normalized = normalizeLedgerJson(value);
+  if (!Array.isArray(normalized)) throw authorityError();
+  return normalized;
+}
+
+function normalizeLedgerJson(value: unknown): NormalizedJson {
+  if (value === null || typeof value === "boolean" || typeof value === "string") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw authorityError();
+    return value;
+  }
+  if (typeof value !== "object") throw authorityError();
+  if (Array.isArray(value)) return normalizeLedgerArray(value);
+  return normalizeLedgerRecord(value);
+}
+
+function normalizeLedgerArray(value: unknown[]): readonly NormalizedJson[] {
+  if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length !== 0 || hasSerializationHook(Array.prototype)) {
     throw authorityError();
   }
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const expected = new Set(["length", ...Array.from({ length: value.length }, (_, index) => String(index))]);
-  if (Object.keys(descriptors).length !== expected.size || Object.keys(descriptors).some((key) => !expected.has(key))) {
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+  if (lengthDescriptor === undefined || !("value" in lengthDescriptor) || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0) {
     throw authorityError();
   }
-  return Object.freeze(Array.from({ length: value.length }, (_, index) => {
-    const descriptor = descriptors[String(index)];
+  const length = lengthDescriptor.value;
+  const names = Object.getOwnPropertyNames(value);
+  if (names.length !== length + 1 || !names.includes("length")) throw authorityError();
+  const copy: NormalizedJson[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
     if (descriptor === undefined || !("value" in descriptor)) throw authorityError();
-    return Buffer.from(JSON.stringify(descriptor.value), "utf8");
-  }));
+    copy.push(normalizeLedgerJson(descriptor.value));
+  }
+  return Object.freeze(copy);
+}
+
+function normalizeLedgerRecord(value: object): Readonly<Record<string, NormalizedJson>> {
+  if (Object.getPrototypeOf(value) !== Object.prototype || Object.getOwnPropertySymbols(value).length !== 0 || hasSerializationHook(Object.prototype)) {
+    throw authorityError();
+  }
+  const copy: Record<string, NormalizedJson> = Object.create(null);
+  for (const field of Object.getOwnPropertyNames(value)) {
+    if (field === "toJSON") throw authorityError();
+    const descriptor = Object.getOwnPropertyDescriptor(value, field);
+    if (descriptor === undefined || !("value" in descriptor)) throw authorityError();
+    copy[field] = normalizeLedgerJson(descriptor.value);
+  }
+  return Object.freeze(copy);
+}
+
+function hasSerializationHook(prototype: object | null): boolean {
+  for (let current = prototype; current !== null; current = Object.getPrototypeOf(current)) {
+    if (Object.getOwnPropertyDescriptor(current, "toJSON") !== undefined) return true;
+  }
+  return false;
+}
+
+function encodeEvents(value: readonly NormalizedJson[]): readonly Uint8Array[] {
+  const encoded: Uint8Array[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    encoded.push(Buffer.from(encodeNormalizedJson(value[index]!), "utf8"));
+  }
+  return Object.freeze(encoded);
+}
+
+function encodeNormalizedJson(value: NormalizedJson): string {
+  if (value === null) return "null";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return Object.is(value, -0) ? "0" : String(value);
+  if (typeof value === "string") return encodePrimitiveString(value);
+  if (Array.isArray(value)) {
+    const items: string[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      items.push(encodeNormalizedJson(value[index]!));
+    }
+    return `[${items.join(",")}]`;
+  }
+  const record = normalizedOwnDataRecord(value);
+  const fields: string[] = [];
+  for (const field of Object.getOwnPropertyNames(record)) {
+    fields.push(`${encodePrimitiveString(field)}:${encodeNormalizedJson(record[field]!)}`);
+  }
+  return `{${fields.join(",")}}`;
+}
+
+function encodePrimitiveString(value: string): string {
+  const encoded = JSON.stringify(value);
+  if (typeof encoded !== "string") throw authorityError();
+  return encoded;
 }
 
 function snapshotTuple(value: ReturnType<typeof inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores>["snapshot"]): SnapshotTuple {
@@ -675,6 +982,38 @@ function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   return left.byteLength === right.byteLength && left.every((value, index) => value === right[index]);
 }
 
+function normalizedOwnDataRecord(value: NormalizedJson): Readonly<Record<string, NormalizedJson>> {
+  if (value === null || typeof value !== "object" || Array.isArray(value) || Object.getPrototypeOf(value) !== null || Object.getOwnPropertySymbols(value).length !== 0) {
+    throw authorityError();
+  }
+  for (const field of Object.getOwnPropertyNames(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, field);
+    if (field === "toJSON" || descriptor === undefined || !("value" in descriptor)) throw authorityError();
+  }
+  return value;
+}
+
+function normalizedStringArray(value: NormalizedJson): readonly string[] {
+  if (!Array.isArray(value)) throw authorityError();
+  const copy: string[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const item = value[index];
+    if (typeof item !== "string") throw authorityError();
+    copy.push(item);
+  }
+  return Object.freeze(copy);
+}
+
+function normalizedHashArray(value: NormalizedJson): readonly string[] {
+  const hashes = normalizedStringArray(value);
+  if (hashes.some((hash) => !isHash(hash))) throw authorityError();
+  return hashes;
+}
+
+function sameStringArrays(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 function exactOwnDataRecord(value: unknown, expectedFields: readonly string[]): Record<string, unknown> {
   const record = ownDataRecord(value);
   const actual = Object.keys(record).sort();
@@ -702,6 +1041,16 @@ function ownDataRecord(value: unknown): Record<string, unknown> {
 
 function requiredText(value: unknown): string {
   if (typeof value !== "string" || value.length === 0) throw authorityError();
+  return value;
+}
+
+function requiredHash(value: unknown): string {
+  if (!isHash(value)) throw authorityError();
+  return value;
+}
+
+function requiredPositiveInteger(value: unknown): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) throw authorityError();
   return value;
 }
 
