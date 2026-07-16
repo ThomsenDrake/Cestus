@@ -13868,3 +13868,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development. Full
   verification, integration, external-service activity, reset credits, push,
   and every `neo` action remain closed.
+
+## RV-1-E-524 — Task137A Recovery-14 rejected; Recovery-15 required
+
+- Both independent reviewers returned **NEEDS-CHANGES** for exact candidate
+  `0d78305a343f6ae2e49ee8c68147895d9947fdcb`; no prior admission or approval
+  carries forward.
+- Both reviews found the same remaining classification gap: a bound global
+  evaluator with its source supplied during binding is later invoked without
+  outer-call arguments, so the current evaluator path does not inspect that
+  bound source.
+- Coordinator admission and exact revision/scope checks otherwise passed. The
+  review worktrees lacked local dependencies for their full reruns, so their
+  isolated fixtures and static inspection provide the rejection evidence.
+- A fresh owner must start from the exact rejected candidate, add the focused
+  fixture and harmless controls first, preserve termination and all existing
+  Task137A behavior, stay within the historical six-path ceiling, and return
+  one immutable candidate for fresh admission and two new reviews.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
