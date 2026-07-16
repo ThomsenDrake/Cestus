@@ -16453,3 +16453,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integration, release records, Task129, Task130, Task139, providers, network,
   credentials, external services, push, reset, or any `neo` action. Both
   verdicts must be unqualified `APPROVED` before integration.
+
+## RV-1-E-631 — Task129-MFA frozen-corpus release reviews approved
+
+- Recorded at: 2026-07-16T21:11:54Z
+- Architecture/invariant reviewer
+  `019f6cc0-3df6-76b3-a93b-e9f81f337416` and
+  executability/command reviewer
+  `019f6cc0-423b-7ef0-bdb9-63ca7de8e34b` both returned unqualified
+  `APPROVED` for exact candidate
+  `38dbb91a883f5c91e7d07f8fefdfa7bd6ab199f7`.
+- Both independently verified exact eleven-path scope, five files and 129
+  tests with the fixed `16/70/17/4/22` allocation, one Task137 8/20 marker,
+  typecheck, diff checking, factory readiness, Task136 contract markers
+  `29/1/20/29/1/15`, authority/currentness/readback invariants, secret controls,
+  Unicode scalar ordering, private exports, and the absence of provider or
+  external-service execution. Full verification was not run.
+- The exact candidate range is now eligible for integration into the program
+  branch only, followed by coordinator re-admission and a strict
+  `task136-dispatch-release.v4` record. Push, `neo`, providers, external
+  services, and Task139 remain closed.
