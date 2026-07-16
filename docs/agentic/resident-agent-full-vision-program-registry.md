@@ -14180,3 +14180,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   independently approved and integrated into this program branch.
 - Full verification, integration, external-service activity, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-543 — Task137A Recovery-17 code assigned
+
+- Fresh code owner `019f6b49-f7cb-7a33-a7b3-a0a07106a2ed` is active and
+  pinned in an isolated worktree from exact rejected candidate
+  `dae77fc5a2a8e254dfce9234333aa27a9178361f`, creating branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-17`.
+- The owner must separate repeated `Function` and `eval` binding semantics with
+  the focused harmless control while preserving all existing behavior,
+  termination, and the historical six-path ceiling. Task-scoped subagent-driven
+  development is explicitly approved if relevant with one production writer.
+- The owner stops after focused committed-byte checks pending the independent
+  gate repair; no literal terminal-gate claim is permitted yet.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
+
+## RV-1-E-544 — Task137A literal-gate repair assigned
+
+- Documentation owner `019f6b4a-5ab3-7c90-877d-9269e113af51` is active and
+  pinned in an isolated worktree from exact program revision `db575726`,
+  creating branch `codex/task137-literal-gate-execution-repair`.
+- The owner may change only a new gate-repair claim and the factory-authority
+  recovery plan. It must make the literal gate safe when executed from standard
+  input and add an explicit terminal completion marker, then validate the exact
+  corrected block against candidate `dae77fc5a2a8e254dfce9234333aa27a9178361f`.
+- The two completed Recovery-16 review worktrees remain temporarily available
+  as read-only validation checkouts and are unpinned. Gate work does not
+  authorize subagent-driven development.
+- Full verification, source edits, integration, external-service activity,
+  reset credits, push, and every `neo` action remain closed.
