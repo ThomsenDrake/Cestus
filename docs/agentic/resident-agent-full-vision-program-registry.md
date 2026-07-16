@@ -14293,3 +14293,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   before implementation starts. Full verification, implementation,
   integration, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-548 — Repaired bounded-assurance reviews active
+
+- Architecture/invariant reviewer
+  `019f6b65-2ea1-7e42-9647-85d8e5cc8841` and
+  executability/finite-scope reviewer
+  `019f6b65-2e9e-76a2-9fc5-b4f4aa4a6db6` are active, read-only, and
+  independently reviewing exact repaired program revision
+  `dfc205f63e8368991b63e4372b4e433994a55ba5`.
+- Both must confirm the RV-1-E-547 findings are repaired and return unqualified
+  **APPROVED** before implementation starts. Review work does not authorize
+  subagent-driven development or acceptance-scope expansion.
+- Full verification, implementation, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain
+  closed.
