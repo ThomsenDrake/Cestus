@@ -12939,3 +12939,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   coordinator integration.
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, and every `neo` action remain closed.
+
+## RV-1-E-481 — Task137A Recovery-5 rejected for CommonJS identity bypass
+
+- Mounted-authority/lifecycle reviewer
+  `019f6850-9464-7171-b090-4889729e72b2` returned unqualified **APPROVED**,
+  but adversarial TypeScript semantic-policy reviewer
+  `019f6850-9f83-72c1-948c-480a9558dc1d` returned **NEEDS-CHANGES** for exact
+  candidate `9206637ebd9725132978039c5ae2870e7edfba51`.
+- The committed import-policy analyzer records initializers only for identifier
+  declarations. A destructured `const { require: load } = module` binding
+  therefore receives neither an initializer nor CommonJS loader identity, so
+  `load("./mounted-artifact-authority-operation.js")` can bypass the protected
+  source-path violation.
+- Candidate `9206637ebd9725132978039c5ae2870e7edfba51` must not be integrated.
+  Recovery-6 remains with owner `019f6844-8858-7ed2-9c74-3e9182688b4d`, scoped
+  to the Task137A claim and import-policy test unless a failing counterexample
+  proves a minimal supporting production edit is required. Task-scoped
+  subagent-driven development is explicitly approved if relevant, with exactly
+  one production writer.
+- The repair must add a failing destructured-`module.require` counterexample,
+  propagate loader identity through binding patterns without name-only false
+  positives, preserve exact-optional semantics and all prior counterexamples,
+  and produce one clean descendant for fresh coordinator admission and two
+  entirely new exact-SHA reviews. Full verification, live/provider/network/
+  credential/Nous activity, reset credits, push, and every `neo` action remain
+  closed.
