@@ -15098,3 +15098,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   verification, release records, Task139, push, reset, or any `neo` action.
   The coordinator alone may use dual card-level approvals as strict v4
   evidence after independent revalidation.
+
+## RV-1-E-589 — Root re-attestation returns one finite repair
+
+- Architecture/invariant reviewer
+  `019f6bda-4dd3-76e2-892d-37e3737a4dfd` and executability/adversarial
+  reviewer `019f6bda-4edf-7413-9333-fda7683cd60e` independently reviewed
+  exact checkpoint `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`.
+- Both returned literal **APPROVED** verdicts for `Task126`, `Task127`,
+  `Task128`, `Task130`, `T120-R`, and `W1-123-H-SHARED-SCHEMA`. Those
+  card-level approvals may be used only in strict graph order after fresh
+  coordinator command, blob, ancestry, checkout, factory, and link checks.
+- Both returned **NEEDS-CHANGES** for `Task129`: the Codex subscription
+  harness treats any resolving `appendOfficialFlowUnavailable` callback as a
+  durable append and returns `unavailable` without authoritative ledger
+  readback. A resolving no-op callback therefore creates false completion
+  evidence. The finite repair must require authenticated readback of the exact
+  committed feasibility event and add a focused negative test.
+- Strict release-record population may advance only through the contiguous
+  approved graph prefix ending at `Task128`. `Task130`, `T120-R`, and
+  `W1-123-H-SHARED-SCHEMA` remain approved but unreleasable until every prior
+  graph card has a valid strict v4 record. Task139, full verification,
+  external services, push, reset, and every `neo` action remain closed.
