@@ -14717,3 +14717,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The program branch remains the sole integration target for this work. Full
   verification, external-service activity, reset credits, push, and every
   `neo` action remain closed.
+
+## RV-1-E-570 — Evidence-bound release-closure correction drafted
+
+- Coordinator audit found that the approved bounded design requires each
+  Task136 release to bind candidate, two exact-candidate approvals,
+  integration, prerequisite releases, and owned blob identities, while the
+  integrated repository checker currently counts only headings. Placeholder
+  headings could therefore satisfy its count without satisfying the design.
+- A bounded design and implementation plan now define strict
+  `task136-dispatch-release.v4` JSON records, Git ancestry/blob verification,
+  transfer handling, and argument-array execution of all 28 frozen command
+  cards. The 28-card graph, commands, corpora, runtime behavior, and ownership
+  remain unchanged.
+- Two fresh read-only design/plan reviewers are required before implementation.
+  Design review does not authorize subagent-driven development. No release
+  records, Task139 work, full verification, external-service activity, push,
+  reset credit, or `neo` action is authorized yet.
