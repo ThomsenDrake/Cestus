@@ -101,11 +101,26 @@ describe("mounted official-flow feasibility", () => {
     });
   });
 
-  it("blocks when the prompt-bound checkpoint does not match the classification posture", async () => {
+  it("blocks mismatched or noncanonical checkpoint source evidence without appending", async () => {
     const fixture = await feasibilityFixture({ checkpointModelId: "codex-not-review" });
     expect(await record(fixture)).toMatchObject({
       kind: "blocked", category: "source-evidence-mismatch", retry: "after-source-repair"
     });
+
+    const hostileFixture = await feasibilityFixture();
+    const readAll = hostileFixture.handle.ledger.readAll.bind(hostileFixture.handle.ledger);
+    Object.defineProperty(hostileFixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => (await readAll()).map((event) => event.id === hostileFixture.sourceIds.checkpoint
+        ? { ...event, payload: { ...event.payload, untrustedLookalike: true } }
+        : event)
+    });
+    expect(await record(hostileFixture)).toMatchObject({
+      kind: "blocked", category: "persistence-unconfirmed", retry: "after-ledger-refresh"
+    });
+    expect((await hostileFixture.handle.ledger.readStream(feasibilityStream())).filter((event) =>
+      event.type === "agent.provider.feasibility.observed.v1"
+    )).toHaveLength(0);
   });
 
   it("blocks when the human approval does not match the exact preview hash", async () => {
@@ -146,7 +161,7 @@ describe("mounted official-flow feasibility", () => {
     expect(await record(fixture)).toMatchObject({ kind: "blocked", category: "record-conflict", retry: "none" });
   });
 
-  it("recovers one exact concurrently committed record without reappending", async () => {
+  it("fails closed when concurrent reread includes exact and conflicting same-key records", async () => {
     const fixture = await feasibilityFixture();
     const ledger = fixture.handle.ledger;
     const append = ledger.append.bind(ledger);
@@ -157,13 +172,20 @@ describe("mounted official-flow feasibility", () => {
         if (!conflicted && event.type === "agent.provider.feasibility.observed.v1") {
           conflicted = true;
           await append(event, options);
+          await append({
+            ...event,
+            payload: { ...event.payload, classificationHash: hashD }
+          });
           throw new ConcurrencyConflictError("test conflict after durable append");
         }
         return await append(event, options);
       }
     });
-    expect(await record(fixture)).toMatchObject({ kind: "unavailable" });
+    expect(await record(fixture)).toMatchObject({ kind: "blocked", category: "record-conflict", retry: "none" });
     expect(conflicted).toBe(true);
+    expect((await fixture.handle.ledger.readStream(feasibilityStream())).filter((event) =>
+      event.type === "agent.provider.feasibility.observed.v1"
+    )).toHaveLength(2);
   });
 
   it("returns persistence-unconfirmed after an append readback failure and recovers on retry", async () => {
@@ -256,7 +278,7 @@ describe("mounted official-flow feasibility", () => {
     });
   });
 
-  it("normalizes external invocation input before inspecting the mounted authority", async () => {
+  it("normalizes external invocation input and rejects raw cookie-header correlation material", async () => {
     const fixture = await feasibilityFixture();
     const input = {} as Record<string, unknown>;
     Object.defineProperties(input, {
@@ -266,6 +288,9 @@ describe("mounted official-flow feasibility", () => {
       correlationId: { enumerable: true, value: "corr_feasibility" }
     });
     expect(await recordMountedOfficialFlowUnavailability(input)).toMatchObject({
+      kind: "blocked", category: "unsafe-input", retry: "none"
+    });
+    expect(await record(fixture, { correlationId: "Cookie: session=abc" })).toMatchObject({
       kind: "blocked", category: "unsafe-input", retry: "none"
     });
   });
@@ -408,13 +433,13 @@ async function feasibilityFixture(options: {
 
 async function record(
   fixture: Awaited<ReturnType<typeof feasibilityFixture>>,
-  patch: { readonly operation?: MountedArtifactAuthorityOperation; readonly witness?: unknown } = {}
+  patch: { readonly operation?: MountedArtifactAuthorityOperation; readonly witness?: unknown; readonly correlationId?: string } = {}
 ) {
   return await recordMountedOfficialFlowUnavailability({
     operation: patch.operation ?? fixture.operation,
     witness: patch.witness ?? fixture.witness,
     occurredAt: "2026-07-16T00:00:00.000Z",
-    correlationId: "corr_feasibility_review"
+    correlationId: patch.correlationId ?? "corr_feasibility_review"
   });
 }
 

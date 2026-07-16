@@ -67,12 +67,13 @@ describe("official-flow feasibility", () => {
     expect(() => createOfficialFlowAbsenceWitness({ ...codexInput(), officialFlow: null } as never)).toThrow();
   });
 
-  it("rejects unknown and secret-shaped posture values", () => {
+  it("rejects unknown, credential, and raw cookie-header posture values", () => {
     expect(() => createOfficialFlowAbsenceWitness({
       ...codexInput(),
       configuredPosture: { ...codexInput().configuredPosture, unexpected: true }
     } as never)).toThrow();
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "authorization: bearer secret" }))).toThrow();
+    expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "Cookie: session=abc" }))).toThrow();
   });
 
   it("rejects accessor custom-prototype symbol and sparse external values", () => {

@@ -3,9 +3,10 @@ import {
   inspectOfficialFlowAbsenceWitness,
   type OfficialFlowAbsenceClassificationV1
 } from "../../agent/src/official-flow-feasibility.js";
-import type {
-  AppendableKnowledgeEvent,
-  KnowledgeEvent
+import {
+  validateKnowledgeEvent,
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent
 } from "../../ontology/src/contracts.js";
 import { isConcurrencyConflict, type EventLedger } from "../../ontology/src/event-ledger.js";
 import {
@@ -85,7 +86,7 @@ interface MountedAuthoritySnapshot {
   readonly admissionGenerationId: string;
 }
 
-const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key/i;
+const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:set-)?cookie\s*:|session\s*=\s*\S+)/i;
 
 export async function recordMountedOfficialFlowUnavailability(input: unknown): Promise<MountedOfficialFlowFeasibilityResult> {
   const invocation = normalizeInvocation(input);
@@ -139,7 +140,11 @@ export async function recordMountedOfficialFlowUnavailability(input: unknown): P
       return blocked("concurrency-conflict");
     }
     if (concurrent === undefined) return blocked("concurrency-conflict");
-    const event = concurrent.find((record) => sameExpectedEvent(record, expected));
+    const matching = concurrent.filter((record) =>
+      record.type === "agent.provider.feasibility.observed.v1" && record.payload.idempotencyKey === idempotencyKey
+    );
+    if (matching.some((record) => !sameExpectedEvent(record, expected))) return blocked("record-conflict");
+    const event = matching.find((record) => sameExpectedEvent(record, expected));
     if (event === undefined) return blocked("concurrency-conflict");
     const current = inspectCurrent(invocation.operation);
     if (current === undefined || !sameInspection(initial, current)) return blocked("mounted-authority-stale");
@@ -403,6 +408,7 @@ function normalizeLedgerRecords(value: unknown): readonly SafeLedgerRecord[] | u
     ) {
       return undefined;
     }
+    if (!validateKnowledgeEvent(item).success) return undefined;
     records.push(Object.freeze({
       id: item.id,
       type: item.type,

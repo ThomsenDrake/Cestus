@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { validateGovernancePolicy } from "./governance-policy.js";
 
-const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential/i;
+const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential|(?:^|[\s;])(?:(?:set-)?cookie\s*:|session\s*=\s*\S+)/i;
 const secretSafeStringSchema = z.string().refine((value) => !credentialShapedTextPattern.test(value), {
   message: "must not contain credential-shaped text"
 });
@@ -19,7 +19,7 @@ export const eventContextSchema = z.object({
   actor: actorRefSchema,
   occurredAt: z.string().datetime(),
   causationId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).optional(),
-  correlationId: z.string().min(3),
+  correlationId: secretSafeStringSchema.min(3),
   coreVersion: z.string().min(1),
   packVersions: z.record(z.string(), z.string())
 }).strict();
@@ -3828,10 +3828,14 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
           path: ["context", "actor"]
         });
       }
-      if (event.context.causationId === undefined) {
+      const feasibilityPayload = payload.data as { readonly sourceEventIds: readonly string[] };
+      if (
+        event.context.causationId === undefined ||
+        !feasibilityPayload.sourceEventIds.includes(event.context.causationId)
+      ) {
         ctx.addIssue({
           code: "custom",
-          message: "provider feasibility observations require a causation event",
+          message: "provider feasibility observations require causation inside sourceEventIds",
           path: ["context", "causationId"]
         });
       }
