@@ -14124,3 +14124,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development. Full
   verification, integration, external-service activity, reset credits, push,
   Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-540 — Task136 Recovery-16 rejected; Recovery-17 required
+
+- Graph reviewer `019f6b3e-e47f-7dc3-a4e0-35b3bd86670f` returned
+  **APPROVED**, while composition reviewer
+  `019f6b3f-052c-75e1-81be-c64d625918a4` returned **NEEDS-CHANGES** for exact
+  candidate `9b2af110b1b9745df09c480a66a241459f53d3f6`. Dual approval was not met;
+  no prior admission or approval carries forward.
+- The provider-credentials active-v4 section names Recovery-16 but omits the
+  rejected parent and RV-1-E-534 even though the claim requires all three
+  lineage facts in both active-v4 plan sections.
+- All four Task136 checks, exact revision/scope, diff, factory readiness, clean
+  checkout, and absent dependency-link checks otherwise passed.
+- A fresh documentation owner must start from the exact rejected candidate,
+  complete the provider-plan lineage text without changing executable bytes,
+  preserve the approved graph, checks, and command cards, keep the three-path
+  ceiling, and return one immutable candidate for fresh admission and review.
+- Full verification, source dispatch, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain closed.
