@@ -15617,3 +15617,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, SDD, later cards, Task139, full
   verification, provider/network/external activity, integration, release
   records, push, reset, or any `neo` action.
+
+## RV-1-E-605 — Task136 v2 contract integrated
+
+- Recorded at: 2026-07-16T18:32:19Z
+- Architecture/invariant reviewer
+  `019f6c2f-488e-7cd3-83e5-85c08ca86998` and
+  executability/adversarial reviewer
+  `019f6c2f-4474-7e10-8ec2-d2be748ba948` both returned unqualified
+  `APPROVED` with no findings for exact candidate
+  `fb8e2412c2e1cc11976af88ac349dd5f3a4edcb2`.
+- The coordinator cherry-picked only the four reviewed blobs as integration
+  commit `41af315fa1e0ca0b493efac31100853666a6d95b` on
+  `codex/resident-agent-full-vision-program-watchdog-recovery` and verified
+  they are byte-identical to the reviewed candidate.
+- Integrated admission independently passed 12 focused Node tests, exact
+  markers `29/1/20/29/1/15`, graph fingerprint
+  `9e88c5f9fa12bac40a5df6cc3fc0cc6a2b1f14e0c1fc8ad30da1da61e76864ab`,
+  repository early stop `expected 29 records, found 3`, diff checking,
+  factory readiness, clean tracked state, and non-symlinked dependency checks.
+- The v1 contract blob/SHA and Task126/127/128 JSON-block hashes remain the
+  exact values recorded in RV-1-E-604. The mutable v4 release schema and three
+  prefix records are unchanged. Full verification was not run.
+- Task136 v2 now governs the unreleased suffix. The next finite gate is fresh
+  same-checkpoint re-attestation for Task135D and Task137A before the
+  coordinator appends either strict v4 record. Task139, providers, network,
+  external services, push, reset, and every `neo` action remain closed.
