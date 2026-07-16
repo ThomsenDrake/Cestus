@@ -73,26 +73,24 @@ recorded as proposed hardening and is not a release blocker.
 ### Release graph
 
 `task136-release-graph.v1` contains the existing 28 topologically ordered
-release cards. Each card has exactly these fields:
+release cards. Each static card has exactly these fields:
 
 ```text
 id
 prerequisiteIds[]
-candidateSha
-review1 { threadId, reviewedSha, verdict }
-review2 { threadId, reviewedSha, verdict }
-integrationSha
-releaseEvent
-ownedPaths[] { disposition, path, blobSha }
+ownedPaths[] { disposition, path }
+transferToIds[]
 command
 ```
 
-Allowed dispositions are `owned` and `transferred`. Every SHA is lowercase
+Allowed dispositions are `owned` and `transferred`. Mutable release records in
+the program registry bind each card to candidate, two exact-revision reviews,
+integration, release event, and owned-path blob SHAs. Every SHA is lowercase
 hex, both reviews bind the candidate and say unqualified `APPROVED`, every
 prerequisite release precedes the consumer candidate, transfer ownership is
 explicit, and every owned blob is unchanged at its required checkpoints. The
-checker reads one canonical graph and one registry authority. It does not infer
-status from copied plan prose.
+checker combines one static graph with one registry authority. It does not
+infer status from copied plan prose.
 
 The success marker is:
 
