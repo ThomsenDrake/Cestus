@@ -13740,3 +13740,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize subagent-driven development. Full
   verification, integration, external-service activity, reset credits, push,
   and every `neo` action remain closed.
+
+## RV-1-E-516 — Task137A Recovery-13 rejected; Recovery-14 required
+
+- Both independent reviewers returned **NEEDS-CHANGES** for exact candidate
+  `609e6b6f68d8f60e1aae2d1030692ad7a3b33962`; no prior admission or approval
+  carries forward.
+- Analysis reviewer `019f6b03-ea1d-75e3-83bc-8b9021a8615c` found that global
+  evaluator identity is not preserved through a bound local alias. Lifecycle
+  reviewer `019f6b03-cec3-7412-a6e1-b6bd986e6907` independently found that
+  assignment through a transparent comma expression loses the same identity.
+- The coordinator and owner gates otherwise passed. The lifecycle review lacked
+  local dependencies for its full rerun, so only its isolated fixture and exact
+  revision/scope checks count as evidence.
+- A fresh owner must start from the exact rejected candidate, add both focused
+  fixtures and harmless controls first, preserve termination and all existing
+  Task137A behavior, stay within the historical six-path ceiling, and return
+  one immutable candidate for fresh coordinator admission and two new reviews.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
