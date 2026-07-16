@@ -168,7 +168,10 @@ loader value flow.
 
 Across `packages/**/src/**/*.{ts,tsx,mts,cts}`:
 
-- Identifiers named `eval` or `Function` are prohibited.
+- Direct calls to `eval(...)` or `globalThis.eval(...)` are prohibited.
+- Calls or construction through `Function(...)`, `new Function(...)`, or
+  `globalThis.Function(...)` are prohibited. Type annotations such as
+  `value: Function` are harmless and remain allowed.
 - Direct `require(...)`, `module.require(...)`, TypeScript `import = require`,
   and imports or calls of `createRequire` are prohibited.
 - Dynamic `import(...)` is prohibited except for the two exact file,
@@ -211,7 +214,8 @@ protected module; alias; default import; namespace import; named re-export;
 star re-export; import query; unauthorized type import; protected literal
 dynamic import; computed dynamic import; extra dynamic-import occurrence;
 direct `require`; `module.require`; `import = require`; direct `createRequire`;
-aliased `createRequire`; `eval` identifier; and `Function` identifier.
+aliased `createRequire`; direct evaluator call; and direct `Function`
+constructor invocation.
 
 The success marker is:
 
