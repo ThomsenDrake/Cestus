@@ -274,3 +274,27 @@ independent review.
 - Status: ready-for-review.
 - Next review gate: two fresh exact-revision architecture/invariant and
   executability/adversarial reviews before any coordinator integration.
+
+## Forward Runtime-Immutability Review Repair
+
+- Repair parent: `192a0707cca0a107caaf1d41eff163408e1868b7`.
+- Root cause: `blocked()` froze its containing result but left the generic
+  `safeDiagnosticCodes` array mutable. A JavaScript caller could mutate that
+  one-element tuple into a category mismatch despite the mapped TypeScript
+  result union.
+- Causal RED: after extending the existing prohibited-source test with a
+  frozen-tuple assertion and unsafe mutable-cast write, `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts` exited `1` with **1
+  file / 18 tests: 1 failed, 17 passed** because the returned tuple was not
+  frozen.
+- Narrow repair: `blocked()` now uses `Object.freeze<[C]>([category])`, which
+  retains the exact `readonly [C]` diagnostic correlation without a broad
+  result cast. The existing test confirms the tuple is frozen, an unsafe
+  mutation attempt throws, and its original diagnostic code remains unchanged.
+- GREEN: the identical focused command exited `0` with **1 file / 18 tests**.
+- Full verification was not run; this scoped repair prohibits `npm run verify`.
+  No provider, network, credential, OAuth, append, persistence, integration,
+  registry, Task139, push, reset, or `neo` action occurred.
+- Status: ready-for-review.
+- Next review gate: two fresh exact-revision architecture/invariant and
+  executability/adversarial reviews before any coordinator integration.

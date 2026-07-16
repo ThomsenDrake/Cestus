@@ -94,6 +94,13 @@ describe("official xAI subscription harness", () => {
         category: "prohibited-credential-source",
         safeDiagnosticCodes: ["prohibited-credential-source"]
       });
+      if (result.kind !== "blocked") {
+        throw new Error("expected a blocked prohibited credential source");
+      }
+      const mutableDiagnosticCodes = result.safeDiagnosticCodes as unknown as string[];
+      expect(Object.isFrozen(result.safeDiagnosticCodes)).toBe(true);
+      expect(() => { mutableDiagnosticCodes[0] = "unsafe-input"; }).toThrow(TypeError);
+      expect(result.safeDiagnosticCodes).toEqual(["prohibited-credential-source"]);
       expect(JSON.stringify(result)).not.toContain(sourceMaterial);
     }
   });
