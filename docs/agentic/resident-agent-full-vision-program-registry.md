@@ -17494,3 +17494,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-661 — Task137B-W wake runtime implementation active
+
+- Recorded at: 2026-07-17T01:08:00Z
+- Fresh implementation worker `019f6d54-bc6e-7362-99c7-e86b38298c16`
+  owns `Task137B-W` from exact clean program base
+  `f830fd08be93cfa437b5c5b370f8e4bd796ec863` on task branch
+  `codex/task137b-wake-runtime-v2` in its isolated workspace.
+- The prompt explicitly approves task-scoped subagent-driven development and
+  TDD. It resolves the older plan's stale ownership lines in favor of
+  `task136-bounded-assurance.v2`: the worker owns exactly the seven wake
+  runtime/store/test/claim paths and may not edit the central ontology
+  contract, the released Task137A policy test, or the program registry.
+- The worker must preserve one committed causal RED before implementing the
+  current merged APIs, then pass the exact four-file card command, the literal
+  nine-file cross-lane command, standalone typecheck, the materialized Task137
+  terminal gate, diff checking, factory readiness, exact cumulative scope,
+  clean state, and non-symlinked dependencies.
+- Full verification, self-review, integration, release records, Task139,
+  providers, network, credentials, external services, push, reset, rebase,
+  and every `neo` action remain closed. A candidate requires coordinator
+  admission and two fresh exact-revision reviews before integration.
