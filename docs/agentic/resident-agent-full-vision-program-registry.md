@@ -16795,3 +16795,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   revision reviews. Full verification, integration, releases, Task139,
   providers, network, credentials, external services, push, reset, and every
   `neo` action remain closed.
+
+## RV-1-E-642 — Immutable Task130 candidate admitted and final reviews dispatched
+
+- Recorded at: 2026-07-16T21:59:28Z
+- Task130 forward repair committed exact candidate
+  `172e8ec8052baf4f042dfed7c4d737b488b66201` over prior candidate
+  `192a0707cca0a107caaf1d41eff163408e1868b7`. The focused RED retained exactly
+  18 tests with one failure and 17 passes because the diagnostic tuple was
+  mutable. GREEN passed all 18 after `blocked()` froze its exact generic tuple;
+  the regression proves an unsafe mutable-cast write cannot change it.
+- Independent coordinator admission passed **1 file / 18 tests**, typecheck,
+  diff checking, factory readiness, exact cumulative three-path scope, clean
+  state, canonical `ready-for-review` status, and non-symlinked dependencies.
+  Full verification was not run.
+- Fresh read-only architecture/invariant reviewer
+  `019f6cf1-0458-7660-bf5b-edcddbae4443` and executability/adversarial
+  reviewer `019f6cf1-0867-7c01-b4f7-ee0c95c29354` use Terra/xhigh and are
+  bound to exact candidate `172e8ec8052baf4f042dfed7c4d737b488b66201`.
+  Prior Task130 verdicts are historical and carry no approval to this revision.
+- Review work does not authorize SDD, edits, full verification, integration,
+  releases, Task139, providers, network, credentials, external services,
+  push, reset, or any `neo` action.
