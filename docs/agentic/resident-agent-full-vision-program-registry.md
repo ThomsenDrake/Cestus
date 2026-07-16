@@ -13495,3 +13495,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   independent findings, but no approval can reverse this rejection.
 - Full verification, integration, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-504 — Task137A Recovery-11 assigned to a fresh owner
+
+- Fresh owner `019f68c1-8fac-72b3-938d-a65ddcd5b350` is active and pinned in
+  isolated worktree `/home/drake/.codex/worktrees/564b/Cestus`, starting from
+  exact rejected candidate
+  `3e8738c984a4a78d3d8f82eb3661f5b53a352869` and creating branch
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-11`.
+- The owner must begin with timeout-bounded direct-alias, object-rest-alias,
+  and stale-alias object-export REDs, then make exported reachable object roots
+  authority-aware without introducing nontermination or false positives. It
+  must preserve every prior loader, evaluator, root-version, array-rest,
+  lifecycle, capture, and harmless-control contract within the historical
+  six-path ceiling.
+- Task-scoped subagent-driven development is explicitly approved if relevant
+  with exactly one production writer. Disposable work must use a uniquely
+  guarded home-cache path; broad scratch cleanup is forbidden.
+- The owner must return one immutable candidate for coordinator admission and
+  two fresh exact-SHA reviews. Full verification, integration, live/provider/
+  network/credential/Nous activity, reset credits, push, and every `neo` action
+  remain closed.
