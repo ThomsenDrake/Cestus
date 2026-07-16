@@ -16404,3 +16404,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Scope and prohibitions remain unchanged: no Task137 grammar change, full
   verification, providers, external services, Task139, integration, release
   records, push, reset, or `neo` action.
+
+## RV-1-E-629 — Task129-MFA finite candidate admitted under frozen final corpus
+
+- Recorded at: 2026-07-16T21:05:31Z
+- Worker `019f6ca2-97a8-7443-81de-ed7c82491298` produced clean forward
+  revision `38dbb91a883f5c91e7d07f8fefdfa7bd6ab199f7` with parent
+  `ab33c40f408e4234cbfedfa7e37d90bdfbf92a86`. Its seven-path repair keeps the
+  cumulative exact eleven Task129-MFA paths from base
+  `2b81a542c6ea391bfb901443acfc04366bd4f3f5`.
+- The finite repair rejects prefixed raw cookie/session material and
+  assignment-shaped `auth`, aligns feasibility capability-scope validation
+  across classifier and ontology, and uses numeric Unicode scalar comparison
+  with `U+E000` before `U+10000`. The claim records the corrected deterministic
+  hash `sha256:45f50b8363698ece659914d4ea6f4fa7d6f7abaa6ecde090ff4707bd64d57f18`.
+- Coordinator admission independently passed exact five-file GREEN at 129
+  tests with one 8/20 Task137 marker, typecheck, diff checking, factory
+  readiness, Task136 markers `29/1/20/29/1/15`, exact ancestry and cumulative
+  scope, clean tracked state, private-export audit, non-symlinked dependencies,
+  and no provider or external-service execution path. Full verification was
+  not run.
+- The final review corpus is now frozen to the approved design, plan, claim,
+  finite Task137 v2 policy, and every named counterfactual through
+  `RV-1-E-628`. Reviewers must verify this corpus and may not invent new
+  acceptance scope. A form outside it is proposed hardening unless it proves
+  an explicit frozen prohibition ineffective; it requires coordinator contract
+  revision before becoming a release blocker.
+- Two fresh read-only exact-revision reviewers must return unqualified
+  `APPROVED`. Review work does not authorize edits, SDD, integration, release
+  records, Task129, Task130, Task139, full verification, providers, network,
+  credentials, external services, push, reset, or any `neo` action.
