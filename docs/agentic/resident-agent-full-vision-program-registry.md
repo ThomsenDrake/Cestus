@@ -14252,3 +14252,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   approved model. Current branches and evidence remain preserved.
 - Full verification, integration, external-service activity, reset credits,
   push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-546 — Bounded-assurance design and plan reviews active
+
+- Exact program revision
+  `bd8f58c79c4f3922e1a637ff7144b5cf37c39359` contains the bounded-assurance
+  design and implementation plan. Architecture/invariant reviewer
+  `019f6b5f-8330-7f50-ba21-159a71a339f3` and executability/finite-scope
+  reviewer `019f6b5f-8340-7c63-9516-29c3b5ef2308` are active, read-only, and
+  independently reviewing that exact revision.
+- Both reviewers must run diff and factory-readiness checks and return
+  unqualified **APPROVED** before implementation starts. Review work does not
+  authorize subagent-driven development.
+- Findings outside the frozen grammars or corpora are proposed hardening and
+  do not expand v1 acceptance unless they prove an explicit production
+  prohibition ineffective.
+- Two initial reviewer tasks failed during model startup before performing
+  work; they carry no verdict or evidence and are not part of this review pair.
+- Implementation dispatch, full verification, integration, external-service
+  activity, reset credits, push, Task139 resumption, and every `neo` action
+  remain closed.
