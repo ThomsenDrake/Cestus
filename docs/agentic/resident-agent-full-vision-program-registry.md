@@ -15246,3 +15246,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-590 — Task129 authoritative-readback repair active
+
+- Worker `019f6be3-8d53-7810-8fd2-d78527c13cfe` is active from exact program
+  revision `5bb540d6` with exclusive ownership of the Task129 Codex harness
+  source, focused test, and append-only claim.
+- The bounded repair requires causal RED coverage for a resolving no-op append,
+  exact authoritative readback of the committed feasibility evidence, strict
+  normalization across the async boundary, and a fail-closed secret-safe
+  result for absent, stale, mismatched, forged, accessor-backed, or otherwise
+  unproven readback.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved. The worker must run the exact focused test, typecheck,
+  diff checking, and factory readiness, then commit one three-path candidate
+  and stop for two fresh exact-revision reviews.
+- Full verification, network, providers, credentials, external services,
+  self-review, self-integration, Task139, push, reset, and every `neo` action
+  remain prohibited.
