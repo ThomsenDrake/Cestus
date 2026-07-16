@@ -16696,3 +16696,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reviews. Full verification, integration, releases, Task139, providers,
   network, credentials, external services, push, reset, and every `neo`
   action remain closed.
+
+## RV-1-E-638 — Task130 status repair complete and mapped-union correction continued
+
+- Recorded at: 2026-07-16T21:40:12Z
+- Task130 status repair committed exact forward revision
+  `fc3111ef34a1f92d029f75cce2ac43f60b01f929` over candidate
+  `dbbf0794625554f9bc3b45901853a17c4aedf166`. The commit changes only the
+  Task130 claim, makes its latest status exactly `ready-for-review`, and keeps
+  explanatory review prose separate. The worker reported 18 focused tests,
+  typecheck, diff checking, factory readiness, exact cumulative three-path
+  scope, clean state, and non-symlinked dependencies passing.
+- Coordinator comparison against the exact result union in the approved design
+  found that Task130 shares Task129's independent blocked category/diagnostic
+  union. The same worker continues under submission
+  `019f6cdf-64ae-78d1-80de-7d60d91010ff` to replace it with the exact mapped
+  discriminator union, add a causal compile-time regression without changing
+  the 18-test runtime count, and create one further forward commit.
+- This continuation is inside Task130's original three-path ceiling and
+  explicitly approves task-scoped SDD/TDD. Two entirely fresh reviews will
+  inspect only the final corrected exact revision. Full verification,
+  integration, releases, Task139, providers, network, credentials, external
+  services, push, reset, and every `neo` action remain closed.
