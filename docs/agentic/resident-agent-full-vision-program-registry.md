@@ -14359,3 +14359,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   implementation starts. Full verification, implementation, integration,
   external-service activity, reset credits, push, Task139 resumption, and every
   `neo` action remain closed.
+
+## RV-1-E-552 — Registry-lineage repair reviews active
+
+- Architecture/invariant reviewer
+  `019f6b6d-5ad7-7de0-a696-db451b5145bc` and
+  executability/finite-scope reviewer
+  `019f6b6d-5ba8-7fb1-9fa1-1accd7615739` are active, read-only, and reviewing
+  exact revision `72496a1e7d35db2df6949d5b81d0bd7a62c2272a`.
+- A full-SHA transcription error in the initial dispatch was corrected in both
+  tasks before verdict; reviewers must bind only the exact revision above.
+- Both must confirm registry-only mutable lineage, claim-bound immutable source
+  evidence, and all prior command repairs, then return unqualified
+  **APPROVED** before implementation starts.
+- Full verification, implementation, integration, external-service activity,
+  reset credits, push, Task139 resumption, and every `neo` action remain
+  closed.
