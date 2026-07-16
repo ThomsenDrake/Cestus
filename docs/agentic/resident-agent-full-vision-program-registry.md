@@ -14749,3 +14749,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both must return unqualified **APPROVED** before the verifier implementation
   may start. Full verification, external-service activity, push, reset credit,
   and every `neo` action remain closed.
+
+## RV-1-E-572 — Release-closure plan review findings repaired
+
+- Executability reviewer `019f6baa-a980-78a0-bf9d-6d159926cbae` returned
+  **NEEDS-CHANGES** for two plan defects: candidate verification described but
+  did not execute the expected failing repository mode, and the ownership table
+  did not distinguish read-only auditors from the coordinator registry writer.
+- The plan now runs repository mode explicitly, requires nonzero exit and the
+  exact zero-record closure message, and separates Task 3A read-only audits
+  from Task 3B coordinator-only registry appends. Schema, graph, corpora,
+  implementation files, and acceptance scope are unchanged.
+- Architecture reviewer `019f6baa-aa8b-7b30-89d8-e21959987660` initially
+  evaluated the intentionally defective pre-implementation script as though it
+  were candidate output. The coordinator clarified that this is a design/plan
+  review and requested a verdict on the proposed correction only.
+- Both reviewers must return unqualified **APPROVED** on the repaired exact
+  revision before implementation. No implementation, records, Task139, full
+  verification, external-service activity, push, reset credit, or `neo` action
+  is authorized yet.
