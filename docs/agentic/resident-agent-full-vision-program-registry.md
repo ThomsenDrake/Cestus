@@ -17037,3 +17037,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   approvals before one forward Task135B repair may start.
 - Task139, full verification, providers, network, credentials, external
   services, push, reset, and every `neo` action remain closed.
+
+## RV-1-E-648 — Task135B one-admission correction reviews active
+
+- Recorded at: 2026-07-16T23:14:00Z
+- Exact program revision
+  `a31a3c28e01c4a3d7c71df3db496baaf4259e3c3` contains the bounded
+  one-admission correction design and measurable implementation plan.
+- Fresh architecture/invariant reviewer
+  `019f6d14-c08a-7db3-9846-f68e76e5f773` and
+  executability/finite-scope reviewer
+  `019f6d14-c44d-7de0-840c-68129a9fde16` are read-only at that exact
+  revision using Terra/xhigh.
+- Both reviewers must verify the released one-admission Task137A boundary,
+  fresh-operation restart semantics, exact resident/run/attempt/artifact
+  binding, hostile-safe normalization, three-path ownership, reproducible RED,
+  exact 20/120 test counts, finite commands, and the nine-record repository
+  checkpoint. Both must return unqualified **APPROVED** before a Task135B
+  repair worker starts.
+- Review work does not authorize subagent-driven development, edits, full
+  verification, integration, release records, Task139, providers, network,
+  credentials, external services, push, reset, or any `neo` action.
