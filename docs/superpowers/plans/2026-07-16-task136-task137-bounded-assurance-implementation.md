@@ -517,37 +517,30 @@ candidate="$(git rev-parse HEAD)"
 test -z "$(git status --porcelain)"
 test ! -L node_modules
 node --test scripts/resident-agent/assurance/task137-terminal-gate.test.mjs
-if ! output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"; then
-  echo "Task137 terminal gate exited nonzero" >&2
-  exit 1
-fi
-markers="$(printf '%s\n' "$output" | grep '^TASK137_GATE_')"
-expected="$(printf '%s\n' \
-  'TASK137_GATE_STAGE_OK tests' \
-  'TASK137_GATE_STAGE_OK typecheck' \
-  'TASK137_GATE_STAGE_OK source-policy' \
-  'TASK137_GATE_STAGE_OK package-boundary' \
-  'TASK137_GATE_STAGE_OK factory-readiness' \
-  'TASK137_GATE_STAGE_OK checkout' \
-  'TASK137_GATE_COMPLETE stages=6')"
-test "$markers" = "$expected"
 git diff --check "${candidate}^" "$candidate"
 npm run factory:check
 ```
 
+The real terminal script is intentionally deferred: the standalone gate
+candidate does not contain Lane B's reconstructed Task137 files. The controlled
+regression must assert all seven exact ordered markers and a nonzero old-form
+result. Task 7 supplies the first real gate receipt.
+
 - [ ] **Step 2: Dispatch two exact-revision reviews**
 
 Architecture reviewer checks invariant preservation and committed-script
-authority. Command reviewer executes the regression and real gate, verifies
-seven markers, finite scope, clean checkout, and no standard-input dependence.
-Both prompts bind `candidate` and state that out-of-model findings are proposed
-hardening, not blockers.
+authority. Command reviewer executes the controlled regression, verifies seven
+exact ordered markers, finite scope, clean checkout, and no standard-input
+dependence. Both prompts bind `candidate`, state that the real gate is deferred
+to Task 7, and state that out-of-model findings are proposed hardening rather
+than blockers.
 
 - [ ] **Step 3: Integrate after dual approval**
 
 Cherry-pick the exact candidate onto the program branch, rerun Step 1 there,
 append the candidate SHA, both reviewer task IDs/verdicts, integration SHA, and
-gate markers to the registry, then commit the registry append. Do not push.
+controlled-regression markers to the registry, then commit the registry append.
+Record that the real gate remains pending Task 7. Do not push.
 
 ### Task 6: Admit, Review, And Integrate The Task136 Candidate
 
@@ -657,12 +650,12 @@ Both must return unqualified `APPROVED` before Tasks 1-4 start.
 The reset is complete only when the registry contains:
 
 - The dual-approved design/plan revision and two reviewer task IDs.
-- Gate candidate, two exact-revision approvals, seven markers, and integration
-  SHA.
+- Gate candidate, two exact-revision approvals, controlled-regression markers,
+  and integration SHA.
 - Task136 candidate, two exact-revision approvals, four exact count markers,
   and integration SHA.
 - Task137 policy candidate, two exact-revision approvals, `allowed=8`,
-  `rejected=20`, the real gate markers, and integration SHA.
+  `rejected=20`, all seven ordered real-gate markers, and integration SHA.
 - A deterministic Task139 release decision based on the recorded prerequisites.
 
 No full verification, external-service gate, push, or `neo` action is part of
