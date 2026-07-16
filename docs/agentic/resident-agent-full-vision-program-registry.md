@@ -15357,3 +15357,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, SDD, integration, release records,
   full verification, external activity, Task139, push, reset, or any `neo`
   action.
+
+## RV-1-E-595 — Task129 in-scope repair tactics exhausted
+
+- Architecture/invariant reviewer
+  `019f6bfb-183d-7001-9888-9b54c06292cd` and executability/adversarial
+  reviewer `019f6bfb-1c7c-7cc2-8d2f-f4f13c488f8a` both returned
+  **NEEDS-CHANGES** for exact candidate
+  `8085b390dbe77313b74d6a001f3c0eef91ac5fc1`.
+- Both independently reproduced false `official-flow-unavailable` completion
+  without a durable append by deep-importing the public issuer and supplying a
+  fake mounted owner. The private WeakMap prevents operation copying but does
+  not authenticate who may mint an operation.
+- Both otherwise confirmed exact three-path scope, ancestry, clean checkout,
+  non-symlinked dependencies, 26 focused tests, typecheck, diff checking, and
+  factory readiness. Full verification was not run.
+- Two focused three-file Task129 tactics are now exhausted: the first was
+  honestly fail-closed but removed required durable evidence; the second
+  restored evidence through a publicly forgeable issuer. Both candidates stay
+  preserved and unintegrated. Another Task129-local repair is not authorized.
+- Recovery moves to the already approved provider-design requirement for an
+  authenticated mounted-runtime trust root and a finite release-graph
+  dependency correction. This is an internal plan/contract repair, not a new
+  product behavior. Task130's equivalent unavailable-feasibility path must be
+  re-audited before its approved root verdict can be used.
+- Strict release records remain complete only through `Task128`. Full
+  verification, external services, Task139, push, reset, and every `neo`
+  action remain closed.
