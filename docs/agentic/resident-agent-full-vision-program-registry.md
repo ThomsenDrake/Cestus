@@ -15204,3 +15204,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## Task136 dispatch release v4: Task128
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task128",
+  "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "reviews": [
+    {
+      "threadId": "019f6bda-4dd3-76e2-892d-37e3737a4dfd",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6bda-4edf-7413-9333-fda7683cd60e",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "releaseEventId": "task136-release-v4-Task128",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/local-model-provider.ts",
+      "disposition": "owned",
+      "blobSha": "610262d953ac8889b0e546d9a4e723697ef15adb"
+    },
+    {
+      "path": "packages/agent/test/local-model-provider.test.ts",
+      "disposition": "owned",
+      "blobSha": "8e5b151d4ac80a0222834bd1283396cfba89a646"
+    },
+    {
+      "path": "docs/agentic/claims/task-128-resident-full-vision-local-model-provider.md",
+      "disposition": "owned",
+      "blobSha": "7b2823f1da1b40f1dfab3b5836bfc570832b15fc"
+    }
+  ]
+}
+```
