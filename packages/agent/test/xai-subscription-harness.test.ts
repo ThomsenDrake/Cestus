@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  createXaiSubscriptionHarness
+  createXaiSubscriptionHarness,
+  type XaiSubscriptionHarnessResult
 } from "../src/xai-subscription-harness.js";
 import {
   inspectOfficialFlowAbsenceWitness
@@ -11,6 +12,16 @@ const capabilityHash = "sha256:ddddddddddddddddddddddddddddddddddddddddddddddddd
 const approvalBindingHash = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const documentationHash = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 const classificationHash = "sha256:a5f6a4b66c6898640edbed0dc7d254b2943400de3b46c1551b7ef3647c05fef9";
+
+const mismatchedBlockedDiagnostic: XaiSubscriptionHarnessResult = {
+  kind: "blocked",
+  category: "unsafe-input",
+  providerId: "provider_xai_blocked",
+  modelId: "xai-blocked",
+  capabilityHash,
+  // @ts-expect-error blocked diagnostics must match their category exactly
+  safeDiagnosticCodes: ["posture-mismatch"]
+};
 
 function currentPosture(overrides: Record<string, unknown> = {}) {
   return {
