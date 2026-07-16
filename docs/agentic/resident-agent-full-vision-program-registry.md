@@ -16060,3 +16060,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, SDD, integration, release records,
   Task129, Task130, Task139, full verification, providers, network,
   credentials, external services, push, reset, or any `neo` action.
+
+## RV-1-E-616 — Task129-MFA final normalization repair dispatched
+
+- Recorded at: 2026-07-16T19:51:37Z
+- Fresh architecture/invariant reviewer
+  `019f6c75-6c65-7d23-843c-8ca161851a72` and fresh
+  executability/adversarial reviewer
+  `019f6c75-70db-7983-a269-30a81949fc03` both returned
+  `NEEDS-CHANGES` for exact candidate
+  `bdc157ada7ff51fd9fcb7b8094fda6579b9b712b`.
+- The coordinator verified two pre-await normalization mismatches: recorder
+  correlation filtering omits the ontology feasibility-event terms
+  `credential` and `oauth`, and its parseable-datetime check accepts values
+  rejected by the canonical event datetime schema. Both paths can read the
+  ledger before returning retryable `persistence-unconfirmed` instead of
+  non-retryable `unsafe-input`.
+- Fresh worker `019f6c7b-fcf9-7762-b997-106389f69e5e` starts from the clean
+  reviewed candidate and owns only mounted recorder source/test and the
+  Task129-MFA claim. The prompt explicitly authorizes task-scoped
+  `superpowers:subagent-driven-development` and test-driven development for
+  this normalization repair only.
+- Existing invocation-normalization coverage must prove cookie, credential,
+  OAuth, and parseable-but-noncanonical timestamp inputs return
+  `unsafe-input` with zero ledger reads and zero appends. The recorder must
+  align correlation vocabulary and datetime parsing with the exact ontology
+  event contracts before any `await`, without changing the global event schema
+  or the fixed 129-test allocation.
+- Completion requires exact 129-test GREEN, one 8/20 marker, typecheck, diff
+  checking, factory readiness, Task136 markers `29/1/20/29/1/15`, cumulative
+  scope, private-export and non-symlink checks, and a clean forward commit.
+  Full verification, providers, network, credentials, OAuth, external
+  services, live Nous, Task139, integration, release records, push, reset, and
+  every `neo` action remain closed.
