@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -39,6 +39,23 @@ const expectedCardIds = Object.freeze([
 ]);
 
 const expectedReleaseGraphHash = "07e5f070a3657694a63d80bcdf3d69be087418a235d77e6875e604d9636ce83f";
+const releaseRecordSchemaVersion = "task136-dispatch-release.v4";
+const releaseRecordKeys = Object.freeze([
+  "schemaVersion",
+  "cardId",
+  "candidateSha",
+  "reviews",
+  "integrationSha",
+  "releaseEventId",
+  "prerequisites",
+  "ownedPathBlobs"
+]);
+const releaseReviewKeys = Object.freeze(["threadId", "candidateSha", "verdict"]);
+const releasePrerequisiteKeys = Object.freeze(["cardId", "integrationSha", "releaseEventId"]);
+const releaseOwnedPathKeys = Object.freeze(["path", "disposition", "blobSha"]);
+const releaseHeadingPrefix = "## Task136 dispatch release v4: ";
+const fullShaPattern = /^[0-9a-f]{40}$/;
+const codexThreadIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const rejectedCompositionIds = Object.freeze([
   "unknown-node",
@@ -98,6 +115,10 @@ function ownKeys(value) {
   return Object.keys(value).sort();
 }
 
+function orderedOwnKeys(value) {
+  return Object.keys(value);
+}
+
 function assertPlainObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
     throw new Error(`${label} must be a plain object`);
@@ -109,6 +130,14 @@ function assertExactKeys(value, keys, label) {
   const actual = ownKeys(value);
   const expected = [...keys].sort();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${label} keys`);
+  }
+}
+
+function assertExactOrderedKeys(value, keys, label) {
+  assertPlainObject(value, label);
+  const actual = orderedOwnKeys(value);
+  if (JSON.stringify(actual) !== JSON.stringify(keys)) {
     throw new Error(`${label} keys`);
   }
 }
@@ -129,6 +158,22 @@ function assertCanonicalPath(path, label) {
   assertString(path, label);
   if (path.startsWith("/") || path.startsWith(".") || path.includes("..") || path.includes("\\") || path.includes("//")) {
     throw new Error(`${label} is not canonical`);
+  }
+}
+
+function assertFullSha(value, label) {
+  if (typeof value !== "string" || !fullShaPattern.test(value)) {
+    const separator = label.indexOf(": ");
+    if (separator >= 0) {
+      throw new Error(`${label.slice(0, separator)} must be a full lowercase SHA: ${label.slice(separator + 2)}`);
+    }
+    throw new Error(`${label} must be a full lowercase SHA`);
+  }
+}
+
+function assertThreadId(value, label) {
+  if (typeof value !== "string" || !codexThreadIdPattern.test(value)) {
+    throw new Error(`${label} must be a Codex task id`);
   }
 }
 
@@ -229,9 +274,6 @@ export function verifyStaticGraph(contract = loadContract()) {
     throw new Error("card order");
   }
   cards.forEach(validateCardShape);
-  if (releaseGraphHash(cards) !== expectedReleaseGraphHash) {
-    throw new Error("release graph fingerprint");
-  }
 
   const graph = new Map(cards.map((card) => [card.id, card]));
   if (graph.size !== cards.length || cards.length !== expectedCardIds.length) {
@@ -305,6 +347,9 @@ export function verifyStaticGraph(contract = loadContract()) {
   }
   if (visited.length !== cards.length) {
     throw new Error("cycle in release graph");
+  }
+  if (releaseGraphHash(cards) !== expectedReleaseGraphHash) {
+    throw new Error("release graph fingerprint");
   }
 
   return {
@@ -685,16 +730,290 @@ export function runAbiCorpus() {
   return { green: 1, red: rejected.length, rejectedCategoryIds: rejected };
 }
 
+function releaseEventIdFor(cardId) {
+  return `task136-release-v4-${cardId}`;
+}
+
+function validateReleaseReview(review, record, index) {
+  assertExactOrderedKeys(review, releaseReviewKeys, `release review ${record.cardId}.${index}`);
+  assertThreadId(review.threadId, `review threadId: ${record.cardId}`);
+  assertFullSha(review.candidateSha, `review candidateSha: ${record.cardId}`);
+  if (review.candidateSha !== record.candidateSha) {
+    throw new Error(`review candidate mismatch: ${record.cardId}`);
+  }
+  if (review.verdict !== "APPROVED") {
+    throw new Error(`review verdict must be APPROVED: ${record.cardId}`);
+  }
+}
+
+function validateReleasePrerequisites(record, card, recordsById) {
+  assertArray(record.prerequisites, `${record.cardId}.prerequisites`);
+  if (record.prerequisites.length !== card.prerequisiteIds.length) {
+    throw new Error(`prerequisite ID mismatch: ${record.cardId}`);
+  }
+  for (let index = 0; index < card.prerequisiteIds.length; index += 1) {
+    const expectedId = card.prerequisiteIds[index];
+    const prerequisite = record.prerequisites[index];
+    assertExactOrderedKeys(prerequisite, releasePrerequisiteKeys, `release prerequisite ${record.cardId}.${index}`);
+    if (prerequisite.cardId !== expectedId) {
+      throw new Error(`prerequisite ID mismatch: ${record.cardId}`);
+    }
+    const previousRecord = recordsById.get(expectedId);
+    if (!previousRecord) {
+      throw new Error(`prerequisite record missing before consumer: ${record.cardId}:${expectedId}`);
+    }
+    if (
+      prerequisite.integrationSha !== previousRecord.integrationSha ||
+      prerequisite.releaseEventId !== previousRecord.releaseEventId
+    ) {
+      throw new Error(`prerequisite release mismatch: ${record.cardId}:${expectedId}`);
+    }
+  }
+}
+
+function validateReleaseOwnedPaths(record, card) {
+  assertArray(record.ownedPathBlobs, `${record.cardId}.ownedPathBlobs`);
+  const entriesByPath = new Map();
+  for (const entry of record.ownedPathBlobs) {
+    assertExactOrderedKeys(entry, releaseOwnedPathKeys, `release ownedPath ${record.cardId}`);
+    assertCanonicalPath(entry.path, `owned path: ${record.cardId}`);
+    if (entriesByPath.has(entry.path)) {
+      throw new Error(`duplicate path: ${record.cardId}:${entry.path}`);
+    }
+    entriesByPath.set(entry.path, entry);
+    if (entry.disposition !== "owned" && entry.disposition !== "transferred") {
+      throw new Error(`path disposition mismatch: ${record.cardId}:${entry.path}`);
+    }
+    assertFullSha(entry.blobSha, `blobSha: ${record.cardId}:${entry.path}`);
+  }
+  for (const staticPath of card.ownedPaths) {
+    const entry = entriesByPath.get(staticPath.path);
+    if (!entry) {
+      throw new Error(`missing path: ${record.cardId}:${staticPath.path}`);
+    }
+  }
+  for (const entry of record.ownedPathBlobs) {
+    if (!card.ownedPaths.some((staticPath) => staticPath.path === entry.path)) {
+      throw new Error(`extra path: ${record.cardId}:${entry.path}`);
+    }
+  }
+  for (let index = 0; index < card.ownedPaths.length; index += 1) {
+    const staticPath = card.ownedPaths[index];
+    const entry = record.ownedPathBlobs[index];
+    if (entry.path !== staticPath.path) {
+      throw new Error(`path order drift: ${record.cardId}:${staticPath.path}`);
+    }
+    if (entry.disposition !== staticPath.disposition) {
+      throw new Error(`path disposition mismatch: ${record.cardId}:${entry.path}`);
+    }
+  }
+}
+
+function validateReleaseRecord(record, card, recordsById) {
+  assertExactOrderedKeys(record, releaseRecordKeys, `release record keys: ${card.id}`);
+  if (record.schemaVersion !== releaseRecordSchemaVersion) {
+    throw new Error(`release record schema mismatch: ${card.id}`);
+  }
+  if (record.cardId !== card.id) {
+    throw new Error(`release record card mismatch: expected ${card.id}, found ${record.cardId}`);
+  }
+  assertFullSha(record.candidateSha, `candidateSha: ${card.id}`);
+  assertFullSha(record.integrationSha, `integrationSha: ${card.id}`);
+  if (record.releaseEventId !== releaseEventIdFor(card.id)) {
+    throw new Error(`release event mismatch: ${card.id}`);
+  }
+  assertArray(record.reviews, `${card.id}.reviews`);
+  if (record.reviews.length !== 2) {
+    throw new Error(`release reviews count: ${card.id}`);
+  }
+  const reviewThreadIds = new Set();
+  for (let index = 0; index < record.reviews.length; index += 1) {
+    const review = record.reviews[index];
+    validateReleaseReview(review, record, index);
+    if (reviewThreadIds.has(review.threadId)) {
+      throw new Error(`duplicate review thread: ${card.id}`);
+    }
+    reviewThreadIds.add(review.threadId);
+  }
+  validateReleasePrerequisites(record, card, recordsById);
+  validateReleaseOwnedPaths(record, card);
+}
+
+function extractJsonBlock(lines, startIndex, cardId) {
+  let index = startIndex + 1;
+  while (index < lines.length && lines[index].trim() === "") {
+    index += 1;
+  }
+  if (lines[index] !== "```json") {
+    throw new Error(`release record JSON missing for ${cardId}`);
+  }
+  const jsonLines = [];
+  index += 1;
+  while (index < lines.length && lines[index] !== "```") {
+    jsonLines.push(lines[index]);
+    index += 1;
+  }
+  if (lines[index] !== "```") {
+    throw new Error(`release record JSON missing for ${cardId}`);
+  }
+  try {
+    return {
+      record: JSON.parse(jsonLines.join("\n")),
+      nextIndex: index + 1
+    };
+  } catch {
+    throw new Error(`release record JSON malformed for ${cardId}`);
+  }
+}
+
+export function parseTask136ReleaseRecords(registryText, contract = loadContract()) {
+  assertString(registryText, "registryText");
+  const graph = verifyStaticGraph(contract);
+  const cardsById = new Map(contract.releaseGraph.cards.map((card) => [card.id, card]));
+  const lines = registryText.split(/\r?\n/);
+  const records = [];
+  const recordsById = new Map();
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.startsWith(releaseHeadingPrefix)) continue;
+    const headingCardId = line.slice(releaseHeadingPrefix.length).trim();
+    if (!cardsById.has(headingCardId)) {
+      throw new Error(`unknown release record: ${headingCardId}`);
+    }
+    if (recordsById.has(headingCardId)) {
+      throw new Error(`duplicate release record: ${headingCardId}`);
+    }
+    const expectedCardId = graph.ids[records.length];
+    if (headingCardId !== expectedCardId) {
+      throw new Error(`release record order drift: expected ${expectedCardId}, found ${headingCardId}`);
+    }
+    const { record, nextIndex } = extractJsonBlock(lines, index, headingCardId);
+    validateReleaseRecord(record, cardsById.get(headingCardId), recordsById);
+    records.push(record);
+    recordsById.set(record.cardId, record);
+    index = nextIndex - 1;
+  }
+  if (records.length !== expectedCardIds.length) {
+    throw new Error(`repository release closure incomplete: expected 28 records, found ${records.length}`);
+  }
+  return records;
+}
+
+function assertBlob(adapter, commitish, path, expectedBlobSha, cardId) {
+  const actualBlobSha = adapter.blobSha(commitish, path);
+  if (actualBlobSha !== expectedBlobSha) {
+    throw new Error(`blob mismatch: ${cardId}:${path}`);
+  }
+}
+
+function verifyGitReleaseEvidence(contract, records, adapter) {
+  const recordsById = new Map(records.map((record) => [record.cardId, record]));
+  for (const record of records) {
+    if (!adapter.commitExists(record.candidateSha)) {
+      throw new Error(`candidate commit missing: ${record.cardId}`);
+    }
+    if (!adapter.commitExists(record.integrationSha)) {
+      throw new Error(`integration commit missing: ${record.cardId}`);
+    }
+    if (!adapter.isAncestor(record.integrationSha, adapter.currentHead())) {
+      throw new Error(`integration is not an ancestor of HEAD: ${record.cardId}`);
+    }
+  }
+
+  for (const card of contract.releaseGraph.cards) {
+    const record = recordsById.get(card.id);
+    for (const prerequisiteId of card.prerequisiteIds) {
+      const prerequisite = recordsById.get(prerequisiteId);
+      if (!adapter.isAncestor(prerequisite.integrationSha, record.candidateSha)) {
+        throw new Error(`prerequisite integration is not an ancestor of candidate: ${card.id}:${prerequisiteId}`);
+      }
+    }
+
+    const recordPathsByPath = new Map(record.ownedPathBlobs.map((entry) => [entry.path, entry]));
+    for (const staticPath of card.ownedPaths) {
+      const pathRecord = recordPathsByPath.get(staticPath.path);
+      assertBlob(adapter, record.candidateSha, staticPath.path, pathRecord.blobSha, card.id);
+      assertBlob(adapter, record.integrationSha, staticPath.path, pathRecord.blobSha, card.id);
+      if (staticPath.disposition === "owned") {
+        assertBlob(adapter, adapter.currentHead(), staticPath.path, pathRecord.blobSha, card.id);
+      }
+    }
+  }
+}
+
+function checkRepositoryTopology(adapter) {
+  if (!adapter.isCheckoutClean()) {
+    throw new Error("repository checkout is dirty");
+  }
+  if (adapter.isDependencySymlink()) {
+    throw new Error("dependency directory is a symlink");
+  }
+}
+
+export function verifyTask136ReleaseClosure(contract, { registryText, adapter = createRepositoryAdapter() } = {}) {
+  const graph = verifyStaticGraph(contract);
+  checkRepositoryTopology(adapter);
+  const records = parseTask136ReleaseRecords(registryText, contract);
+  verifyGitReleaseEvidence(contract, records, adapter);
+
+  let commandCount = 0;
+  for (const card of contract.releaseGraph.cards) {
+    const args = commandArgs(card.command);
+    try {
+      adapter.runNpmTest(args, card);
+      commandCount += 1;
+    } catch {
+      throw new Error(`release command failed: ${card.id}`);
+    }
+  }
+  checkRepositoryTopology(adapter);
+  return { records: records.length, commands: commandCount, ids: graph.ids };
+}
+
+function gitOutput(args) {
+  return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+function gitSucceeds(args) {
+  try {
+    execFileSync("git", args, { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function createRepositoryAdapter() {
+  return {
+    isCheckoutClean() {
+      return gitOutput(["status", "--porcelain", "--untracked-files=no"]) === "";
+    },
+    isDependencySymlink() {
+      const dependencyPath = resolve(process.cwd(), "node_modules");
+      return existsSync(dependencyPath) && lstatSync(dependencyPath).isSymbolicLink();
+    },
+    currentHead() {
+      return gitOutput(["rev-parse", "HEAD"]);
+    },
+    commitExists(commitSha) {
+      return gitSucceeds(["cat-file", "-e", `${commitSha}^{commit}`]);
+    },
+    isAncestor(ancestorSha, descendantSha) {
+      return gitSucceeds(["merge-base", "--is-ancestor", ancestorSha, descendantSha]);
+    },
+    blobSha(commitish, path) {
+      return gitOutput(["rev-parse", `${commitish}:${path}`]);
+    },
+    runNpmTest(args) {
+      execFileSync("npm", ["test", "--", ...args], { stdio: ["ignore", "inherit", "inherit"] });
+    }
+  };
+}
+
 function verifyRepositoryReleaseClosure(contract) {
   const registryText = readFileSync(resolve(process.cwd(), contract.authority.registryPath), "utf8");
-  const releaseMatches = registryText.match(/^## Task136 dispatch release v4: .+$/gm) ?? [];
-  if (releaseMatches.length !== expectedCardIds.length) {
-    throw new Error(`repository release closure incomplete: expected 28 records, found ${releaseMatches.length}`);
-  }
-  const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-  if (!/^[0-9a-f]{40}$/.test(head)) {
-    throw new Error("repository head is not a full lowercase SHA");
-  }
+  const closure = verifyTask136ReleaseClosure(contract, { registryText });
+  console.log(`TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=${closure.records} commands=${closure.commands}`);
 }
 
 function runContractMode(contract) {
