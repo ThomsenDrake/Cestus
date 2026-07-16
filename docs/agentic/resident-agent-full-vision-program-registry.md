@@ -14937,3 +14937,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Any replacement requires fresh coordinator admission and two fresh exact-SHA
   reviews. Full verification, release records, external-service activity,
   Task139, push, reset credit, and every `neo` action remain closed.
+
+## RV-1-E-582 — Blob-type-safe verifier replacement admitted to review
+
+- Existing owner rebased the rejected candidate lineage onto exact program
+  revision `9cb7c926a8234c5bfe7c7da22710124f5fe29186` and produced immutable
+  replacement `d2256ed42c4933902d173ad9a689e1bb9d69efbb` within the same exact
+  three-path scope.
+- The replacement adds a causal RED/GREEN and requires literal Git object type
+  `blob` at candidate, integration, and applicable current-HEAD owned-path
+  checks before command execution. No graph, schema, marker, command, release,
+  or runtime scope changed.
+- Fresh coordinator admission passed the 11-test targeted suite, all four exact
+  `28/1/20/28/1/15` markers, expected zero-record repository failure, exact
+  ancestry and three-path scope, diff checking, factory readiness, clean
+  tracked checkout, and absent dependency link. Full verification was not run.
+- Two fresh independent exact-SHA reviews must return unqualified **APPROVED**
+  before coordinator integration. Review work does not authorize edits,
+  subagent-driven development, acceptance expansion, release records,
+  external-service activity, Task139, push, reset credit, or any `neo` action.
