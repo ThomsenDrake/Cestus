@@ -86,7 +86,7 @@ interface MountedAuthoritySnapshot {
   readonly admissionGenerationId: string;
 }
 
-const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?(?:oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
+const secretLikeText = /api[_-]?key|authorization|bearer|token|secret|password|private[_ -]?key|(?:^|[\s;])(?:(?:(?:x|set)-)?cookie\s*:|session\s*=\s*\S+)|(?:^|[\s;_-])(?:(?:(?:x|set)-)?cookie\s*:\s*\S+|session\s*=\s*\S+|(?:(?:x|set)-)?(?:auth|oauth|credential)\s*(?:[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,}))[a-z0-9._~+/=-]+|(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?_|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])[a-z0-9_-]{3,})/i;
 
 export async function recordMountedOfficialFlowUnavailability(input: unknown): Promise<MountedOfficialFlowFeasibilityResult> {
   const invocation = normalizeInvocation(input);

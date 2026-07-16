@@ -75,6 +75,9 @@ describe("official-flow feasibility", () => {
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "authorization: bearer secret" }))).toThrow();
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "Cookie: session=abc" }))).toThrow();
     expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId: "X-Cookie: raw" }))).toThrow();
+    for (const modelId of ["corr-X-Cookie: raw", "corr-session=abc", "auth=raw"]) {
+      expect(() => createOfficialFlowAbsenceWitness(patchInput({ modelId }))).toThrow();
+    }
     for (const [field, value] of [
       ["modelId", "oauth=raw"],
       ["officialFlowId", "codex-credential=raw"],
@@ -112,6 +115,19 @@ describe("official-flow feasibility", () => {
       capabilityScopes: ["alpha", "harness-execution", "zeta"],
       sourceEventIds: ["evt_approval_review", "evt_checkpoint_review", "evt_zeta"]
     });
+    const unicodeClassification = inspectOfficialFlowAbsenceWitness(createOfficialFlowAbsenceWitness(patchInput({
+      capabilityScopes: ["\uE000", "harness-execution", "\u{10000}"]
+    })));
+    expect(unicodeClassification).toMatchObject({
+      capabilityScopes: ["harness-execution", "\uE000", "\u{10000}"],
+      classificationHash: "sha256:45f50b8363698ece659914d4ea6f4fa7d6f7abaa6ecde090ff4707bd64d57f18"
+    });
+    expect(() => createOfficialFlowAbsenceWitness(patchInput({
+      capabilityScopes: ["harness-execution", "sk_live_abc"]
+    }))).toThrow();
+    expect(() => createOfficialFlowAbsenceWitness(patchInput({
+      capabilityScopes: ["harness-execution", "oauth-capability-review"]
+    }))).not.toThrow();
   });
 
   it("rejects empty duplicate and causally unbound source sets", () => {
