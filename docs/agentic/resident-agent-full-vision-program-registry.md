@@ -14568,3 +14568,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both must return unqualified **APPROVED** before coordinator integration.
   Full verification, external-service activity, reset credits, push, Task139
   resumption, and every `neo` action remain closed.
+
+## RV-1-E-563 — Task137 policy bounded correction required
+
+- Executability/command reviewer
+  `019f6b89-b5bb-7802-8d4a-1b7ff0cc7c8b` returned unqualified
+  **APPROVED** for exact candidate
+  `9500011940ed27dd8b9738cd5cef218752fe96ad`. Its focused six-file/74-test
+  suite, standalone typecheck, real seven-stage terminal gate, exact marker
+  comparison, seven-path scope, reconstruction evidence, diff check, factory
+  readiness, clean checkout, and absent dependency link all passed.
+- Architecture/invariant reviewer
+  `019f6b89-b8f3-76d3-af4e-8d4ce36f8885` returned **NEEDS-CHANGES** for one
+  frozen-grammar defect: `LocalRuntimeHandle` is permitted only in the
+  operation-module role, but its omission from the protected runtime-factory
+  symbol set lets another production owner import that protected type without
+  a violation. All required gates otherwise passed.
+- One bounded correction against exact candidate
+  `9500011940ed27dd8b9738cd5cef218752fe96ad` may add the missing protected
+  symbol and a direct regression outside the frozen 8/20 corpus. Grammar and
+  corpus versions, counts, roles, exemptions, and acceptance categories remain
+  unchanged. The corrected candidate must repeat coordinator admission and
+  receive two fresh exact-revision reviews before integration.
+- Full verification, external-service activity, reset credits, push, Task139
+  resumption, and every `neo` action remain closed.
