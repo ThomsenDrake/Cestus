@@ -13250,3 +13250,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   **APPROVED** before coordinator integration or Task139 resumption.
 - Full verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-494 — Task136 Recovery-10 rejected for fixture authority minting
+
+- Release-authority reviewer `019f6892-81ae-7750-b84c-69c4f3823ee8`
+  returned unqualified **APPROVED**, but adversarial TypeScript ABI/dispatch
+  reviewer `019f6892-8f1e-7692-b49c-b93327d247cc` returned
+  **NEEDS-CHANGES** for exact candidate
+  `8e92d090e747eebcada57da2247cb3021ccc4d7f`. No approval carries forward.
+- The executable fixture source-exports `createMountedRuntime()` and lets
+  `prepareRuntimeFactoryProviderMountGrant` accept that caller-created runtime.
+  An external caller can therefore mint a valid grant and mounted provider
+  authority, contradicting the active contract that mounted runtime state,
+  issuance, and authority remain private and caller-unmintable. The fixture's
+  GREEN does not prove the documented PM boundary.
+- Candidate `8e92d090e747eebcada57da2247cb3021ccc4d7f` must not be integrated or
+  used to resume Task139. Its owner produced two bounded candidates in the same
+  recovery thread, so a fresh documentation owner is required for Recovery-11.
+  That owner must preserve every admitted gate and replace the fixture's public
+  runtime mint/caller-supplied runtime with a mechanically executable private-
+  mounted-state model plus a named RED counterexample for restoring either
+  public minting route.
+- Documentation-only work does not authorize subagent-driven development.
+  Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
