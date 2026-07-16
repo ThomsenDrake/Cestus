@@ -12866,3 +12866,16 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Coordinator integration is authorized only into
   `codex/resident-agent-full-vision-program-watchdog-recovery`. This does not
   authorize push, `neo`, full verification, or live/provider activity.
+
+## RV-1-E-477 — Task133.5 integrated and post-merge verified
+
+- Exact candidate `bd3b8ed3e287a6a598dfb246524e36ca2a345438` was merged only into
+  `codex/resident-agent-full-vision-program-watchdog-recovery` as merge commit
+  `75de81f110b4f405f9ec064104bc2c2b4f79e223`.
+- Fresh coordinator verification on the committed merge passed the exact eight-
+  file prompt-authority suite at 98 tests, standalone TypeScript typecheck, all
+  three negative prompt-boundary searches, `git diff --check`, and factory
+  readiness.
+- The temporary ignored dependency link was removed after verification. This
+  integration does not authorize push, `neo`, full verification, or live/
+  provider/network/credential/Nous activity.
