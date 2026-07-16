@@ -13213,3 +13213,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   admission and two entirely fresh reviews.
 - Full verification, integration, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-492 — Task136 Recovery-10 candidate admitted to review
+
+- Candidate `8e92d090e747eebcada57da2247cb3021ccc4d7f` is one clean
+  descendant of rejected `725324faef67e0c058bfc321929abbd1797f9e9b` and
+  changes exactly the bounded-loop plan, provider-credentials plan, and Task136
+  reconciliation claim.
+- Fresh coordinator admission from committed bytes proved that the literal
+  no-input runner exits 1 at only the frozen `unknown, duplicate, reordered, or
+  missing active record` boundary. The same-runner fixture retained one valid
+  28-record GREEN and all 18 existing plus two timing REDs; the dependency-
+  mounted command validator resolved all 28 exact Vitest commands; and the
+  extracted TypeScript compile/link fixture retained one executable GREEN plus
+  all four named RED mutations.
+- `git diff --check`, factory readiness, one-commit ancestry, exact three-path
+  scope, exact HEAD, clean checkout, and absent dependency-link checks passed.
+  Coordinator-created Task136 disposable `/tmp` fixtures were removed after
+  verification.
+- Two entirely fresh exact-SHA reviews are required: one for release authority,
+  graph closure, and mounted/provider safety; one for TypeScript source-level
+  linkability, import-policy timing, and dispatch executability. Both must
+  return unqualified **APPROVED** before integration or Task139 resumption.
+- Full verification, source dispatch, live/provider/network/credential/Nous
+  activity, reset credits, push, and every `neo` action remain closed.
