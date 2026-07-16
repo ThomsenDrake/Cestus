@@ -15485,3 +15485,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Review work does not authorize edits, subagent-driven development, full
   verification, provider/network/external activity, Task139, integration,
   release records, push, reset, or any `neo` action.
+
+## RV-1-E-600 — Mounted feasibility recovery review findings repaired
+
+- Recorded at: 2026-07-16T18:12:38Z
+- Architecture reviewer `019f6c17-0608-7123-a120-0af3098c7fde` returned
+  `NEEDS-CHANGES` on exact revision
+  `c837249a19ec0abdad4e0e9c3de190acf8443be9`: a caller-built
+  classification could cite unrelated real events and acquire durable
+  unavailable posture without proving classifier or provider/approval source
+  semantics.
+- Executability reviewer `019f6c17-0a26-73a1-85e0-a028f5da80f7` returned
+  `NEEDS-CHANGES` on the same revision: classification and idempotency hash
+  preimages lacked canonical byte contracts and fixed vectors;
+  `causationEventId` had no defined harness input source; the recorder result
+  and concurrency termination semantics were incomplete; and Tasks 3-5 did
+  not uniformly require two unqualified exact-revision approvals.
+- The bounded repair replaces serializable classification input with a
+  WeakMap-backed exact-object witness, adds strict `causationEventId` posture
+  input, and requires the causation event to be a semantically matching
+  `prompt-bound` orchestration checkpoint whose named human
+  `agent.tool.approved` event, provider posture, preview hash, and source set
+  all match the witness.
+- The repair freezes exact JSON/UTF-8/SHA-256 preimages and vectors, defines a
+  closed unavailable/blocked result union and category-to-retry mapping,
+  permits one concurrency reread with no re-append, raises Task129-MFA's exact
+  focused count from 121 to 129, and requires two unqualified approvals for
+  every release candidate.
+- This is one contract repair before implementation, not a successor
+  Recovery-N round. No production/test/script file changed. Subagent-driven
+  development, full verification, providers, network, credentials, external
+  services, Task139, integration, release records, push, reset, and every
+  `neo` action remain closed pending two new unqualified design/plan reviews.
