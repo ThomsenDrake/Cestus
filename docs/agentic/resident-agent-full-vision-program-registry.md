@@ -14974,3 +14974,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Review work does not authorize edits, subagent-driven development, full
   verification, acceptance expansion, release records, external-service
   activity, Task139, push, reset credit, or any `neo` action.
+
+## RV-1-E-584 — Blob-type-safe verifier replacement dual-approved
+
+- Architecture/invariant reviewer
+  `019f6bce-d982-7db2-a118-5d31cea1ddb4` and executability/adversarial-test
+  reviewer `019f6bce-db41-76f3-8c46-7746668858ce` both returned unqualified
+  **APPROVED** for exact replacement candidate
+  `d2256ed42c4933902d173ad9a689e1bb9d69efbb` from exact base
+  `9cb7c926a8234c5bfe7c7da22710124f5fe29186`.
+- Both independently verified exact three-path scope, base ancestry, the
+  11-test targeted suite, exact `28/1/20/28/1/15` contract markers, expected
+  zero-record repository failure, diff checking, factory readiness, clean
+  tracked checkout, and absent dependency link.
+- Both confirmed RV-1-E-581 is closed before command execution: candidate,
+  integration, and applicable current-HEAD owned-path objects must be literal
+  Git blobs; the real adapter obtains object type with argument-array
+  `git cat-file -t`, and the pure verifier has causal non-blob regressions for
+  all three checkpoints.
+- Coordinator integration of the exact four-commit candidate series into the
+  program branch is authorized. Full verification, release-record population,
+  external-service activity, Task139, push, reset credit, and every `neo`
+  action remain closed pending successful integrated admission.
