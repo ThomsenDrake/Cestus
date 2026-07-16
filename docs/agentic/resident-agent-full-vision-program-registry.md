@@ -13937,3 +13937,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward.
 - Full verification, source dispatch, integration, external-service activity,
   reset credits, push, Task139 resumption, and every `neo` action remain closed.
+
+## RV-1-E-528 — Task137A Recovery-15 candidate admitted to review
+
+- Candidate `f47084d5772d460e47d073a915aa013722952ed8` is one clean descendant
+  of rejected `0d78305a343f6ae2e49ee8c68147895d9947fdcb` and changes only the
+  Task137A claim and its import-policy test within the historical six-path
+  ceiling.
+- Coordinator admission independently passed the literal committed-byte gate
+  with 6 files and 93 tests, its embedded checks, and a separate standalone
+  typecheck. Exact revision, scope, diff, clean checkout, and absent dependency
+  link checks passed.
+- Two fresh independent exact-SHA reviews are required. Both must return
+  unqualified **APPROVED** before integration.
+- Full verification, integration, external-service activity, reset credits,
+  push, and every `neo` action remain closed.
