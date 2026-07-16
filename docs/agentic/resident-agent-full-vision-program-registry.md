@@ -17240,3 +17240,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Full verification, integration, release records, Task139, providers,
   network, credentials, external services, push, reset, rebase, and every
   `neo` action remain closed.
+
+## RV-1-E-656 — Task135B path-safe repair worker active
+
+- Recorded at: 2026-07-17T00:30:00Z
+- Fresh worker `019f6d3f-dd5e-7073-a831-330ce9519cfe` is the sole
+  writer in the preserved Task135B worktree at exact clean starting candidate
+  `2747e42e7c182e027164c1c2ad503d3af7637c35`.
+- Its prompt explicitly approves task-scoped SDD and TDD for only the
+  RV-1-E-655 path-safe error repair. It must add the missing-blob assertion
+  inside an existing case, preserve exactly 20/120 tests, map raw store errors
+  to a fresh fixed data-free error without weakening authority-loss behavior,
+  update the claim, and create one forward commit.
+- The write ceiling remains the same three Task135B paths. Full verification,
+  self-review, integration, release records, Task139, providers, network,
+  credentials, external services, push, reset, rebase, and every `neo` action
+  remain closed.
