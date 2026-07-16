@@ -88,9 +88,31 @@ without storage access. The mounted operation is authority. It cannot be
 structurally forged, copied into usefulness, issued by the harness, or
 substituted with a `LocalRuntimeHandle`.
 
-### Shared absence classification
+### Shared absence witness and classification
 
-`packages/agent/src/official-flow-feasibility.ts` defines and strictly parses:
+`packages/agent/src/official-flow-feasibility.ts` defines a process-local,
+WeakMap-backed witness. The public object deliberately carries no durable
+posture:
+
+```ts
+interface OfficialFlowAbsenceWitnessV1 {
+  readonly schemaVersion: "agent-official-flow-absence-witness.v1";
+  readonly providerFamily: "codex" | "xai";
+}
+```
+
+`createOfficialFlowAbsenceWitness(input)` accepts one exact plain own-data
+input containing the fields below plus `officialFlow: undefined`. It compares
+the configured and assessed posture snapshots field-for-field, strictly
+normalizes them, computes the classification hash, freezes the public witness,
+and stores the complete normalized classification in a module-private
+`WeakMap`. `inspectOfficialFlowAbsenceWitness(witness)` returns that frozen
+snapshot only for the exact issued object identity. Copies, serialized values,
+proxies, fabricated lookalikes, and witnesses issued for another provider
+family are invalid. Creating or inspecting a witness performs no I/O, append,
+approval, provider, credential, or authority action.
+
+The private normalized snapshot is:
 
 ```ts
 interface OfficialFlowAbsenceClassificationV1 {
@@ -117,13 +139,39 @@ interface OfficialFlowAbsenceClassificationV1 {
   readonly classification: "official-flow-absent";
   readonly classificationHash: `sha256:${string}`;
 }
+
+type OfficialFlowAbsencePostureV1 = Omit<
+  OfficialFlowAbsenceClassificationV1,
+  "schemaVersion" | "classification" | "classificationHash"
+>;
+
+interface CreateOfficialFlowAbsenceWitnessInput {
+  readonly configuredPosture: OfficialFlowAbsencePostureV1;
+  readonly assessedPosture: OfficialFlowAbsencePostureV1;
+  readonly officialFlow: undefined;
+}
 ```
 
-The parser accepts only plain own-data objects and dense ordinary arrays,
+The creator accepts only plain own-data objects and dense ordinary arrays,
 rejects symbols, accessors, custom prototypes, sparse arrays, unknown keys,
 unsafe text, provider-family mismatches, and noncanonical hashes, and freezes
 one normalized snapshot. The classification hash is computed over the exact
 canonical fields other than `classificationHash`.
+
+`capabilityScopes` and `sourceEventIds` must be nonempty and duplicate-free;
+the creator stores each in ascending Unicode code-point order. The causation
+event must occur in `sourceEventIds`. The classification hash preimage is the
+UTF-8 bytes of `JSON.stringify` over one ordinary object constructed in the
+exact interface field order above, beginning with `schemaVersion` and ending
+with `classification`, with `classificationHash` omitted. The digest is
+lowercase SHA-256 prefixed by `sha256:`.
+
+The frozen classification test vector is:
+
+```text
+JSON: {"schemaVersion":"agent-official-flow-absence.v1","residentAgentId":"agent_default","workspaceId":"ws_review","mountInstanceId":"mount_review","taskId":"task_review","attemptId":"attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","runId":"run_review","providerFamily":"codex","providerId":"provider_openai_codex_review","modelId":"codex-review","capabilityHash":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","credentialRefId":"agent_credref_review","credentialKind":"subscription-oauth","capabilityScopes":["harness-execution"],"policyVersion":"policy_review.v1","officialFlowId":"codex-review","approvalClass":"provider-byte-transfer","approvalBindingHash":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","sourceEventIds":["evt_approval_review","evt_checkpoint_review"],"causationEventId":"evt_checkpoint_review","classification":"official-flow-absent"}
+SHA-256: sha256:bdae51eff3aedbc86bdec0de666fde4019fc6f920ae23ba09ac06211fa9eb8b6
+```
 
 Provider-specific constraints are exact:
 
@@ -136,9 +184,10 @@ Provider-specific constraints are exact:
 - the canonical workspace prefix is `ws_`; the provisional `workspace_`
   harness prefix is rejected.
 
-The classification does not say that the provider is durably unavailable. It
-only says the provider-specific parser found no supplied official flow under
-the exact normalized posture.
+The witness and classification do not say that the provider is durably
+unavailable. They say only that the shared strict classifier found no supplied
+official flow under two equal normalized posture snapshots. Only the mounted
+recorder can inspect the exact witness and convert it into durable evidence.
 
 ### Dedicated feasibility event
 
@@ -209,11 +258,61 @@ operation:
 ```ts
 recordMountedOfficialFlowUnavailability({
   operation,
-  classification,
+  witness,
   occurredAt,
   correlationId
 }): Promise<MountedOfficialFlowFeasibilityResult>
 ```
+
+The exact result union is:
+
+```ts
+type MountedOfficialFlowFeasibilityBlockedCategory =
+  | "unsafe-input"
+  | "classification-witness-invalid"
+  | "source-evidence-missing"
+  | "source-evidence-mismatch"
+  | "mounted-authority-stale"
+  | "concurrency-conflict"
+  | "persistence-unconfirmed"
+  | "record-conflict";
+
+type MountedOfficialFlowFeasibilityRetry<C extends MountedOfficialFlowFeasibilityBlockedCategory> =
+  C extends "unsafe-input" | "classification-witness-invalid" | "record-conflict"
+    ? "none"
+    : C extends "source-evidence-missing" | "source-evidence-mismatch"
+      ? "after-source-repair"
+      : C extends "mounted-authority-stale"
+        ? "after-remount"
+        : "after-ledger-refresh";
+
+type MountedOfficialFlowFeasibilityResult =
+  | {
+      readonly kind: "unavailable";
+      readonly category: "official-flow-unavailable";
+      readonly eventId: `evt_${string}`;
+      readonly sequence: number;
+      readonly idempotencyKey: `sha256:${string}`;
+      readonly providerId: `provider_${string}`;
+      readonly modelId: string;
+      readonly capabilityHash: `sha256:${string}`;
+      readonly safeDiagnosticCodes: readonly ["official-flow-unavailable"];
+    }
+  | {
+      [C in MountedOfficialFlowFeasibilityBlockedCategory]: {
+        readonly kind: "blocked";
+        readonly category: C;
+        readonly retry: MountedOfficialFlowFeasibilityRetry<C>;
+        readonly safeDiagnosticCodes: readonly [C];
+      }
+    }[MountedOfficialFlowFeasibilityBlockedCategory];
+```
+
+The blocked mapping is fixed: unsafe input, invalid witness, and record conflict
+use `none`; missing or mismatched source evidence uses `after-source-repair`;
+stale mounted authority uses `after-remount`; concurrency conflict and
+unconfirmed persistence use `after-ledger-refresh`. Boundary, ledger, and
+currentness failures are converted to this union and never expose a raw error.
 
 The input is normalized once before any `await`. The recorder then performs
 these exact stages:
@@ -221,25 +320,45 @@ these exact stages:
 1. Inspect the exact `MountedArtifactAuthorityOperation` through a new
    bridge-specific private inspection seam. Obtain only its current snapshot
    and the factory-captured mounted ledger.
-2. Require classification workspace, mount, policy version, resident, and
+2. Inspect the exact WeakMap-backed witness and require classification
+   workspace, mount, policy version, resident, and
    provider bindings to match the mounted snapshot. Mounted policy digest,
    lock digest, authority IDs, admission generation, and high-water facts come
    only from the operation, never from the classifier.
-3. Read the mounted ledger. Require every classification source event to exist
-   and require the causation event to be one of them. Source presence proves
-   provenance, not approval validity.
-4. Reinspect the operation after the read. A stale, closed, invalidated,
+3. Read the mounted ledger once. Require every classification source event to
+   exist and require the causation event to be one of them. The causation event
+   must be `agent.task.orchestration.checkpointed` with
+   `checkpointKind: "prompt-bound"`, exact task/attempt/run, and an exact
+   provider posture: provider ID, `modelFamily === modelId`, credential ref and
+   kind, selection-policy version, `provider-byte-transfer` approval profile
+   and required class, and `capabilityIds` equal to the canonical sequence
+   consisting of `capabilityHash`, `officialFlowId`, then one
+   `scope:<normalized-scope>` entry per normalized capability scope. Its
+   approval requirement preview hash must equal the
+   classification approval binding hash. Its prompt-binding receipt approval
+   event must occur in the classification sources.
+4. Require that named approval event to be an `agent.tool.approved` event on
+   the checkpoint's tool-request stream, authored in human context, with
+   `approvalClass: "provider-byte-transfer"`, matching tool request ID, and
+   `approvedPreviewHash` equal to both the checkpoint and classification
+   binding. Its `approvedBy` must equal the human context actor ID. Require
+   every checkpoint source event ID to occur in the
+   classification source set. Mere source presence is never approval proof.
+5. Reinspect the operation after the read. A stale, closed, invalidated,
    mismatched, or burned operation stops before append.
-5. Compute the idempotency hash from classification hash plus exact mounted
+6. Compute the idempotency hash from classification hash plus exact mounted
    authority, policy-lock, and admission bindings. If an exact prior event is
    already present, reread and return it. If the same key has different
    bindings, fail closed.
-6. Append one strict event with `expectedGlobalEventCount`. A concurrency
-   conflict permits one bounded reread; it never starts an open retry loop.
-7. Reinspect the operation, read the exact stream, find the committed event by
+7. Append one strict event with `expectedGlobalEventCount`. On
+   `ConcurrencyConflictError`, perform exactly one additional `readAll`. If it
+   contains the exact expected event, continue to exact stream readback;
+   otherwise return blocked `concurrency-conflict`. Never re-append inside the
+   call and never start a retry loop.
+8. Reinspect the operation, read the exact stream, find the committed event by
    assigned event ID, and compare its complete context and payload to the
    canonical expected record.
-8. Reinspect the operation once more. Only then return `kind: "unavailable"`
+9. Reinspect the operation once more. Only then return `kind: "unavailable"`
    with the committed event ID, sequence, idempotency key, provider/model, and
    capability hash.
 
@@ -250,18 +369,51 @@ accept an event-shaped service return as proof.
 Append success followed by readback failure returns a safe blocked category.
 A later identical retry may recover by finding and validating the committed
 event. Swapped source events, stale currentness, duplicate-key disagreement,
-accessor-backed data, post-await mutation, copied operations, closed runtime,
-wrong workspace/mount/policy, and non-mounted handles all fail closed. Raw
-errors are never returned or serialized.
+accessor-backed data, post-await mutation, copied operations or witnesses,
+closed runtime, wrong workspace/mount/policy, forged classifier output,
+checkpoint/provider/approval disagreement, and non-mounted handles all fail
+closed. Raw errors are never returned or serialized.
+
+The idempotency-key preimage is the UTF-8 bytes of `JSON.stringify` over one
+ordinary object in this exact order:
+
+```ts
+{
+  schemaVersion: "agent-provider-feasibility-idempotency.v1",
+  classificationHash,
+  workspaceId,
+  mountInstanceId,
+  admissionGenerationId,
+  workspaceIdentityEventId,
+  mountEvidenceId,
+  authorityEvidenceId,
+  ledgerStoreEvidenceId,
+  policyVersion,
+  policyDigest,
+  lockStateDigest,
+  highWaterMark,
+  highWaterOrdinal
+}
+```
+
+Its frozen vector, using the classification vector above, is:
+
+```text
+JSON: {"schemaVersion":"agent-provider-feasibility-idempotency.v1","classificationHash":"sha256:bdae51eff3aedbc86bdec0de666fde4019fc6f920ae23ba09ac06211fa9eb8b6","workspaceId":"ws_review","mountInstanceId":"mount_review","admissionGenerationId":"admission_review","workspaceIdentityEventId":"evt_workspace_review","mountEvidenceId":"mount_evidence_review","authorityEvidenceId":"authority_evidence_review","ledgerStoreEvidenceId":"ledger_store_evidence_review","policyVersion":"policy_review.v1","policyDigest":"sha256:policy_review","lockStateDigest":"sha256:lock_review","highWaterMark":"hwm_review","highWaterOrdinal":7}
+SHA-256: sha256:91c31db4ab3a77ef41b43b0f9237c53cf0614ca861349ca98669af6dc5abaaca
+```
 
 ### Harness responsibilities after recovery
 
 Task129 and Task130 become pure provider-specific classifiers:
 
 - normalize one exact current posture and one assessment;
+- require `causationEventId` as a strict posture field and require it to occur
+  in the normalized `sourceEventIds` set;
 - reject every prohibited or unofficial credential source already named in
   their frozen tests;
-- return `OfficialFlowAbsenceClassificationV1` when `officialFlow` is absent;
+- call `createOfficialFlowAbsenceWitness` and return the exact opaque witness
+  when `officialFlow` is absent;
 - retain Codex's explicit interface-only test result without claiming actual
   feasibility;
 - never accept an append callback, mounted owner, authority operation,
@@ -269,7 +421,58 @@ Task129 and Task130 become pure provider-specific classifiers:
 - never return `kind: "unavailable"` themselves.
 
 The mounted recorder is the only component in this slice that can turn the
-absence classification into a durable unavailable result.
+absence witness into a durable unavailable result. Task139 must later compose
+the harness from a current `prompt-bound` checkpoint; it may not manufacture a
+replacement posture or bypass the checkpoint/approval semantic checks.
+
+The exact post-recovery result unions are:
+
+```ts
+type OfficialFlowClassifierBlockedCategory =
+  | "unsafe-input"
+  | "posture-mismatch"
+  | "prohibited-credential-source";
+
+type OfficialFlowClassifierBlocked = {
+  [C in OfficialFlowClassifierBlockedCategory]: {
+    readonly kind: "blocked";
+    readonly category: C;
+    readonly providerId: string;
+    readonly modelId: string;
+    readonly capabilityHash: string;
+    readonly safeDiagnosticCodes: readonly [C];
+  }
+}[OfficialFlowClassifierBlockedCategory];
+
+type CodexSubscriptionHarnessResult =
+  | {
+      readonly kind: "official-flow-absence-classified";
+      readonly category: "official-flow-absent";
+      readonly witness: OfficialFlowAbsenceWitnessV1;
+    }
+  | {
+      readonly kind: "interface-demonstrated";
+      readonly category: "official-flow-interface-only";
+      readonly actualCodexFeasibility: false;
+      readonly providerId: string;
+      readonly modelId: string;
+      readonly capabilityHash: string;
+      readonly safeDiagnosticCodes: readonly ["official-flow-interface-only"];
+    }
+  | OfficialFlowClassifierBlocked;
+
+type XaiSubscriptionHarnessResult =
+  | {
+      readonly kind: "official-flow-absence-classified";
+      readonly category: "official-flow-absent";
+      readonly witness: OfficialFlowAbsenceWitnessV1;
+    }
+  | OfficialFlowClassifierBlocked;
+```
+
+The blocked parser returns its exact category as the sole diagnostic code.
+`feasibility-append-unavailable` is removed because neither pure classifier has
+an append or mounted-authority responsibility.
 
 ## Task137 Boundary Versioning
 
@@ -414,12 +617,17 @@ This recovery is complete when:
 - the ontology accepts only strict provider-feasibility events on the exact
   stream and rejects unsafe, mismatched, human-authored, or secret-bearing
   variants;
+- the shared classifier accepts the two equal normalized postures plus an
+  absent official flow, emits the frozen classification vector, and copied,
+  serialized, fabricated, cross-family, or posture-mismatched witnesses fail;
 - the mounted recorder proves append, exact readback, idempotent retry,
   one-reread concurrency handling, and post-await currentness for both provider
   families;
 - copied, stale, closed, forged, non-mounted, cross-workspace, cross-mount,
-  cross-policy, mismatched-source, hostile-object, and no-op evidence paths
-  cannot return unavailable;
+  cross-policy, mismatched-source, non-`prompt-bound` causation, swapped
+  approval, hostile-object, and no-op evidence paths cannot return unavailable;
+- the classification and idempotency hash functions reproduce both frozen
+  JSON/SHA-256 vectors byte-for-byte;
 - Task137 grammar/corpus v2 passes the unchanged 8/20 marker and authorizes
   only the new direct static named bridge import;
 - Task129 and Task130 are pure classifiers with no persistence or authority

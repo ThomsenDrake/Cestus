@@ -9,10 +9,11 @@ official-flow unavailability, migrate Task136 to a finite 29-card graph, and
 release the corrected provider prefix without unlocking Task139.
 
 **Architecture:** Codex and xAI remain pure provider-specific classifiers. A
-new local-runtime recorder consumes their strict absence classification only
-with the exact factory-issued mounted authority operation, appends a dedicated
-ontology event, rereads it from the current portable ledger, and revalidates
-currentness before returning unavailable.
+new local-runtime recorder consumes their exact WeakMap-backed absence witness
+only with the factory-issued mounted authority operation, proves the bound
+prompt/approval source events, appends a dedicated ontology event, rereads it
+from the current portable ledger, and revalidates currentness before returning
+unavailable.
 
 **Tech Stack:** TypeScript strict mode, Zod, Vitest, Node.js ESM and
 `node:test`, Git SHA-1 evidence, append-only `EventLedger`, existing portable
@@ -211,11 +212,13 @@ git diff --check
 npm run factory:check
 ```
 
-They must separately return `APPROVED Task135D` and `APPROVED Task137A` for the
-same exact checkpoint and verify Task137A's four transferred paths. Review work
-does not authorize SDD, edits, or release records. The exact expected Vitest
-counts before Task129-MFA changes any transferred path are `12` tests for
-Task135D and `26` tests for Task137A; the Task137A command emits exactly one
+They must separately return unqualified `APPROVED Task135D` and unqualified
+`APPROVED Task137A` for the same exact checkpoint and verify Task137A's four
+transferred paths. Any `NEEDS-CHANGES`, qualified approval, or unresolved
+finding blocks both release records. Review work does not authorize SDD, edits,
+or release records. The exact expected Vitest counts before Task129-MFA changes
+any transferred path are `12` tests for Task135D and `26` tests for Task137A;
+the Task137A command emits exactly one
 `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
 
 - [ ] **Step 3: Append strict v4 records**
@@ -252,9 +255,12 @@ repository release closure incomplete: expected 29 records, found 5
 
 **Interfaces:**
 - Consumes: v2-released Task137A operation and current mounted ledger.
-- Produces: strict `agent-official-flow-absence.v1`, ontology event
-  `agent.provider.feasibility.observed.v1`, mounted append/readback recorder,
-  and Task137 grammar/corpus v2 with unchanged 8/20 marker.
+- Produces: `createOfficialFlowAbsenceWitness`,
+  `inspectOfficialFlowAbsenceWitness`, strict private
+  `agent-official-flow-absence.v1`, ontology event
+  `agent.provider.feasibility.observed.v1`, exact
+  `MountedOfficialFlowFeasibilityResult`, mounted append/readback recorder, and
+  Task137 grammar/corpus v2 with unchanged 8/20 marker.
 
 - [ ] **Step 1: Claim all eleven paths**
 
@@ -267,7 +273,13 @@ Add strict classification tests for both provider families, canonical `ws_`
 workspace IDs, family/provider/flow mismatches, accessors, custom prototypes,
 sparse arrays, unknown keys, secret-like values, source/causation mismatch,
 classification-hash mismatch, and attempt IDs outside exact
-`/^attempt_[a-f0-9]{64}$/` form.
+`/^attempt_[a-f0-9]{64}$/` form. Require exact configured/assessed posture
+equality and `officialFlow: undefined`. Prove the witness is backed by a
+module-private WeakMap: direct objects, copies, serialization, proxies, and
+cross-family reuse fail inspection. Reproduce the design's exact canonical
+classification JSON and
+`sha256:bdae51eff3aedbc86bdec0de666fde4019fc6f920ae23ba09ac06211fa9eb8b6`
+vector.
 
 Add ontology tests that accept one exact agent-authored event and reject wrong
 stream, human/system actor, wrong resident/workspace/mount/task/attempt/run,
@@ -278,25 +290,37 @@ Add mounted recorder tests for:
 
 - Codex and xAI append plus exact stream readback;
 - exact source-event existence and causation membership;
+- exact `prompt-bound` orchestration-checkpoint task/attempt/run, provider,
+  model, capability/flow/scope sequence, credential, policy, approval class,
+  preview-hash, and source-set semantics;
+- exact human `agent.tool.approved` event type, context, tool-request stream,
+  class, preview hash, and checkpoint receipt binding;
+- fabricated, copied, serialized, cross-family, and valid-looking but
+  unissued classification witnesses;
 - idempotent duplicate reuse without a second append;
 - duplicate-key disagreement;
-- one bounded concurrency reread;
+- one bounded concurrency reread that returns the exact concurrent event or
+  blocked `concurrency-conflict` without re-append;
 - append-success/readback-failure recovery on identical retry;
 - no-op/event-shaped fake evidence rejection;
 - copied, forged, stale, closed, burned, non-mounted, cross-workspace,
   cross-mount, cross-policy, post-await-mutated, accessor, proxy, and hostile
   ledger results;
 - operation currentness after every `await`;
-- no fallback writes and no raw errors or secret material in results; and
+- exact blocked category/retry/diagnostic tuples, no fallback writes, and no
+  raw errors or secret material in results;
+- the design's exact idempotency JSON and
+  `sha256:91c31db4ab3a77ef41b43b0f9237c53cf0614ca861349ca98669af6dc5abaaca`
+  vector; and
 - Task137 grammar/corpus v2 with exactly eight accepted and twenty rejected
   fixtures, including the sole new bridge owner.
 
-The exact test allocation is twelve tests in the new shared-classification
+The exact test allocation is sixteen tests in the new shared-classification
 file, eight new cases added to the existing sixty-two ontology agent-contract
 tests, six new cases added to the existing eleven authority-operation tests,
-the existing four import-policy tests with updated v2 fixtures, and eighteen
+the existing four import-policy tests with updated v2 fixtures, and twenty-two
 tests in the new mounted-recorder file. GREEN therefore means exactly five
-files and `121` tests.
+files and `129` tests.
 
 - [ ] **Step 3: Run RED**
 
@@ -313,12 +337,17 @@ Implement the exact design. Do not add provider posture to
 `PortableWorkspaceMountedFacts`. Do not export the new private inspection seam
 from a package index. Do not accept a `LocalRuntimeHandle`, ledger callback,
 mounted owner, append function, or readback function from the caller. Use the
-operation's captured ledger only.
+operation's captured ledger only. Accept the exact issued witness, not a
+serializable classification object.
 
-Normalize all external values before the first `await`; reread source events,
-append with global-count concurrency, reread the exact stream event, compare
-the full event, and reinspect current operation state after each async boundary.
-Permit one concurrency reread only.
+Normalize all external values before the first `await`; inspect the WeakMap
+witness; validate the exact `prompt-bound` checkpoint and human approval event;
+append with global-count concurrency; reread the exact stream event; compare
+the full event; and reinspect current operation state after each async boundary.
+On concurrency conflict, perform one `readAll` only: return the exact concurrent
+event after stream readback or blocked `concurrency-conflict`; never re-append.
+Return only the exact unavailable/blocked result union and category/retry
+mapping from the design.
 
 - [ ] **Step 5: Run identical GREEN**
 
@@ -326,7 +355,7 @@ Permit one concurrency reread only.
 npm test -- packages/agent/test/official-flow-feasibility.test.ts packages/ontology/test/agent-contracts.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/mounted-official-flow-feasibility.test.ts
 ```
 
-Expected: `5` files and `121` tests pass and output exactly one
+Expected: `5` files and `129` tests pass and output exactly one
 `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
 
 - [ ] **Step 6: Run bounded candidate admission**
@@ -381,9 +410,10 @@ termination, markers, and exact commands. Review work does not authorize SDD.
 
 - [ ] **Step 3: Integrate and release**
 
-After dual approval, integrate to the program branch, rerun admission, append
-the strict Task129-MFA v4 record with Task137A prerequisite evidence, and
-commit. Repository mode must then fail with `expected 29 records, found 6`.
+After two unqualified `APPROVED` verdicts on the same exact candidate,
+integrate to the program branch, rerun admission, append the strict Task129-MFA
+v4 record with Task137A prerequisite evidence, and commit. Repository mode
+must then fail with `expected 29 records, found 6`.
 
 ### Task 5A: Reconstruct Task129 As A Pure Codex Classifier
 
@@ -396,17 +426,20 @@ commit. Repository mode must then fail with `expected 29 records, found 6`.
 
 **Interfaces:**
 - Consumes: released `agent-official-flow-absence.v1` contract.
-- Produces: provider-specific absence or interface-only classification; never
-  durable unavailable evidence.
+- Produces: provider-specific opaque absence witness or interface-only result;
+  never durable unavailable evidence.
 
 - [ ] **Step 1: Write RED and run it**
 
 Add tests requiring absent official flow to return the exact shared Codex
-classification with canonical `ws_` workspace, source/causation, approval, and
-classification hash. Assert the create/assess inputs reject append callbacks,
-authority objects, mounted owners, ledgers, runtime handles, and extra keys.
-Retain every prohibited-source fixture and interface-only test. Assert no
-result has `kind: "unavailable"`.
+opaque witness with canonical `ws_` workspace, required
+`causationEventId`, source membership, approval, and classification hash when
+inspected by the shared inspector. Assert the create/assess inputs reject
+append callbacks, authority objects, mounted owners, ledgers, runtime handles,
+missing/swapped causation, and extra keys. Retain every prohibited-source
+fixture and interface-only test. Assert no result has `kind: "unavailable"`
+or category `feasibility-append-unavailable`; absent flow returns only
+`official-flow-absence-classified` with the exact witness.
 
 ```bash
 npm test -- packages/agent/test/codex-subscription-harness.test.ts
@@ -418,7 +451,7 @@ and uses the provisional workspace prefix.
 - [ ] **Step 2: Implement and run identical GREEN**
 
 Remove every persistence/authority interface and callback. Normalize one
-snapshot, use the shared classification builder, retain the explicit
+snapshot, use the shared witness creator, retain the explicit
 interface-only branch, and fail closed for prohibited, malformed, or posture-
 mismatched input.
 
@@ -452,16 +485,20 @@ git commit -m "fix: make Codex feasibility classification pure"
 
 **Interfaces:**
 - Consumes: released `agent-official-flow-absence.v1` contract.
-- Produces: provider-specific xAI absence classification; never durable
+- Produces: provider-specific opaque xAI absence witness; never durable
   unavailable evidence.
 
 - [ ] **Step 1: Write RED and run it**
 
-Require exact xAI shared classification on absent official flow, canonical
-`ws_` workspace, provider-family bindings, source/causation, approval, and
-classification hash. Retain every xAI-specific prohibited-source fixture.
-Reject persistence/authority/ledger/runtime inputs and assert no result has
-`kind: "unavailable"` or a generic API-key fallback.
+Require an exact xAI shared opaque witness on absent official flow, canonical
+`ws_` workspace, provider-family bindings, required `causationEventId`, source
+membership, approval, and classification hash when inspected by the shared
+inspector.
+Retain every xAI-specific prohibited-source fixture. Reject missing/swapped
+causation and persistence/authority/ledger/runtime inputs, and assert no result
+has `kind: "unavailable"`, category `feasibility-append-unavailable`, or a
+generic API-key fallback. Absent flow returns only
+`official-flow-absence-classified` with the exact witness.
 
 ```bash
 npm test -- packages/agent/test/xai-subscription-harness.test.ts
@@ -473,7 +510,7 @@ workspace prefix.
 
 - [ ] **Step 2: Implement and run identical GREEN**
 
-Normalize one snapshot and use the shared xAI classification builder. Keep xAI
+Normalize one snapshot and use the shared xAI witness creator. Keep xAI
 credential/flow semantics separate from Codex. Do not add a provider, network,
 secret, append, or alternate-backend path.
 
@@ -511,13 +548,17 @@ Each candidate receives separate architecture/invariant and executability/
 adversarial reviews bound to its exact SHA. Reviews verify pure classification,
 provider-specific prohibited sources, canonical mounted identifiers, absence
 of persistence/authority ports, no unavailable result before mounted readback,
-and no provider fallback. Review work does not authorize SDD.
+and no provider fallback. Both reviews for each candidate must return an
+unqualified `APPROVED`; any qualified verdict, `NEEDS-CHANGES`, or unresolved
+finding blocks that candidate. Review work does not authorize SDD.
 
 - [ ] **Step 3: Integrate in graph order**
 
-Integrate Task129 first, then integrate Task130 after checking that its
-three-path candidate applies cleanly and still has Task129-MFA ancestry. Rerun
-both focused suites and bounded admission from the resulting program head.
+Only after both candidates independently hold two unqualified exact-revision
+approvals, integrate Task129 first, then integrate Task130 after checking that
+its three-path candidate applies cleanly and still has Task129-MFA ancestry.
+Rerun both focused suites and bounded admission from the resulting program
+head.
 
 ### Task 6: Append Task129 And Task130 Releases
 
