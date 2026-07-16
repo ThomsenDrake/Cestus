@@ -12989,3 +12989,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   unqualified **APPROVED** before integration or Task139 resume. Full
   verification, source dispatch, live/provider/network/credential/Nous
   activity, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-483 — Task137A Recovery-6 candidate admitted to review
+
+- Candidate `e01e8b77546ba139bad96e280ce3a689f271885f` is one clean descendant
+  of rejected `9206637ebd9725132978039c5ae2870e7edfba51`; relative to that base
+  it changes only the Task137A claim and mounted-artifact import-policy test.
+- Fresh coordinator admission from committed bytes passed the literal CF-1R25
+  gate at six files and 82 tests, its embedded typecheck, negative source-index
+  search, factory readiness, six-path lineage, physical-checkout assertion,
+  plus a separately invoked standalone typecheck, exact-range diff, exact HEAD,
+  clean checkout, and absent dependency-link checks.
+- The new regression first reproduced the destructured CommonJS bypass, then
+  proved violations for direct, aliased, defaulted, rest, computed, and nested
+  `module.require` binding flows while preserving a locally shadowed `module`
+  control. The analyzer remains test-owned and production authority policy is
+  unchanged.
+- Two entirely fresh exact-SHA reviews are required: one for mounted authority,
+  lifecycle, scope, and committed-byte gates; one for adversarial TypeScript
+  semantic import policy, binding-pattern completeness, and false positives.
+  Both must return unqualified **APPROVED** before integration. Full
+  verification, live/provider/network/credential/Nous activity, reset credits,
+  push, and every `neo` action remain closed.
