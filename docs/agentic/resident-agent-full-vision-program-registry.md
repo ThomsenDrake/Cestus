@@ -18026,3 +18026,149 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent architecture/invariant and executability/adversarial read-only
   review pair. No further automatic Task137B production or contract change is
   authorized.
+
+## RV-1-E-681 — Task137B-W approved, integrated, and released
+
+- Recorded at: 2026-07-17T18:53:30Z
+- Coordinator admission at exact candidate
+  `01262620bae707a187578387c14e12209361bc97` reproduced the frozen focused
+  **7 files / 74 tests** and cross-lane **9 files / 130 tests**, with exactly
+  one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker in each suite;
+  standalone typecheck; all six ordered terminal-gate stages plus completion;
+  exact sorted fourteen-path cumulative scope; diff hygiene; factory
+  readiness; clean tracked and untracked state; and real non-symlinked local
+  dependencies. Full verification did not run during bounded admission.
+- Fresh GPT-5.6 Terra/xhigh architecture/invariant reviewer
+  `019f715e-29f6-7123-b604-110d44df475a` and executability/adversarial
+  reviewer `019f715e-32d2-7e82-a0f4-9d0739fbe4c8` each returned literal
+  **APPROVED** for the exact candidate. Both explicitly found that the final-
+  cycle claim amendment authorizes the narrow authentication-first legacy
+  adapter: bind and mounted-store construction remain opaque-capability-only,
+  while lifecycle-clock expiry revokes authority before artifact inspection.
+- The complete fifteen-commit candidate chain was integrated in its frozen
+  order without squashing, reordering, rebasing, resetting, amending, or
+  dropping any historical RED. The integrated tip is
+  `9e680b44c4284456eebaad79c00fabda5c2bd4ea`; the coordinator then reproduced
+  every focused, cross-lane, typecheck, terminal, scope, diff, factory,
+  checkout, and dependency gate from those integrated bytes.
+- The canonical release record below is strict record 11 in V4 parser order.
+  It advances the next executable release card to
+  `W1-123-H-SHARED-SCHEMA`.
+
+## Task136 dispatch release v4: Task137B-W
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task137B-W",
+  "candidateSha": "01262620bae707a187578387c14e12209361bc97",
+  "reviews": [
+    {
+      "threadId": "019f715e-29f6-7123-b604-110d44df475a",
+      "candidateSha": "01262620bae707a187578387c14e12209361bc97",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f715e-32d2-7e82-a0f4-9d0739fbe4c8",
+      "candidateSha": "01262620bae707a187578387c14e12209361bc97",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "9e680b44c4284456eebaad79c00fabda5c2bd4ea",
+  "releaseEventId": "task136-release-v4-Task137B-W",
+  "prerequisites": [
+    {
+      "cardId": "Task135B",
+      "integrationSha": "908d26fa252989c9217cb40e1f22a5b9f583aa8f",
+      "releaseEventId": "task136-release-v4-Task135B"
+    },
+    {
+      "cardId": "T120-R",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-T120-R"
+    },
+    {
+      "cardId": "Task137A",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task137A"
+    },
+    {
+      "cardId": "Task129-MFA",
+      "integrationSha": "c599f9d7c9e08de155bfb98f49462ad01416ec40",
+      "releaseEventId": "task136-release-v4-Task129-MFA"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/portable-workspace-lifecycle.ts",
+      "disposition": "owned",
+      "blobSha": "24bb27cf543ac1681d9955d83368917a1a78773c"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-workspace-lifecycle.test.ts",
+      "disposition": "owned",
+      "blobSha": "fe03cab2609dbad8af9cc196002659a253fe78a7"
+    },
+    {
+      "path": "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+      "disposition": "owned",
+      "blobSha": "8ed0d119cf704bd6d52b49ec1627ca08538dbb4f"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts",
+      "disposition": "owned",
+      "blobSha": "8e45a89a8732b085aa54b05fd31d2853059eb65b"
+    },
+    {
+      "path": "packages/local-runtime/src/wake-supervisor-runtime.ts",
+      "disposition": "owned",
+      "blobSha": "2ec8fd3584125dc6a6d0b5f44a068758285ce9ca"
+    },
+    {
+      "path": "packages/local-runtime/src/mounted-wake-lifecycle-store.ts",
+      "disposition": "owned",
+      "blobSha": "5e4ff153b12c1c16cd76327db2e3081dbd0a29f8"
+    },
+    {
+      "path": "packages/local-runtime/test/wake-supervisor-runtime.test.ts",
+      "disposition": "owned",
+      "blobSha": "da6d3c00a7acc29312fe004a1a9d12d76f5edc59"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts",
+      "disposition": "owned",
+      "blobSha": "6fa011acf2c559b95f06b2ece63744f12c03c47a"
+    },
+    {
+      "path": "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "2f66aa242b3e944a9d6661d976509cbbfca53a3c"
+    },
+    {
+      "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+      "disposition": "owned",
+      "blobSha": "c183a35a11f103c9903525d399601a5ea42d12bb"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "f5082cab2698d41ac963577c8ab06766967eb657"
+    },
+    {
+      "path": "packages/ontology/src/contracts.ts",
+      "disposition": "owned",
+      "blobSha": "cd3261f8a2d7839bfa5d6f43529b294fbb4a5aef"
+    },
+    {
+      "path": "packages/ontology/test/resident-wake-contracts.test.ts",
+      "disposition": "owned",
+      "blobSha": "211699ad8b9c396fe2183d002115423c91165d2c"
+    },
+    {
+      "path": "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md",
+      "disposition": "owned",
+      "blobSha": "ca4b2a0632cce52ddf76d90208dab41f02d6c779"
+    }
+  ]
+}
+```
