@@ -1,22 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
   inspectMountedArtifactAuthorityOperation,
   issueMountedArtifactAuthorityOperationForFactory
 } from "../src/mounted-artifact-authority-operation.js";
 import { createWakeSupervisorRuntime } from "../src/wake-supervisor-runtime.js";
-import type { LocalRuntimeHandle } from "../src/runtime-factory.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { resolveLocalRuntimeConfig } from "../src/config.js";
+import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
 
-function fixture() {
-  const handle = {
-    ledger: new InMemoryEventLedger(),
-    mountedWorkspace: {
-      workspaceId: "ws_wake_runtime",
-      rootDir: "/tmp/ws_wake_runtime",
-      manifestPath: "/tmp/ws_wake_runtime/workspace.json",
-      paths: { ledgerPath: "/tmp/ws_wake_runtime/ledger.sqlite", blobRoot: "/tmp/ws_wake_runtime/blobs", derivativeRoot: "/tmp/ws_wake_runtime/derivatives", jobRoot: "/tmp/ws_wake_runtime/jobs", projectionRoot: "/tmp/ws_wake_runtime/projections", cacheRoot: "/tmp/ws_wake_runtime/cache", configRoot: "/tmp/ws_wake_runtime/config" }
-    }
-  } as unknown as LocalRuntimeHandle;
+const directories: string[] = [];
+const handles: LocalRuntimeHandle[] = [];
+
+afterEach(() => {
+  for (const handle of handles.splice(0)) handle.close();
+  for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
+});
+
+async function fixture() {
+  const root = mkdtempSync(join(tmpdir(), "cestus-wake-runtime-"));
+  directories.push(root);
+  const workspaceId = "ws_wake_runtime";
+  const workspaceRoot = join(root, workspaceId);
+  createPortableWorkspace({ rootDir: workspaceRoot, workspaceId, label: "Wake runtime", createdAt: "2026-07-16T00:00:00.000Z", createdBy: "wake-runtime-test" });
+  const handle = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({ cwd: root, env: { CESTUS_LOCAL_STORAGE: "portable-workspace", CESTUS_WORKSPACE_ROOT: workspaceRoot } }),
+    actor: { id: "actor_wake_runtime", kind: "human", label: "Wake runtime" }
+  });
+  handles.push(handle);
+  await handle.residentIdentity.ready();
   const runtime = createWakeSupervisorRuntime({
     runtimeHandle: handle,
     actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
@@ -30,13 +44,13 @@ function fixture() {
 
 describe("wake supervisor runtime", () => {
   it("wake runtime registers one non public authority issuer after complete admission", async () => {
-    const { runtime } = fixture();
+    const { runtime } = await fixture();
     await expect(runtime.supervision.start()).resolves.toMatchObject({ outcome: "accepted" });
     expect(inspectMountedArtifactAuthorityOperation(issueMountedArtifactAuthorityOperationForFactory(runtime))).toMatchObject({ workspaceId: "ws_wake_runtime" });
   });
 
   it("stopped runtime cannot issue or inspect an authority operation", async () => {
-    const { runtime } = fixture();
+    const { runtime } = await fixture();
     await runtime.supervision.start();
     const operation = issueMountedArtifactAuthorityOperationForFactory(runtime);
     await runtime.stop();
@@ -45,40 +59,40 @@ describe("wake supervisor runtime", () => {
   });
 
   it("fresh process runtime requires new admission and emits a distinct operation", async () => {
-    const first = fixture();
+    const first = await fixture();
     await first.runtime.supervision.start();
     const firstOperation = issueMountedArtifactAuthorityOperationForFactory(first.runtime);
     await first.runtime.stop();
-    const second = fixture();
+    const second = await fixture();
     expect(() => issueMountedArtifactAuthorityOperationForFactory(second.runtime)).toThrow(/complete|current/i);
     await second.runtime.supervision.start();
     const secondOperation = issueMountedArtifactAuthorityOperationForFactory(second.runtime);
     expect(secondOperation).not.toBe(firstOperation);
   });
 
-  it("exposes only supervision control and stop rather than authority internals", () => {
-    const { runtime } = fixture();
+  it("exposes only supervision control and stop rather than authority internals", async () => {
+    const { runtime } = await fixture();
     expect(Reflect.ownKeys(runtime).map(String).sort()).toEqual(["stop", "supervision"]);
     expect(Reflect.ownKeys(runtime.supervision).map(String)).not.toEqual(expect.arrayContaining(["authority", "issuer", "operation", "ports", "facts", "paths", "stores", "writer"]));
   });
 
   it("rejects a second authority operation for one completed admission", async () => {
-    const { runtime } = fixture();
+    const { runtime } = await fixture();
     await runtime.supervision.start();
     issueMountedArtifactAuthorityOperationForFactory(runtime);
     expect(() => issueMountedArtifactAuthorityOperationForFactory(runtime)).toThrow(/already issued/i);
   });
 
   it("invalidates authority before stop returns", async () => {
-    const { runtime } = fixture();
+    const { runtime } = await fixture();
     await runtime.supervision.start();
     const operation = issueMountedArtifactAuthorityOperationForFactory(runtime);
     await runtime.stop();
     expect(() => inspectMountedArtifactAuthorityOperation(operation)).toThrow();
   });
 
-  it("rejects structural caller handles before installing a runtime", () => {
-    const { handle } = fixture();
+  it("rejects structural caller handles before installing a runtime", async () => {
+    const { handle } = await fixture();
     expect(() => createWakeSupervisorRuntime({
       runtimeHandle: { ...handle } as LocalRuntimeHandle,
       actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
@@ -90,15 +104,15 @@ describe("wake supervisor runtime", () => {
   });
 
   it("does not admit an operation after authority loss during a later lifecycle command", async () => {
-    const { runtime } = fixture();
+    const { runtime } = await fixture();
     await runtime.supervision.start();
     await runtime.stop();
     await expect(runtime.supervision.resume({ schemaVersion: "resident-wake-command.v1", commandId: "resume_after_stop", sourceEventIds: [], requestedAt: "2026-07-16T00:00:00.000Z", causation: { causationId: "evt_resume_after_stop", correlationId: "corr_resume_after_stop" } }))
       .resolves.toMatchObject({ outcome: "blocked" });
   });
 
-  it("has no fallback storage or public authority constructor input", () => {
-    const { runtime } = fixture();
+  it("has no fallback storage or public authority constructor input", async () => {
+    const { runtime } = await fixture();
     expect(JSON.stringify(runtime)).not.toMatch(/ledger|path|fallback|authority|operation/i);
   });
 });
