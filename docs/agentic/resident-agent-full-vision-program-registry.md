@@ -17563,3 +17563,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release records, Task139, full verification, providers, network,
   credentials, external services, push, reset, rebase, or any `neo` action.
   Both reviewers must return unqualified **APPROVED** before Task 1 starts.
+
+## RV-1-E-664 — Task137B-W v3 correction requires one finite revision
+
+- Recorded at: 2026-07-17T01:40:00Z
+- Architecture reviewer `019f6d5a-d58f-7131-b32e-afc4b0f346dd` and
+  executability reviewer `019f6d5a-da39-7721-bb7a-c37d8f49db86` both returned
+  **NEEDS-CHANGES** for exact revision
+  `42721604a412b32144bed3610e72d4c075cca6d4`. Both are closed; no approval
+  carries forward.
+- The exact historical Task129-MFA record must be pinned by canonical JSON
+  SHA-256
+  `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`,
+  with causal candidate/review/prerequisite/blob mutations. Prefix repository
+  mode must validate released candidate/integration/current-head blobs and run
+  released commands before reporting incomplete closure.
+- The frozen Task137 policy currently permits wake runtime to import only the
+  Task137A registrar and explicitly rejects the lifecycle constructor. V3 must
+  therefore transfer the policy source and policy test along with the ontology
+  contract, preserve the 8/20 corpus by changing existing fixtures rather than
+  expanding it, and allow exactly one additional direct static value import:
+  `wake-supervisor-runtime.ts` importing
+  `createPortableWorkspaceLifecyclePorts`.
+- The Task137B-W command must consequently add the transferred policy test;
+  the corrected Task137B-W ceiling is ten paths. Every task must assert exact
+  sorted path equality, not only a path count. The already committed
+  `bbb716a4f8a6d016fae88a4d785c0d017d54a7ae` repair closed the old
+  clean-checkout gate ordering, but requires fresh review with the complete
+  revision.
+- No implementation may start until the design and plan incorporate all
+  findings and two fresh reviewers return unqualified **APPROVED**. Task139,
+  full verification, providers, network, credentials, external services,
+  push, reset, rebase, and every `neo` action remain closed.
