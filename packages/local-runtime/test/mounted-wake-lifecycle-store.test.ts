@@ -309,7 +309,7 @@ describe("mounted wake lifecycle store", () => {
     expect(afterRestart).toEqual(first);
     expect((await ledger.readAll()).filter((event) =>
       event.type === "agent.wake.supervisor.recovery.verified.v1" &&
-      event.context.correlationId === reconciliation.lookup.reconciliationIdempotencyKey
+      event.payload.reconciliationRecord?.reconciliationIdempotencyKey === reconciliation.lookup.reconciliationIdempotencyKey
     )).toHaveLength(1);
   });
 
