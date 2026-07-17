@@ -18383,3 +18383,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   development are not relevant or authorized for reviewers. Only a reproduced
   P0/P1 contract violation can trigger the single consolidated repair packet;
   P2, style, hypothetical hardening, and unreproduced concerns are backlog.
+
+## RV-1-E-688 — CF1-HR blocked by frozen V2 schema ownership conflict
+
+- Recorded at: 2026-07-17T19:26:26Z
+- The CF1-HR owner committed only its claim at
+  `56bbb10b745b742a86b7f63b878aadc105efee0c` and stopped before RED or
+  production mutation. The worktree is clean; diff hygiene and factory
+  readiness passed.
+- Coordinator adjudication reproduces the blocker. CF1-HR owns only the two
+  specialist-runner kernel paths, two handoff-projection paths, and its claim.
+  The current canonical specialist manifest is literally
+  `agent-specialist-handoff-manifest.v1` in the unowned
+  `packages/agent/src/specialist-handoff-manifest.ts`; current prepared and
+  recorded event payload schemas also carry no V2 mounted-authority binding.
+- The already released T120-R contract instead requires a completed result to
+  carry an H-owned readback whose manifest version is literally
+  `agent-specialist-handoff-manifest.v2` and whose authority binding exactly
+  equals current mounted authority. Producing that value from V1 bytes inside
+  the five-path ceiling would be a false attestation, shadow schema, or
+  compatibility parser, all forbidden by the approved safety contract.
+- This is a genuine schema/file-owner and externally visible durable-contract
+  decision on the strict card-14 critical path. No automatic RED/GREEN repair,
+  renamed recovery, scope widening, contract rewrite, or downgrade from V2 to
+  V1 is authorized. The claim commit remains preserved but unintegrated.
+- Recommended resolution is an explicit minimal schema-owner scope correction
+  that implements and tests the frozen V2 manifest/lifecycle producer before
+  resuming the same CF1-HR owner. Downgrading the T120-R parser to V1 would
+  weaken the frozen authority invariant and is not recommended.
+- Independent Task126-R review and G136-SC candidate admission may continue;
+  strict integration/release cannot advance past record 13 until this decision
+  is resolved.
