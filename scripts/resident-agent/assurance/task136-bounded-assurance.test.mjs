@@ -30,6 +30,7 @@ const v4ContractSha256 = "bb02ba569157f9c57205e423040e3eb6e8cc7b2c95ed0ef968fd4c
 const v4AssuranceFingerprint = "31123be5bec8cafed581c23efd5c5fcbea5780f662216e725f90b20eb268d2db";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
+const historicalTask137bSha256 = "833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29";
 const task137aToTask129MfaPaths = [
   "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
   "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts",
@@ -63,6 +64,7 @@ const task137bOwnedPaths = [
   "packages/ontology/test/resident-wake-contracts.test.ts",
   "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md"
 ];
+const task137bToCf1Paths = ["packages/ontology/src/contracts.ts"];
 const correctedCf1HrPaths = [
   "packages/agent/src/specialist-runner-kernel.ts",
   "packages/agent/test/specialist-runner-kernel.test.ts",
@@ -164,6 +166,7 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
   const contract = loadV4Contract();
   const cf1Hr = contract.releaseGraph.cards.find((card) => card.id === "CF1-HR");
   const g136Sc = contract.releaseGraph.cards.find((card) => card.id === "G136-SC");
+  const task137b = contract.releaseGraph.cards.find((card) => card.id === "Task137B-W");
 
   assert.deepEqual(cf1Hr.ownedPaths, correctedCf1HrPaths.map((path) => ({ disposition: "owned", path })));
   assert.equal(cf1Hr.command, correctedCf1HrCommand);
@@ -172,6 +175,16 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
     path
   })));
   assert.equal(g136Sc.command, correctedG136ScCommand);
+  assert.deepEqual(task137b.transferToIds, ["CF1-HR"]);
+  assert.deepEqual(
+    task137b.ownedPaths.filter((ownedPath) => ownedPath.path === task137bToCf1Paths[0]),
+    task137bToCf1Paths.map((path) => ({ disposition: "transferred", path }))
+  );
+  assert.deepEqual(contract.releaseCompatibility.historicalRecords[2], {
+    cardId: "Task137B-W",
+    canonicalJsonSha256: historicalTask137bSha256,
+    pathDispositions: task137bToCf1Paths.map((path) => ({ path, recordDisposition: "owned" }))
+  });
   assert.deepEqual(contract.releaseGraph.cards.map(({ id }) => id), expectedIds);
   assert.equal(createHash("sha256").update(readFileSync(v1ContractPath)).digest("hex"), v1ContractSha256);
   assert.equal(createHash("sha256").update(readFileSync(v2ContractPath)).digest("hex"), v2ContractSha256);
@@ -212,6 +225,26 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
         mutant.releaseGraph.cards.find((card) => card.id === "G136-SC").command =
           "npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/domain-execution-dispatcher.test.ts";
       }
+    },
+    {
+      id: "Task137B-W contracts disposition",
+      mutate(mutant) {
+        mutant.releaseGraph.cards
+          .find((card) => card.id === "Task137B-W")
+          .ownedPaths.find((ownedPath) => ownedPath.path === task137bToCf1Paths[0]).disposition = "owned";
+      }
+    },
+    {
+      id: "Task137B-W transfer target",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task137B-W").transferToIds = ["G136-R"];
+      }
+    },
+    {
+      id: "Task137B-W historical compatibility hash",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords[2].canonicalJsonSha256 = "0".repeat(64);
+      }
     }
   ];
   for (const testCase of cardMutants) {
@@ -243,6 +276,11 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
       cardId: "Task129-MFA",
       canonicalJsonSha256: historicalTask129MfaSha256,
       pathDispositions: transferredTask129MfaPaths.map((path) => ({ path, recordDisposition: "owned" }))
+    },
+    {
+      cardId: "Task137B-W",
+      canonicalJsonSha256: historicalTask137bSha256,
+      pathDispositions: task137bToCf1Paths.map((path) => ({ path, recordDisposition: "owned" }))
     }
   ]);
   assert.deepEqual(task137A.transferToIds, ["Task129-MFA", "Task137B-W"]);
@@ -261,9 +299,11 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
     transferredTask129MfaPaths.map((path) => ({ disposition: "transferred", path }))
   );
   assert.deepEqual(task137b.prerequisiteIds, ["Task135B", "T120-R", "Task137A", "Task129-MFA"]);
-  assert.deepEqual(task137b.ownedPaths, [
-    ...task137bOwnedPaths.map((path) => ({ disposition: "owned", path }))
-  ]);
+  assert.deepEqual(task137b.transferToIds, ["CF1-HR"]);
+  assert.deepEqual(task137b.ownedPaths, task137bOwnedPaths.map((path) => ({
+    disposition: path === task137bToCf1Paths[0] ? "transferred" : "owned",
+    path
+  })));
   assert.equal(
     task137b.command,
     "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts"
