@@ -116,14 +116,37 @@ describe("wake supervisor runtime", () => {
 
   it("rejects structural caller handles before installing a runtime", async () => {
     const { handle } = await fixture();
-    expect(() => createWakeSupervisorRuntime({
-      runtimeHandle: { ...handle } as LocalRuntimeHandle,
-      actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
-      supervisorEpoch: "epoch_wake_runtime",
-      policy: { policyVersion: "policy.v1", policyDigest: "sha256:policy", lockStateDigest: "sha256:lock" },
-      now: () => "2026-07-16T00:00:00.000Z",
-      createSafeId: (kind) => `${kind}_wake_runtime`
-    })).toThrow(/factory-issued|runtime handle/i);
+    const originalAppend = handle.ledger.append.bind(handle.ledger);
+    const originalReadAll = handle.ledger.readAll.bind(handle.ledger);
+    let writes = 0;
+    let reads = 0;
+    Object.defineProperty(handle.ledger, "append", {
+      configurable: true,
+      value: async (...args: Parameters<typeof handle.ledger.append>) => {
+        writes += 1;
+        return originalAppend(...args);
+      }
+    });
+    Object.defineProperty(handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => {
+        reads += 1;
+        return originalReadAll();
+      }
+    });
+    let forgedRuntime: ReturnType<typeof createWakeSupervisorRuntime> | undefined;
+    expect(() => {
+      forgedRuntime = createWakeSupervisorRuntime({
+        runtimeHandle: { ...handle } as LocalRuntimeHandle,
+        actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
+        supervisorEpoch: "epoch_wake_runtime",
+        policy: { policyVersion: "policy.v1", policyDigest: "sha256:policy", lockStateDigest: "sha256:lock" },
+        now: () => "2026-07-16T00:00:00.000Z",
+        createSafeId: (kind) => `${kind}_wake_runtime`
+      });
+    }).toThrow(/factory-issued|runtime handle/i);
+    expect(forgedRuntime).toBeUndefined();
+    expect({ reads, writes }).toEqual({ reads: 0, writes: 0 });
   });
 
   it("does not admit an operation after authority loss during a later lifecycle command", async () => {
