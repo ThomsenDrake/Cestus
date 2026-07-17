@@ -17638,3 +17638,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reset, rebase, or any `neo` action.
 - Task 1 remains closed until both reviewers return literal unqualified
   **APPROVED** verdicts for the same revision.
+
+## RV-1-E-667 — Task137B-W review evidence and causal-clock correction
+
+- Recorded at: 2026-07-17T01:50:00Z
+- The host clock regressed while `RV-1-E-665` and `RV-1-E-666` were appended,
+  producing noncausal `00:06Z` and `00:07Z` display timestamps after
+  `RV-1-E-664` at `01:40Z`. Append-only correction assigns their effective
+  logical times as `2026-07-17T01:45:00Z` and
+  `2026-07-17T01:46:00Z`, respectively. Their content and commits remain
+  unchanged; this event is the authoritative timestamp correction.
+- Architecture/invariant reviewer
+  `019f6d65-f28f-76a0-9a07-0b9be959b803` returned an unqualified
+  **APPROVED** verdict for exact review revision
+  `37a10287ead6514f742cac8621d4cae2c6def945`. Executability/adversarial
+  reviewer `019f6d65-f659-7011-b512-9d67bff7b6ee` returned
+  **NEEDS-CHANGES** for that revision, so neither verdict carries forward to
+  the next exact revision.
+- The coordinator reproduced the disputed prerequisite count with the exact
+  five-file local command: **5 files / 88 tests** passed with one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. Because Task137B-W
+  adds exactly 35 tests and preserves the existing policy suite, the planned
+  cross-lane total remains **9 files / 123 tests**; the reviewer's 118-test
+  arithmetic omitted five existing parameterized tests.
+- The remaining findings are valid and are forward-corrected in the plan:
+  Task 1 and Task 3 compare the two repository checkpoint lines in literal
+  order; evidence failures must emit neither line; and Task 1/Task 2 admission
+  recovers and validates its recorded base SHA inside the command block rather
+  than relying on inherited shell variables.
+- Task 1 remains closed pending two fresh read-only Terra/xhigh reviews of the
+  new exact revision. SDD, implementation, integration, release records,
+  Task139, full verification, providers, network, credentials, external
+  services, push, reset, rebase, and every `neo` action remain closed.
