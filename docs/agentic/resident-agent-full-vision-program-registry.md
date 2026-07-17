@@ -18538,3 +18538,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   development are not relevant or authorized for reviewers. The automatic
   repair ceiling is exhausted: P2/style/hypothetical concerns are backlog,
   while any reproduced P0/P1 becomes a durable blocked-card record.
+
+## RV-1-E-693 — Task126-R blocked at the exhausted final-review ceiling
+
+- Recorded at: 2026-07-17T19:55:36Z
+- Final architecture/invariants reviewer
+  `019f719b-6028-76d0-a218-c98c0896dd2b` and final
+  executability/adversarial reviewer
+  `019f719b-5e0f-78d0-b639-4717ecc18835` each returned **NEEDS-CHANGES** for
+  exact repaired candidate `4f39cfb2bc3064c07a6ebc3f10bc45dc748d7624`.
+- Both reproduced a P1 in the actual analyzer. Destructured
+  `module.require`, direct `createRequire(import.meta.url)(...)`, and
+  comma-indirect `(0, require)(...)` calls can reach the protected module while
+  the policy returns no violation. Scoped custom loader parameters can also be
+  mistaken for standard loaders, producing a fail-closed false positive.
+- The prescribed **2 files / 17 tests** and cross-boundary **4 files / 45
+  tests** remained green, as did diff and factory gates; coordinator admission
+  already supplied clean typecheck and the implementation owner supplied the
+  final full verifier. These results do not override the reproduced authority
+  bypass. Both review worktrees remained read-only and clean.
+- The original candidate, its single repair RED/GREEN packet, and both review
+  generations are preserved. The automatic repair ceiling is exhausted. No
+  additional worker, renamed recovery, partial integration, release record, or
+  contract downgrade is authorized.
+- Task126-R is a durable blocked card on strict release position 15. Resolving
+  it now requires an explicit program-scope decision authorizing a new finite
+  forward repair beyond the approved ceiling; absent that decision, Task133
+  and the provider/runtime critical path remain blocked.
