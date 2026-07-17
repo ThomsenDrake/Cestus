@@ -133,7 +133,7 @@ export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: unkn
     requireRegistrationKeys(record, ["phase", "capability", "wakeRuntime", "lifecyclePorts"]);
     bindMountedWakeCapability({
       capability: record.capability as FactoryAuthenticatedMountedWakeCapability,
-      wakeRuntime: record.wakeRuntime,
+      wakeRuntime: record.wakeRuntime as object,
       lifecyclePorts: record.lifecyclePorts as PortableWorkspaceLifecyclePorts
     });
     return;
@@ -141,7 +141,7 @@ export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: unkn
 
   requireRegistrationKeys(record, ["wakeRuntime", "lifecyclePorts", "runtimeHandle"]);
   const legacy = Object.freeze({
-    wakeRuntime: record.wakeRuntime,
+    wakeRuntime: record.wakeRuntime as object,
     lifecyclePorts: record.lifecyclePorts as PortableWorkspaceLifecyclePorts,
     runtimeHandle: record.runtimeHandle
   });
