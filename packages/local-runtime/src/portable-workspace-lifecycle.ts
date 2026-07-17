@@ -173,7 +173,14 @@ export function createPortableWorkspaceLifecyclePorts(
     async readOrAcquire(rawInput: SupervisorLeaseAdmissionInput) {
       const leaseInput = canonicalLeaseInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
       requireCurrentLeaseInput(leaseInput);
-      const result = canonicalLeaseResult(await mountedLease.readOrAcquire(leaseInput));
+      let result: Awaited<ReturnType<DurableSupervisorLeasePort["readOrAcquire"]>>;
+      try {
+        result = canonicalLeaseResult(await mountedLease.readOrAcquire(leaseInput));
+      } catch {
+        revision += 1;
+        active = undefined;
+        throw new Error("workspace admission is no longer current");
+      }
       const current = requireCurrentLeaseInput(leaseInput);
       if (result.outcome === "acquired-and-read-back") {
         requireLeaseReadback(result.readback, current);

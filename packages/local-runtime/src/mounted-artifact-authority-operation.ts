@@ -8,7 +8,6 @@ import {
 import {
   captureFactoryIssuedMountedRuntime,
   inspectFactoryIssuedMountedRuntimeCapture,
-  type FactoryIssuedMountedRuntimeCapture,
   type FactoryIssuedMountedRuntimeSourceHighWater,
   type FactoryIssuedMountedWorkspaceSnapshot,
   type LocalRuntimeHandle
@@ -67,10 +66,20 @@ export interface MountedOfficialFlowFeasibilityOperationInspection {
   readonly ledger: LocalRuntimeHandle["ledger"];
 }
 
+export interface FactoryAuthenticatedMountedWakeCapability {
+  readonly schemaVersion: "factory-authenticated-mounted-wake-capability.v1";
+}
+
+interface FactoryAuthenticatedMountedWakeCapturedState {
+  readonly ledger: LocalRuntimeHandle["ledger"];
+  readonly mountedWorkspace: NonNullable<LocalRuntimeHandle["mountedWorkspace"]>;
+  readonly workspace: FactoryIssuedMountedWorkspaceSnapshot;
+  readonly sourceHighWater: FactoryIssuedMountedRuntimeSourceHighWater;
+}
+
 interface WakeRuntimeRegistration {
   readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
-  readonly runtimeHandle: LocalRuntimeHandle;
-  mountedRuntimeCapture?: FactoryIssuedMountedRuntimeCapture;
+  readonly capability: FactoryAuthenticatedMountedWakeCapability;
   lastIssuedAdmission?: WorkspaceAdmissionSnapshot;
 }
 
@@ -78,41 +87,121 @@ interface OperationState {
   readonly registration: WakeRuntimeRegistration;
   readonly admission: WorkspaceAdmissionSnapshot;
   readonly facts: PortableWorkspaceMountedFacts;
-  readonly mountedRuntimeCapture: FactoryIssuedMountedRuntimeCapture;
-  mountedRuntimeInspection?: ReturnType<typeof inspectFactoryIssuedMountedRuntimeCapture>;
-  mountedRuntimeCaptureInspected: boolean;
+  mountedRuntimeInspection?: FactoryAuthenticatedMountedWakeCapturedState;
   burned: boolean;
 }
 
-interface MountedArtifactAuthorityRegistrationInput {
+interface LegacyMountedArtifactAuthorityRegistrationInput {
   readonly wakeRuntime: object;
   readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
   readonly runtimeHandle: LocalRuntimeHandle;
+}
+
+interface FactoryAuthenticatedMountedWakeCapabilityState {
+  readonly runtimeHandle: LocalRuntimeHandle;
+  readonly initial: FactoryAuthenticatedMountedWakeCapturedState;
+  boundWakeRuntime?: object;
+  burned: boolean;
 }
 
 const wakeRuntimeRegistrations = new WeakMap<object, WakeRuntimeRegistration>();
 const operationStates = new WeakMap<MountedArtifactAuthorityOperation, OperationState>();
+const factoryAuthenticatedMountedWakeCapabilities = new WeakMap<
+  FactoryAuthenticatedMountedWakeCapability,
+  FactoryAuthenticatedMountedWakeCapabilityState
+>();
 
 export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
+  readonly phase: "authenticate";
+  readonly runtimeHandle: unknown;
+}): FactoryAuthenticatedMountedWakeCapability;
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
+  readonly phase: "bind";
+  readonly capability: FactoryAuthenticatedMountedWakeCapability;
   readonly wakeRuntime: object;
   readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
-  readonly runtimeHandle: LocalRuntimeHandle;
+}): void;
+/** @deprecated Existing released callers are routed through the two phases. */
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: LegacyMountedArtifactAuthorityRegistrationInput): void;
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: unknown): FactoryAuthenticatedMountedWakeCapability | void {
+  const record = normalizedRegistrationRecord(input);
+  if (record.phase === "authenticate") {
+    requireRegistrationKeys(record, ["phase", "runtimeHandle"]);
+    return authenticateMountedWakeCapability(record.runtimeHandle);
+  }
+  if (record.phase === "bind") {
+    requireRegistrationKeys(record, ["phase", "capability", "wakeRuntime", "lifecyclePorts"]);
+    bindMountedWakeCapability({
+      capability: record.capability as FactoryAuthenticatedMountedWakeCapability,
+      wakeRuntime: record.wakeRuntime,
+      lifecyclePorts: record.lifecyclePorts as PortableWorkspaceLifecyclePorts
+    });
+    return;
+  }
+
+  requireRegistrationKeys(record, ["wakeRuntime", "lifecyclePorts", "runtimeHandle"]);
+  const legacy = Object.freeze({
+    wakeRuntime: record.wakeRuntime,
+    lifecyclePorts: record.lifecyclePorts as PortableWorkspaceLifecyclePorts,
+    runtimeHandle: record.runtimeHandle
+  });
+  const capability = authenticateMountedWakeCapability(legacy.runtimeHandle);
+  bindMountedWakeCapability({
+    capability,
+    wakeRuntime: legacy.wakeRuntime,
+    lifecyclePorts: legacy.lifecyclePorts
+  });
+}
+
+/**
+ * This is the sole capability-to-mounted-store seam. Its returned state is
+ * module-private; the opaque capability never carries handle-owned data.
+ */
+export function inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(
+  capability: FactoryAuthenticatedMountedWakeCapability
+): FactoryAuthenticatedMountedWakeCapturedState {
+  return inspectCurrentMountedWakeCapability(capability);
+}
+
+function authenticateMountedWakeCapability(runtimeHandle: unknown): FactoryAuthenticatedMountedWakeCapability {
+  const captured = captureCurrentMountedWakeState(runtimeHandle);
+  const capability = Object.freeze({
+    schemaVersion: "factory-authenticated-mounted-wake-capability.v1" as const
+  });
+  factoryAuthenticatedMountedWakeCapabilities.set(capability, {
+    runtimeHandle: runtimeHandle as LocalRuntimeHandle,
+    initial: captured,
+    burned: false
+  });
+  return capability;
+}
+
+function bindMountedWakeCapability(input: {
+  readonly capability: FactoryAuthenticatedMountedWakeCapability;
+  readonly wakeRuntime: object;
+  readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
 }): void {
-  const normalized = normalizeRegistrationInput(input);
-  if (!isObject(normalized.wakeRuntime)) {
+  const state = factoryAuthenticatedMountedWakeCapabilities.get(input.capability);
+  if (state === undefined || state.burned) {
+    throw new Error("factory-authenticated mounted wake capability is required");
+  }
+  inspectCurrentMountedWakeCapability(input.capability);
+  if (!isObject(input.wakeRuntime)) {
     throw new Error("wake runtime identity is required");
   }
-  if (wakeRuntimeRegistrations.has(normalized.wakeRuntime)) {
+  if (state.boundWakeRuntime !== undefined && state.boundWakeRuntime !== input.wakeRuntime) {
+    throw new Error("factory-authenticated mounted wake capability is already bound");
+  }
+  if (wakeRuntimeRegistrations.has(input.wakeRuntime)) {
     throw new Error("wake runtime authority issuer is already registered");
   }
-  assertPortableWorkspaceLifecyclePortsForMountedArtifactAuthority(normalized.lifecyclePorts);
-  const mountedRuntimeCapture = captureFactoryIssuedMountedRuntime(normalized.runtimeHandle);
+  assertPortableWorkspaceLifecyclePortsForMountedArtifactAuthority(input.lifecyclePorts);
   const registration: WakeRuntimeRegistration = {
-    lifecyclePorts: normalized.lifecyclePorts,
-    runtimeHandle: normalized.runtimeHandle,
-    mountedRuntimeCapture
+    lifecyclePorts: input.lifecyclePorts,
+    capability: input.capability
   };
-  wakeRuntimeRegistrations.set(normalized.wakeRuntime, registration);
+  state.boundWakeRuntime = input.wakeRuntime;
+  wakeRuntimeRegistrations.set(input.wakeRuntime, registration);
 }
 
 export function issueMountedArtifactAuthorityOperationForFactory(
@@ -128,8 +217,7 @@ export function issueMountedArtifactAuthorityOperationForFactory(
   if (registration.lastIssuedAdmission === current.admission) {
     throw new Error("current portable workspace admission already issued an authority operation");
   }
-  const mountedRuntimeCapture = registration.mountedRuntimeCapture
-    ?? captureFactoryIssuedMountedRuntime(registration.runtimeHandle);
+  inspectCurrentMountedWakeCapability(registration.capability);
   const operation = Object.freeze({
     schemaVersion: "mounted-artifact-authority-operation.v1" as const
   });
@@ -137,12 +225,9 @@ export function issueMountedArtifactAuthorityOperationForFactory(
     registration,
     admission: current.admission,
     facts: current.facts,
-    mountedRuntimeCapture,
-    mountedRuntimeCaptureInspected: false,
     burned: false
   });
   registration.lastIssuedAdmission = current.admission;
-  delete registration.mountedRuntimeCapture;
   return operation;
 }
 
@@ -156,7 +241,7 @@ export function inspectMountedArtifactAuthorityOperation(
 
 /**
  * The sole non-public operation-to-Task135B seam. It rereads currentness on
- * every call but consumes Task135D's one-shot capture at most once.
+ * every call through the factory-authenticated wake capability.
  */
 export function inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores(
   operation: MountedArtifactAuthorityOperation
@@ -208,37 +293,19 @@ function currentOperationState(operation: MountedArtifactAuthorityOperation): Op
   return state;
 }
 
-/**
- * A stale operation must not surface a capture inspection, but it still drains
- * its private one-shot capture so the runtime factory no longer retains it.
- */
 function burnOperation(state: OperationState): void {
   if (state.burned) return;
   state.burned = true;
-  if (state.mountedRuntimeInspection !== undefined) return;
-  if (state.mountedRuntimeCaptureInspected) return;
-  state.mountedRuntimeCaptureInspected = true;
-  try {
-    inspectFactoryIssuedMountedRuntimeCapture(state.mountedRuntimeCapture);
-  } catch {
-    // A closed or forged capture cannot restore stale authority.
-  }
 }
 
 function inspectAndRememberMountedRuntime(
   state: OperationState
-): ReturnType<typeof inspectFactoryIssuedMountedRuntimeCapture> {
+): FactoryAuthenticatedMountedWakeCapturedState {
   try {
     const cached = state.mountedRuntimeInspection;
-    const capture = cached === undefined
-      ? state.mountedRuntimeCapture
-      : captureFactoryIssuedMountedRuntime(state.registration.runtimeHandle);
-    if (cached === undefined) state.mountedRuntimeCaptureInspected = true;
-    const captured = inspectFactoryIssuedMountedRuntimeCapture(capture);
+    const captured = inspectCurrentMountedWakeCapability(state.registration.capability);
     if (
-      captured.runtimeHandle !== state.registration.runtimeHandle
-      || captured.ledger !== state.registration.runtimeHandle.ledger
-      || captured.mountedWorkspace.workspaceId !== state.facts.workspaceId
+      captured.mountedWorkspace.workspaceId !== state.facts.workspaceId
       || captured.workspace.workspaceId !== state.facts.workspaceId
       || captured.mountedWorkspace.rootDir !== captured.workspace.rootDir
       || captured.sourceHighWater.ledger !== captured.ledger
@@ -253,6 +320,46 @@ function inspectAndRememberMountedRuntime(
     burnOperation(state);
     throw new Error("mounted artifact authority operation is no longer current");
   }
+}
+
+function inspectCurrentMountedWakeCapability(
+  capability: FactoryAuthenticatedMountedWakeCapability
+): FactoryAuthenticatedMountedWakeCapturedState {
+  const state = factoryAuthenticatedMountedWakeCapabilities.get(capability);
+  if (state === undefined || state.burned) {
+    throw new Error("factory-authenticated mounted wake capability is no longer current");
+  }
+  try {
+    const captured = captureCurrentMountedWakeState(state.runtimeHandle);
+    if (!sameCapturedMountedWakeState(captured, state.initial)) {
+      throw new Error("factory-authenticated mounted wake capability is no longer current");
+    }
+    return captured;
+  } catch {
+    state.burned = true;
+    throw new Error("factory-authenticated mounted wake capability is no longer current");
+  }
+}
+
+function captureCurrentMountedWakeState(runtimeHandle: unknown): FactoryAuthenticatedMountedWakeCapturedState {
+  const capture = captureFactoryIssuedMountedRuntime(runtimeHandle as LocalRuntimeHandle);
+  const inspected = inspectFactoryIssuedMountedRuntimeCapture(capture);
+  return Object.freeze({
+    ledger: inspected.ledger,
+    mountedWorkspace: inspected.mountedWorkspace,
+    workspace: inspected.workspace,
+    sourceHighWater: inspected.sourceHighWater
+  });
+}
+
+function sameCapturedMountedWakeState(
+  left: FactoryAuthenticatedMountedWakeCapturedState,
+  right: FactoryAuthenticatedMountedWakeCapturedState
+): boolean {
+  return left.ledger === right.ledger
+    && left.mountedWorkspace === right.mountedWorkspace
+    && left.workspace === right.workspace
+    && left.sourceHighWater === right.sourceHighWater;
 }
 
 function snapshotFor(
@@ -282,34 +389,31 @@ function isObject(value: unknown): value is object {
   return typeof value === "object" && value !== null;
 }
 
-function normalizeRegistrationInput(input: unknown): MountedArtifactAuthorityRegistrationInput {
+function normalizedRegistrationRecord(input: unknown): Record<string, unknown> {
   if (!isObject(input) || Object.getPrototypeOf(input) !== Object.prototype) {
     throw new Error("mounted authority registration input must be a plain own-data object");
   }
-  const ownKeys = Reflect.ownKeys(input);
-  const expectedKeys = ["wakeRuntime", "lifecyclePorts", "runtimeHandle"] as const;
-  if (
-    ownKeys.length !== expectedKeys.length
-    || ownKeys.some((key) => key !== "wakeRuntime" && key !== "lifecyclePorts" && key !== "runtimeHandle")
-  ) {
+  if (Reflect.ownKeys(input).some((key) => typeof key !== "string")) {
     throw new Error("mounted authority registration input must be a plain own-data object");
   }
   const descriptors = Object.getOwnPropertyDescriptors(input);
-  const values = expectedKeys.map((key) => {
-    const descriptor = descriptors[key];
+  const record: Record<string, unknown> = Object.create(null);
+  for (const [key, descriptor] of Object.entries(descriptors)) {
     if (
-      descriptor === undefined
-      || !("value" in descriptor)
+      !("value" in descriptor)
       || descriptor.get !== undefined
       || descriptor.set !== undefined
     ) {
       throw new Error("mounted authority registration input must be a plain own-data object");
     }
-    return descriptor.value;
-  });
-  return Object.freeze({
-    wakeRuntime: values[0] as object,
-    lifecyclePorts: values[1] as PortableWorkspaceLifecyclePorts,
-    runtimeHandle: values[2] as LocalRuntimeHandle
-  });
+    record[key] = descriptor.value;
+  }
+  return record;
+}
+
+function requireRegistrationKeys(record: Record<string, unknown>, expected: readonly string[]): void {
+  const keys = Object.keys(record).sort();
+  if (keys.length !== expected.length || !expected.every((key) => Object.prototype.hasOwnProperty.call(record, key))) {
+    throw new Error("mounted authority registration input must be a plain own-data object");
+  }
 }

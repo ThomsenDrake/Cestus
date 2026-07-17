@@ -19,7 +19,10 @@ import type {
   WakeLifecyclePort,
   WakeRuntimePort
 } from "../../agent/src/wake-supervisor.js";
-import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import {
+  inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore,
+  type FactoryAuthenticatedMountedWakeCapability
+} from "./mounted-artifact-authority-operation.js";
 
 interface PortableWorkspaceMountedFacts {
   readonly schemaVersion: "portable-workspace-mounted-facts.v1";
@@ -72,8 +75,16 @@ interface LeaseAdmissionState {
   readonly causation: { readonly causationId: string; readonly correlationId: string };
 }
 
+interface NormalizedWakeInstant {
+  readonly iso: string;
+  readonly milliseconds: number;
+}
+
 type ReconciliationAppendInput = Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0];
 type ReconciliationLookupInput = Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0];
+type FactoryAuthenticatedMountedWakeState = ReturnType<
+  typeof inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore
+>;
 
 export type MountedWakeLifecycleEventType =
   | "agent.wake.supervisor.lease.claimed.v1"
@@ -91,7 +102,7 @@ export interface MountedWakePolicySnapshot {
 }
 
 export interface MountedWakeLifecycleStoreInput {
-  readonly runtimeHandle: LocalRuntimeHandle;
+  readonly capability: FactoryAuthenticatedMountedWakeCapability;
   readonly actor: ActorRef;
   readonly supervisorEpoch: string;
   readonly policy: MountedWakePolicySnapshot;
@@ -146,34 +157,50 @@ const wakeLifecycleTypes = new Set<MountedWakeLifecycleEventType>([
   "agent.wake.supervisor.degraded.v1",
   "agent.wake.supervisor.unrecoverable.v1"
 ]);
+const maximumWakeSupervisorLeaseDurationMs = 300_000;
 
 class ActiveMountedWakeLockError extends Error {}
 
 export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleStoreInput): MountedWakeLifecycleStore {
   const input = normalizeStoreInput(rawInput);
-  const mountedWorkspace = input.runtimeHandle.mountedWorkspace;
-  if (mountedWorkspace === undefined) {
-    throw new Error("mounted wake lifecycle store requires a mounted portable runtime; no fallback storage exists");
-  }
-  const mountedBinding = structuralMountedWorkspaceBinding(input.runtimeHandle, mountedWorkspace);
-  const ledger = input.runtimeHandle.ledger;
+  const captured = inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(input.capability);
+  const mountedWorkspace = captured.mountedWorkspace;
+  const mountedBinding = structuralMountedWorkspaceBinding(captured.workspace);
+  const ledger = captured.ledger;
   const workspaceId = mountedBinding.workspaceId;
   let revision = 0;
   let observedEvents: readonly KnowledgeEvent[] = Object.freeze([]);
   let leaseAdmission: LeaseAdmissionState | undefined;
+  let activeLeaseEventId: string | undefined;
+  let invalidated = false;
   let latestReconciliation: ClaimReconciliationReadback | undefined;
 
   const requireCurrent = (expectedRevision: number): void => {
-    if (expectedRevision !== revision) throw new Error("mounted wake lifecycle store is no longer current");
+    if (invalidated || expectedRevision !== revision) throw new Error("mounted wake lifecycle store is no longer current");
+  };
+
+  const assertCurrentLease = (events: readonly KnowledgeEvent[]): void => {
+    const leaseEventId = activeLeaseEventId;
+    if (leaseEventId === undefined) return;
+    const lease = events.find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
+      event.id === leaseEventId && event.type === "agent.wake.supervisor.lease.claimed.v1"
+    );
+    if (lease === undefined || normalizedWakeInstant(input.now(), "wake lease consumption").milliseconds >= normalizedWakeInstant(lease.payload.leaseExpiresAt, "durable wake lease expiry").milliseconds) {
+      invalidated = true;
+      revision += 1;
+      leaseAdmission = undefined;
+      throw new Error("mounted wake lifecycle lease is expired or no longer current");
+    }
   };
 
   const readMountedSnapshot = async (): Promise<MountedSnapshot> => {
     const expectedRevision = revision;
-    validateMountedWorkspaceStorage(input.runtimeHandle, ledger, mountedWorkspace, mountedBinding);
+    validateMountedWorkspaceStorage(input.capability, ledger, mountedWorkspace, mountedBinding);
     const events = await ledger.readAll();
     requireCurrent(expectedRevision);
     observeLedger(events, observedEvents);
     observedEvents = Object.freeze(events.map((event) => structuredClone(event)));
+    assertCurrentLease(events);
 
     const identity = events.find((event) =>
       event.type === "agent.identity.initialized" &&
@@ -219,7 +246,10 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
 
   const readMountedFacts = async (): Promise<PortableWorkspaceMountedFacts> => (await readMountedSnapshot()).facts;
 
-  const appendAndReadBack = async (rawAppend: unknown): Promise<MountedWakeLifecycleReadback> => {
+  const appendAndReadBack = async (
+    rawAppend: unknown,
+    occurrence?: NormalizedWakeInstant
+  ): Promise<MountedWakeLifecycleReadback> => {
     const append = normalizeAppendInput(rawAppend);
     const expectedRevision = revision;
     const snapshot = await readMountedSnapshot();
@@ -233,7 +263,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
       throw new Error("mounted wake lifecycle append does not match current facts");
     }
     validateAppendReferences(append, facts, snapshot.events);
-    const event = lifecycleEvent(append, facts, input, snapshot.events);
+    const event = lifecycleEvent(append, facts, input, snapshot.events, occurrence);
     const expectedSequence = snapshot.events.filter((candidate) => candidate.streamId === event.streamId).length + 1;
 
     await ledger.append(event, {
@@ -269,12 +299,12 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     const snapshot = await readMountedSnapshot();
     requireCurrent(expectedRevision);
     if (leaseInput !== undefined) validateLeaseAdmissionInput(leaseInput, snapshot.facts);
-    const observedAt = input.now();
+    const claimedAt = normalizedWakeInstant(input.now(), "wake lease acquisition");
     const foreign = snapshot.events.toReversed().find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
       event.type === "agent.wake.supervisor.lease.claimed.v1" &&
       event.payload.workspaceId === workspaceId &&
       event.payload.supervisorEpoch !== input.supervisorEpoch &&
-      Date.parse(event.payload.leaseExpiresAt) > Date.parse(observedAt)
+      normalizedWakeInstant(event.payload.leaseExpiresAt, "durable wake lease expiry").milliseconds > claimedAt.milliseconds
     );
     if (foreign !== undefined) {
       return Object.freeze({
@@ -295,23 +325,22 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
       ? Object.freeze({ causationId: snapshot.facts.workspaceIdentityEventId, correlationId: `corr_wake_${workspaceId}` })
       : Object.freeze({ causationId: leaseInput.causationId, correlationId: leaseInput.correlationId });
     const leaseId = requiredText(input.createSafeId("lease"), "lease id");
-    const leaseExpiresAt = input.now();
     const lease = await appendAndReadBack({
       type: "agent.wake.supervisor.lease.claimed.v1",
       causation,
       leaseId,
-      leaseExpiresAt,
       bindingHighWaterMark: snapshot.facts.highWaterMark,
       expectedHighWaterMark: snapshot.facts.highWaterMark,
       supervisorEpoch: input.supervisorEpoch,
       workspaceIdentityEventId: snapshot.facts.workspaceIdentityEventId
-    });
+    }, claimedAt);
     requireCurrent(expectedRevision);
     if (lease.event.type !== "agent.wake.supervisor.lease.claimed.v1") {
       throw new Error("mounted wake lifecycle lease readback is not canonical");
     }
     const readback = leaseReadback(lease.event, snapshot.facts, input, causation);
     leaseAdmission = Object.freeze({ facts: snapshot.facts, causation });
+    activeLeaseEventId = lease.event.id;
     return Object.freeze({ outcome: "acquired-and-read-back" as const, readback });
   };
 
@@ -431,6 +460,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
 
   const lifecycle: WakeLifecyclePort = Object.freeze({
     async pauseAndReadBack({ command }: Parameters<WakeLifecyclePort["pauseAndReadBack"]>[0]) {
+      await readMountedSnapshot();
       const admission = leaseAdmission;
       if (admission === undefined) throw new Error("mounted wake lifecycle pause requires current lease admission");
       const request = await appendAndReadBack({
@@ -459,6 +489,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
 
   const runtime: WakeRuntimePort = Object.freeze({
     async wakeOnce({ signal }: Parameters<WakeRuntimePort["wakeOnce"]>[0]) {
+      await readMountedSnapshot();
       const admission = leaseAdmission;
       if (admission === undefined) throw new Error("mounted wake runtime requires current lease admission");
       if (signal.source === "command") {
@@ -495,7 +526,9 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     readOrAppendReconciliation,
     invalidate() {
       revision += 1;
+      invalidated = true;
       leaseAdmission = undefined;
+      activeLeaseEventId = undefined;
       latestReconciliation = undefined;
     },
     mountedFacts,
@@ -510,8 +543,10 @@ function lifecycleEvent(
   append: NormalizedLifecycleAppend,
   facts: PortableWorkspaceMountedFacts,
   input: MountedWakeLifecycleStoreInput,
-  events: readonly KnowledgeEvent[]
+  events: readonly KnowledgeEvent[],
+  occurrence?: NormalizedWakeInstant
 ): AppendableKnowledgeEvent {
+  const occurredAt = occurrence ?? normalizedWakeInstant(input.now(), "wake lifecycle occurrence");
   const highWaterMark = append.bindingHighWaterMark ?? facts.highWaterMark;
   const base = {
     workspaceId: facts.workspaceId,
@@ -531,7 +566,7 @@ function lifecycleEvent(
     ? {
         ...base,
         leaseId: append.leaseId ?? requiredText(input.createSafeId("lease"), "lease id"),
-        leaseExpiresAt: append.leaseExpiresAt ?? input.now()
+        leaseExpiresAt: derivedLeaseExpiry(occurredAt, append.leaseExpiresAt)
       }
     : append.type === "agent.wake.supervisor.pause.requested.v1" || append.type === "agent.wake.supervisor.resume.requested.v1"
       ? {
@@ -561,7 +596,7 @@ function lifecycleEvent(
     streamId: `agent_wake_supervisor_${facts.workspaceId}_${input.supervisorEpoch}`,
     context: {
       actor: input.actor,
-      occurredAt: input.now(),
+      occurredAt: occurredAt.iso,
       ...(contextCausationId === undefined ? {} : { causationId: contextCausationId }),
       correlationId: append.causation.correlationId,
       coreVersion: "0.1.0",
@@ -782,46 +817,32 @@ function validateAppendReferences(
 }
 
 function structuralMountedWorkspaceBinding(
-  handle: LocalRuntimeHandle,
-  mountedWorkspace: NonNullable<LocalRuntimeHandle["mountedWorkspace"]>
+  workspace: FactoryAuthenticatedMountedWakeState["workspace"]
 ): MountedWorkspaceBinding {
-  const storage = handle.config.storage;
-  const paths = mountedWorkspace.paths;
-  const binding = Object.freeze({
-    workspaceId: requiredText(mountedWorkspace.workspaceId, "mounted workspace id"),
-    rootDir: requiredText(mountedWorkspace.rootDir, "mounted workspace root"),
-    manifestPath: requiredText(mountedWorkspace.manifestPath, "mounted workspace manifest"),
-    ledgerPath: requiredText(paths.ledgerPath, "mounted ledger path"),
-    blobRoot: requiredText(paths.blobRoot, "mounted blob root"),
-    derivativeRoot: requiredText(paths.derivativeRoot, "mounted derivative root"),
-    jobRoot: requiredText(paths.jobRoot, "mounted job root"),
-    projectionRoot: requiredText(paths.projectionRoot, "mounted projection root"),
-    cacheRoot: requiredText(paths.cacheRoot, "mounted cache root"),
-    configRoot: requiredText(paths.configRoot, "mounted config root")
+  return Object.freeze({
+    workspaceId: requiredText(workspace.workspaceId, "mounted workspace id"),
+    rootDir: requiredText(workspace.rootDir, "mounted workspace root"),
+    manifestPath: requiredText(workspace.manifestPath, "mounted workspace manifest"),
+    ledgerPath: requiredText(workspace.ledgerPath, "mounted ledger path"),
+    blobRoot: requiredText(workspace.blobRoot, "mounted blob root"),
+    derivativeRoot: requiredText(workspace.derivativeRoot, "mounted derivative root"),
+    jobRoot: requiredText(workspace.jobRoot, "mounted job root"),
+    projectionRoot: requiredText(workspace.projectionRoot, "mounted projection root"),
+    cacheRoot: requiredText(workspace.cacheRoot, "mounted cache root"),
+    configRoot: requiredText(workspace.configRoot, "mounted config root")
   });
-  if (
-    storage.strategy !== "portable-workspace" || storage.workspaceRoot !== binding.rootDir ||
-    storage.sqlitePath !== binding.ledgerPath ||
-    storage.expectedWorkspaceId !== undefined && storage.expectedWorkspaceId !== binding.workspaceId
-  ) {
-    throw new Error("mounted wake lifecycle store requires matching portable workspace configuration");
-  }
-  return binding;
 }
 
 function validateMountedWorkspaceStorage(
-  handle: LocalRuntimeHandle,
-  ledger: LocalRuntimeHandle["ledger"],
-  mountedWorkspace: NonNullable<LocalRuntimeHandle["mountedWorkspace"]>,
+  capability: FactoryAuthenticatedMountedWakeCapability,
+  ledger: FactoryAuthenticatedMountedWakeState["ledger"],
+  mountedWorkspace: FactoryAuthenticatedMountedWakeState["mountedWorkspace"],
   binding: MountedWorkspaceBinding
 ): void {
-  const currentMountedWorkspace = handle.mountedWorkspace;
-  if (currentMountedWorkspace === undefined) {
-    throw new Error("mounted wake lifecycle store is no longer mounted");
-  }
-  const currentBinding = structuralMountedWorkspaceBinding(handle, currentMountedWorkspace);
+  const current = inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(capability);
+  const currentBinding = structuralMountedWorkspaceBinding(current.workspace);
   if (
-    handle.ledger !== ledger || currentMountedWorkspace !== mountedWorkspace ||
+    current.ledger !== ledger || current.mountedWorkspace !== mountedWorkspace ||
     !isDeepStrictEqual(currentBinding, binding) ||
     ![
       binding.rootDir,
@@ -868,9 +889,9 @@ function activeClaimFromEvents(
     event.type === "agent.task.orchestration.claimed"
   );
   if (claims.length === 0) return undefined;
-  const observedAt = Date.parse(now());
+  const observedAt = normalizedWakeInstant(now(), "active claim consumption").milliseconds;
   for (const claim of claims.toReversed()) {
-    if (Date.parse(claim.payload.leaseExpiresAt) <= observedAt) continue;
+    if (normalizedWakeInstant(claim.payload.leaseExpiresAt, "active claim expiry").milliseconds <= observedAt) continue;
     const later = events.slice(events.findIndex((event) => event.id === claim.id) + 1);
     const released = later.some((event) =>
       event.type === "agent.task.orchestration.released" && event.payload.claimEventId === claim.id
@@ -899,7 +920,13 @@ function activeClaimFromEvents(
 }
 
 function normalizeStoreInput(value: MountedWakeLifecycleStoreInput): MountedWakeLifecycleStoreInput {
-  if (!isPlainRecord(value) || !isPlainRecord(value.policy) || typeof value.now !== "function" || typeof value.createSafeId !== "function") {
+  if (
+    !isPlainRecord(value) ||
+    !hasExactKeys(value, ["capability", "actor", "supervisorEpoch", "policy", "now", "createSafeId"]) ||
+    !isPlainRecord(value.policy) ||
+    typeof value.now !== "function" ||
+    typeof value.createSafeId !== "function"
+  ) {
     throw new Error("mounted wake lifecycle store input must be plain and complete");
   }
   requiredText(value.supervisorEpoch, "supervisor epoch");
@@ -907,6 +934,20 @@ function normalizeStoreInput(value: MountedWakeLifecycleStoreInput): MountedWake
   requiredText(value.policy.policyDigest, "policy digest");
   requiredText(value.policy.lockStateDigest, "lock digest");
   return Object.freeze({ ...value, policy: Object.freeze({ ...value.policy }) });
+}
+
+function normalizedWakeInstant(value: unknown, label: string): NormalizedWakeInstant {
+  if (typeof value !== "string") throw new Error(`${label} must be a finite ISO instant`);
+  const milliseconds = Date.parse(value);
+  if (!Number.isFinite(milliseconds)) throw new Error(`${label} must be a finite ISO instant`);
+  return Object.freeze({ iso: new Date(milliseconds).toISOString(), milliseconds });
+}
+
+function derivedLeaseExpiry(acquiredAt: NormalizedWakeInstant, suppliedExpiry: string | undefined): string {
+  if (suppliedExpiry !== undefined) {
+    throw new Error("mounted wake lifecycle lease expiry is derived from its acquisition instant");
+  }
+  return new Date(acquiredAt.milliseconds + maximumWakeSupervisorLeaseDurationMs).toISOString();
 }
 
 function normalizeAppendInput(value: unknown): NormalizedLifecycleAppend {

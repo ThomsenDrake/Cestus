@@ -87,7 +87,7 @@ describe("wake supervisor runtime", () => {
     const firstOperation = issueMountedArtifactAuthorityOperationForFactory(first.runtime);
     await first.runtime.stop();
     const second = await fixture();
-    expect(() => issueMountedArtifactAuthorityOperationForFactory(second.runtime)).toThrow(/complete|current/i);
+    expect(() => issueMountedArtifactAuthorityOperationForFactory(second.runtime)).toThrow(/registered|complete|current/i);
     await second.runtime.supervision.start();
     const secondOperation = issueMountedArtifactAuthorityOperationForFactory(second.runtime);
     expect(secondOperation).not.toBe(firstOperation);

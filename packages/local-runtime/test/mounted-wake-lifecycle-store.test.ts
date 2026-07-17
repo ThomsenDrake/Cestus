@@ -37,8 +37,12 @@ async function fixture(overrides: Partial<MountedWakeLifecycleStoreInput> = {}, 
   });
   const handle = openHandle(root, workspaceRoot);
   if (ready) await handle.residentIdentity.ready();
+  const capability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
+    phase: "authenticate",
+    runtimeHandle: handle
+  } as never);
   const input: MountedWakeLifecycleStoreInput = {
-    runtimeHandle: handle,
+    capability,
     actor: { id: "agent_mounted_wake", kind: "agent", label: "Mounted wake store" },
     supervisorEpoch: "epoch_mounted_wake",
     policy: { policyVersion: "policy.v1", policyDigest: "sha256:policy", lockStateDigest: "sha256:lock" },
@@ -249,7 +253,7 @@ describe("mounted wake lifecycle store", () => {
 
   it("rejects every forged capability before mounted store construction or ledger activity", async () => {
     const { input, ledger } = await fixture();
-    const { runtimeHandle: _runtimeHandle, ...ordinary } = input as MountedWakeLifecycleStoreInput & { runtimeHandle?: LocalRuntimeHandle };
+    const ordinary = input;
     let reads = 0;
     Object.defineProperty(ledger, "readAll", { value: async () => { reads += 1; return []; } });
 
@@ -267,7 +271,7 @@ describe("mounted wake lifecycle store", () => {
       phase: "authenticate",
       runtimeHandle: initial.handle
     } as never);
-    const { runtimeHandle: _runtimeHandle, ...ordinary } = initial.input as MountedWakeLifecycleStoreInput & { runtimeHandle?: LocalRuntimeHandle };
+    const ordinary = initial.input;
     const first = createMountedWakeLifecycleStore({ ...ordinary, capability: firstCapability } as never);
     await first.readOrAcquireSupervisorLease();
     now = "2026-07-16T00:05:00.001Z";
@@ -345,7 +349,11 @@ describe("mounted wake lifecycle store", () => {
     first.handle.close();
     const handle = openHandle(first.root, first.workspaceRoot);
     await handle.residentIdentity.ready();
-    const restarted = createMountedWakeLifecycleStore({ ...first.input, runtimeHandle: handle });
+    const capability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      phase: "authenticate",
+      runtimeHandle: handle
+    } as never);
+    const restarted = createMountedWakeLifecycleStore({ ...first.input, capability });
     await expect(restarted.readMountedFacts()).resolves.toEqual(before);
   });
 
@@ -416,7 +424,10 @@ describe("mounted wake lifecycle store", () => {
       actor: { id: "actor_unmounted_wake", kind: "human", label: "Unmounted wake store" }
     });
     handles.push(unmounted);
-    expect(() => createMountedWakeLifecycleStore({ ...mounted.input, runtimeHandle: unmounted }))
+    expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      phase: "authenticate",
+      runtimeHandle: unmounted
+    } as never))
       .toThrow(/mounted|portable|fallback/i);
 
     const noIdentity = await fixture({}, false);
