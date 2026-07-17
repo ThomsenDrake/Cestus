@@ -422,11 +422,14 @@ describe("mounted wake lifecycle store", () => {
   });
 
   it("reuses one exact reconciliation readback for a duplicate key", async () => {
-    const { input, ledger, store } = await fixture();
+    const { handle, input, ledger, store } = await fixture();
     const reconciliation = await reconciliationInputs(store, ledger);
     const first = await store.activeClaimReconciliation.appendAndReadBack(reconciliation.append);
     const second = await store.activeClaimReconciliation.readByIdempotencyKey(reconciliation.lookup);
-    const restarted = createMountedWakeLifecycleStore({ ...input });
+    const restarted = createMountedWakeLifecycleStore({
+      ...input,
+      capability: authenticate(handle)
+    });
     const afterRestart = await restarted.activeClaimReconciliation.readByIdempotencyKey(reconciliation.lookup);
     expect(second).toEqual(first);
     expect(afterRestart).toEqual(first);

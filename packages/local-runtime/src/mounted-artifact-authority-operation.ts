@@ -77,9 +77,20 @@ interface FactoryAuthenticatedMountedWakeCapturedState {
   readonly sourceHighWater: FactoryIssuedMountedRuntimeSourceHighWater;
 }
 
+interface FactoryAuthenticatedMountedWakeStoreCurrentness {
+  readonly revalidate: () => void;
+  readonly invalidate: () => void;
+}
+
+interface FactoryAuthenticatedMountedWakeStoreAuthority extends FactoryAuthenticatedMountedWakeCapturedState {
+  readonly bindCurrentness: (currentness: FactoryAuthenticatedMountedWakeStoreCurrentness) => void;
+  readonly revalidate: () => void;
+  readonly invalidate: () => void;
+}
+
 interface WakeRuntimeRegistration {
   readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
-  readonly capability: FactoryAuthenticatedMountedWakeCapability;
+  readonly storeAuthority: FactoryAuthenticatedMountedWakeStoreAuthority;
   lastIssuedAdmission?: WorkspaceAdmissionSnapshot;
 }
 
@@ -91,15 +102,13 @@ interface OperationState {
   burned: boolean;
 }
 
-interface LegacyMountedArtifactAuthorityRegistrationInput {
-  readonly wakeRuntime: object;
-  readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
-  readonly runtimeHandle: LocalRuntimeHandle;
-}
-
 interface FactoryAuthenticatedMountedWakeCapabilityState {
   readonly runtimeHandle: LocalRuntimeHandle;
   readonly initial: FactoryAuthenticatedMountedWakeCapturedState;
+  storeAuthority?: FactoryAuthenticatedMountedWakeStoreAuthority;
+  storeCapabilityConsumed: boolean;
+  storeCurrentness?: FactoryAuthenticatedMountedWakeStoreCurrentness;
+  lifecyclePorts?: PortableWorkspaceLifecyclePorts;
   boundWakeRuntime?: object;
   burned: boolean;
 }
@@ -111,23 +120,18 @@ const factoryAuthenticatedMountedWakeCapabilities = new WeakMap<
   FactoryAuthenticatedMountedWakeCapabilityState
 >();
 
-export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
+type WakeRuntimeRegistrationResult<Input> = Input extends {
   readonly phase: "authenticate";
   readonly runtimeHandle: unknown;
-}): FactoryAuthenticatedMountedWakeCapability;
-export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
-  readonly phase: "bind";
-  readonly capability: FactoryAuthenticatedMountedWakeCapability;
-  readonly wakeRuntime: object;
-  readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
-}): void;
-/** @deprecated Existing released callers are routed through the two phases. */
-export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: LegacyMountedArtifactAuthorityRegistrationInput): void;
-export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: unknown): FactoryAuthenticatedMountedWakeCapability | void {
+} ? FactoryAuthenticatedMountedWakeCapability : void;
+
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime<const Input>(
+  input: Input
+): WakeRuntimeRegistrationResult<Input> {
   const record = normalizedRegistrationRecord(input);
   if (record.phase === "authenticate") {
     requireRegistrationKeys(record, ["phase", "runtimeHandle"]);
-    return authenticateMountedWakeCapability(record.runtimeHandle);
+    return authenticateMountedWakeCapability(record.runtimeHandle) as WakeRuntimeRegistrationResult<Input>;
   }
   if (record.phase === "bind") {
     requireRegistrationKeys(record, ["phase", "capability", "wakeRuntime", "lifecyclePorts"]);
@@ -136,21 +140,9 @@ export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: unkn
       wakeRuntime: record.wakeRuntime as object,
       lifecyclePorts: record.lifecyclePorts as PortableWorkspaceLifecyclePorts
     });
-    return;
+    return undefined as WakeRuntimeRegistrationResult<Input>;
   }
-
-  requireRegistrationKeys(record, ["wakeRuntime", "lifecyclePorts", "runtimeHandle"]);
-  const legacy = Object.freeze({
-    wakeRuntime: record.wakeRuntime as object,
-    lifecyclePorts: record.lifecyclePorts as PortableWorkspaceLifecyclePorts,
-    runtimeHandle: record.runtimeHandle
-  });
-  const capability = authenticateMountedWakeCapability(legacy.runtimeHandle);
-  bindMountedWakeCapability({
-    capability,
-    wakeRuntime: legacy.wakeRuntime,
-    lifecyclePorts: legacy.lifecyclePorts
-  });
+  throw new Error("mounted authority registration phase must be authenticate or bind");
 }
 
 /**
@@ -159,8 +151,47 @@ export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: unkn
  */
 export function inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(
   capability: FactoryAuthenticatedMountedWakeCapability
-): FactoryAuthenticatedMountedWakeCapturedState {
-  return inspectCurrentMountedWakeCapability(capability);
+): FactoryAuthenticatedMountedWakeStoreAuthority {
+  const state = factoryAuthenticatedMountedWakeCapabilities.get(capability);
+  if (state === undefined || state.burned) {
+    throw new Error("factory-authenticated mounted wake capability is no longer current");
+  }
+  if (state.storeCapabilityConsumed) {
+    throw new Error("factory-authenticated mounted wake capability is already consumed");
+  }
+  const captured = inspectCurrentMountedWakeCapability(capability);
+  const authority = state.storeAuthority ?? createMountedWakeStoreAuthority(state, captured);
+  state.storeCapabilityConsumed = true;
+  return authority;
+}
+
+function createMountedWakeStoreAuthority(
+  state: FactoryAuthenticatedMountedWakeCapabilityState,
+  captured: FactoryAuthenticatedMountedWakeCapturedState
+): FactoryAuthenticatedMountedWakeStoreAuthority {
+  const authority: FactoryAuthenticatedMountedWakeStoreAuthority = Object.freeze({
+    ...captured,
+    bindCurrentness(currentness: FactoryAuthenticatedMountedWakeStoreCurrentness) {
+      if (
+        state.storeCurrentness !== undefined
+        || !isObject(currentness)
+        || typeof currentness.revalidate !== "function"
+        || typeof currentness.invalidate !== "function"
+      ) {
+        burnMountedWakeCapability(state);
+        throw new Error("mounted wake store currentness is already bound or invalid");
+      }
+      state.storeCurrentness = currentness;
+    },
+    revalidate() {
+      revalidateMountedWakeStoreAuthority(state);
+    },
+    invalidate() {
+      burnMountedWakeCapability(state);
+    }
+  });
+  state.storeAuthority = authority;
+  return authority;
 }
 
 function authenticateMountedWakeCapability(runtimeHandle: unknown): FactoryAuthenticatedMountedWakeCapability {
@@ -171,6 +202,7 @@ function authenticateMountedWakeCapability(runtimeHandle: unknown): FactoryAuthe
   factoryAuthenticatedMountedWakeCapabilities.set(capability, {
     runtimeHandle: runtimeHandle as LocalRuntimeHandle,
     initial: captured,
+    storeCapabilityConsumed: false,
     burned: false
   });
   return capability;
@@ -185,7 +217,9 @@ function bindMountedWakeCapability(input: {
   if (state === undefined || state.burned) {
     throw new Error("factory-authenticated mounted wake capability is required");
   }
-  inspectCurrentMountedWakeCapability(input.capability);
+  const captured = inspectCurrentMountedWakeCapability(input.capability);
+  const storeAuthority = state.storeAuthority ?? createMountedWakeStoreAuthority(state, captured);
+  storeAuthority.revalidate();
   if (!isObject(input.wakeRuntime)) {
     throw new Error("wake runtime identity is required");
   }
@@ -198,8 +232,9 @@ function bindMountedWakeCapability(input: {
   assertPortableWorkspaceLifecyclePortsForMountedArtifactAuthority(input.lifecyclePorts);
   const registration: WakeRuntimeRegistration = {
     lifecyclePorts: input.lifecyclePorts,
-    capability: input.capability
+    storeAuthority
   };
+  state.lifecyclePorts = input.lifecyclePorts;
   state.boundWakeRuntime = input.wakeRuntime;
   wakeRuntimeRegistrations.set(input.wakeRuntime, registration);
 }
@@ -211,13 +246,13 @@ export function issueMountedArtifactAuthorityOperationForFactory(
   if (registration === undefined) {
     throw new Error("registered wake runtime identity is required");
   }
+  registration.storeAuthority.revalidate();
   const current = inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority(
     registration.lifecyclePorts
   );
   if (registration.lastIssuedAdmission === current.admission) {
     throw new Error("current portable workspace admission already issued an authority operation");
   }
-  inspectCurrentMountedWakeCapability(registration.capability);
   const operation = Object.freeze({
     schemaVersion: "mounted-artifact-authority-operation.v1" as const
   });
@@ -276,6 +311,7 @@ function currentOperationState(operation: MountedArtifactAuthorityOperation): Op
     throw new Error("mounted artifact authority operation is burned");
   }
   try {
+    state.registration.storeAuthority.revalidate();
     const current = inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority(
       state.registration.lifecyclePorts
     );
@@ -303,7 +339,8 @@ function inspectAndRememberMountedRuntime(
 ): FactoryAuthenticatedMountedWakeCapturedState {
   try {
     const cached = state.mountedRuntimeInspection;
-    const captured = inspectCurrentMountedWakeCapability(state.registration.capability);
+    const captured = state.registration.storeAuthority;
+    captured.revalidate();
     if (
       captured.mountedWorkspace.workspaceId !== state.facts.workspaceId
       || captured.workspace.workspaceId !== state.facts.workspaceId
@@ -336,9 +373,32 @@ function inspectCurrentMountedWakeCapability(
     }
     return captured;
   } catch {
-    state.burned = true;
+    burnMountedWakeCapability(state);
     throw new Error("factory-authenticated mounted wake capability is no longer current");
   }
+}
+
+function revalidateMountedWakeStoreAuthority(state: FactoryAuthenticatedMountedWakeCapabilityState): void {
+  if (state.burned) {
+    throw new Error("factory-authenticated mounted wake capability is no longer current");
+  }
+  try {
+    const captured = captureCurrentMountedWakeState(state.runtimeHandle);
+    if (!sameCapturedMountedWakeState(captured, state.initial)) {
+      throw new Error("factory-authenticated mounted wake capability is no longer current");
+    }
+    state.storeCurrentness?.revalidate();
+  } catch {
+    burnMountedWakeCapability(state);
+    throw new Error("factory-authenticated mounted wake capability is no longer current");
+  }
+}
+
+function burnMountedWakeCapability(state: FactoryAuthenticatedMountedWakeCapabilityState): void {
+  if (state.burned) return;
+  state.burned = true;
+  state.storeCurrentness?.invalidate();
+  state.lifecyclePorts?.authority.invalidate?.("authority-loss");
 }
 
 function captureCurrentMountedWakeState(runtimeHandle: unknown): FactoryAuthenticatedMountedWakeCapturedState {

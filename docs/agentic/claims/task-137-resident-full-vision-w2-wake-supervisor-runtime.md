@@ -189,3 +189,38 @@ the unphased registrar fallback, require the exact frozen policy keys, enforce
 one unexpired durable lease regardless of epoch, and make store-backed lease
 currentness burn capabilities, lifecycle admission, and artifact operations
 before any downstream effect.
+
+## V4 Consolidated Repair Round 2 GREEN
+
+The repair removes the deprecated unphased registrar overload and runtime
+fallback. The only live phases are now `authenticate` and `bind`; factory
+authentication produces an opaque WeakMap capability, the dedicated mounted
+store inspector consumes that exact capability once, and bind never receives a
+raw handle. The inspector returns module-private store authority whose fresh
+lease revalidation and monotonic invalidation closures are not exposed on the
+public capability.
+
+The mounted store now rejects policy objects with any key beyond
+`policyVersion`, `policyDigest`, and `lockStateDigest`, including every supplied
+`supervisorLeaseDurationMs` override, before capability consumption or ledger
+activity. Any unexpired durable workspace lease blocks acquisition regardless
+of supervisor epoch. Exact global and stream readback still fixes the acquired
+lease expiry, and each later store or artifact-operation consumption compares a
+fresh normalized instant with that durable expiry before lifecycle or ledger
+effects. Expiry burns the capability, mounted store, lifecycle admission, and
+old artifact operation, so matching revalidation or successor acquisition
+cannot revive the old authority.
+
+The focused command passed exactly `7 files / 74 tests` with one
+`TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. `npm run typecheck`,
+`git diff --check`, and `npm run factory:check` also passed before commit.
+
+The prescribed cross-lane command exposed one remaining P1 scope-contract
+collision: `portable-mounted-agent-artifact-stores.test.ts`, which is outside
+the exact fourteen-path write ceiling, still contains six unphased
+`{ wakeRuntime, lifecyclePorts, runtimeHandle }` calls. With the prohibited
+fallback removed, the exact cross-lane result is `1 failed / 8 passed` files
+and `16 failed / 114 passed` tests out of 130, with the one required policy
+marker; all sixteen failures originate at those immutable legacy fixture
+calls. Making that candidate pass would require either changing a fifteenth
+path or restoring the forbidden live raw-handle route, so neither was done.
