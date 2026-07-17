@@ -18213,6 +18213,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   created.
 - Task-scoped subagent-driven development and test-driven development are
   explicitly approved for this task.
+
+## RV-1-E-701 — Assurance correction enters its sole consolidated repair
+
+- Recorded at: 2026-07-17T22:30:14Z
+- The same assurance owner preserved the full forward chain through causal RED
+  `fda9e55a`, minimal GREEN `a9c7172c`, and claim-pin correction `aacbe5e1`.
+  Coordinator admission reproduced the exact four-file scope, 17/17 focused
+  assurance tests, all four contract markers, typecheck, diff, factory,
+  dependency and clean-state gates, plus
+  `TASK136_REPOSITORY_PREFIX_OK records=13 commands=13` followed only by the
+  expected 13-of-29 closure failure.
+- The first concurrent read-only pair was architecture/invariants task
+  `019f722a-861a-7c00-bba7-13fabab4fd3b` and executability/adversarial task
+  `019f722a-8666-7ed1-a701-72b9781ba884`, both on exact candidate
+  `aacbe5e13c88dd6b3a9808a0a14091fe5ad731b2` with GPT-5.6 Terra/xhigh.
+  Both returned **NEEDS-CHANGES** for the same reproduced P1: the durable claim
+  ends before recording repository-prefix/closure, mandatory full-verifier
+  differential, and final clean-state evidence.
+- Both reviewers independently found no added verifier failure. Executability
+  reproduced the inherited clean repeat signature of **12 failing files / 69
+  failing tests**, with **211 passed files / 2695 passed tests**. Architecture
+  and executability both approved the exact finite source-target mappings,
+  immutable inputs, four-file scope, and record-11/record-14 activation logic.
+- Coordinator adjudication accepts the evidence-contract P1. The assurance
+  lane's one consolidated repair is now consumed: the same implementation
+  owner may add one causal claim-evidence RED and a claim-only GREEN containing
+  the exact commands, repository result, both observed verifier runs, inherited
+  differential, and clean-state result. No contract/checker/scope change,
+  replacement owner, further automatic repair, or history rewrite is allowed.
+  One final concurrent read-only pair follows the repair.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
 - Each owner is bound to claim-only, causal RED, and minimal GREEN commits,
   its exact owned paths and test commands, cross-boundary gates, typecheck,
   full verification, factory readiness, clean state, and a real non-symlinked
