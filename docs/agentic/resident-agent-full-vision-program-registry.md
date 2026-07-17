@@ -18354,3 +18354,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - No other card became newly eligible at this transition. Strict integration
   remains in V4 order even though the three disjoint eligible implementations
   may run in parallel.
+
+## RV-1-E-687 — Task126-R candidate admitted to its review pair
+
+- Recorded at: 2026-07-17T19:24:16Z
+- Candidate `ccadb426d53a237b5c7f39822e6f191934596f0e` on
+  `codex/task126-r-reader-boundary` is a clean linear three-commit descendant
+  of exact dispatch base `863c93a09a0817365c6b41996cc751efa16efd78`:
+  claim `9cbb8e0aa4649b5a6c033fd113f34b348130189b`, causal RED
+  `f69c316ff6dc021a8b72c62690e53fe921b41564`, and minimal GREEN
+  `ccadb426d53a237b5c7f39822e6f191934596f0e`.
+- The candidate changes exactly the Task126-R claim, public agent barrel, and
+  new import-boundary test; both inherited BYOK source/test paths remain
+  unchanged. Intervening program commits are registry-only and do not make
+  these prerequisite-independent candidate bytes stale.
+- Fresh coordinator admission reproduced **2 files / 15 tests**, cross-boundary
+  **4 files / 43 tests**, standalone typecheck, exact-range diff hygiene,
+  factory readiness, clean tracked and untracked state, and real non-symlinked
+  local dependencies with executable Vitest. The implementation owner also
+  recorded a clean full verifier from the final committed bytes.
+- Exactly one fresh concurrent read-only pair is bound to the candidate:
+  architecture/invariants task `019f7188-603c-75c2-bbd6-a0c20a2a2075` in
+  `/home/drake/.codex/worktrees/d07f/Cestus`, and executability/adversarial
+  task `019f7188-623e-7d62-83cf-1e25617ad5ee` in
+  `/home/drake/.codex/worktrees/c1bc/Cestus`. Both use `gpt-5.6-terra` with
+  `xhigh` reasoning.
+- Reviews are read-only. Subagent-driven development and test-driven
+  development are not relevant or authorized for reviewers. Only a reproduced
+  P0/P1 contract violation can trigger the single consolidated repair packet;
+  P2, style, hypothetical hardening, and unreproduced concerns are backlog.
