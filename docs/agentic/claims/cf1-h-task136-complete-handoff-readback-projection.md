@@ -162,3 +162,21 @@ an executable handoff state; and ontology rejected the V2 event family.
 - Scope audit: only the corrected fourteen owned or direct-transferred paths
   are staged for the finite GREEN commit; no registry, contract-plan, provider,
   credential, network, or external-service path is included.
+
+## Forward Typecheck Correction
+
+- Status remains `implementing`; this is completion of the original finite
+  implementation packet before review and does not consume the single
+  post-review repair packet.
+- Reproduced from committed candidate
+  `3e2c586c5b90fb6b2d5945cd7ed4acfd7d7164b5` with `npm run typecheck`:
+  exit `2`, with the six reported CF1-owned errors in the unowned barrel
+  collision, V2 manifest builder, V1 manifest agreement parser, V2 runner
+  snapshot, optional V2 test task identity, and V2 terminal test helper.
+- The forward correction keeps the public barrel untouched, removes the
+  colliding owned export, preserves strict own-data parsing, accepts only the
+  private helper's already parsed comparison shape, and omits absent optional
+  V1 fields in the V2 fixture.
+- Before the forward commit, the focused seven-file CF1 command passed:
+  7 files / 276 tests; `npm run typecheck` passed. The committed-byte gate
+  evidence for this correction is retained with the implementation handoff.

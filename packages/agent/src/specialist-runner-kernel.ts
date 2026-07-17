@@ -942,7 +942,7 @@ export async function recordAuthorityBoundSpecialistHandoff(
   const values = handoffInputValues(rawInput, "Record authority-bound specialist handoff input", [
     "ledger", "manifestStore", "actor", "now", "runId", "taskId", "handoffAuthorityWitness"
   ]);
-  const input = snapshotRecordHandoffInput(values as RecordSpecialistHandoffInput);
+  const input = snapshotRecordHandoffInput(rawInput);
   const authority = await consumeMountedSpecialistHandoffAuthorityWitness(values.handoffAuthorityWitness);
   await authority.revalidateCurrent();
   assertManifestStoreAvailable(input.manifestStore);

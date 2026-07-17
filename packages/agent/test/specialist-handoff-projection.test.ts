@@ -16,8 +16,7 @@ import {
 } from "../src/specialist-handoff-manifest.js";
 import {
   buildSpecialistHandoffProjection,
-  type SpecialistHandoffManifestReader,
-  type SpecialistHandoffProjectionState
+  type SpecialistHandoffManifestReader
 } from "../src/specialist-handoff-projection.js";
 import type { SpecialistWorkflowHandoffDto } from "../src/specialist-handoffs.js";
 
@@ -52,7 +51,7 @@ describe("specialist handoff projection", () => {
       handoffId: fixture.manifest.handoffId,
       handoffRevision: fixture.manifest.handoffRevision,
       runId: fixture.manifest.runId,
-      taskId: fixture.manifest.taskId,
+      ...(fixture.manifest.taskId === undefined ? {} : { taskId: fixture.manifest.taskId }),
       runType: fixture.manifest.runType,
       residentAgentId: fixture.manifest.residentAgentId,
       generatedAt: "2026-07-10T15:00:00.000Z",
@@ -63,7 +62,7 @@ describe("specialist handoff projection", () => {
       finalOutputEventId: fixture.manifest.finalOutputEventId,
       handoffMaterialArtifactHash: fixture.manifest.handoffMaterialArtifactHash,
       contextPackRefs: fixture.manifest.contextPackRefs,
-      promptArtifactHash: fixture.manifest.promptArtifactHash,
+      ...(fixture.manifest.promptArtifactHash === undefined ? {} : { promptArtifactHash: fixture.manifest.promptArtifactHash }),
       outputArtifacts: fixture.manifest.outputArtifacts,
       toolRequestIds: fixture.manifest.toolRequestIds,
       approvalRequirements: fixture.manifest.approvalRequirements,
@@ -86,10 +85,13 @@ describe("specialist handoff projection", () => {
       preparedEventId: prepared.id,
       verifiedAt: "2026-07-10T15:01:00.000Z"
     }, { causationId: prepared.id });
-    const terminal = {
-      ...completedRunEvent({ runId: fixture.runId, manifest }, { causationId: recorded.id }),
-      id: "evt_run_completed_v2"
-    } as KnowledgeEvent;
+    const terminal = agentEvent("agent.specialist-run.completed", "evt_run_completed_v2", {
+      runId: fixture.runId,
+      completedAt: "2026-07-10T15:02:00.000Z",
+      outputArtifactHashes: manifest.outputArtifacts.map((artifact) => artifact.artifactHash),
+      relatedEventIds: [manifest.finalOutputEventId],
+      summary: "Authority-bound specialist run reached terminal local state."
+    }, eventOptions(recorded.id));
     const status = taskStatusEvent(fixture, "completed", { causationId: terminal.id });
     const store = new ManifestMap()
       .put(manifestHash, canonicalSpecialistHandoffJson(manifest))

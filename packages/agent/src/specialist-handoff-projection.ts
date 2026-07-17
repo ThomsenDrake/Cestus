@@ -31,7 +31,7 @@ type RunTerminalEvent =
   | KnowledgeEventOf<"agent.specialist-run.failed">;
 type TaskStatusEvent = KnowledgeEventOf<"agent.task.status.changed">;
 
-export type SpecialistHandoffProjectionState = LegacySpecialistHandoffProjectionState | "legacy-unbound";
+type AuthorityAwareSpecialistHandoffProjectionState = LegacySpecialistHandoffProjectionState | "legacy-unbound";
 
 export interface SpecialistHandoffManifestReader {
   get(contentHash: ContentHash): Promise<Buffer>;
@@ -57,7 +57,7 @@ export interface SpecialistHandoffProjectionDiagnostic {
 }
 
 export interface SpecialistHandoffProjectionEntry {
-  readonly state: Exclude<SpecialistHandoffProjectionState, "no-output" | "inconsistent">;
+  readonly state: Exclude<AuthorityAwareSpecialistHandoffProjectionState, "no-output" | "inconsistent">;
   readonly runId: string;
   readonly taskId?: string;
   readonly handoffId?: string;
@@ -70,7 +70,7 @@ export interface SpecialistHandoffProjectionEntry {
 }
 
 export interface SpecialistHandoffProjection {
-  readonly state: SpecialistHandoffProjectionState;
+  readonly state: AuthorityAwareSpecialistHandoffProjectionState;
   readonly handoffs: readonly SpecialistWorkflowHandoffDto[];
   readonly selectedHandoff?: SpecialistWorkflowHandoffDto;
   readonly selectedReadback?: SpecialistHandoffReadback;
