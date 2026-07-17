@@ -23,7 +23,6 @@ const operationSource = "packages/local-runtime/src/mounted-artifact-authority-o
 const lifecycleSource = "packages/local-runtime/src/portable-workspace-lifecycle.ts";
 const runtimeFactorySource = "packages/local-runtime/src/runtime-factory.ts";
 const registrarSource = "packages/local-runtime/src/wake-supervisor-runtime.ts";
-const mountedWakeStoreSource = "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
 const issuerSource = "packages/local-runtime/src/agent-runtime-factory.ts";
 const portableStoreSource = "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts";
 const mountedFeasibilitySource = "packages/local-runtime/src/mounted-official-flow-feasibility.ts";
@@ -43,20 +42,13 @@ const allowedFixtures: readonly FixtureCase[] = [
     }
   },
   {
-    label: "operation and mounted wake store import runtime factory authority",
+    label: "operation imports runtime factory authority",
     files: {
       [operationSource]: [
         'import { captureFactoryIssuedMountedRuntime, inspectFactoryIssuedMountedRuntimeCapture, type FactoryIssuedMountedRuntimeCapture, type FactoryIssuedMountedRuntimeSourceHighWater, type FactoryIssuedMountedWorkspaceSnapshot, type LocalRuntimeHandle } from "./runtime-factory.js";',
         "void captureFactoryIssuedMountedRuntime;",
         "void inspectFactoryIssuedMountedRuntimeCapture;",
         "type Allowed = [FactoryIssuedMountedRuntimeCapture, FactoryIssuedMountedRuntimeSourceHighWater, FactoryIssuedMountedWorkspaceSnapshot, LocalRuntimeHandle];",
-        "void (0 as unknown as Allowed);"
-      ].join("\n"),
-      [mountedWakeStoreSource]: [
-        'import { captureFactoryIssuedMountedRuntime, inspectFactoryIssuedMountedRuntimeCapture, type FactoryIssuedMountedWorkspaceSnapshot, type LocalRuntimeHandle } from "./runtime-factory.js";',
-        "void captureFactoryIssuedMountedRuntime;",
-        "void inspectFactoryIssuedMountedRuntimeCapture;",
-        "type Allowed = [FactoryIssuedMountedWorkspaceSnapshot, LocalRuntimeHandle];",
         "void (0 as unknown as Allowed);"
       ].join("\n")
     }

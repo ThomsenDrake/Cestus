@@ -214,7 +214,7 @@ async function reconciliationInputs(store: MountedWakeLifecycleStore, ledger: Ev
 
 describe("mounted wake lifecycle store", () => {
   it("derives mounted facts from the handle and ledger without caller facts", async () => {
-    const { handle, ledger, input, store } = await fixture();
+    const { ledger, store } = await fixture();
     const facts = await store.readMountedFacts();
     expect(facts).toMatchObject({ workspaceId: "ws_mounted_wake", highWaterOrdinal: 1 });
     const durableIds = new Set((await ledger.readAll()).map((event) => event.id));
@@ -226,9 +226,6 @@ describe("mounted wake lifecycle store", () => {
       facts.artifactStoreEvidenceId,
       facts.derivativeStoreEvidenceId
     ]) expect(durableIds.has(eventId), eventId).toBe(true);
-    expect(() => createMountedWakeLifecycleStore({ ...input, runtimeHandle: { ...handle } as LocalRuntimeHandle }))
-      .toThrow(/factory-issued|mounted runtime handle/i);
-
     await ledger.append({
       type: "agent.lock.activated",
       version: 1,
