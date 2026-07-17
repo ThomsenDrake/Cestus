@@ -32,11 +32,12 @@ it integrated and must not be rewritten.
 
 ### A. Versioned transfer with historical release compatibility
 
-Create an immutable v3 assurance contract. Task129-MFA transfers only
-`packages/ontology/src/contracts.ts` to Task137B-W, and Task137B-W regains that
-path. A finite compatibility declaration says the already committed
-Task129-MFA v4 record correctly recorded the path as `owned` at its release,
-while v3 treats it as `transferred` for final-head blob checking.
+Create an immutable v3 assurance contract. Task129-MFA transfers the ontology
+contract plus the finite Task137 policy source and test to Task137B-W. A
+finite compatibility declaration pins the complete already committed
+Task129-MFA v4 record and says those three paths were correctly recorded as
+`owned` at its release, while v3 treats them as `transferred` for final-head
+blob checking.
 
 This is the selected approach. It restores the approved implementation
 boundary, keeps all existing release records append-only, and lets final
@@ -62,7 +63,8 @@ Create `docs/agentic/contracts/task136-bounded-assurance-v3.json`. The v1 and
 v2 files remain byte-for-byte unchanged. V3 retains:
 
 - exactly 29 cards in the same order;
-- all card commands;
+- all card commands except the Task137B-W command, which adds the transferred
+  policy test in owned-path order;
 - the v1 composition grammar and accepted/rejected corpus;
 - the v1 ABI corpus in the checker;
 - `task136-dispatch-release.v4` as the mutable record schema;
@@ -70,15 +72,24 @@ v2 files remain byte-for-byte unchanged. V3 retains:
 
 V3 makes exactly these graph changes:
 
-1. Task129-MFA changes the disposition of
-   `packages/ontology/src/contracts.ts` from `owned` to `transferred` and sets
-   `transferToIds` to exactly `["Task137B-W"]`.
+1. Task129-MFA changes exactly these path dispositions from `owned` to
+   `transferred` and sets `transferToIds` to exactly `["Task137B-W"]`:
+   - `packages/ontology/src/contracts.ts`
+   - `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+   - `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`
 2. Task137B-W adds `Task129-MFA` after its existing prerequisite IDs, producing
    exactly `["Task135B", "T120-R", "Task129-MFA"]`. The direct edge keeps the
    transfer mechanically reviewable without weakening the verifier's direct
    prerequisite rule.
-3. Task137B-W inserts `packages/ontology/src/contracts.ts` as `owned`
-   immediately before `packages/ontology/test/resident-wake-contracts.test.ts`.
+3. Task137B-W inserts the policy source and policy test as `owned` immediately
+   after `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+   then inserts `packages/ontology/src/contracts.ts` immediately before
+   `packages/ontology/test/resident-wake-contracts.test.ts`.
+4. Task137B-W's exact command becomes:
+
+```text
+npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts
+```
 
 The contract adds one top-level object:
 
@@ -86,59 +97,109 @@ The contract adds one top-level object:
 {
   "releaseCompatibility": {
     "version": "task136-release-compatibility.v1",
-    "historicalPathDispositions": [
+    "historicalRecords": [
       {
         "cardId": "Task129-MFA",
-        "path": "packages/ontology/src/contracts.ts",
-        "recordDisposition": "owned"
+        "canonicalJsonSha256": "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76",
+        "pathDispositions": [
+          {
+            "path": "packages/ontology/src/contracts.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+            "recordDisposition": "owned"
+          }
+        ]
       }
     ]
   }
 }
 ```
 
-No other compatibility entry is valid. The verifier requires the referenced
-card/path to exist, the static disposition to be `transferred`, the record
-disposition to be `owned`, the card to name exactly one transfer target, and
-that target to directly depend on the source card and own the same path.
+No other record or path compatibility entry is valid. The verifier hashes the
+parsed record as UTF-8 `JSON.stringify(record)` and requires the exact canonical
+JSON SHA-256 before accepting any historical disposition. It requires each
+referenced card/path to exist, each static disposition to be `transferred`,
+each historical record disposition to be `owned`, the card to name exactly one
+transfer target, and that target to directly depend on the source card and own
+the same path.
 
 When validating a release record, the verifier compares a path to the exact
 historical disposition only for this declared tuple. Candidate and integration
 blob checks remain exact. Current-HEAD blob equality is skipped for the
 transferred Task129-MFA path and required for the final Task137B-W-owned path.
-All undeclared disposition mismatches continue to fail.
+All undeclared disposition mismatches continue to fail. Mutating any field of
+the Task129-MFA candidate, review, prerequisite, integration, release event, or
+owned-path entry changes the canonical hash and fails closed.
+
+## Prefix Evidence
+
+V3 separates strict prefix parsing from complete closure. Repository mode:
+
+1. parses only the contiguous canonical prefix in graph order;
+2. validates exact record shape, reviews, prerequisites, compatibility hashes,
+   and historical dispositions;
+3. verifies candidate and integration commits/blobs for every prefix record;
+4. verifies current-HEAD blobs for every prefix path whose final static
+   disposition is `owned`;
+5. runs the exact command for every released prefix card;
+6. rechecks clean checkout and non-symlinked dependencies;
+7. emits `TASK136_REPOSITORY_PREFIX_OK records=N commands=N`;
+8. only then reports incomplete closure when `N < 29`.
+
+A malformed, stale, missing, non-blob, command-failing, or compatibility-
+mismatched prefix fails before the prefix marker and before the incomplete-
+closure result. Complete 29-card closure retains its existing completion
+marker after the same evidence checks.
 
 ## Task137B-W Corrected Write Ceiling
 
-After v3 integration, Task137B-W owns exactly eight paths:
+After v3 integration, Task137B-W owns exactly ten paths:
 
 1. `packages/local-runtime/src/wake-supervisor-runtime.ts`
 2. `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
 3. `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
 4. `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`
 5. `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
-6. `packages/ontology/src/contracts.ts`
-7. `packages/ontology/test/resident-wake-contracts.test.ts`
-8. `docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md`
+6. `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`
+7. `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+8. `packages/ontology/src/contracts.ts`
+9. `packages/ontology/test/resident-wake-contracts.test.ts`
+10. `docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md`
 
 The corrected task implements the already approved Task137B behavior. It may
-add only the seven frozen wake lifecycle schemas to the ontology contract. It
-must not alter provider-feasibility schemas, other event contracts, the
-Task137A policy test, the runtime factory, the release verifier, or the program
-registry.
+add only the seven frozen wake lifecycle schemas to the ontology contract. In
+the transferred Task137 policy, it may add exactly one direct static value
+import: `wake-supervisor-runtime.ts` importing
+`createPortableWorkspaceLifecyclePorts` from
+`portable-workspace-lifecycle.ts`. It must modify the existing allowed and
+rejected fixtures rather than expand the frozen **8 allowed / 20 rejected**
+corpus. It must not alter provider-feasibility schemas, other event contracts,
+the runtime factory, the release verifier, or the program registry.
 
 ## Failure And Review Model
 
 The v3 checker uses a finite mutation set. It must reject:
 
-- absent or extra compatibility entries;
+- absent or extra compatibility records or path entries;
+- any canonical Task129-MFA record hash mismatch, including candidate, review,
+  prerequisite, integration, release-event, or blob mutations;
 - an unknown card or path;
 - a compatibility entry for a non-transferred path;
 - a compatibility disposition other than historical `owned`;
 - a missing transfer target or direct prerequisite;
 - a target that does not own the transferred path;
 - any v1 or v2 byte change;
-- any graph order, card count, command, grammar, corpus, or ABI drift.
+- missing candidate/integration blobs or current final-owner blobs in a partial
+  release prefix;
+- any prefix command failure or a prefix marker emitted before all evidence;
+- any graph order, card count, non-Task137B-W command, grammar, corpus-count,
+  or ABI drift.
 
 Reviewers evaluate only this finite contract and the existing Task137B wake
 requirements. New graph features or syntax categories are proposed hardening,
@@ -151,11 +212,14 @@ The correction is complete when:
 
 1. v3 and its checker migration are dual-approved and integrated on the
    program branch;
-2. repository mode recognizes the existing ten records and stops only at
-   `repository release closure incomplete: expected 29 records, found 10`;
+2. repository mode verifies ten records and ten commands, emits
+   `TASK136_REPOSITORY_PREFIX_OK records=10 commands=10`, and only then stops
+   at `repository release closure incomplete: expected 29 records, found 10`;
 3. Task137B-W is implemented from the corrected graph, dual-approved,
    integrated, and released as record 11;
-4. repository mode then stops only at `found 11`;
+4. repository mode verifies eleven records and eleven commands, emits
+   `TASK136_REPOSITORY_PREFIX_OK records=11 commands=11`, and only then stops
+   at `found 11`;
 5. full verification, providers, network, credentials, external services,
    Task139, push, reset, and every `neo` action remain closed until their later
    graph gates authorize them.
