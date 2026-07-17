@@ -93,6 +93,18 @@ const allowedAuthorityImports = new Map<string, Map<string, Map<string, ImportPo
     ])
   ],
   [
+    "packages/local-runtime/src/mounted-wake-lifecycle-store.ts",
+    new Map([
+      [
+        "packages/local-runtime/src/runtime-factory.ts",
+        allowedNames({
+          value: ["captureFactoryIssuedMountedRuntime", "inspectFactoryIssuedMountedRuntimeCapture"],
+          type: ["FactoryIssuedMountedWorkspaceSnapshot", "LocalRuntimeHandle"]
+        })
+      ]
+    ])
+  ],
+  [
     "packages/local-runtime/src/agent-runtime-factory.ts",
     new Map([
       [

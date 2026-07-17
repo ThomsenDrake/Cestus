@@ -44,9 +44,32 @@ async function fixture() {
 
 describe("wake supervisor runtime", () => {
   it("wake runtime registers one non public authority issuer after complete admission", async () => {
-    const { runtime } = await fixture();
+    const { handle, runtime } = await fixture();
     await expect(runtime.supervision.start()).resolves.toMatchObject({ outcome: "accepted" });
     expect(inspectMountedArtifactAuthorityOperation(issueMountedArtifactAuthorityOperationForFactory(runtime))).toMatchObject({ workspaceId: "ws_wake_runtime" });
+    const identity = (await handle.ledger.readAll()).find((event) => event.type === "agent.identity.initialized");
+    if (identity === undefined) throw new Error("fixture identity is required");
+    const command = {
+      schemaVersion: "resident-wake-command.v1" as const,
+      commandId: "pause_wake_runtime",
+      sourceEventIds: [identity.id],
+      requestedAt: "2026-07-16T00:00:00.000Z",
+      causation: { causationId: identity.id, correlationId: "corr_pause_wake_runtime" }
+    };
+    await expect(runtime.supervision.pause(command)).resolves.toMatchObject({ outcome: "completed" });
+    const events = await handle.ledger.readAll();
+    const requested = events.find((event) => event.type === "agent.wake.supervisor.pause.requested.v1");
+    const paused = events.find((event) => event.type === "agent.wake.supervisor.paused.v1");
+    expect(requested?.payload).toMatchObject({
+      commandId: command.commandId,
+      sourceEventIds: command.sourceEventIds,
+      causation: command.causation
+    });
+    expect(requested?.context.causationId).toBe(command.causation.causationId);
+    expect(paused?.payload).toMatchObject({
+      pauseRequestEventId: requested?.id,
+      causation: command.causation
+    });
   });
 
   it("stopped runtime cannot issue or inspect an authority operation", async () => {

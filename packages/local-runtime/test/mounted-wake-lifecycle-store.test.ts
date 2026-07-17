@@ -1,31 +1,41 @@
-import { describe, expect, it } from "vitest";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import type { ActiveClaimReconciliationPort } from "../../agent/src/wake-supervisor.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   createMountedWakeLifecycleStore,
   type MountedWakeLifecycleStore,
   type MountedWakeLifecycleStoreInput
 } from "../src/mounted-wake-lifecycle-store.js";
-import type { LocalRuntimeHandle } from "../src/runtime-factory.js";
+import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
 
-async function fixture(overrides: Partial<MountedWakeLifecycleStoreInput> = {}) {
-  const ledger = new InMemoryEventLedger();
-  const handle = {
-    ledger,
-    mountedWorkspace: {
-      workspaceId: "ws_mounted_wake",
-      rootDir: "/tmp/ws_mounted_wake",
-      manifestPath: "/tmp/ws_mounted_wake/workspace.json",
-      paths: {
-        ledgerPath: "/tmp/ws_mounted_wake/ledger.sqlite",
-        blobRoot: "/tmp/ws_mounted_wake/blobs",
-        derivativeRoot: "/tmp/ws_mounted_wake/derivatives",
-        jobRoot: "/tmp/ws_mounted_wake/jobs",
-        projectionRoot: "/tmp/ws_mounted_wake/projections",
-        cacheRoot: "/tmp/ws_mounted_wake/cache",
-        configRoot: "/tmp/ws_mounted_wake/config"
-      }
-    }
-  } as unknown as LocalRuntimeHandle;
+const directories: string[] = [];
+const handles: LocalRuntimeHandle[] = [];
+
+afterEach(() => {
+  for (const handle of handles.splice(0)) handle.close();
+  for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
+});
+
+async function fixture(overrides: Partial<MountedWakeLifecycleStoreInput> = {}, ready = true) {
+  const root = mkdtempSync(join(tmpdir(), "cestus-mounted-wake-store-"));
+  directories.push(root);
+  const workspaceId = "ws_mounted_wake";
+  const workspaceRoot = join(root, workspaceId);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: "Mounted wake store",
+    createdAt: "2026-07-16T00:00:00.000Z",
+    createdBy: "mounted-wake-store-test"
+  });
+  const handle = openHandle(root, workspaceRoot);
+  if (ready) await handle.residentIdentity.ready();
   const input: MountedWakeLifecycleStoreInput = {
     runtimeHandle: handle,
     actor: { id: "agent_mounted_wake", kind: "agent", label: "Mounted wake store" },
@@ -35,36 +45,19 @@ async function fixture(overrides: Partial<MountedWakeLifecycleStoreInput> = {}) 
     createSafeId: (kind) => `${kind}_mounted_wake`,
     ...overrides
   };
-  await ledger.append({
-    type: "agent.identity.initialized",
-    version: 1,
-    streamId: "agent_identity_agent_default",
-    context: {
-      actor: { id: "actor_mounted_wake", kind: "human", label: "Mounted wake store" },
-      occurredAt: "2026-07-16T00:00:00.000Z",
-      correlationId: "corr_agent_default",
-      coreVersion: "0.1.0",
-      packVersions: { core: "0.1.0", agent: "0.1.0" }
-    },
-    payload: {
-      residentAgentId: "agent_default",
-      workspaceId: "ws_mounted_wake",
-      label: "Cestus Agent",
-      policyId: "agent_policy_default",
-      initializedBy: "actor_mounted_wake",
-      allowedRunTypes: [
-        "ontology-bootstrap",
-        "prr-negotiation",
-        "evidence-triage",
-        "timeline-builder",
-        "contradiction-finder",
-        "investigation-planner",
-        "report-builder"
-      ],
-      memoryProjectionVersion: "0.1.0"
-    }
+  return { root, workspaceRoot, ledger: handle.ledger, handle, input, store: createMountedWakeLifecycleStore(input) };
+}
+
+function openHandle(root: string, workspaceRoot: string): LocalRuntimeHandle {
+  const handle = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({
+      cwd: root,
+      env: { CESTUS_LOCAL_STORAGE: "portable-workspace", CESTUS_WORKSPACE_ROOT: workspaceRoot }
+    }),
+    actor: { id: "actor_mounted_wake", kind: "human", label: "Mounted wake store" }
   });
-  return { ledger, handle, input, store: createMountedWakeLifecycleStore(input) };
+  handles.push(handle);
+  return handle;
 }
 
 async function appendLease(store: MountedWakeLifecycleStore) {
@@ -74,10 +67,168 @@ async function appendLease(store: MountedWakeLifecycleStore) {
   });
 }
 
+async function seedActiveClaim(ledger: EventLedger, causationEventId: string) {
+  const taskId = "task_mounted_reconciliation";
+  const attemptId = `attempt_${"a".repeat(64)}`;
+  return ledger.append({
+    type: "agent.task.orchestration.claimed",
+    version: 1,
+    streamId: "agent_task_orchestration_task_mounted_reconciliation_investigation-planner",
+    context: {
+      actor: { id: "agent_mounted_wake", kind: "agent", label: "Mounted wake store" },
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      causationId: causationEventId,
+      correlationId: "corr_mounted_reconciliation_claim",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      runType: "investigation-planner",
+      attemptId,
+      retryGeneration: 0,
+      leaseClaimGeneration: 1,
+      workerId: "agent_mounted_wake",
+      claimedAt: "2026-07-16T00:00:00.000Z",
+      leaseExpiresAt: "2026-07-16T01:00:00.000Z",
+      idempotencyKey: "claim_mounted_reconciliation",
+      selectedOrderingPosition: {
+        priorityRank: 0,
+        queuedAt: "2026-07-16T00:00:00.000Z",
+        taskId,
+        runType: "investigation-planner",
+        retryGeneration: 0
+      },
+      activeBudgetSnapshot: {
+        maxProviderInvocations: 1,
+        remainingProviderInvocations: 1,
+        contextByteBudget: 32_768,
+        promptByteBudget: 32_768,
+        derivativeArtifactByteBudget: 65_536,
+        wallClockBudgetMs: 120_000
+      },
+      causationEventId
+    }
+  }) as Promise<KnowledgeEventOf<"agent.task.orchestration.claimed">>;
+}
+
+async function reconciliationInputs(store: MountedWakeLifecycleStore, ledger: EventLedger) {
+  const identity = (await ledger.readAll()).find((event) => event.type === "agent.identity.initialized");
+  if (identity === undefined) throw new Error("fixture identity is required");
+  const claim = await seedActiveClaim(ledger, identity.id);
+  const facts = await store.readMountedFacts();
+  const admission = Object.freeze({
+    identityAndMount: Object.freeze({
+      workspaceId: facts.workspaceId,
+      residentId: facts.residentId,
+      supervisorEpoch: "epoch_mounted_wake",
+      workspaceIdentityEventId: facts.workspaceIdentityEventId,
+      mountEvidenceId: facts.mountEvidenceId,
+      authorityEvidenceId: facts.authorityEvidenceId
+    }),
+    admissionGeneration: Object.freeze({
+      schemaVersion: "resident-wake-admission-generation.v1" as const,
+      generationId: "generation_mounted_reconciliation"
+    })
+  });
+  const leaseResult = await store.supervisorLease.readOrAcquire({
+    admission,
+    residentId: "agent_default",
+    supervisorEpoch: "epoch_mounted_wake",
+    policyVersion: facts.policyVersion,
+    policyDigest: facts.policyDigest,
+    lockStateDigest: facts.lockStateDigest,
+    causationId: identity.id,
+    correlationId: "corr_mounted_reconciliation_lease"
+  });
+  if (leaseResult.outcome !== "acquired-and-read-back") throw new Error("fixture lease is required");
+  const tuple = Object.freeze({
+    authorityIdentityAndMount: admission.identityAndMount,
+    admissionGeneration: admission.admissionGeneration,
+    verifiedLease: leaseResult.readback,
+    policyAndLock: leaseResult.readback.policyAndLock,
+    highWater: leaseResult.readback.highWater
+  });
+  const observedActiveClaim = Object.freeze({
+    workspaceId: facts.workspaceId,
+    residentId: "agent_default" as const,
+    supervisorEpoch: "epoch_mounted_wake",
+    claimId: claim.payload.taskId,
+    attemptId: claim.payload.attemptId,
+    priorClaimEventId: claim.id,
+    priorClaimLeaseId: claim.payload.idempotencyKey,
+    readbackEventId: claim.id,
+    causation: Object.freeze({ causationId: identity.id, correlationId: claim.context.correlationId })
+  });
+  const outage = Object.freeze({
+    safeObservationId: "outage_mounted_reconciliation",
+    outageObservedAt: "2026-07-16T00:05:00.000Z",
+    category: "workspace-unavailable" as const,
+    priorClaimEventId: claim.id,
+    priorClaimLeaseId: claim.payload.idempotencyKey,
+    priorAuthorityEvidenceId: facts.authorityEvidenceId,
+    highWaterBeforeOutage: tuple.highWater.highWaterMark
+  });
+  const reconciliationIdempotencyKey = "wake-reconcile:mounted";
+  const record = Object.freeze({
+    schemaVersion: "resident-wake-workspace-unavailable.v1" as const,
+    outcome: "workspace-unavailable" as const,
+    resumable: true as const,
+    claimDisposition: "checkpointed" as const,
+    workspaceId: facts.workspaceId,
+    residentId: "agent_default" as const,
+    supervisorEpoch: "epoch_mounted_wake",
+    claimId: claim.payload.taskId,
+    attemptId: claim.payload.attemptId,
+    outageObservation: outage,
+    causation: observedActiveClaim.causation,
+    revalidatedAuthority: Object.freeze({
+      identityEventId: facts.workspaceIdentityEventId,
+      mountEvidenceId: facts.mountEvidenceId,
+      authorityEvidenceId: facts.authorityEvidenceId,
+      highWaterAfterRevalidation: tuple.highWater.highWaterMark,
+      policyVersion: facts.policyVersion,
+      policyDigest: facts.policyDigest,
+      lockStateDigest: facts.lockStateDigest,
+      supervisorLeaseEventId: tuple.verifiedLease.leaseEventId,
+      supervisorLeaseReadbackEventId: tuple.verifiedLease.readbackEventId,
+      supervisorLeaseExpiresAt: tuple.verifiedLease.expiresAt
+    }),
+    reconciliationIdempotencyKey
+  });
+  const lookup: Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0] = {
+    admission: tuple,
+    reconciliationIdempotencyKey,
+    workspaceId: facts.workspaceId,
+    residentId: "agent_default",
+    supervisorEpoch: "epoch_mounted_wake"
+  };
+  const append: Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0] = {
+    ...lookup,
+    record,
+    observedActiveClaim,
+    outage
+  };
+  return { lookup, append };
+}
+
 describe("mounted wake lifecycle store", () => {
   it("derives mounted facts from the handle and ledger without caller facts", async () => {
-    const { ledger, store } = await fixture();
-    await expect(store.readMountedFacts()).resolves.toMatchObject({ workspaceId: "ws_mounted_wake", highWaterOrdinal: 1 });
+    const { handle, ledger, input, store } = await fixture();
+    const facts = await store.readMountedFacts();
+    expect(facts).toMatchObject({ workspaceId: "ws_mounted_wake", highWaterOrdinal: 1 });
+    const durableIds = new Set((await ledger.readAll()).map((event) => event.id));
+    for (const eventId of [
+      facts.workspaceIdentityEventId,
+      facts.mountEvidenceId,
+      facts.authorityEvidenceId,
+      facts.ledgerStoreEvidenceId,
+      facts.artifactStoreEvidenceId,
+      facts.derivativeStoreEvidenceId
+    ]) expect(durableIds.has(eventId), eventId).toBe(true);
+    expect(() => createMountedWakeLifecycleStore({ ...input, runtimeHandle: { ...handle } as LocalRuntimeHandle }))
+      .toThrow(/factory-issued|mounted runtime handle/i);
+
     await ledger.append({
       type: "agent.lock.activated",
       version: 1,
@@ -102,29 +253,64 @@ describe("mounted wake lifecycle store", () => {
 
   it("appends only a canonical wake event and returns exact durable readback", async () => {
     const { ledger, store } = await fixture();
+    const originalAppend = ledger.append.bind(ledger);
+    Object.defineProperty(ledger, "append", {
+      configurable: true,
+      value: async (...args: Parameters<EventLedger["append"]>) => {
+        const persisted = await originalAppend(...args);
+        return { ...persisted, payload: { ...persisted.payload, policyDigest: "sha256:forged-return" } };
+      }
+    });
     const readback = await appendLease(store);
-    expect(readback.event).toEqual((await ledger.readStream(readback.event.streamId))[0]);
+    const durable = (await ledger.readStream(readback.event.streamId)).find((event) => event.id === readback.event.id);
+    expect(readback.event).toEqual(durable);
+    expect(readback.event.payload).toMatchObject({ policyDigest: "sha256:policy" });
   });
 
   it("rebuilds the same mounted facts after process restart from ledger state", async () => {
     const first = await fixture();
     await appendLease(first.store);
-    const restarted = createMountedWakeLifecycleStore({ ...first.input });
-    await expect(restarted.readMountedFacts()).resolves.toMatchObject({ highWaterOrdinal: 2, highWaterMark: expect.any(String) });
+    const before = await first.store.readMountedFacts();
+    first.handle.close();
+    const handle = openHandle(first.root, first.workspaceRoot);
+    await handle.residentIdentity.ready();
+    const restarted = createMountedWakeLifecycleStore({ ...first.input, runtimeHandle: handle });
+    await expect(restarted.readMountedFacts()).resolves.toEqual(before);
   });
 
   it("keeps an active foreign lease distinct from workspace unavailability", async () => {
-    const { input, store } = await fixture();
-    const foreign = createMountedWakeLifecycleStore({ ...input, supervisorEpoch: "epoch_foreign" });
-    await appendLease(foreign);
-    await expect(store.readOrAcquireSupervisorLease()).resolves.toMatchObject({ outcome: "supervisor-lease-held" });
+    const active = await fixture();
+    const futureForeign = createMountedWakeLifecycleStore({
+      ...active.input,
+      supervisorEpoch: "epoch_foreign",
+      now: () => "2026-07-16T01:00:00.000Z"
+    });
+    await appendLease(futureForeign);
+    await expect(active.store.readOrAcquireSupervisorLease()).resolves.toMatchObject({ outcome: "supervisor-lease-held" });
+
+    const expired = await fixture({ now: () => "2026-07-16T01:00:00.000Z" });
+    const expiredForeign = createMountedWakeLifecycleStore({
+      ...expired.input,
+      supervisorEpoch: "epoch_expired_foreign",
+      now: () => "2026-07-16T00:00:00.000Z"
+    });
+    await appendLease(expiredForeign);
+    await expect(expired.store.readOrAcquireSupervisorLease()).resolves.toMatchObject({ outcome: "acquired-and-read-back" });
   });
 
   it("reuses one exact reconciliation readback for a duplicate key", async () => {
-    const { store } = await fixture();
-    const first = await store.readOrAppendReconciliation("wake-reconcile:mounted");
-    const second = await store.readOrAppendReconciliation("wake-reconcile:mounted");
+    const { input, ledger, store } = await fixture();
+    const reconciliation = await reconciliationInputs(store, ledger);
+    const first = await store.activeClaimReconciliation.appendAndReadBack(reconciliation.append);
+    const second = await store.activeClaimReconciliation.readByIdempotencyKey(reconciliation.lookup);
+    const restarted = createMountedWakeLifecycleStore({ ...input });
+    const afterRestart = await restarted.activeClaimReconciliation.readByIdempotencyKey(reconciliation.lookup);
     expect(second).toEqual(first);
+    expect(afterRestart).toEqual(first);
+    expect((await ledger.readAll()).filter((event) =>
+      event.type === "agent.wake.supervisor.recovery.verified.v1" &&
+      event.context.correlationId === reconciliation.lookup.reconciliationIdempotencyKey
+    )).toHaveLength(1);
   });
 
   it("blocks a swapped workspace identity fact before append", async () => {
@@ -139,8 +325,7 @@ describe("mounted wake lifecycle store", () => {
   it("blocks a regressed ledger readback before a later append", async () => {
     const { ledger, store } = await fixture();
     await appendLease(store);
-    const originalReadAll = ledger.readAll.bind(ledger);
-    Object.defineProperty(ledger, "readAll", { value: async () => (await originalReadAll()).slice(0, 0) });
+    Object.defineProperty(ledger, "readAll", { value: async () => [] });
     await expect(appendLease(store)).rejects.toThrow(/ledger|high-water|current/i);
   });
 
@@ -152,14 +337,19 @@ describe("mounted wake lifecycle store", () => {
   });
 
   it("does not construct a fallback store for an unmounted handle", async () => {
-    const { input } = await fixture();
-    expect(() => createMountedWakeLifecycleStore({ ...input, runtimeHandle: { ...input.runtimeHandle, mountedWorkspace: undefined } as unknown as LocalRuntimeHandle }))
-      .toThrow(/mounted|fallback/i);
-    const noIdentity = createMountedWakeLifecycleStore({
-      ...input,
-      runtimeHandle: { ...input.runtimeHandle, ledger: new InMemoryEventLedger() } as LocalRuntimeHandle
+    const mounted = await fixture();
+    const root = mkdtempSync(join(tmpdir(), "cestus-unmounted-wake-store-"));
+    directories.push(root);
+    const unmounted = createSqlitePrrRuntime({
+      config: resolveLocalRuntimeConfig({ cwd: root, env: { CESTUS_LOCAL_STORAGE: "repo-local" } }),
+      actor: { id: "actor_unmounted_wake", kind: "human", label: "Unmounted wake store" }
     });
-    await expect(noIdentity.readMountedFacts()).rejects.toThrow(/identity|durable/i);
+    handles.push(unmounted);
+    expect(() => createMountedWakeLifecycleStore({ ...mounted.input, runtimeHandle: unmounted }))
+      .toThrow(/mounted|portable|fallback/i);
+
+    const noIdentity = await fixture({}, false);
+    await expect(noIdentity.store.readMountedFacts()).rejects.toThrow(/identity|durable/i);
   });
 
   it("rejects an unsafe lifecycle append input before ledger activity", async () => {
@@ -172,9 +362,16 @@ describe("mounted wake lifecycle store", () => {
   });
 
   it("returns a lease readback whose event and high-water bind the same durable append", async () => {
-    const { store } = await fixture();
+    let tick = 0;
+    const { ledger, store } = await fixture({
+      now: () => new Date(Date.parse("2026-07-16T00:00:00.000Z") + tick++ * 60_000).toISOString()
+    });
     const lease = await store.readOrAcquireSupervisorLease();
     expect(lease).toMatchObject({ outcome: "acquired-and-read-back", readback: { leaseEventId: expect.any(String), highWaterMark: expect.any(String) } });
+    if (lease.outcome !== "acquired-and-read-back") throw new Error("fixture lease is required");
+    const persisted = (await ledger.readAll()).find((event) => event.id === lease.readback.leaseEventId);
+    expect(persisted?.type).toBe("agent.wake.supervisor.lease.claimed.v1");
+    expect(lease.readback.expiresAt).toBe((persisted as KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1">).payload.leaseExpiresAt);
   });
 
   it("rejects a requested event outside the seven frozen lifecycle types", async () => {
@@ -184,5 +381,4 @@ describe("mounted wake lifecycle store", () => {
       causation: { causationId: "evt_wrong_type", correlationId: "corr_wrong_type" }
     })).rejects.toThrow(/wake lifecycle/i);
   });
-
 });

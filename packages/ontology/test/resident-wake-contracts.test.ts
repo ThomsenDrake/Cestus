@@ -25,6 +25,109 @@ const binding = Object.freeze({
   causation: { causationId: "evt_wake_cause", correlationId: "corr_wake_contracts" }
 });
 
+const reconciliationAdmission = Object.freeze({
+  authorityIdentityAndMount: Object.freeze({
+    workspaceId: binding.workspaceId,
+    residentId: binding.residentId,
+    supervisorEpoch: binding.supervisorEpoch,
+    workspaceIdentityEventId: binding.workspaceIdentityEventId,
+    mountEvidenceId: binding.mountEvidenceId,
+    authorityEvidenceId: binding.authorityEvidenceId
+  }),
+  admissionGeneration: Object.freeze({
+    schemaVersion: "resident-wake-admission-generation.v1",
+    generationId: "generation_wake_contracts"
+  }),
+  verifiedLease: Object.freeze({
+    schemaVersion: "resident-supervisor-lease-readback.v1",
+    workspaceId: binding.workspaceId,
+    residentId: binding.residentId,
+    supervisorEpoch: binding.supervisorEpoch,
+    workspaceIdentityEventId: binding.workspaceIdentityEventId,
+    mountEvidenceId: binding.mountEvidenceId,
+    authorityEvidenceId: binding.authorityEvidenceId,
+    policyVersion: binding.policyVersion,
+    policyDigest: binding.policyDigest,
+    lockStateDigest: binding.lockStateDigest,
+    highWaterMark: binding.highWaterMark,
+    leaseEventId: "evt_lease_wake_contracts",
+    readbackEventId: "evt_lease_wake_contracts",
+    expiresAt: "2026-07-16T01:00:00.000Z",
+    causation: binding.causation,
+    policyAndLock: Object.freeze({
+      authorityEvidenceId: binding.authorityEvidenceId,
+      mountEvidenceId: binding.mountEvidenceId,
+      leaseEventId: "evt_lease_wake_contracts",
+      leaseReadbackEventId: "evt_lease_wake_contracts",
+      policyVersion: binding.policyVersion,
+      policyDigest: binding.policyDigest,
+      lockStateDigest: binding.lockStateDigest,
+      readbackEventId: binding.workspaceIdentityEventId
+    }),
+    highWater: Object.freeze({
+      authorityEvidenceId: binding.authorityEvidenceId,
+      mountEvidenceId: binding.mountEvidenceId,
+      leaseEventId: "evt_lease_wake_contracts",
+      leaseReadbackEventId: "evt_lease_wake_contracts",
+      highWaterMark: binding.highWaterMark,
+      readbackEventId: binding.highWaterMark
+    })
+  }),
+  policyAndLock: Object.freeze({
+    authorityEvidenceId: binding.authorityEvidenceId,
+    mountEvidenceId: binding.mountEvidenceId,
+    leaseEventId: "evt_lease_wake_contracts",
+    leaseReadbackEventId: "evt_lease_wake_contracts",
+    policyVersion: binding.policyVersion,
+    policyDigest: binding.policyDigest,
+    lockStateDigest: binding.lockStateDigest,
+    readbackEventId: binding.workspaceIdentityEventId
+  }),
+  highWater: Object.freeze({
+    authorityEvidenceId: binding.authorityEvidenceId,
+    mountEvidenceId: binding.mountEvidenceId,
+    leaseEventId: "evt_lease_wake_contracts",
+    leaseReadbackEventId: "evt_lease_wake_contracts",
+    highWaterMark: binding.highWaterMark,
+    readbackEventId: binding.highWaterMark
+  })
+});
+
+const reconciliationRecord = Object.freeze({
+  schemaVersion: "resident-wake-workspace-unavailable.v1",
+  outcome: "workspace-unavailable",
+  resumable: true,
+  claimDisposition: "checkpointed",
+  workspaceId: binding.workspaceId,
+  residentId: binding.residentId,
+  supervisorEpoch: binding.supervisorEpoch,
+  claimId: "task_wake_contracts",
+  attemptId: `attempt_${"a".repeat(64)}`,
+  outageObservation: Object.freeze({
+    safeObservationId: "outage_wake_contracts",
+    outageObservedAt: "2026-07-16T00:30:00.000Z",
+    category: "workspace-unavailable",
+    priorClaimEventId: "evt_claim_wake_contracts",
+    priorClaimLeaseId: "claim_lease_wake_contracts",
+    priorAuthorityEvidenceId: binding.authorityEvidenceId,
+    highWaterBeforeOutage: binding.highWaterMark
+  }),
+  causation: binding.causation,
+  revalidatedAuthority: Object.freeze({
+    identityEventId: binding.workspaceIdentityEventId,
+    mountEvidenceId: binding.mountEvidenceId,
+    authorityEvidenceId: binding.authorityEvidenceId,
+    highWaterAfterRevalidation: binding.highWaterMark,
+    policyVersion: binding.policyVersion,
+    policyDigest: binding.policyDigest,
+    lockStateDigest: binding.lockStateDigest,
+    supervisorLeaseEventId: "evt_lease_wake_contracts",
+    supervisorLeaseReadbackEventId: "evt_lease_wake_contracts",
+    supervisorLeaseExpiresAt: "2026-07-16T01:00:00.000Z"
+  }),
+  reconciliationIdempotencyKey: "wake-reconcile:contracts"
+});
+
 function wakeEvent(type: KnowledgeEventType, payload: Record<string, unknown>) {
   return {
     id: "evt_wake_contract",
@@ -66,7 +169,9 @@ describe("resident wake lifecycle contracts", () => {
     expect(validateKnowledgeEvent(wakeEvent("agent.wake.supervisor.recovery.verified.v1", {
       ...binding,
       reconciliationEventId: "evt_reconciliation",
-      reconciliationReadbackEventId: "evt_reconciliation_readback"
+      reconciliationReadbackEventId: "evt_reconciliation_readback",
+      reconciliationRecord,
+      reconciliationAdmission
     })).success).toBe(true);
   });
 
