@@ -54,10 +54,14 @@ const allowedFixtures: readonly FixtureCase[] = [
     }
   },
   {
-    label: "wake runtime imports registrar authority",
+    label: "wake runtime imports registrar and lifecycle construction authority",
     files: {
-      [registrarSource]:
-        'import { registerMountedArtifactAuthorityIssuerForWakeRuntime } from "./mounted-artifact-authority-operation.js";\nvoid registerMountedArtifactAuthorityIssuerForWakeRuntime;\n'
+      [registrarSource]: [
+        'import { registerMountedArtifactAuthorityIssuerForWakeRuntime } from "./mounted-artifact-authority-operation.js";',
+        'import { createPortableWorkspaceLifecyclePorts } from "./portable-workspace-lifecycle.js";',
+        "void registerMountedArtifactAuthorityIssuerForWakeRuntime;",
+        "void createPortableWorkspaceLifecyclePorts;"
+      ].join("\n")
     }
   },
   {
@@ -134,7 +138,7 @@ const rejectedFixtures: readonly RejectedFixtureCase[] = [
     path: registrarSource,
     files: {
       [registrarSource]:
-        'import { inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority } from "./portable-workspace-lifecycle.js";\nvoid inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority;\n'
+        'import { captureFactoryIssuedMountedRuntime } from "./runtime-factory.js";\nvoid captureFactoryIssuedMountedRuntime;\n'
     }
   },
   {

@@ -85,6 +85,10 @@ const allowedAuthorityImports = new Map<string, Map<string, Map<string, ImportPo
       [
         "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
         allowedNames({ value: ["registerMountedArtifactAuthorityIssuerForWakeRuntime"], type: [] })
+      ],
+      [
+        "packages/local-runtime/src/portable-workspace-lifecycle.ts",
+        allowedNames({ value: ["createPortableWorkspaceLifecyclePorts"], type: [] })
       ]
     ])
   ],
@@ -554,5 +558,14 @@ function toRepoPath(root: string, absolutePath: string): string {
 }
 
 function normalizeRepoPath(path: string): string {
-  return path.split("\\").join("/");
+  const segments: string[] = [];
+  for (const segment of path.split("\\").join("/").split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  return segments.join("/");
 }
