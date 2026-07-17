@@ -37,6 +37,16 @@ Git, and the existing Task137 terminal gate.
   two moved prerequisite tests and must not change.
 - Preserve append-only ledger evidence, strict durable readback, monotonic
   invalidation, no fallback store, and one current supervisor per workspace.
+- `wake-supervisor-runtime.ts` keeps
+  `registerMountedArtifactAuthorityIssuerForWakeRuntime` as its sole import
+  from `mounted-artifact-authority-operation.ts`; no standalone
+  authentication seam is permitted. Advance the Task137 authority import
+  grammar and corpus together to v3 while retaining exactly eight allowed
+  fixtures, twenty rejected fixtures, and one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. Keep the wake
+  runtime's existing fixture/import unchanged and add only
+  `mounted-wake-lifecycle-store.ts` as the authorized capability type and
+  inspector consumer in the existing allowed-fixture structure.
 - No registry, source, or claim edit occurs in this documentation task. During
   later implementation only the coordinator writes the registry.
 - Do not run npm run verify. Use targeted tests, typecheck, diff check,
@@ -89,7 +99,9 @@ cross-lane GREEN: 123 + 7 = 130 tests
 
 The RED adds exactly the seven cases named in Task 4 and changes no existing
 test count. Focused and cross-lane GREEN each print exactly one
-TASK137_POLICY_CORPUS_OK allowed=8 rejected=20 marker.
+TASK137_POLICY_CORPUS_OK allowed=8 rejected=20 marker from the pinned
+`task137-authority-import-grammar.v3` and
+`task137-authority-import-corpus.v3` policy.
 
 ---
 
@@ -329,10 +341,17 @@ the four direct transfers are exercised.
 **Files:** exactly the fourteen Task137B paths in Exact File Ownership.
 
 **Interfaces:**
-- Consumes: preserved Task137B runtime/store, factory capture, portable
-  lifecycle ports, and mounted-artifact authority operation.
-- Produces: a factory-authenticated opaque wake capability and a mounted store
-  that accepts only that capability.
+- Consumes: preserved Task137B runtime/store, factory capture and inspection,
+  portable lifecycle ports, and the existing mounted-artifact authority
+  registrar.
+- Produces: a registrar-issued opaque wake capability, a mounted store that
+  accepts only that capability, and a two-phase registration that never
+  reintroduces a raw-handle bind path.
+
+**Execution:** One production worker performs this task-scoped RED/GREEN
+sequence. The standing authorization explicitly preserves task-scoped
+subagent-driven development and test-driven development for that worker; it
+does not require a second implementation worker.
 
 - [ ] **Step 1: Append the V4 amendment to the preserved claim**
 
@@ -348,18 +367,20 @@ Add exactly one test case for each row and retain every existing case count.
 
 | Case | Required assertion |
 | --- | --- |
-| 1 | A forged structural runtime handle is rejected by factory authentication before any handle property read, lifecycle callback, store construction, ledger read, or ledger append. |
-| 2 | The exported mounted store accepts only the opaque factory-authenticated capability; a raw LocalRuntimeHandle, copied capability, raw ledger, path, callback, or constructor input throws before effects. |
+| 1 | The registrar `authenticate` phase receives the raw handle identity, immediately runs factory capture and inspection, and rejects a forged structural runtime handle before any raw handle property read, lifecycle callback, store construction, ledger read, ledger append, or I/O. |
+| 2 | The registrar `bind` phase accepts only the exact capability returned by `authenticate`, plus final wake-runtime identity and lifecycle ports after store/lifecycle construction; it rejects a raw handle or copied/structural/forged/stale capability before effects. |
 | 3 | Lease acquisition captures one normalized finite ISO instant, uses the sole positive 300000 ms duration, and rejects zero, negative, non-finite, malformed, or over-ceiling duration before append. |
 | 4 | Consumption compares durable expiry with a freshly normalized instant and burns authority without timer help before provider, tool, artifact, lifecycle, or ledger effect. |
-| 5 | A second epoch is blocked before expiry, succeeds after durable expiry, and every first-epoch store, admission, operation, and port stays stale after expiry or successor acquisition. |
-| 6 | Forged or expired capabilities produce zero provider, tool, artifact, lifecycle, and ledger effects; matching revalidation cannot revive them. |
-| 7 | Shutdown, authority loss, admission mismatch, capture mismatch, ledger regression, and expiry invalidate monotonically; successful append returns only after exact global and stream reread; no fallback store exists and one workspace has one current supervisor. |
+| 5 | `createWakeSupervisorRuntime` normalizes only the outer DTO to retrieve raw-handle identity, invokes registrar `authenticate` first, never reads raw-handle properties, and thereafter obtains mount/identity/ledger state only through the authenticated capability and store. |
+| 6 | `createMountedWakeLifecycleStore` accepts only the opaque capability and ordinary non-authority values; its one dedicated inspector rejects copied/structural/forged/stale capabilities before returning private captured state, and forged or expired capability paths produce zero provider, tool, artifact, lifecycle, and ledger effects. |
+| 7 | Shutdown, authority loss, admission mismatch, capture mismatch, ledger regression, expiry, and successor acquisition invalidate monotonically; successful append returns only after exact global and stream reread; no fallback store exists and one workspace has one current supervisor. |
 
 Use transferred portable-lifecycle and mounted-authority tests for their own
 boundaries, wake/store tests for runtime/durable effects, and the import-policy
-test for only the necessary direct capability seam. Keep all seven wake schemas
-and the 8/20 policy corpus unchanged.
+test for the only two authorized authority seams: the wake runtime retains its
+existing registrar import, and the mounted store alone imports the capability
+type plus the dedicated inspector. Pin the policy grammar/corpus at v3, keep
+all seven wake schemas, retain the 8/20 corpus, and emit one marker.
 
 - [ ] **Step 3: Run and commit the causal RED**
 
@@ -380,25 +401,68 @@ git commit -m "test(task137b): reproduce v4 authority transfer defects"
 
 - [ ] **Step 4: Implement the minimum opaque capability boundary**
 
-In mounted-artifact-authority-operation.ts, authenticate factory-issued handle
-identity before reading any handle member. Keep its factory capture in private
-WeakMap state and export an opaque capability with no handle, ledger, paths,
-callbacks, lifecycle ports, or storage constructor.
+In `mounted-artifact-authority-operation.ts`, keep
+`registerMountedArtifactAuthorityIssuerForWakeRuntime` as the only registrar
+and make it a two-phase discriminated seam. Its `authenticate` phase receives
+the raw handle identity and immediately calls factory capture and inspection
+before any handle member read, lifecycle callback, store construction, ledger
+read/append, or I/O. It stores the private captured state in a `WeakMap` keyed
+by the capability it returns. Its `bind` phase receives that exact capability,
+the final wake-runtime identity, and lifecycle ports after store/lifecycle
+construction; it completes the existing registration and has no raw-handle
+field.
 
 ~~~ts
 export interface FactoryAuthenticatedMountedWakeCapability {
   readonly schemaVersion: "factory-authenticated-mounted-wake-capability.v1";
 }
 
-export function authenticateMountedWakeRuntimeForFactory(
-  input: unknown
-): FactoryAuthenticatedMountedWakeCapability;
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
+  readonly phase: "authenticate";
+  readonly runtimeHandle: unknown;
+}): FactoryAuthenticatedMountedWakeCapability;
+
+export function registerMountedArtifactAuthorityIssuerForWakeRuntime(input: {
+  readonly phase: "bind";
+  readonly capability: FactoryAuthenticatedMountedWakeCapability;
+  readonly wakeRuntime: object;
+  readonly lifecyclePorts: PortableWorkspaceLifecyclePorts;
+}): void;
+
+interface FactoryAuthenticatedMountedWakeCapturedState {
+  // Module-private captured factory state; never exported or capability-owned.
+}
+
+export function inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(
+  capability: FactoryAuthenticatedMountedWakeCapability
+): FactoryAuthenticatedMountedWakeCapturedState;
 ~~~
 
-createWakeSupervisorRuntime authenticates first, then constructs the mounted
-store from that opaque capability and exposes no raw authority.
-createMountedWakeLifecycleStore accepts only the opaque capability and has no
-raw-handle overload or fallback route.
+The public capability exposes no handle, ledger, paths, callbacks, lifecycle
+ports, or storage constructor. The dedicated inspector is the only
+capability-to-captured-state seam: it reads the registrar `WeakMap`, rejects
+copied, structural, forged, and stale values, and returns private captured
+state only to `mounted-wake-lifecycle-store.ts`.
+
+`createWakeSupervisorRuntime` normalizes only the outer DTO enough to retrieve
+the raw-handle identity, calls registrar `authenticate` first, and does not
+read raw-handle properties. It subsequently obtains mount, identity, and
+ledger state only through the authenticated capability and mounted store, then
+calls registrar `bind` after store/lifecycle construction.
+`createMountedWakeLifecycleStore` accepts only the opaque capability and
+ordinary non-authority values; it has no raw-handle overload or fallback route.
+
+Advance the Task137 policy source/test to
+`task137-authority-import-grammar.v3` and
+`task137-authority-import-corpus.v3`. Preserve the existing wake-runtime
+allowed fixture as the exact value import
+`registerMountedArtifactAuthorityIssuerForWakeRuntime`, with no type import or
+additional named authority import. Add only the existing allowed-fixture entry
+for `mounted-wake-lifecycle-store.ts`: it may value-import
+`inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore`
+and type-import `FactoryAuthenticatedMountedWakeCapability`. Every other
+protected-module import remains rejected; the corpus remains exactly eight
+allowed and twenty rejected fixtures with one marker.
 
 Capture one normalized claimedAt instant, derive leaseExpiresAt once as
 new Date(Date.parse(claimedAt) + 300000).toISOString(), persist it, read it
