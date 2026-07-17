@@ -18187,3 +18187,690 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - This event is not a release record, does not alter any of the first eleven
   strict release blocks, and leaves `W1-123-H-SHARED-SCHEMA` as the next
   release-graph card.
+
+## RV-1-E-683 — Parallel implementation owners dispatched for Task126-R and G136-SC
+
+- Recorded at: 2026-07-17T19:11:19Z
+- Exact coordinator base:
+  `863c93a09a0817365c6b41996cc751efa16efd78` on
+  `codex/resident-agent-full-vision-program-watchdog-recovery`.
+- The V4 graph exposes Task126-R and G136-SC as prerequisite-satisfied cards
+  with disjoint ownership. Their implementations may proceed in parallel;
+  strict integration and release records remain bound to V4 card order.
+- Task126-R owner:
+  - task `019f717a-3a5c-7df1-9216-59464d5c206b`
+  - worktree `/home/drake/.codex/worktrees/ee6e/Cestus`
+  - branch `codex/task126-r-reader-boundary`
+  - host selection `gpt-5.6-terra`, reasoning `xhigh`
+- G136-SC owner:
+  - task `019f717a-3a5c-7df1-9216-592473d3244f`
+  - worktree `/home/drake/.codex/worktrees/7837/Cestus`
+  - branch `codex/g136-scheduler-completion-adapter`
+  - host selection `gpt-5.6-terra`, reasoning `xhigh`
+- Both isolated worktrees were initially clean and unchanged when environment
+  preflight stopped. The same owners were resumed with offline-only dependency
+  provisioning authorization; no replacement owner or repair generation was
+  created.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+
+## RV-1-E-701 — Assurance correction enters its sole consolidated repair
+
+- Recorded at: 2026-07-17T22:30:14Z
+- The same assurance owner preserved the full forward chain through causal RED
+  `fda9e55a`, minimal GREEN `a9c7172c`, and claim-pin correction `aacbe5e1`.
+  Coordinator admission reproduced the exact four-file scope, 17/17 focused
+  assurance tests, all four contract markers, typecheck, diff, factory,
+  dependency and clean-state gates, plus
+  `TASK136_REPOSITORY_PREFIX_OK records=13 commands=13` followed only by the
+  expected 13-of-29 closure failure.
+- The first concurrent read-only pair was architecture/invariants task
+  `019f722a-861a-7c00-bba7-13fabab4fd3b` and executability/adversarial task
+  `019f722a-8666-7ed1-a701-72b9781ba884`, both on exact candidate
+  `aacbe5e13c88dd6b3a9808a0a14091fe5ad731b2` with GPT-5.6 Terra/xhigh.
+  Both returned **NEEDS-CHANGES** for the same reproduced P1: the durable claim
+  ends before recording repository-prefix/closure, mandatory full-verifier
+  differential, and final clean-state evidence.
+- Both reviewers independently found no added verifier failure. Executability
+  reproduced the inherited clean repeat signature of **12 failing files / 69
+  failing tests**, with **211 passed files / 2695 passed tests**. Architecture
+  and executability both approved the exact finite source-target mappings,
+  immutable inputs, four-file scope, and record-11/record-14 activation logic.
+- Coordinator adjudication accepts the evidence-contract P1. The assurance
+  lane's one consolidated repair is now consumed: the same implementation
+  owner may add one causal claim-evidence RED and a claim-only GREEN containing
+  the exact commands, repository result, both observed verifier runs, inherited
+  differential, and clean-state result. No contract/checker/scope change,
+  replacement owner, further automatic repair, or history rewrite is allowed.
+  One final concurrent read-only pair follows the repair.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- Each owner is bound to claim-only, causal RED, and minimal GREEN commits,
+  its exact owned paths and test commands, cross-boundary gates, typecheck,
+  full verification, factory readiness, clean state, and a real non-symlinked
+  dependency tree. Children do not edit this registry or self-integrate.
+
+## RV-1-E-684 — W1-123-H-SHARED-SCHEMA released as strict record 12
+
+- Recorded at: 2026-07-17T19:13:03Z
+- The coordinator independently re-attested exact candidate and integration
+  checkpoint `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`, including ancestry and
+  literal blob identity for all three card paths. The current program bytes
+  remain byte-identical to that approved checkpoint.
+- The frozen command passed as **1 file / 34 tests**. Diff hygiene, factory
+  readiness, clean tracked and untracked state, real non-symlinked local
+  dependencies, and executable local Vitest also passed.
+- The prior exact architecture/invariant and executability/adversarial review
+  pair remains valid because no owned byte changed after its approval. The
+  canonical record below advances the strict V4 release prefix to 12.
+
+## Task136 dispatch release v4: W1-123-H-SHARED-SCHEMA
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "W1-123-H-SHARED-SCHEMA",
+  "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "reviews": [
+    {
+      "threadId": "019f6bda-4dd3-76e2-892d-37e3737a4dfd",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6bda-4edf-7413-9333-fda7683cd60e",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "releaseEventId": "task136-release-v4-W1-123-H-SHARED-SCHEMA",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "docs/agentic/claims/task-123-resident-full-vision-handoff-schema-prerequisite.md",
+      "disposition": "owned",
+      "blobSha": "14d4cd3a34b5f3a46e0e2aca29f9e2378005c5b8"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-projection.ts",
+      "disposition": "transferred",
+      "blobSha": "40027d03148d1e89aa64b41420d30b511ce6524c"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-projection.test.ts",
+      "disposition": "transferred",
+      "blobSha": "70342f5734bdfe279606b37860b2bed8f716e9af"
+    }
+  ]
+}
+```
+
+## RV-1-E-685 — W1-133.5-PREAPPROVAL-PROMPT-STORE released as strict record 13
+
+- Recorded at: 2026-07-17T19:14:39Z
+- Exact approved candidate
+  `bd3b8ed3e287a6a598dfb246524e36ca2a345438` is an ancestor of exact
+  integration `75de81f110b4f405f9ec064104bc2c2b4f79e223`, which is an ancestor of
+  the current program branch. Candidate, integration, and current bytes are
+  literal, byte-identical blobs for all three card paths.
+- The frozen command passed as **1 file / 49 tests**. Diff hygiene, factory
+  readiness, clean tracked and untracked state, real non-symlinked local
+  dependencies, and executable local Vitest also passed.
+- The prior exact architecture/invariant and executability/adversarial review
+  pair remains valid because no owned byte changed after its approval. The
+  canonical record below advances the strict V4 release prefix to 13.
+
+## Task136 dispatch release v4: W1-133.5-PREAPPROVAL-PROMPT-STORE
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "W1-133.5-PREAPPROVAL-PROMPT-STORE",
+  "candidateSha": "bd3b8ed3e287a6a598dfb246524e36ca2a345438",
+  "reviews": [
+    {
+      "threadId": "019f683e-56f8-7170-bbda-5da5584325f7",
+      "candidateSha": "bd3b8ed3e287a6a598dfb246524e36ca2a345438",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f683e-528c-7c82-9030-cf5efed98a64",
+      "candidateSha": "bd3b8ed3e287a6a598dfb246524e36ca2a345438",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "75de81f110b4f405f9ec064104bc2c2b4f79e223",
+  "releaseEventId": "task136-release-v4-W1-133.5-PREAPPROVAL-PROMPT-STORE",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "docs/agentic/claims/task-133-5-preapproval-prompt-store.md",
+      "disposition": "owned",
+      "blobSha": "5e2061c5ac07875b593abbe7bddca2d1a53f2d9d"
+    },
+    {
+      "path": "packages/agent/src/specialist-runner-kernel.ts",
+      "disposition": "transferred",
+      "blobSha": "6975ec40008bc9dc09812b879b4dc9fde0f12d7f"
+    },
+    {
+      "path": "packages/agent/test/specialist-runner-kernel.test.ts",
+      "disposition": "transferred",
+      "blobSha": "55db6a91fbd4e6cabd16c0e834e71182dd49b0a3"
+    }
+  ]
+}
+```
+
+## RV-1-E-686 — CF1-HR claimed after prerequisite releases
+
+- Recorded at: 2026-07-17T19:18:49Z
+- Strict records 11, 12, and 13 release `Task137B-W`,
+  `W1-123-H-SHARED-SCHEMA`, and
+  `W1-133.5-PREAPPROVAL-PROMPT-STORE`. The V4 graph therefore makes CF1-HR
+  eligible without changing the independent Task126-R or G136-SC ownership
+  lanes.
+- The bounded implementation owner is task
+  `019f7183-e8db-77f2-ac2f-1aabeaae543d`, worktree
+  `/home/drake/.codex/worktrees/00c5/Cestus`, branch
+  `codex/cf1-handoff-readback`, exact dispatch base
+  `9c5f6229e86de8578a3d0b34f47769753be80ba2`, host selection
+  `gpt-5.6-terra`, reasoning `xhigh`.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- Ownership is exactly the two specialist-runner kernel paths, the two
+  specialist-handoff projection paths, and the missing CF1-HR claim. The
+  owner must preserve a claim-only commit, causal RED, and minimal GREEN;
+  children do not edit this registry, review themselves, or self-integrate.
+- No other card became newly eligible at this transition. Strict integration
+  remains in V4 order even though the three disjoint eligible implementations
+  may run in parallel.
+
+## RV-1-E-687 — Task126-R candidate admitted to its review pair
+
+- Recorded at: 2026-07-17T19:24:16Z
+- Candidate `ccadb426d53a237b5c7f39822e6f191934596f0e` on
+  `codex/task126-r-reader-boundary` is a clean linear three-commit descendant
+  of exact dispatch base `863c93a09a0817365c6b41996cc751efa16efd78`:
+  claim `9cbb8e0aa4649b5a6c033fd113f34b348130189b`, causal RED
+  `f69c316ff6dc021a8b72c62690e53fe921b41564`, and minimal GREEN
+  `ccadb426d53a237b5c7f39822e6f191934596f0e`.
+- The candidate changes exactly the Task126-R claim, public agent barrel, and
+  new import-boundary test; both inherited BYOK source/test paths remain
+  unchanged. Intervening program commits are registry-only and do not make
+  these prerequisite-independent candidate bytes stale.
+- Fresh coordinator admission reproduced **2 files / 15 tests**, cross-boundary
+  **4 files / 43 tests**, standalone typecheck, exact-range diff hygiene,
+  factory readiness, clean tracked and untracked state, and real non-symlinked
+  local dependencies with executable Vitest. The implementation owner also
+  recorded a clean full verifier from the final committed bytes.
+- Exactly one fresh concurrent read-only pair is bound to the candidate:
+  architecture/invariants task `019f7188-603c-75c2-bbd6-a0c20a2a2075` in
+  `/home/drake/.codex/worktrees/d07f/Cestus`, and executability/adversarial
+  task `019f7188-623e-7d62-83cf-1e25617ad5ee` in
+  `/home/drake/.codex/worktrees/c1bc/Cestus`. Both use `gpt-5.6-terra` with
+  `xhigh` reasoning.
+- Reviews are read-only. Subagent-driven development and test-driven
+  development are not relevant or authorized for reviewers. Only a reproduced
+  P0/P1 contract violation can trigger the single consolidated repair packet;
+  P2, style, hypothetical hardening, and unreproduced concerns are backlog.
+
+## RV-1-E-688 — CF1-HR blocked by frozen V2 schema ownership conflict
+
+- Recorded at: 2026-07-17T19:26:26Z
+- The CF1-HR owner committed only its claim at
+  `56bbb10b745b742a86b7f63b878aadc105efee0c` and stopped before RED or
+  production mutation. The worktree is clean; diff hygiene and factory
+  readiness passed.
+- Coordinator adjudication reproduces the blocker. CF1-HR owns only the two
+  specialist-runner kernel paths, two handoff-projection paths, and its claim.
+  The current canonical specialist manifest is literally
+  `agent-specialist-handoff-manifest.v1` in the unowned
+  `packages/agent/src/specialist-handoff-manifest.ts`; current prepared and
+  recorded event payload schemas also carry no V2 mounted-authority binding.
+- The already released T120-R contract instead requires a completed result to
+  carry an H-owned readback whose manifest version is literally
+  `agent-specialist-handoff-manifest.v2` and whose authority binding exactly
+  equals current mounted authority. Producing that value from V1 bytes inside
+  the five-path ceiling would be a false attestation, shadow schema, or
+  compatibility parser, all forbidden by the approved safety contract.
+- This is a genuine schema/file-owner and externally visible durable-contract
+  decision on the strict card-14 critical path. No automatic RED/GREEN repair,
+  renamed recovery, scope widening, contract rewrite, or downgrade from V2 to
+  V1 is authorized. The claim commit remains preserved but unintegrated.
+- Recommended resolution is an explicit minimal schema-owner scope correction
+  that implements and tests the frozen V2 manifest/lifecycle producer before
+  resuming the same CF1-HR owner. Downgrading the T120-R parser to V1 would
+  weaken the frozen authority invariant and is not recommended.
+- Independent Task126-R review and G136-SC candidate admission may continue;
+  strict integration/release cannot advance past record 13 until this decision
+  is resolved.
+
+## RV-1-E-689 — G136-SC candidate admitted to its review pair
+
+- Recorded at: 2026-07-17T19:29:51Z
+- Candidate `80c20c811c3cec3143c40164a75d4b4114118acc` on
+  `codex/g136-scheduler-completion-adapter` is a clean linear three-commit
+  descendant of exact dispatch base
+  `863c93a09a0817365c6b41996cc751efa16efd78`: claim
+  `57a1f863e25d8e4cbd6bea3ee1d9fce1a8c8648c`, causal RED
+  `c119be7652d4201bdd719adce498156f093a124b`, and minimal GREEN
+  `80c20c811c3cec3143c40164a75d4b4114118acc`.
+- The candidate changes seven of the eight card paths; the existing gateway
+  test remains unchanged. Intervening program commits are registry-only, the
+  sole T120-R prerequisite is released, and no active candidate owns these
+  paths, so the bytes are not stale.
+- Fresh coordinator admission reproduced the exact **4 files / 51 tests** and
+  cross-boundary **7 files / 109 tests** gates, standalone typecheck,
+  exact-range diff hygiene, factory readiness, clean tracked and untracked
+  state, and real non-symlinked local dependencies with executable Vitest.
+  The implementation owner also recorded a clean full verifier from final
+  committed bytes.
+- Exactly one fresh concurrent read-only pair is bound to the candidate:
+  architecture/invariants task `019f718d-b719-7cc0-8105-86f16d8ffb34` in
+  `/home/drake/.codex/worktrees/010d/Cestus`, and executability/adversarial
+  task `019f718d-b6de-7492-830e-f2a8161c5537` in
+  `/home/drake/.codex/worktrees/e12b/Cestus`. Both use `gpt-5.6-terra` with
+  `xhigh` reasoning.
+- Reviews are read-only. Subagent-driven development and test-driven
+  development are not relevant or authorized for reviewers. Only a reproduced
+  P0/P1 contract violation can trigger the single consolidated repair packet;
+  P2, style, hypothetical hardening, and unreproduced concerns are backlog.
+
+## RV-1-E-690 — Task126-R review adjudication authorizes its one repair packet
+
+- Recorded at: 2026-07-17T19:34:13Z
+- Architecture/invariants reviewer
+  `019f7188-603c-75c2-bbd6-a0c20a2a2075` and
+  executability/adversarial reviewer
+  `019f7188-623e-7d62-83cf-1e25617ad5ee` each returned **NEEDS-CHANGES** for
+  exact candidate `ccadb426d53a237b5c7f39822e6f191934596f0e` after its
+  focused, cross-boundary, typecheck, diff, factory, and clean-state gates
+  passed.
+- The executability reviewer reproduced a valid P1: the import-policy helper
+  recognizes only complete string literals. Split/computed standard dynamic
+  import and indirect CommonJS paths therefore evade the production-root
+  importer inventory and can call the authority-reader mint.
+- The architecture reviewer's broader claim that the mint's direct source
+  export must itself be removed is disproven by the approved Task126 authority
+  ruling in RV-1-C-134. The capability-factory caller is the trusted injection
+  boundary; Task139 later mounts the sole real reader. Task126-R must close
+  unintended first-party production imports, not invent a second source
+  verifier, make Task139 a predecessor, or make JavaScript imports
+  cryptographically distinguishable.
+- The same Task126-R implementation owner is authorized for the single
+  consolidated repair packet. It must preserve the original claim/RED/GREEN
+  commits, append a causal computed-loader RED, then append the minimal
+  import-policy GREEN. Standard `import`, `require`, and `module.require`
+  targets that cannot be resolved statically fail closed in production roots;
+  transparent wrappers and constant expressions are normalized; unrelated
+  loaders and resolvable lookalikes remain accepted.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- This exhausts the automatic Task126-R repair allowance. A new final review
+  pair is required for the repaired SHA; no further automatic repair follows
+  that pair.
+
+## RV-1-E-691 — G136-SC blocked after reproduced completion-authority P1s
+
+- Recorded at: 2026-07-17T19:38:36Z
+- Architecture/invariants reviewer
+  `019f718d-b719-7cc0-8105-86f16d8ffb34` and
+  executability/adversarial reviewer
+  `019f718d-b6de-7492-830e-f2a8161c5537` each returned **NEEDS-CHANGES** for
+  exact candidate `80c20c811c3cec3143c40164a75d4b4114118acc` after all
+  targeted, cross-boundary, typecheck, full-verifier, diff, factory, and
+  clean-state gates passed.
+- Both reproduced a P1 in the public gateway: `completeTool` accepts a
+  caller-structural result and appends `agent.tool.completed` without any
+  authoritative domain-result reread. It remains reachable through the public
+  gateway object and the unowned `packages/agent/src/execution-loop.ts`; the
+  existing gateway test proves invented event/artifact values can complete an
+  approved request.
+- Architecture also reproduced that the scheduler descriptor can append the
+  v1 resident tool-step it later returns as alleged result evidence. That event
+  is loop bookkeeping, not independent domain/gateway result authority, so the
+  new adapter's reread does not eliminate caller minting.
+- Coordinator adjudication accepts both P1s. The scheduler-side defect fits the
+  current card, but closing every public completion append requires a causal
+  conversion of the fake execution-loop source/test to authoritative durable
+  result locators. Those paths are absent from the executable G136-SC
+  ownership contract. Retaining a legacy structural completion compatibility
+  path would violate the frozen safety invariant.
+- No repair packet is authorized yet, so the single G136-SC repair allowance
+  remains unspent. Candidate history is preserved and unintegrated. A minimal
+  explicit ownership correction for the execution-loop source/test is
+  recommended; after that decision, the same owner may perform one
+  consolidated RED/GREEN repair and one final review pair.
+- G136-R remains blocked. No rename, compatibility route, partial scheduler
+  repair, integration, release, or contract downgrade is authorized.
+
+## RV-1-E-692 — Task126-R repaired candidate enters final review
+
+- Recorded at: 2026-07-17T19:44:37Z
+- The single repair packet appends causal RED
+  `d7dac8ba1f9eb98054ecbad6423af725c828b1b5` and minimal GREEN
+  `4f39cfb2bc3064c07a6ebc3f10bc45dc748d7624` after the original three
+  Task126-R commits. No history was rewritten.
+- Coordinator admission at exact repaired candidate
+  `4f39cfb2bc3064c07a6ebc3f10bc45dc748d7624` reproduced **2 files / 17
+  tests**, cross-boundary **4 files / 45 tests**, standalone typecheck,
+  exact-range diff hygiene, factory readiness, exact three-path cumulative
+  scope, clean tracked/untracked state, linear ancestry, and real
+  non-symlinked local dependencies. The owner also recorded a clean full
+  verifier from final committed bytes.
+- The one final read-only pair is architecture/invariants task
+  `019f719b-6028-76d0-a218-c98c0896dd2b` in
+  `/home/drake/.codex/worktrees/6807/Cestus` and
+  executability/adversarial task `019f719b-5e0f-78d0-b639-4717ecc18835` in
+  `/home/drake/.codex/worktrees/3a27/Cestus`. Both use `gpt-5.6-terra` with
+  `xhigh` reasoning and are bound to RV-1-C-134's trusted-injection ruling.
+- Reviews are read-only. Subagent-driven development and test-driven
+  development are not relevant or authorized for reviewers. The automatic
+  repair ceiling is exhausted: P2/style/hypothetical concerns are backlog,
+  while any reproduced P0/P1 becomes a durable blocked-card record.
+
+## RV-1-E-693 — Task126-R blocked at the exhausted final-review ceiling
+
+- Recorded at: 2026-07-17T19:55:36Z
+- Final architecture/invariants reviewer
+  `019f719b-6028-76d0-a218-c98c0896dd2b` and final
+  executability/adversarial reviewer
+  `019f719b-5e0f-78d0-b639-4717ecc18835` each returned **NEEDS-CHANGES** for
+  exact repaired candidate `4f39cfb2bc3064c07a6ebc3f10bc45dc748d7624`.
+- Both reproduced a P1 in the actual analyzer. Destructured
+  `module.require`, direct `createRequire(import.meta.url)(...)`, and
+  comma-indirect `(0, require)(...)` calls can reach the protected module while
+  the policy returns no violation. Scoped custom loader parameters can also be
+  mistaken for standard loaders, producing a fail-closed false positive.
+- The prescribed **2 files / 17 tests** and cross-boundary **4 files / 45
+  tests** remained green, as did diff and factory gates; coordinator admission
+  already supplied clean typecheck and the implementation owner supplied the
+  final full verifier. These results do not override the reproduced authority
+  bypass. Both review worktrees remained read-only and clean.
+- The original candidate, its single repair RED/GREEN packet, and both review
+  generations are preserved. The automatic repair ceiling is exhausted. No
+  additional worker, renamed recovery, partial integration, release record, or
+  contract downgrade is authorized.
+- Task126-R is a durable blocked card on strict release position 15. Resolving
+  it now requires an explicit program-scope decision authorizing a new finite
+  forward repair beyond the approved ceiling; absent that decision, Task133
+  and the provider/runtime critical path remain blocked.
+
+## RV-1-E-694 — Blocker audit identifies the exact program-scope decisions
+
+- Recorded at: 2026-07-17T20:06:38Z
+- A read-only coordinator audit at clean program revision
+  `69ee525cc1d9920a8f2d871665c9463d71913490` reconfirmed the strict **13 of
+  29** release prefix, the three preserved clean candidate worktrees, and no
+  movement or mutation of inherited candidate history.
+- CF1-HR cannot be corrected by merely adding the previously identified
+  manifest source/test pair. The frozen Handoff V2 ABI requires the additive
+  V2 manifest and prepared/recorded event schemas to carry the exact current
+  authority binding, while the current mounted-store capability exposes no
+  such seven-field producer. Task137B supplies related snapshot evidence but
+  not the frozen `ledgerHighWaterEventId` contract. A safe correction therefore
+  requires a bounded design decision for the capability-derived current
+  authority seam as well as manifest and ontology coverage.
+- G136-SC requires the previously identified execution-loop source/test
+  ownership correction, an independently appended domain-result locator, and
+  removal of every public caller-structural completion append. A descriptor
+  that mints and rereads its own resident tool-step bookkeeping is not an
+  authority source.
+- Both CF1-HR and G136-SC corrections would add owned paths that are absent
+  from their current strict V4 card records. The V4 assurance script also
+  hard-codes the contract fingerprint and exact card paths. Preserving V1-V3,
+  the first ten records, the existing 13-record raw prefix, and the 29-card
+  order therefore requires an explicit bounded V4 scope-and-assurance
+  correction before either implementation may proceed. No contract or code
+  change is made by this checkpoint.
+- Task126-R needs no production BYOK change. The exact exceptional repair is
+  confined to its claim and import-policy test: replace name-based alias
+  collection with scope- and binding-aware lexical value analysis covering
+  destructured/indirect standard loaders and official `node:module`
+  `createRequire`, while rejecting shadowed and lookalike loaders. Because the
+  final-pair repair ceiling is exhausted, exactly one further finite
+  causal-RED/minimal-GREEN packet and one final read-only review pair require
+  explicit program-scope authorization.
+- These are genuine critical-path scope decisions, not routine approvals.
+  Until they are authorized, no replacement worker, renamed repair,
+  compatibility path, contract downgrade, integration, or strict release
+  record is permitted for the three blocked cards.
+
+## RV-1-E-695 — Program owner authorizes both bounded scope corrections
+
+- Recorded at: 2026-07-17T20:22:07Z
+- The program owner explicitly answered **“Authorize A and B”**. Authorization
+  A permits the bounded V4 scope-and-assurance correction for CF1-HR and
+  G136-SC while preserving V1-V3, raw strict records 1-13, every prerequisite,
+  and the exact 29-card order. Authorization B permits exactly one additional
+  Task126-R causal RED/minimal GREEN packet and one final read-only review pair
+  beyond its exhausted automatic ceiling.
+- The approved correction design is commit
+  `a5c192842bbedb4dc7801bedf8908c025dc33dfb`; the executable implementation
+  plan is commit `453c5ff79033a3d7eff629bd5394d8e834fb619a`.
+  CF1-HR now has a proposed exact 14-path authority-bound Handoff V2 boundary;
+  G136-SC has a proposed exact 11-path independent-domain-result boundary.
+  The four-file V4 assurance amendment must become RED, GREEN, reviewed, and
+  integrated before either corrected card can enter review.
+- Task126-R remains production-byte invariant: its exceptional packet is
+  confined to the existing claim and import-policy test. It may run ahead, but
+  its branch must include the released record-14 program base before its final
+  pair. G136-SC may also implement ahead but cannot receive its final pair
+  until the current record-21 base is merged forward.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- All implementation and review children use `gpt-5.6-terra` with `xhigh`
+  reasoning. Reviewers remain read-only. No new coordinator, relay, watchdog,
+  release card, compatibility completion path, history rewrite, `neo` change,
+  push, credential use, or external effect is authorized.
+
+## RV-1-E-696 — V4 assurance and exceptional Task126 repairs enter implementation
+
+- Recorded at: 2026-07-17T20:29:23Z
+- The four-file V4 assurance amendment is owned by task
+  `019f71bf-f525-79b1-8068-c28b2c7e4d40` in
+  `/home/drake/.codex/worktrees/377f/Cestus`, using `gpt-5.6-terra` with
+  `xhigh` reasoning. Exact clean base is
+  `dbe9fea17bc2eb0a9a3c8c5661dcc5f6e00f5dfb`; claim commit is
+  `9801dbc01a660d581c4c2270efd2e844e24ee5cf`. Its initially absent ignored
+  dependency directory was restored as a real non-symlinked copy from the
+  verified program checkout; that environment-only recovery changed no Git
+  bytes and consumed no repair.
+- The same Task126-R owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b` continues in the preserved
+  `/home/drake/.codex/worktrees/ee6e/Cestus` worktree, also using
+  `gpt-5.6-terra` with `xhigh` reasoning. It preserved all five prior commits
+  and appended causal RED `4ac56b05228f7891a564146f7dfbc36ccdfb4747`.
+  The exact focused run failed only the new destructured ambient-module route
+  (`1` failed, `17` passed), proving the inherited flat alias map misses the
+  authorized lexical-binding case.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- The lanes are disjoint. Neither child may edit the registry, integrate,
+  self-merge, push, touch `neo`, use credentials/providers/external services,
+  rewrite history, or exceed its approved repair ceiling.
+
+## RV-1-E-697 — Authorized V4 correction resolves the Task137B ownership collision
+
+- Recorded at: 2026-07-17T20:34:48Z
+- The V4 assurance owner preserved claim commit
+  `9801dbc01a660d581c4c2270efd2e844e24ee5cf` and appended causal RED
+  `760569643fd533262de0051884fbc1bc8a4bb515`, then stopped before GREEN after
+  proving that `packages/ontology/src/contracts.ts` is still owned by released
+  Task137B-W in the static V4 graph. No implementation repair was consumed.
+- Coordinator adjudication confirms this is inside Authorization A: CF1-HR
+  already directly depends on Task137B-W and cannot implement its approved
+  Handoff V2 ABI without changing that path. Forward correction commit
+  `0c516cded13099952bf133382ed7782316dbb390` therefore changes only the V4
+  description of that path from Task137B-W `owned` to `transferred`, names
+  exactly `CF1-HR` as transfer target, and assigns current ownership to CF1-HR.
+- Raw strict record 11 remains byte-identical and authoritative. The corrected
+  V4 compatibility table binds its canonical JSON SHA-256
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
+  to the historical `owned` disposition. Current-HEAD equality remains with
+  Task137B-W until CF1-HR record 14 exists, then moves to CF1-HR; candidate and
+  integration blob verification for record 11 never relaxes.
+- V1-V3, raw records 1-13, all 29 card IDs and order, every prerequisite, and
+  every other transfer remain frozen. The same assurance owner resumes the
+  same generation from its existing RED; this forward specification
+  correction does not authorize a new worker, new contract generation,
+  history rewrite, registry rewrite, or additional repair.
+
+## RV-1-E-698 — Remaining CF1 ownership collisions require one exact scope choice
+
+- Recorded at: 2026-07-17T20:41:49Z
+- The same assurance owner extended its causal RED at
+  `24669b1b58917e461ae54e21435b17f6c3c9fb60` and stopped before GREEN. A
+  coordinator audit then confirmed that RV-1-E-697 corrected only one of four
+  released-source collisions in the approved fourteen-path CF1-HR scope.
+- Task135B strict record 9 still owns
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` and
+  its test; its canonical record SHA-256 is
+  `73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409`.
+  Task129-MFA strict record 6 still owns
+  `packages/ontology/test/agent-contracts.test.ts`; its already pinned
+  canonical record SHA-256 is
+  `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`.
+  The fourth collision is the Task137B-W `contracts.ts` path already corrected
+  by RV-1-E-697.
+- The current V4 safety rule requires a transfer target to name the source as
+  a direct prerequisite; its frozen design explicitly says transitive ancestry
+  does not authorize modification of a released path. CF1-HR transitively
+  depends on Task135B and Task129-MFA through Task137B-W but does not directly
+  name either. The program owner's Authorization A also froze every
+  prerequisite, so silently allowing a transitive transfer or adding direct
+  edges would exceed one of the approved constraints.
+- The narrowest safety-preserving scope choice is to add the two redundant
+  direct CF1-HR prerequisites and exact Task135B/Task129-MFA-to-CF1 transfers,
+  with historical compatibility for their unchanged raw records. The
+  alternative is to replace the three colliding CF1 paths with new adapter and
+  dedicated-test paths, which preserves the graph but redesigns the approved
+  mounted-authority producer seam. No checker weakening, compatibility relay,
+  GREEN, replacement worker, repair, history rewrite, or raw record mutation
+  is authorized while this exact scope/safety choice is pending.
+- The independent Task126-R exceptional implementation continues through its
+  already authorized local verification. It cannot enter final review until
+  CF1-HR is released as strict record 14.
+
+## RV-1-E-699 — Exceptional Task126-R packet becomes a record-14-bound candidate
+
+- Recorded at: 2026-07-17T20:50:11Z
+- The same authorized owner preserved all five earlier Task126-R commits and
+  appended causal lexical-binding RED
+  `4ac56b05228f7891a564146f7dfbc36ccdfb4747` followed by minimal GREEN
+  `822fd573d3937ad77a9d173028899ce3f74c1247`. This consumes Authorization B's
+  sole exceptional repair packet; no further automatic Task126-R code or test
+  change is permitted.
+- The exceptional diff from prior candidate `4f39cfb2` is exactly the claim
+  and `packages/agent/test/byok-provider-imports.test.ts`. Production BYOK
+  bytes remain unchanged. The cumulative seven-commit chain from base
+  `863c93a09a0817365c6b41996cc751efa16efd78` is preserved without rewrite.
+- Final committed-byte focused admission passed **2 files / 18 tests**;
+  cross-boundary admission passed **4 files / 46 tests**. Standalone typecheck,
+  diff hygiene, factory readiness, exact two-path exceptional scope, clean
+  tracked/untracked state, real non-symlinked dependencies, and executable
+  local Vitest passed.
+- Full `npm run verify` reproduces an inherited program baseline rather than a
+  Task126 defect: both the clean program checkout and candidate report exactly
+  **69 failing tests across 12 files**, led by released Task133.5's required
+  mounted prompt witness in still-unadapted specialist workflows, consequent
+  unavailable runtime routes, and three prerequisite-check timeouts. Task133.5
+  explicitly excluded full verification from its released bounded gates.
+- Status is `candidate`, not reviewing or approved. Per the authorized plan,
+  final Task126-R review waits for strict CF1-HR record 14, then receives a
+  normal forward merge of the current program base and a complete gate rerun.
+  Its one final Terra/xhigh architecture/executability pair permits no later
+  automatic repair.
+
+## RV-1-E-700 — CF1-HR direct-source ownership correction is authorized
+
+- Recorded at: 2026-07-17T21:54:56Z
+- The program owner explicitly authorizes the bounded CF1-HR direct-source
+  correction in forward design/plan commit
+  `f771f80476eb6b8e780734cbb3d967c72d3a831a`. CF1-HR's exact ordered
+  prerequisites become `W1-123-H-SHARED-SCHEMA`,
+  `W1-133.5-PREAPPROVAL-PROMPT-STORE`, `Task137B-W`, `Task135B`, and
+  `Task129-MFA`; every other prerequisite and all 29 card IDs/release positions
+  remain unchanged.
+- The only new direct ownership transfers are Task135B's portable mounted-
+  store source/test pair to CF1-HR and Task129-MFA's ontology agent-contract
+  test to CF1-HR. The already approved Task137B-W `contracts.ts` transfer to
+  CF1-HR remains. Task129-MFA's existing transfers to Task137B-W are unchanged.
+  The checker must encode these as finite source-and-target-specific groups,
+  never as generic multi-target or transitive authority.
+- Historical compatibility pins remain source-record exact: Task135B
+  `73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409`,
+  Task129-MFA
+  `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`,
+  and Task137B-W
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`.
+  Source current-HEAD equality remains authoritative until CF1-HR strict
+  record 14; at record 14 only current ownership migrates, while every
+  historical candidate, integration, blob, review, and release proof remains
+  mandatory.
+- V1-V3, raw strict records 1-13, existing candidate/integration evidence, and
+  release order remain byte-identical. No bridge, V5, fallback, alternate
+  producer, history rewrite, raw-record mutation, replacement owner, recovery
+  generation, or `neo` action is authorized.
+- The same assurance owner task `019f71bf-f525-79b1-8068-c28b2c7e4d40`
+  resumes from preserved causal RED
+  `24669b1b58917e461ae54e21435b17f6c3c9fb60`. Its required full verifier must
+  be run and compared exactly to the clean inherited record-13 failure
+  baseline; focused assurance, contract/repository, typecheck, diff, factory,
+  dependency, and clean-state gates remain strict.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+
+## RV-1-E-702 — Forward causal-position correction for RV-1-E-701
+
+- Recorded at: 2026-07-17T22:31:28Z
+- Registry commit `ee8e1c354b449826781b0a301103d705b40a6b8e`
+  inadvertently inserted RV-1-E-701 after the first authorization bullet of
+  RV-1-E-683 rather than after RV-1-E-700. The RV-1-E-701 bytes remain
+  untouched. For causal display, treat RV-1-E-701 as occurring after
+  RV-1-E-700 and before this forward correction.
+- The single bullet immediately following RV-1-E-701 and preceding the
+  RV-1-E-684 heading is the unchanged closing bullet of RV-1-E-683, not part
+  of RV-1-E-701. No strict release JSON, event payload, review evidence,
+  contract, candidate, integration, or release ordering changes.
+- This append-only correction records coordinator document placement only. It
+  does not consume another implementation repair or authorize any additional
+  code, contract, ownership, or release change.
+
+## RV-1-E-703 — Bounded CF1-HR assurance correction is approved and integrated
+
+- Recorded at: 2026-07-17T23:06:04Z
+- The same assurance owner completed the preserved generation with exact
+  ordered candidate commits `9801dbc01a660d581c4c2270efd2e844e24ee5cf`,
+  `760569643fd533262de0051884fbc1bc8a4bb515`,
+  `24669b1b58917e461ae54e21435b17f6c3c9fb60`,
+  `fda9e55a9a1a32ef81752fd4da0c0a463b2bbceb`,
+  `a9c7172ccd2b56bc4a9d5fcffedc68823f56987d`,
+  `aacbe5e13c88dd6b3a9808a0a14091fe5ad731b2`,
+  `aa19cad901d1c88c1f46b14ed1fc18dc4ae59eec`, and
+  `1f2ea003727411b0c1f2dfa6631f7159b6a9c3b6`. The one permitted repair
+  packet corrected only claim-bound evidence; no replacement or additional
+  generation was created.
+- The final Terra/xhigh architecture review
+  `019f723e-6399-7b91-9ca0-3c9305976da8` and executability review
+  `019f723e-6399-7b91-9ca0-3c77affe6a52` independently approved the exact
+  candidate. Their prior reproduced P1 was resolved by the causal repair; no
+  P0/P1 remains.
+- The coordinator integrated every commit in order as `2ed98fee`, `cb392e77`,
+  `e1b6e0b4`, `54619ed9`, `1e051dbb`, `e5ece8ce`, `08583ed8`, and
+  `da9549f5`. Integrated admission passes **18/18** focused assurance tests,
+  every exact contract marker, typecheck, diff hygiene, factory readiness,
+  dependency/Vitest provenance, and clean tracked/untracked state. Repository
+  mode emits `TASK136_REPOSITORY_PREFIX_OK records=13 commands=13` before the
+  expected 29-record closure diagnostic.
+- Full `npm run verify` reproduces the inherited record-13 differential
+  exactly: **12 failing / 211 passing / 3 skipped files** and **69 failing /
+  2695 passing / 5 skipped tests**. The named failures remain the already
+  recorded pre-CF1 mounted-prompt/runtime adaptation baseline; no new
+  assurance failure appears.
+- Status moves `candidate -> reviewing -> approved -> integrated`. Strict
+  record count remains 13; CF1-HR may now resume from its preserved claim on a
+  forward merge of this reviewed assurance base. V1-V3, raw records 1-13, all
+  29 card IDs/order, historical evidence, and `neo` remain untouched.
