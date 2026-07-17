@@ -18721,3 +18721,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The independent Task126-R exceptional implementation continues through its
   already authorized local verification. It cannot enter final review until
   CF1-HR is released as strict record 14.
+
+## RV-1-E-699 — Exceptional Task126-R packet becomes a record-14-bound candidate
+
+- Recorded at: 2026-07-17T20:50:11Z
+- The same authorized owner preserved all five earlier Task126-R commits and
+  appended causal lexical-binding RED
+  `4ac56b05228f7891a564146f7dfbc36ccdfb4747` followed by minimal GREEN
+  `822fd573d3937ad77a9d173028899ce3f74c1247`. This consumes Authorization B's
+  sole exceptional repair packet; no further automatic Task126-R code or test
+  change is permitted.
+- The exceptional diff from prior candidate `4f39cfb2` is exactly the claim
+  and `packages/agent/test/byok-provider-imports.test.ts`. Production BYOK
+  bytes remain unchanged. The cumulative seven-commit chain from base
+  `863c93a09a0817365c6b41996cc751efa16efd78` is preserved without rewrite.
+- Final committed-byte focused admission passed **2 files / 18 tests**;
+  cross-boundary admission passed **4 files / 46 tests**. Standalone typecheck,
+  diff hygiene, factory readiness, exact two-path exceptional scope, clean
+  tracked/untracked state, real non-symlinked dependencies, and executable
+  local Vitest passed.
+- Full `npm run verify` reproduces an inherited program baseline rather than a
+  Task126 defect: both the clean program checkout and candidate report exactly
+  **69 failing tests across 12 files**, led by released Task133.5's required
+  mounted prompt witness in still-unadapted specialist workflows, consequent
+  unavailable runtime routes, and three prerequisite-check timeouts. Task133.5
+  explicitly excluded full verification from its released bounded gates.
+- Status is `candidate`, not reviewing or approved. Per the authorized plan,
+  final Task126-R review waits for strict CF1-HR record 14, then receives a
+  normal forward merge of the current program base and a complete gate rerun.
+  Its one final Terra/xhigh architecture/executability pair permits no later
+  automatic repair.
