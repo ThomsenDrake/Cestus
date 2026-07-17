@@ -1,6 +1,6 @@
 # Task136 V4 Task137B Authority Transfer Claim
 
-Status: in-progress
+Status: ready-for-review
 
 Plan: `docs/superpowers/plans/2026-07-17-task136-v4-task137b-authority-transfer-implementation.md`
 Design: `docs/superpowers/specs/2026-07-17-task136-v4-task137b-authority-transfer-design.md`
@@ -46,3 +46,23 @@ Bounded scope:
   found 10` until record 11 exists.
 - No network, providers, credentials, external services, `neo`, push,
   registry edit, or full `npm run verify` is permitted.
+
+Implementation evidence:
+- Causal RED: `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`
+  ran 15 tests; 13 failed solely while opening the absent
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json` contract and the
+  two V3-only corpus guards passed.
+- GREEN: the identical command passed 15/15 tests. It covers the V4 schema,
+  graph, compatibility branches, 14-path Task137B-W ceiling, four direct
+  prerequisites, seven-suite command, V1/V2/V3 and raw prefix pins, finite
+  graph and compatibility mutations, source-head migration before record 11,
+  and candidate/integration/current-head blob failures.
+- V4 pretty JSON SHA-256:
+  `bb02ba569157f9c57205e423040e3eb6e8cc7b2c95ed0ef968fd4c9afefc6e9e`.
+- Contract mode emitted exactly once each:
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.
+- Pre-commit bounded checks: `git diff --check` and `npm run factory:check`
+  passed. Full verification was not run by approval.
