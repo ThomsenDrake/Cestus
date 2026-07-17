@@ -71,7 +71,9 @@ append-only Cestus ledger contracts.
 Set `DISPATCH_BASE="$(git rev-parse HEAD)"` before changing any file. Record
 that exact dispatch base, design/plan revisions, immutable v1/v2 hashes,
 explicit task-scoped SDD/TDD approval, and every prohibition from Global
-Constraints. Commit the claim before tests.
+Constraints. The claim must contain exactly one `Dispatch base` line whose
+backtick-delimited value is a lowercase 40-hex SHA so later admission can
+recover it in a fresh shell. Commit the claim before tests.
 
 - [ ] **Step 2: Add two causal RED tests**
 
@@ -109,7 +111,8 @@ mutations to Task129-MFA candidate, review, prerequisite, integration,
 release-event, and blob fields. The same consolidated test exercises a real
 ten-record prefix through fake Git/command adapters and rejects missing,
 non-blob, stale final-owner, and command-failing prefix evidence before any
-incomplete-closure result.
+incomplete-closure result. Every evidence-failure case must emit neither the
+prefix-success marker nor the incomplete-closure message.
 
 - [ ] **Step 3: Run the causal RED**
 
@@ -165,14 +168,21 @@ TASK136_ABI_CORPUS_OK green=1 red=15
 After committing the GREEN candidate, run:
 
 ```bash
+DISPATCH_BASE="$(sed -n 's/^- Dispatch base: `\([0-9a-f]\{40\}\)`$/\1/p' docs/agentic/claims/task-136-task137b-wake-schema-ownership-correction.md)"
+test "${#DISPATCH_BASE}" -eq 40
+git cat-file -e "$DISPATCH_BASE^{commit}"
+git merge-base --is-ancestor "$DISPATCH_BASE" HEAD
 set +e
 output="$(node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository 2>&1)"
 status=$?
 set -e
 printf '%s\n' "$output"
 test "$status" -ne 0
-test "$(printf '%s\n' "$output" | grep -c '^TASK136_REPOSITORY_PREFIX_OK records=10 commands=10$')" -eq 1
-test "$(printf '%s\n' "$output" | grep -c '^repository release closure incomplete: expected 29 records, found 10$')" -eq 1
+checkpoint_lines="$(printf '%s\n' "$output" | grep -E '^(TASK136_REPOSITORY_PREFIX_OK records=10 commands=10|repository release closure incomplete: expected 29 records, found 10)$')"
+expected_checkpoint_lines="$(printf '%s\n' \
+  'TASK136_REPOSITORY_PREFIX_OK records=10 commands=10' \
+  'repository release closure incomplete: expected 29 records, found 10')"
+test "$checkpoint_lines" = "$expected_checkpoint_lines"
 sha256sum docs/agentic/contracts/task136-bounded-assurance-v1.json \
   docs/agentic/contracts/task136-bounded-assurance-v2.json
 git diff --check "$DISPATCH_BASE" HEAD
@@ -236,7 +246,10 @@ repeats Step 6.
 Set `TASK2_BASE="$(git rev-parse HEAD)"` before changing any file. Record that
 exact integrated Task 1 SHA, all three released prerequisite records,
 exact current blobs for the consumed authority/runtime contracts, explicit
-task-scoped SDD/TDD approval, and Global Constraints. Commit before tests.
+task-scoped SDD/TDD approval, and Global Constraints. The claim must contain
+exactly one `Task base` line whose backtick-delimited value is a lowercase
+40-hex SHA so later admission can recover it in a fresh shell. Commit before
+tests.
 
 - [ ] **Step 2: Add the causal RED corpus**
 
@@ -309,6 +322,9 @@ npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/loca
 
 Expected: exactly **9 files / 123 tests** pass with exactly one
 `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+This total is grounded in the pre-dispatch baseline: the five existing
+prerequisite suites pass exactly **5 files / 88 tests**, and Task137B-W adds
+exactly 35 new tests without changing the existing four policy tests.
 
 - [ ] **Step 6: Commit GREEN, then run bounded static admission**
 
@@ -330,6 +346,10 @@ git add packages/local-runtime/src/wake-supervisor-runtime.ts \
   docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md
 git commit -m "feat: add mounted wake supervisor runtime"
 candidate="$(git rev-parse HEAD)"
+TASK2_BASE="$(sed -n 's/^- Task base: `\([0-9a-f]\{40\}\)`$/\1/p' docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md)"
+test "${#TASK2_BASE}" -eq 40
+git cat-file -e "$TASK2_BASE^{commit}"
+git merge-base --is-ancestor "$TASK2_BASE" HEAD
 if ! output="$(timeout 600 bash scripts/resident-agent/assurance/task137-terminal-gate.sh </dev/null)"; then
   printf '%s\n' "$output" >&2
   exit 1
@@ -413,8 +433,11 @@ status=$?
 set -e
 printf '%s\n' "$output"
 test "$status" -ne 0
-test "$(printf '%s\n' "$output" | grep -c '^TASK136_REPOSITORY_PREFIX_OK records=11 commands=11$')" -eq 1
-test "$(printf '%s\n' "$output" | grep -c '^repository release closure incomplete: expected 29 records, found 11$')" -eq 1
+checkpoint_lines="$(printf '%s\n' "$output" | grep -E '^(TASK136_REPOSITORY_PREFIX_OK records=11 commands=11|repository release closure incomplete: expected 29 records, found 11)$')"
+expected_checkpoint_lines="$(printf '%s\n' \
+  'TASK136_REPOSITORY_PREFIX_OK records=11 commands=11' \
+  'repository release closure incomplete: expected 29 records, found 11')"
+test "$checkpoint_lines" = "$expected_checkpoint_lines"
 test -z "$(git status --porcelain=v1)"
 test ! -L node_modules
 ```
