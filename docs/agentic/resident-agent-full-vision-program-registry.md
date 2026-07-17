@@ -18414,3 +18414,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Independent Task126-R review and G136-SC candidate admission may continue;
   strict integration/release cannot advance past record 13 until this decision
   is resolved.
+
+## RV-1-E-689 — G136-SC candidate admitted to its review pair
+
+- Recorded at: 2026-07-17T19:29:51Z
+- Candidate `80c20c811c3cec3143c40164a75d4b4114118acc` on
+  `codex/g136-scheduler-completion-adapter` is a clean linear three-commit
+  descendant of exact dispatch base
+  `863c93a09a0817365c6b41996cc751efa16efd78`: claim
+  `57a1f863e25d8e4cbd6bea3ee1d9fce1a8c8648c`, causal RED
+  `c119be7652d4201bdd719adce498156f093a124b`, and minimal GREEN
+  `80c20c811c3cec3143c40164a75d4b4114118acc`.
+- The candidate changes seven of the eight card paths; the existing gateway
+  test remains unchanged. Intervening program commits are registry-only, the
+  sole T120-R prerequisite is released, and no active candidate owns these
+  paths, so the bytes are not stale.
+- Fresh coordinator admission reproduced the exact **4 files / 51 tests** and
+  cross-boundary **7 files / 109 tests** gates, standalone typecheck,
+  exact-range diff hygiene, factory readiness, clean tracked and untracked
+  state, and real non-symlinked local dependencies with executable Vitest.
+  The implementation owner also recorded a clean full verifier from final
+  committed bytes.
+- Exactly one fresh concurrent read-only pair is bound to the candidate:
+  architecture/invariants task `019f718d-b719-7cc0-8105-86f16d8ffb34` in
+  `/home/drake/.codex/worktrees/010d/Cestus`, and executability/adversarial
+  task `019f718d-b6de-7492-830e-f2a8161c5537` in
+  `/home/drake/.codex/worktrees/e12b/Cestus`. Both use `gpt-5.6-terra` with
+  `xhigh` reasoning.
+- Reviews are read-only. Subagent-driven development and test-driven
+  development are not relevant or authorized for reviewers. Only a reproduced
+  P0/P1 contract violation can trigger the single consolidated repair packet;
+  P2, style, hypothetical hardening, and unreproduced concerns are backlog.
