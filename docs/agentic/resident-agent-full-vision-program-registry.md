@@ -17819,3 +17819,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   read-only at the repaired exact candidate on Terra/xhigh. No prior verdict
   carries forward; integration and every later gate remain closed pending two
   literal unqualified **APPROVED** verdicts.
+
+## RV-1-E-675 — Task136 v3 assurance migration approved and integrated
+
+- Recorded at: 2026-07-17T03:15:00Z
+- Final architecture reviewer `019f6d96-6bbc-79f2-af90-58bbfcf6a0b5`
+  and executability reviewer `019f6d96-70b3-7b41-b033-49f900fae05c` each
+  returned literal unqualified **APPROVED** for exact candidate
+  `812c397325397ca7a6e83625cd8e622155deddf7`; neither reported a P0/P1
+  frozen-contract violation.
+- The coordinator integrated the complete seven-commit evidence chain in
+  order, preserving both original and repair REDs. Program integration commits
+  are `4d1a3c25`, `3fe4c70b`, `37593a23`, `9ad72635`, `f04ea856`,
+  `3212fac0`, and final integration revision
+  `df352e772838846a08e0b6d1eca7b0689b9254a5`.
+- Fresh integrated verification passed exactly **14 / 14** assurance tests,
+  the four exact contract markers, all ten released-card commands, the literal
+  ordered `TASK136_REPOSITORY_PREFIX_OK records=10 commands=10` marker then
+  found-10 incomplete closure, immutable v1/v2 hashes, exact four-path
+  integration scope, factory readiness, clean state, and non-symlinked
+  dependencies. No full verifier, network, provider, credential, external
+  service, push, reset, rebase, or `neo` action occurred.
+- The v3 contract is now authoritative. Task137B-W is the sole next card and
+  may start from the program revision that commits this event under the
+  approved exact ten-path plan. Task139 and every later card remain closed.
