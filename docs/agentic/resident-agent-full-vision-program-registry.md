@@ -17751,3 +17751,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   rerun the approved fresh-shell admission block and update its report. Any
   genuine candidate defect must return structured evidence; broader work and
   every previously closed gate remain closed.
+
+## RV-1-E-672 — Task136 v3 candidate admitted for exact dual review
+
+- Recorded at: 2026-07-17T02:25:00Z
+- Candidate `b1ab3361f9555a1fb1cc9daa59c9ab077a63efd8` on
+  `codex/task136-v3-task137b-wake-schema-transfer` contains the exact committed
+  claim/RED/GREEN chain `3f18ceab`, `9955c2f5`, `b1ab3361` from base
+  `c7397e7153079f65f17153fd8d2dc55b6ad8c7b6` and changes exactly four paths.
+- Fresh coordinator admission reproduced **14 / 14** Node tests, all four
+  exact contract markers, execution of all ten released-card commands, the
+  literal ordered `TASK136_REPOSITORY_PREFIX_OK records=10 commands=10`
+  marker then the found-10 incomplete-closure line, exact immutable v1/v2
+  hashes, exact sorted scope, factory readiness, clean state, and a
+  non-symlinked dependency tree. No full verifier ran.
+- Fresh architecture/invariant reviewer
+  `019f6d82-984d-7d91-8aac-8fd1731b4529` and fresh
+  executability/adversarial reviewer
+  `019f6d82-9c72-7223-9059-f1ff3e20067a` are read-only at the exact candidate
+  on Terra/xhigh. They received the task brief, implementation report,
+  three-commit review package, correction design/plan, and finite constraints.
+- Review work does not authorize SDD, edits, fixes, integration, release
+  records, Task 2/3/139, full verification, providers, network, credentials,
+  external services, push, reset, rebase, or any `neo` action. Integration
+  remains closed until both reviewers return literal unqualified **APPROVED**.
