@@ -17775,3 +17775,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   records, Task 2/3/139, full verification, providers, network, credentials,
   external services, push, reset, rebase, or any `neo` action. Integration
   remains closed until both reviewers return literal unqualified **APPROVED**.
+
+## RV-1-E-673 — Task136 v3 candidate needs one focused clean-state repair
+
+- Recorded at: 2026-07-17T02:35:00Z
+- Architecture reviewer `019f6d82-984d-7d91-8aac-8fd1731b4529` and
+  executability reviewer `019f6d82-9c72-7223-9059-f1ff3e20067a` each returned
+  **NEEDS-CHANGES** for exact candidate
+  `b1ab3361f9555a1fb1cc9daa59c9ab077a63efd8`. No approval carries forward.
+- Both found the same bounded P1 defect: the production repository adapter
+  calls `git status --porcelain --untracked-files=no`, so an untracked dirty
+  checkout may pass both topology checks and emit prefix success. The fake
+  adapter corpus does not exercise real Git untracked-file behavior.
+- The original worker has resumed on the same isolated branch with explicit
+  task-scoped SDD/TDD approval for one repair. It must strengthen the existing
+  consolidated test without increasing the 14-test count, record a focused
+  failing regression, change only the full-porcelain status behavior, rerun
+  the complete bounded admission, and preserve the exact four-path cumulative
+  scope.
+- Integration, release, Task 2/3/139, full verification, providers, network,
+  credentials, external services, push, reset, rebase, and every `neo` action
+  remain closed pending a new exact candidate and two fresh unqualified
+  reviews.
