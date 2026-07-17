@@ -18605,3 +18605,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Until they are authorized, no replacement worker, renamed repair,
   compatibility path, contract downgrade, integration, or strict release
   record is permitted for the three blocked cards.
+
+## RV-1-E-695 — Program owner authorizes both bounded scope corrections
+
+- Recorded at: 2026-07-17T20:22:07Z
+- The program owner explicitly answered **“Authorize A and B”**. Authorization
+  A permits the bounded V4 scope-and-assurance correction for CF1-HR and
+  G136-SC while preserving V1-V3, raw strict records 1-13, every prerequisite,
+  and the exact 29-card order. Authorization B permits exactly one additional
+  Task126-R causal RED/minimal GREEN packet and one final read-only review pair
+  beyond its exhausted automatic ceiling.
+- The approved correction design is commit
+  `a5c192842bbedb4dc7801bedf8908c025dc33dfb`; the executable implementation
+  plan is commit `453c5ff79033a3d7eff629bd5394d8e834fb619a`.
+  CF1-HR now has a proposed exact 14-path authority-bound Handoff V2 boundary;
+  G136-SC has a proposed exact 11-path independent-domain-result boundary.
+  The four-file V4 assurance amendment must become RED, GREEN, reviewed, and
+  integrated before either corrected card can enter review.
+- Task126-R remains production-byte invariant: its exceptional packet is
+  confined to the existing claim and import-policy test. It may run ahead, but
+  its branch must include the released record-14 program base before its final
+  pair. G136-SC may also implement ahead but cannot receive its final pair
+  until the current record-21 base is merged forward.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- All implementation and review children use `gpt-5.6-terra` with `xhigh`
+  reasoning. Reviewers remain read-only. No new coordinator, relay, watchdog,
+  release card, compatibility completion path, history rewrite, `neo` change,
+  push, credential use, or external effect is authorized.
