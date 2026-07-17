@@ -1124,7 +1124,7 @@ function gitSucceeds(args) {
 function createRepositoryAdapter() {
   return {
     isCheckoutClean() {
-      return gitOutput(["status", "--porcelain", "--untracked-files=no"]) === "";
+      return gitOutput(["status", "--porcelain"]) === "";
     },
     isDependencySymlink() {
       const dependencyPath = resolve(process.cwd(), "node_modules");
