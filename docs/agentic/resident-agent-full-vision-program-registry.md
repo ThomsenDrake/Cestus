@@ -18751,3 +18751,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   normal forward merge of the current program base and a complete gate rerun.
   Its one final Terra/xhigh architecture/executability pair permits no later
   automatic repair.
+
+## RV-1-E-700 — CF1-HR direct-source ownership correction is authorized
+
+- Recorded at: 2026-07-17T21:54:56Z
+- The program owner explicitly authorizes the bounded CF1-HR direct-source
+  correction in forward design/plan commit
+  `f771f80476eb6b8e780734cbb3d967c72d3a831a`. CF1-HR's exact ordered
+  prerequisites become `W1-123-H-SHARED-SCHEMA`,
+  `W1-133.5-PREAPPROVAL-PROMPT-STORE`, `Task137B-W`, `Task135B`, and
+  `Task129-MFA`; every other prerequisite and all 29 card IDs/release positions
+  remain unchanged.
+- The only new direct ownership transfers are Task135B's portable mounted-
+  store source/test pair to CF1-HR and Task129-MFA's ontology agent-contract
+  test to CF1-HR. The already approved Task137B-W `contracts.ts` transfer to
+  CF1-HR remains. Task129-MFA's existing transfers to Task137B-W are unchanged.
+  The checker must encode these as finite source-and-target-specific groups,
+  never as generic multi-target or transitive authority.
+- Historical compatibility pins remain source-record exact: Task135B
+  `73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409`,
+  Task129-MFA
+  `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`,
+  and Task137B-W
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`.
+  Source current-HEAD equality remains authoritative until CF1-HR strict
+  record 14; at record 14 only current ownership migrates, while every
+  historical candidate, integration, blob, review, and release proof remains
+  mandatory.
+- V1-V3, raw strict records 1-13, existing candidate/integration evidence, and
+  release order remain byte-identical. No bridge, V5, fallback, alternate
+  producer, history rewrite, raw-record mutation, replacement owner, recovery
+  generation, or `neo` action is authorized.
+- The same assurance owner task `019f71bf-f525-79b1-8068-c28b2c7e4d40`
+  resumes from preserved causal RED
+  `24669b1b58917e461ae54e21435b17f6c3c9fb60`. Its required full verifier must
+  be run and compared exactly to the clean inherited record-13 failure
+  baseline; focused assurance, contract/repository, typecheck, diff, factory,
+  dependency, and clean-state gates remain strict.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
