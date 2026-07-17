@@ -96,6 +96,16 @@ describe("portable mounted agent artifact stores", () => {
     expect(String(safeError)).not.toContain(join(fixture.workspaceRoot, "derivatives"));
   });
 
+  it("derives a non-structural V2 handoff witness from the mounted snapshot", async () => {
+    const fixture = authorityFixture();
+    const { result } = await issuedBinding(fixture);
+
+    expect(result.binding.authorityWitness).toMatchObject({
+      schemaVersion: "agent-mounted-specialist-handoff-authority.v1"
+    });
+    expect(Object.keys(result.binding.authorityWitness)).toEqual(["schemaVersion"]);
+  });
+
   it("binds exactly once and rejects copied controller identities before authority activity", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};

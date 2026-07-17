@@ -26,6 +26,15 @@ const hash444 = "sha256:44444444444444444444444444444444444444444444444444444444
 const hash555 = "sha256:5555555555555555555555555555555555555555555555555555555555555555";
 
 describe("specialist handoff projection", () => {
+  it("keeps a verified V1 handoff legacy-unbound and non-executable", async () => {
+    const fixture = handoffFixture();
+    const projection = await project(validRecordedEvents(fixture), materializedStore(fixture));
+
+    expect(projection.state).toBe("legacy-unbound");
+    expect(projection.selectedHandoff).toBeUndefined();
+    expect(projection.selectedReadback).toBeUndefined();
+  });
+
   it("projects no-output when no exact final-output step exists", async () => {
     const fixture = handoffFixture();
 

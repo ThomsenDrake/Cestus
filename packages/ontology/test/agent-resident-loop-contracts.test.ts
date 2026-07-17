@@ -1184,6 +1184,23 @@ describe("resident loop ontology contracts v2", () => {
     }).success).toBe(false);
   });
 
+  it("requires the completed Task119 handoff readback authority to match the resident authority", () => {
+    const replay = v2FixtureEvents().map((event) => structuredClone(event));
+    const result = replay[4]!;
+    result.payload = {
+      ...result.payload,
+      handoffReadback: {
+        ...(result.payload.handoffReadback as Record<string, unknown>),
+        authorityBinding: {
+          ...((result.payload.handoffReadback as Record<string, unknown>).authorityBinding as Record<string, unknown>),
+          mountGeneration: "forged_mount_generation"
+        }
+      }
+    } as never;
+
+    expect(validateResidentLoopEventSequence(replay as never).success).toBe(false);
+  });
+
   it.each([
     ["plan missing workspace identity", 0, (candidate: Record<string, unknown>) => {
       const { workspaceId: _workspaceId, ...payload } = candidate;
