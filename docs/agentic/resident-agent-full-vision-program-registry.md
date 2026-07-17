@@ -17915,3 +17915,40 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   with a violated frozen-contract clause, exact location, and reproducible
   evidence may block bounded coordinator adjudication. P2, style,
   hypothetical hardening, and unreproduced concerns are backlog only.
+
+## RV-1-E-679 — Task137B-W stopped on two reproduced authority P1s
+
+- Recorded at: 2026-07-17T02:50:00Z
+- Executability/adversarial reviewer
+  `019f6dee-1e72-7663-835a-d075d4a5fe67` returned literal **APPROVED** for
+  exact candidate `9986cdaa036e2fe39eef2f97833a56ae787c7bf7` after reproducing
+  the bounded 39/123 suites, typecheck, six-stage terminal gate, exact scope,
+  factory readiness, clean state, and dependency topology.
+- Architecture/invariant reviewer
+  `019f6dee-1951-7ce3-a7c5-168fe5091661` returned **NEEDS-CHANGES** with two
+  newly reproduced P1 violations against that exact candidate. First,
+  `createWakeSupervisorRuntime` invokes caller-controlled resident lifecycle
+  state before factory registration, while the exported mounted lifecycle
+  store accepts a structural handle and can read and append directly; this
+  violates `CF1-R-MOUNTED-CAPTURE` factory-issued identity and no-I/O-before-
+  authentication requirements. Second, a claimed lease persists
+  `leaseExpiresAt` equal to the acquisition instant, permitting a second epoch
+  to acquire concurrent authority while the first operation remains current;
+  this violates `CF1-W-AUTHORITY` stale-token and single-current-authority
+  invariants.
+- These are safety and authority defects, not P2 hardening. The two-round
+  automatic repair budget is exhausted, so bounded coordinator adjudication
+  closes integration and release rather than entering another repair/review
+  loop. Candidate `9986cdaa` and its complete committed RED/GREEN history are
+  preserved on `codex/task137b-wake-runtime-v3`; no commit has been integrated
+  onto the program branch.
+- Safe resumption requires an explicit scope amendment that introduces a
+  factory-authenticated mounted wake-store construction boundary before any
+  lifecycle callback or ledger operation, plus a frozen positive supervisor
+  lease duration/currentness rule and causal tests. The cleanest amendment is
+  a dedicated authority-bridge prerequisite allowed to own
+  `packages/local-runtime/src/mounted-artifact-authority-operation.ts` and its
+  governing import-policy evidence before Task137B-W resumes.
+- Record 11, `W1-123-H-SHARED-SCHEMA`, Task139, full verification, network,
+  providers, credentials, external services, push, integration, and every
+  action on `neo` remain closed.
