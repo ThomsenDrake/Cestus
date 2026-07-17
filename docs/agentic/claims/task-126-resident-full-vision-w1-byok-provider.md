@@ -100,3 +100,19 @@ removed before committing. No full verifier is authorized for this repair.
   indirect-require, `module.require`, `module["require"]`, and transparent
   wrapper paths were not recognized; unresolved standard-loader targets were
   admitted. The existing BYOK behavior suite passed.
+
+### Consolidated review-repair GREEN
+
+- GREEN: the same exact command passed `2` files / `17` tests. The import
+  policy now recursively normalizes transparent parentheses, `as`, type
+  assertion, `satisfies`, and non-null wrappers; it resolves static string
+  concatenation, template expressions, and `const` aliases for standard
+  `import()`, `require()`, `module.require()`, and `module["require"]()`
+  calls.
+- A resolved private target is rejected. An unresolved standard-loader target
+  is rejected fail closed. Resolved unrelated roots, lookalikes, basenames, and
+  unrelated custom loaders remain allowed. The only current production importer
+  remains the existing safe public barrel export.
+- This repair changed only this claim and
+  `packages/agent/test/byok-provider-imports.test.ts`; no BYOK production
+  semantics, mint export, or Task139 configuration boundary changed.
