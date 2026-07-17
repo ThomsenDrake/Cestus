@@ -121,3 +121,28 @@ Result: exit `1`; `16` tests, `14` passed, and exactly `2` failed. The
 original CF1-HR exact-path failure remains, and the new frozen compatibility
 test fails only because current V4 has two entries instead of the required
 ordered third Task137B-W entry. No unrelated test failed.
+
+## Forward RED extension for RV-1-E-700
+
+Coordinator correction `f771f80476eb6b8e780734cbb3d967c72d3a831a` under
+registry event `RV-1-E-700` / `c2358c5a50cd65c7b2817c7288826a68524f2ae6`
+authorizes only the remaining exact direct-source mapping: Task135B's two
+portable-mounted-store paths, Task129-MFA's `agent-contracts.test.ts`, and the
+previously authorized Task137B-W `contracts.ts` path transfer only to CF1-HR.
+The test extension requires CF1-HR's exact five prerequisites, preserves
+Task129-MFA's existing Task137B-W transfers, pins the ordered four-entry
+historical compatibility sequence, and proves source-current-HEAD behavior
+before record 14 versus CF1-HR-current behavior at record 14. It adds only
+source-and-target-specific mutants and does not generalize transfer semantics.
+
+Command:
+
+```bash
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+```
+
+Result: exit `1`; `17` tests, `14` passed, and exactly `3` failed. The failures
+are the missing CF1-HR `Task135B`/`Task129-MFA` prerequisites, the absent
+ordered Task129-MFA-path expansion plus Task135B/Task137B-W compatibility
+entries, and source current-HEAD enforcement after a simulated CF1-HR record
+14. These are the newly authorized correction facts; no unrelated test failed.
