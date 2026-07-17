@@ -18513,3 +18513,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   consolidated RED/GREEN repair and one final review pair.
 - G136-R remains blocked. No rename, compatibility route, partial scheduler
   repair, integration, release, or contract downgrade is authorized.
+
+## RV-1-E-692 — Task126-R repaired candidate enters final review
+
+- Recorded at: 2026-07-17T19:44:37Z
+- The single repair packet appends causal RED
+  `d7dac8ba1f9eb98054ecbad6423af725c828b1b5` and minimal GREEN
+  `4f39cfb2bc3064c07a6ebc3f10bc45dc748d7624` after the original three
+  Task126-R commits. No history was rewritten.
+- Coordinator admission at exact repaired candidate
+  `4f39cfb2bc3064c07a6ebc3f10bc45dc748d7624` reproduced **2 files / 17
+  tests**, cross-boundary **4 files / 45 tests**, standalone typecheck,
+  exact-range diff hygiene, factory readiness, exact three-path cumulative
+  scope, clean tracked/untracked state, linear ancestry, and real
+  non-symlinked local dependencies. The owner also recorded a clean full
+  verifier from final committed bytes.
+- The one final read-only pair is architecture/invariants task
+  `019f719b-6028-76d0-a218-c98c0896dd2b` in
+  `/home/drake/.codex/worktrees/6807/Cestus` and
+  executability/adversarial task `019f719b-5e0f-78d0-b639-4717ecc18835` in
+  `/home/drake/.codex/worktrees/3a27/Cestus`. Both use `gpt-5.6-terra` with
+  `xhigh` reasoning and are bound to RV-1-C-134's trusted-injection ruling.
+- Reviews are read-only. Subagent-driven development and test-driven
+  development are not relevant or authorized for reviewers. The automatic
+  repair ceiling is exhausted: P2/style/hypothetical concerns are backlog,
+  while any reproduced P0/P1 becomes a durable blocked-card record.
