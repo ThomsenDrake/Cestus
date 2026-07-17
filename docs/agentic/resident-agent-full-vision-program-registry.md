@@ -18838,3 +18838,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - This append-only correction records coordinator document placement only. It
   does not consume another implementation repair or authorize any additional
   code, contract, ownership, or release change.
+
+## RV-1-E-703 — Bounded CF1-HR assurance correction is approved and integrated
+
+- Recorded at: 2026-07-17T23:06:04Z
+- The same assurance owner completed the preserved generation with exact
+  ordered candidate commits `9801dbc01a660d581c4c2270efd2e844e24ee5cf`,
+  `760569643fd533262de0051884fbc1bc8a4bb515`,
+  `24669b1b58917e461ae54e21435b17f6c3c9fb60`,
+  `fda9e55a9a1a32ef81752fd4da0c0a463b2bbceb`,
+  `a9c7172ccd2b56bc4a9d5fcffedc68823f56987d`,
+  `aacbe5e13c88dd6b3a9808a0a14091fe5ad731b2`,
+  `aa19cad901d1c88c1f46b14ed1fc18dc4ae59eec`, and
+  `1f2ea003727411b0c1f2dfa6631f7159b6a9c3b6`. The one permitted repair
+  packet corrected only claim-bound evidence; no replacement or additional
+  generation was created.
+- The final Terra/xhigh architecture review
+  `019f723e-6399-7b91-9ca0-3c9305976da8` and executability review
+  `019f723e-6399-7b91-9ca0-3c77affe6a52` independently approved the exact
+  candidate. Their prior reproduced P1 was resolved by the causal repair; no
+  P0/P1 remains.
+- The coordinator integrated every commit in order as `2ed98fee`, `cb392e77`,
+  `e1b6e0b4`, `54619ed9`, `1e051dbb`, `e5ece8ce`, `08583ed8`, and
+  `da9549f5`. Integrated admission passes **18/18** focused assurance tests,
+  every exact contract marker, typecheck, diff hygiene, factory readiness,
+  dependency/Vitest provenance, and clean tracked/untracked state. Repository
+  mode emits `TASK136_REPOSITORY_PREFIX_OK records=13 commands=13` before the
+  expected 29-record closure diagnostic.
+- Full `npm run verify` reproduces the inherited record-13 differential
+  exactly: **12 failing / 211 passing / 3 skipped files** and **69 failing /
+  2695 passing / 5 skipped tests**. The named failures remain the already
+  recorded pre-CF1 mounted-prompt/runtime adaptation baseline; no new
+  assurance failure appears.
+- Status moves `candidate -> reviewing -> approved -> integrated`. Strict
+  record count remains 13; CF1-HR may now resume from its preserved claim on a
+  forward merge of this reviewed assurance base. V1-V3, raw records 1-13, all
+  29 card IDs/order, historical evidence, and `neo` remain untouched.
