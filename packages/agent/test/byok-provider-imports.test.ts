@@ -194,6 +194,52 @@ describe("BYOK authority-reader import boundary", () => {
     }
   });
 
+  it("recognizes split, concatenated, templated, aliased, and transparently wrapped standard loader targets", () => {
+    const sourcePath = join(workspaceRoot, "packages", "agent", "src", "computed-byok-reader.ts");
+    const privateStandardLoaderForms = [
+      'const target = "./byok-" + "provider.js"; void import(target);',
+      'const target = `./byok-${"provider.js"}`; void import(target);',
+      'const prefix = "./byok-"; const suffix = "provider.js"; void import(prefix + suffix);',
+      'const target = "./byok-" + "provider.js"; const loader = require; void loader(target);',
+      'const target = "./byok-" + "provider.js"; void module.require(target);',
+      'const target = "./byok-" + "provider.js"; void module["require"](target);',
+      'const target = "./byok-" + "provider.js"; void ((require as (path: string) => unknown)!)(target as string);',
+      'const target = "./byok-" + "provider.js"; void ((require satisfies (path: string) => unknown) as (path: string) => unknown)(target satisfies string);',
+      'const target = "./byok-" + "provider.js"; void ((module as { require(path: string): unknown })!).require((target as string)!);',
+      'const target = "./byok-" + "provider.js"; void module[(("require" as string) satisfies string)!]((target satisfies string)!);'
+    ];
+
+    for (const source of privateStandardLoaderForms) {
+      expect(sourceReferencesPrivateByokModule(workspaceRoot, sourcePath, source)).toBe(true);
+    }
+  });
+
+  it("fails closed for unresolved standard loader targets while allowing resolved unrelated roots and custom loaders", () => {
+    const sourcePath = join(workspaceRoot, "packages", "agent", "src", "loader-policy-byok-reader.ts");
+    const unresolvedStandardLoaders = [
+      "void import(target);",
+      "void require(target);",
+      "void module.require(target);",
+      "void module[\"require\"](target);"
+    ];
+    const allowedSources = [
+      'void import("./byok-provider-lookalike.js");',
+      'void import("../../local-runtime/src/byok-provider.js");',
+      'void import("./nested/byok-provider.js");',
+      'void customLoader("./byok-provider.js");',
+      'const loader = customLoader; void loader("./byok-provider.js");',
+      'const require = customLoader; void require("./byok-provider.js");',
+      'const module = { require: customLoader }; void module.require("./byok-provider.js");'
+    ];
+
+    for (const source of unresolvedStandardLoaders) {
+      expect(sourceReferencesPrivateByokModule(workspaceRoot, sourcePath, source)).toBe(true);
+    }
+    for (const source of allowedSources) {
+      expect(sourceReferencesPrivateByokModule(workspaceRoot, sourcePath, source)).toBe(false);
+    }
+  });
+
   it("keeps the existing direct test-only reader mint separate from all production importers", () => {
     expect(readFileSync(join(workspaceRoot, "packages", "agent", "test", "byok-provider.test.ts"), "utf8"))
       .toContain('createByokProviderAuthorityReader');
