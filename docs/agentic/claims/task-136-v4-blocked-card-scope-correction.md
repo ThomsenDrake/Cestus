@@ -166,7 +166,7 @@ all-target transfer fallback.
 - V4 pretty-JSON SHA-256:
   `063f11d0897eab07b4a99e977781a4a843434795df730b61e88dacbcd83e1e93`.
 - V4 canonical assurance fingerprint:
-  `6e6665fa51cc105fb339e239c768c7e66ee1a2bf5ec65d80b1e41116668e2a69`.
+  `413eee42f5311deca2a0681752d011ccf7bccb8f99a59cf1dbdbd19189201631`.
 - Focused assurance command exited `0`: `17` tests passed, `0` failed.
 - Contract mode exited `0` with `records=29`, composition `green=1 red=20`,
   command cards `29`, and ABI corpus `green=1 red=15`.
