@@ -146,3 +146,31 @@ are the missing CF1-HR `Task135B`/`Task129-MFA` prerequisites, the absent
 ordered Task129-MFA-path expansion plus Task135B/Task137B-W compatibility
 entries, and source current-HEAD enforcement after a simulated CF1-HR record
 14. These are the newly authorized correction facts; no unrelated test failed.
+
+## Minimal GREEN evidence
+
+The minimal GREEN implements only the four source-and-target-specific mappings
+authorized by `f771f80476eb6b8e780734cbb3d967c72d3a831a`:
+
+- `Task135B -> CF1-HR`: the two portable mounted-store paths;
+- `Task129-MFA -> CF1-HR`: `packages/ontology/test/agent-contracts.test.ts`,
+  while retaining its five existing `Task137B-W` transfers;
+- `Task137B-W -> CF1-HR`: `packages/ontology/src/contracts.ts`.
+
+It pins the ordered four-entry historical compatibility set, preserves raw
+records 1-13 and the V1/V2/V3 pins, and activates only the original Task137A
+and Task129-MFA groups at record 11 plus these three direct CF1-HR groups at
+record 14. The checker uses this finite mapping; it has no transitive or
+all-target transfer fallback.
+
+- V4 pretty-JSON SHA-256:
+  `063f11d0897eab07b4a99e977781a4a843434795df730b61e88dacbcd83e1e93`.
+- V4 canonical assurance fingerprint:
+  `6e6665fa51cc105fb339e239c768c7e66ee1a2bf5ec65d80b1e41116668e2a69`.
+- Focused assurance command exited `0`: `17` tests passed, `0` failed.
+- Contract mode exited `0` with `records=29`, composition `green=1 red=20`,
+  command cards `29`, and ABI corpus `green=1 red=15`.
+- `npm run typecheck` exited `0` (`typecheck passed`) and
+  `npm run factory:check` exited `0` (`factory-readiness passed`).
+- `git diff --check` exited `0`; the dependency audit confirms real,
+  non-symlinked `node_modules` and executable local Vitest `4.1.9`.

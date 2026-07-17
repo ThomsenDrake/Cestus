@@ -26,8 +26,8 @@ const registryPath = "docs/agentic/resident-agent-full-vision-program-registry.m
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
-const v4ContractSha256 = "bb02ba569157f9c57205e423040e3eb6e8cc7b2c95ed0ef968fd4c9afefc6e9e";
-const v4AssuranceFingerprint = "31123be5bec8cafed581c23efd5c5fcbea5780f662216e725f90b20eb268d2db";
+const v4ContractSha256 = "063f11d0897eab07b4a99e977781a4a843434795df730b61e88dacbcd83e1e93";
+const v4AssuranceFingerprint = "413eee42f5311deca2a0681752d011ccf7bccb8f99a59cf1dbdbd19189201631";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
 const historicalTask135bSha256 = "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409";
@@ -281,7 +281,7 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
     {
       id: "Task137B-W historical compatibility hash",
       mutate(mutant) {
-        mutant.releaseCompatibility.historicalRecords[2].canonicalJsonSha256 = "0".repeat(64);
+        mutant.releaseCompatibility.historicalRecords[3].canonicalJsonSha256 = "0".repeat(64);
       }
     },
     {
@@ -513,7 +513,7 @@ function rawRecordJson(cardId) {
 }
 
 function registryPrefixRecords() {
-  return expectedIds.slice(0, 10).map((cardId) => recordFromRegistry(cardId));
+  return expectedIds.slice(0, 13).map((cardId) => recordFromRegistry(cardId));
 }
 
 function releaseRecordsFor(contract) {
@@ -1102,7 +1102,7 @@ test("rejects finite v4 graph, immutable-input, and migrated-owner evidence muta
   assert.equal(staleHeadAdapter.commandCalls.length, 0);
 });
 
-test("binds both historical source records and proves record-11-only current-head migration", () => {
+test("binds four historical source records and exact record-11 and record-14 current-head migrations", () => {
   assert.equal(typeof assurance.parseTask136ReleasePrefix, "function", "parseTask136ReleasePrefix export");
   assert.equal(typeof assurance.runTask136RepositoryAdmission, "function", "runTask136RepositoryAdmission export");
 
