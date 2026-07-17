@@ -17865,3 +17865,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   registry edits, Task 3/139, providers, network, credentials, external
   services, push, reset, rebase, integration, and every `neo` action remain
   closed.
+
+## RV-1-E-677 — Task137B-W candidate admitted and reviewing
+
+- Recorded at: 2026-07-17T03:45:00Z
+- Candidate `91a62d4f8900c927021bbeb04fb84db93ec3eeb5` contains the exact
+  four-commit chain `0fcaad54` claim, `87b050d5` causal RED, `b91fab82`
+  implementation, and `91a62d4f` strict TypeScript boundary repair from Task
+  base `7400e3c0394fd929c58b0c21434f438f9816d923`.
+- Fresh coordinator admission reproduced focused **5 files / 39 tests** and
+  cross-lane **9 files / 123 tests**, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker in each; standalone
+  typecheck; all six ordered Task137 terminal stages plus completion; exact
+  sorted ten-path scope; factory readiness; clean state; and non-symlinked
+  dependencies. No full verifier ran.
+- Fresh architecture/invariant reviewer
+  `019f6dbe-0059-7113-a1cf-e04bb84fd000` and fresh
+  executability/adversarial reviewer
+  `019f6dbe-04f4-7da1-b25c-2ee55f8b5381` are read-only at the exact candidate
+  on Terra/xhigh. They received the task brief, implementation report,
+  four-commit review package, frozen contracts, and finite blocking rubric.
+- Review work does not authorize SDD, edits, repairs, integration, release,
+  Task 3/139, full verification, providers, network, credentials, external
+  services, push, reset, rebase, or any `neo` action. Findings will be
+  aggregated before any bounded repair.
