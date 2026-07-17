@@ -11,6 +11,16 @@ const fixedNow = () => "2026-07-07T18:30:00.000Z";
 const stalePreviewHash = "sha256:9999999999999999999999999999999999999999999999999999999999999999";
 
 describe("agent tool gateway", () => {
+  it("does not expose caller-structural tool completion", () => {
+    const gateway = createAgentToolGateway({
+      ledger: new InMemoryEventLedger(),
+      actor: agentActor,
+      now: fixedNow
+    });
+
+    expect(gateway).not.toHaveProperty("completeTool");
+  });
+
   it("records approval-required tool requests without executing them", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
