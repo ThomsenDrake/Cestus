@@ -17889,3 +17889,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task 3/139, full verification, providers, network, credentials, external
   services, push, reset, rebase, or any `neo` action. Findings will be
   aggregated before any bounded repair.
+
+## RV-1-E-678 — Task137B-W final repaired candidate in bounded review
+
+- Recorded at: 2026-07-17T02:35:00Z
+- The two finite consolidated TDD repair rounds preserve the complete evidence
+  chain from Task base `7400e3c0394fd929c58b0c21434f438f9816d923` and produce
+  exact final candidate `9986cdaa036e2fe39eef2f97833a56ae787c7bf7`.
+  Round 1 commits `bc8d36e6` RED and `0ba85b7c` GREEN close all seven
+  aggregated P1 reproductions. Round 2 commits `60b8ca64` RED and `9986cdaa`
+  GREEN preserve Task135D's sole capture-seam importer while authenticating
+  the wake runtime synchronously before return or operational I/O.
+- Fresh coordinator admission reproduced focused **5 files / 39 tests** and
+  cross-lane **9 files / 123 tests**, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker in each; standalone
+  typecheck; all six ordered Task137 terminal stages plus completion; exact
+  sorted ten-path cumulative scope; factory readiness; clean state; and
+  non-symlinked dependencies. No full verifier ran.
+- Fresh architecture/invariant reviewer
+  `019f6dee-1951-7ce3-a7c5-168fe5091661` and fresh
+  executability/adversarial reviewer
+  `019f6dee-1e72-7663-835a-d075d4a5fe67` are read-only at exact candidate
+  `9986cdaa` on Terra/xhigh. No prior verdict carries forward.
+- The automatic repair budget is exhausted. Only a newly reproduced P0/P1
+  with a violated frozen-contract clause, exact location, and reproducible
+  evidence may block bounded coordinator adjudication. P2, style,
+  hypothetical hardening, and unreproduced concerns are backlog only.
