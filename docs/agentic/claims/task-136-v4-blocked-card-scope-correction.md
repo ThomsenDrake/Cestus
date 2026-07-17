@@ -65,3 +65,34 @@ The following commits will be retained independently: this claim; a test-only
 causal RED; then the minimal contract/checker GREEN. Final evidence will pin
 the corrected fingerprint, pretty-JSON SHA-256, exact commands, targeted and
 repository-mode results, factory/verify gates, and clean state.
+
+## Causal RED prepared
+
+The RED test defines the design's exact ordered CF1-HR and G136-SC path and
+command projections, proves the immutable V1-V3 hashes and raw records 1-13,
+and introduces one-fact missing, extra, reordered, wrong-disposition, and
+command-omission mutants. The inherited test's stale ten-record expectation is
+updated to the already-authoritative 13-record prefix so the observed RED is
+only the pre-correction CF1-HR/G136-SC scope mismatch.
+
+Baseline root-cause evidence: before the RED, the focused suite failed because
+the registry already has records 11-13 while an inherited assertion still
+required ten. The first RED run exposed one additional inherited assertion
+that incorrectly expected the released Task137A source to remain the current
+head owner after record 11; its correct failure boundary is Task137B-W. Both
+test-only corrections align the existing test with immutable released evidence
+without changing a contract or checker byte.
+
+## Causal RED observed
+
+Command:
+
+```bash
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+```
+
+Result: exit `1`; `16` tests ran, `15` passed, and exactly one failed. The
+failure is `requires the corrected CF1-HR and G136-SC ownership and command
+projections`: the old contract supplies only the prior five CF1-HR paths
+instead of the approved ordered fourteen-path list. This proves the test
+detects the authorized scope defect before any contract or checker GREEN.
