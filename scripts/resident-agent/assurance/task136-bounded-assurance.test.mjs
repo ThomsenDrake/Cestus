@@ -23,6 +23,7 @@ const v2ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v2.json
 const v3ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v3.json";
 const v4ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v4.json";
 const registryPath = "docs/agentic/resident-agent-full-vision-program-registry.md";
+const task136V4ClaimPath = "docs/agentic/claims/task-136-v4-blocked-card-scope-correction.md";
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
@@ -1402,5 +1403,37 @@ test("moves the three exact CF1 transfers at record 14 and never before", () => 
       new RegExp(`blob mismatch: CF1-HR:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
       `CF1-HR becomes current at record 14: ${path}`
     );
+  }
+});
+
+test("requires the durable V4 claim to retain final repository and verification evidence", () => {
+  const claim = readFileSync(task136V4ClaimPath, "utf8");
+  const requiredEvidence = [
+    "TASK136_REPOSITORY_PREFIX_OK records=13 commands=13",
+    "repository release closure incomplete: expected 29 records, found 13",
+    "npm run verify",
+    "12 failed | 211 passed | 3 skipped (226)",
+    "69 failed | 2695 passed | 5 skipped (2769)",
+    "no added failure",
+    "68 failed",
+    "not green",
+    "node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs",
+    "node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode contract",
+    "node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository",
+    "npm run typecheck",
+    "git diff --check dbe9fea17bc2eb0a9a3c8c5661dcc5f6e00f5dfb..HEAD",
+    "npm run factory:check",
+    "test -d node_modules && test ! -L node_modules && test -x node_modules/.bin/vitest",
+    "clean tracked and untracked state",
+    "Every prerequisite except CF1-HR remains unchanged",
+    "Task135B -> CF1-HR",
+    "Task129-MFA -> CF1-HR",
+    "Task137B-W -> CF1-HR",
+    "historical compatibility amendment",
+    "Candidate status: ready-for-review"
+  ];
+
+  for (const evidence of requiredEvidence) {
+    assert.ok(claim.includes(evidence), `durable claim missing final evidence: ${evidence}`);
   }
 });
