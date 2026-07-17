@@ -922,7 +922,7 @@ function activeClaimFromEvents(
 function normalizeStoreInput(value: MountedWakeLifecycleStoreInput): MountedWakeLifecycleStoreInput {
   if (
     !isPlainRecord(value) ||
-    !hasExactKeys(value, ["capability", "actor", "supervisorEpoch", "policy", "now", "createSafeId"]) ||
+    !hasExactKeys(value as unknown as Record<string, unknown>, ["capability", "actor", "supervisorEpoch", "policy", "now", "createSafeId"]) ||
     !isPlainRecord(value.policy) ||
     typeof value.now !== "function" ||
     typeof value.createSafeId !== "function"
