@@ -142,7 +142,29 @@ export function registerMountedArtifactAuthorityIssuerForWakeRuntime<const Input
     });
     return undefined as WakeRuntimeRegistrationResult<Input>;
   }
-  throw new Error("mounted authority registration phase must be authenticate or bind");
+  requireRegistrationKeys(record, ["wakeRuntime", "lifecyclePorts", "runtimeHandle"]);
+  const capability = authenticateMountedWakeCapability(record.runtimeHandle);
+  const state = factoryAuthenticatedMountedWakeCapabilities.get(capability);
+  if (state === undefined) throw new Error("factory-authenticated mounted wake capability is required");
+  const wakeRuntime = record.wakeRuntime as object;
+  const lifecyclePorts = record.lifecyclePorts as PortableWorkspaceLifecyclePorts;
+  try {
+    bindMountedWakeCapability({ capability, wakeRuntime, lifecyclePorts });
+    const storeAuthority = state.storeAuthority;
+    if (storeAuthority === undefined) throw new Error("factory-authenticated mounted wake store authority is required");
+    storeAuthority.bindCurrentness(Object.freeze({
+      revalidate() {
+        inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority(lifecyclePorts);
+      },
+      invalidate() {
+        lifecyclePorts.authority.invalidate?.("authority-loss");
+      }
+    }));
+  } catch (error) {
+    burnMountedWakeCapability(state);
+    throw error;
+  }
+  return undefined as WakeRuntimeRegistrationResult<Input>;
 }
 
 /**

@@ -74,6 +74,7 @@ interface MountedArtifactAuthorityLifecycleState {
   readonly currentAdmission: () => ActiveAdmission | undefined;
   readonly currentRevision: () => number;
   readonly hasPendingReconciliation: () => boolean;
+  readonly assertLeaseCurrent: (lease: ClaimReconciliationAdmissionTuple["verifiedLease"]) => void;
 }
 
 export interface CurrentMountedArtifactAuthorityAdmission {
@@ -231,7 +232,19 @@ export function createPortableWorkspaceLifecyclePorts(
   mountedArtifactAuthorityLifecycleStates.set(ports, {
     currentAdmission: () => active,
     currentRevision: () => revision,
-    hasPendingReconciliation: () => pendingOutage !== undefined || pendingOutageClaim !== undefined
+    hasPendingReconciliation: () => pendingOutage !== undefined || pendingOutageClaim !== undefined,
+    assertLeaseCurrent: (lease) => {
+      const observedAt = Date.parse(requiredText(now()));
+      const expiresAt = Date.parse(requiredText(lease.expiresAt));
+      if (!Number.isFinite(observedAt) || !Number.isFinite(expiresAt)) {
+        authority.invalidate?.("authority-loss");
+        throw new Error("portable workspace supervisor lease instant is invalid");
+      }
+      if (observedAt >= expiresAt) {
+        authority.invalidate?.("authority-loss");
+        throw new Error("portable workspace supervisor lease is expired");
+      }
+    }
   });
   return ports;
 
@@ -366,6 +379,7 @@ export function inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthor
   ) {
     throw new Error("portable workspace admission is not currently complete");
   }
+  state.assertLeaseCurrent(current.verifiedLease);
   return Object.freeze({
     admission: current.snapshot,
     facts: copyMountedFactsForAuthority(current.facts)

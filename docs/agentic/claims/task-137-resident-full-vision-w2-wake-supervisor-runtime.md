@@ -242,3 +242,25 @@ artifact inspection can return authority. Against candidate `275d1b2a`, the
 focused command is causally RED because the composite route still rejects at
 registration. The already-recorded 16-failure cross-lane result remains the
 broader integration RED; no fifteenth path is added.
+
+## Coordinator Final-Cycle Acceptance GREEN
+
+The registrar now recognizes the exact three-field legacy composition DTO only
+after outer own-data validation. It authenticates `runtimeHandle` first, then
+uses the resulting private WeakMap capability to bind the factory-registered
+lifecycle ports and wake-runtime identity. No legacy value reaches
+`createMountedWakeLifecycleStore`, which remains capability-only. Failure burns
+the private capability rather than leaving a fallback authority path.
+
+The compatibility authority installs a private currentness closure over the
+factory-registered lifecycle ports. Portable lifecycle inspection now compares
+the lease's durable expiry with the lifecycle's own injected `now` instant on
+every consumption. Invalid or expired instants monotonically invalidate the
+admission before an artifact inspection can return ledger or snapshot
+authority. This keeps deterministic clocks authoritative and closes the old
+caller without weakening factory authentication or expiry behavior.
+
+The prescribed focused command passed exactly `7 files / 74 tests`; the
+prescribed cross-lane command passed exactly `9 files / 130 tests`. Each emitted
+exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The
+cumulative candidate remains confined to the exact fourteen authorized paths.
