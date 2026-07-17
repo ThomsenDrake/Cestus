@@ -11,11 +11,12 @@ canonical wake lifecycle schemas, then implement, review, integrate, and
 release the durable mounted wake runtime as record 11.
 
 **Architecture:** An immutable v3 assurance contract transfers the central
-ontology contract from Task129-MFA to Task137B-W while a single finite
-compatibility declaration preserves Task129-MFA's existing v4 release record.
+ontology contract and finite Task137 policy source/test from Task129-MFA to
+Task137B-W while one canonical-record compatibility declaration preserves
+Task129-MFA's existing v4 release record.
 After that migration is dual-approved and integrated, Task137B-W implements
 the already approved mounted lifecycle store and wake runtime in one bounded
-eight-path TDD task.
+ten-path TDD task.
 
 **Tech Stack:** TypeScript, Node.js ESM, Zod, Vitest, Git object evidence,
 append-only Cestus ledger contracts.
@@ -35,9 +36,10 @@ append-only Cestus ledger contracts.
   `d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed`
   and
   `c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4`.
-- The graph remains 29 cards in the same order. Commands, composition grammar,
-  composition corpus, ABI corpus, and v4 release-record schema remain
-  unchanged.
+- The graph remains 29 cards in the same order. All commands except
+  Task137B-W's, the composition grammar, composition corpus, ABI corpus, and v4
+  release-record schema remain unchanged. Task137B-W adds only the transferred
+  policy test to its command.
 - Every implementation candidate needs one fresh architecture/invariant and
   one fresh executability/adversarial exact-revision review. Both must return
   unqualified **APPROVED**.
@@ -61,7 +63,8 @@ append-only Cestus ledger contracts.
   and the v2 verifier.
 - Produces: `task136-bounded-assurance.v3`,
   `task136-release-graph.v3`, and
-  `task136-release-compatibility.v1` with exactly one historical path tuple.
+  `task136-release-compatibility.v1` with exactly one canonical historical
+  record and three historical path dispositions.
 
 - [ ] **Step 1: Claim the exact four paths**
 
@@ -79,23 +82,34 @@ requires:
 assert.equal(contract.schemaVersion, "task136-bounded-assurance.v3");
 assert.equal(contract.releaseGraph.version, "task136-release-graph.v3");
 assert.equal(contract.releaseCompatibility.version, "task136-release-compatibility.v1");
-assert.deepEqual(contract.releaseCompatibility.historicalPathDispositions, [{
+assert.deepEqual(contract.releaseCompatibility.historicalRecords, [{
   cardId: "Task129-MFA",
-  path: "packages/ontology/src/contracts.ts",
-  recordDisposition: "owned"
+  canonicalJsonSha256: "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76",
+  pathDispositions: [
+    { path: "packages/ontology/src/contracts.ts", recordDisposition: "owned" },
+    { path: "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts", recordDisposition: "owned" },
+    { path: "packages/local-runtime/test/support/task137-authority-boundary-policy.ts", recordDisposition: "owned" }
+  ]
 }]);
 assert.deepEqual(task137b.prerequisiteIds, ["Task135B", "T120-R", "Task129-MFA"]);
 ```
 
-It also asserts Task129-MFA transfers the contract to Task137B-W, Task137B-W
-owns it immediately before its ontology test, the 29-card order/commands and
-v1 corpora are unchanged, and the v1/v2 file hashes remain exact.
+It also asserts Task129-MFA transfers all three corrected paths to Task137B-W,
+Task137B-W owns them in the exact design order, only the Task137B-W command
+changes, the 29-card order and v1 corpora are unchanged, and the v1/v2 file
+hashes remain exact.
 
-The second test accepts the existing Task129-MFA `owned` release entry through
-the exact compatibility tuple and causally rejects these eight finite
-mutations: missing entry, extra entry, unknown card, unknown path,
-non-transferred source path, wrong historical disposition, missing direct
-prerequisite, and target missing final ownership.
+The second test accepts the existing Task129-MFA `owned` release entry only
+when its compact canonical JSON SHA-256 is exactly
+`23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`.
+It causally rejects missing/extra compatibility records or paths, unknown
+card/path, non-transferred source path, wrong historical disposition, missing
+direct prerequisite, target missing final ownership, and independent
+mutations to Task129-MFA candidate, review, prerequisite, integration,
+release-event, and blob fields. The same consolidated test exercises a real
+ten-record prefix through fake Git/command adapters and rejects missing,
+non-blob, stale final-owner, and command-failing prefix evidence before any
+incomplete-closure result.
 
 - [ ] **Step 3: Run the causal RED**
 
@@ -109,18 +123,25 @@ Commit the test/claim-only reproducible RED.
 - [ ] **Step 4: Implement the v3 contract and verifier**
 
 Copy v2 to v3 without changing v2. Add only the design's top-level
-`releaseCompatibility`, Task129-MFA transfer, Task137B-W direct prerequisite,
-and Task137B-W final-owned path. Update the checker to:
+`releaseCompatibility`, three Task129-MFA transfers, Task137B-W direct
+prerequisite, ten final-owned paths, and corrected Task137B-W command. Update
+the checker to:
 
 - load only v3 by default;
-- validate the exact compatibility shape and tuple;
+- validate the exact compatibility shape, record hash, and three tuples;
 - include graph plus compatibility in the frozen v3 fingerprint;
+- hash compact canonical `JSON.stringify(record)` and require the pinned
+  Task129-MFA SHA before applying historical dispositions;
 - compare a release entry to its declared historical disposition only for the
-  exact tuple;
+  three exact tuples;
 - preserve exact candidate/integration blob checks;
-- skip current-HEAD equality for the transferred source and require it for the
-  Task137B-W final owner;
+- skip current-HEAD equality for the three transferred source paths and
+  require it for each Task137B-W final owner;
 - leave every undeclared disposition mismatch rejected.
+- parse a strict contiguous prefix separately from 29-card closure, verify the
+  prefix's Git evidence and exact commands, recheck checkout state, and emit
+  `TASK136_REPOSITORY_PREFIX_OK records=N commands=N` before incomplete
+  closure is reported.
 
 - [ ] **Step 5: Run identical GREEN and contract markers**
 
@@ -150,10 +171,18 @@ status=$?
 set -e
 printf '%s\n' "$output"
 test "$status" -ne 0
+test "$(printf '%s\n' "$output" | grep -c '^TASK136_REPOSITORY_PREFIX_OK records=10 commands=10$')" -eq 1
 test "$(printf '%s\n' "$output" | grep -c '^repository release closure incomplete: expected 29 records, found 10$')" -eq 1
 sha256sum docs/agentic/contracts/task136-bounded-assurance-v1.json \
   docs/agentic/contracts/task136-bounded-assurance-v2.json
 git diff --check "$DISPATCH_BASE" HEAD
+actual_paths="$(git diff --name-only "$DISPATCH_BASE" HEAD | sort)"
+expected_paths="$(printf '%s\n' \
+  'docs/agentic/claims/task-136-task137b-wake-schema-ownership-correction.md' \
+  'docs/agentic/contracts/task136-bounded-assurance-v3.json' \
+  'scripts/resident-agent/assurance/task136-bounded-assurance.mjs' \
+  'scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs' | sort)"
+test "$actual_paths" = "$expected_paths"
 npm run factory:check
 test -z "$(git status --porcelain=v1)"
 test ! -L node_modules
@@ -166,8 +195,9 @@ verifier runs.
 
 Dispatch two fresh read-only Terra/xhigh reviewers at the exact candidate.
 Review work does not authorize SDD. One reviews architecture/invariants; one
-reproduces 14 tests, markers, ten-record compatibility, finite mutations,
-scope, hashes, and clean-state checks. After dual **APPROVED**, the coordinator
+reproduces 14 tests, markers, ten-record/ten-command prefix evidence, finite
+mutations, exact scope, hashes, and clean-state checks. After dual
+**APPROVED**, the coordinator
 cherry-picks the complete claim/RED/GREEN chain onto the program branch and
 repeats Step 6.
 
@@ -183,6 +213,8 @@ repeats Step 6.
 - Create: `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
 - Create: `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`
 - Create: `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+- Modify: `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`
+- Modify: `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
 - Modify: `packages/ontology/src/contracts.ts`
 - Create: `packages/ontology/test/resident-wake-contracts.test.ts`
 - Create: `docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md`
@@ -193,11 +225,13 @@ repeats Step 6.
   `createPortableWorkspaceLifecyclePorts`,
   `registerMountedArtifactAuthorityIssuerForWakeRuntime`, and the exact
   factory-issued `LocalRuntimeHandle`.
-- Produces: seven canonical ontology lifecycle contracts, a mounted lifecycle
-  store rebuilt from the exact handle/ledger, and a non-public wake runtime
-  registered for factory-only authority operation issuance.
+- Produces: seven canonical ontology lifecycle contracts, an unchanged-size
+  Task137 8/20 policy corpus with one newly permitted direct lifecycle import,
+  a mounted lifecycle store rebuilt from the exact handle/ledger, and a
+  non-public wake runtime registered for factory-only authority operation
+  issuance.
 
-- [ ] **Step 1: Claim the exact eight paths**
+- [ ] **Step 1: Claim the exact ten paths**
 
 Set `TASK2_BASE="$(git rev-parse HEAD)"` before changing any file. Record that
 exact integrated Task 1 SHA, all three released prerequisite records,
@@ -206,7 +240,7 @@ task-scoped SDD/TDD approval, and Global Constraints. Commit before tests.
 
 - [ ] **Step 2: Add the causal RED corpus**
 
-Create exactly 35 tests across the four v3 card suites:
+Create exactly 35 new tests across the four Task137B-W suites:
 
 - `resident-wake-contracts.test.ts`: 10 tests;
 - `mounted-wake-lifecycle-store.test.ts`: 12 tests;
@@ -219,6 +253,9 @@ foreign lease distinction, idempotent reconciliation, swapped/regressed
 facts, invalidation during awaited operations, no fallback path, no public
 issuer, stop-before-return invalidation, one-admission operation issuance,
 fresh-process recovery, and the zero-before-R0/one-after-R0 importer rule.
+Modify the existing four-test policy suite without changing its test count;
+replace, do not add, corpus fixtures so it still emits exactly
+`TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`.
 Include the three exact plan titles:
 
 ```text
@@ -230,7 +267,7 @@ fresh process runtime requires new admission and emits a distinct operation
 - [ ] **Step 3: Run and commit RED**
 
 ```bash
-npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts
+npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts
 ```
 
 Expected: exit nonzero because the two runtime modules and seven canonical
@@ -239,7 +276,16 @@ event registrations are absent. Commit only tests plus claim.
 - [ ] **Step 4: Implement the canonical wake schemas and mounted runtime**
 
 Add only the seven frozen event payload schemas/contracts to
-`packages/ontology/src/contracts.ts`. Implement the original Task137B behavior
+`packages/ontology/src/contracts.ts`. Update the transferred Task137 policy to
+permit exactly one additional direct static value import:
+`wake-supervisor-runtime.ts` importing
+`createPortableWorkspaceLifecyclePorts` from
+`portable-workspace-lifecycle.ts`. Replace the existing allowed registrar
+fixture so it proves both permitted imports, and replace the former
+wrong-protected-module lifecycle fixture with a still-invalid protected-module
+case; preserve exactly 8 accepted and 20 rejected fixtures.
+
+Implement the original Task137B behavior
 from `2026-07-14-resident-agent-factory-authority-recovery-implementation.md`
 lines 4893-4974 against the actual merged APIs. The constructor accepts no raw
 ledger, paths, mounted-facts callback, authority callback, lifecycle bundle,
@@ -251,10 +297,11 @@ facts, paths, stores, or writer. `stop()` invalidates authority before return.
 - [ ] **Step 5: Run exact GREEN commands**
 
 ```bash
-npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts
+npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts
 ```
 
-Expected: exactly **4 files / 35 tests** pass.
+Expected: exactly **5 files / 39 tests** pass with exactly one
+`TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
 
 ```bash
 npm test -- packages/ontology/test/resident-wake-contracts.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/agent/test/wake-supervisor.test.ts
@@ -265,7 +312,7 @@ Expected: exactly **9 files / 123 tests** pass with exactly one
 
 - [ ] **Step 6: Commit GREEN, then run bounded static admission**
 
-Stage exactly the eight owned paths and commit the GREEN candidate before the
+Stage exactly the ten owned paths and commit the GREEN candidate before the
 materialized gate. The gate's checkout stage intentionally rejects uncommitted
 or staged changes.
 
@@ -276,6 +323,8 @@ git add packages/local-runtime/src/wake-supervisor-runtime.ts \
   packages/local-runtime/test/wake-supervisor-runtime.test.ts \
   packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts \
   packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts \
+  packages/local-runtime/test/support/task137-authority-boundary-policy.ts \
+  packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts \
   packages/ontology/src/contracts.ts \
   packages/ontology/test/resident-wake-contracts.test.ts \
   docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md
@@ -298,7 +347,19 @@ expected="$(printf '%s\n' \
 test "$markers" = "$expected"
 git diff --check "$TASK2_BASE" HEAD
 npm run factory:check
-test "$(git diff --name-only "$TASK2_BASE" HEAD | wc -l)" -eq 8
+actual_paths="$(git diff --name-only "$TASK2_BASE" HEAD | sort)"
+expected_paths="$(printf '%s\n' \
+  'docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md' \
+  'packages/local-runtime/src/mounted-wake-lifecycle-store.ts' \
+  'packages/local-runtime/src/wake-supervisor-runtime.ts' \
+  'packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts' \
+  'packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts' \
+  'packages/local-runtime/test/support/task137-authority-boundary-policy.ts' \
+  'packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts' \
+  'packages/local-runtime/test/wake-supervisor-runtime.test.ts' \
+  'packages/ontology/src/contracts.ts' \
+  'packages/ontology/test/resident-wake-contracts.test.ts' | sort)"
+test "$actual_paths" = "$expected_paths"
 test -z "$(git status --porcelain=v1)"
 test ! -L node_modules
 ```
@@ -311,8 +372,8 @@ one `TASK137_GATE_COMPLETE stages=6`. No full verifier runs.
 Dispatch two fresh read-only Terra/xhigh reviewers at the exact candidate.
 Review work does not authorize SDD. The architecture reviewer verifies mounted
 authority, append-only readback, restart reconstruction, no public capability,
-and no fallback. The executability reviewer reproduces committed RED, 35/123
-GREEN counts, one policy marker, typecheck, terminal marker, exact scope,
+and no fallback. The executability reviewer reproduces committed RED, 39/123
+GREEN counts, one policy marker, typecheck, terminal marker, exact ten-path scope,
 factory readiness, and clean state. After dual **APPROVED**, the coordinator
 cherry-picks the complete claim/RED/GREEN chain onto the program branch and
 repeats Steps 5-6 from integrated bytes.
@@ -326,28 +387,33 @@ repeats Steps 5-6 from integrated bytes.
 
 **Interfaces:**
 - Consumes: exact Task137B-W candidate, two approvals, integration revision,
-  released Task135B/T120-R/Task129-MFA records, and eight integrated blob IDs.
+  released Task135B/T120-R/Task129-MFA records, and ten integrated blob IDs.
 - Produces: `task136-dispatch-release.v4` record 11.
 
 - [ ] **Step 1: Append integration evidence and the strict record**
 
 Record the exact candidate, reviewer task IDs/verdicts, integration SHA,
-prerequisite integration/release IDs in v3 order, all eight path dispositions
+prerequisite integration/release IDs in v3 order, all ten path dispositions
 and blob IDs, exact command counts, static markers, and no-full-verify fact.
 
 - [ ] **Step 2: Commit and assert the finite checkpoint**
 
 ```bash
+RELEASE_BASE="$(git rev-parse HEAD)"
 git diff --check
 npm run factory:check
 git add docs/agentic/resident-agent-full-vision-program-registry.md
 git commit -m "docs: release task137b wake runtime"
+actual_paths="$(git diff --name-only "$RELEASE_BASE" HEAD | sort)"
+expected_paths="docs/agentic/resident-agent-full-vision-program-registry.md"
+test "$actual_paths" = "$expected_paths"
 set +e
 output="$(node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository 2>&1)"
 status=$?
 set -e
 printf '%s\n' "$output"
 test "$status" -ne 0
+test "$(printf '%s\n' "$output" | grep -c '^TASK136_REPOSITORY_PREFIX_OK records=11 commands=11$')" -eq 1
 test "$(printf '%s\n' "$output" | grep -c '^repository release closure incomplete: expected 29 records, found 11$')" -eq 1
 test -z "$(git status --porcelain=v1)"
 test ! -L node_modules
