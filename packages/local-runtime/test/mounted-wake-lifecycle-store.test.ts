@@ -153,7 +153,7 @@ describe("mounted wake lifecycle store", () => {
 
   it("does not construct a fallback store for an unmounted handle", async () => {
     const { input } = await fixture();
-    expect(() => createMountedWakeLifecycleStore({ ...input, runtimeHandle: { ...input.runtimeHandle, mountedWorkspace: undefined } as LocalRuntimeHandle }))
+    expect(() => createMountedWakeLifecycleStore({ ...input, runtimeHandle: { ...input.runtimeHandle, mountedWorkspace: undefined } as unknown as LocalRuntimeHandle }))
       .toThrow(/mounted|fallback/i);
     const noIdentity = createMountedWakeLifecycleStore({
       ...input,
