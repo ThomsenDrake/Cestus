@@ -47,13 +47,21 @@ function registerWakeRuntime(fixture: ReturnType<typeof authorityFixture>, wakeR
 }
 
 describe("mounted artifact authority operation", () => {
-  it("rejects an unphased raw-handle registration before mounted authority activity", () => {
+  it("adapts the legacy composite registration only through authenticated expiring authority", async () => {
     const fixture = authorityFixture();
+    const wakeRuntime = {};
 
     expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime: {}, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle
-    } as never)).toThrow(/phase|registration/i);
+      wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle
+    } as never)).not.toThrow();
     expect(fixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
+    await admit(fixture, "wake");
+    const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+
+    fixture.setNow("2026-07-15T01:00:00.000Z");
+    expect(() => inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores(operation))
+      .toThrow(/current|authority/i);
+    expect(fixture.calls).toEqual({ mounted: 1, lease: 1, reconciliation: 0 });
   });
 
   it("authenticates the exact factory handle before any raw handle member or lifecycle effect", () => {
@@ -464,6 +472,7 @@ function authorityFixture(): {
   readonly handle: LocalRuntimeHandle;
   readonly ports: PortableWorkspaceLifecyclePorts;
   readonly calls: { mounted: number; lease: number; reconciliation: number };
+  readonly setNow: (instant: string) => void;
 } {
   const workspaceId = `ws_mounted_authority_${tempDirs.length + 1}`;
   const workspaceRoot = join(tempDir(), workspaceId);
@@ -483,6 +492,7 @@ function authorityFixture(): {
     actor: { id: "actor_mounted_authority", kind: "human", label: "Mounted authority test" }
   }));
   const calls = { mounted: 0, lease: 0, reconciliation: 0 };
+  let instant = "2026-07-15T00:00:00.000Z";
   const supervisorEpoch = "epoch_mounted_authority";
   const ports = createPortableWorkspaceLifecyclePorts({
     workspaceId,
@@ -517,10 +527,10 @@ function authorityFixture(): {
     },
     supervisorLease: leasePort(workspaceId, supervisorEpoch, calls),
     activeClaimReconciliation: reconciliationPort(calls),
-    now: () => "2026-07-15T00:00:00.000Z",
+    now: () => instant,
     createSafeOutageObservationId: () => "outage:mounted-authority"
   });
-  return { workspaceId, workspaceRoot, handle, ports, calls };
+  return { workspaceId, workspaceRoot, handle, ports, calls, setNow: (next) => { instant = next; } };
 }
 
 async function admit(

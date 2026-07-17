@@ -224,3 +224,21 @@ and `16 failed / 114 passed` tests out of 130, with the one required policy
 marker; all sixteen failures originate at those immutable legacy fixture
 calls. Making that candidate pass would require either changing a fifteenth
 path or restoring the forbidden live raw-handle route, so neither was done.
+
+## Coordinator Final-Cycle Acceptance RED
+
+The coordinator adjudicated the cross-lane collision inside the still-open
+final repair cycle. The legacy composite caller may remain only as an
+authentication-first compatibility adapter: it must authenticate the exact
+factory-issued handle before observing lifecycle values, internally issue and
+bind the same opaque capability used by the phased factory path, and bind that
+authority to the registered lifecycle's own lease clock. The mounted wake-store
+constructor remains capability-only, and no raw handle reaches its boundary.
+
+The existing in-scope unphased-registration test was converted without changing
+the 74-test count. It now requires the compatibility adapter to produce an
+operation that burns at the exact synthetic durable lease expiry before any
+artifact inspection can return authority. Against candidate `275d1b2a`, the
+focused command is causally RED because the composite route still rejects at
+registration. The already-recorded 16-failure cross-lane result remains the
+broader integration RED; no fifteenth path is added.
