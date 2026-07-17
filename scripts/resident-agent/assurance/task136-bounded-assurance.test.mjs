@@ -20,15 +20,65 @@ const scriptPath = fileURLToPath(new URL("./task136-bounded-assurance.mjs", impo
 const releaseSchemaVersion = "task136-dispatch-release.v4";
 const v1ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v1.json";
 const v2ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v2.json";
+const v3ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v3.json";
+const v4ContractPath = "docs/agentic/contracts/task136-bounded-assurance-v4.json";
 const registryPath = "docs/agentic/resident-agent-full-vision-program-registry.md";
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
+const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
+const v4ContractSha256 = "bb02ba569157f9c57205e423040e3eb6e8cc7b2c95ed0ef968fd4c9afefc6e9e";
+const v4AssuranceFingerprint = "31123be5bec8cafed581c23efd5c5fcbea5780f662216e725f90b20eb268d2db";
+const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
-const transferredTask129MfaPaths = [
-  "packages/ontology/src/contracts.ts",
+const task137aToTask129MfaPaths = [
+  "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+  "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts",
   "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
   "packages/local-runtime/test/support/task137-authority-boundary-policy.ts"
 ];
+const task137aToTask137bPaths = [
+  "packages/local-runtime/src/portable-workspace-lifecycle.ts",
+  "packages/local-runtime/test/portable-workspace-lifecycle.test.ts"
+];
+const transferredTask129MfaPaths = [
+  "packages/ontology/src/contracts.ts",
+  "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+  "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts",
+  "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+  "packages/local-runtime/test/support/task137-authority-boundary-policy.ts"
+];
+const task137bOwnedPaths = [
+  "packages/local-runtime/src/portable-workspace-lifecycle.ts",
+  "packages/local-runtime/test/portable-workspace-lifecycle.test.ts",
+  "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+  "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts",
+  "packages/local-runtime/src/wake-supervisor-runtime.ts",
+  "packages/local-runtime/src/mounted-wake-lifecycle-store.ts",
+  "packages/local-runtime/test/wake-supervisor-runtime.test.ts",
+  "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts",
+  "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts",
+  "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+  "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+  "packages/ontology/src/contracts.ts",
+  "packages/ontology/test/resident-wake-contracts.test.ts",
+  "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md"
+];
+const rawPrefixPins = new Map([
+  ["Task126", "1b1fc2171278866b38f6aa96889b822f22ab2abd34f460b304fe7fc2c3a0b58d"],
+  ["Task127", "18199ad9bfdcf3582ad13f6637bfbcc72949f1407271fa6c325612abcd226951"],
+  ["Task128", "fe29c10c5dbe3d8c1596f20db7b95b62df8dd98d379ade09d2ed85822ce51d92"],
+  ["Task135D", "749f6a7ec9f66fd8228426e07e3d5b9dbc1a6f0e57d7a804ad69515f48ffc9f9"],
+  ["Task137A", "5a3b2f9a897b5d458742df7a3d403f0e3fe6e3459aba75e93d825d385ec4be32"],
+  ["Task129-MFA", "64048b14448b66f224d254753a7ecbd210e1654602759248e5de89663295f017"],
+  ["Task129", "987b4b18667508b7e4bd500be50b121d41b019bb011da8ae64ef4996ce62e01e"],
+  ["Task130", "16328e8381eb9a55f7a8c3f3f155a4c40d44f4c0da1abe745c850193522171d8"],
+  ["Task135B", "5fffad565a1523aecb0a0afd280b8b9936fc2a48dbe1c0b268f946634732e9e0"],
+  ["T120-R", "f220cb62ab803c938e4e97c538f55e24628bbf46d6e06060cb0169c1adbf2cdb"]
+]);
+
+function loadV4Contract() {
+  return loadContract(v4ContractPath);
+}
 
 const expectedIds = [
   "Task126",
@@ -63,11 +113,11 @@ const expectedIds = [
 ];
 
 test("verifies the 29-card topological graph and exact commands", () => {
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const result = verifyStaticGraph(contract);
 
-  assert.equal(contract.schemaVersion, "task136-bounded-assurance.v3");
-  assert.equal(contract.releaseGraph.version, "task136-release-graph.v3");
+  assert.equal(contract.schemaVersion, "task136-bounded-assurance.v4");
+  assert.equal(contract.releaseGraph.version, "task136-release-graph.v4");
   assert.equal(result.records, 29);
   assert.deepEqual(result.ids, expectedIds);
   assert.equal(
@@ -76,82 +126,104 @@ test("verifies the 29-card topological graph and exact commands", () => {
   );
 });
 
-test("requires the frozen v3 compatibility transfer and Task137B-W write ceiling", () => {
-  const contract = loadContract();
+test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path ceiling", () => {
+  const contract = loadV4Contract();
   const v1 = JSON.parse(readFileSync(v1ContractPath, "utf8"));
   const v2 = JSON.parse(readFileSync(v2ContractPath, "utf8"));
+  const v3 = JSON.parse(readFileSync(v3ContractPath, "utf8"));
+  const task137A = contract.releaseGraph.cards.find((card) => card.id === "Task137A");
   const task129Mfa = contract.releaseGraph.cards.find((card) => card.id === "Task129-MFA");
   const task137b = contract.releaseGraph.cards.find((card) => card.id === "Task137B-W");
 
-  assert.equal(contract.schemaVersion, "task136-bounded-assurance.v3");
-  assert.equal(contract.releaseGraph.version, "task136-release-graph.v3");
-  assert.equal(contract.releaseCompatibility.version, "task136-release-compatibility.v1");
-  assert.deepEqual(contract.releaseCompatibility.historicalRecords, [{
-    cardId: "Task129-MFA",
-    canonicalJsonSha256: "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76",
-    pathDispositions: [
-      { path: "packages/ontology/src/contracts.ts", recordDisposition: "owned" },
-      { path: "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts", recordDisposition: "owned" },
-      { path: "packages/local-runtime/test/support/task137-authority-boundary-policy.ts", recordDisposition: "owned" }
-    ]
-  }]);
+  assert.equal(contract.schemaVersion, "task136-bounded-assurance.v4");
+  assert.equal(contract.releaseGraph.version, "task136-release-graph.v4");
+  assert.equal(contract.releaseCompatibility.version, "task136-release-compatibility.v2");
+  assert.deepEqual(contract.releaseCompatibility.historicalRecords, [
+    {
+      cardId: "Task137A",
+      canonicalJsonSha256: historicalTask137ASha256,
+      pathDispositions: task137aToTask137bPaths.map((path) => ({ path, recordDisposition: "owned" }))
+    },
+    {
+      cardId: "Task129-MFA",
+      canonicalJsonSha256: historicalTask129MfaSha256,
+      pathDispositions: transferredTask129MfaPaths.map((path) => ({ path, recordDisposition: "owned" }))
+    }
+  ]);
+  assert.deepEqual(task137A.transferToIds, ["Task129-MFA", "Task137B-W"]);
+  assert.deepEqual(
+    task137A.ownedPaths.filter((ownedPath) => ownedPath.disposition === "transferred"),
+    [
+      task137aToTask137bPaths[0],
+      task137aToTask129MfaPaths[0],
+      task137aToTask137bPaths[1],
+      ...task137aToTask129MfaPaths.slice(1)
+    ].map((path) => ({ disposition: "transferred", path }))
+  );
   assert.deepEqual(task129Mfa.transferToIds, ["Task137B-W"]);
   assert.deepEqual(
     task129Mfa.ownedPaths.filter((ownedPath) => transferredTask129MfaPaths.includes(ownedPath.path)),
     transferredTask129MfaPaths.map((path) => ({ disposition: "transferred", path }))
   );
-  assert.deepEqual(task137b.prerequisiteIds, ["Task135B", "T120-R", "Task129-MFA"]);
+  assert.deepEqual(task137b.prerequisiteIds, ["Task135B", "T120-R", "Task137A", "Task129-MFA"]);
   assert.deepEqual(task137b.ownedPaths, [
-    { disposition: "owned", path: "packages/local-runtime/src/wake-supervisor-runtime.ts" },
-    { disposition: "owned", path: "packages/local-runtime/src/mounted-wake-lifecycle-store.ts" },
-    { disposition: "owned", path: "packages/local-runtime/test/wake-supervisor-runtime.test.ts" },
-    { disposition: "owned", path: "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts" },
-    { disposition: "owned", path: "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts" },
-    { disposition: "owned", path: "packages/local-runtime/test/support/task137-authority-boundary-policy.ts" },
-    { disposition: "owned", path: "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts" },
-    { disposition: "owned", path: "packages/ontology/src/contracts.ts" },
-    { disposition: "owned", path: "packages/ontology/test/resident-wake-contracts.test.ts" },
-    { disposition: "owned", path: "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md" }
+    ...task137bOwnedPaths.map((path) => ({ disposition: "owned", path }))
   ]);
   assert.equal(
     task137b.command,
-    "npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts"
+    "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts"
   );
   assert.deepEqual(contract.releaseGraph.cards.map((card) => card.id), expectedIds);
   assert.deepEqual(contract.compositionGrammar, v1.compositionGrammar);
   assert.deepEqual(contract.compositionCorpus, v1.compositionCorpus);
   assert.deepEqual(contract.compositionGrammar, v2.compositionGrammar);
   assert.deepEqual(contract.compositionCorpus, v2.compositionCorpus);
-  for (const v2Card of v2.releaseGraph.cards) {
-    const v3Card = contract.releaseGraph.cards.find((card) => card.id === v2Card.id);
-    if (v2Card.id !== "Task137B-W") {
-      assert.equal(v3Card.command, v2Card.command, `unchanged command: ${v2Card.id}`);
+  assert.deepEqual(contract.compositionGrammar, v3.compositionGrammar);
+  assert.deepEqual(contract.compositionCorpus, v3.compositionCorpus);
+  for (const v3Card of v3.releaseGraph.cards) {
+    const v4Card = contract.releaseGraph.cards.find((card) => card.id === v3Card.id);
+    if (v3Card.id !== "Task137B-W") {
+      assert.equal(v4Card.command, v3Card.command, `unchanged command: ${v3Card.id}`);
     }
   }
   assert.equal(createHash("sha256").update(readFileSync(v1ContractPath)).digest("hex"), v1ContractSha256);
   assert.equal(createHash("sha256").update(readFileSync(v2ContractPath)).digest("hex"), v2ContractSha256);
+  assert.equal(createHash("sha256").update(readFileSync(v3ContractPath)).digest("hex"), v3ContractSha256);
+  assert.equal(createHash("sha256").update(readFileSync(v4ContractPath)).digest("hex"), v4ContractSha256);
 });
 
-test("preserves immutable v1 and v2 assurance inputs", () => {
+test("preserves immutable v1, v2, v3, and first-ten raw release inputs", () => {
   const v1Before = readFileSync(v1ContractPath);
   const v1 = JSON.parse(v1Before.toString("utf8"));
   const v2Before = readFileSync(v2ContractPath);
   const v2 = JSON.parse(v2Before.toString("utf8"));
+  const v3Before = readFileSync(v3ContractPath);
+  const v3 = JSON.parse(v3Before.toString("utf8"));
 
   assert.equal(createHash("sha256").update(v1Before).digest("hex"), v1ContractSha256);
   assert.equal(createHash("sha256").update(v2Before).digest("hex"), v2ContractSha256);
+  assert.equal(createHash("sha256").update(v3Before).digest("hex"), v3ContractSha256);
   assert.equal(v2.schemaVersion, "task136-bounded-assurance.v2");
   assert.equal(v2.releaseGraph.version, "task136-release-graph.v2");
+  assert.equal(v3.schemaVersion, "task136-bounded-assurance.v3");
+  assert.equal(v3.releaseGraph.version, "task136-release-graph.v3");
   assert.deepEqual(v2.compositionGrammar, v1.compositionGrammar);
   assert.deepEqual(v2.compositionCorpus, v1.compositionCorpus);
+  assert.deepEqual(v3.compositionGrammar, v1.compositionGrammar);
+  assert.deepEqual(v3.compositionCorpus, v1.compositionCorpus);
   assert.deepEqual(readFileSync(v1ContractPath), v1Before);
   assert.deepEqual(readFileSync(v2ContractPath), v2Before);
+  assert.deepEqual(readFileSync(v3ContractPath), v3Before);
   assert.equal(createHash("sha256").update(readFileSync(v1ContractPath)).digest("hex"), v1ContractSha256);
   assert.equal(createHash("sha256").update(readFileSync(v2ContractPath)).digest("hex"), v2ContractSha256);
+  assert.equal(createHash("sha256").update(readFileSync(v3ContractPath)).digest("hex"), v3ContractSha256);
+  for (const [cardId, expectedHash] of rawPrefixPins) {
+    assert.equal(createHash("sha256").update(rawRecordJson(cardId)).digest("hex"), expectedHash, cardId);
+  }
 });
 
 test("accepts one generated composition and rejects the frozen 20 mutations", () => {
-  const result = runCompositionCorpus(loadContract());
+  const result = runCompositionCorpus(loadV4Contract());
 
   assert.equal(result.green, 1);
   assert.equal(result.red, 20);
@@ -180,7 +252,7 @@ test("accepts one generated composition and rejects the frozen 20 mutations", ()
 });
 
 test("reports exactly 29 command cards", () => {
-  const result = verifyCommandCards(loadContract());
+  const result = verifyCommandCards(loadV4Contract());
 
   assert.equal(result.cards, 29);
   assert.equal(
@@ -222,15 +294,19 @@ function codexThreadId(index, reviewIndex) {
 }
 
 function recordFromRegistry(cardId) {
+  return JSON.parse(rawRecordJson(cardId));
+}
+
+function rawRecordJson(cardId) {
   const registryText = readFileSync(registryPath, "utf8");
-  const heading = `## Task136 dispatch release v4: ${cardId}`;
+  const heading = `## Task136 dispatch release v4: ${cardId}\n`;
   const start = registryText.indexOf(heading);
   assert.notEqual(start, -1, `registry record exists: ${cardId}`);
   const jsonStart = registryText.indexOf("```json", start);
   const jsonEnd = registryText.indexOf("\n```", jsonStart);
   assert.notEqual(jsonStart, -1, `registry JSON starts: ${cardId}`);
   assert.notEqual(jsonEnd, -1, `registry JSON ends: ${cardId}`);
-  return JSON.parse(registryText.slice(jsonStart + "```json".length, jsonEnd).trim());
+  return registryText.slice(jsonStart + "```json".length, jsonEnd).trim();
 }
 
 function registryPrefixRecords() {
@@ -306,10 +382,9 @@ function makeTempRepository(registryText) {
   const dir = mkdtempSync(join(tmpdir(), "cestus-task136-release-"));
   mkdirSync(join(dir, "docs/agentic/contracts"), { recursive: true });
   mkdirSync(join(dir, "docs/agentic"), { recursive: true });
-  writeFileSync(
-    join(dir, "docs/agentic/contracts/task136-bounded-assurance-v3.json"),
-    JSON.stringify(loadContract(), null, 2)
-  );
+  for (const contractPath of [v1ContractPath, v2ContractPath, v3ContractPath, v4ContractPath]) {
+    writeFileSync(join(dir, contractPath), readFileSync(contractPath));
+  }
   writeFileSync(join(dir, "docs/agentic/resident-agent-full-vision-program-registry.md"), registryText);
   execFileSync("git", ["init"], { cwd: dir, stdio: "ignore" });
   execFileSync("git", ["config", "user.email", "task136@example.test"], { cwd: dir, stdio: "ignore" });
@@ -317,6 +392,20 @@ function makeTempRepository(registryText) {
   execFileSync("git", ["add", "docs"], { cwd: dir, stdio: "ignore" });
   execFileSync("git", ["commit", "-m", "fixture"], { cwd: dir, stdio: "ignore" });
   return dir;
+}
+
+function runContractModeInTemp(mutate) {
+  const registryText = readFileSync(registryPath, "utf8");
+  const dir = makeTempRepository(registryText);
+  try {
+    mutate(dir);
+    return spawnSync(process.execPath, [scriptPath, "--mode", "contract"], {
+      cwd: dir,
+      encoding: "utf8"
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function runRepositoryModeInTemp(registryText, { untrackedFile = false } = {}) {
@@ -418,7 +507,7 @@ function fakeRepositoryAdapter(records, options = {}) {
 }
 
 test("rejects exactly 29 heading-only release records before Git checks", () => {
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const registryText = headingOnlyMarkdown(contract);
 
   if (typeof assurance.parseTask136ReleaseRecords !== "function") {
@@ -435,7 +524,7 @@ test("rejects exactly 29 heading-only release records before Git checks", () => 
 });
 
 test("parses strict task136 dispatch release v4 records in graph order", () => {
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const records = releaseRecordsFor(contract);
   const parsed = parseReleaseRecords(releaseRecordMarkdown(records), contract);
 
@@ -445,7 +534,7 @@ test("parses strict task136 dispatch release v4 records in graph order", () => {
 });
 
 test("rejects frozen strict release-record mutations", () => {
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const validRecords = releaseRecordsFor(contract);
   const cases = [
     {
@@ -570,7 +659,7 @@ test("rejects frozen strict release-record mutations", () => {
 });
 
 test("verifies release records against Git evidence and argument-array commands", () => {
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const records = releaseRecordsFor(contract);
   const adapter = fakeRepositoryAdapter(records);
   const result = verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter);
@@ -585,7 +674,7 @@ test("verifies release records against Git evidence and argument-array commands"
 });
 
 test("rejects frozen repository-evidence and execution mutations", () => {
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const validRecords = releaseRecordsFor(contract);
   const task137A = validRecords.find((record) => record.cardId === "Task137A");
   const task135D = validRecords.find((record) => record.cardId === "Task135D");
@@ -644,7 +733,7 @@ test("rejects frozen repository-evidence and execution mutations", () => {
 });
 
 test("rejects non-blob owned-path Git objects before release commands", () => {
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const validRecords = releaseRecordsFor(contract);
   const task126 = validRecords.find((record) => record.cardId === "Task126");
   const ownedPath = "docs/agentic/claims/task-126-resident-full-vision-byok-provider.md";
@@ -673,7 +762,7 @@ test("rejects non-blob owned-path Git objects before release commands", () => {
 });
 
 test("rejects unsafe frozen command grammar before executing commands", () => {
-  const contract = clone(loadContract());
+  const contract = clone(loadV4Contract());
   contract.releaseGraph.cards[0].command = "npm test -- packages/agent/test/byok-provider.test.ts; echo unsafe";
   const records = releaseRecordsFor(contract);
   const adapter = fakeRepositoryAdapter(records);
@@ -685,17 +774,147 @@ test("rejects unsafe frozen command grammar before executing commands", () => {
   assert.equal(adapter.commandCalls.length, 0);
 });
 
-test("binds the canonical Task129-MFA record and proves ten-record prefix admission ordering", () => {
+test("rejects finite v4 graph, immutable-input, and migrated-owner evidence mutations", () => {
+  const contract = loadV4Contract();
+  const fingerprint = createHash("sha256").update(JSON.stringify({
+    releaseGraph: {
+      version: contract.releaseGraph.version,
+      cards: contract.releaseGraph.cards.map((card) => ({
+        id: card.id,
+        prerequisiteIds: card.prerequisiteIds,
+        ownedPaths: card.ownedPaths,
+        transferToIds: card.transferToIds,
+        command: card.command
+      }))
+    },
+    releaseCompatibility: contract.releaseCompatibility
+  })).digest("hex");
+  assert.equal(fingerprint, v4AssuranceFingerprint);
+
+  const staticCases = [
+    {
+      id: "thirtieth card",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.push(clone(mutant.releaseGraph.cards[0]));
+      }
+    },
+    {
+      id: "reordered card",
+      mutate(mutant) {
+        [mutant.releaseGraph.cards[0], mutant.releaseGraph.cards[1]] = [mutant.releaseGraph.cards[1], mutant.releaseGraph.cards[0]];
+      }
+    },
+    {
+      id: "Task137A source path mapping",
+      mutate(mutant) {
+        mutant.releaseGraph.cards
+          .find((card) => card.id === "Task137A")
+          .ownedPaths.find((ownedPath) => ownedPath.path === task137aToTask137bPaths[0]).disposition = "owned";
+      }
+    },
+    {
+      id: "Task129-MFA compatibility hash",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords[1].canonicalJsonSha256 = "0".repeat(64);
+      }
+    },
+    {
+      id: "Task137A compatibility hash",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords[0].canonicalJsonSha256 = "0".repeat(64);
+      }
+    }
+  ];
+  for (const testCase of staticCases) {
+    const mutant = clone(contract);
+    testCase.mutate(mutant);
+    assert.throws(() => verifyStaticGraph(mutant), testCase.id);
+  }
+
+  const immutableCases = [
+    {
+      id: "v1 byte drift",
+      mutate(dir) {
+        writeFileSync(join(dir, v1ContractPath), `${readFileSync(join(dir, v1ContractPath), "utf8")} `);
+      },
+      message: /immutable contract hash drift: v1/
+    },
+    {
+      id: "v2 byte drift",
+      mutate(dir) {
+        writeFileSync(join(dir, v2ContractPath), `${readFileSync(join(dir, v2ContractPath), "utf8")} `);
+      },
+      message: /immutable contract hash drift: v2/
+    },
+    {
+      id: "v3 byte drift",
+      mutate(dir) {
+        writeFileSync(join(dir, v3ContractPath), `${readFileSync(join(dir, v3ContractPath), "utf8")} `);
+      },
+      message: /immutable contract hash drift: v3/
+    },
+    {
+      id: "Task126 raw release record byte drift",
+      mutate(dir) {
+        const path = join(dir, registryPath);
+        const text = readFileSync(path, "utf8");
+        const marker = "## Task136 dispatch release v4: Task126\n\n```json\n";
+        writeFileSync(path, text.replace(marker, `${marker} `));
+      },
+      message: /raw release record hash drift: Task126/
+    }
+  ];
+  for (const testCase of immutableCases) {
+    const result = runContractModeInTemp(testCase.mutate);
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0, testCase.id);
+    assert.match(output, testCase.message, testCase.id);
+  }
+
+  const records = releaseRecordsFor(contract);
+  const task137b = records.find((record) => record.cardId === "Task137B-W");
+  const migratedPath = task137b.ownedPathBlobs[0].path;
+  for (const testCase of [
+    { id: "candidate", commitish: task137b.candidateSha, type: "tree" },
+    { id: "integration", commitish: task137b.integrationSha, type: "tree" },
+    { id: "current head", commitish: "HEAD", type: "tree" }
+  ]) {
+    const adapter = fakeRepositoryAdapter(records, {
+      nonBlobObject: { commitish: testCase.commitish, path: migratedPath, type: testCase.type }
+    });
+    assert.throws(
+      () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), adapter),
+      /path is not a Git blob: Task137B-W/,
+      testCase.id
+    );
+    assert.equal(adapter.commandCalls.length, 0, testCase.id);
+  }
+  const staleHeadAdapter = fakeRepositoryAdapter(records, {
+    blobMismatch: { commitish: "HEAD", path: migratedPath }
+  });
+  assert.throws(
+    () => verifyReleaseClosure(contract, releaseRecordMarkdown(records), staleHeadAdapter),
+    /blob mismatch: Task137B-W/
+  );
+  assert.equal(staleHeadAdapter.commandCalls.length, 0);
+});
+
+test("binds both historical source records and proves record-11-only current-head migration", () => {
   assert.equal(typeof assurance.parseTask136ReleasePrefix, "function", "parseTask136ReleasePrefix export");
   assert.equal(typeof assurance.runTask136RepositoryAdmission, "function", "runTask136RepositoryAdmission export");
 
-  const contract = loadContract();
+  const contract = loadV4Contract();
   const registryText = readFileSync(registryPath, "utf8");
   const parsedPrefix = assurance.parseTask136ReleasePrefix(registryText, contract);
+  const task137ARecord = parsedPrefix.find((record) => record.cardId === "Task137A");
   const task129MfaRecord = parsedPrefix.find((record) => record.cardId === "Task129-MFA");
 
   assert.equal(parsedPrefix.length, 10);
   assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 10));
+  assert.equal(
+    createHash("sha256").update(JSON.stringify(task137ARecord)).digest("hex"),
+    historicalTask137ASha256
+  );
   assert.equal(
     createHash("sha256").update(JSON.stringify(task129MfaRecord)).digest("hex"),
     historicalTask129MfaSha256
@@ -712,6 +931,12 @@ test("binds the canonical Task129-MFA record and proves ten-record prefix admiss
       id: "extra compatibility record",
       mutate(mutant) {
         mutant.releaseCompatibility.historicalRecords.push(clone(mutant.releaseCompatibility.historicalRecords[0]));
+      }
+    },
+    {
+      id: "missing Task137A compatibility path",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords[0].pathDispositions.pop();
       }
     },
     {
@@ -744,6 +969,18 @@ test("binds the canonical Task129-MFA record and proves ten-record prefix admiss
       }
     },
     {
+      id: "Task137A mapping drift",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task137A").transferToIds.reverse();
+      }
+    },
+    {
+      id: "Task129-MFA target drift",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task129-MFA").transferToIds = ["Task129"];
+      }
+    },
+    {
       id: "wrong historical disposition",
       mutate(mutant) {
         mutant.releaseCompatibility.historicalRecords[0].pathDispositions[0].recordDisposition = "transferred";
@@ -752,7 +989,8 @@ test("binds the canonical Task129-MFA record and proves ten-record prefix admiss
     {
       id: "missing direct transfer prerequisite",
       mutate(mutant) {
-        mutant.releaseGraph.cards.find((card) => card.id === "Task137B-W").prerequisiteIds.pop();
+        const task137b = mutant.releaseGraph.cards.find((card) => card.id === "Task137B-W");
+        task137b.prerequisiteIds = task137b.prerequisiteIds.filter((cardId) => cardId !== "Task137A");
       }
     },
     {
@@ -841,7 +1079,9 @@ test("binds the canonical Task129-MFA record and proves ten-record prefix admiss
   assert.equal(successfulAdapter.commandCalls.length, 10);
 
   const task126 = parsedPrefix.find((record) => record.cardId === "Task126");
+  const task137A = parsedPrefix.find((record) => record.cardId === "Task137A");
   const task126Path = task126.ownedPathBlobs[0].path;
+  const task137ALifecyclePath = task137aToTask137bPaths[0];
   const evidenceCases = [
     {
       id: "missing candidate",
@@ -885,6 +1125,21 @@ test("binds the canonical Task129-MFA record and proves ten-record prefix admiss
     );
     assert.deepEqual(messages, [], testCase.id);
   }
+
+  const sourceMigrationMessages = [];
+  assert.throws(
+    () => assurance.runTask136RepositoryAdmission(contract, {
+      registryText,
+      adapter: fakeRepositoryAdapter(parsedPrefix, {
+        blobMismatch: { commitish: "HEAD", path: task137ALifecyclePath }
+      }),
+      emit(message) {
+        sourceMigrationMessages.push(message);
+      }
+    }),
+    new RegExp(`blob mismatch: Task137A:${task137ALifecyclePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
+  );
+  assert.deepEqual(sourceMigrationMessages, []);
 
   const untrackedCheckout = runRepositoryModeInTemp(registryText, { untrackedFile: true });
   const untrackedOutput = `${untrackedCheckout.stdout}\n${untrackedCheckout.stderr}`;
