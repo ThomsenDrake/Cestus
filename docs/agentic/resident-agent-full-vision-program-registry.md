@@ -18565,3 +18565,43 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   it now requires an explicit program-scope decision authorizing a new finite
   forward repair beyond the approved ceiling; absent that decision, Task133
   and the provider/runtime critical path remain blocked.
+
+## RV-1-E-694 — Blocker audit identifies the exact program-scope decisions
+
+- Recorded at: 2026-07-17T20:06:38Z
+- A read-only coordinator audit at clean program revision
+  `69ee525cc1d9920a8f2d871665c9463d71913490` reconfirmed the strict **13 of
+  29** release prefix, the three preserved clean candidate worktrees, and no
+  movement or mutation of inherited candidate history.
+- CF1-HR cannot be corrected by merely adding the previously identified
+  manifest source/test pair. The frozen Handoff V2 ABI requires the additive
+  V2 manifest and prepared/recorded event schemas to carry the exact current
+  authority binding, while the current mounted-store capability exposes no
+  such seven-field producer. Task137B supplies related snapshot evidence but
+  not the frozen `ledgerHighWaterEventId` contract. A safe correction therefore
+  requires a bounded design decision for the capability-derived current
+  authority seam as well as manifest and ontology coverage.
+- G136-SC requires the previously identified execution-loop source/test
+  ownership correction, an independently appended domain-result locator, and
+  removal of every public caller-structural completion append. A descriptor
+  that mints and rereads its own resident tool-step bookkeeping is not an
+  authority source.
+- Both CF1-HR and G136-SC corrections would add owned paths that are absent
+  from their current strict V4 card records. The V4 assurance script also
+  hard-codes the contract fingerprint and exact card paths. Preserving V1-V3,
+  the first ten records, the existing 13-record raw prefix, and the 29-card
+  order therefore requires an explicit bounded V4 scope-and-assurance
+  correction before either implementation may proceed. No contract or code
+  change is made by this checkpoint.
+- Task126-R needs no production BYOK change. The exact exceptional repair is
+  confined to its claim and import-policy test: replace name-based alias
+  collection with scope- and binding-aware lexical value analysis covering
+  destructured/indirect standard loaders and official `node:module`
+  `createRequire`, while rejecting shadowed and lookalike loaders. Because the
+  final-pair repair ceiling is exhausted, exactly one further finite
+  causal-RED/minimal-GREEN packet and one final read-only review pair require
+  explicit program-scope authorization.
+- These are genuine critical-path scope decisions, not routine approvals.
+  Until they are authorized, no replacement worker, renamed repair,
+  compatibility path, contract downgrade, integration, or strict release
+  record is permitted for the three blocked cards.
