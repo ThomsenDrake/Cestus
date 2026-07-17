@@ -97,6 +97,142 @@ function resolvesToPrivateByokModule(root: string, sourcePath: string, moduleSpe
   return extensionlessPath(resolve(dirname(sourcePath), suffixlessSpecifier)) === byokProviderModulePath(root);
 }
 
+type StaticValue =
+  | { readonly kind: "string"; readonly value: string }
+  | { readonly kind: "standard-loader" }
+  | { readonly kind: "standard-module" };
+
+function unwrapTransparentExpression(expression: TypeScript.Expression): TypeScript.Expression {
+  let unwrapped = expression;
+  while (
+    ts.isParenthesizedExpression(unwrapped) ||
+    ts.isAsExpression(unwrapped) ||
+    ts.isTypeAssertionExpression(unwrapped) ||
+    ts.isSatisfiesExpression(unwrapped) ||
+    ts.isNonNullExpression(unwrapped)
+  ) {
+    unwrapped = unwrapped.expression;
+  }
+  return unwrapped;
+}
+
+function constAliasExpressions(sourceFile: TypeScript.SourceFile): ReadonlyMap<string, TypeScript.Expression> {
+  const aliases = new Map<string, TypeScript.Expression>();
+  const visit = (node: TypeScript.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isVariableDeclarationList(node.parent) &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0 &&
+      ts.isIdentifier(node.name) &&
+      node.initializer !== undefined
+    ) {
+      aliases.set(node.name.text, node.initializer);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return aliases;
+}
+
+function staticValue(
+  expression: TypeScript.Expression,
+  aliases: ReadonlyMap<string, TypeScript.Expression>,
+  resolvingAliases = new Set<string>()
+): StaticValue | undefined {
+  const unwrapped = unwrapTransparentExpression(expression);
+  if (ts.isStringLiteralLike(unwrapped)) {
+    return { kind: "string", value: unwrapped.text };
+  }
+  if (ts.isTemplateExpression(unwrapped)) {
+    let value = unwrapped.head.text;
+    for (const span of unwrapped.templateSpans) {
+      const interpolation = staticValue(span.expression, aliases, resolvingAliases);
+      if (interpolation?.kind !== "string") {
+        return undefined;
+      }
+      value += interpolation.value + span.literal.text;
+    }
+    return { kind: "string", value };
+  }
+  if (ts.isBinaryExpression(unwrapped) && unwrapped.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const left = staticValue(unwrapped.left, aliases, resolvingAliases);
+    const right = staticValue(unwrapped.right, aliases, resolvingAliases);
+    return left?.kind === "string" && right?.kind === "string"
+      ? { kind: "string", value: left.value + right.value }
+      : undefined;
+  }
+  if (ts.isIdentifier(unwrapped)) {
+    const alias = aliases.get(unwrapped.text);
+    if (alias !== undefined) {
+      if (resolvingAliases.has(unwrapped.text)) {
+        return undefined;
+      }
+      const nextResolvingAliases = new Set(resolvingAliases);
+      nextResolvingAliases.add(unwrapped.text);
+      return staticValue(alias, aliases, nextResolvingAliases);
+    }
+    if (unwrapped.text === "require") {
+      return { kind: "standard-loader" };
+    }
+    if (unwrapped.text === "module") {
+      return { kind: "standard-module" };
+    }
+    return undefined;
+  }
+  if (ts.isPropertyAccessExpression(unwrapped)) {
+    return staticValue(unwrapped.expression, aliases, resolvingAliases)?.kind === "standard-module" &&
+      unwrapped.name.text === "require"
+      ? { kind: "standard-loader" }
+      : undefined;
+  }
+  if (ts.isElementAccessExpression(unwrapped) && unwrapped.argumentExpression !== undefined) {
+    const receiver = staticValue(unwrapped.expression, aliases, resolvingAliases);
+    const key = staticValue(unwrapped.argumentExpression, aliases, resolvingAliases);
+    return receiver?.kind === "standard-module" && key?.kind === "string" && key.value === "require"
+      ? { kind: "standard-loader" }
+      : undefined;
+  }
+  return undefined;
+}
+
+function importEqualsReferencesPrivateByokModule(
+  root: string,
+  sourcePath: string,
+  declaration: TypeScript.ImportEqualsDeclaration
+): boolean {
+  return ts.isExternalModuleReference(declaration.moduleReference) &&
+    declaration.moduleReference.expression !== undefined &&
+    ts.isStringLiteralLike(declaration.moduleReference.expression) &&
+    resolvesToPrivateByokModule(root, sourcePath, declaration.moduleReference.expression.text);
+}
+
+function importTypeReferencesPrivateByokModule(
+  root: string,
+  sourcePath: string,
+  importType: TypeScript.ImportTypeNode
+): boolean {
+  return ts.isLiteralTypeNode(importType.argument) &&
+    ts.isStringLiteralLike(importType.argument.literal) &&
+    resolvesToPrivateByokModule(root, sourcePath, importType.argument.literal.text);
+}
+
+function standardLoaderReferencesPrivateByokModule(
+  root: string,
+  sourcePath: string,
+  call: TypeScript.CallExpression,
+  aliases: ReadonlyMap<string, TypeScript.Expression>
+): boolean {
+  const isStandardLoader = call.expression.kind === ts.SyntaxKind.ImportKeyword ||
+    staticValue(call.expression, aliases)?.kind === "standard-loader";
+  if (!isStandardLoader) {
+    return false;
+  }
+  const target = call.arguments[0] === undefined
+    ? undefined
+    : staticValue(call.arguments[0], aliases);
+  return target?.kind !== "string" || resolvesToPrivateByokModule(root, sourcePath, target.value);
+}
+
 function sourceReferencesPrivateByokModule(root: string, sourcePath: string, source: string): boolean {
   const sourceFile = ts.createSourceFile(
     sourcePath,
@@ -105,12 +241,27 @@ function sourceReferencesPrivateByokModule(root: string, sourcePath: string, sou
     true,
     scriptKindForFileName(sourcePath)
   );
+  const aliases = constAliasExpressions(sourceFile);
   let referencesPrivateModule = false;
   const visit = (node: TypeScript.Node): void => {
     if (
-      ts.isStringLiteralLike(node) &&
-      resolvesToPrivateByokModule(root, sourcePath, node.text)
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      resolvesToPrivateByokModule(root, sourcePath, node.moduleSpecifier.text)
     ) {
+      referencesPrivateModule = true;
+      return;
+    }
+    if (ts.isImportEqualsDeclaration(node) && importEqualsReferencesPrivateByokModule(root, sourcePath, node)) {
+      referencesPrivateModule = true;
+      return;
+    }
+    if (ts.isImportTypeNode(node) && importTypeReferencesPrivateByokModule(root, sourcePath, node)) {
+      referencesPrivateModule = true;
+      return;
+    }
+    if (ts.isCallExpression(node) && standardLoaderReferencesPrivateByokModule(root, sourcePath, node, aliases)) {
       referencesPrivateModule = true;
       return;
     }
