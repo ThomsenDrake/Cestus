@@ -82,7 +82,7 @@ interface NormalizedWakeInstant {
 
 type ReconciliationAppendInput = Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0];
 type ReconciliationLookupInput = Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0];
-type FactoryAuthenticatedMountedWakeState = ReturnType<
+type FactoryAuthenticatedMountedWakeStoreAuthority = ReturnType<
   typeof inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore
 >;
 
@@ -163,20 +163,42 @@ class ActiveMountedWakeLockError extends Error {}
 
 export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleStoreInput): MountedWakeLifecycleStore {
   const input = normalizeStoreInput(rawInput);
-  const captured = inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(input.capability);
-  const mountedWorkspace = captured.mountedWorkspace;
-  const mountedBinding = structuralMountedWorkspaceBinding(captured.workspace);
-  const ledger = captured.ledger;
+  const storeAuthority = inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(input.capability);
+  const mountedWorkspace = storeAuthority.mountedWorkspace;
+  const mountedBinding = structuralMountedWorkspaceBinding(storeAuthority.workspace);
+  const ledger = storeAuthority.ledger;
   const workspaceId = mountedBinding.workspaceId;
   let revision = 0;
   let observedEvents: readonly KnowledgeEvent[] = Object.freeze([]);
   let leaseAdmission: LeaseAdmissionState | undefined;
   let activeLeaseEventId: string | undefined;
+  let activeLeaseExpiresAt: string | undefined;
   let invalidated = false;
   let latestReconciliation: ClaimReconciliationReadback | undefined;
 
+  const invalidateLocal = (): void => {
+    if (invalidated) return;
+    revision += 1;
+    invalidated = true;
+    leaseAdmission = undefined;
+    activeLeaseEventId = undefined;
+    activeLeaseExpiresAt = undefined;
+    latestReconciliation = undefined;
+  };
+
   const requireCurrent = (expectedRevision: number): void => {
     if (invalidated || expectedRevision !== revision) throw new Error("mounted wake lifecycle store is no longer current");
+  };
+
+  const assertLeaseCurrent = (): void => {
+    if (activeLeaseExpiresAt === undefined) return;
+    if (
+      normalizedWakeInstant(input.now(), "wake lease consumption").milliseconds
+      >= normalizedWakeInstant(activeLeaseExpiresAt, "durable wake lease expiry").milliseconds
+    ) {
+      invalidateLocal();
+      throw new Error("mounted wake lifecycle lease is expired or no longer current");
+    }
   };
 
   const assertCurrentLease = (events: readonly KnowledgeEvent[]): void => {
@@ -185,17 +207,25 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     const lease = events.find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
       event.id === leaseEventId && event.type === "agent.wake.supervisor.lease.claimed.v1"
     );
-    if (lease === undefined || normalizedWakeInstant(input.now(), "wake lease consumption").milliseconds >= normalizedWakeInstant(lease.payload.leaseExpiresAt, "durable wake lease expiry").milliseconds) {
-      invalidated = true;
-      revision += 1;
-      leaseAdmission = undefined;
+    if (
+      lease === undefined
+      || activeLeaseExpiresAt === undefined
+      || normalizedWakeInstant(lease.payload.leaseExpiresAt, "durable wake lease expiry").iso !== activeLeaseExpiresAt
+    ) {
+      invalidateLocal();
       throw new Error("mounted wake lifecycle lease is expired or no longer current");
     }
+    assertLeaseCurrent();
   };
+
+  storeAuthority.bindCurrentness(Object.freeze({
+    revalidate: assertLeaseCurrent,
+    invalidate: invalidateLocal
+  }));
 
   const readMountedSnapshot = async (): Promise<MountedSnapshot> => {
     const expectedRevision = revision;
-    validateMountedWorkspaceStorage(input.capability, ledger, mountedWorkspace, mountedBinding);
+    validateMountedWorkspaceStorage(storeAuthority, ledger, mountedWorkspace, mountedBinding);
     const events = await ledger.readAll();
     requireCurrent(expectedRevision);
     observeLedger(events, observedEvents);
@@ -303,7 +333,6 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     const foreign = snapshot.events.toReversed().find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
       event.type === "agent.wake.supervisor.lease.claimed.v1" &&
       event.payload.workspaceId === workspaceId &&
-      event.payload.supervisorEpoch !== input.supervisorEpoch &&
       normalizedWakeInstant(event.payload.leaseExpiresAt, "durable wake lease expiry").milliseconds > claimedAt.milliseconds
     );
     if (foreign !== undefined) {
@@ -341,6 +370,10 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     const readback = leaseReadback(lease.event, snapshot.facts, input, causation);
     leaseAdmission = Object.freeze({ facts: snapshot.facts, causation });
     activeLeaseEventId = lease.event.id;
+    activeLeaseExpiresAt = normalizedWakeInstant(
+      lease.event.payload.leaseExpiresAt,
+      "durable wake lease expiry"
+    ).iso;
     return Object.freeze({ outcome: "acquired-and-read-back" as const, readback });
   };
 
@@ -525,11 +558,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     readOrAcquireSupervisorLease,
     readOrAppendReconciliation,
     invalidate() {
-      revision += 1;
-      invalidated = true;
-      leaseAdmission = undefined;
-      activeLeaseEventId = undefined;
-      latestReconciliation = undefined;
+      storeAuthority.invalidate();
     },
     mountedFacts,
     supervisorLease,
@@ -817,7 +846,7 @@ function validateAppendReferences(
 }
 
 function structuralMountedWorkspaceBinding(
-  workspace: FactoryAuthenticatedMountedWakeState["workspace"]
+  workspace: FactoryAuthenticatedMountedWakeStoreAuthority["workspace"]
 ): MountedWorkspaceBinding {
   return Object.freeze({
     workspaceId: requiredText(workspace.workspaceId, "mounted workspace id"),
@@ -834,15 +863,15 @@ function structuralMountedWorkspaceBinding(
 }
 
 function validateMountedWorkspaceStorage(
-  capability: FactoryAuthenticatedMountedWakeCapability,
-  ledger: FactoryAuthenticatedMountedWakeState["ledger"],
-  mountedWorkspace: FactoryAuthenticatedMountedWakeState["mountedWorkspace"],
+  authority: FactoryAuthenticatedMountedWakeStoreAuthority,
+  ledger: FactoryAuthenticatedMountedWakeStoreAuthority["ledger"],
+  mountedWorkspace: FactoryAuthenticatedMountedWakeStoreAuthority["mountedWorkspace"],
   binding: MountedWorkspaceBinding
 ): void {
-  const current = inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore(capability);
-  const currentBinding = structuralMountedWorkspaceBinding(current.workspace);
+  authority.revalidate();
+  const currentBinding = structuralMountedWorkspaceBinding(authority.workspace);
   if (
-    current.ledger !== ledger || current.mountedWorkspace !== mountedWorkspace ||
+    authority.ledger !== ledger || authority.mountedWorkspace !== mountedWorkspace ||
     !isDeepStrictEqual(currentBinding, binding) ||
     ![
       binding.rootDir,
@@ -924,6 +953,7 @@ function normalizeStoreInput(value: MountedWakeLifecycleStoreInput): MountedWake
     !isPlainRecord(value) ||
     !hasExactKeys(value as unknown as Record<string, unknown>, ["capability", "actor", "supervisorEpoch", "policy", "now", "createSafeId"]) ||
     !isPlainRecord(value.policy) ||
+    !hasExactKeys(value.policy, ["policyVersion", "policyDigest", "lockStateDigest"]) ||
     typeof value.now !== "function" ||
     typeof value.createSafeId !== "function"
   ) {
@@ -1047,7 +1077,7 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+function hasExactKeys(value: object, keys: readonly string[]): boolean {
   const actual = Object.keys(value).sort();
   return isDeepStrictEqual(actual, [...keys].sort());
 }
