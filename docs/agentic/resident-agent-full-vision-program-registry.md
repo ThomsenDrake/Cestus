@@ -18659,3 +18659,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The lanes are disjoint. Neither child may edit the registry, integrate,
   self-merge, push, touch `neo`, use credentials/providers/external services,
   rewrite history, or exceed its approved repair ceiling.
+
+## RV-1-E-697 — Authorized V4 correction resolves the Task137B ownership collision
+
+- Recorded at: 2026-07-17T20:34:48Z
+- The V4 assurance owner preserved claim commit
+  `9801dbc01a660d581c4c2270efd2e844e24ee5cf` and appended causal RED
+  `760569643fd533262de0051884fbc1bc8a4bb515`, then stopped before GREEN after
+  proving that `packages/ontology/src/contracts.ts` is still owned by released
+  Task137B-W in the static V4 graph. No implementation repair was consumed.
+- Coordinator adjudication confirms this is inside Authorization A: CF1-HR
+  already directly depends on Task137B-W and cannot implement its approved
+  Handoff V2 ABI without changing that path. Forward correction commit
+  `0c516cded13099952bf133382ed7782316dbb390` therefore changes only the V4
+  description of that path from Task137B-W `owned` to `transferred`, names
+  exactly `CF1-HR` as transfer target, and assigns current ownership to CF1-HR.
+- Raw strict record 11 remains byte-identical and authoritative. The corrected
+  V4 compatibility table binds its canonical JSON SHA-256
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
+  to the historical `owned` disposition. Current-HEAD equality remains with
+  Task137B-W until CF1-HR record 14 exists, then moves to CF1-HR; candidate and
+  integration blob verification for record 11 never relaxes.
+- V1-V3, raw records 1-13, all 29 card IDs and order, every prerequisite, and
+  every other transfer remain frozen. The same assurance owner resumes the
+  same generation from its existing RED; this forward specification
+  correction does not authorize a new worker, new contract generation,
+  history rewrite, registry rewrite, or additional repair.
