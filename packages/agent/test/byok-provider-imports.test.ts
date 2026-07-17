@@ -165,8 +165,10 @@ describe("BYOK authority-reader import boundary", () => {
     expect(publicByokExports(workspaceRoot)).toEqual([...publicByokBoundaryExports].sort());
   });
 
-  it("permits no production-package import, re-export, alias, or loader path to the private reader seam", () => {
-    expect(privateByokImporters(workspaceRoot)).toEqual([]);
+  it("permits only the safe public barrel export and no production reader mint, re-export, alias, or loader path", () => {
+    expect(privateByokImporters(workspaceRoot)).toEqual([
+      "packages/agent/src/index.ts"
+    ]);
   });
 
   it("recognizes named, aliased, namespace, default, dynamic, CommonJS, re-export, and type-only reader paths", () => {

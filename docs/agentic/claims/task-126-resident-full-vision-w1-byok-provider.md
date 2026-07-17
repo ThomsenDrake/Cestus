@@ -70,3 +70,20 @@ removed before committing. No full verifier is authorized for this repair.
   conflict, credential or external-behavior decision, or repeated verifier
   failure. Do not integrate, merge, push, contact providers, use credentials,
   touch `neo`, change registry/spec/plan/contract bytes, or broaden this card.
+
+### Causal RED/GREEN evidence
+
+- RED on inherited bytes: the exact Task126-R command failed only the new
+  public-boundary assertion: `createByokProviderBoundary` was `undefined`
+  through `packages/agent/src/index.ts`. Existing BYOK behavior passed.
+- GREEN: the same command passed `2` files / `15` tests after the barrel
+  exported only `createByokProviderBoundary`,
+  `evaluateByokProviderBoundary`, and their safe consumer types. It does not
+  export `createByokProviderAuthorityReader` or
+  `ByokProviderAuthorityReader`.
+- The import policy proves that the sole production reference to the private
+  module is that exact safe barrel export and rejects named, alias, default,
+  namespace, dynamic, CommonJS, re-export, and type-only routes to the reader
+  seam. The existing direct mint remains test-only.
+- Status: ready-for-review pending the required cross-boundary and final
+  committed-byte gates.
