@@ -17952,3 +17952,77 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Record 11, `W1-123-H-SHARED-SCHEMA`, Task139, full verification, network,
   providers, credentials, external services, push, integration, and every
   action on `neo` remain closed.
+
+## RV-1-E-680 — Exclusive coordinator takeover and durable Wave 0-5 matrix
+
+- Recorded at: 2026-07-17T18:24:15Z
+- The predecessor coordinator task
+  `019f1977-134e-7222-8fbe-4435144ba673` is idle and was inspected only as
+  secondary context. It was not messaged, resumed, or used for delegation.
+  Two state samples spanning the complete durable-context audit found no
+  movement in either inherited worktree.
+- Exclusive program ownership now belongs to the current coordinator through
+  Wave 5. No relay, replacement coordinator, watchdog, or handoff task is
+  authorized. Child tasks remain limited to bounded implementation and
+  read-only review work under the finite factory rules.
+- Program worktree
+  `/home/drake/.codex/worktrees/program-coordinator-recovery/Cestus` is clean
+  on `codex/resident-agent-full-vision-program-watchdog-recovery` at exact
+  revision `a3dbea86a6a8edcaadaaba8e798c39b660512df0`. Task137B candidate
+  worktree
+  `/home/drake/.codex/worktrees/task137b-wake-runtime-v4-final-repair/Cestus`
+  is clean on `codex/task137b-wake-runtime-v4-final-repair` at exact revision
+  `01262620bae707a187578387c14e12209361bc97`.
+- The Task137B candidate is the exact fifteen-commit single-parent chain from
+  program base `a3dbea86a6a8edcaadaaba8e798c39b660512df0` through
+  `01262620bae707a187578387c14e12209361bc97`, in the order recorded by the
+  takeover authorization. Its cumulative diff contains exactly the fourteen
+  V4-owned paths and no other path.
+- Immutable contract SHA-256 values remain exact: V1
+  `d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed`,
+  V2 `c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4`,
+  and V3 `8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb`
+  in both worktrees. The first ten strict release blocks have the exact ten
+  raw-JSON hashes pinned by the V4 design and the program contains exactly ten
+  accepted `task136-dispatch-release.v4` records.
+- Both worktrees have real, non-symlinked top-level `node_modules`
+  directories, executable local Vitest binaries, no top-level dependency
+  symlink, and no tracked or untracked change at takeover.
+- Status vocabulary for this matrix is evidence-bound: `released` means a
+  strict accepted release record; `integrated` means the relevant committed
+  bytes are ancestors of the program branch but the card is not strictly
+  released; `candidate` means preserved unapproved or contract-incomplete
+  candidate work; `blocked` means a frozen prerequisite is unreleased; and
+  `not started` means no current card implementation exists.
+- Wave 0: Tasks 100 through 117 are `released` and frozen. All eight lane
+  specifications, all eight lane implementation plans, program controls, and
+  CF-1 contract-freeze artifacts are present. Wave 0 is not reopened.
+- Wave 1/2 strict release graph, in exact V4 order:
+  `Task126=released`; `Task127=released`; `Task128=released`;
+  `Task135D=released`; `Task137A=released`; `Task129-MFA=released`;
+  `Task129=released`; `Task130=released`; `Task135B=released`;
+  `T120-R=released`; `Task137B-W=candidate`;
+  `W1-123-H-SHARED-SCHEMA=integrated`;
+  `W1-133.5-PREAPPROVAL-PROMPT-STORE=integrated`; `CF1-HR=blocked`;
+  `Task126-R=candidate`; `Task133=blocked`; `Task139-P1=blocked`;
+  `Task139-PM=blocked`; `Task136-FC-Core=blocked`; `Task139-P2=blocked`;
+  `Task136-FC-Ports=blocked`; `G136-SC=not started`; `G136-R=blocked`;
+  `C136-P=blocked`; `Task121=integrated`; `Task122=integrated`;
+  `W1-123-BOOTSTRAP-HANDOFF=integrated`; `Task138-H=blocked`;
+  `Task136=blocked`.
+- The corresponding original Wave 1 task view is: Task120 `released`;
+  Tasks121-125 `integrated`; Task126 has a released root and a
+  contract-incomplete `candidate`; Tasks127-130 are `released`; Task131 is
+  `not started`. The original Wave 2 view is: Task132 has `integrated` bytes;
+  Task133 is `blocked`; Task134 has preserved candidate/integrated predecessor
+  bytes but no strict release; Task135's mounted foundation is `released`;
+  Task136 is `blocked`; Task137 is the exact active `candidate`; and
+  Tasks138-141 are `blocked` or `not started` behind the frozen graph.
+- Wave 3: Tasks142 through 152 are `not started`.
+- Wave 4: A-01 through A-10 are `not started`.
+- Wave 5: Task153 is `not started`.
+- Task137B remains an unapproved candidate. The next transition is bounded
+  admission from its exact committed bytes followed by exactly one fresh
+  concurrent architecture/invariant and executability/adversarial read-only
+  review pair. No further automatic Task137B production or contract change is
+  authorized.
