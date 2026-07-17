@@ -149,6 +149,27 @@ describe("wake supervisor runtime", () => {
     expect({ reads, writes }).toEqual({ reads: 0, writes: 0 });
   });
 
+  it("authenticates a raw handle before the wake runtime reads any handle-owned state", () => {
+    let rawHandleReads = 0;
+    const forged = Object.defineProperty({}, "mountedWorkspace", {
+      enumerable: true,
+      get() {
+        rawHandleReads += 1;
+        return undefined;
+      }
+    }) as LocalRuntimeHandle;
+
+    expect(() => createWakeSupervisorRuntime({
+      runtimeHandle: forged,
+      actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
+      supervisorEpoch: "epoch_wake_runtime",
+      policy: { policyVersion: "policy.v1", policyDigest: "sha256:policy", lockStateDigest: "sha256:lock" },
+      now: () => "2026-07-16T00:00:00.000Z",
+      createSafeId: (kind) => `${kind}_wake_runtime`
+    })).toThrow(/factory-issued|runtime handle/i);
+    expect(rawHandleReads).toBe(0);
+  });
+
   it("does not admit an operation after authority loss during a later lifecycle command", async () => {
     const { runtime } = await fixture();
     await runtime.supervision.start();

@@ -8,8 +8,8 @@ export interface Task137PolicyViolation {
   readonly detail: string;
 }
 
-export const task137GrammarVersion = "task137-authority-import-grammar.v2" as const;
-export const task137CorpusVersion = "task137-authority-import-corpus.v2" as const;
+export const task137GrammarVersion = "task137-authority-import-grammar.v3" as const;
+export const task137CorpusVersion = "task137-authority-import-corpus.v3" as const;
 
 type ImportPosition = "value" | "type";
 
@@ -89,6 +89,18 @@ const allowedAuthorityImports = new Map<string, Map<string, Map<string, ImportPo
       [
         "packages/local-runtime/src/portable-workspace-lifecycle.ts",
         allowedNames({ value: ["createPortableWorkspaceLifecyclePorts"], type: [] })
+      ]
+    ])
+  ],
+  [
+    "packages/local-runtime/src/mounted-wake-lifecycle-store.ts",
+    new Map([
+      [
+        "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+        allowedNames({
+          value: ["inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore"],
+          type: ["FactoryAuthenticatedMountedWakeCapability"]
+        })
       ]
     ])
   ],
