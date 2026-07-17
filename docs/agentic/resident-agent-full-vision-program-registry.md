@@ -17670,3 +17670,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   new exact revision. SDD, implementation, integration, release records,
   Task139, full verification, providers, network, credentials, external
   services, push, reset, rebase, and every `neo` action remain closed.
+
+## RV-1-E-668 — Task137B-W self-contained correction in fresh dual review
+
+- Recorded at: 2026-07-17T01:55:00Z
+- Fresh architecture/invariant reviewer
+  `019f6d6c-5333-75e3-8037-2af7594e596d` and fresh
+  executability/adversarial reviewer
+  `019f6d6c-579a-7183-8d04-18caedfe5d2b` are read-only against exact corrected
+  revision `41350ae9e061aab662c85d8d500a69447952ac84` on Terra/xhigh.
+- Both received the complete compatibility, prefix-evidence, ownership,
+  policy, exact-scope, fresh-shell base, checkpoint-order, verified 88-plus-35
+  test-count, terminal-gate, and causal-clock contracts. No prior approval
+  carries forward.
+- Review work does not authorize SDD, edits, implementation, integration,
+  release records, Task139, full verification, providers, network,
+  credentials, external services, push, reset, rebase, or any `neo` action.
+  Task 1 remains closed until both fresh reviewers return literal unqualified
+  **APPROVED** verdicts for this same revision.
