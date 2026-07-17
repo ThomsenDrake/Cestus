@@ -17595,3 +17595,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   findings and two fresh reviewers return unqualified **APPROVED**. Task139,
   full verification, providers, network, credentials, external services,
   push, reset, rebase, and every `neo` action remain closed.
+
+## RV-1-E-665 — Task137B-W v3 correction revised for fresh review
+
+- Recorded at: 2026-07-17T00:06:05Z
+- The correction design and executable plan now incorporate every finding from
+  `RV-1-E-664` at exact revision
+  `781ae56525692a23a15f5979d926e29c0b35d40c`.
+- V3 pins the complete Task129-MFA release record by canonical compact-JSON
+  SHA-256
+  `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`,
+  transfers the ontology contract plus the finite Task137 policy source/test,
+  preserves the Task137 policy corpus at exactly 8 accepted / 20 rejected,
+  and gives Task137B-W an exact ten-path ceiling and corrected five-file
+  command.
+- Repository mode must prove the contiguous released prefix with exact Git
+  objects, current final-owner blobs, commands, clean state, and the marker
+  `TASK136_REPOSITORY_PREFIX_OK records=N commands=N` before it may report
+  incomplete 29-card closure. The implementation plan asserts exact sorted
+  scope equality for Task 1's four paths, Task 2's ten paths, and Task 3's
+  single registry path.
+- Documentation validation passed with `git diff --check` and
+  `npm run factory:check`. Two fresh read-only Terra/xhigh reviewers must now
+  evaluate this exact revision. Review work does not authorize SDD, edits,
+  implementation, integration, release records, Task139, full verification,
+  providers, network, credentials, external services, push, reset, rebase, or
+  any `neo` action.
