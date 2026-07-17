@@ -44,6 +44,34 @@
           {
             "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
             "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/ontology/test/agent-contracts.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "Task135B",
+        "canonicalJsonSha256": "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409",
+        "pathDispositions": [
+          {
+            "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "Task137B-W",
+        "canonicalJsonSha256": "833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29",
+        "pathDispositions": [
+          {
+            "path": "packages/ontology/src/contracts.ts",
+            "recordDisposition": "owned"
           }
         ]
       }
@@ -200,7 +228,7 @@
             "path": "packages/ontology/src/contracts.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/ontology/test/agent-contracts.test.ts"
           },
           {
@@ -233,7 +261,8 @@
           }
         ],
         "transferToIds": [
-          "Task137B-W"
+          "Task137B-W",
+          "CF1-HR"
         ],
         "command": "npm test -- packages/agent/test/official-flow-feasibility.test.ts packages/ontology/test/agent-contracts.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/mounted-official-flow-feasibility.test.ts"
       },
@@ -288,11 +317,11 @@
         ],
         "ownedPaths": [
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
           },
           {
@@ -300,7 +329,9 @@
             "path": "docs/agentic/claims/task-135b-portable-mounted-handoff-stores.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "CF1-HR"
+        ],
         "command": "npm test -- packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
       },
       {
@@ -385,7 +416,7 @@
             "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/ontology/src/contracts.ts"
           },
           {
@@ -397,7 +428,9 @@
             "path": "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "CF1-HR"
+        ],
         "command": "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts"
       },
       {
@@ -449,7 +482,9 @@
         "prerequisiteIds": [
           "W1-123-H-SHARED-SCHEMA",
           "W1-133.5-PREAPPROVAL-PROMPT-STORE",
-          "Task137B-W"
+          "Task137B-W",
+          "Task135B",
+          "Task129-MFA"
         ],
         "ownedPaths": [
           {
@@ -470,11 +505,47 @@
           },
           {
             "disposition": "owned",
+            "path": "packages/agent/src/specialist-handoff-manifest.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/specialist-handoff-manifest.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/src/specialist-handoff-authority.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/specialist-handoff-authority.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/ontology/src/contracts.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/ontology/test/agent-contracts.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/ontology/test/agent-resident-loop-contracts.test.ts"
+          },
+          {
+            "disposition": "owned",
             "path": "docs/agentic/claims/cf1-h-task136-complete-handoff-readback-projection.md"
           }
         ],
         "transferToIds": [],
-        "command": "npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts"
+        "command": "npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts"
       },
       {
         "id": "Task126-R",
@@ -691,6 +762,10 @@
           },
           {
             "disposition": "owned",
+            "path": "packages/agent/src/execution-loop.ts"
+          },
+          {
+            "disposition": "owned",
             "path": "packages/agent/test/tool-gateway.test.ts"
           },
           {
@@ -700,6 +775,14 @@
           {
             "disposition": "owned",
             "path": "packages/agent/test/resident-loop-scheduler-completion.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/execution-loop.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/domain-execution-dispatcher.test.ts"
           },
           {
             "disposition": "owned",
@@ -713,7 +796,7 @@
         "transferToIds": [
           "G136-R"
         ],
-        "command": "npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
+        "command": "npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
       },
       {
         "id": "G136-R",
