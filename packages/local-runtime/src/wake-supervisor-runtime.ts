@@ -2,6 +2,7 @@ import {
   createWakeSupervisor,
   type ActiveClaimReconciliationPort,
   type DurableSupervisorLeasePort,
+  type SupervisorLeaseAdmissionInput,
   type WakeCommandInput,
   type WakeSignal,
   type WakeStatusDto,
@@ -85,10 +86,10 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
   const runtime: WakeSupervisorRuntime = {
     supervision: Object.freeze({
       start: () => supervisor.start(),
-      signal: (signal) => supervisor.signal(signal),
-      pause: (command) => supervisor.pause(command),
-      resume: (command) => supervisor.resume(command),
-      recover: (command) => supervisor.recover(command),
+      signal: (signal: WakeSignal) => supervisor.signal(signal),
+      pause: (command: WakeCommandInput) => supervisor.pause(command),
+      resume: (command: WakeCommandInput) => supervisor.resume(command),
+      recover: (command: WakeCommandInput) => supervisor.recover(command),
       status: () => supervisor.status()
     }),
     async stop() {
@@ -121,21 +122,21 @@ function createSupervisorPorts(lifecyclePorts: ReturnType<typeof createPortableW
     return current;
   };
   const authority: WorkspaceAvailabilityAuthority = Object.freeze({
-    async revalidate(request) {
+    async revalidate(request: Parameters<WorkspaceAvailabilityAuthority["revalidate"]>[0]) {
       const result = await lifecyclePorts.authority.revalidate(request);
       currentAdmission = result.ok ? result.admission : undefined;
       return result;
     },
-    invalidate(reason) {
+    invalidate(reason: "shutdown" | "authority-loss" | "admission-mismatch") {
       currentAdmission = undefined;
       lifecyclePorts.authority.invalidate?.(reason);
     },
-    subscribeInvalidation(listener) {
+    subscribeInvalidation(listener: Parameters<NonNullable<WorkspaceAvailabilityAuthority["subscribeInvalidation"]>>[0]) {
       return lifecyclePorts.authority.subscribeInvalidation?.(listener) ?? (() => undefined);
     }
   });
   const supervisorLease: DurableSupervisorLeasePort = Object.freeze({
-    async readOrAcquire(input) {
+    async readOrAcquire(input: SupervisorLeaseAdmissionInput) {
       return lifecyclePorts.supervisorLease.readOrAcquire(Object.freeze({
         ...input,
         admission: restoreAdmission(input.admission)
@@ -143,13 +144,13 @@ function createSupervisorPorts(lifecyclePorts: ReturnType<typeof createPortableW
     }
   });
   const activeClaimReconciliation: ActiveClaimReconciliationPort = Object.freeze({
-    async readByIdempotencyKey(input) {
+    async readByIdempotencyKey(input: Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0]) {
       return lifecyclePorts.activeClaimReconciliation.readByIdempotencyKey(Object.freeze({
         ...input,
         admission: restoreTupleAdmission(input.admission, restoreAdmission)
       }));
     },
-    async appendAndReadBack(input) {
+    async appendAndReadBack(input: Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]) {
       return lifecyclePorts.activeClaimReconciliation.appendAndReadBack(Object.freeze({
         ...input,
         admission: restoreTupleAdmission(input.admission, restoreAdmission)

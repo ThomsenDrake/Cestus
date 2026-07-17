@@ -1,7 +1,8 @@
 import type {
   ActorRef,
   AppendableKnowledgeEvent,
-  KnowledgeEvent
+  KnowledgeEvent,
+  KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import type {
   ActiveClaimReconciliationPort,
@@ -185,7 +186,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     requireCurrent(expectedRevision);
     const events = await input.runtimeHandle.ledger.readAll();
     requireCurrent(expectedRevision);
-    const foreign = events.find((event) =>
+    const foreign = events.find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
       event.type === "agent.wake.supervisor.lease.claimed.v1" &&
       event.payload.workspaceId === workspaceId &&
       event.payload.supervisorEpoch !== input.supervisorEpoch
@@ -253,7 +254,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
   });
 
   const supervisorLease: DurableSupervisorLeasePort = Object.freeze({
-    async readOrAcquire(leaseInput) {
+    async readOrAcquire(leaseInput: SupervisorLeaseAdmissionInput) {
       return readOrAcquireSupervisorLease(leaseInput);
     }
   });
@@ -268,7 +269,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
   });
 
   const lifecycle: WakeLifecyclePort = Object.freeze({
-    async pauseAndReadBack({ command }) {
+    async pauseAndReadBack({ command }: Parameters<WakeLifecyclePort["pauseAndReadBack"]>[0]) {
       const request = await appendAndReadBack({
         type: "agent.wake.supervisor.pause.requested.v1",
         causation: command.causation
@@ -286,7 +287,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
   });
 
   const runtime: WakeRuntimePort = Object.freeze({
-    async wakeOnce({ signal }) {
+    async wakeOnce({ signal }: Parameters<WakeRuntimePort["wakeOnce"]>[0]) {
       if (signal.source === "command") {
         await appendAndReadBack({
           type: "agent.wake.supervisor.resume.requested.v1",
