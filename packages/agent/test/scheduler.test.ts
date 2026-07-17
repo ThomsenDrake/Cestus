@@ -6,6 +6,7 @@ import {
   createAgentScheduler,
   createAgentToolGateway,
   hashAgentToolPreview,
+  type AgentApprovedToolExecutionInput,
   type AgentApprovedToolExecutorDescriptor,
   type AgentToolPreview
 } from "../src/index.js";
@@ -60,8 +61,9 @@ describe("agent scheduler wake", () => {
         async executeApproved(input) {
           executions += 1;
           expect(input.approvedBy).toBe(humanActor.id);
+          const evidence = await recordResidentToolStep(ledger, input);
           return {
-            eventIds: ["evt_fake_domain_completed"],
+            eventIds: [evidence.id],
             artifactHashes: [artifactHash],
             readModelChanges: [{ projectionName: "agent-test", change: "approved tool executed" }],
             resultSummary: "Approved tool executed."
@@ -123,11 +125,12 @@ describe("agent scheduler wake", () => {
             }]
           };
         },
-        async executeApproved() {
+        async executeApproved(input) {
           executions += 1;
           await Promise.resolve();
+          const evidence = await recordResidentToolStep(ledger, input);
           return {
-            eventIds: ["evt_fake_domain_completed"],
+            eventIds: [evidence.id],
             artifactHashes: [artifactHash],
             readModelChanges: [{ projectionName: "agent-test", change: "approved tool executed" }],
             resultSummary: "Approved tool executed."
@@ -681,6 +684,56 @@ async function requestAndApprove(ledger: InMemoryEventLedger, preview: AgentTool
     rationale: "Human approved the exact scheduler preview."
   });
   return requested;
+}
+
+async function recordResidentToolStep(ledger: InMemoryEventLedger, input: AgentApprovedToolExecutionInput) {
+  const claim = (await ledger.readStream(`agent_tool_request_${input.toolRequestId}`)).find(
+    (event) => event.type === "agent.tool.execution.claimed"
+  );
+  if (claim === undefined || claim.type !== "agent.tool.execution.claimed") {
+    throw new Error("test descriptor requires a durable execution claim");
+  }
+
+  return await ledger.append({
+    type: "agent.resident-tool-step.recorded.v1",
+    version: 1,
+    streamId: `agent_resident_loop_task_scheduler_attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_${input.runId}`,
+    context: {
+      actor: schedulerActor,
+      occurredAt: "2026-07-09T12:00:00.000Z",
+      causationId: claim.id,
+      correlationId: `corr_${input.toolRequestId}_result`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      residentAgentId: "agent_default",
+      taskId: "task_scheduler",
+      attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      runId: input.runId,
+      policyId: "agent_policy_scheduler",
+      policyVersion: "1.0.0",
+      policyHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      authorityHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      sourceEventIds: ["evt_source_review"],
+      contextArtifactHashes: [artifactHash],
+      budget: { maxSteps: 1, remainingSteps: 0, contextBytes: 1 },
+      causationEventId: claim.id,
+      correlationId: `corr_${input.toolRequestId}_result`,
+      planReadback: {
+        planRecordEventId: "evt_plan_scheduler",
+        taskId: "task_scheduler",
+        attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        runId: input.runId
+      },
+      stepOrdinal: 1,
+      toolRequestId: input.toolRequestId,
+      toolId: input.toolId,
+      toolVersion: input.toolVersion,
+      previewHash: input.previewHash,
+      toolEventId: claim.id
+    }
+  });
 }
 
 async function wakeWithPreviewResult(
