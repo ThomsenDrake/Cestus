@@ -17711,3 +17711,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   admission, and dual exact-candidate review before coordinator integration.
 - Task 2, Task 3, Task139, full verification, providers, network, credentials,
   external services, push, reset, rebase, and every `neo` action remain closed.
+
+## RV-1-E-670 — Task136 v3 assurance migration implementation active
+
+- Recorded at: 2026-07-17T02:10:00Z
+- Fresh implementation worker
+  `019f6d71-24ad-7913-a119-12e9fe86517a` owns Task 1 from exact clean program
+  base `c7397e7153079f65f17153fd8d2dc55b6ad8c7b6` on isolated task branch
+  `codex/task136-v3-task137b-wake-schema-transfer` using Terra/xhigh.
+- The dispatch explicitly approves task-scoped subagent-driven development and
+  TDD. It requires a committed claim, reproducible committed RED, minimal
+  GREEN, exact 14-test/contract-marker evidence, strict 10-record/10-command
+  repository-prefix admission, immutable v1/v2 hashes, exact sorted four-path
+  scope, factory readiness, clean state, and non-symlinked dependencies.
+- The worker owns only the v3 contract, assurance checker/test, and correction
+  claim. It may not edit the registry, implement Task 2/3 or Task139, run full
+  verification, use providers/network/credentials/external services, push,
+  reset, rebase, integrate itself, or touch `neo`.
+- Completion returns an unapproved candidate to the coordinator. Integration
+  remains closed pending exact-candidate admission and two fresh unqualified
+  reviewer approvals.
