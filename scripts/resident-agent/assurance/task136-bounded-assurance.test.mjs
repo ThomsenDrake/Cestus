@@ -63,6 +63,37 @@ const task137bOwnedPaths = [
   "packages/ontology/test/resident-wake-contracts.test.ts",
   "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md"
 ];
+const correctedCf1HrPaths = [
+  "packages/agent/src/specialist-runner-kernel.ts",
+  "packages/agent/test/specialist-runner-kernel.test.ts",
+  "packages/agent/src/specialist-handoff-projection.ts",
+  "packages/agent/test/specialist-handoff-projection.test.ts",
+  "packages/agent/src/specialist-handoff-manifest.ts",
+  "packages/agent/test/specialist-handoff-manifest.test.ts",
+  "packages/agent/src/specialist-handoff-authority.ts",
+  "packages/agent/test/specialist-handoff-authority.test.ts",
+  "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+  "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+  "packages/ontology/src/contracts.ts",
+  "packages/ontology/test/agent-contracts.test.ts",
+  "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+  "docs/agentic/claims/cf1-h-task136-complete-handoff-readback-projection.md"
+];
+const correctedCf1HrCommand = "npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts";
+const correctedG136ScPaths = [
+  "packages/agent/src/tool-gateway.ts",
+  "packages/agent/src/scheduler.ts",
+  "packages/agent/src/resident-loop-scheduler-completion.ts",
+  "packages/agent/src/execution-loop.ts",
+  "packages/agent/test/tool-gateway.test.ts",
+  "packages/agent/test/scheduler.test.ts",
+  "packages/agent/test/resident-loop-scheduler-completion.test.ts",
+  "packages/agent/test/execution-loop.test.ts",
+  "packages/agent/test/domain-execution-dispatcher.test.ts",
+  "docs/agentic/claims/task-136-scheduler-completion-adapter.md",
+  "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts"
+];
+const correctedG136ScCommand = "npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts";
 const rawPrefixPins = new Map([
   ["Task126", "1b1fc2171278866b38f6aa96889b822f22ab2abd34f460b304fe7fc2c3a0b58d"],
   ["Task127", "18199ad9bfdcf3582ad13f6637bfbcc72949f1407271fa6c325612abcd226951"],
@@ -73,7 +104,10 @@ const rawPrefixPins = new Map([
   ["Task129", "987b4b18667508b7e4bd500be50b121d41b019bb011da8ae64ef4996ce62e01e"],
   ["Task130", "16328e8381eb9a55f7a8c3f3f155a4c40d44f4c0da1abe745c850193522171d8"],
   ["Task135B", "5fffad565a1523aecb0a0afd280b8b9936fc2a48dbe1c0b268f946634732e9e0"],
-  ["T120-R", "f220cb62ab803c938e4e97c538f55e24628bbf46d6e06060cb0169c1adbf2cdb"]
+  ["T120-R", "f220cb62ab803c938e4e97c538f55e24628bbf46d6e06060cb0169c1adbf2cdb"],
+  ["Task137B-W", "26f33ac286836459e723edd5ad2d4e34202bccd3f1a92e5533be30e7d881c9b7"],
+  ["W1-123-H-SHARED-SCHEMA", "9bb5838f7782eaeb327280040a514119f8c0ba1fd76dee6268ead6013ac8f292"],
+  ["W1-133.5-PREAPPROVAL-PROMPT-STORE", "119f9aea548038d600edadbca60e2bb8f92f08aacdaf081c0f6dadc928438070"]
 ]);
 
 function loadV4Contract() {
@@ -124,6 +158,67 @@ test("verifies the 29-card topological graph and exact commands", () => {
     result.commands.get("Task129-MFA"),
     "npm test -- packages/agent/test/official-flow-feasibility.test.ts packages/ontology/test/agent-contracts.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/mounted-official-flow-feasibility.test.ts"
   );
+});
+
+test("requires the corrected CF1-HR and G136-SC ownership and command projections", () => {
+  const contract = loadV4Contract();
+  const cf1Hr = contract.releaseGraph.cards.find((card) => card.id === "CF1-HR");
+  const g136Sc = contract.releaseGraph.cards.find((card) => card.id === "G136-SC");
+
+  assert.deepEqual(cf1Hr.ownedPaths, correctedCf1HrPaths.map((path) => ({ disposition: "owned", path })));
+  assert.equal(cf1Hr.command, correctedCf1HrCommand);
+  assert.deepEqual(g136Sc.ownedPaths, correctedG136ScPaths.map((path, index) => ({
+    disposition: index === correctedG136ScPaths.length - 1 ? "transferred" : "owned",
+    path
+  })));
+  assert.equal(g136Sc.command, correctedG136ScCommand);
+  assert.deepEqual(contract.releaseGraph.cards.map(({ id }) => id), expectedIds);
+  assert.equal(createHash("sha256").update(readFileSync(v1ContractPath)).digest("hex"), v1ContractSha256);
+  assert.equal(createHash("sha256").update(readFileSync(v2ContractPath)).digest("hex"), v2ContractSha256);
+  assert.equal(createHash("sha256").update(readFileSync(v3ContractPath)).digest("hex"), v3ContractSha256);
+  assert.deepEqual([...rawPrefixPins.keys()], expectedIds.slice(0, 13));
+
+  const cardMutants = [
+    {
+      id: "CF1-HR missing path",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "CF1-HR").ownedPaths.pop();
+      }
+    },
+    {
+      id: "CF1-HR extra path",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "CF1-HR").ownedPaths.unshift({
+          disposition: "owned",
+          path: "packages/agent/src/extra.ts"
+        });
+      }
+    },
+    {
+      id: "CF1-HR reordered path",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "CF1-HR").ownedPaths.reverse();
+      }
+    },
+    {
+      id: "G136-SC wrong disposition",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "G136-SC").ownedPaths[0].disposition = "transferred";
+      }
+    },
+    {
+      id: "G136-SC command omitted path",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "G136-SC").command =
+          "npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/domain-execution-dispatcher.test.ts";
+      }
+    }
+  ];
+  for (const testCase of cardMutants) {
+    const mutant = clone(contract);
+    testCase.mutate(mutant);
+    assert.throws(() => verifyStaticGraph(mutant), undefined, testCase.id);
+  }
 });
 
 test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path ceiling", () => {
@@ -192,7 +287,7 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
   assert.equal(createHash("sha256").update(readFileSync(v4ContractPath)).digest("hex"), v4ContractSha256);
 });
 
-test("preserves immutable v1, v2, v3, and first-ten raw release inputs", () => {
+test("preserves immutable v1, v2, v3, and first-thirteen raw release inputs", () => {
   const v1Before = readFileSync(v1ContractPath);
   const v1 = JSON.parse(v1Before.toString("utf8"));
   const v2Before = readFileSync(v2ContractPath);
@@ -909,8 +1004,8 @@ test("binds both historical source records and proves record-11-only current-hea
   const task137ARecord = parsedPrefix.find((record) => record.cardId === "Task137A");
   const task129MfaRecord = parsedPrefix.find((record) => record.cardId === "Task129-MFA");
 
-  assert.equal(parsedPrefix.length, 10);
-  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 10));
+  assert.equal(parsedPrefix.length, 13);
+  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 13));
   assert.equal(
     createHash("sha256").update(JSON.stringify(task137ARecord)).digest("hex"),
     historicalTask137ASha256
@@ -1073,10 +1168,10 @@ test("binds both historical source records and proves record-11-only current-hea
         successfulMessages.push(message);
       }
     }),
-    /repository release closure incomplete: expected 29 records, found 10/
+    /repository release closure incomplete: expected 29 records, found 13/
   );
-  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=10 commands=10"]);
-  assert.equal(successfulAdapter.commandCalls.length, 10);
+  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=13 commands=13"]);
+  assert.equal(successfulAdapter.commandCalls.length, 13);
 
   const task126 = parsedPrefix.find((record) => record.cardId === "Task126");
   const task137A = parsedPrefix.find((record) => record.cardId === "Task137A");
@@ -1137,7 +1232,7 @@ test("binds both historical source records and proves record-11-only current-hea
         sourceMigrationMessages.push(message);
       }
     }),
-    new RegExp(`blob mismatch: Task137A:${task137ALifecyclePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
+    new RegExp(`blob mismatch: Task137B-W:${task137ALifecyclePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
   );
   assert.deepEqual(sourceMigrationMessages, []);
 
