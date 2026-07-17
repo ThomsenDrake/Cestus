@@ -19,12 +19,7 @@ import type {
   WakeLifecyclePort,
   WakeRuntimePort
 } from "../../agent/src/wake-supervisor.js";
-import {
-  captureFactoryIssuedMountedRuntime,
-  inspectFactoryIssuedMountedRuntimeCapture,
-  type FactoryIssuedMountedWorkspaceSnapshot,
-  type LocalRuntimeHandle
-} from "./runtime-factory.js";
+import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 interface PortableWorkspaceMountedFacts {
   readonly schemaVersion: "portable-workspace-mounted-facts.v1";
@@ -57,6 +52,19 @@ interface PortableWorkspaceMountedFactsPort {
 interface MountedSnapshot {
   readonly facts: PortableWorkspaceMountedFacts;
   readonly events: readonly KnowledgeEvent[];
+}
+
+interface MountedWorkspaceBinding {
+  readonly workspaceId: string;
+  readonly rootDir: string;
+  readonly manifestPath: string;
+  readonly ledgerPath: string;
+  readonly blobRoot: string;
+  readonly derivativeRoot: string;
+  readonly jobRoot: string;
+  readonly projectionRoot: string;
+  readonly cacheRoot: string;
+  readonly configRoot: string;
 }
 
 interface LeaseAdmissionState {
@@ -143,10 +151,13 @@ class ActiveMountedWakeLockError extends Error {}
 
 export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleStoreInput): MountedWakeLifecycleStore {
   const input = normalizeStoreInput(rawInput);
-  const captured = inspectFactoryIssuedMountedRuntimeCapture(captureFactoryIssuedMountedRuntime(input.runtimeHandle));
-  const ledger = captured.ledger;
-  const workspaceId = requiredText(captured.workspace.workspaceId, "mounted workspace id");
-  validateCapturedWorkspace(captured.workspace, captured.mountedWorkspace.paths);
+  const mountedWorkspace = input.runtimeHandle.mountedWorkspace;
+  if (mountedWorkspace === undefined) {
+    throw new Error("mounted wake lifecycle store requires a mounted portable runtime; no fallback storage exists");
+  }
+  const mountedBinding = structuralMountedWorkspaceBinding(input.runtimeHandle, mountedWorkspace);
+  const ledger = input.runtimeHandle.ledger;
+  const workspaceId = mountedBinding.workspaceId;
   let revision = 0;
   let observedEvents: readonly KnowledgeEvent[] = Object.freeze([]);
   let leaseAdmission: LeaseAdmissionState | undefined;
@@ -158,7 +169,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
 
   const readMountedSnapshot = async (): Promise<MountedSnapshot> => {
     const expectedRevision = revision;
-    validateCapturedWorkspace(captured.workspace, captured.mountedWorkspace.paths);
+    validateMountedWorkspaceStorage(input.runtimeHandle, ledger, mountedWorkspace, mountedBinding);
     const events = await ledger.readAll();
     requireCurrent(expectedRevision);
     observeLedger(events, observedEvents);
@@ -770,36 +781,61 @@ function validateAppendReferences(
   }
 }
 
-function validateCapturedWorkspace(
-  workspace: FactoryIssuedMountedWorkspaceSnapshot,
-  mountedPaths: {
-    readonly ledgerPath: string;
-    readonly blobRoot: string;
-    readonly derivativeRoot: string;
-    readonly jobRoot: string;
-    readonly projectionRoot: string;
-    readonly cacheRoot: string;
-    readonly configRoot: string;
-  }
-): void {
+function structuralMountedWorkspaceBinding(
+  handle: LocalRuntimeHandle,
+  mountedWorkspace: NonNullable<LocalRuntimeHandle["mountedWorkspace"]>
+): MountedWorkspaceBinding {
+  const storage = handle.config.storage;
+  const paths = mountedWorkspace.paths;
+  const binding = Object.freeze({
+    workspaceId: requiredText(mountedWorkspace.workspaceId, "mounted workspace id"),
+    rootDir: requiredText(mountedWorkspace.rootDir, "mounted workspace root"),
+    manifestPath: requiredText(mountedWorkspace.manifestPath, "mounted workspace manifest"),
+    ledgerPath: requiredText(paths.ledgerPath, "mounted ledger path"),
+    blobRoot: requiredText(paths.blobRoot, "mounted blob root"),
+    derivativeRoot: requiredText(paths.derivativeRoot, "mounted derivative root"),
+    jobRoot: requiredText(paths.jobRoot, "mounted job root"),
+    projectionRoot: requiredText(paths.projectionRoot, "mounted projection root"),
+    cacheRoot: requiredText(paths.cacheRoot, "mounted cache root"),
+    configRoot: requiredText(paths.configRoot, "mounted config root")
+  });
   if (
-    workspace.ledgerPath !== mountedPaths.ledgerPath || workspace.blobRoot !== mountedPaths.blobRoot ||
-    workspace.derivativeRoot !== mountedPaths.derivativeRoot || workspace.jobRoot !== mountedPaths.jobRoot ||
-    workspace.projectionRoot !== mountedPaths.projectionRoot || workspace.cacheRoot !== mountedPaths.cacheRoot ||
-    workspace.configRoot !== mountedPaths.configRoot ||
+    storage.strategy !== "portable-workspace" || storage.workspaceRoot !== binding.rootDir ||
+    storage.sqlitePath !== binding.ledgerPath ||
+    storage.expectedWorkspaceId !== undefined && storage.expectedWorkspaceId !== binding.workspaceId
+  ) {
+    throw new Error("mounted wake lifecycle store requires matching portable workspace configuration");
+  }
+  return binding;
+}
+
+function validateMountedWorkspaceStorage(
+  handle: LocalRuntimeHandle,
+  ledger: LocalRuntimeHandle["ledger"],
+  mountedWorkspace: NonNullable<LocalRuntimeHandle["mountedWorkspace"]>,
+  binding: MountedWorkspaceBinding
+): void {
+  const currentMountedWorkspace = handle.mountedWorkspace;
+  if (currentMountedWorkspace === undefined) {
+    throw new Error("mounted wake lifecycle store is no longer mounted");
+  }
+  const currentBinding = structuralMountedWorkspaceBinding(handle, currentMountedWorkspace);
+  if (
+    handle.ledger !== ledger || currentMountedWorkspace !== mountedWorkspace ||
+    !isDeepStrictEqual(currentBinding, binding) ||
     ![
-      workspace.rootDir,
-      workspace.manifestPath,
-      workspace.ledgerPath,
-      workspace.blobRoot,
-      workspace.derivativeRoot,
-      workspace.jobRoot,
-      workspace.projectionRoot,
-      workspace.cacheRoot,
-      workspace.configRoot
+      binding.rootDir,
+      binding.manifestPath,
+      binding.ledgerPath,
+      binding.blobRoot,
+      binding.derivativeRoot,
+      binding.jobRoot,
+      binding.projectionRoot,
+      binding.cacheRoot,
+      binding.configRoot
     ].every((path) => existsSync(path))
   ) {
-    throw new Error("factory-issued mounted runtime storage is no longer current");
+    throw new Error("mounted wake lifecycle runtime storage is no longer current");
   }
 }
 
