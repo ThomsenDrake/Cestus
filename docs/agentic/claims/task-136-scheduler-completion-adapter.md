@@ -1,6 +1,6 @@
 # G136-SC Scheduler Completion Adapter Claim
 
-Status: implementing
+Status: implementing-repair
 
 Card: `G136-SC` (Task136 bounded-assurance V4 release graph, card 22)
 
@@ -62,3 +62,29 @@ credential or external-behavior decision, or repeated verifier failure. Do not
 reset, rebase, amend, discard, rewrite, integrate, merge, push, contact an
 external service, use credentials, touch `neo`, or create a coordinator, relay,
 watchdog, or handoff.
+
+## Consolidated repair authorization
+
+This is the sole consolidated G136-SC repair packet. The reviewed candidate
+left a caller-structural `completeTool` append route and treated a descriptor-
+minted resident tool-step bookkeeping record as domain-result authority. The
+corrected ownership is exactly: `tool-gateway.ts`, `scheduler.ts`,
+`resident-loop-scheduler-completion.ts`, `execution-loop.ts`, their six named
+tests, this claim, and the transferred import-boundary test. The repair
+transitions `blocked` to `implementing-repair`, preserves commits `57a1f863`,
+`c119be76`, `80c20c81`, and the forward merge, and is exhausted after its one
+causal RED and one minimal GREEN.
+
+The required focused command is:
+
+```bash
+npm test -- packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+The repair runs on `gpt-5.6-terra` with `xhigh` reasoning under the standing
+authorization to implement only this bounded packet. It must reject direct
+structural completion, self-minted bookkeeping, missing/pre-claim/duplicate/
+swapped/cross-request/cross-run/stale/unreadable locators, result mismatches,
+and concurrent terminalization. Only an independently appended causally bound
+domain result may authorize completion. No later automatic G136-SC repair is
+permitted.
