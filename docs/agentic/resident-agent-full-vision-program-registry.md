@@ -17843,3 +17843,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - The v3 contract is now authoritative. Task137B-W is the sole next card and
   may start from the program revision that commits this event under the
   approved exact ten-path plan. Task139 and every later card remain closed.
+
+## RV-1-E-676 — Task137B-W implementation active
+
+- Recorded at: 2026-07-17T03:20:00Z
+- Fresh implementation worker `019f6d9c-385a-7380-98fe-67407b47b082`
+  owns Task137B-W on isolated branch `codex/task137b-wake-runtime-v3` from exact
+  Task base `7400e3c0394fd929c58b0c21434f438f9816d923` using Terra/xhigh.
+- Coordinator preflight supplied a local real non-symlinked dependency tree,
+  verified executable Vitest without network access, confirmed a clean exact
+  base, and reproduced the prerequisite baseline at **5 files / 88 tests**
+  with exactly one `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- The dispatch explicitly approves task-scoped subagent-driven development and
+  TDD. The worker owns exactly ten paths and must preserve a committed claim
+  and causal RED before implementing the seven frozen wake schemas, mounted
+  lifecycle store/runtime, and one corrected policy import.
+- Candidate admission requires focused **5 files / 39 tests**, cross-lane
+  **9 files / 123 tests**, exactly one policy marker, typecheck, the exact
+  six-stage Task137 terminal gate, exact sorted ten-path scope, factory
+  readiness, clean state, and non-symlinked dependencies. Full verification,
+  registry edits, Task 3/139, providers, network, credentials, external
+  services, push, reset, rebase, integration, and every `neo` action remain
+  closed.
