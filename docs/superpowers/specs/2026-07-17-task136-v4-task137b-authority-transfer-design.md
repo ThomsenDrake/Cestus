@@ -237,26 +237,56 @@ transferred tests before its six stage markers.
 
 ## Required Authority Semantics
 
-1. Factory authentication runs before any runtime-handle read, lifecycle
-   callback, store construction, ledger read, ledger append, or other I/O.
-2. The exported mounted store requires an opaque branded authenticated
-   capability. It never accepts a LocalRuntimeHandle, raw ledger, path,
-   mounted workspace, callback, or storage constructor.
-3. Acquisition captures one normalized finite ISO instant. The only duration
+1. `wake-supervisor-runtime.ts` keeps
+   `registerMountedArtifactAuthorityIssuerForWakeRuntime` as its sole import
+   from `mounted-artifact-authority-operation.ts`. There is no standalone
+   authentication seam or additional authority-module import.
+2. The existing registrar becomes the sole two-phase discriminated seam. Its
+   `authenticate` phase receives only the raw runtime-handle identity, then
+   immediately calls the factory capture and inspection path before any raw
+   handle member read, lifecycle callback, store construction, ledger read,
+   ledger append, or other I/O. It returns an opaque authenticated capability
+   whose private captured state is retained in a registrar-owned `WeakMap`.
+3. The registrar's `bind` phase accepts that exact capability, the final wake
+   runtime identity, and lifecycle ports only after store and lifecycle
+   construction. It completes the existing authority-issuer registration and
+   never accepts a raw handle.
+4. `createMountedWakeLifecycleStore` accepts only that opaque capability plus
+   ordinary non-authority values. It imports one dedicated capability inspector
+   from `mounted-artifact-authority-operation.ts`; that inspector validates the
+   exact `WeakMap` identity and rejects copied, structural, forged, or stale
+   capabilities before returning private captured state. The public capability
+   exposes no handle, ledger, paths, callbacks, lifecycle ports, or storage
+   constructor.
+5. `createWakeSupervisorRuntime` normalizes only its outer DTO far enough to
+   retrieve the opaque raw-handle identity, invokes registrar `authenticate`
+   first, and thereafter obtains mount, identity, and ledger state only through
+   the authenticated capability and mounted store. It does not read raw-handle
+   properties.
+6. The Task137 authority import grammar and corpus advance together to
+   `task137-authority-import-grammar.v3` and
+   `task137-authority-import-corpus.v3`. They preserve exactly eight allowed
+   and twenty rejected fixtures and exactly one
+   `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The wake runtime's
+   existing allowed fixture and import name remain unchanged. The existing
+   allowed-fixture structure adds only `mounted-wake-lifecycle-store.ts` as the
+   exact authorized consumer of the capability type and dedicated inspector;
+   every other import remains rejected.
+7. Acquisition captures one normalized finite ISO instant. The only duration
    is a positive five-minute constant, 300000 milliseconds; expiry is that
    instant plus the constant. Invalid, zero, negative, non-finite, or
    over-ceiling duration fails before append.
-4. Every consumption checks durable lease expiry against a newly normalized
+8. Every consumption checks durable lease expiry against a newly normalized
    instant. Expiry burns authority before provider, tool, artifact, lifecycle,
    or ledger effect. No timer provides authority or grace.
-5. A second epoch is blocked while any lease is current and allowed after
+9. A second epoch is blocked while any lease is current and allowed after
    durable expiry. Every first-epoch store, admission, operation, and port is
    permanently stale after expiry or successor acquisition; matching
    revalidation never revives it.
-6. Invalidation is monotonic for shutdown, authority loss, admission mismatch,
+10. Invalidation is monotonic for shutdown, authority loss, admission mismatch,
    capture mismatch, ledger regression, and expiry. There is no fallback store
    or raw-handle route.
-7. A successful append returns only after exact durable global and stream
+11. A successful append returns only after exact durable global and stream
    readback. Forged or expired state produces zero provider, tool, artifact,
    lifecycle, and ledger effects. One workspace has at most one current
    supervisor.
@@ -270,8 +300,12 @@ final owner, a command failure, and a prefix marker emitted before all
 evidence.
 
 The implementation tests reject pre-authentication reads/callbacks/I/O,
-structural capabilities, zero or malformed leases, concurrent current epochs,
-post-expiry effects, stale revival, fabricated readback, and fallback paths.
+raw-handle bind inputs, copied/structural/forged/stale capabilities, zero or
+malformed leases, concurrent current epochs, post-expiry effects, stale
+revival, fabricated readback, and fallback paths. They also pin the v3 import
+grammar/corpus, the unchanged wake-runtime fixture/import, the sole new
+mounted-store capability-inspector consumer, the 8/20 fixture counts, and the
+single policy marker.
 
 Two fresh reviewers inspect one exact candidate. The architecture/invariant
 reviewer checks factory capture, opaque capability, lease/currentness,
