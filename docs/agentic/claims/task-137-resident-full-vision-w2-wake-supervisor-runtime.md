@@ -122,3 +122,42 @@ consumption-time expiry, wake raw-handle isolation, dedicated opaque-store
 inspection, and monotonic expiry/successor invalidation. The policy corpus
 advances to v3 while preserving eight allowed fixtures, twenty rejected
 fixtures, and its single required marker.
+
+## V4 GREEN Evidence
+
+The minimum GREEN keeps the existing registrar as the sole discriminated
+authenticate/bind seam. Factory authentication captures and inspects the raw
+identity before any member access or effect; the opaque WeakMap capability is
+the only authority input accepted by the mounted store. The wake runtime uses
+that registrar import alone and reads mount, identity, and ledger state through
+the capability-backed store. Lease acquisition derives one finite normalized
+instant plus exactly 300000 milliseconds, and every lifecycle consumption
+refreshes durable expiry before an effect. Mounted lease-port failure also
+revokes its lifecycle generation, so a stale admission cannot revive after
+revalidation.
+
+The exact cumulative ceiling from
+`a3dbea86a6a8edcaadaaba8e798c39b660512df0` is, in order:
+
+1. `packages/local-runtime/src/portable-workspace-lifecycle.ts`
+2. `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`
+3. `packages/local-runtime/src/mounted-artifact-authority-operation.ts`
+4. `packages/local-runtime/test/mounted-artifact-authority-operation.test.ts`
+5. `packages/local-runtime/src/wake-supervisor-runtime.ts`
+6. `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
+7. `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
+8. `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`
+9. `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+10. `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`
+11. `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+12. `packages/ontology/src/contracts.ts`
+13. `packages/ontology/test/resident-wake-contracts.test.ts`
+14. `docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md`
+
+The prescribed focused command passed `7 files / 74 tests` with exactly one
+`TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker before the GREEN
+commit. The prescribed cross-lane command is required to pass `9 files / 130
+tests` with the same single marker, followed by typecheck, diff check, factory
+readiness, the six-stage terminal gate, exact scope, clean checkout, and the
+non-symlinked dependency preflight. No repository assurance or full verifier is
+part of this evidence.

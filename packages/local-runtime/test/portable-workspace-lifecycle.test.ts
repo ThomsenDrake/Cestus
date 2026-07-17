@@ -350,7 +350,12 @@ describe("portable workspace lifecycle authority", () => {
       highWaterReadbackEventId: "evt_high_water_readback"
     });
 
-    ports.authority.invalidate!("authority-loss");
+    await expect(ports.supervisorLease.readOrAcquire(leaseInput(firstGrant.admission))).rejects.toThrow(
+      "workspace admission is no longer current"
+    );
+    expect(() => inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority(ports)).toThrow(
+      "portable workspace admission is not currently complete"
+    );
     const laterSameIdentityGrant = await ports.authority.revalidate(revalidate("resume"));
     if (!laterSameIdentityGrant.ok) throw new Error("fixture must issue a fresh admission");
     expect(laterSameIdentityGrant.admission.identityAndMount).toEqual(firstGrant.admission.identityAndMount);
@@ -371,7 +376,7 @@ describe("portable workspace lifecycle authority", () => {
     })).rejects.toThrow("workspace admission is no longer current");
 
     expect(fixture.calls).toEqual({
-      lease: 0,
+      lease: 1,
       reconciliation: 0,
       runtime: 0,
       provider: 0,

@@ -44,65 +44,75 @@ export interface WakeSupervisorRuntime {
 
 export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput): WakeSupervisorRuntime {
   const input = normalizeInput(rawInput);
-  const mountedWorkspace = input.runtimeHandle.mountedWorkspace;
-  if (mountedWorkspace === undefined) throw new Error("wake supervisor runtime requires a mounted portable runtime handle");
-  const identity = input.runtimeHandle.residentIdentity.lifecycle();
-  const identityEventId = identity.eventIds.at(-1);
-  if (
-    identity.state !== "ready" ||
-    identity.workspaceId !== mountedWorkspace.workspaceId ||
-    identityEventId === undefined
-  ) {
-    throw new Error("wake supervisor runtime requires a durable mounted resident identity readback");
-  }
-
-  const store = createMountedWakeLifecycleStore(input);
-  const lifecyclePorts = createPortableWorkspaceLifecyclePorts({
-    workspaceId: mountedWorkspace.workspaceId,
-    residentId: "agent_default",
-    supervisorEpoch: input.supervisorEpoch,
-    mountedFacts: store.mountedFacts,
-    supervisorLease: store.supervisorLease,
-    activeClaimReconciliation: store.activeClaimReconciliation,
-    now: input.now,
-    createSafeOutageObservationId: () => input.createSafeId("reconciliation")
-  });
-  const supervisorPorts = createSupervisorPorts(lifecyclePorts);
-  const supervisor = createWakeSupervisor({
-    residentId: "agent_default",
-    supervisorEpoch: input.supervisorEpoch,
-    workspaceId: mountedWorkspace.workspaceId,
-    policyVersion: input.policy.policyVersion,
-    policyDigest: input.policy.policyDigest,
-    lockStateDigest: input.policy.lockStateDigest,
-    expectedHighWaterMark: identityEventId,
-    authority: supervisorPorts.authority,
-    lease: supervisorPorts.supervisorLease,
-    reconciliation: supervisorPorts.activeClaimReconciliation,
-    runtime: store.runtime,
-    lifecycle: store.lifecycle,
-    now: input.now
-  });
-  const runtime: WakeSupervisorRuntime = {
-    supervision: Object.freeze({
-      start: () => supervisor.start(),
-      signal: (signal: WakeSignal) => supervisor.signal(signal),
-      pause: (command: WakeCommandInput) => supervisor.pause(command),
-      resume: (command: WakeCommandInput) => supervisor.resume(command),
-      recover: (command: WakeCommandInput) => supervisor.recover(command),
-      status: () => supervisor.status()
-    }),
-    async stop() {
-      await supervisor.stop();
-      store.invalidate();
-    }
-  };
-
-  registerMountedArtifactAuthorityIssuerForWakeRuntime({
-    wakeRuntime: runtime,
-    lifecyclePorts,
+  const capability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
+    phase: "authenticate",
     runtimeHandle: input.runtimeHandle
   });
+  const store = createMountedWakeLifecycleStore({
+    capability,
+    actor: input.actor,
+    supervisorEpoch: input.supervisorEpoch,
+    policy: input.policy,
+    now: input.now,
+    createSafeId: input.createSafeId
+  });
+  let supervisorPromise: Promise<ReturnType<typeof createWakeSupervisor>> | undefined;
+  const runtime: WakeSupervisorRuntime = {
+    supervision: Object.freeze({
+      start: async () => (await supervisor()).start(),
+      signal: async (signal: WakeSignal) => (await supervisor()).signal(signal),
+      pause: async (command: WakeCommandInput) => (await supervisor()).pause(command),
+      resume: async (command: WakeCommandInput) => (await supervisor()).resume(command),
+      recover: async (command: WakeCommandInput) => (await supervisor()).recover(command),
+      status: async () => (await supervisor()).status()
+    }),
+    async stop() {
+      try {
+        if (supervisorPromise !== undefined) await supervisorPromise.then((created) => created.stop());
+      } finally {
+        store.invalidate();
+      }
+    }
+  };
+  const supervisor = (): Promise<ReturnType<typeof createWakeSupervisor>> => {
+    supervisorPromise ??= (async () => {
+      const facts = await store.readMountedFacts();
+      const lifecyclePorts = createPortableWorkspaceLifecyclePorts({
+        workspaceId: facts.workspaceId,
+        residentId: "agent_default",
+        supervisorEpoch: input.supervisorEpoch,
+        mountedFacts: store.mountedFacts,
+        supervisorLease: store.supervisorLease,
+        activeClaimReconciliation: store.activeClaimReconciliation,
+        now: input.now,
+        createSafeOutageObservationId: () => input.createSafeId("reconciliation")
+      });
+      const supervisorPorts = createSupervisorPorts(lifecyclePorts);
+      const created = createWakeSupervisor({
+        residentId: "agent_default",
+        supervisorEpoch: input.supervisorEpoch,
+        workspaceId: facts.workspaceId,
+        policyVersion: input.policy.policyVersion,
+        policyDigest: input.policy.policyDigest,
+        lockStateDigest: input.policy.lockStateDigest,
+        expectedHighWaterMark: facts.highWaterMark,
+        authority: supervisorPorts.authority,
+        lease: supervisorPorts.supervisorLease,
+        reconciliation: supervisorPorts.activeClaimReconciliation,
+        runtime: store.runtime,
+        lifecycle: store.lifecycle,
+        now: input.now
+      });
+      registerMountedArtifactAuthorityIssuerForWakeRuntime({
+        phase: "bind",
+        capability,
+        wakeRuntime: runtime,
+        lifecyclePorts
+      });
+      return created;
+    })();
+    return supervisorPromise;
+  };
   return Object.freeze(runtime);
 }
 

@@ -271,7 +271,7 @@ describe("mounted artifact authority operation", () => {
     expect(operationSource).not.toMatch(/subscribeInvalidation\s*\(/);
   });
 
-  it("consumes each uninspected stale capture before burning without stale mounted effects", async () => {
+  it("burns stale operations without retaining a reusable factory capture", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
     registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
@@ -289,8 +289,9 @@ describe("mounted artifact authority operation", () => {
     expect(fixture.calls).toEqual({ mounted: 4, lease: 4, reconciliation: 0 });
     const operationSource = readFileSync(new URL("../src/mounted-artifact-authority-operation.ts", import.meta.url), "utf8");
     expect(operationSource).toMatch(
-      /function burnOperation[\s\S]*?if \(state\.burned\) return;[\s\S]*?state\.burned = true;[\s\S]*?if \(state\.mountedRuntimeInspection !== undefined\) return;[\s\S]*?inspectFactoryIssuedMountedRuntimeCapture\(state\.mountedRuntimeCapture\)/
+      /function burnOperation[\s\S]*?if \(state\.burned\) return;[\s\S]*?state\.burned = true;/
     );
+    expect(operationSource).not.toMatch(/mountedRuntimeCapture/);
   });
 
   it("hands exact mounted ledger and paths to the portable store seam without exposing a public capture", async () => {
