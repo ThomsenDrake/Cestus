@@ -391,6 +391,37 @@ describe("BYOK authority-reader import boundary", () => {
     }
   });
 
+  it("tracks only lexical standard loader bindings through destructuring, official createRequire, and comma indirection", () => {
+    const sourcePath = join(workspaceRoot, "packages", "agent", "src", "lexical-byok-reader.ts");
+    const privateLexicalLoaderForms = [
+      'const { require: loader } = module; void loader("./byok-provider.js");',
+      'const { ["require"]: loader } = module; void loader("./byok-provider.js");',
+      'import { createRequire } from "node:module"; void createRequire(import.meta.url)("./byok-provider.js");',
+      'import { createRequire } from "node:module"; const load = createRequire(import.meta.url); void load("./byok-provider.js");',
+      'void (0, require)("./byok-provider.js");'
+    ];
+    const unrelatedLexicalLoaderForms = [
+      'function load(require: (target: string) => unknown) { void require("./byok-provider.js"); }',
+      'function load(module: { require(target: string): unknown }) { void module.require("./byok-provider.js"); }',
+      'function load(createRequire: (url: string) => (target: string) => unknown) { void createRequire(import.meta.url)("./byok-provider.js"); }',
+      'const require = customLoader; void require("./byok-provider.js");',
+      'const module = { require: customLoader }; void module.require("./byok-provider.js");',
+      'const createRequire = customLoader; void createRequire(import.meta.url)("./byok-provider.js");',
+      'import { require } from "custom-loader"; void require("./byok-provider.js");',
+      'import { module } from "custom-loader"; void module.require("./byok-provider.js");',
+      'import { createRequire } from "custom-loader"; void createRequire(import.meta.url)("./byok-provider.js");',
+      'const { require: loader } = customLoader; void loader("./byok-provider.js");',
+      'const { ["require"]: loader } = customLoader; void loader("./byok-provider.js");'
+    ];
+
+    for (const source of privateLexicalLoaderForms) {
+      expect(sourceReferencesPrivateByokModule(workspaceRoot, sourcePath, source)).toBe(true);
+    }
+    for (const source of unrelatedLexicalLoaderForms) {
+      expect(sourceReferencesPrivateByokModule(workspaceRoot, sourcePath, source)).toBe(false);
+    }
+  });
+
   it("keeps the existing direct test-only reader mint separate from all production importers", () => {
     expect(readFileSync(join(workspaceRoot, "packages", "agent", "test", "byok-provider.test.ts"), "utf8"))
       .toContain('createByokProviderAuthorityReader');

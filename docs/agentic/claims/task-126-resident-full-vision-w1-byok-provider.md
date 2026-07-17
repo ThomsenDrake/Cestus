@@ -116,3 +116,27 @@ removed before committing. No full verifier is authorized for this repair.
 - This repair changed only this claim and
   `packages/agent/test/byok-provider-imports.test.ts`; no BYOK production
   semantics, mint export, or Task139 configuration boundary changed.
+
+### Exceptional lexical-binding repair authorization
+
+- Status: blocked → implementing-exception.
+- The sole program owner authorized this one forward repair after the prior
+  final-review ceiling. It is limited exactly to this claim and
+  `packages/agent/test/byok-provider-imports.test.ts`.
+- Owner model/reasoning: GPT-5.6 Terra / xhigh. The repair is binding-aware
+  lexical analysis in the test-only import policy; it must not change BYOK
+  production bytes, public exports, reader mint semantics, or Task139's later
+  configuration ownership.
+- This packet receives exactly one causal RED and one minimal GREEN commit.
+  No further automatic repair is authorized. The coordinator alone may perform
+  the record-14 forward merge and rerun before the final read-only review pair.
+
+### Exceptional lexical-binding RED
+
+- The exact focused command failed `1` test while `17` existing tests passed.
+  The first positive fixture, destructuring ambient `module.require` into a
+  `loader` const, was admitted because the inherited global identifier-name
+  map cannot bind a `BindingElement` to its lexical initializer. The remaining
+  fixture family preserves the required coverage for computed destructuring,
+  official `node:module` `createRequire`, aliases, comma indirection, and
+  shadowed/custom negative cases.
