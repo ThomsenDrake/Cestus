@@ -18187,3 +18187,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - This event is not a release record, does not alter any of the first eleven
   strict release blocks, and leaves `W1-123-H-SHARED-SCHEMA` as the next
   release-graph card.
+
+## RV-1-E-683 — Parallel implementation owners dispatched for Task126-R and G136-SC
+
+- Recorded at: 2026-07-17T19:11:19Z
+- Exact coordinator base:
+  `863c93a09a0817365c6b41996cc751efa16efd78` on
+  `codex/resident-agent-full-vision-program-watchdog-recovery`.
+- The V4 graph exposes Task126-R and G136-SC as prerequisite-satisfied cards
+  with disjoint ownership. Their implementations may proceed in parallel;
+  strict integration and release records remain bound to V4 card order.
+- Task126-R owner:
+  - task `019f717a-3a5c-7df1-9216-59464d5c206b`
+  - worktree `/home/drake/.codex/worktrees/ee6e/Cestus`
+  - branch `codex/task126-r-reader-boundary`
+  - host selection `gpt-5.6-terra`, reasoning `xhigh`
+- G136-SC owner:
+  - task `019f717a-3a5c-7df1-9216-592473d3244f`
+  - worktree `/home/drake/.codex/worktrees/7837/Cestus`
+  - branch `codex/g136-scheduler-completion-adapter`
+  - host selection `gpt-5.6-terra`, reasoning `xhigh`
+- Both isolated worktrees were initially clean and unchanged when environment
+  preflight stopped. The same owners were resumed with offline-only dependency
+  provisioning authorization; no replacement owner or repair generation was
+  created.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- Each owner is bound to claim-only, causal RED, and minimal GREEN commits,
+  its exact owned paths and test commands, cross-boundary gates, typecheck,
+  full verification, factory readiness, clean state, and a real non-symlinked
+  dependency tree. Children do not edit this registry or self-integrate.
