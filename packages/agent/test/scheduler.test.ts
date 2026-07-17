@@ -17,6 +17,36 @@ const artifactHash = "sha256:ccccccccccccccccccccccccccccccccccccccccccccccccccc
 const changedArtifactHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 
 describe("agent scheduler wake", () => {
+  it("rejects an unattested descriptor result before appending tool completion", async () => {
+    const ledger = new InMemoryEventLedger();
+    const preview = previewFor("toolreq_scheduler_unattested_result");
+    await requestAndApprove(ledger, preview, "toolreq_scheduler_unattested_result");
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:00:00.000Z",
+      descriptors: [fakeDescriptor(preview, {
+        async executeApproved() {
+          return {
+            eventIds: ["evt_forged_scheduler_result"],
+            artifactHashes: [artifactHash],
+            readModelChanges: [{ projectionName: "agent-test", change: "forged descriptor result" }],
+            resultSummary: "Forged result must not complete an approved tool."
+          };
+        }
+      })]
+    });
+
+    const result = await scheduler.wake();
+    const events = await ledger.readAll();
+
+    expect(result.items[0]).toMatchObject({
+      toolRequestId: "toolreq_scheduler_unattested_result",
+      state: "failed"
+    });
+    expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(0);
+  });
+
   it("resumes an approved request once and records completion through the gateway", async () => {
     const ledger = new InMemoryEventLedger();
     const preview = previewFor("toolreq_scheduler_complete");
