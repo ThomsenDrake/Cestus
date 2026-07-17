@@ -99,8 +99,76 @@ function resolvesToPrivateByokModule(root: string, sourcePath: string, moduleSpe
 
 type StaticValue =
   | { readonly kind: "string"; readonly value: string }
-  | { readonly kind: "standard-loader" }
-  | { readonly kind: "standard-module" };
+  | { readonly kind: "standard-require" }
+  | { readonly kind: "standard-module" }
+  | { readonly kind: "node-module-namespace" }
+  | { readonly kind: "create-require-factory" }
+  | { readonly kind: "unrelated" }
+  | { readonly kind: "unknown" };
+
+interface SourceAnalysis {
+  readonly sourceFile: TypeScript.SourceFile;
+  readonly checker: TypeScript.TypeChecker;
+}
+
+interface SourceInput {
+  readonly sourcePath: string;
+  readonly source: string;
+}
+
+function sourceAnalyses(inputs: readonly SourceInput[]): ReadonlyMap<string, SourceAnalysis> {
+  const sources = new Map(inputs.map(({ sourcePath, source }) => [resolve(sourcePath), source]));
+  const options: TypeScript.CompilerOptions = {
+    allowJs: true,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    noLib: true,
+    noEmit: true,
+    skipLibCheck: true,
+    target: ts.ScriptTarget.Latest,
+    types: []
+  };
+  const host = ts.createCompilerHost(options, true);
+  const defaultFileExists = host.fileExists.bind(host);
+  const defaultGetSourceFile = host.getSourceFile.bind(host);
+  const defaultReadFile = host.readFile.bind(host);
+  host.fileExists = (fileName) => sources.has(resolve(fileName)) || defaultFileExists(fileName);
+  host.readFile = (fileName) => sources.get(resolve(fileName)) ?? defaultReadFile(fileName);
+  host.getSourceFile = (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
+    const normalizedSourcePath = resolve(fileName);
+    const source = sources.get(normalizedSourcePath);
+    if (source !== undefined) {
+      return ts.createSourceFile(
+        normalizedSourcePath,
+        source,
+        languageVersion,
+        true,
+        scriptKindForFileName(normalizedSourcePath)
+      );
+    }
+    return defaultGetSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile);
+  };
+  const program = ts.createProgram([...sources.keys()], options, host);
+  const checker = program.getTypeChecker();
+  const analyses = new Map<string, SourceAnalysis>();
+  for (const sourcePath of sources.keys()) {
+    const sourceFile = program.getSourceFile(sourcePath);
+    if (sourceFile === undefined) {
+      throw new Error(`unable to analyze ${sourcePath}`);
+    }
+    analyses.set(sourcePath, { sourceFile, checker });
+  }
+  return analyses;
+}
+
+function sourceAnalysis(sourcePath: string, source: string): SourceAnalysis {
+  const normalizedSourcePath = resolve(sourcePath);
+  const analysis = sourceAnalyses([{ sourcePath: normalizedSourcePath, source }]).get(normalizedSourcePath);
+  if (analysis === undefined) {
+    throw new Error(`unable to analyze ${normalizedSourcePath}`);
+  }
+  return analysis;
+}
 
 function unwrapTransparentExpression(expression: TypeScript.Expression): TypeScript.Expression {
   let unwrapped = expression;
@@ -116,29 +184,11 @@ function unwrapTransparentExpression(expression: TypeScript.Expression): TypeScr
   return unwrapped;
 }
 
-function constAliasExpressions(sourceFile: TypeScript.SourceFile): ReadonlyMap<string, TypeScript.Expression> {
-  const aliases = new Map<string, TypeScript.Expression>();
-  const visit = (node: TypeScript.Node): void => {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isVariableDeclarationList(node.parent) &&
-      (node.parent.flags & ts.NodeFlags.Const) !== 0 &&
-      ts.isIdentifier(node.name) &&
-      node.initializer !== undefined
-    ) {
-      aliases.set(node.name.text, node.initializer);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return aliases;
-}
-
 function staticValue(
   expression: TypeScript.Expression,
-  aliases: ReadonlyMap<string, TypeScript.Expression>,
-  resolvingAliases = new Set<string>()
-): StaticValue | undefined {
+  analysis: SourceAnalysis,
+  resolvingSymbols: ReadonlySet<TypeScript.Symbol> = new Set<TypeScript.Symbol>()
+): StaticValue {
   const unwrapped = unwrapTransparentExpression(expression);
   if (ts.isStringLiteralLike(unwrapped)) {
     return { kind: "string", value: unwrapped.text };
@@ -146,53 +196,175 @@ function staticValue(
   if (ts.isTemplateExpression(unwrapped)) {
     let value = unwrapped.head.text;
     for (const span of unwrapped.templateSpans) {
-      const interpolation = staticValue(span.expression, aliases, resolvingAliases);
-      if (interpolation?.kind !== "string") {
-        return undefined;
+      const interpolation = staticValue(span.expression, analysis, resolvingSymbols);
+      if (interpolation.kind !== "string") {
+        return { kind: "unknown" };
       }
       value += interpolation.value + span.literal.text;
     }
     return { kind: "string", value };
   }
   if (ts.isBinaryExpression(unwrapped) && unwrapped.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-    const left = staticValue(unwrapped.left, aliases, resolvingAliases);
-    const right = staticValue(unwrapped.right, aliases, resolvingAliases);
-    return left?.kind === "string" && right?.kind === "string"
+    const left = staticValue(unwrapped.left, analysis, resolvingSymbols);
+    const right = staticValue(unwrapped.right, analysis, resolvingSymbols);
+    return left.kind === "string" && right.kind === "string"
       ? { kind: "string", value: left.value + right.value }
-      : undefined;
+      : { kind: "unknown" };
+  }
+  if (ts.isBinaryExpression(unwrapped) && unwrapped.operatorToken.kind === ts.SyntaxKind.CommaToken) {
+    return staticValue(unwrapped.right, analysis, resolvingSymbols);
   }
   if (ts.isIdentifier(unwrapped)) {
-    const alias = aliases.get(unwrapped.text);
-    if (alias !== undefined) {
-      if (resolvingAliases.has(unwrapped.text)) {
-        return undefined;
-      }
-      const nextResolvingAliases = new Set(resolvingAliases);
-      nextResolvingAliases.add(unwrapped.text);
-      return staticValue(alias, aliases, nextResolvingAliases);
-    }
-    if (unwrapped.text === "require") {
-      return { kind: "standard-loader" };
-    }
-    if (unwrapped.text === "module") {
-      return { kind: "standard-module" };
-    }
-    return undefined;
+    return staticIdentifierValue(unwrapped, analysis, resolvingSymbols);
   }
   if (ts.isPropertyAccessExpression(unwrapped)) {
-    return staticValue(unwrapped.expression, aliases, resolvingAliases)?.kind === "standard-module" &&
-      unwrapped.name.text === "require"
-      ? { kind: "standard-loader" }
-      : undefined;
+    const receiver = staticValue(unwrapped.expression, analysis, resolvingSymbols);
+    if (receiver.kind === "standard-module" && unwrapped.name.text === "require") {
+      return { kind: "standard-require" };
+    }
+    if (receiver.kind === "node-module-namespace" && unwrapped.name.text === "createRequire") {
+      return { kind: "create-require-factory" };
+    }
+    return receiver.kind === "unrelated" ? receiver : { kind: "unknown" };
   }
   if (ts.isElementAccessExpression(unwrapped) && unwrapped.argumentExpression !== undefined) {
-    const receiver = staticValue(unwrapped.expression, aliases, resolvingAliases);
-    const key = staticValue(unwrapped.argumentExpression, aliases, resolvingAliases);
-    return receiver?.kind === "standard-module" && key?.kind === "string" && key.value === "require"
-      ? { kind: "standard-loader" }
-      : undefined;
+    const receiver = staticValue(unwrapped.expression, analysis, resolvingSymbols);
+    const key = staticValue(unwrapped.argumentExpression, analysis, resolvingSymbols);
+    if (receiver.kind === "standard-module" && key.kind === "string" && key.value === "require") {
+      return { kind: "standard-require" };
+    }
+    if (receiver.kind === "node-module-namespace" && key.kind === "string" && key.value === "createRequire") {
+      return { kind: "create-require-factory" };
+    }
+    return receiver.kind === "unrelated" ? receiver : { kind: "unknown" };
+  }
+  if (ts.isCallExpression(unwrapped)) {
+    return staticValue(unwrapped.expression, analysis, resolvingSymbols).kind === "create-require-factory"
+      ? { kind: "standard-require" }
+      : { kind: "unknown" };
+  }
+  return { kind: "unknown" };
+}
+
+function staticIdentifierValue(
+  identifier: TypeScript.Identifier,
+  analysis: SourceAnalysis,
+  resolvingSymbols: ReadonlySet<TypeScript.Symbol>
+): StaticValue {
+  const symbol = analysis.checker.getSymbolAtLocation(identifier);
+  if (symbol === undefined) {
+    return identifier.text === "require"
+      ? { kind: "standard-require" }
+      : identifier.text === "module"
+        ? { kind: "standard-module" }
+        : { kind: "unknown" };
+  }
+  return staticSymbolValue(symbol, identifier.text, analysis, resolvingSymbols);
+}
+
+function staticSymbolValue(
+  symbol: TypeScript.Symbol,
+  name: string,
+  analysis: SourceAnalysis,
+  resolvingSymbols: ReadonlySet<TypeScript.Symbol>
+): StaticValue {
+  if (resolvingSymbols.has(symbol)) {
+    return { kind: "unknown" };
+  }
+  const localDeclaration = (symbol.declarations ?? []).find(
+    (declaration) => declaration.getSourceFile() === analysis.sourceFile
+  );
+  if (localDeclaration === undefined) {
+    return name === "require"
+      ? { kind: "standard-require" }
+      : name === "module"
+        ? { kind: "standard-module" }
+        : { kind: "unrelated" };
+  }
+  const nextResolvingSymbols = new Set(resolvingSymbols);
+  nextResolvingSymbols.add(symbol);
+  if (ts.isVariableDeclaration(localDeclaration)) {
+    return isConstVariableDeclaration(localDeclaration) && ts.isIdentifier(localDeclaration.name) && localDeclaration.initializer !== undefined
+      ? staticValue(localDeclaration.initializer, analysis, nextResolvingSymbols)
+      : { kind: "unrelated" };
+  }
+  if (ts.isBindingElement(localDeclaration)) {
+    return staticBindingElementValue(localDeclaration, analysis, nextResolvingSymbols);
+  }
+  if (ts.isImportSpecifier(localDeclaration)) {
+    return importSpecifierValue(localDeclaration);
+  }
+  if (ts.isNamespaceImport(localDeclaration)) {
+    return namespaceImportValue(localDeclaration);
+  }
+  return { kind: "unrelated" };
+}
+
+function isConstVariableDeclaration(declaration: TypeScript.VariableDeclaration): boolean {
+  return ts.isVariableDeclarationList(declaration.parent) &&
+    (declaration.parent.flags & ts.NodeFlags.Const) !== 0;
+}
+
+function staticBindingElementValue(
+  element: TypeScript.BindingElement,
+  analysis: SourceAnalysis,
+  resolvingSymbols: ReadonlySet<TypeScript.Symbol>
+): StaticValue {
+  const bindingPattern = element.parent;
+  const declaration = bindingPattern.parent;
+  if (!ts.isObjectBindingPattern(bindingPattern) || !ts.isVariableDeclaration(declaration) || !isConstVariableDeclaration(declaration) || declaration.initializer === undefined) {
+    return { kind: "unrelated" };
+  }
+  const receiver = staticValue(declaration.initializer, analysis, resolvingSymbols);
+  const key = bindingElementKey(element, analysis, resolvingSymbols);
+  return receiver.kind === "standard-module" && key === "require"
+    ? { kind: "standard-require" }
+    : { kind: "unrelated" };
+}
+
+function bindingElementKey(
+  element: TypeScript.BindingElement,
+  analysis: SourceAnalysis,
+  resolvingSymbols: ReadonlySet<TypeScript.Symbol>
+): string | undefined {
+  const propertyName = element.propertyName;
+  if (propertyName === undefined) {
+    return ts.isIdentifier(element.name) ? element.name.text : undefined;
+  }
+  if (ts.isIdentifier(propertyName) || ts.isStringLiteralLike(propertyName)) {
+    return propertyName.text;
+  }
+  if (ts.isComputedPropertyName(propertyName)) {
+    const value = staticValue(propertyName.expression, analysis, resolvingSymbols);
+    return value.kind === "string" ? value.value : undefined;
   }
   return undefined;
+}
+
+function importSpecifierValue(specifier: TypeScript.ImportSpecifier): StaticValue {
+  const namedImports = specifier.parent;
+  const importClause = namedImports.parent;
+  const importDeclaration = importClause.parent;
+  const importedName = (specifier.propertyName ?? specifier.name).text;
+  return ts.isNamedImports(namedImports) &&
+    ts.isImportClause(importClause) &&
+    ts.isImportDeclaration(importDeclaration) &&
+    ts.isStringLiteralLike(importDeclaration.moduleSpecifier) &&
+    importDeclaration.moduleSpecifier.text === "node:module" &&
+    importedName === "createRequire"
+    ? { kind: "create-require-factory" }
+    : { kind: "unrelated" };
+}
+
+function namespaceImportValue(namespaceImport: TypeScript.NamespaceImport): StaticValue {
+  const importClause = namespaceImport.parent;
+  const importDeclaration = importClause.parent;
+  return ts.isImportClause(importClause) &&
+    ts.isImportDeclaration(importDeclaration) &&
+    ts.isStringLiteralLike(importDeclaration.moduleSpecifier) &&
+    importDeclaration.moduleSpecifier.text === "node:module"
+    ? { kind: "node-module-namespace" }
+    : { kind: "unrelated" };
 }
 
 function importEqualsReferencesPrivateByokModule(
@@ -220,28 +392,27 @@ function standardLoaderReferencesPrivateByokModule(
   root: string,
   sourcePath: string,
   call: TypeScript.CallExpression,
-  aliases: ReadonlyMap<string, TypeScript.Expression>
+  analysis: SourceAnalysis
 ): boolean {
   const isStandardLoader = call.expression.kind === ts.SyntaxKind.ImportKeyword ||
-    staticValue(call.expression, aliases)?.kind === "standard-loader";
+    staticValue(call.expression, analysis).kind === "standard-require";
   if (!isStandardLoader) {
     return false;
   }
   const target = call.arguments[0] === undefined
-    ? undefined
-    : staticValue(call.arguments[0], aliases);
-  return target?.kind !== "string" || resolvesToPrivateByokModule(root, sourcePath, target.value);
+    ? { kind: "unknown" } as const
+    : staticValue(call.arguments[0], analysis);
+  return target.kind !== "string" || resolvesToPrivateByokModule(root, sourcePath, target.value);
 }
 
-function sourceReferencesPrivateByokModule(root: string, sourcePath: string, source: string): boolean {
-  const sourceFile = ts.createSourceFile(
-    sourcePath,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    scriptKindForFileName(sourcePath)
-  );
-  const aliases = constAliasExpressions(sourceFile);
+function sourceReferencesPrivateByokModule(
+  root: string,
+  sourcePath: string,
+  source: string,
+  existingAnalysis?: SourceAnalysis
+): boolean {
+  const analysis = existingAnalysis ?? sourceAnalysis(sourcePath, source);
+  const { sourceFile } = analysis;
   let referencesPrivateModule = false;
   const visit = (node: TypeScript.Node): void => {
     if (
@@ -261,7 +432,7 @@ function sourceReferencesPrivateByokModule(root: string, sourcePath: string, sou
       referencesPrivateModule = true;
       return;
     }
-    if (ts.isCallExpression(node) && standardLoaderReferencesPrivateByokModule(root, sourcePath, node, aliases)) {
+    if (ts.isCallExpression(node) && standardLoaderReferencesPrivateByokModule(root, sourcePath, node, analysis)) {
       referencesPrivateModule = true;
       return;
     }
@@ -272,9 +443,20 @@ function sourceReferencesPrivateByokModule(root: string, sourcePath: string, sou
 }
 
 function privateByokImporters(root: string): string[] {
-  return productionSourceFiles(root)
-    .filter((sourcePath) => sourceReferencesPrivateByokModule(root, sourcePath, readFileSync(sourcePath, "utf8")))
-    .map((sourcePath) => relative(root, sourcePath).split(sep).join("/"))
+  const inputs = productionSourceFiles(root).map((sourcePath) => ({
+    sourcePath,
+    source: readFileSync(sourcePath, "utf8")
+  }));
+  const analyses = sourceAnalyses(inputs);
+  return inputs
+    .filter(({ sourcePath, source }) => {
+      const analysis = analyses.get(resolve(sourcePath));
+      if (analysis === undefined) {
+        throw new Error(`unable to analyze ${sourcePath}`);
+      }
+      return sourceReferencesPrivateByokModule(root, sourcePath, source, analysis);
+    })
+    .map(({ sourcePath }) => relative(root, sourcePath).split(sep).join("/"))
     .sort();
 }
 
