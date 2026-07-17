@@ -17797,3 +17797,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credentials, external services, push, reset, rebase, and every `neo` action
   remain closed pending a new exact candidate and two fresh unqualified
   reviews.
+
+## RV-1-E-674 — Task136 v3 repaired candidate in fresh dual review
+
+- Recorded at: 2026-07-17T02:55:00Z
+- The focused TDD repair added committed RED `e3ffec9f88a22f90e6baad3bbaf46538fc97c4f4`
+  and GREEN `0bed702eb21d8ede0686f4f4a785690b20c090ac`. The new exact candidate is
+  `0bed702eb21d8ede0686f4f4a785690b20c090ac`; cumulative scope remains exactly
+  the original four paths from base `c7397e7153079f65f17153fd8d2dc55b6ad8c7b6`.
+- The existing 14th test now creates a real untracked file in a temporary Git
+  checkout and proves repository mode fails as dirty while emitting neither
+  prefix success nor incomplete closure. The production adapter's sole repair
+  removes `--untracked-files=no` so full porcelain status governs both topology
+  checks.
+- Fresh coordinator admission reproduced **14 / 14**, all four exact contract
+  markers, all ten released commands, the ordered 10/10 prefix then found-10
+  checkpoint, immutable hashes, exact scope, factory readiness, clean state,
+  and non-symlinked dependencies. No full verifier ran.
+- Fresh architecture reviewer `019f6d8d-ff0e-7c23-9655-52d453dd0957`
+  and executability reviewer `019f6d8e-0518-7aa3-bf4c-8fbe12a5c01b` are
+  read-only at the repaired exact candidate on Terra/xhigh. No prior verdict
+  carries forward; integration and every later gate remain closed pending two
+  literal unqualified **APPROVED** verdicts.
