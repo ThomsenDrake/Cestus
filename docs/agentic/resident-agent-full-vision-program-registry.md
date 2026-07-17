@@ -18330,3 +18330,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-686 — CF1-HR claimed after prerequisite releases
+
+- Recorded at: 2026-07-17T19:18:49Z
+- Strict records 11, 12, and 13 release `Task137B-W`,
+  `W1-123-H-SHARED-SCHEMA`, and
+  `W1-133.5-PREAPPROVAL-PROMPT-STORE`. The V4 graph therefore makes CF1-HR
+  eligible without changing the independent Task126-R or G136-SC ownership
+  lanes.
+- The bounded implementation owner is task
+  `019f7183-e8db-77f2-ac2f-1aabeaae543d`, worktree
+  `/home/drake/.codex/worktrees/00c5/Cestus`, branch
+  `codex/cf1-handoff-readback`, exact dispatch base
+  `9c5f6229e86de8578a3d0b34f47769753be80ba2`, host selection
+  `gpt-5.6-terra`, reasoning `xhigh`.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- Ownership is exactly the two specialist-runner kernel paths, the two
+  specialist-handoff projection paths, and the missing CF1-HR claim. The
+  owner must preserve a claim-only commit, causal RED, and minimal GREEN;
+  children do not edit this registry, review themselves, or self-integrate.
+- No other card became newly eligible at this transition. Strict integration
+  remains in V4 order even though the three disjoint eligible implementations
+  may run in parallel.
