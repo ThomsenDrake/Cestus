@@ -572,7 +572,7 @@ describe("resident agent event contracts", () => {
       ...recorded,
       payload: {
         ...recorded.payload,
-        authorityBinding: { ...authorityBinding, mountGeneration: "forged_generation" }
+        authorityBinding: { ...authorityBinding, workspaceIdentityHash: "sha256:forged" }
       }
     }).success).toBe(false);
   });

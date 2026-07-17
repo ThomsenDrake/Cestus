@@ -16,8 +16,10 @@ import {
 } from "./specialist-handoffs.js";
 import { hashSpecialistWorkflowHandoff } from "./specialist-handoff-hash.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import type { HandoffAuthorityBinding } from "./specialist-handoff-authority.js";
 
 export const specialistHandoffManifestSchemaVersion = "agent-specialist-handoff-manifest.v1" as const;
+export const specialistHandoffManifestV2SchemaVersion = "agent-specialist-handoff-manifest.v2" as const;
 export const specialistHandoffMaterialSchemaVersion = "agent-specialist-handoff-material.v1" as const;
 
 type SpecialistHandoffStatus = "ready-for-review" | "waiting-for-approval" | "blocked" | "failed";
@@ -93,6 +95,11 @@ export interface SpecialistHandoffManifest {
   readonly supersedesHandoffId?: string;
   readonly supersedesEventId?: string;
   readonly handoff: SpecialistWorkflowHandoffDto;
+}
+
+export interface AuthorityBoundSpecialistHandoffManifest extends Omit<SpecialistHandoffManifest, "schemaVersion"> {
+  readonly schemaVersion: typeof specialistHandoffManifestV2SchemaVersion;
+  readonly authorityBinding: HandoffAuthorityBinding;
 }
 
 export interface BuildSpecialistHandoffMaterialInput {
@@ -179,6 +186,46 @@ const manifestSchema = z.object({
   supersedesHandoffId: handoffIdSchema.optional(),
   supersedesEventId: eventIdSchema.optional(),
   handoff: specialistWorkflowHandoffSchema
+}).strict().superRefine((value, ctx) => addStateKindIssue(value, ctx));
+
+const authorityBindingSchema = z.object({
+  workspaceIdentityHash: contentHashSchema,
+  mountGeneration: safeStringSchema,
+  ledgerStoreIdentity: safeStringSchema,
+  artifactStoreIdentity: safeStringSchema,
+  ledgerHighWaterEventId: eventIdSchema,
+  policyHash: contentHashSchema,
+  activeLocksHash: contentHashSchema
+}).strict();
+
+const authorityBoundManifestSchema = z.object({
+  schemaVersion: z.literal(specialistHandoffManifestV2SchemaVersion),
+  handoffId: handoffIdSchema,
+  handoffRevision: z.number().int().positive(),
+  handoffDtoHash: contentHashSchema,
+  runId: safeStringSchema,
+  taskId: safeStringSchema.optional(),
+  runType: safeStringSchema,
+  residentAgentId: z.literal("agent_default"),
+  status: statusSchema,
+  safeSummary: safeStringSchema,
+  stateKind: stateKindSchema,
+  finalOutputStepId: safeStringSchema,
+  finalOutputEventId: eventIdSchema,
+  handoffMaterialArtifactHash: contentHashSchema,
+  contextPackRefs: z.array(z.unknown()),
+  promptArtifactHash: contentHashSchema.optional(),
+  outputArtifacts: z.array(specialistOutputArtifactRefSchema),
+  toolRequestIds: z.array(safeStringSchema),
+  approvalRequirements: z.array(specialistApprovalRequirementSchema),
+  nextSafeActions: z.array(specialistNextActionSchema),
+  failure: specialistFailureDtoSchema.optional(),
+  sourceEventIds: z.array(eventIdSchema),
+  relatedEventIds: z.array(eventIdSchema),
+  supersedesHandoffId: handoffIdSchema.optional(),
+  supersedesEventId: eventIdSchema.optional(),
+  handoff: specialistWorkflowHandoffSchema,
+  authorityBinding: authorityBindingSchema
 }).strict().superRefine((value, ctx) => addStateKindIssue(value, ctx));
 
 const handoffMaterialInputSchema = z.object({
@@ -383,6 +430,21 @@ export function buildSpecialistHandoffManifest(input: BuildSpecialistHandoffMani
   return Object.freeze(manifest);
 }
 
+/** Builds the additive, authority-bound V2 family without altering V1 bytes. */
+export function buildAuthorityBoundSpecialistHandoffManifest(
+  input: BuildSpecialistHandoffManifestInput & { readonly authorityBinding: HandoffAuthorityBinding }
+): AuthorityBoundSpecialistHandoffManifest {
+  const values = normalizeJsonValue(input, "$") as Record<string, AgentContextPackJsonValue>;
+  const authorityBinding = authorityBindingSchema.parse(values.authorityBinding) as HandoffAuthorityBinding;
+  const { authorityBinding: _authorityBinding, ...v1Input } = values;
+  const v1 = buildSpecialistHandoffManifest(v1Input as BuildSpecialistHandoffManifestInput);
+  return Object.freeze({
+    ...v1,
+    schemaVersion: specialistHandoffManifestV2SchemaVersion,
+    authorityBinding: Object.freeze({ ...authorityBinding })
+  });
+}
+
 export function verifySpecialistHandoffManifest(input: VerifySpecialistHandoffManifestInput): SpecialistWorkflowHandoffDto {
   const parsedInput = z.object({
     manifest: z.unknown(),
@@ -415,6 +477,81 @@ export function verifySpecialistHandoffManifest(input: VerifySpecialistHandoffMa
   return handoff;
 }
 
+/** Strict V2 parser: V1 is intentionally not accepted as a compatibility path. */
+export function parseAuthorityBoundSpecialistHandoffManifest(value: unknown): AuthorityBoundSpecialistHandoffManifest {
+  const manifest = authorityBoundManifestSchema.parse(normalizeJsonValue(value, "$.manifest"));
+  const handoff = parseSpecialistWorkflowHandoff(manifest.handoff);
+  const result: AuthorityBoundSpecialistHandoffManifest = Object.freeze({
+    schemaVersion: specialistHandoffManifestV2SchemaVersion,
+    handoffId: manifest.handoffId,
+    handoffRevision: manifest.handoffRevision,
+    handoffDtoHash: manifest.handoffDtoHash,
+    runId: manifest.runId,
+    ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
+    runType: manifest.runType,
+    residentAgentId: manifest.residentAgentId,
+    status: manifest.status,
+    safeSummary: manifest.safeSummary,
+    stateKind: manifest.stateKind,
+    finalOutputStepId: manifest.finalOutputStepId,
+    finalOutputEventId: manifest.finalOutputEventId,
+    handoffMaterialArtifactHash: manifest.handoffMaterialArtifactHash,
+    contextPackRefs: Object.freeze(manifest.contextPackRefs.map((ref) => parseContextPackRef(ref))),
+    ...(manifest.promptArtifactHash === undefined ? {} : { promptArtifactHash: manifest.promptArtifactHash }),
+    outputArtifacts: Object.freeze(manifest.outputArtifacts.map((item) => Object.freeze({ ...item }))),
+    toolRequestIds: Object.freeze([...manifest.toolRequestIds]),
+    approvalRequirements: Object.freeze(manifest.approvalRequirements.map((item) => Object.freeze({ ...item }))),
+    nextSafeActions: Object.freeze(manifest.nextSafeActions.map((item) => Object.freeze({ ...item }))),
+    ...(manifest.failure === undefined ? {} : { failure: Object.freeze({ ...manifest.failure }) }),
+    sourceEventIds: Object.freeze([...manifest.sourceEventIds]),
+    relatedEventIds: Object.freeze([...manifest.relatedEventIds]),
+    ...(manifest.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: manifest.supersedesHandoffId }),
+    ...(manifest.supersedesEventId === undefined ? {} : { supersedesEventId: manifest.supersedesEventId }),
+    handoff,
+    authorityBinding: Object.freeze({ ...manifest.authorityBinding })
+  });
+  assertVerifiedManifest(result, handoff);
+  return result;
+}
+
+export function verifyAuthorityBoundSpecialistHandoffManifest(
+  input: VerifySpecialistHandoffManifestInput
+): SpecialistWorkflowHandoffDto {
+  const parsedInput = z.object({
+    manifest: z.unknown(),
+    handoffManifestHash: contentHashSchema,
+    verifiedAt: z.string().datetime().optional()
+  }).strict().parse(normalizeJsonValue(input, "$"));
+  const manifest = parseAuthorityBoundSpecialistHandoffManifest(parsedInput.manifest);
+  if (hashSpecialistHandoffManifest(manifest) !== parsedInput.handoffManifestHash) {
+    throw new Error("authority-bound handoff manifest hash does not match canonical manifest bytes");
+  }
+  return manifest.handoff;
+}
+
+function assertVerifiedManifest(
+  manifest: SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest,
+  handoff: SpecialistWorkflowHandoffDto
+): void {
+  if (hashSpecialistWorkflowHandoff(handoff) !== manifest.handoffDtoHash) {
+    throw new Error("handoff DTO hash does not match canonical handoff bytes");
+  }
+  const expectedHandoffId = computeSpecialistHandoffId({
+    runId: manifest.runId,
+    ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
+    runType: manifest.runType,
+    status: manifest.status,
+    finalOutputEventId: manifest.finalOutputEventId,
+    outputArtifactHashes: manifest.outputArtifacts.map((artifact) => artifact.artifactHash),
+    handoffRevision: manifest.handoffRevision,
+    ...(manifest.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: manifest.supersedesHandoffId })
+  });
+  if (manifest.handoffId !== expectedHandoffId) {
+    throw new Error("handoffId does not match the pre-manifest identity seed");
+  }
+  assertManifestHandoffAgreement(manifest, handoff);
+}
+
 function addStateKindIssue(
   value: { readonly status: SpecialistHandoffStatus; readonly stateKind: "completed" | "failed" | "resumable"; readonly failure?: unknown },
   ctx: z.RefinementCtx
@@ -428,7 +565,27 @@ function addStateKindIssue(
   }
 }
 
-function assertManifestHandoffAgreement(manifest: z.infer<typeof manifestSchema>, handoff: SpecialistWorkflowHandoffDto): void {
+function assertManifestHandoffAgreement(
+  manifest: Pick<
+    SpecialistHandoffManifest,
+    | "handoffId"
+    | "handoffRevision"
+    | "runId"
+    | "taskId"
+    | "runType"
+    | "residentAgentId"
+    | "status"
+    | "safeSummary"
+    | "contextPackRefs"
+    | "promptArtifactHash"
+    | "outputArtifacts"
+    | "toolRequestIds"
+    | "approvalRequirements"
+    | "nextSafeActions"
+    | "failure"
+  >,
+  handoff: SpecialistWorkflowHandoffDto
+): void {
   const comparisons: Array<readonly [string, unknown, unknown]> = [
     ["handoffId", manifest.handoffId, handoff.handoffId],
     ["handoffRevision", manifest.handoffRevision, handoff.handoffRevision],

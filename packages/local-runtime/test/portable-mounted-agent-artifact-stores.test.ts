@@ -10,6 +10,8 @@ import type {
 } from "../../agent/src/wake-supervisor.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { hashCanonicalSpecialistHandoffJson } from "../../agent/src/specialist-handoff-manifest.js";
+import { consumeMountedSpecialistHandoffAuthorityWitness } from "../../agent/src/specialist-handoff-authority.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
   issueMountedArtifactAuthorityOperationForFactory,
@@ -64,7 +66,7 @@ describe("portable mounted agent artifact stores", () => {
     expect(Object.keys(result)).toEqual(["schemaVersion", "binding", "controller"]);
     expect(Object.isFrozen(result.binding)).toBe(true);
     expect(Object.keys(result.binding)).toEqual([
-      "schemaVersion", "preparationBinder", "materialStore", "manifestStore"
+      "schemaVersion", "preparationBinder", "materialStore", "manifestStore", "authorityWitness"
     ]);
     expect(result.binding.materialStore).not.toBe(result.binding.manifestStore);
     expect(Reflect.ownKeys(result.controller)).toEqual([]);
@@ -104,6 +106,22 @@ describe("portable mounted agent artifact stores", () => {
       schemaVersion: "agent-mounted-specialist-handoff-authority.v1"
     });
     expect(Object.keys(result.binding.authorityWitness)).toEqual(["schemaVersion"]);
+    const consumed = await consumeMountedSpecialistHandoffAuthorityWitness(result.binding.authorityWitness);
+    expect(consumed.binding).toEqual({
+      workspaceIdentityHash: hashCanonicalSpecialistHandoffJson({
+        schemaVersion: "mounted-handoff-workspace-identity.v1",
+        workspaceId: fixture.workspaceId,
+        workspaceIdentityEventId: "evt_workspace_identity"
+      }),
+      mountGeneration: expect.any(String),
+      ledgerStoreIdentity: "evidence_ledger",
+      artifactStoreIdentity: "evidence_artifact",
+      ledgerHighWaterEventId: "evt_high_water_005",
+      policyHash: `sha256:${"d".repeat(64)}`,
+      activeLocksHash: `sha256:${"e".repeat(64)}`
+    });
+    fixture.ports.authority.invalidate!("authority-loss");
+    await expect(consumed.revalidateCurrent()).rejects.toThrow(/authority/i);
   });
 
   it("binds exactly once and rejects copied controller identities before authority activity", async () => {
@@ -493,10 +511,10 @@ function authorityFixture(): {
             artifactStoreEvidenceId: "evidence_artifact",
             derivativeStoreEvidenceId: "evidence_derivative",
             policyVersion: "policy.v1",
-            policyDigest: "sha256:policy",
-            lockStateDigest: "sha256:lock",
+            policyDigest: `sha256:${"d".repeat(64)}`,
+            lockStateDigest: `sha256:${"e".repeat(64)}`,
             policyAndLockReadbackEventId: "evt_policy_lock_readback",
-            highWaterMark: "high-water:5",
+            highWaterMark: "evt_high_water_005",
             highWaterReadbackEventId: "evt_high_water_readback",
             highWaterOrdinal: 5
           }
@@ -526,8 +544,8 @@ async function admit(
     residentId: "agent_default",
     supervisorEpoch: "epoch_portable_handoff",
     policyVersion: "policy.v1",
-    policyDigest: "sha256:policy",
-    lockStateDigest: "sha256:lock",
+    policyDigest: `sha256:${"d".repeat(64)}`,
+    lockStateDigest: `sha256:${"e".repeat(64)}`,
     causationId: "cause_portable_handoff",
     correlationId: "correlation_portable_handoff"
   });
@@ -558,9 +576,9 @@ function leaseReadback(workspaceId: string, supervisorEpoch: string): Supervisor
     mountEvidenceId: "evidence_mount",
     authorityEvidenceId: "evidence_authority",
     policyVersion: "policy.v1",
-    policyDigest: "sha256:policy",
-    lockStateDigest: "sha256:lock",
-    highWaterMark: "high-water:5",
+    policyDigest: `sha256:${"d".repeat(64)}`,
+    lockStateDigest: `sha256:${"e".repeat(64)}`,
+    highWaterMark: "evt_high_water_005",
     leaseEventId: "evt_lease",
     readbackEventId: "evt_lease_readback",
     expiresAt: "2026-07-16T01:00:00.000Z",
@@ -571,8 +589,8 @@ function leaseReadback(workspaceId: string, supervisorEpoch: string): Supervisor
       leaseEventId: "evt_lease",
       leaseReadbackEventId: "evt_lease_readback",
       policyVersion: "policy.v1",
-      policyDigest: "sha256:policy",
-      lockStateDigest: "sha256:lock",
+      policyDigest: `sha256:${"d".repeat(64)}`,
+      lockStateDigest: `sha256:${"e".repeat(64)}`,
       readbackEventId: "evt_policy_lock_readback"
     },
     highWater: {
@@ -580,7 +598,7 @@ function leaseReadback(workspaceId: string, supervisorEpoch: string): Supervisor
       mountEvidenceId: "evidence_mount",
       leaseEventId: "evt_lease",
       leaseReadbackEventId: "evt_lease_readback",
-      highWaterMark: "high-water:5",
+      highWaterMark: "evt_high_water_005",
       readbackEventId: "evt_high_water_readback"
     }
   };

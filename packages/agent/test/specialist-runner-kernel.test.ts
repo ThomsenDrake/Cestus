@@ -29,6 +29,7 @@ import {
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
 import { recordAuthorityBoundSpecialistHandoff } from "../src/specialist-runner-kernel.js";
+import { issueMountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import {
   createMountedProductionPromptReadbackAuthority,
@@ -478,6 +479,40 @@ describe("durable specialist handoff runner lifecycle", () => {
     })).rejects.toThrow(/authority/i);
 
     expect((await fixture.ledger.readAll())).toHaveLength(eventCount);
+  });
+
+  it("records only matching V2 manifest and compact-event authority bindings from one witness", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_001", taskId: "task_authority_v2_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const authorityBinding = {
+      workspaceIdentityHash: runnerHash,
+      mountGeneration: "mount_generation_001",
+      ledgerStoreIdentity: "ledger_store_001",
+      artifactStoreIdentity: "artifact_store_001",
+      ledgerHighWaterEventId: fixture.runStartedEventId,
+      policyHash: runnerHash,
+      activeLocksHash: runnerHash
+    } as const;
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding,
+      revalidateCurrent: async () => undefined
+    });
+
+    const recorded = await recordAuthorityBoundSpecialistHandoff({ ...recordInput(fixture), handoffAuthorityWitness: witness });
+
+    expect(recorded.manifest).toMatchObject({
+      schemaVersion: "agent-specialist-handoff-manifest.v2",
+      authorityBinding
+    });
+    expect(recorded.prepared.payload).toMatchObject({
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2",
+      authorityBinding
+    });
+    expect(recorded.recorded.payload).toMatchObject({
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2",
+      authorityBinding,
+      preparedEventId: recorded.prepared.id
+    });
   });
 
   it("uses last stream sequence plus one for expected append sequencing", async () => {
