@@ -17621,3 +17621,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   implementation, integration, release records, Task139, full verification,
   providers, network, credentials, external services, push, reset, rebase, or
   any `neo` action.
+
+## RV-1-E-666 — Task137B-W corrected design and plan in fresh dual review
+
+- Recorded at: 2026-07-17T00:07:11Z
+- Fresh architecture/invariant reviewer
+  `019f6d65-f28f-76a0-9a07-0b9be959b803` and
+  finite-executability/adversarial reviewer
+  `019f6d65-f659-7011-b512-9d67bff7b6ee` are read-only against exact program
+  revision `37a10287ead6514f742cac8621d4cae2c6def945` on Terra/xhigh.
+- Both reviewers received the complete prior finding set, the corrected design
+  and plan, the v2 assurance contract/checker, the Task137 policy source/test,
+  and the governing registry events. Review work does not authorize SDD,
+  edits, implementation, integration, release records, Task139, full
+  verification, providers, network, credentials, external services, push,
+  reset, rebase, or any `neo` action.
+- Task 1 remains closed until both reviewers return literal unqualified
+  **APPROVED** verdicts for the same revision.
