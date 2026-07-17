@@ -32,14 +32,27 @@ afterEach(() => {
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
+function registerWakeRuntime(fixture: ReturnType<typeof authorityFixture>, wakeRuntime: object) {
+  const capability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
+    phase: "authenticate",
+    runtimeHandle: fixture.handle
+  });
+  registerMountedArtifactAuthorityIssuerForWakeRuntime({
+    phase: "bind",
+    capability,
+    wakeRuntime,
+    lifecyclePorts: fixture.ports
+  });
+  return capability;
+}
+
 describe("mounted artifact authority operation", () => {
-  it("rejects a structural lifecycle bundle before mounted authority activity", () => {
+  it("rejects an unphased raw-handle registration before mounted authority activity", () => {
     const fixture = authorityFixture();
-    const structural = { ...fixture.ports } as PortableWorkspaceLifecyclePorts;
 
     expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime: {}, lifecyclePorts: structural, runtimeHandle: fixture.handle
-    })).toThrow(/lifecycle ports/i);
+      wakeRuntime: {}, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle
+    } as never)).toThrow(/phase|registration/i);
     expect(fixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
   });
 
@@ -120,65 +133,47 @@ describe("mounted artifact authority operation", () => {
     expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime(hostile as never)).toThrow(/plain own-data/i);
     expect(accessors).toEqual({ wakeRuntime: 0, lifecyclePorts: 0, runtimeHandle: 0 });
     expect(fixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
-    expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime: swappedWakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle
-    })).not.toThrow();
+    expect(() => registerWakeRuntime(fixture, swappedWakeRuntime)).not.toThrow();
 
     const prototypeFixture = authorityFixture();
     const prototypeWakeRuntime = {};
     const inheritedInput = Object.create({ inherited: true }) as {
-      wakeRuntime: object;
-      lifecyclePorts: PortableWorkspaceLifecyclePorts;
+      phase: "authenticate";
       runtimeHandle: LocalRuntimeHandle;
     };
     Object.assign(inheritedInput, {
-      wakeRuntime: prototypeWakeRuntime,
-      lifecyclePorts: prototypeFixture.ports,
+      phase: "authenticate",
       runtimeHandle: prototypeFixture.handle
     });
     expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime(inheritedInput)).toThrow(/plain own-data/i);
     expect(prototypeFixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
-    expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime: prototypeWakeRuntime,
-      lifecyclePorts: prototypeFixture.ports,
-      runtimeHandle: prototypeFixture.handle
-    })).not.toThrow();
+    expect(() => registerWakeRuntime(prototypeFixture, prototypeWakeRuntime)).not.toThrow();
 
     const symbolFixture = authorityFixture();
     const symbolWakeRuntime = {};
     const symbolInput = {
-      wakeRuntime: symbolWakeRuntime,
-      lifecyclePorts: symbolFixture.ports,
+      phase: "authenticate" as const,
       runtimeHandle: symbolFixture.handle,
       [Symbol("hostile")]: true
     };
     expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime(symbolInput)).toThrow(/plain own-data/i);
     expect(symbolFixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
-    expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime: symbolWakeRuntime,
-      lifecyclePorts: symbolFixture.ports,
-      runtimeHandle: symbolFixture.handle
-    })).not.toThrow();
+    expect(() => registerWakeRuntime(symbolFixture, symbolWakeRuntime)).not.toThrow();
 
     const forgedHandleFixture = authorityFixture();
     const forgedHandleWakeRuntime = {};
     expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime: forgedHandleWakeRuntime,
-      lifecyclePorts: forgedHandleFixture.ports,
+      phase: "authenticate",
       runtimeHandle: {} as LocalRuntimeHandle
-    })).toThrow(/factory-issued mounted runtime handle/i);
+    } as never)).toThrow(/factory-issued mounted runtime handle/i);
     expect(forgedHandleFixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
-    expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime: forgedHandleWakeRuntime,
-      lifecyclePorts: forgedHandleFixture.ports,
-      runtimeHandle: forgedHandleFixture.handle
-    })).not.toThrow();
+    expect(() => registerWakeRuntime(forgedHandleFixture, forgedHandleWakeRuntime)).not.toThrow();
   });
 
   it("old operation cannot revive after identical tuple revalidation", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const oldOperation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
 
@@ -192,7 +187,7 @@ describe("mounted artifact authority operation", () => {
     for (const reason of ["shutdown", "admission-mismatch"] as const) {
       const fixture = authorityFixture();
       const wakeRuntime = {};
-      registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+      registerWakeRuntime(fixture, wakeRuntime);
       await admit(fixture, "wake");
       const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
 
@@ -207,7 +202,7 @@ describe("mounted artifact authority operation", () => {
   it("fresh post recovery admission mints a distinct operation after full readback", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const oldOperation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
     fixture.ports.authority.invalidate!("authority-loss");
@@ -243,7 +238,7 @@ describe("mounted artifact authority operation", () => {
   it("repeated invalidation burns stale operations while fresh operations remain current without retained operation collections", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     let current = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
     const stale: MountedArtifactAuthorityOperation[] = [];
@@ -274,7 +269,7 @@ describe("mounted artifact authority operation", () => {
   it("burns stale operations without retaining a reusable factory capture", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
 
     for (const reason of ["authority-loss", "admission-mismatch", "shutdown"] as const) {
@@ -297,7 +292,7 @@ describe("mounted artifact authority operation", () => {
   it("hands exact mounted ledger and paths to the portable store seam without exposing a public capture", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
 
@@ -343,7 +338,7 @@ describe("mounted artifact authority operation", () => {
   it("burns both public and portable-store inspection paths after runtime close without further mounted effects", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
 
@@ -361,7 +356,7 @@ describe("mounted artifact authority operation", () => {
   it("copied serialized and foreign runtime operations fail before store io", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
     const copied = { ...operation } as MountedArtifactAuthorityOperation;
@@ -378,9 +373,9 @@ describe("mounted artifact authority operation", () => {
     const wakeRuntime = {};
 
     expect(() => issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)).toThrow(/wake runtime/i);
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    const capability = registerWakeRuntime(fixture, wakeRuntime);
     expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
-      wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle
+      phase: "bind", capability, wakeRuntime, lifecyclePorts: fixture.ports
     })).toThrow(/already registered/i);
     await admit(fixture, "wake");
 
@@ -393,7 +388,7 @@ describe("mounted artifact authority operation", () => {
   it("hands only the mounted ledger and current snapshot to the feasibility bridge", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
 
@@ -408,7 +403,7 @@ describe("mounted artifact authority operation", () => {
   it("rejects copied serialized and forged operations at the feasibility bridge", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
 
@@ -420,7 +415,7 @@ describe("mounted artifact authority operation", () => {
   it("burns the feasibility bridge after admission invalidation", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
     expect(inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation).ledger).toBe(fixture.handle.ledger);
@@ -433,7 +428,7 @@ describe("mounted artifact authority operation", () => {
   it("burns the feasibility bridge after the factory runtime closes", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
     expect(inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility(operation).snapshot.workspaceId).toBe(fixture.workspaceId);
@@ -451,7 +446,7 @@ describe("mounted artifact authority operation", () => {
   it("returns a fresh feasibility snapshot while retaining the factory-captured ledger", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
-    registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: fixture.ports, runtimeHandle: fixture.handle });
+    registerWakeRuntime(fixture, wakeRuntime);
     await admit(fixture, "wake");
     const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
 

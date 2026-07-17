@@ -161,3 +161,31 @@ tests` with the same single marker, followed by typecheck, diff check, factory
 readiness, the six-stage terminal gate, exact scope, clean checkout, and the
 non-symlinked dependency preflight. No repository assurance or full verifier is
 part of this evidence.
+
+## V4 Consolidated Repair Round 2 RED
+
+The coordinator authorized one append-only RED/GREEN pair after candidate
+`e3cacc66d9bba1b97f95bd190fdc4cff88ff5676`, preserving the existing eleven
+commits byte-for-byte. The RED strengthens existing causal cases without
+adding or deleting any test case and migrates every in-scope authority test
+caller to the phased registrar surface.
+
+The prescribed focused command exited `1` with exactly `7 files / 74 tests`,
+`4 failed / 70 passed`, and one
+`TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The four failures were
+exactly:
+
+1. an exact unphased raw-handle registration remained live instead of failing
+   before mounted lifecycle activity;
+2. a supplied `supervisorLeaseDurationMs` policy override remained silently
+   accepted instead of failing before ledger read or append;
+3. a second authenticated store with the same workspace and supervisor epoch
+   appended a second current lease instead of returning the durable held lease;
+4. all three artifact-operation inspection seams continued to return authority
+   after the real mounted supervisor's durable lease expiry.
+
+No production source changed before this RED. The expected GREEN must remove
+the unphased registrar fallback, require the exact frozen policy keys, enforce
+one unexpired durable lease regardless of epoch, and make store-backed lease
+currentness burn capabilities, lifecycle admission, and artifact operations
+before any downstream effect.
