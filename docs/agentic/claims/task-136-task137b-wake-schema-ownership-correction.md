@@ -1,6 +1,6 @@
 # Task 136 V3 Wake Schema Ownership Correction Claim
 
-Status: claimed
+Status: in-progress
 
 Plan: `docs/superpowers/plans/2026-07-16-task137b-wake-schema-ownership-correction-implementation.md`
 Task: Task 1, Migrate The Finite Assurance Contract To V3
