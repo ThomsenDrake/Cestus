@@ -18445,3 +18445,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   development are not relevant or authorized for reviewers. Only a reproduced
   P0/P1 contract violation can trigger the single consolidated repair packet;
   P2, style, hypothetical hardening, and unreproduced concerns are backlog.
+
+## RV-1-E-690 — Task126-R review adjudication authorizes its one repair packet
+
+- Recorded at: 2026-07-17T19:34:13Z
+- Architecture/invariants reviewer
+  `019f7188-603c-75c2-bbd6-a0c20a2a2075` and
+  executability/adversarial reviewer
+  `019f7188-623e-7d62-83cf-1e25617ad5ee` each returned **NEEDS-CHANGES** for
+  exact candidate `ccadb426d53a237b5c7f39822e6f191934596f0e` after its
+  focused, cross-boundary, typecheck, diff, factory, and clean-state gates
+  passed.
+- The executability reviewer reproduced a valid P1: the import-policy helper
+  recognizes only complete string literals. Split/computed standard dynamic
+  import and indirect CommonJS paths therefore evade the production-root
+  importer inventory and can call the authority-reader mint.
+- The architecture reviewer's broader claim that the mint's direct source
+  export must itself be removed is disproven by the approved Task126 authority
+  ruling in RV-1-C-134. The capability-factory caller is the trusted injection
+  boundary; Task139 later mounts the sole real reader. Task126-R must close
+  unintended first-party production imports, not invent a second source
+  verifier, make Task139 a predecessor, or make JavaScript imports
+  cryptographically distinguishable.
+- The same Task126-R implementation owner is authorized for the single
+  consolidated repair packet. It must preserve the original claim/RED/GREEN
+  commits, append a causal computed-loader RED, then append the minimal
+  import-policy GREEN. Standard `import`, `require`, and `module.require`
+  targets that cannot be resolved statically fail closed in production roots;
+  transparent wrappers and constant expressions are normalized; unrelated
+  loaders and resolvable lookalikes remain accepted.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- This exhausts the automatic Task126-R repair allowance. A new final review
+  pair is required for the repaired SHA; no further automatic repair follows
+  that pair.
