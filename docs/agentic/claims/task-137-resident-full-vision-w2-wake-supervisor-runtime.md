@@ -1,6 +1,6 @@
 # Task137B-W Claim: Mounted Wake Supervisor Runtime
 
-- Status: `in-progress`
+- Status: `green-candidate`
 - Task: `Task137B-W`, Task 2 of `docs/superpowers/plans/2026-07-16-task137b-wake-schema-ownership-correction-implementation.md`
 - Branch: `codex/task137b-wake-runtime-v3`
 - Worktree: `/home/drake/.codex/worktrees/task137b-wake-runtime-v3/Cestus`
@@ -70,14 +70,6 @@ Task137B-W slice continuously; review and integration remain coordinator work.
 - Stop with structured evidence on a schema/API conflict, data-loss or safety
   risk, unavailable dependency, or two failed focused repairs.
 
-## Planned Evidence
-
-The next commit will add the causal RED corpus only. The final candidate must
-record the committed RED, focused and cross-lane counts, one policy marker for
-each, typecheck, the six ordered terminal-gate stages plus completion, exact
-cumulative scope, factory readiness, clean status, and non-symlinked
-dependencies before it is offered for the coordinator's independent reviews.
-
 ## Causal RED
 
 - Command: `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts`
@@ -90,3 +82,19 @@ dependencies before it is offered for the coordinator's independent reviews.
   `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The policy source
   now normalizes relative import segments so the replacement runtime-factory
   protected-module fixture proves the intended finite boundary.
+
+The causal RED corpus is committed as
+`87b050d5e67ccd157ad0a67cc345adbfc84ed843`.
+
+## GREEN Candidate Evidence
+
+- Focused command passed exactly 5 files and 39 tests with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- Cross-lane command passed exactly 9 files and 123 tests with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- `npm run typecheck` passed.
+- The candidate contains only the seven canonical wake schemas, the mounted
+  lifecycle store and wake runtime, and the one permitted lifecycle import.
+- Before coordinator review, the committed candidate must still pass the six
+  ordered Task137 terminal-gate stages, factory readiness, exact ten-path
+  scope, clean checkout, and non-symlinked dependency checks.

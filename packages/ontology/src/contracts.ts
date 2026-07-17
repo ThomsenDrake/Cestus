@@ -2655,6 +2655,58 @@ const prrRequestClosedPayloadSchema = prrRequestRefSchema.extend({
   reason: z.enum(["fulfilled", "withdrawn", "abandoned", "denied-final", "merged"])
 }).strict();
 
+const residentWakeLifecycleBindingSchema = z.object({
+  workspaceId: agentWorkspaceIdSchema,
+  residentId: z.literal("agent_default"),
+  supervisorEpoch: secretSafeStringSchema.min(1),
+  workspaceIdentityEventId: eventIdSchema,
+  mountInstanceId: secretSafeStringSchema.min(1),
+  mountEvidenceId: eventIdSchema,
+  authorityEvidenceId: eventIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyDigest: secretSafeStringSchema.min(1),
+  lockStateDigest: secretSafeStringSchema.min(1),
+  highWaterMark: secretSafeStringSchema.min(1),
+  causation: z.object({
+    causationId: secretSafeStringSchema.min(1),
+    correlationId: secretSafeStringSchema.min(3)
+  }).strict()
+}).strict();
+
+const residentWakeSupervisorLeaseClaimedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
+  leaseId: secretSafeStringSchema.min(1),
+  leaseExpiresAt: z.string().datetime()
+}).strict();
+
+const residentWakeSupervisorPauseRequestedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
+  commandId: secretSafeStringSchema.min(1),
+  sourceEventIds: z.array(eventIdSchema)
+}).strict();
+
+const residentWakeSupervisorPausedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
+  pauseRequestEventId: eventIdSchema
+}).strict();
+
+const residentWakeSupervisorResumeRequestedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
+  commandId: secretSafeStringSchema.min(1),
+  sourceEventIds: z.array(eventIdSchema)
+}).strict();
+
+const residentWakeSupervisorRecoveryVerifiedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
+  reconciliationEventId: eventIdSchema,
+  reconciliationReadbackEventId: eventIdSchema
+}).strict();
+
+const residentWakeSupervisorDegradedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
+  diagnosticId: z.string().regex(/^diag_[a-zA-Z0-9_-]+$/),
+  category: z.enum(["scheduler-unavailable", "workspace-readback-failed"])
+}).strict();
+
+const residentWakeSupervisorUnrecoverablePayloadSchema = residentWakeLifecycleBindingSchema.extend({
+  diagnosticId: z.string().regex(/^diag_[a-zA-Z0-9_-]+$/),
+  category: z.enum(["recovery-exhausted", "unrecoverable"])
+}).strict();
+
 export const payloadSchemas = {
   "evidence.ingested": evidenceIngestedPayloadSchema,
   "assertion.proposed": assertionProposedPayloadSchema,
@@ -2686,6 +2738,13 @@ export const payloadSchemas = {
   "agent.resident-tool-step.recorded.v2": agentResidentToolStepRecordedV2PayloadSchema,
   "agent.resident-loop.suspended.v2": agentResidentLoopSuspendedV2PayloadSchema,
   "agent.resident-loop.result.recorded.v2": agentResidentLoopResultRecordedV2PayloadSchema,
+  "agent.wake.supervisor.lease.claimed.v1": residentWakeSupervisorLeaseClaimedPayloadSchema,
+  "agent.wake.supervisor.pause.requested.v1": residentWakeSupervisorPauseRequestedPayloadSchema,
+  "agent.wake.supervisor.paused.v1": residentWakeSupervisorPausedPayloadSchema,
+  "agent.wake.supervisor.resume.requested.v1": residentWakeSupervisorResumeRequestedPayloadSchema,
+  "agent.wake.supervisor.recovery.verified.v1": residentWakeSupervisorRecoveryVerifiedPayloadSchema,
+  "agent.wake.supervisor.degraded.v1": residentWakeSupervisorDegradedPayloadSchema,
+  "agent.wake.supervisor.unrecoverable.v1": residentWakeSupervisorUnrecoverablePayloadSchema,
   "agent.trigger.requested.v1": agentTriggerRequestedPayloadSchema,
   "agent.specialist-run.started": agentSpecialistRunStartedPayloadSchema,
   "agent.specialist-run.step.recorded": agentSpecialistRunStepRecordedPayloadSchema,
@@ -3019,6 +3078,55 @@ export const eventContracts = {
     description: "Records a strict terminal or resumable resident-loop outcome with exact plan/observation and H lifecycle proof where completion is claimed.",
     agentGuidance: "A completed handoff-recorded result carries the complete H readback verbatim with exact identity, lifecycle, provenance, authority, and safe diagnostics. A resumable result carries only a durable resume anchor. Incomplete terminal-looking values fail closed.",
     invariants: ["completed results require verified complete H proof", "resumable results require a durable anchor", "results do not authorize external or graph effects"]
+  },
+  "agent.wake.supervisor.lease.claimed.v1": {
+    type: "agent.wake.supervisor.lease.claimed.v1",
+    version: 1,
+    description: "Records the exact durable supervisor lease accepted for a mounted wake admission.",
+    agentGuidance: "Append-only lifecycle evidence must bind the mounted workspace, policy, lock, high-water, causation, and lease expiry; read back the exact event before treating admission as complete.",
+    invariants: ["lease evidence is durable", "workspace and epoch bind the stream", "no authority is granted by this record"]
+  },
+  "agent.wake.supervisor.pause.requested.v1": {
+    type: "agent.wake.supervisor.pause.requested.v1",
+    version: 1,
+    description: "Records the provenance-bound request to pause a mounted wake supervisor.",
+    agentGuidance: "Append-only lifecycle evidence records the command provenance before a pause readback; it does not expose or mint authority.",
+    invariants: ["command provenance is explicit", "workspace and epoch bind the stream"]
+  },
+  "agent.wake.supervisor.paused.v1": {
+    type: "agent.wake.supervisor.paused.v1",
+    version: 1,
+    description: "Records a durable paused readback bound to its pause request.",
+    agentGuidance: "Append-only lifecycle evidence must reference the exact pause request and current mounted readback.",
+    invariants: ["pause request readback is exact", "no fallback lifecycle state"]
+  },
+  "agent.wake.supervisor.resume.requested.v1": {
+    type: "agent.wake.supervisor.resume.requested.v1",
+    version: 1,
+    description: "Records the provenance-bound request to resume a mounted wake supervisor.",
+    agentGuidance: "Append-only lifecycle evidence records resume command provenance before the supervisor resumes work.",
+    invariants: ["command provenance is explicit", "no authority is granted by this record"]
+  },
+  "agent.wake.supervisor.recovery.verified.v1": {
+    type: "agent.wake.supervisor.recovery.verified.v1",
+    version: 1,
+    description: "Records recovery only after exact reconciliation durable readback.",
+    agentGuidance: "Append-only lifecycle evidence binds the reconciliation event and its readback before recovery is treated as verified.",
+    invariants: ["reconciliation readback is exact", "recovery remains replayable"]
+  },
+  "agent.wake.supervisor.degraded.v1": {
+    type: "agent.wake.supervisor.degraded.v1",
+    version: 1,
+    description: "Records a safe mounted wake degradation lifecycle fact.",
+    agentGuidance: "Append-only lifecycle diagnostics use safe identifiers and retain mounted readback provenance without storing secrets.",
+    invariants: ["diagnostics are secret-safe", "degraded is not authority"]
+  },
+  "agent.wake.supervisor.unrecoverable.v1": {
+    type: "agent.wake.supervisor.unrecoverable.v1",
+    version: 1,
+    description: "Records an unrecoverable mounted wake lifecycle fact.",
+    agentGuidance: "Append-only lifecycle diagnostics use safe identifiers and preserve the exact mounted readback that exhausted recovery.",
+    invariants: ["diagnostics are secret-safe", "unrecoverable is replayable"]
   },
   "agent.trigger.requested.v1": {
     type: "agent.trigger.requested.v1",
@@ -3642,6 +3750,10 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
 
   if (type === "agent.trigger.requested.v1") {
     return `agent_trigger_${agentPayload.workspaceId}_${agentPayload.triggerId}`;
+  }
+
+  if (type.startsWith("agent.wake.supervisor.")) {
+    return `agent_wake_supervisor_${agentPayload.workspaceId}_${agentPayload.supervisorEpoch}`;
   }
 
   if (type.startsWith("agent.task.orchestration.")) {
