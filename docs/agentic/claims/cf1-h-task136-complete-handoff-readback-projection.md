@@ -73,3 +73,61 @@ credential decision, or repeated verifier failure. Do not use the network,
 providers, credentials, live services, push, integration, registry/spec/plan
 edits, `neo`, rebase, reset, amend, discard, rewrite, or self-merge. Review
 and integration remain outside this bounded implementation claim.
+
+## Task 3 Corrected-Scope Continuation
+
+- Status: `implementing` (one repair remains after this finite GREEN packet).
+- Worker: Codex `gpt-5.6-terra` / `xhigh`.
+- Corrected exact base: `0255ac2f8927851fb28220ac05a9b5acddfdcab3` on
+  `codex/cf1-handoff-readback`; preserved claim commit:
+  `56bbb10b745b742a86b7f63b878aadc105efee0c`.
+- Exact prerequisites, in order:
+  `W1-123-H-SHARED-SCHEMA`, `W1-133.5-PREAPPROVAL-PROMPT-STORE`,
+  `Task137B-W`, `Task135B`, `Task129-MFA`.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+
+### Corrected Owned Paths And Dispositions
+
+1. `packages/agent/src/specialist-runner-kernel.ts` — owned
+2. `packages/agent/test/specialist-runner-kernel.test.ts` — owned
+3. `packages/agent/src/specialist-handoff-projection.ts` — owned
+4. `packages/agent/test/specialist-handoff-projection.test.ts` — owned
+5. `packages/agent/src/specialist-handoff-manifest.ts` — owned
+6. `packages/agent/test/specialist-handoff-manifest.test.ts` — owned
+7. `packages/agent/src/specialist-handoff-authority.ts` — owned
+8. `packages/agent/test/specialist-handoff-authority.test.ts` — owned
+9. `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` —
+   direct source transfer from `Task135B`
+10. `packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+    — direct source transfer from `Task135B`
+11. `packages/ontology/src/contracts.ts` — direct source transfer from
+    `Task137B-W`
+12. `packages/ontology/test/agent-contracts.test.ts` — direct source transfer
+    from `Task129-MFA`
+13. `packages/ontology/test/agent-resident-loop-contracts.test.ts` — owned
+14. `docs/agentic/claims/cf1-h-task136-complete-handoff-readback-projection.md`
+    — owned
+
+These are finite direct source mappings only. Current-HEAD source remains
+authoritative until strict record 14. No generic, multi-target, transitive, or
+compatibility transfer is authorized.
+
+### Corrected Commands
+
+Focused RED/GREEN command:
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts
+```
+
+Cross-boundary command:
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/agent/test/specialist-handoffs.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts
+```
+
+The final finite packet also requires `npm run typecheck`, `npm run verify`,
+`git diff --check`, `npm run factory:check`, the exact changed-path audit, a
+clean tracked/untracked state, and real top-level dependency checks. The
+record-13 inherited baseline is 12 files / 69 tests; final verification will
+differentiate inherited evidence from this packet.

@@ -28,6 +28,7 @@ import {
   type SpecialistRunnerBaseInput,
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
+import { recordAuthorityBoundSpecialistHandoff } from "../src/specialist-runner-kernel.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import {
   createMountedProductionPromptReadbackAuthority,
@@ -466,6 +467,19 @@ describe("production specialist run preparation", () => {
 });
 
 describe("durable specialist handoff runner lifecycle", () => {
+  it("rejects a structural V2 authority substitute before it can append handoff evidence", async () => {
+    const fixture = await durableHandoffFixture();
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const eventCount = (await fixture.ledger.readAll()).length;
+
+    await expect(recordAuthorityBoundSpecialistHandoff({
+      ...recordInput(fixture),
+      handoffAuthorityWitness: { schemaVersion: "agent-mounted-specialist-handoff-authority.v1" } as never
+    })).rejects.toThrow(/authority/i);
+
+    expect((await fixture.ledger.readAll())).toHaveLength(eventCount);
+  });
+
   it("uses last stream sequence plus one for expected append sequencing", async () => {
     const eventA = lifecycleEvent("evt_sequence_a", 1);
     const eventB = lifecycleEvent("evt_sequence_b", 1);
