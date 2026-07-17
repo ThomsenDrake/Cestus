@@ -18172,3 +18172,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-682 — Forward timestamp correction for RV-1-E-678 and RV-1-E-679
+
+- Recorded at: 2026-07-17T18:56:37Z
+- The original `Recorded at` lines remain untouched. For causal display,
+  RV-1-E-678 has corrected time `2026-07-17T03:50:00Z` and RV-1-E-679 has
+  corrected time `2026-07-17T04:05:00Z`.
+- The V4 plan reserved RV-1-E-680 for this correction, but the exclusive
+  takeover authorization required one meaningful takeover checkpoint before
+  Task137B mutation and that append-only checkpoint already occupies E-680.
+  This forward correction therefore uses E-682 rather than rewriting or
+  renumbering any durable event.
+- This event is not a release record, does not alter any of the first eleven
+  strict release blocks, and leaves `W1-123-H-SHARED-SCHEMA` as the next
+  release-graph card.
