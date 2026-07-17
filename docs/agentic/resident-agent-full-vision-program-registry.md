@@ -18479,3 +18479,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - This exhausts the automatic Task126-R repair allowance. A new final review
   pair is required for the repaired SHA; no further automatic repair follows
   that pair.
+
+## RV-1-E-691 — G136-SC blocked after reproduced completion-authority P1s
+
+- Recorded at: 2026-07-17T19:38:36Z
+- Architecture/invariants reviewer
+  `019f718d-b719-7cc0-8105-86f16d8ffb34` and
+  executability/adversarial reviewer
+  `019f718d-b6de-7492-830e-f2a8161c5537` each returned **NEEDS-CHANGES** for
+  exact candidate `80c20c811c3cec3143c40164a75d4b4114118acc` after all
+  targeted, cross-boundary, typecheck, full-verifier, diff, factory, and
+  clean-state gates passed.
+- Both reproduced a P1 in the public gateway: `completeTool` accepts a
+  caller-structural result and appends `agent.tool.completed` without any
+  authoritative domain-result reread. It remains reachable through the public
+  gateway object and the unowned `packages/agent/src/execution-loop.ts`; the
+  existing gateway test proves invented event/artifact values can complete an
+  approved request.
+- Architecture also reproduced that the scheduler descriptor can append the
+  v1 resident tool-step it later returns as alleged result evidence. That event
+  is loop bookkeeping, not independent domain/gateway result authority, so the
+  new adapter's reread does not eliminate caller minting.
+- Coordinator adjudication accepts both P1s. The scheduler-side defect fits the
+  current card, but closing every public completion append requires a causal
+  conversion of the fake execution-loop source/test to authoritative durable
+  result locators. Those paths are absent from the executable G136-SC
+  ownership contract. Retaining a legacy structural completion compatibility
+  path would violate the frozen safety invariant.
+- No repair packet is authorized yet, so the single G136-SC repair allowance
+  remains unspent. Candidate history is preserved and unintegrated. A minimal
+  explicit ownership correction for the execution-loop source/test is
+  recommended; after that decision, the same owner may perform one
+  consolidated RED/GREEN repair and one final review pair.
+- G136-R remains blocked. No rename, compatibility route, partial scheduler
+  repair, integration, release, or contract downgrade is authorized.
