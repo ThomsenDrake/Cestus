@@ -18874,3 +18874,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record count remains 13; CF1-HR may now resume from its preserved claim on a
   forward merge of this reviewed assurance base. V1-V3, raw records 1-13, all
   29 card IDs/order, historical evidence, and `neo` remain untouched.
+
+## RV-1-E-704 — G136-SC sole repair packet becomes a predecessor-bound candidate
+
+- Recorded at: 2026-07-17T23:22:20Z
+- The same G136-SC implementation owner preserved claim `57a1f863`, causal RED
+  `c119be76`, and initial GREEN `80c20c81`, then received the reviewed
+  assurance base through merge `d96016f01b58fd298853d7cbc3b42dfd9382b255`.
+  Its one authorized consolidated repair is causal RED
+  `c8588bf9cbfece600c80d6ffd5376b8d38138b0f` followed by minimal GREEN
+  `d74ff4a301613bb5291a896db3a4a3fcf52c9d3e`. No replacement owner or
+  additional generation was created, and no further automatic G136-SC repair
+  is permitted.
+- The exact repair range changes nine paths, all within the corrected eleven-
+  path G136-SC boundary. It makes the structural completion appender closure-
+  only and replaces self-minted resident bookkeeping with causally post-claim,
+  independently appended non-gateway/non-resident domain-result locators.
+- Owner admission reports the corrected focused gate at **6 files / 79 tests**
+  and cross-boundary gate at **9 files / 129 tests**, with typecheck, diff
+  hygiene, factory readiness, exact-scope, dependency, and clean-state gates
+  passing. Coordinator diff and clean-state audits reproduce the exact
+  nine-path repair scope without hygiene defects.
+- Status moves `implementing-repair -> candidate`. The candidate is not yet
+  reviewing or approved: because G136-SC depends on T120-R and releases at
+  position 22, it must receive the integrated record-21 program base and rerun
+  all gates before its sole final Terra/xhigh review pair. Reviewing these bytes
+  now would create a stale verdict. Strict record count remains 13.
