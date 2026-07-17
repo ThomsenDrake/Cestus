@@ -43,6 +43,51 @@ describe("mounted artifact authority operation", () => {
     expect(fixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
   });
 
+  it("authenticates the exact factory handle before any raw handle member or lifecycle effect", () => {
+    const fixture = authorityFixture();
+    let rawHandleReads = 0;
+    const forged = Object.defineProperty({}, "ledger", {
+      enumerable: true,
+      get() {
+        rawHandleReads += 1;
+        throw new Error("raw handle member must remain unread");
+      }
+    }) as LocalRuntimeHandle;
+
+    expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      phase: "authenticate",
+      runtimeHandle: forged
+    } as never)).toThrow(/factory-issued mounted runtime handle/i);
+    expect(rawHandleReads).toBe(0);
+    expect(fixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
+  });
+
+  it("binds only its exact authenticated capability after lifecycle construction", () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    const capability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      phase: "authenticate",
+      runtimeHandle: fixture.handle
+    } as never);
+
+    expect(capability).toMatchObject({ schemaVersion: "factory-authenticated-mounted-wake-capability.v1" });
+    expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      phase: "bind",
+      capability,
+      wakeRuntime,
+      lifecyclePorts: fixture.ports
+    } as never)).not.toThrow();
+    for (const forged of [fixture.handle, { ...(capability as object) }, { schemaVersion: "factory-authenticated-mounted-wake-capability.v1" }]) {
+      expect(() => registerMountedArtifactAuthorityIssuerForWakeRuntime({
+        phase: "bind",
+        capability: forged,
+        wakeRuntime: {},
+        lifecyclePorts: fixture.ports
+      } as never)).toThrow(/capability|registered/i);
+    }
+    expect(fixture.calls).toEqual({ mounted: 0, lease: 0, reconciliation: 0 });
+  });
+
   it("rejects accessor prototype symbol and swapped registration inputs before registration effects", () => {
     const fixture = authorityFixture();
     const swappedWakeRuntime = {};

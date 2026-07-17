@@ -1,11 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ActiveClaimReconciliationPort } from "../../agent/src/wake-supervisor.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { registerMountedArtifactAuthorityIssuerForWakeRuntime } from "../src/mounted-artifact-authority-operation.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   createMountedWakeLifecycleStore,
@@ -213,6 +214,79 @@ async function reconciliationInputs(store: MountedWakeLifecycleStore, ledger: Ev
 }
 
 describe("mounted wake lifecycle store", () => {
+  it("derives the five-minute lease from one normalized acquisition instant", async () => {
+    const now = vi.fn(() => "2026-07-16T00:00:00.000Z");
+    const { ledger, store } = await fixture({ now });
+
+    const lease = await store.readOrAcquireSupervisorLease();
+    if (lease.outcome !== "acquired-and-read-back") throw new Error("fixture lease is required");
+    expect(lease.readback.expiresAt).toBe("2026-07-16T00:05:00.000Z");
+    expect(now).toHaveBeenCalledTimes(1);
+    const durable = (await ledger.readAll()).find((event) => event.id === lease.readback.leaseEventId);
+    expect(durable?.payload).toMatchObject({ leaseExpiresAt: "2026-07-16T00:05:00.000Z" });
+  });
+
+  it("burns an expired lease before a later runtime consumption can append", async () => {
+    let now = "2026-07-16T00:00:00.000Z";
+    const { ledger, store } = await fixture({ now: () => now });
+    await store.readOrAcquireSupervisorLease();
+    now = "2026-07-16T00:05:00.001Z";
+    const before = (await ledger.readAll()).length;
+
+    await expect(store.runtime.wakeOnce({
+      admission: {} as never,
+      signal: {
+        schemaVersion: "resident-wake-signal.v1",
+        source: "poll",
+        idempotencyKey: "expired_wake",
+        sourceEventIds: [],
+        requestedAt: now
+      },
+      cancellation: new AbortController().signal
+    })).rejects.toThrow(/expired|current|lease/i);
+    expect((await ledger.readAll()).length).toBe(before);
+  });
+
+  it("rejects every forged capability before mounted store construction or ledger activity", async () => {
+    const { input, ledger } = await fixture();
+    const { runtimeHandle: _runtimeHandle, ...ordinary } = input as MountedWakeLifecycleStoreInput & { runtimeHandle?: LocalRuntimeHandle };
+    let reads = 0;
+    Object.defineProperty(ledger, "readAll", { value: async () => { reads += 1; return []; } });
+
+    expect(() => createMountedWakeLifecycleStore({
+      ...ordinary,
+      capability: { schemaVersion: "factory-authenticated-mounted-wake-capability.v1" }
+    } as never)).toThrow(/factory-authenticated.*capability/i);
+    expect(reads).toBe(0);
+  });
+
+  it("keeps an expired first store stale through revalidation and a successor epoch", async () => {
+    let now = "2026-07-16T00:00:00.000Z";
+    const initial = await fixture({ now: () => now });
+    const firstCapability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      phase: "authenticate",
+      runtimeHandle: initial.handle
+    } as never);
+    const { runtimeHandle: _runtimeHandle, ...ordinary } = initial.input as MountedWakeLifecycleStoreInput & { runtimeHandle?: LocalRuntimeHandle };
+    const first = createMountedWakeLifecycleStore({ ...ordinary, capability: firstCapability } as never);
+    await first.readOrAcquireSupervisorLease();
+    now = "2026-07-16T00:05:00.001Z";
+    await expect(first.readMountedFacts()).rejects.toThrow(/expired|current|lease/i);
+
+    const successorCapability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      phase: "authenticate",
+      runtimeHandle: initial.handle
+    } as never);
+    const successor = createMountedWakeLifecycleStore({
+      ...ordinary,
+      capability: successorCapability,
+      supervisorEpoch: "epoch_mounted_wake_successor"
+    } as never);
+    await expect(successor.readOrAcquireSupervisorLease()).resolves.toMatchObject({ outcome: "acquired-and-read-back" });
+    now = "2026-07-16T00:00:00.000Z";
+    await expect(first.readMountedFacts()).rejects.toThrow(/expired|current|lease/i);
+  });
+
   it("derives mounted facts from the handle and ledger without caller facts", async () => {
     const { ledger, store } = await fixture();
     const facts = await store.readMountedFacts();

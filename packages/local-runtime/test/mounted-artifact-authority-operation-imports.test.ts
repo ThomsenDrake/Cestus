@@ -23,6 +23,7 @@ const operationSource = "packages/local-runtime/src/mounted-artifact-authority-o
 const lifecycleSource = "packages/local-runtime/src/portable-workspace-lifecycle.ts";
 const runtimeFactorySource = "packages/local-runtime/src/runtime-factory.ts";
 const registrarSource = "packages/local-runtime/src/wake-supervisor-runtime.ts";
+const mountedWakeStoreSource = "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
 const issuerSource = "packages/local-runtime/src/agent-runtime-factory.ts";
 const portableStoreSource = "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts";
 const mountedFeasibilitySource = "packages/local-runtime/src/mounted-official-flow-feasibility.ts";
@@ -84,6 +85,12 @@ const allowedFixtures: readonly FixtureCase[] = [
         'import { inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility, type MountedArtifactAuthorityOperation } from "./mounted-artifact-authority-operation.js";',
         "void inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility;",
         "type Allowed = MountedArtifactAuthorityOperation;",
+        "void (0 as unknown as Allowed);"
+      ].join("\n"),
+      [mountedWakeStoreSource]: [
+        'import { inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore, type FactoryAuthenticatedMountedWakeCapability } from "./mounted-artifact-authority-operation.js";',
+        "void inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore;",
+        "type Allowed = FactoryAuthenticatedMountedWakeCapability;",
         "void (0 as unknown as Allowed);"
       ].join("\n")
     }
@@ -298,8 +305,8 @@ afterEach(() => {
 
 describe("Task137 mounted artifact authority import policy", () => {
   it("exports the frozen contract versions", () => {
-    expect(task137GrammarVersion).toBe("task137-authority-import-grammar.v2");
-    expect(task137CorpusVersion).toBe("task137-authority-import-corpus.v2");
+    expect(task137GrammarVersion).toBe("task137-authority-import-grammar.v3");
+    expect(task137CorpusVersion).toBe("task137-authority-import-corpus.v3");
   });
 
   it("passes the current repository policy within the bounded runtime", () => {
@@ -364,6 +371,7 @@ function createFixtureWorkspace(files: Record<string, string>): string {
     lifecycleSource,
     runtimeFactorySource,
     registrarSource,
+    mountedWakeStoreSource,
     issuerSource,
     portableStoreSource
   ]) {

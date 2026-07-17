@@ -98,3 +98,27 @@ The causal RED corpus is committed as
 - Before coordinator review, the committed candidate must still pass the six
   ordered Task137 terminal-gate stages, factory readiness, exact ten-path
   scope, clean checkout, and non-symlinked dependency checks.
+
+## V4 Authority-Transfer Amendment
+
+This append-only amendment governs the final Task137B-W repair from the clean
+V4 integration base `a3dbea86a6a8edcaadaaba8e798c39b660512df0` on branch
+`codex/task137b-wake-runtime-v4-final-repair`. The preserved eight commits
+above remain verbatim evidence; only one new causal RED and one minimum GREEN
+commit may follow them.
+
+V4 transfers the portable lifecycle source/test from Task137A and the mounted
+authority source/test from Task129-MFA. The resulting fourteen-path ceiling is
+the four transferred paths plus the ten paths recorded above. The focused
+derivation is `67 + 7 = 74` tests and the cross-lane derivation is
+`123 + 7 = 130` tests. The existing standing authorization explicitly permits
+task-scoped `superpowers:subagent-driven-development` and
+`superpowers:test-driven-development` with one production writer; review and
+integration remain coordinator work.
+
+The RED adds exactly seven causal cases for factory-first authentication,
+exact-capability bind, one-instant five-minute lease acquisition,
+consumption-time expiry, wake raw-handle isolation, dedicated opaque-store
+inspection, and monotonic expiry/successor invalidation. The policy corpus
+advances to v3 while preserving eight allowed fixtures, twenty rejected
+fixtures, and its single required marker.
