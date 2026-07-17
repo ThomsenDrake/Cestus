@@ -4,6 +4,10 @@ import type { AppendOptions, EventLedger } from "../../ontology/src/event-ledger
 import { approvalClassForSideEffect, type AgentApprovalClass } from "./permission-policy.js";
 import type { AgentToolSideEffectClass } from "./projection-types.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import {
+  isResidentLoopSchedulerCompletionEvidence,
+  type ResidentLoopSchedulerCompletionEvidence
+} from "./resident-loop-scheduler-completion.js";
 
 const agentCoreVersion = "0.1.0";
 const agentPackVersions = { core: "0.1.0", agent: "0.1.0" } as const;
@@ -313,6 +317,30 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
         }
       };
       return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
+    },
+
+    async completeToolFromSchedulerEvidence(evidence: ResidentLoopSchedulerCompletionEvidence) {
+      if (!isResidentLoopSchedulerCompletionEvidence(evidence)) {
+        throw new Error("Scheduler completion requires exact reread evidence.");
+      }
+      const state = await readToolRequestState(input.ledger, evidence.toolRequestId);
+      assertNotClosed(state);
+      if (state.request.payload.runId !== evidence.runId) {
+        throw new Error("Scheduler completion run does not match the tool request.");
+      }
+      if (
+        state.executionClaim === undefined ||
+        state.executionClaim.id !== evidence.executionClaimEventId ||
+        state.executionClaim.payload.toolRequestId !== evidence.toolRequestId ||
+        state.executionClaim.payload.approvedPreviewHash !== state.request.payload.previewHash
+      ) {
+        throw new Error("Scheduler completion requires the exact durable execution claim.");
+      }
+      return await this.completeTool({
+        toolRequestId: evidence.toolRequestId,
+        approvedPreviewHash: evidence.approvedPreviewHash,
+        result: evidence.result
+      });
     },
 
     async failTool(command: FailAgentToolInput) {
