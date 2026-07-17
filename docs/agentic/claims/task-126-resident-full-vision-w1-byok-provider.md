@@ -87,3 +87,16 @@ removed before committing. No full verifier is authorized for this repair.
   seam. The existing direct mint remains test-only.
 - Status: ready-for-review pending the required cross-boundary and final
   committed-byte gates.
+
+### Consolidated review-repair RED
+
+- Coordinator adjudication accepted P1 only: the import inventory recognized
+  complete string literals but could not resolve computed standard-loader
+  targets or fail closed for unresolved standard-loader targets. The public
+  reader factory remains the authoritative injected capability boundary; this
+  repair does not alter it or BYOK behavior.
+- Repair RED: the exact Task126-R command failed only the two new import-policy
+  cases (`2` failed / `15` passed). Split, concatenated, templated, const-alias,
+  indirect-require, `module.require`, `module["require"]`, and transparent
+  wrapper paths were not recognized; unresolved standard-loader targets were
+  admitted. The existing BYOK behavior suite passed.
