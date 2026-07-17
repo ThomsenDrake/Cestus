@@ -14,7 +14,7 @@ describe("resident-loop scheduler completion import boundary", () => {
 
     expect(scheduler).toContain("resident-loop-scheduler-completion.js");
     expect(scheduler).not.toMatch(/gateway\.completeTool\s*\(/);
-    expect(readFileSync(gatewayPath, "utf8")).not.toMatch(/async completeTool\s*\(/);
+    expect(readFileSync(gatewayPath, "utf8")).toContain("const { completeTool: _structuralCompletion, ...publicGateway }");
     expect(readFileSync(executionLoopPath, "utf8")).not.toMatch(/gateway\.completeTool\s*\(/);
   });
 });

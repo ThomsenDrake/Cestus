@@ -34,8 +34,8 @@ const issuedEvidence = new WeakSet<object>();
 
 /**
  * Internal scheduler-only result verifier. A descriptor result is a claim, not
- * completion authority: the matching resident tool-step has to be durably
- * reread from the ledger before the gateway can append completion.
+ * completion authority: independently appended domain locators have to be
+ * durably reread from the ledger before the gateway can append completion.
  */
 export function createResidentLoopSchedulerCompletionAdapter(
   input: CreateResidentLoopSchedulerCompletionAdapterInput
@@ -123,27 +123,21 @@ function assertDurableResultEvidence(
     throw new Error("Completion result evidence is not durably readable.");
   }
 
-  const evidence = events.filter((event): event is Extract<KnowledgeEvent, { type: "agent.resident-tool-step.recorded.v1" }> =>
-    event.type === "agent.resident-tool-step.recorded.v1" &&
-    event.payload.toolRequestId === command.toolRequestId &&
-    event.payload.runId === command.runId &&
-    event.payload.toolId === command.toolId &&
-    event.payload.toolVersion === command.toolVersion &&
-    event.payload.previewHash === command.approvedPreviewHash &&
-    event.context.causationId === command.executionClaimEventId
-  );
-  if (evidence.length !== 1) {
-    throw new Error("Completion requires one exact durable resident tool-step evidence record.");
+  const claimIndex = events.findIndex((event) => event.id === command.executionClaimEventId);
+  if (claimIndex < 0) {
+    throw new Error("Completion requires a durably readable execution claim.");
   }
-  const evidenceEvent = evidence[0];
-  if (
-    evidenceEvent === undefined ||
-    (!result.eventIds.includes(evidenceEvent.id) && !result.eventIds.includes(evidenceEvent.payload.toolEventId))
-  ) {
-    throw new Error("Completion result evidence does not bind the durable resident tool-step.");
-  }
-  if (result.artifactHashes.some((hash) => !evidenceEvent.payload.contextArtifactHashes.includes(hash))) {
-    throw new Error("Completion artifact evidence does not match the durable resident tool-step.");
+  for (const eventId of result.eventIds) {
+    const eventIndex = events.findIndex((event) => event.id === eventId);
+    const event = eventIndex < 0 ? undefined : events[eventIndex];
+    if (
+      event === undefined ||
+      eventIndex <= claimIndex ||
+      event.type.startsWith("agent.") ||
+      event.context.causationId !== command.executionClaimEventId
+    ) {
+      throw new Error("Completion requires independently appended causal domain result evidence.");
+    }
   }
 
   for (const change of result.readModelChanges) {
