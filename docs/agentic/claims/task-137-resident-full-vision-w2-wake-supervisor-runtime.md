@@ -1,6 +1,6 @@
 # Task137B-W Claim: Mounted Wake Supervisor Runtime
 
-- Status: `claimed`
+- Status: `in-progress`
 - Task: `Task137B-W`, Task 2 of `docs/superpowers/plans/2026-07-16-task137b-wake-schema-ownership-correction-implementation.md`
 - Branch: `codex/task137b-wake-runtime-v3`
 - Worktree: `/home/drake/.codex/worktrees/task137b-wake-runtime-v3/Cestus`
@@ -77,3 +77,16 @@ record the committed RED, focused and cross-lane counts, one policy marker for
 each, typecheck, the six ordered terminal-gate stages plus completion, exact
 cumulative scope, factory readiness, clean status, and non-symlinked
 dependencies before it is offered for the coordinator's independent reviews.
+
+## Causal RED
+
+- Command: `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts`
+- Result: exit `1`, with the two expected missing runtime modules,
+  `wake-supervisor-runtime.ts` and `mounted-wake-lifecycle-store.ts`, the
+  zero-before-R0 import assertion unable to read the missing runtime source,
+  and all seven accepted ontology lifecycle registrations rejected because the
+  canonical schemas are absent.
+- The unchanged-size policy suite passed and emitted exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The policy source
+  now normalizes relative import segments so the replacement runtime-factory
+  protected-module fixture proves the intended finite boundary.
