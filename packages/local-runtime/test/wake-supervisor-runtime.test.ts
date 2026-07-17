@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
+  inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility,
+  inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores,
   inspectMountedArtifactAuthorityOperation,
   issueMountedArtifactAuthorityOperationForFactory
 } from "../src/mounted-artifact-authority-operation.js";
@@ -19,7 +21,23 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
-async function fixture() {
+interface RuntimeFixtureOptions {
+  readonly now?: () => string;
+  readonly supervisorEpoch?: string;
+}
+
+function runtimeFor(handle: LocalRuntimeHandle, options: RuntimeFixtureOptions = {}) {
+  return createWakeSupervisorRuntime({
+    runtimeHandle: handle,
+    actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
+    supervisorEpoch: options.supervisorEpoch ?? "epoch_wake_runtime",
+    policy: { policyVersion: "policy.v1", policyDigest: "sha256:policy", lockStateDigest: "sha256:lock" },
+    now: options.now ?? (() => "2026-07-16T00:00:00.000Z"),
+    createSafeId: (kind) => `${kind}_wake_runtime`
+  });
+}
+
+async function fixture(options: RuntimeFixtureOptions = {}) {
   const root = mkdtempSync(join(tmpdir(), "cestus-wake-runtime-"));
   directories.push(root);
   const workspaceId = "ws_wake_runtime";
@@ -31,14 +49,7 @@ async function fixture() {
   });
   handles.push(handle);
   await handle.residentIdentity.ready();
-  const runtime = createWakeSupervisorRuntime({
-    runtimeHandle: handle,
-    actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
-    supervisorEpoch: "epoch_wake_runtime",
-    policy: { policyVersion: "policy.v1", policyDigest: "sha256:policy", lockStateDigest: "sha256:lock" },
-    now: () => "2026-07-16T00:00:00.000Z",
-    createSafeId: (kind) => `${kind}_wake_runtime`
-  });
+  const runtime = runtimeFor(handle, options);
   return { handle, runtime };
 }
 
@@ -106,12 +117,45 @@ describe("wake supervisor runtime", () => {
     expect(() => issueMountedArtifactAuthorityOperationForFactory(runtime)).toThrow(/already issued/i);
   });
 
-  it("invalidates authority before stop returns", async () => {
-    const { runtime } = await fixture();
+  it("invalidates expired artifact authority before inspection effects and stop returns", async () => {
+    let now = "2026-07-16T00:00:00.000Z";
+    const { handle, runtime } = await fixture({ now: () => now });
     await runtime.supervision.start();
     const operation = issueMountedArtifactAuthorityOperationForFactory(runtime);
+    const beforeExpiry = await handle.ledger.readAll();
+    now = "2026-07-16T00:05:00.001Z";
+
+    for (const inspect of [
+      inspectMountedArtifactAuthorityOperation,
+      inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores,
+      inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility
+    ]) {
+      expect(() => inspect(operation), inspect.name).toThrow(/expired|current|burned|lease/i);
+    }
+    expect(await handle.ledger.readAll()).toEqual(beforeExpiry);
+
+    await expect(runtime.supervision.resume({
+      schemaVersion: "resident-wake-command.v1",
+      commandId: "resume_expired_wake_runtime",
+      sourceEventIds: [],
+      requestedAt: now,
+      causation: { causationId: beforeExpiry[0]!.id, correlationId: "corr_resume_expired_wake_runtime" }
+    })).resolves.toMatchObject({ outcome: "blocked" });
+    expect(await handle.ledger.readAll()).toEqual(beforeExpiry);
+
+    const successor = runtimeFor(handle, {
+      now: () => now,
+      supervisorEpoch: "epoch_wake_runtime_successor"
+    });
+    await expect(successor.supervision.start()).resolves.toMatchObject({ outcome: "accepted" });
+    expect(() => inspectMountedArtifactAuthorityOperation(operation)).toThrow(/expired|current|burned|lease/i);
+    expect((await handle.ledger.readAll()).filter((event) =>
+      event.type === "agent.wake.supervisor.lease.claimed.v1"
+    )).toHaveLength(2);
+
     await runtime.stop();
-    expect(() => inspectMountedArtifactAuthorityOperation(operation)).toThrow();
+    await successor.stop();
+    expect(() => inspectMountedArtifactAuthorityOperation(operation)).toThrow(/expired|current|burned|lease/i);
   });
 
   it("rejects structural caller handles before installing a runtime", async () => {

@@ -23,6 +23,13 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
+function authenticate(handle: LocalRuntimeHandle) {
+  return registerMountedArtifactAuthorityIssuerForWakeRuntime({
+    phase: "authenticate",
+    runtimeHandle: handle
+  });
+}
+
 async function fixture(overrides: Partial<MountedWakeLifecycleStoreInput> = {}, ready = true) {
   const root = mkdtempSync(join(tmpdir(), "cestus-mounted-wake-store-"));
   directories.push(root);
@@ -37,10 +44,7 @@ async function fixture(overrides: Partial<MountedWakeLifecycleStoreInput> = {}, 
   });
   const handle = openHandle(root, workspaceRoot);
   if (ready) await handle.residentIdentity.ready();
-  const capability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
-    phase: "authenticate",
-    runtimeHandle: handle
-  } as never);
+  const capability = authenticate(handle);
   const input: MountedWakeLifecycleStoreInput = {
     capability,
     actor: { id: "agent_mounted_wake", kind: "agent", label: "Mounted wake store" },
@@ -228,6 +232,29 @@ describe("mounted wake lifecycle store", () => {
     expect(now).toHaveBeenCalledTimes(1);
     const durable = (await ledger.readAll()).find((event) => event.id === lease.readback.leaseEventId);
     expect(durable?.payload).toMatchObject({ leaseExpiresAt: "2026-07-16T00:05:00.000Z" });
+
+    for (const supervisorLeaseDurationMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, 300_001, 300_000]) {
+      const candidate = await fixture();
+      let reads = 0;
+      let writes = 0;
+      const originalReadAll = candidate.ledger.readAll.bind(candidate.ledger);
+      const originalAppend = candidate.ledger.append.bind(candidate.ledger);
+      Object.defineProperty(candidate.ledger, "readAll", {
+        configurable: true,
+        value: async () => { reads += 1; return originalReadAll(); }
+      });
+      Object.defineProperty(candidate.ledger, "append", {
+        configurable: true,
+        value: async (...args: Parameters<EventLedger["append"]>) => { writes += 1; return originalAppend(...args); }
+      });
+
+      expect(() => createMountedWakeLifecycleStore({
+        ...candidate.input,
+        capability: authenticate(candidate.handle),
+        policy: { ...candidate.input.policy, supervisorLeaseDurationMs }
+      } as never), String(supervisorLeaseDurationMs)).toThrow(/policy|duration|unsupported|complete/i);
+      expect({ reads, writes }, String(supervisorLeaseDurationMs)).toEqual({ reads: 0, writes: 0 });
+    }
   });
 
   it("burns an expired lease before a later runtime consumption can append", async () => {
@@ -359,8 +386,24 @@ describe("mounted wake lifecycle store", () => {
 
   it("keeps an active foreign lease distinct from workspace unavailability", async () => {
     const active = await fixture();
+    await expect(active.store.readOrAcquireSupervisorLease()).resolves.toMatchObject({ outcome: "acquired-and-read-back" });
+    const sameEpoch = createMountedWakeLifecycleStore({
+      ...active.input,
+      capability: authenticate(active.handle)
+    });
+    await expect(sameEpoch.readOrAcquireSupervisorLease()).resolves.toMatchObject({
+      outcome: "supervisor-lease-held",
+      readback: { holderEpoch: active.input.supervisorEpoch }
+    });
+    expect((await active.ledger.readAll()).filter((event) =>
+      event.type === "agent.wake.supervisor.lease.claimed.v1" &&
+      event.payload.workspaceId === "ws_mounted_wake" &&
+      event.payload.leaseExpiresAt === "2026-07-16T00:05:00.000Z"
+    )).toHaveLength(1);
+
     const futureForeign = createMountedWakeLifecycleStore({
       ...active.input,
+      capability: authenticate(active.handle),
       supervisorEpoch: "epoch_foreign",
       now: () => "2026-07-16T01:00:00.000Z"
     });
@@ -370,6 +413,7 @@ describe("mounted wake lifecycle store", () => {
     const expired = await fixture({ now: () => "2026-07-16T01:00:00.000Z" });
     const expiredForeign = createMountedWakeLifecycleStore({
       ...expired.input,
+      capability: authenticate(expired.handle),
       supervisorEpoch: "epoch_expired_foreign",
       now: () => "2026-07-16T00:00:00.000Z"
     });
