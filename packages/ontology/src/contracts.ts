@@ -2655,6 +2655,11 @@ const prrRequestClosedPayloadSchema = prrRequestRefSchema.extend({
   reason: z.enum(["fulfilled", "withdrawn", "abandoned", "denied-final", "merged"])
 }).strict();
 
+const residentWakeCausationSchema = z.object({
+  causationId: secretSafeStringSchema.min(1),
+  correlationId: secretSafeStringSchema.min(3)
+}).strict();
+
 const residentWakeLifecycleBindingSchema = z.object({
   workspaceId: agentWorkspaceIdSchema,
   residentId: z.literal("agent_default"),
@@ -2667,10 +2672,7 @@ const residentWakeLifecycleBindingSchema = z.object({
   policyDigest: secretSafeStringSchema.min(1),
   lockStateDigest: secretSafeStringSchema.min(1),
   highWaterMark: secretSafeStringSchema.min(1),
-  causation: z.object({
-    causationId: secretSafeStringSchema.min(1),
-    correlationId: secretSafeStringSchema.min(3)
-  }).strict()
+  causation: residentWakeCausationSchema
 }).strict();
 
 const residentWakeSupervisorLeaseClaimedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
@@ -2692,10 +2694,141 @@ const residentWakeSupervisorResumeRequestedPayloadSchema = residentWakeLifecycle
   sourceEventIds: z.array(eventIdSchema)
 }).strict();
 
+const residentWakeReconciliationIdentitySchema = z.object({
+  workspaceId: agentWorkspaceIdSchema,
+  residentId: z.literal("agent_default"),
+  supervisorEpoch: secretSafeStringSchema.min(1),
+  workspaceIdentityEventId: eventIdSchema,
+  mountEvidenceId: eventIdSchema,
+  authorityEvidenceId: eventIdSchema
+}).strict();
+
+const residentWakeReconciliationGenerationSchema = z.object({
+  schemaVersion: z.literal("resident-wake-admission-generation.v1"),
+  generationId: secretSafeStringSchema.min(1)
+}).strict();
+
+const residentWakeReconciliationPolicyAndLockSchema = z.object({
+  authorityEvidenceId: eventIdSchema,
+  mountEvidenceId: eventIdSchema,
+  leaseEventId: eventIdSchema,
+  leaseReadbackEventId: eventIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyDigest: secretSafeStringSchema.min(1),
+  lockStateDigest: secretSafeStringSchema.min(1),
+  readbackEventId: eventIdSchema
+}).strict();
+
+const residentWakeReconciliationHighWaterSchema = z.object({
+  authorityEvidenceId: eventIdSchema,
+  mountEvidenceId: eventIdSchema,
+  leaseEventId: eventIdSchema,
+  leaseReadbackEventId: eventIdSchema,
+  highWaterMark: eventIdSchema,
+  readbackEventId: eventIdSchema
+}).strict();
+
+const residentWakeReconciliationLeaseSchema = z.object({
+  schemaVersion: z.literal("resident-supervisor-lease-readback.v1"),
+  workspaceId: agentWorkspaceIdSchema,
+  residentId: z.literal("agent_default"),
+  supervisorEpoch: secretSafeStringSchema.min(1),
+  workspaceIdentityEventId: eventIdSchema,
+  mountEvidenceId: eventIdSchema,
+  authorityEvidenceId: eventIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyDigest: secretSafeStringSchema.min(1),
+  lockStateDigest: secretSafeStringSchema.min(1),
+  highWaterMark: eventIdSchema,
+  leaseEventId: eventIdSchema,
+  readbackEventId: eventIdSchema,
+  expiresAt: z.string().datetime(),
+  causation: residentWakeCausationSchema,
+  policyAndLock: residentWakeReconciliationPolicyAndLockSchema,
+  highWater: residentWakeReconciliationHighWaterSchema
+}).strict();
+
+const residentWakeReconciliationAdmissionSchema = z.object({
+  authorityIdentityAndMount: residentWakeReconciliationIdentitySchema,
+  admissionGeneration: residentWakeReconciliationGenerationSchema,
+  verifiedLease: residentWakeReconciliationLeaseSchema,
+  policyAndLock: residentWakeReconciliationPolicyAndLockSchema,
+  highWater: residentWakeReconciliationHighWaterSchema
+}).strict();
+
+const residentWakeOutageObservationSchema = z.object({
+  safeObservationId: secretSafeStringSchema.min(1),
+  outageObservedAt: z.string().datetime(),
+  category: z.enum(["workspace-unavailable", "workspace-identity-mismatch", "workspace-readback-failed"]),
+  priorClaimEventId: eventIdSchema,
+  priorClaimLeaseId: secretSafeStringSchema.min(1),
+  priorAuthorityEvidenceId: eventIdSchema,
+  highWaterBeforeOutage: eventIdSchema
+}).strict();
+
+const residentWakeRevalidatedAuthoritySchema = z.object({
+  identityEventId: eventIdSchema,
+  mountEvidenceId: eventIdSchema,
+  authorityEvidenceId: eventIdSchema,
+  highWaterAfterRevalidation: eventIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyDigest: secretSafeStringSchema.min(1),
+  lockStateDigest: secretSafeStringSchema.min(1),
+  supervisorLeaseEventId: eventIdSchema,
+  supervisorLeaseReadbackEventId: eventIdSchema,
+  supervisorLeaseExpiresAt: z.string().datetime()
+}).strict();
+
+const residentWakeReconciliationRecordSchema = z.object({
+  schemaVersion: z.literal("resident-wake-workspace-unavailable.v1"),
+  outcome: z.literal("workspace-unavailable"),
+  resumable: z.literal(true),
+  claimDisposition: z.enum(["released", "checkpointed"]),
+  workspaceId: agentWorkspaceIdSchema,
+  residentId: z.literal("agent_default"),
+  supervisorEpoch: secretSafeStringSchema.min(1),
+  claimId: secretSafeStringSchema.min(1),
+  attemptId: secretSafeStringSchema.min(1),
+  outageObservation: residentWakeOutageObservationSchema,
+  causation: residentWakeCausationSchema,
+  revalidatedAuthority: residentWakeRevalidatedAuthoritySchema,
+  reconciliationIdempotencyKey: secretSafeStringSchema.min(1)
+}).strict();
+
 const residentWakeSupervisorRecoveryVerifiedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
   reconciliationEventId: eventIdSchema,
-  reconciliationReadbackEventId: eventIdSchema
-}).strict();
+  reconciliationReadbackEventId: eventIdSchema,
+  reconciliationRecord: residentWakeReconciliationRecordSchema.optional(),
+  reconciliationAdmission: residentWakeReconciliationAdmissionSchema.optional()
+}).strict().superRefine((payload, ctx) => {
+  if ((payload.reconciliationRecord === undefined) !== (payload.reconciliationAdmission === undefined)) {
+    ctx.addIssue({ code: "custom", message: "reconciliation record and admission must be persisted together" });
+    return;
+  }
+  const record = payload.reconciliationRecord;
+  const admission = payload.reconciliationAdmission;
+  if (record === undefined || admission === undefined) return;
+  const identity = admission.authorityIdentityAndMount;
+  if (
+    record.workspaceId !== payload.workspaceId || record.residentId !== payload.residentId ||
+    record.supervisorEpoch !== payload.supervisorEpoch ||
+    record.causation.causationId !== payload.causation.causationId ||
+    record.causation.correlationId !== payload.causation.correlationId ||
+    identity.workspaceId !== payload.workspaceId || identity.residentId !== payload.residentId ||
+    identity.supervisorEpoch !== payload.supervisorEpoch ||
+    identity.workspaceIdentityEventId !== payload.workspaceIdentityEventId ||
+    identity.mountEvidenceId !== payload.mountEvidenceId || identity.authorityEvidenceId !== payload.authorityEvidenceId ||
+    record.revalidatedAuthority.identityEventId !== payload.workspaceIdentityEventId ||
+    record.revalidatedAuthority.mountEvidenceId !== payload.mountEvidenceId ||
+    record.revalidatedAuthority.authorityEvidenceId !== payload.authorityEvidenceId ||
+    record.revalidatedAuthority.policyVersion !== payload.policyVersion ||
+    record.revalidatedAuthority.policyDigest !== payload.policyDigest ||
+    record.revalidatedAuthority.lockStateDigest !== payload.lockStateDigest ||
+    record.revalidatedAuthority.highWaterAfterRevalidation !== payload.highWaterMark
+  ) {
+    ctx.addIssue({ code: "custom", message: "reconciliation readback must bind the lifecycle admission" });
+  }
+});
 
 const residentWakeSupervisorDegradedPayloadSchema = residentWakeLifecycleBindingSchema.extend({
   diagnosticId: z.string().regex(/^diag_[a-zA-Z0-9_-]+$/),

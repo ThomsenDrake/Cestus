@@ -1,18 +1,30 @@
-import type {
-  ActorRef,
-  AppendableKnowledgeEvent,
-  KnowledgeEvent,
-  KnowledgeEventOf
+import { existsSync } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
+import {
+  validateKnowledgeEvent,
+  type ActorRef,
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
+import { isConcurrencyConflict } from "../../ontology/src/event-ledger.js";
 import type {
   ActiveClaimReconciliationPort,
+  ClaimReconciliationAdmissionTuple,
+  ClaimReconciliationReadback,
   DurableSupervisorLeasePort,
+  RevalidatedActiveClaimEvidence,
   SupervisorLeaseAdmissionInput,
   WakeLifecycleEvidenceDto,
   WakeLifecyclePort,
   WakeRuntimePort
 } from "../../agent/src/wake-supervisor.js";
-import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import {
+  captureFactoryIssuedMountedRuntime,
+  inspectFactoryIssuedMountedRuntimeCapture,
+  type FactoryIssuedMountedWorkspaceSnapshot,
+  type LocalRuntimeHandle
+} from "./runtime-factory.js";
 
 interface PortableWorkspaceMountedFacts {
   readonly schemaVersion: "portable-workspace-mounted-facts.v1";
@@ -32,6 +44,7 @@ interface PortableWorkspaceMountedFacts {
   readonly highWaterMark: string;
   readonly highWaterReadbackEventId: string;
   readonly highWaterOrdinal: number;
+  readonly observedActiveClaim?: RevalidatedActiveClaimEvidence;
 }
 
 interface PortableWorkspaceMountedFactsPort {
@@ -40,6 +53,19 @@ interface PortableWorkspaceMountedFactsPort {
     | { readonly ok: false; readonly category: "workspace-unavailable" | "workspace-identity-mismatch" | "workspace-readback-failed" | "active-lock" }
   >;
 }
+
+interface MountedSnapshot {
+  readonly facts: PortableWorkspaceMountedFacts;
+  readonly events: readonly KnowledgeEvent[];
+}
+
+interface LeaseAdmissionState {
+  readonly facts: PortableWorkspaceMountedFacts;
+  readonly causation: { readonly causationId: string; readonly correlationId: string };
+}
+
+type ReconciliationAppendInput = Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0];
+type ReconciliationLookupInput = Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0];
 
 export type MountedWakeLifecycleEventType =
   | "agent.wake.supervisor.lease.claimed.v1"
@@ -70,6 +96,20 @@ export interface MountedWakeLifecycleAppendInput {
   readonly causation: { readonly causationId: string; readonly correlationId: string };
   readonly supervisorEpoch?: string;
   readonly workspaceIdentityEventId?: string;
+}
+
+interface NormalizedLifecycleAppend extends MountedWakeLifecycleAppendInput {
+  readonly commandId?: string;
+  readonly sourceEventIds?: readonly string[];
+  readonly pauseRequestEventId?: string;
+  readonly leaseId?: string;
+  readonly leaseExpiresAt?: string;
+  readonly reconciliationEventId?: string;
+  readonly reconciliationReadbackEventId?: string;
+  readonly reconciliationRecord?: ReconciliationAppendInput["record"];
+  readonly reconciliationAdmission?: ReconciliationAppendInput["admission"];
+  readonly bindingHighWaterMark?: string;
+  readonly expectedHighWaterMark?: string;
 }
 
 export interface MountedWakeLifecycleReadback {
@@ -103,23 +143,27 @@ class ActiveMountedWakeLockError extends Error {}
 
 export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleStoreInput): MountedWakeLifecycleStore {
   const input = normalizeStoreInput(rawInput);
-  const mountedWorkspace = input.runtimeHandle.mountedWorkspace;
-  if (mountedWorkspace === undefined) {
-    throw new Error("mounted wake lifecycle store requires a mounted portable runtime; no fallback storage exists");
-  }
-  const workspaceId = requiredText(mountedWorkspace.workspaceId, "mounted workspace id");
+  const captured = inspectFactoryIssuedMountedRuntimeCapture(captureFactoryIssuedMountedRuntime(input.runtimeHandle));
+  const ledger = captured.ledger;
+  const workspaceId = requiredText(captured.workspace.workspaceId, "mounted workspace id");
+  validateCapturedWorkspace(captured.workspace, captured.mountedWorkspace.paths);
   let revision = 0;
-  let highestObserved = -1;
+  let observedEvents: readonly KnowledgeEvent[] = Object.freeze([]);
+  let leaseAdmission: LeaseAdmissionState | undefined;
+  let latestReconciliation: ClaimReconciliationReadback | undefined;
+
   const requireCurrent = (expectedRevision: number): void => {
     if (expectedRevision !== revision) throw new Error("mounted wake lifecycle store is no longer current");
   };
 
-  const readMountedFacts = async (): Promise<PortableWorkspaceMountedFacts> => {
+  const readMountedSnapshot = async (): Promise<MountedSnapshot> => {
     const expectedRevision = revision;
-    const events = await input.runtimeHandle.ledger.readAll();
+    validateCapturedWorkspace(captured.workspace, captured.mountedWorkspace.paths);
+    const events = await ledger.readAll();
     requireCurrent(expectedRevision);
-    if (events.length < highestObserved) throw new Error("mounted wake lifecycle ledger high-water regressed");
-    highestObserved = events.length;
+    observeLedger(events, observedEvents);
+    observedEvents = Object.freeze(events.map((event) => structuredClone(event)));
+
     const identity = events.find((event) =>
       event.type === "agent.identity.initialized" &&
       event.payload.workspaceId === workspaceId &&
@@ -128,68 +172,98 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     if (identity === undefined) {
       throw new Error("mounted wake lifecycle store requires durable resident identity readback");
     }
-    const highWater = events.at(-1)?.id;
-    if (highWater === undefined) {
+    const sourceHighWater = events.filter((event) => !wakeLifecycleTypes.has(event.type as MountedWakeLifecycleEventType)).at(-1);
+    if (sourceHighWater === undefined) {
       throw new Error("mounted wake lifecycle store requires durable mounted ledger readback");
     }
     if (hasActiveResidentLock(events)) {
       throw new ActiveMountedWakeLockError("mounted wake lifecycle store has an active resident lock");
     }
-    return Object.freeze({
-      schemaVersion: "portable-workspace-mounted-facts.v1",
+
+    const facts = {
+      schemaVersion: "portable-workspace-mounted-facts.v1" as const,
       workspaceId,
-      residentId: "agent_default",
+      residentId: "agent_default" as const,
       workspaceIdentityEventId: identity.id,
-      mountInstanceId: `mount_${workspaceId}`,
-      mountEvidenceId: syntheticEventId("mount", workspaceId),
-      authorityEvidenceId: syntheticEventId("authority", workspaceId),
-      ledgerStoreEvidenceId: syntheticEventId("ledger", workspaceId),
-      artifactStoreEvidenceId: syntheticEventId("artifact", workspaceId),
-      derivativeStoreEvidenceId: syntheticEventId("derivative", workspaceId),
+      mountInstanceId: `mount_${identity.id.slice("evt_".length)}`,
+      mountEvidenceId: identity.id,
+      authorityEvidenceId: identity.id,
+      ledgerStoreEvidenceId: identity.id,
+      artifactStoreEvidenceId: identity.id,
+      derivativeStoreEvidenceId: identity.id,
       policyVersion: input.policy.policyVersion,
       policyDigest: input.policy.policyDigest,
       lockStateDigest: input.policy.lockStateDigest,
-      policyAndLockReadbackEventId: highWater,
-      highWaterMark: highWater,
-      highWaterReadbackEventId: highWater,
+      policyAndLockReadbackEventId: identity.id,
+      highWaterMark: sourceHighWater.id,
+      highWaterReadbackEventId: sourceHighWater.id,
       highWaterOrdinal: events.length
+    };
+    const observedActiveClaim = activeClaimFromEvents(events, workspaceId, input.supervisorEpoch, input.now);
+    return Object.freeze({
+      events: Object.freeze(events.map((event) => structuredClone(event))),
+      facts: Object.freeze(observedActiveClaim === undefined ? facts : { ...facts, observedActiveClaim })
     });
   };
+
+  const readMountedFacts = async (): Promise<PortableWorkspaceMountedFacts> => (await readMountedSnapshot()).facts;
 
   const appendAndReadBack = async (rawAppend: unknown): Promise<MountedWakeLifecycleReadback> => {
     const append = normalizeAppendInput(rawAppend);
     const expectedRevision = revision;
-    const facts = await readMountedFacts();
+    const snapshot = await readMountedSnapshot();
     requireCurrent(expectedRevision);
+    const facts = snapshot.facts;
     if (
       append.supervisorEpoch !== undefined && append.supervisorEpoch !== input.supervisorEpoch ||
-      append.workspaceIdentityEventId !== undefined && append.workspaceIdentityEventId !== facts.workspaceIdentityEventId
+      append.workspaceIdentityEventId !== undefined && append.workspaceIdentityEventId !== facts.workspaceIdentityEventId ||
+      append.expectedHighWaterMark !== undefined && append.expectedHighWaterMark !== facts.highWaterMark
     ) {
       throw new Error("mounted wake lifecycle append does not match current facts");
     }
-    const event = await input.runtimeHandle.ledger.append(
-      lifecycleEvent(append, facts, input),
-      { expectedGlobalEventCount: facts.highWaterOrdinal }
-    );
+    validateAppendReferences(append, facts, snapshot.events);
+    const event = lifecycleEvent(append, facts, input, snapshot.events);
+    const expectedSequence = snapshot.events.filter((candidate) => candidate.streamId === event.streamId).length + 1;
+
+    await ledger.append(event, {
+      expectedGlobalEventCount: snapshot.events.length,
+      expectedNextSequence: expectedSequence
+    });
     requireCurrent(expectedRevision);
-    const readback = await input.runtimeHandle.ledger.readStream(event.streamId);
+    const postAppend = await ledger.readAll();
     requireCurrent(expectedRevision);
-    if (!readback.some((candidate) => candidate.id === event.id && candidate.type === event.type)) {
+    observeLedger(postAppend, snapshot.events);
+    if (postAppend.length < snapshot.events.length + 1) {
       throw new Error("mounted wake lifecycle append lacks exact durable readback");
     }
-    return Object.freeze({ event });
+    const durable = postAppend[snapshot.events.length];
+    if (durable === undefined || durable.sequence !== expectedSequence || !sameAppendableEvent(durable, event)) {
+      throw new Error("mounted wake lifecycle append lacks exact durable readback");
+    }
+    const validation = validateKnowledgeEvent(durable);
+    if (!validation.success) throw new Error("mounted wake lifecycle append lacks canonical durable readback");
+    observedEvents = Object.freeze(postAppend.map((candidate) => structuredClone(candidate)));
+
+    const stream = await ledger.readStream(event.streamId);
+    requireCurrent(expectedRevision);
+    const streamReadback = stream.find((candidate) => candidate.id === durable.id);
+    if (streamReadback === undefined || !isDeepStrictEqual(streamReadback, durable)) {
+      throw new Error("mounted wake lifecycle append lacks exact durable readback");
+    }
+    return Object.freeze({ event: streamReadback });
   };
 
   const readOrAcquireSupervisorLease = async (leaseInput?: SupervisorLeaseAdmissionInput) => {
     const expectedRevision = revision;
-    const facts = await readMountedFacts();
+    const snapshot = await readMountedSnapshot();
     requireCurrent(expectedRevision);
-    const events = await input.runtimeHandle.ledger.readAll();
-    requireCurrent(expectedRevision);
-    const foreign = events.find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
+    if (leaseInput !== undefined) validateLeaseAdmissionInput(leaseInput, snapshot.facts);
+    const observedAt = input.now();
+    const foreign = snapshot.events.toReversed().find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
       event.type === "agent.wake.supervisor.lease.claimed.v1" &&
       event.payload.workspaceId === workspaceId &&
-      event.payload.supervisorEpoch !== input.supervisorEpoch
+      event.payload.supervisorEpoch !== input.supervisorEpoch &&
+      Date.parse(event.payload.leaseExpiresAt) > Date.parse(observedAt)
     );
     if (foreign !== undefined) {
       return Object.freeze({
@@ -205,38 +279,118 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
         })
       });
     }
+
+    const causation = leaseInput === undefined
+      ? Object.freeze({ causationId: snapshot.facts.workspaceIdentityEventId, correlationId: `corr_wake_${workspaceId}` })
+      : Object.freeze({ causationId: leaseInput.causationId, correlationId: leaseInput.correlationId });
+    const leaseId = requiredText(input.createSafeId("lease"), "lease id");
+    const leaseExpiresAt = input.now();
     const lease = await appendAndReadBack({
       type: "agent.wake.supervisor.lease.claimed.v1",
-      causation: leaseInput === undefined
-        ? { causationId: syntheticEventId("wake", workspaceId), correlationId: `corr_wake_${workspaceId}` }
-        : { causationId: leaseInput.causationId, correlationId: leaseInput.correlationId }
+      causation,
+      leaseId,
+      leaseExpiresAt,
+      bindingHighWaterMark: snapshot.facts.highWaterMark,
+      expectedHighWaterMark: snapshot.facts.highWaterMark,
+      supervisorEpoch: input.supervisorEpoch,
+      workspaceIdentityEventId: snapshot.facts.workspaceIdentityEventId
     });
-    const result = Object.freeze({
-      outcome: "acquired-and-read-back" as const,
-      readback: leaseReadback(
-        lease.event,
-        facts,
-        input,
-        leaseInput === undefined
-          ? { causationId: syntheticEventId("wake", workspaceId), correlationId: `corr_wake_${workspaceId}` }
-          : { causationId: leaseInput.causationId, correlationId: leaseInput.correlationId }
-      )
-    });
-    return result;
+    requireCurrent(expectedRevision);
+    if (lease.event.type !== "agent.wake.supervisor.lease.claimed.v1") {
+      throw new Error("mounted wake lifecycle lease readback is not canonical");
+    }
+    const readback = leaseReadback(lease.event, snapshot.facts, input, causation);
+    leaseAdmission = Object.freeze({ facts: snapshot.facts, causation });
+    return Object.freeze({ outcome: "acquired-and-read-back" as const, readback });
+  };
+
+  const readReconciliation = async (rawLookup: ReconciliationLookupInput): Promise<ClaimReconciliationReadback | undefined> => {
+    const lookup = normalizeReconciliationLookup(rawLookup);
+    if (lookup.supervisorEpoch !== input.supervisorEpoch) {
+      throw new Error("mounted wake lifecycle reconciliation epoch is not current");
+    }
+    const snapshot = await readMountedSnapshot();
+    validateReconciliationAdmission(lookup.admission, lookup, snapshot);
+    const matches = snapshot.events.filter((event): event is KnowledgeEventOf<"agent.wake.supervisor.recovery.verified.v1"> =>
+      event.type === "agent.wake.supervisor.recovery.verified.v1" &&
+      event.payload.reconciliationRecord?.reconciliationIdempotencyKey === lookup.reconciliationIdempotencyKey &&
+      event.payload.reconciliationAdmission !== undefined
+    );
+    if (matches.length > 1) throw new Error("mounted wake lifecycle reconciliation key is not unique");
+    const existing = matches[0];
+    if (existing === undefined) return undefined;
+    const readback = reconciliationReadback(existing);
+    validateReconciliationAdmission(readback.admission, {
+      workspaceId: lookup.workspaceId,
+      residentId: lookup.residentId,
+      supervisorEpoch: lookup.supervisorEpoch
+    }, snapshot);
+    if (
+      readback.record.reconciliationIdempotencyKey !== lookup.reconciliationIdempotencyKey ||
+      readback.record.workspaceId !== lookup.workspaceId ||
+      readback.record.residentId !== lookup.residentId ||
+      readback.record.supervisorEpoch !== lookup.supervisorEpoch
+    ) {
+      throw new Error("mounted wake lifecycle reconciliation readback is not canonical");
+    }
+    latestReconciliation = readback;
+    return readback;
+  };
+
+  const appendReconciliation = async (rawAppend: ReconciliationAppendInput): Promise<ClaimReconciliationReadback> => {
+    const reconciliation = normalizeReconciliationAppend(rawAppend);
+    const lookup = reconciliationLookupFromAppend(reconciliation);
+    const existing = await readReconciliation(lookup);
+    if (existing !== undefined) {
+      if (!isDeepStrictEqual(existing.record, reconciliation.record)) {
+        throw new Error("mounted wake lifecycle reconciliation key is already bound");
+      }
+      return existing;
+    }
+    const snapshot = await readMountedSnapshot();
+    validateReconciliationAppend(reconciliation, snapshot);
+    try {
+      const appended = await appendAndReadBack({
+        type: "agent.wake.supervisor.recovery.verified.v1",
+        causation: reconciliation.record.causation,
+        reconciliationEventId: reconciliation.observedActiveClaim.priorClaimEventId,
+        reconciliationReadbackEventId: reconciliation.observedActiveClaim.readbackEventId,
+        reconciliationRecord: reconciliation.record,
+        reconciliationAdmission: reconciliation.admission,
+        bindingHighWaterMark: reconciliation.admission.highWater.highWaterMark,
+        expectedHighWaterMark: snapshot.facts.highWaterMark,
+        supervisorEpoch: input.supervisorEpoch,
+        workspaceIdentityEventId: snapshot.facts.workspaceIdentityEventId
+      });
+      if (appended.event.type !== "agent.wake.supervisor.recovery.verified.v1") {
+        throw new Error("mounted wake lifecycle reconciliation append is not canonical");
+      }
+      const readback = reconciliationReadback(appended.event);
+      latestReconciliation = readback;
+      return readback;
+    } catch (error) {
+      if (!isConcurrencyConflict(error)) throw error;
+      const raced = await readReconciliation(lookup);
+      if (raced === undefined || !isDeepStrictEqual(raced.record, reconciliation.record)) throw error;
+      return raced;
+    }
   };
 
   const readOrAppendReconciliation = async (key: string): Promise<MountedWakeLifecycleReadback> => {
-    const expectedRevision = revision;
-    const events = await input.runtimeHandle.ledger.readAll();
-    requireCurrent(expectedRevision);
-    const existing = events.find((event) =>
+    const reconciliationKey = requiredText(key, "reconciliation key");
+    const snapshot = await readMountedSnapshot();
+    const existing = snapshot.events.find((event) =>
       event.type === "agent.wake.supervisor.recovery.verified.v1" &&
-      event.context.correlationId === key
+      event.context.correlationId === reconciliationKey
     );
     if (existing !== undefined) return Object.freeze({ event: existing });
     return appendAndReadBack({
       type: "agent.wake.supervisor.recovery.verified.v1",
-      causation: { causationId: syntheticEventId("recovery", workspaceId), correlationId: key }
+      causation: { causationId: snapshot.facts.workspaceIdentityEventId, correlationId: reconciliationKey },
+      reconciliationEventId: snapshot.facts.highWaterMark,
+      reconciliationReadbackEventId: snapshot.facts.highWaterReadbackEventId,
+      bindingHighWaterMark: snapshot.facts.highWaterMark,
+      expectedHighWaterMark: snapshot.facts.highWaterMark
     });
   };
 
@@ -260,44 +414,63 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
   });
 
   const activeClaimReconciliation: ActiveClaimReconciliationPort = Object.freeze({
-    async readByIdempotencyKey() {
-      return undefined;
-    },
-    async appendAndReadBack() {
-      throw new Error("mounted wake lifecycle store has no pending reconciliation");
-    }
+    readByIdempotencyKey: readReconciliation,
+    appendAndReadBack: appendReconciliation
   });
 
   const lifecycle: WakeLifecyclePort = Object.freeze({
     async pauseAndReadBack({ command }: Parameters<WakeLifecyclePort["pauseAndReadBack"]>[0]) {
+      const admission = leaseAdmission;
+      if (admission === undefined) throw new Error("mounted wake lifecycle pause requires current lease admission");
       const request = await appendAndReadBack({
         type: "agent.wake.supervisor.pause.requested.v1",
-        causation: command.causation
+        causation: command.causation,
+        commandId: command.commandId,
+        sourceEventIds: command.sourceEventIds,
+        bindingHighWaterMark: admission.facts.highWaterMark,
+        supervisorEpoch: input.supervisorEpoch,
+        workspaceIdentityEventId: admission.facts.workspaceIdentityEventId
       });
       const paused = await appendAndReadBack({
         type: "agent.wake.supervisor.paused.v1",
-        causation: command.causation
+        causation: command.causation,
+        pauseRequestEventId: request.event.id,
+        bindingHighWaterMark: admission.facts.highWaterMark,
+        supervisorEpoch: input.supervisorEpoch,
+        workspaceIdentityEventId: admission.facts.workspaceIdentityEventId
       });
-      const facts = await readMountedFacts();
       return Object.freeze({
         ok: true as const,
-        evidence: lifecycleEvidence(paused.event.id, facts, input, command.causation, "paused", request.event.id)
+        evidence: lifecycleEvidence(paused.event.id, admission.facts, input, command.causation, "paused")
       });
     }
   });
 
   const runtime: WakeRuntimePort = Object.freeze({
     async wakeOnce({ signal }: Parameters<WakeRuntimePort["wakeOnce"]>[0]) {
+      const admission = leaseAdmission;
+      if (admission === undefined) throw new Error("mounted wake runtime requires current lease admission");
       if (signal.source === "command") {
         await appendAndReadBack({
           type: "agent.wake.supervisor.resume.requested.v1",
-          causation: { causationId: syntheticEventId("resume", workspaceId), correlationId: `corr_resume_${workspaceId}` }
+          causation: admission.causation,
+          commandId: signal.idempotencyKey,
+          sourceEventIds: signal.sourceEventIds,
+          bindingHighWaterMark: admission.facts.highWaterMark,
+          supervisorEpoch: input.supervisorEpoch,
+          workspaceIdentityEventId: admission.facts.workspaceIdentityEventId
         });
       }
       if (signal.source === "recovery") {
+        const sourceId = signal.sourceEventIds.find((eventId) => /^evt_[a-zA-Z0-9_-]+$/.test(eventId)) ?? admission.facts.highWaterMark;
         await appendAndReadBack({
           type: "agent.wake.supervisor.recovery.verified.v1",
-          causation: { causationId: syntheticEventId("recovery", workspaceId), correlationId: `corr_recovery_${workspaceId}` }
+          causation: admission.causation,
+          reconciliationEventId: latestReconciliation?.reconciliationEventId ?? sourceId,
+          reconciliationReadbackEventId: latestReconciliation?.readbackEventId ?? sourceId,
+          bindingHighWaterMark: admission.facts.highWaterMark,
+          supervisorEpoch: input.supervisorEpoch,
+          workspaceIdentityEventId: admission.facts.workspaceIdentityEventId
         });
       }
       return Object.freeze({ outcome: "accepted" as const });
@@ -309,7 +482,11 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     appendAndReadBack,
     readOrAcquireSupervisorLease,
     readOrAppendReconciliation,
-    invalidate() { revision += 1; },
+    invalidate() {
+      revision += 1;
+      leaseAdmission = undefined;
+      latestReconciliation = undefined;
+    },
     mountedFacts,
     supervisorLease,
     activeClaimReconciliation,
@@ -319,10 +496,12 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
 }
 
 function lifecycleEvent(
-  append: MountedWakeLifecycleAppendInput,
+  append: NormalizedLifecycleAppend,
   facts: PortableWorkspaceMountedFacts,
-  input: MountedWakeLifecycleStoreInput
+  input: MountedWakeLifecycleStoreInput,
+  events: readonly KnowledgeEvent[]
 ): AppendableKnowledgeEvent {
+  const highWaterMark = append.bindingHighWaterMark ?? facts.highWaterMark;
   const base = {
     workspaceId: facts.workspaceId,
     residentId: "agent_default" as const,
@@ -334,20 +513,37 @@ function lifecycleEvent(
     policyVersion: facts.policyVersion,
     policyDigest: facts.policyDigest,
     lockStateDigest: facts.lockStateDigest,
-    highWaterMark: facts.highWaterMark,
+    highWaterMark,
     causation: append.causation
   };
   const payload = append.type === "agent.wake.supervisor.lease.claimed.v1"
-    ? { ...base, leaseId: input.createSafeId("lease"), leaseExpiresAt: input.now() }
+    ? {
+        ...base,
+        leaseId: append.leaseId ?? requiredText(input.createSafeId("lease"), "lease id"),
+        leaseExpiresAt: append.leaseExpiresAt ?? input.now()
+      }
     : append.type === "agent.wake.supervisor.pause.requested.v1" || append.type === "agent.wake.supervisor.resume.requested.v1"
-      ? { ...base, commandId: append.causation.correlationId, sourceEventIds: [] }
+      ? {
+          ...base,
+          commandId: append.commandId ?? append.causation.correlationId,
+          sourceEventIds: [...(append.sourceEventIds ?? [])]
+        }
       : append.type === "agent.wake.supervisor.paused.v1"
-        ? { ...base, pauseRequestEventId: facts.highWaterMark }
+        ? { ...base, pauseRequestEventId: append.pauseRequestEventId ?? facts.highWaterMark }
         : append.type === "agent.wake.supervisor.recovery.verified.v1"
-          ? { ...base, reconciliationEventId: syntheticEventId("reconciliation", facts.workspaceId), reconciliationReadbackEventId: facts.highWaterMark }
+          ? {
+              ...base,
+              reconciliationEventId: append.reconciliationEventId ?? facts.highWaterMark,
+              reconciliationReadbackEventId: append.reconciliationReadbackEventId ?? facts.highWaterReadbackEventId,
+              ...(append.reconciliationRecord === undefined ? {} : { reconciliationRecord: append.reconciliationRecord }),
+              ...(append.reconciliationAdmission === undefined ? {} : { reconciliationAdmission: append.reconciliationAdmission })
+            }
           : append.type === "agent.wake.supervisor.degraded.v1"
-            ? { ...base, diagnosticId: input.createSafeId("diagnostic"), category: "scheduler-unavailable" as const }
-            : { ...base, diagnosticId: input.createSafeId("diagnostic"), category: "unrecoverable" as const };
+            ? { ...base, diagnosticId: safeDiagnosticId(input.createSafeId("diagnostic")), category: "scheduler-unavailable" as const }
+            : { ...base, diagnosticId: safeDiagnosticId(input.createSafeId("diagnostic")), category: "unrecoverable" as const };
+  const contextCausationId = events.some((event) => event.id === append.causation.causationId)
+    ? append.causation.causationId
+    : undefined;
   return {
     type: append.type,
     version: 1,
@@ -355,7 +551,7 @@ function lifecycleEvent(
     context: {
       actor: input.actor,
       occurredAt: input.now(),
-      causationId: syntheticEventId("cause", facts.workspaceId),
+      ...(contextCausationId === undefined ? {} : { causationId: contextCausationId }),
       correlationId: append.causation.correlationId,
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0", agent: "0.1.0" }
@@ -365,7 +561,7 @@ function lifecycleEvent(
 }
 
 function leaseReadback(
-  event: KnowledgeEvent,
+  event: KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1">,
   facts: PortableWorkspaceMountedFacts,
   input: MountedWakeLifecycleStoreInput,
   causation: { readonly causationId: string; readonly correlationId: string }
@@ -384,7 +580,7 @@ function leaseReadback(
     highWaterMark: facts.highWaterMark,
     leaseEventId: event.id,
     readbackEventId: event.id,
-    expiresAt: input.now(),
+    expiresAt: event.payload.leaseExpiresAt,
     causation,
     policyAndLock: {
       authorityEvidenceId: facts.authorityEvidenceId,
@@ -412,8 +608,7 @@ function lifecycleEvidence(
   facts: PortableWorkspaceMountedFacts,
   input: MountedWakeLifecycleStoreInput,
   causation: { readonly causationId: string; readonly correlationId: string },
-  transition: "paused",
-  _pauseRequestEventId: string
+  transition: "paused"
 ): WakeLifecycleEvidenceDto {
   return Object.freeze({
     schemaVersion: "resident-wake-evidence.v1",
@@ -431,6 +626,242 @@ function lifecycleEvidence(
   });
 }
 
+function reconciliationReadback(
+  event: KnowledgeEventOf<"agent.wake.supervisor.recovery.verified.v1">
+): ClaimReconciliationReadback {
+  const record = event.payload.reconciliationRecord;
+  const admission = event.payload.reconciliationAdmission;
+  if (record === undefined || admission === undefined) {
+    throw new Error("mounted wake lifecycle reconciliation lacks durable canonical state");
+  }
+  return Object.freeze({
+    record: deepFreeze(structuredClone(record)),
+    reconciliationEventId: event.id,
+    readbackEventId: event.id,
+    admission: deepFreeze(structuredClone(admission))
+  });
+}
+
+function validateLeaseAdmissionInput(input: SupervisorLeaseAdmissionInput, facts: PortableWorkspaceMountedFacts): void {
+  const identity = input.admission.identityAndMount;
+  if (
+    input.residentId !== facts.residentId || input.supervisorEpoch !== identity.supervisorEpoch ||
+    input.policyVersion !== facts.policyVersion || input.policyDigest !== facts.policyDigest ||
+    input.lockStateDigest !== facts.lockStateDigest || identity.workspaceId !== facts.workspaceId ||
+    identity.residentId !== facts.residentId || identity.workspaceIdentityEventId !== facts.workspaceIdentityEventId ||
+    identity.mountEvidenceId !== facts.mountEvidenceId || identity.authorityEvidenceId !== facts.authorityEvidenceId
+  ) {
+    throw new Error("mounted wake lifecycle lease admission does not match current facts");
+  }
+}
+
+function validateReconciliationAppend(input: ReconciliationAppendInput, snapshot: MountedSnapshot): void {
+  validateReconciliationAdmission(input.admission, input, snapshot);
+  const events = snapshot.events;
+  const observed = input.observedActiveClaim;
+  const outage = input.outage;
+  const record = input.record;
+  const claim = events.find((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+    event.id === observed.priorClaimEventId && event.type === "agent.task.orchestration.claimed"
+  );
+  const readback = events.find((event) => event.id === observed.readbackEventId);
+  if (
+    claim === undefined || readback === undefined || readback.id !== claim.id ||
+    observed.workspaceId !== input.workspaceId || observed.residentId !== input.residentId ||
+    observed.supervisorEpoch !== input.supervisorEpoch || observed.claimId !== claim.payload.taskId ||
+    observed.attemptId !== claim.payload.attemptId || observed.priorClaimLeaseId !== claim.payload.idempotencyKey ||
+    observed.causation.causationId !== claim.payload.causationEventId ||
+    observed.causation.correlationId !== claim.context.correlationId ||
+    outage.priorClaimEventId !== observed.priorClaimEventId ||
+    outage.priorClaimLeaseId !== observed.priorClaimLeaseId ||
+    outage.priorAuthorityEvidenceId !== input.admission.authorityIdentityAndMount.authorityEvidenceId ||
+    outage.highWaterBeforeOutage !== input.admission.highWater.highWaterMark ||
+    record.workspaceId !== input.workspaceId || record.residentId !== input.residentId ||
+    record.supervisorEpoch !== input.supervisorEpoch || record.claimId !== observed.claimId ||
+    record.attemptId !== observed.attemptId || !isDeepStrictEqual(record.outageObservation, outage) ||
+    !isDeepStrictEqual(record.causation, observed.causation) ||
+    record.reconciliationIdempotencyKey !== input.reconciliationIdempotencyKey
+  ) {
+    throw new Error("mounted wake lifecycle reconciliation does not match durable claim facts");
+  }
+  const tuple = input.admission;
+  const authority = record.revalidatedAuthority;
+  if (
+    authority.identityEventId !== tuple.authorityIdentityAndMount.workspaceIdentityEventId ||
+    authority.mountEvidenceId !== tuple.authorityIdentityAndMount.mountEvidenceId ||
+    authority.authorityEvidenceId !== tuple.authorityIdentityAndMount.authorityEvidenceId ||
+    authority.highWaterAfterRevalidation !== tuple.highWater.highWaterMark ||
+    authority.policyVersion !== tuple.policyAndLock.policyVersion || authority.policyDigest !== tuple.policyAndLock.policyDigest ||
+    authority.lockStateDigest !== tuple.policyAndLock.lockStateDigest ||
+    authority.supervisorLeaseEventId !== tuple.verifiedLease.leaseEventId ||
+    authority.supervisorLeaseReadbackEventId !== tuple.verifiedLease.readbackEventId ||
+    authority.supervisorLeaseExpiresAt !== tuple.verifiedLease.expiresAt
+  ) {
+    throw new Error("mounted wake lifecycle reconciliation does not match lease readback");
+  }
+}
+
+function validateReconciliationAdmission(
+  admission: ClaimReconciliationAdmissionTuple,
+  lookup: Pick<ReconciliationLookupInput, "workspaceId" | "residentId" | "supervisorEpoch">,
+  snapshot: MountedSnapshot
+): void {
+  const identity = admission.authorityIdentityAndMount;
+  const lease = admission.verifiedLease;
+  const facts = snapshot.facts;
+  const leaseEvent = snapshot.events.find((event): event is KnowledgeEventOf<"agent.wake.supervisor.lease.claimed.v1"> =>
+    event.id === lease.leaseEventId && event.type === "agent.wake.supervisor.lease.claimed.v1"
+  );
+  const eventIds = new Set(snapshot.events.map((event) => event.id));
+  if (
+    lookup.workspaceId !== facts.workspaceId || lookup.residentId !== facts.residentId ||
+    lookup.supervisorEpoch !== identity.supervisorEpoch ||
+    identity.workspaceId !== facts.workspaceId || identity.residentId !== facts.residentId ||
+    identity.workspaceIdentityEventId !== facts.workspaceIdentityEventId ||
+    identity.mountEvidenceId !== facts.mountEvidenceId || identity.authorityEvidenceId !== facts.authorityEvidenceId ||
+    leaseEvent === undefined || lease.readbackEventId !== leaseEvent.id ||
+    lease.workspaceId !== facts.workspaceId || lease.residentId !== facts.residentId ||
+    lease.supervisorEpoch !== identity.supervisorEpoch || lease.workspaceIdentityEventId !== identity.workspaceIdentityEventId ||
+    lease.mountEvidenceId !== identity.mountEvidenceId || lease.authorityEvidenceId !== identity.authorityEvidenceId ||
+    lease.policyVersion !== facts.policyVersion || lease.policyDigest !== facts.policyDigest ||
+    lease.lockStateDigest !== facts.lockStateDigest || lease.highWaterMark !== facts.highWaterMark ||
+    leaseEvent.payload.workspaceId !== lease.workspaceId || leaseEvent.payload.residentId !== lease.residentId ||
+    leaseEvent.payload.supervisorEpoch !== lease.supervisorEpoch ||
+    leaseEvent.payload.workspaceIdentityEventId !== lease.workspaceIdentityEventId ||
+    leaseEvent.payload.mountEvidenceId !== lease.mountEvidenceId ||
+    leaseEvent.payload.authorityEvidenceId !== lease.authorityEvidenceId ||
+    leaseEvent.payload.policyVersion !== lease.policyVersion || leaseEvent.payload.policyDigest !== lease.policyDigest ||
+    leaseEvent.payload.lockStateDigest !== lease.lockStateDigest || leaseEvent.payload.highWaterMark !== lease.highWaterMark ||
+    lease.expiresAt !== leaseEvent.payload.leaseExpiresAt || !isDeepStrictEqual(lease.causation, leaseEvent.payload.causation) ||
+    !isDeepStrictEqual(admission.policyAndLock, lease.policyAndLock) ||
+    !isDeepStrictEqual(admission.highWater, lease.highWater) ||
+    !eventIds.has(admission.highWater.highWaterMark) || !eventIds.has(admission.highWater.readbackEventId) ||
+    !eventIds.has(admission.policyAndLock.readbackEventId)
+  ) {
+    throw new Error("mounted wake lifecycle reconciliation admission lacks exact durable readback");
+  }
+}
+
+function validateAppendReferences(
+  append: NormalizedLifecycleAppend,
+  facts: PortableWorkspaceMountedFacts,
+  events: readonly KnowledgeEvent[]
+): void {
+  const ids = new Set(events.map((event) => event.id));
+  for (const eventId of [
+    facts.workspaceIdentityEventId,
+    facts.mountEvidenceId,
+    facts.authorityEvidenceId,
+    facts.ledgerStoreEvidenceId,
+    facts.artifactStoreEvidenceId,
+    facts.derivativeStoreEvidenceId,
+    facts.policyAndLockReadbackEventId,
+    facts.highWaterMark,
+    facts.highWaterReadbackEventId,
+    append.bindingHighWaterMark,
+    append.pauseRequestEventId,
+    append.reconciliationEventId,
+    append.reconciliationReadbackEventId,
+    ...(append.sourceEventIds ?? [])
+  ]) {
+    if (eventId !== undefined && !ids.has(eventId)) {
+      throw new Error("mounted wake lifecycle append references missing durable evidence");
+    }
+  }
+}
+
+function validateCapturedWorkspace(
+  workspace: FactoryIssuedMountedWorkspaceSnapshot,
+  mountedPaths: {
+    readonly ledgerPath: string;
+    readonly blobRoot: string;
+    readonly derivativeRoot: string;
+    readonly jobRoot: string;
+    readonly projectionRoot: string;
+    readonly cacheRoot: string;
+    readonly configRoot: string;
+  }
+): void {
+  if (
+    workspace.ledgerPath !== mountedPaths.ledgerPath || workspace.blobRoot !== mountedPaths.blobRoot ||
+    workspace.derivativeRoot !== mountedPaths.derivativeRoot || workspace.jobRoot !== mountedPaths.jobRoot ||
+    workspace.projectionRoot !== mountedPaths.projectionRoot || workspace.cacheRoot !== mountedPaths.cacheRoot ||
+    workspace.configRoot !== mountedPaths.configRoot ||
+    ![
+      workspace.rootDir,
+      workspace.manifestPath,
+      workspace.ledgerPath,
+      workspace.blobRoot,
+      workspace.derivativeRoot,
+      workspace.jobRoot,
+      workspace.projectionRoot,
+      workspace.cacheRoot,
+      workspace.configRoot
+    ].every((path) => existsSync(path))
+  ) {
+    throw new Error("factory-issued mounted runtime storage is no longer current");
+  }
+}
+
+function observeLedger(next: readonly KnowledgeEvent[], prior: readonly KnowledgeEvent[]): void {
+  if (next.length < prior.length) throw new Error("mounted wake lifecycle ledger high-water regressed");
+  for (let index = 0; index < prior.length; index += 1) {
+    if (!isDeepStrictEqual(next[index], prior[index])) {
+      throw new Error("mounted wake lifecycle ledger history was replaced");
+    }
+  }
+  for (const event of next) {
+    if (!validateKnowledgeEvent(event).success) {
+      throw new Error("mounted wake lifecycle ledger readback is not canonical");
+    }
+  }
+}
+
+function sameAppendableEvent(event: KnowledgeEvent, appendable: AppendableKnowledgeEvent): boolean {
+  const { id: _id, sequence: _sequence, ...durable } = event;
+  return isDeepStrictEqual(durable, appendable);
+}
+
+function activeClaimFromEvents(
+  events: readonly KnowledgeEvent[],
+  workspaceId: string,
+  supervisorEpoch: string,
+  now: () => string
+): RevalidatedActiveClaimEvidence | undefined {
+  const claims = events.filter((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+    event.type === "agent.task.orchestration.claimed"
+  );
+  if (claims.length === 0) return undefined;
+  const observedAt = Date.parse(now());
+  for (const claim of claims.toReversed()) {
+    if (Date.parse(claim.payload.leaseExpiresAt) <= observedAt) continue;
+    const later = events.slice(events.findIndex((event) => event.id === claim.id) + 1);
+    const released = later.some((event) =>
+      event.type === "agent.task.orchestration.released" && event.payload.claimEventId === claim.id
+    );
+    const terminal = later.some((event) =>
+      (event.type === "agent.task.orchestration.failed" || event.type === "agent.task.orchestration.completed") &&
+      event.payload.taskId === claim.payload.taskId && event.payload.attemptId === claim.payload.attemptId
+    );
+    if (released || terminal) continue;
+    return Object.freeze({
+      workspaceId,
+      residentId: "agent_default",
+      supervisorEpoch,
+      claimId: claim.payload.taskId,
+      attemptId: claim.payload.attemptId,
+      priorClaimEventId: claim.id,
+      priorClaimLeaseId: claim.payload.idempotencyKey,
+      readbackEventId: claim.id,
+      causation: Object.freeze({
+        causationId: claim.payload.causationEventId,
+        correlationId: claim.context.correlationId
+      })
+    });
+  }
+  return undefined;
+}
+
 function normalizeStoreInput(value: MountedWakeLifecycleStoreInput): MountedWakeLifecycleStoreInput {
   if (!isPlainRecord(value) || !isPlainRecord(value.policy) || typeof value.now !== "function" || typeof value.createSafeId !== "function") {
     throw new Error("mounted wake lifecycle store input must be plain and complete");
@@ -442,14 +873,22 @@ function normalizeStoreInput(value: MountedWakeLifecycleStoreInput): MountedWake
   return Object.freeze({ ...value, policy: Object.freeze({ ...value.policy }) });
 }
 
-function normalizeAppendInput(value: unknown): MountedWakeLifecycleAppendInput {
+function normalizeAppendInput(value: unknown): NormalizedLifecycleAppend {
   if (!isPlainRecord(value) || !isPlainRecord(value.causation) || !wakeLifecycleTypes.has(value.type as MountedWakeLifecycleEventType)) {
     throw new Error("mounted wake lifecycle append input is unsafe");
   }
-  const keys = Object.keys(value);
-  if (!keys.every((key) => key === "type" || key === "causation" || key === "supervisorEpoch" || key === "workspaceIdentityEventId")) {
+  const allowedKeys = new Set([
+    "type", "causation", "supervisorEpoch", "workspaceIdentityEventId", "commandId", "sourceEventIds",
+    "pauseRequestEventId", "leaseId", "leaseExpiresAt", "reconciliationEventId",
+    "reconciliationReadbackEventId", "reconciliationRecord", "reconciliationAdmission",
+    "bindingHighWaterMark", "expectedHighWaterMark"
+  ]);
+  if (!Object.keys(value).every((key) => allowedKeys.has(key))) {
     throw new Error("mounted wake lifecycle append input is unsafe");
   }
+  const sourceEventIds = value.sourceEventIds === undefined
+    ? undefined
+    : stringArray(value.sourceEventIds, "source event ids");
   return Object.freeze({
     type: value.type as MountedWakeLifecycleEventType,
     causation: Object.freeze({
@@ -457,8 +896,88 @@ function normalizeAppendInput(value: unknown): MountedWakeLifecycleAppendInput {
       correlationId: requiredText(value.causation.correlationId, "correlation id")
     }),
     ...(value.supervisorEpoch === undefined ? {} : { supervisorEpoch: requiredText(value.supervisorEpoch, "supervisor epoch") }),
-    ...(value.workspaceIdentityEventId === undefined ? {} : { workspaceIdentityEventId: requiredText(value.workspaceIdentityEventId, "workspace identity") })
+    ...(value.workspaceIdentityEventId === undefined ? {} : { workspaceIdentityEventId: requiredText(value.workspaceIdentityEventId, "workspace identity") }),
+    ...(value.commandId === undefined ? {} : { commandId: requiredText(value.commandId, "command id") }),
+    ...(sourceEventIds === undefined ? {} : { sourceEventIds }),
+    ...(value.pauseRequestEventId === undefined ? {} : { pauseRequestEventId: requiredText(value.pauseRequestEventId, "pause request event id") }),
+    ...(value.leaseId === undefined ? {} : { leaseId: requiredText(value.leaseId, "lease id") }),
+    ...(value.leaseExpiresAt === undefined ? {} : { leaseExpiresAt: requiredText(value.leaseExpiresAt, "lease expiry") }),
+    ...(value.reconciliationEventId === undefined ? {} : { reconciliationEventId: requiredText(value.reconciliationEventId, "reconciliation event id") }),
+    ...(value.reconciliationReadbackEventId === undefined ? {} : { reconciliationReadbackEventId: requiredText(value.reconciliationReadbackEventId, "reconciliation readback event id") }),
+    ...(value.reconciliationRecord === undefined ? {} : { reconciliationRecord: clonePlainData(value.reconciliationRecord, "reconciliation record") as ReconciliationAppendInput["record"] }),
+    ...(value.reconciliationAdmission === undefined ? {} : { reconciliationAdmission: clonePlainData(value.reconciliationAdmission, "reconciliation admission") as ReconciliationAppendInput["admission"] }),
+    ...(value.bindingHighWaterMark === undefined ? {} : { bindingHighWaterMark: requiredText(value.bindingHighWaterMark, "binding high-water") }),
+    ...(value.expectedHighWaterMark === undefined ? {} : { expectedHighWaterMark: requiredText(value.expectedHighWaterMark, "expected high-water") })
   });
+}
+
+function normalizeReconciliationLookup(value: ReconciliationLookupInput): ReconciliationLookupInput {
+  assertPlainData(value, "reconciliation lookup");
+  if (!isPlainRecord(value) || !hasExactKeys(value, ["admission", "reconciliationIdempotencyKey", "workspaceId", "residentId", "supervisorEpoch"])) {
+    throw new Error("mounted wake lifecycle reconciliation lookup is unsafe");
+  }
+  requiredText(value.reconciliationIdempotencyKey, "reconciliation key");
+  requiredText(value.workspaceId, "reconciliation workspace");
+  requiredText(value.supervisorEpoch, "reconciliation epoch");
+  if (value.residentId !== "agent_default") throw new Error("mounted wake lifecycle reconciliation resident is unsafe");
+  return structuredClone(value);
+}
+
+function normalizeReconciliationAppend(value: ReconciliationAppendInput): ReconciliationAppendInput {
+  assertPlainData(value, "reconciliation append");
+  if (!isPlainRecord(value) || !hasExactKeys(value, [
+    "admission", "reconciliationIdempotencyKey", "workspaceId", "residentId", "supervisorEpoch",
+    "record", "observedActiveClaim", "outage"
+  ])) {
+    throw new Error("mounted wake lifecycle reconciliation append is unsafe");
+  }
+  return structuredClone(value);
+}
+
+function reconciliationLookupFromAppend(value: ReconciliationAppendInput): ReconciliationLookupInput {
+  return Object.freeze({
+    admission: value.admission,
+    reconciliationIdempotencyKey: value.reconciliationIdempotencyKey,
+    workspaceId: value.workspaceId,
+    residentId: value.residentId,
+    supervisorEpoch: value.supervisorEpoch
+  });
+}
+
+function assertPlainData(value: unknown, label: string): void {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") return;
+  if (Array.isArray(value)) {
+    for (const entry of value) assertPlainData(entry, label);
+    return;
+  }
+  if (!isPlainRecord(value)) throw new Error(`${label} must contain plain data`);
+  for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(value))) {
+    if (!("value" in descriptor)) throw new Error(`${label} must contain plain data`);
+    assertPlainData(descriptor.value, label);
+  }
+}
+
+function clonePlainData(value: unknown, label: string): unknown {
+  assertPlainData(value, label);
+  return structuredClone(value);
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  return isDeepStrictEqual(actual, [...keys].sort());
+}
+
+function stringArray(value: unknown, label: string): readonly string[] {
+  if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
+  return Object.freeze(value.map((entry) => requiredText(entry, label)));
 }
 
 function isPlainRecord(value: unknown): value is Record<string, any> {
@@ -471,8 +990,9 @@ function requiredText(value: unknown, label: string): string {
   return value;
 }
 
-function syntheticEventId(kind: string, workspaceId: string): string {
-  return `evt_${kind}_${workspaceId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+function safeDiagnosticId(value: string): string {
+  const safe = requiredText(value, "diagnostic id").replace(/[^a-zA-Z0-9_-]/g, "_");
+  return safe.startsWith("diag_") ? safe : `diag_${safe}`;
 }
 
 function hasActiveResidentLock(events: readonly KnowledgeEvent[]): boolean {
