@@ -21,11 +21,14 @@ scope:
 3. `Task126-R` has a reproduced import-policy P1 after its automatic repair
    ceiling, even though the required correction is test-policy-only.
 
-This amendment changes the executable ownership description only for the two
+This amendment corrects the executable ownership description for the two
 unreleased V4 cards, updates the assurance fingerprint and tests, and grants
-one finite exceptional Task126-R packet. V1, V2, V3, existing strict records,
-release order, prerequisites, provider behavior, and production BYOK behavior
-remain unchanged.
+one finite exceptional Task126-R packet. Because `CF1-HR` must edit
+`packages/ontology/src/contracts.ts`, which strict record 11 historically
+recorded as Task137B-W-owned, it also applies the sole forward transfer and
+historical compatibility correction defined below. V1, V2, V3, existing raw
+strict records, release order, prerequisites, provider behavior, and
+production BYOK behavior remain unchanged.
 
 ## Considered Approaches
 
@@ -63,8 +66,21 @@ The correction must preserve these contract bytes exactly:
 The raw JSON bytes of strict records 1-13 remain unchanged. Their candidate,
 integration, review, prerequisite, release-event, and blob evidence remain
 authoritative. The graph still contains exactly 29 cards in the existing order
-and retains every existing prerequisite and transfer disposition except for
-the added owned paths on the two unreleased cards below.
+and retains every existing prerequisite. Every existing transfer disposition
+remains unchanged except this one direct, already-topological transfer:
+
+- Task137B-W changes only
+  `packages/ontology/src/contracts.ts` from `owned` to `transferred` and names
+  exactly `CF1-HR` in `transferToIds`.
+- `CF1-HR`, which already directly depends on Task137B-W, owns that path.
+- `releaseCompatibility.historicalRecords` appends a Task137B-W entry with
+  canonical record hash
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
+  and exactly that path with historical record disposition `owned`.
+- Record 11 is not rewritten. Before strict CF1-HR record 14 exists, current
+  HEAD must still match record 11 for this path. Once record 14 exists,
+  current-HEAD authority moves to CF1-HR while candidate and integration blob
+  evidence for record 11 remains verified.
 
 ## Corrected CF1-HR Boundary
 
@@ -230,7 +246,8 @@ The V4 amendment owner changes only:
 - `docs/agentic/claims/task-136-v4-blocked-card-scope-correction.md`
 
 The tests first fail against the old CF1/G136 path and command sets. The GREEN
-updates the two cards, the corrected V4 assurance fingerprint, and one-fact
+updates the two cards, the sole Task137B-W-to-CF1 transfer, the third historical
+compatibility entry, the corrected V4 assurance fingerprint, and one-fact
 mutants for every added/missing/reordered path and command projection. It also
 proves:
 
@@ -240,8 +257,11 @@ proves:
 - repository mode emits exactly
   `TASK136_REPOSITORY_PREFIX_OK records=13 commands=13`, then fails closed with
   `repository release closure incomplete: expected 29 records, found 13`;
-- released candidate/integration/current blobs still match their records;
-- only unreleased CF1-HR and G136-SC ownership changed.
+- released candidate and integration blobs still match their records;
+- Task137B-W `contracts.ts` remains current-HEAD-authoritative until record 14,
+  then migrates current-HEAD authority to CF1-HR;
+- no ownership changed except the corrected CF1-HR and G136-SC scopes and the
+  sole Task137B-W-to-CF1 transfer above.
 
 The previous V4 fingerprint and pretty-JSON hash remain historical facts in
 the earlier design. The correction claim records the new values rather than

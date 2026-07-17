@@ -11,10 +11,12 @@ strict ordered release path without changing prior evidence or safety
 semantics.
 
 **Architecture:** A four-file assurance amendment makes the V4 contract match
-the approved unreleased-card ownership. After that reviewed base is integrated,
-the preserved CF1 and G136 branches advance with forward commits only. The
-Task126 analyzer repair is independent and may run concurrently, but final
-review occurs only after its branch includes the reviewed assurance base.
+the approved card ownership, including the sole forward Task137B-W-to-CF1
+transfer for `packages/ontology/src/contracts.ts` and its historical release
+compatibility proof. After that reviewed base is integrated, the preserved CF1
+and G136 branches advance with forward commits only. The Task126 analyzer repair
+is independent and may run concurrently, but final review occurs only after its
+branch includes the reviewed assurance base.
 
 **Tech Stack:** TypeScript, Vitest, Node.js ESM and `node:test`, JSON, Bash,
 Git, the append-only event ledger, and existing Task136 assurance tooling.
@@ -27,7 +29,10 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
   release records 1-13 byte-for-byte and retain the exact 29-card order and
   every prerequisite.
 - Only the two unreleased V4 cards `CF1-HR` and `G136-SC` gain paths or command
-  tests. `Task126-R` retains its current V4 scope and production bytes.
+  tests. Task137B-W changes only `packages/ontology/src/contracts.ts` from
+  `owned` to `transferred`, names exactly `CF1-HR` as its transfer target, and
+  gains the exact historical compatibility entry defined by the design.
+  `Task126-R` retains its current V4 scope and production bytes.
 - Preserve append-only ledger semantics, exact provenance, projection
   rebuildability, one resident identity, no fallback writes, PRR send gates,
   legal locks, and proposal-only ontology mutation.
@@ -74,7 +79,8 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
 - Consumes: the immutable V1-V3 contracts, current V4, raw release records
   1-13, and the existing checker exports.
 - Produces: the same V4 schema/graph versions with corrected CF1/G136 paths,
-  commands, assurance fingerprint, mutants, and a verified 13-record prefix.
+  the sole Task137B-W-to-CF1 transfer and compatibility binding, commands,
+  assurance fingerprint, mutants, and a verified 13-record prefix.
 
 - [ ] **Step 1: Claim the four-file assurance amendment**
 
@@ -91,9 +97,13 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
 - [ ] **Step 2: Write the assurance RED before changing contract/checker code**
 
   In `task136-bounded-assurance.test.mjs`, define the exact CF1 and G136 arrays
-  from the design and assert them against the contract. Add one-fact mutants
-  for missing, extra, reordered, wrong-disposition, and command-omitted paths.
-  Add immutable-prefix assertions equivalent to:
+  from the design and assert them against the contract. Assert Task137B-W's
+  sole transferred `contracts.ts` path, exact `CF1-HR` transfer target, and the
+  third historical compatibility entry with canonical record hash
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`.
+  Add one-fact mutants for missing, extra, reordered, wrong-disposition,
+  wrong-target, wrong-compatibility-hash, and command-omitted paths. Add
+  immutable-prefix assertions equivalent to:
 
   ```js
   assert.deepEqual(contract.releaseGraph.cards.map(({ id }) => id), expectedIds);
@@ -114,17 +124,27 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
 
 - [ ] **Step 3: Apply the minimal contract and checker GREEN**
 
-  Replace only the two card path/command values described by the design. Keep
-  card IDs, order, prerequisites, transfer targets, all other cards, schema
-  version, graph version, composition grammar/corpus, ABI corpus, and release
-  compatibility unchanged. Recompute the existing canonical assurance
-  fingerprint using the checker's own projection and pin that one value in
-  `task136-bounded-assurance.mjs`.
+  Replace only the card path/command values and sole Task137B-W transfer
+  described by the design. Append the exact Task137B-W historical compatibility
+  entry without rewriting records 1-13. Keep card IDs, order, prerequisites,
+  every other transfer target, all other cards, schema version, graph version,
+  compatibility version, composition grammar/corpus, and ABI corpus unchanged.
+  Recompute the existing canonical assurance fingerprint using the checker's
+  own projection and pin that one value in `task136-bounded-assurance.mjs`.
 
-  Extend the checker mutants only enough to prove both exact path arrays and
-  exact test-command projections. Do not introduce a generic scope amendment,
-  transfer language, new card, new contract generation, or compatibility
-  exception.
+  Generalize current-HEAD migration activation only as far as the three exact
+  historical compatibility groups require: the Task137A and Task129-MFA paths
+  migrate when Task137B-W record 11 exists, while Task137B-W
+  `packages/ontology/src/contracts.ts` migrates only when CF1-HR record 14
+  exists. Before its target record exists, the historical source path must
+  still equal the source record at current HEAD. Candidate and integration
+  blob verification remains mandatory for every historical record.
+
+  Extend the checker mutants only enough to prove both exact path arrays, the
+  one direct transfer, the exact historical compatibility binding, target-
+  activated current-HEAD migration, and exact test-command projections. Do not
+  introduce a generic scope amendment, new card, new contract generation, or
+  any other compatibility exception.
 
 - [ ] **Step 4: Verify the assurance candidate**
 
