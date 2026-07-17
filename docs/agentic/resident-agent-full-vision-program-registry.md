@@ -18273,3 +18273,60 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-685 — W1-133.5-PREAPPROVAL-PROMPT-STORE released as strict record 13
+
+- Recorded at: 2026-07-17T19:14:39Z
+- Exact approved candidate
+  `bd3b8ed3e287a6a598dfb246524e36ca2a345438` is an ancestor of exact
+  integration `75de81f110b4f405f9ec064104bc2c2b4f79e223`, which is an ancestor of
+  the current program branch. Candidate, integration, and current bytes are
+  literal, byte-identical blobs for all three card paths.
+- The frozen command passed as **1 file / 49 tests**. Diff hygiene, factory
+  readiness, clean tracked and untracked state, real non-symlinked local
+  dependencies, and executable local Vitest also passed.
+- The prior exact architecture/invariant and executability/adversarial review
+  pair remains valid because no owned byte changed after its approval. The
+  canonical record below advances the strict V4 release prefix to 13.
+
+## Task136 dispatch release v4: W1-133.5-PREAPPROVAL-PROMPT-STORE
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "W1-133.5-PREAPPROVAL-PROMPT-STORE",
+  "candidateSha": "bd3b8ed3e287a6a598dfb246524e36ca2a345438",
+  "reviews": [
+    {
+      "threadId": "019f683e-56f8-7170-bbda-5da5584325f7",
+      "candidateSha": "bd3b8ed3e287a6a598dfb246524e36ca2a345438",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f683e-528c-7c82-9030-cf5efed98a64",
+      "candidateSha": "bd3b8ed3e287a6a598dfb246524e36ca2a345438",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "75de81f110b4f405f9ec064104bc2c2b4f79e223",
+  "releaseEventId": "task136-release-v4-W1-133.5-PREAPPROVAL-PROMPT-STORE",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "docs/agentic/claims/task-133-5-preapproval-prompt-store.md",
+      "disposition": "owned",
+      "blobSha": "5e2061c5ac07875b593abbe7bddca2d1a53f2d9d"
+    },
+    {
+      "path": "packages/agent/src/specialist-runner-kernel.ts",
+      "disposition": "transferred",
+      "blobSha": "6975ec40008bc9dc09812b879b4dc9fde0f12d7f"
+    },
+    {
+      "path": "packages/agent/test/specialist-runner-kernel.test.ts",
+      "disposition": "transferred",
+      "blobSha": "55db6a91fbd4e6cabd16c0e834e71182dd49b0a3"
+    }
+  ]
+}
+```
