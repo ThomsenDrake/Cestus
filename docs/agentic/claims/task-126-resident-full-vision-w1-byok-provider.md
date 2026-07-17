@@ -140,3 +140,24 @@ removed before committing. No full verifier is authorized for this repair.
   fixture family preserves the required coverage for computed destructuring,
   official `node:module` `createRequire`, aliases, comma indirection, and
   shadowed/custom negative cases.
+
+### Exceptional lexical-binding GREEN
+
+- GREEN replaces the global identifier-name map with a checker-backed,
+  binding-aware lexical evaluator. Its finite domain distinguishes standard
+  ambient `require` and `module`, trusted `node:module` namespace and
+  `createRequire` bindings, const aliases, const object destructuring, and
+  unrelated or unknown bindings. It resolves transparent wrappers, comma
+  indirection, static strings, concatenation, templates, and const aliases;
+  standard loaders with unresolved targets remain fail closed.
+- The exact focused command passed `2` files / `18` tests and the
+  cross-boundary command passed `4` files / `46` tests. `npm run typecheck`
+  and `npm run factory:check` passed. Only this claim and the test-only import
+  policy changed; no BYOK production byte, public API, mint export, or Task139
+  ownership changed.
+- `npm run verify` is currently blocked outside this card: `12` files / `69`
+  tests fail, led by missing mounted-prompt readback witnesses in specialist
+  workflow tests and consequent local-runtime route `500` responses. The sole
+  remaining action is the coordinator-directed record-14 forward merge and
+  rerun before the final review pair. Status: `DONE_WITH_CONCERNS`; no further
+  automatic repair is authorized.
