@@ -149,7 +149,7 @@ entries, and source current-HEAD enforcement after a simulated CF1-HR record
 
 ## Minimal GREEN evidence
 
-The minimal GREEN implements only the four source-and-target-specific mappings
+The minimal GREEN implements only the three source-and-target-specific mappings
 authorized by `f771f80476eb6b8e780734cbb3d967c72d3a831a`:
 
 - `Task135B -> CF1-HR`: the two portable mounted-store paths;
@@ -174,3 +174,113 @@ all-target transfer fallback.
   `npm run factory:check` exited `0` (`factory-readiness passed`).
 - `git diff --check` exited `0`; the dependency audit confirms real,
   non-symlinked `node_modules` and executable local Vitest `4.1.9`.
+
+## Consolidated RV-1-E-701 / RV-1-E-702 evidence repair
+
+Candidate status: ready-for-review.
+
+This is the one consolidated evidence repair authorized by `RV-1-E-701`
+(`ee8e1c354b449826781b0a301103d705b40a6b8e`) and its append-only forward
+position `RV-1-E-702` (`3ce1e632a38eb2455101442589bc0f68b15b2b9d`). It
+does not change the V4 contract or checker. Every prerequisite except CF1-HR remains unchanged.
+The three exact direct-source transfer groups remain
+`Task135B -> CF1-HR`, `Task129-MFA -> CF1-HR`, and
+`Task137B-W -> CF1-HR`; the historical compatibility amendment remains the
+ordered Task137A, expanded Task129-MFA, Task135B, and Task137B-W sequence.
+
+Ordered committed evidence before this claim-only candidate addition:
+
+1. `9801dbc01a660d581c4c2270efd2e844e24ee5cf` claim.
+2. `760569643fd533262de0051884fbc1bc8a4bb515` causal RED.
+3. `24669b1b58917e461ae54e21435b17f6c3c9fb60` first forward RED extension.
+4. `fda9e55a9a1a32ef81752fd4da0c0a463b2bbceb` final forward RED extension.
+5. `a9c7172ccd2b56bc4a9d5fcffedc68823f56987d` contract/checker GREEN.
+6. `aacbe5e13c88dd6b3a9808a0a14091fe5ad731b2` assurance-pin evidence fix.
+7. `aa19cad901d1c88c1f46b14ed1fc18dc4ae59eec` causal claim-evidence RED.
+
+The causal claim-evidence RED command was:
+
+```bash
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+```
+
+It exited `1`: `17` existing tests passed and the sole eighteenth test failed
+only because this durable claim lacked the required final evidence. No contract
+or checker byte changed before this claim-only GREEN.
+
+Final committed-byte gate commands and results are exact:
+
+```bash
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+```
+
+Exit `0`: `18` passed, `0` failed.
+
+```bash
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode contract
+```
+
+Exit `0`:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+```bash
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository
+```
+
+The required nonzero closure result follows the literal prefix marker, and no
+earlier failure occurs:
+
+```text
+TASK136_REPOSITORY_PREFIX_OK records=13 commands=13
+repository release closure incomplete: expected 29 records, found 13
+```
+
+```bash
+npm run typecheck
+npm run verify
+```
+
+`npm run typecheck` exits `0`: `typecheck passed`. `npm run verify` is
+inherited non-green differential evidence, not a green result. The clean
+inherited record-13 baseline and repeat candidate have exactly
+`12 failed | 211 passed | 3 skipped (226)` files and
+`69 failed | 2695 passed | 5 skipped (2769)` tests, with no added failure.
+The named failing files are
+`packages/agent/test/evidence-triage-workflow.test.ts`,
+`packages/agent/test/investigation-planner-workflow.test.ts`,
+`packages/agent/test/prr-negotiation-workflow.test.ts`,
+`packages/local-runtime/test/agent-approval-routes.test.ts`,
+`packages/local-runtime/test/agent-cockpit-routes.test.ts`,
+`packages/local-runtime/test/agent-http-routes.test.ts`,
+`packages/local-runtime/test/agent-memory-routes.test.ts`,
+`packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`,
+`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`,
+`packages/local-runtime/test/check-resident-task-prerequisites.test.ts`,
+`packages/local-runtime/test/cli.test.ts`, and
+`packages/local-runtime/test/server.test.ts`.
+
+The first timing-variable candidate pass accurately reported the same 12 files
+and `68 failed | 2696 passed | 5 skipped (2769)` tests because one inherited
+prerequisite timeout did not trigger. That first timing-variable candidate pass
+is not green and is not the acceptance result; the repeat exact 69-test
+signature is the differential evidence.
+
+```bash
+git diff --check dbe9fea17bc2eb0a9a3c8c5661dcc5f6e00f5dfb..HEAD
+npm run factory:check
+test -d node_modules && test ! -L node_modules && test -x node_modules/.bin/vitest
+git status --porcelain=v1 --untracked-files=all
+```
+
+`git diff --check` exits `0`; `npm run factory:check` reports
+`factory-readiness passed`; the dependency command confirms real,
+non-symlinked `node_modules` and executable local Vitest `4.1.9`; and the
+final status command has empty output: clean tracked and untracked state.
+The cumulative implementation source scope is exactly the four owned files:
+the V4 contract, its checker, its focused assurance test, and this claim.
