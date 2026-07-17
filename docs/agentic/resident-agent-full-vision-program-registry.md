@@ -18822,3 +18822,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   dependency, and clean-state gates remain strict.
 - Task-scoped subagent-driven development and test-driven development are
   explicitly approved for this task.
+
+## RV-1-E-702 — Forward causal-position correction for RV-1-E-701
+
+- Recorded at: 2026-07-17T22:31:28Z
+- Registry commit `ee8e1c354b449826781b0a301103d705b40a6b8e`
+  inadvertently inserted RV-1-E-701 after the first authorization bullet of
+  RV-1-E-683 rather than after RV-1-E-700. The RV-1-E-701 bytes remain
+  untouched. For causal display, treat RV-1-E-701 as occurring after
+  RV-1-E-700 and before this forward correction.
+- The single bullet immediately following RV-1-E-701 and preceding the
+  RV-1-E-684 heading is the unchanged closing bullet of RV-1-E-683, not part
+  of RV-1-E-701. No strict release JSON, event payload, review evidence,
+  contract, candidate, integration, or release ordering changes.
+- This append-only correction records coordinator document placement only. It
+  does not consume another implementation repair or authorize any additional
+  code, contract, ownership, or release change.
