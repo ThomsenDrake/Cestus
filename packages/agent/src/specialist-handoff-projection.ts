@@ -4,18 +4,24 @@ import {
   canonicalSpecialistHandoffMaterialBytes,
   canonicalSpecialistHandoffJson,
   parseSpecialistHandoffMaterial,
+  parseAuthorityBoundSpecialistHandoffManifest,
+  specialistHandoffManifestV2SchemaVersion,
+  verifyAuthorityBoundSpecialistHandoffManifest,
   verifySpecialistHandoffManifest,
+  type AuthorityBoundSpecialistHandoffManifest,
   type SpecialistHandoffManifest,
   type SpecialistHandoffMaterial
 } from "./specialist-handoff-manifest.js";
 import type { SpecialistWorkflowHandoffDto } from "./specialist-handoffs.js";
 import { productionSpecialistPromptRegistrationFor } from "./production-specialist-prompts.js";
-import type { SpecialistHandoffProjectionState } from "./projection-types.js";
+import type { SpecialistHandoffProjectionState as LegacySpecialistHandoffProjectionState } from "./projection-types.js";
 import { specialistWorkflowDescriptorFor } from "./specialist-workflows.js";
 import type { AgentSpecialistRunType } from "./specialists.js";
+import type { HandoffAuthorityBinding } from "./specialist-handoff-authority.js";
 
 type HandoffStatus = SpecialistWorkflowHandoffDto["status"];
 type ContentHash = `sha256:${string}`;
+type AnySpecialistHandoffManifest = SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest;
 type HandoffPreparedEvent = KnowledgeEventOf<"agent.specialist-handoff.prepared">;
 type HandoffRecordedEvent = KnowledgeEventOf<"agent.specialist-handoff.recorded">;
 type FinalOutputEvent = KnowledgeEventOf<"agent.specialist-run.step.recorded">;
@@ -25,7 +31,7 @@ type RunTerminalEvent =
   | KnowledgeEventOf<"agent.specialist-run.failed">;
 type TaskStatusEvent = KnowledgeEventOf<"agent.task.status.changed">;
 
-export type { SpecialistHandoffProjectionState };
+export type SpecialistHandoffProjectionState = LegacySpecialistHandoffProjectionState | "legacy-unbound";
 
 export interface SpecialistHandoffManifestReader {
   get(contentHash: ContentHash): Promise<Buffer>;
@@ -67,8 +73,33 @@ export interface SpecialistHandoffProjection {
   readonly state: SpecialistHandoffProjectionState;
   readonly handoffs: readonly SpecialistWorkflowHandoffDto[];
   readonly selectedHandoff?: SpecialistWorkflowHandoffDto;
+  readonly selectedReadback?: SpecialistHandoffReadback;
   readonly history: readonly SpecialistHandoffProjectionEntry[];
   readonly diagnostics: readonly SpecialistHandoffProjectionDiagnostic[];
+}
+
+/** The frozen Task119 HandoffReadback.v1 shape, produced only from replay. */
+export interface SpecialistHandoffReadback {
+  readonly outcome: "verified";
+  readonly handoffId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly manifestSchemaVersion: typeof specialistHandoffManifestV2SchemaVersion;
+  readonly manifestHash: ContentHash;
+  readonly finalOutputStepId: string;
+  readonly finalOutputEventId: string;
+  readonly preparedEventId: string;
+  readonly recordedEventId: string;
+  readonly terminalRunEventId: string;
+  readonly taskStatusEventId: string;
+  readonly authorityBinding: HandoffAuthorityBinding;
+  readonly diagnostics: readonly {
+    readonly category: "terminal-status-conflict" | "handoff-readback";
+    readonly retry: "none" | "after-remount" | "after-repair" | "after-review";
+    readonly safeMessage: string;
+    readonly eventIds: readonly string[];
+    readonly artifactHashes: readonly ContentHash[];
+  }[];
 }
 
 interface RunIdentity {
@@ -90,7 +121,7 @@ interface RecordedRecord {
 
 interface VerifiedHandoffRecord {
   readonly handoff: SpecialistWorkflowHandoffDto;
-  readonly manifest: SpecialistHandoffManifest;
+  readonly manifest: AnySpecialistHandoffManifest;
   readonly manifestHash: ContentHash;
   readonly prepared: HandoffPreparedEvent;
   readonly recorded: HandoffRecordedEvent;
@@ -293,12 +324,16 @@ export async function buildSpecialistHandoffProjection(
   validateVerifiedHandoffs(context, verified);
   validateTerminalOrder(context, verified);
 
-  const handoffs = Object.freeze(verified.map((record) => record.handoff));
+  const authorityBound = verified.filter((record) => record.manifest.schemaVersion === specialistHandoffManifestV2SchemaVersion);
+  const legacy = verified.filter((record) => record.manifest.schemaVersion !== specialistHandoffManifestV2SchemaVersion);
+  const handoffs = Object.freeze(authorityBound.map((record) => record.handoff));
   const supersededIds = supersededHandoffIds(verified);
-  const selectedRecord = [...verified].reverse().find((record) => !supersededIds.has(record.handoff.handoffId));
+  const selectedRecord = [...authorityBound].reverse().find((record) => !supersededIds.has(record.handoff.handoffId));
 
   for (const record of verified) {
-    history.push(recordedEntry(record, supersededIds.get(record.handoff.handoffId)));
+    history.push(record.manifest.schemaVersion === specialistHandoffManifestV2SchemaVersion
+      ? recordedEntry(record, supersededIds.get(record.handoff.handoffId))
+      : legacyUnboundEntry(record, supersededIds.get(record.handoff.handoffId)));
   }
 
   if (context.diagnostics.length > 0) {
@@ -310,10 +345,21 @@ export async function buildSpecialistHandoffProjection(
     });
   }
 
-  if (selectedRecord !== undefined && isTaskCompleted(context, selectedRecord, verified)) {
-    history.push(taskCompletedEntry(selectedRecord));
+  if (selectedRecord !== undefined) {
+    const readback = completeAuthorityBoundReadback(context, selectedRecord);
+    if (readback !== undefined) {
+      history.push(taskCompletedEntry(selectedRecord));
+      return freezeProjection({
+        state: "task-completed",
+        handoffs,
+        selectedHandoff: selectedRecord.handoff,
+        selectedReadback: readback,
+        history,
+        diagnostics: []
+      });
+    }
     return freezeProjection({
-      state: "task-completed",
+      state: "handoff-recorded",
       handoffs,
       selectedHandoff: selectedRecord.handoff,
       history,
@@ -321,11 +367,12 @@ export async function buildSpecialistHandoffProjection(
     });
   }
 
-  if (selectedRecord !== undefined) {
+  if (legacy.length > 0) {
+    const selectedLegacy = [...legacy].reverse().find((record) => !supersededIds.has(record.handoff.handoffId));
     return freezeProjection({
-      state: "handoff-recorded",
-      handoffs,
-      selectedHandoff: selectedRecord.handoff,
+      state: "legacy-unbound",
+      handoffs: Object.freeze(legacy.map((record) => record.handoff)),
+      ...(selectedLegacy === undefined ? {} : { selectedHandoff: selectedLegacy.handoff }),
       history,
       diagnostics: []
     });
@@ -806,6 +853,14 @@ function handoffCausationIsValid(prepared: HandoffPreparedEvent, recorded: Hando
     recorded.context.causationId === prepared.id;
 }
 
+function isAuthorityBoundPayload(
+  payload: HandoffPreparedEvent["payload"] | HandoffRecordedEvent["payload"]
+): payload is Extract<HandoffPreparedEvent["payload"], { readonly manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" }> {
+  return (payload as { readonly manifestSchemaVersion?: unknown }).manifestSchemaVersion === specialistHandoffManifestV2SchemaVersion &&
+    typeof (payload as { readonly authorityBinding?: unknown }).authorityBinding === "object" &&
+    (payload as { readonly authorityBinding?: unknown }).authorityBinding !== null;
+}
+
 function sameRecordedRetry(left: HandoffRecordedEvent, right: HandoffRecordedEvent): boolean {
   return left.context.causationId === right.context.causationId &&
     sameCanonicalValue(left.payload, right.payload);
@@ -815,7 +870,7 @@ async function readAndVerifyManifest(
   context: ProjectionContext,
   event: HandoffPreparedEvent | HandoffRecordedEvent
 ): Promise<
-  | { readonly ok: true; readonly manifest: SpecialistHandoffManifest; readonly handoff: SpecialistWorkflowHandoffDto; readonly material: SpecialistHandoffMaterial }
+  | { readonly ok: true; readonly manifest: SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest; readonly handoff: SpecialistWorkflowHandoffDto; readonly material: SpecialistHandoffMaterial }
   | { readonly ok: false }
 > {
   let bytes: Buffer;
@@ -859,12 +914,24 @@ async function readAndVerifyManifest(
   }
 
   try {
-    const handoff = verifySpecialistHandoffManifest({
-      manifest: parsed,
-      handoffManifestHash: event.payload.handoffManifestHash as ContentHash,
-      ...("verifiedAt" in event.payload ? { verifiedAt: event.payload.verifiedAt } : {})
-    });
-    const manifest = parsed as SpecialistHandoffManifest;
+    const authorityBound = isAuthorityBoundPayload(event.payload);
+    if (authorityBound && !canonicalSpecialistHandoffJson(parsed).equals(bytes)) {
+      throw new Error("authority-bound manifest bytes are not canonical");
+    }
+    const handoff = authorityBound
+      ? verifyAuthorityBoundSpecialistHandoffManifest({
+        manifest: parsed,
+        handoffManifestHash: event.payload.handoffManifestHash as ContentHash,
+        ...("verifiedAt" in event.payload ? { verifiedAt: event.payload.verifiedAt } : {})
+      })
+      : verifySpecialistHandoffManifest({
+        manifest: parsed,
+        handoffManifestHash: event.payload.handoffManifestHash as ContentHash,
+        ...("verifiedAt" in event.payload ? { verifiedAt: event.payload.verifiedAt } : {})
+      });
+    const manifest = authorityBound
+      ? parseAuthorityBoundSpecialistHandoffManifest(parsed)
+      : parsed as SpecialistHandoffManifest;
     const materialResult = await readAndVerifyMaterial(context, event, manifest);
     if (!materialResult.ok) return { ok: false };
     return { ok: true, manifest, handoff, material: materialResult.material };
@@ -884,7 +951,7 @@ async function readAndVerifyManifest(
 async function readAndVerifyMaterial(
   context: ProjectionContext,
   event: HandoffPreparedEvent | HandoffRecordedEvent,
-  manifest: SpecialistHandoffManifest
+  manifest: AnySpecialistHandoffManifest
 ): Promise<{ readonly ok: true; readonly material: SpecialistHandoffMaterial } | { readonly ok: false }> {
   const expectedHash = event.payload.handoffMaterialArtifactHash as ContentHash;
   let bytes: Buffer;
@@ -930,7 +997,7 @@ async function readAndVerifyMaterial(
   }
 }
 
-function materialMismatchField(material: SpecialistHandoffMaterial, manifest: SpecialistHandoffManifest): string | undefined {
+function materialMismatchField(material: SpecialistHandoffMaterial, manifest: AnySpecialistHandoffManifest): string | undefined {
   const comparisons: Array<readonly [string, unknown, unknown]> = [
     ["status", material.status, manifest.status],
     ["safeSummary", material.safeSummary, manifest.safeSummary],
@@ -967,7 +1034,7 @@ function validateBindingAgainstManifest(
   context: ProjectionContext,
   prepared: HandoffPreparedEvent,
   recorded: HandoffRecordedEvent,
-  manifest: SpecialistHandoffManifest
+  manifest: AnySpecialistHandoffManifest
 ): string | undefined {
   const preparedError = validatePreparedBindingAgainstManifest(context, prepared, manifest);
   if (preparedError !== undefined) {
@@ -982,13 +1049,24 @@ function validateBindingAgainstManifest(
     return "compact-binding-mismatch";
   }
 
+  if (!payloadFamilyMatchesManifest(prepared.payload, manifest) || !payloadFamilyMatchesManifest(recorded.payload, manifest)) {
+    return "authority-binding-mismatch";
+  }
+
+  if (manifest.schemaVersion === specialistHandoffManifestV2SchemaVersion &&
+    (!isAuthorityBoundPayload(prepared.payload) || !isAuthorityBoundPayload(recorded.payload) ||
+      !sameCanonicalValue(prepared.payload.authorityBinding, manifest.authorityBinding) ||
+      !sameCanonicalValue(recorded.payload.authorityBinding, manifest.authorityBinding))) {
+    return "authority-binding-mismatch";
+  }
+
   return undefined;
 }
 
 function validatePreparedBindingAgainstManifest(
   context: ProjectionContext,
   prepared: HandoffPreparedEvent,
-  manifest: SpecialistHandoffManifest
+  manifest: AnySpecialistHandoffManifest
 ): string | undefined {
   if (!handoffIdempotencyKeyIsDeterministic(prepared.payload)) {
     return "idempotency-key-mismatch";
@@ -996,6 +1074,10 @@ function validatePreparedBindingAgainstManifest(
 
   if (!compactBindingMatchesManifest(prepared.payload, manifest)) {
     return "compact-binding-mismatch";
+  }
+
+  if (!payloadFamilyMatchesManifest(prepared.payload, manifest)) {
+    return "authority-binding-mismatch";
   }
 
   const runStartedEvents = context.runStartedEvents.get(manifest.runId) ?? [];
@@ -1049,7 +1131,7 @@ function validatePreparedBindingAgainstManifest(
 
 function toolRequestsAreLedgerBound(
   context: ProjectionContext,
-  manifest: SpecialistHandoffManifest
+  manifest: AnySpecialistHandoffManifest
 ): boolean {
   return toolRequestsAreLedgerBoundForMaterial(context, manifest.runId, manifest);
 }
@@ -1071,7 +1153,7 @@ function toolRequestsAreLedgerBoundForMaterial(
 }
 
 function nestedHandoffToolRequestIds(
-  handoff: Pick<SpecialistHandoffManifest, "approvalRequirements" | "nextSafeActions" | "failure">
+  handoff: Pick<AnySpecialistHandoffManifest, "approvalRequirements" | "nextSafeActions" | "failure">
 ): readonly string[] {
   const requestIds: string[] = [];
   for (const requirement of handoff.approvalRequirements) {
@@ -1098,7 +1180,7 @@ function handoffIdempotencyKeyIsDeterministic(
 
 function findFinalOutputForManifest(
   context: ProjectionContext,
-  manifest: SpecialistHandoffManifest
+  manifest: AnySpecialistHandoffManifest
 ): IndexedEvent<FinalOutputEvent> | undefined {
   return context.finalOutputs.find((item) =>
     item.event.id === manifest.finalOutputEventId &&
@@ -1116,7 +1198,7 @@ function compactBindingsAgree(
 
 function compactBindingMatchesManifest(
   payload: HandoffPreparedEvent["payload"] | HandoffRecordedEvent["payload"],
-  manifest: SpecialistHandoffManifest
+  manifest: AnySpecialistHandoffManifest
 ): boolean {
   return payload.handoffId === manifest.handoffId &&
     payload.handoffRevision === manifest.handoffRevision &&
@@ -1138,6 +1220,15 @@ function compactBindingMatchesManifest(
     sameStringArray(payload.relatedEventIds, manifest.relatedEventIds) &&
     payload.supersedesHandoffId === manifest.supersedesHandoffId &&
     payload.supersedesEventId === manifest.supersedesEventId;
+}
+
+function payloadFamilyMatchesManifest(
+  payload: HandoffPreparedEvent["payload"] | HandoffRecordedEvent["payload"],
+  manifest: AnySpecialistHandoffManifest
+): boolean {
+  return manifest.schemaVersion === specialistHandoffManifestV2SchemaVersion
+    ? isAuthorityBoundPayload(payload)
+    : !isAuthorityBoundPayload(payload);
 }
 
 function validateVerifiedHandoffs(context: ProjectionContext, records: readonly VerifiedHandoffRecord[]): void {
@@ -1288,6 +1379,56 @@ function terminalMatchesHandoffStatus(terminal: RunTerminalEvent, status: Handof
     : status !== "failed";
 }
 
+function completeAuthorityBoundReadback(
+  context: ProjectionContext,
+  record: VerifiedHandoffRecord
+): SpecialistHandoffReadback | undefined {
+  if (
+    record.manifest.schemaVersion !== specialistHandoffManifestV2SchemaVersion ||
+    record.handoff.taskId === undefined ||
+    !isAuthorityBoundPayload(record.prepared.payload) ||
+    !isAuthorityBoundPayload(record.recorded.payload) ||
+    !sameCanonicalValue(record.prepared.payload.authorityBinding, record.manifest.authorityBinding) ||
+    !sameCanonicalValue(record.recorded.payload.authorityBinding, record.manifest.authorityBinding)
+  ) {
+    return undefined;
+  }
+  const terminal = context.terminals.find((item) =>
+    item.index > record.recordedIndex &&
+    item.event.payload.runId === record.handoff.runId &&
+    item.event.context.causationId === record.recorded.id &&
+    terminalMatchesHandoffStatus(item.event, record.handoff.status) &&
+    (item.event.type !== "agent.specialist-run.completed" ||
+      sameStringArray(item.event.payload.outputArtifactHashes, outputArtifactHashes(record.manifest)))
+  );
+  if (terminal === undefined) return undefined;
+  const expectedStatus = terminal.event.type === "agent.specialist-run.completed" ? "completed" : "failed";
+  const taskStatus = context.taskStatuses.find((item) =>
+    item.index > terminal.index &&
+    item.event.payload.taskId === record.handoff.taskId &&
+    item.event.payload.runId === record.handoff.runId &&
+    item.event.payload.status === expectedStatus &&
+    item.event.context.causationId === terminal.event.id
+  );
+  if (taskStatus === undefined) return undefined;
+  return Object.freeze({
+    outcome: "verified",
+    handoffId: record.handoff.handoffId,
+    taskId: record.handoff.taskId,
+    runId: record.handoff.runId,
+    manifestSchemaVersion: specialistHandoffManifestV2SchemaVersion,
+    manifestHash: record.manifestHash,
+    finalOutputStepId: record.manifest.finalOutputStepId,
+    finalOutputEventId: record.manifest.finalOutputEventId,
+    preparedEventId: record.prepared.id,
+    recordedEventId: record.recorded.id,
+    terminalRunEventId: terminal.event.id,
+    taskStatusEventId: taskStatus.event.id,
+    authorityBinding: Object.freeze({ ...record.manifest.authorityBinding }),
+    diagnostics: Object.freeze([])
+  });
+}
+
 function isTaskCompleted(
   context: ProjectionContext,
   selected: VerifiedHandoffRecord,
@@ -1409,6 +1550,24 @@ function recordedEntry(
   });
 }
 
+function legacyUnboundEntry(
+  record: VerifiedHandoffRecord,
+  supersededByHandoffId: string | undefined
+): SpecialistHandoffProjectionEntry {
+  return freezeEntry({
+    state: "legacy-unbound",
+    runId: record.handoff.runId,
+    ...(record.handoff.taskId === undefined ? {} : { taskId: record.handoff.taskId }),
+    handoffId: record.handoff.handoffId,
+    finalOutputEventId: record.manifest.finalOutputEventId,
+    preparedEventId: record.prepared.id,
+    recordedEventId: record.recorded.id,
+    ...(supersededByHandoffId === undefined ? {} : { supersededByHandoffId }),
+    eventIds: [record.prepared.id, record.recorded.id],
+    artifactHashes: [record.manifestHash, ...outputArtifactHashes(record.manifest)]
+  });
+}
+
 function taskCompletedEntry(record: VerifiedHandoffRecord): SpecialistHandoffProjectionEntry {
   return freezeEntry({
     state: "task-completed",
@@ -1459,7 +1618,7 @@ function addDiagnostic(
   }));
 }
 
-function outputArtifactHashes(manifest: SpecialistHandoffManifest): readonly ContentHash[] {
+function outputArtifactHashes(manifest: AnySpecialistHandoffManifest): readonly ContentHash[] {
   return manifest.outputArtifacts.map((artifact) => artifact.artifactHash);
 }
 
@@ -1483,8 +1642,21 @@ function freezeProjection(projection: SpecialistHandoffProjection): SpecialistHa
     state: projection.state,
     handoffs: Object.freeze([...projection.handoffs]),
     ...(projection.selectedHandoff === undefined ? {} : { selectedHandoff: projection.selectedHandoff }),
+    ...(projection.selectedReadback === undefined ? {} : { selectedReadback: freezeReadback(projection.selectedReadback) }),
     history: Object.freeze(projection.history.map((entry) => freezeEntry(entry))),
     diagnostics: Object.freeze(projection.diagnostics.map((diagnostic) => freezeDiagnostic(diagnostic)))
+  });
+}
+
+function freezeReadback(readback: SpecialistHandoffReadback): SpecialistHandoffReadback {
+  return Object.freeze({
+    ...readback,
+    authorityBinding: Object.freeze({ ...readback.authorityBinding }),
+    diagnostics: Object.freeze(readback.diagnostics.map((diagnostic) => Object.freeze({
+      ...diagnostic,
+      eventIds: Object.freeze([...diagnostic.eventIds]),
+      artifactHashes: Object.freeze([...diagnostic.artifactHashes])
+    })))
   });
 }
 

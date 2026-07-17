@@ -131,3 +131,34 @@ The final finite packet also requires `npm run typecheck`, `npm run verify`,
 clean tracked/untracked state, and real top-level dependency checks. The
 record-13 inherited baseline is 12 files / 69 tests; final verification will
 differentiate inherited evidence from this packet.
+
+## Causal RED And GREEN Evidence
+
+### RED — `005dead0`
+
+The corrected focused command exited nonzero against inherited bytes exactly
+because the V2 contract did not exist: the authority test could not import the
+new witness module; the manifest and runner tests found missing V2 producers;
+the portable producer exposed no witness; the projection still treated V1 as
+an executable handoff state; and ontology rejected the V2 event family.
+
+- Focused RED: 7 files; 6 failed / 1 passed; 5 failed / 268 passed tests.
+- The structural-witness runner assertion observed no appended event after the
+  rejected substitute, so the adversarial failure was effect-free.
+
+### GREEN — current candidate
+
+- Focused CF1 command: passed, 7 files / 276 tests.
+- Cross-boundary command: passed, 11 files / 309 tests.
+- `npm run typecheck`: passed (exit `0`).
+- `npm run verify`: reran the inherited record-13 differential without a
+  CF1-owned failure: 12 failed / 211 passed / 3 skipped files and 69 failed /
+  2695 passed / 5 skipped tests. This is the documented non-green baseline,
+  not a candidate regression.
+- `git diff --check`: passed.
+- `npm run factory:check`: passed (`factory-readiness passed`).
+- Dependency provenance: top-level `node_modules` is a real directory, not a
+  symlink; `node_modules/.bin/vitest` is executable (`vitest/4.1.9`).
+- Scope audit: only the corrected fourteen owned or direct-transferred paths
+  are staged for the finite GREEN commit; no registry, contract-plan, provider,
+  credential, network, or external-service path is included.

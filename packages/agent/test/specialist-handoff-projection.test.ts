@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
+  buildAuthorityBoundSpecialistHandoffManifest,
   buildSpecialistHandoffManifest,
   buildSpecialistHandoffMaterial,
   canonicalSpecialistHandoffJson,
@@ -10,6 +11,7 @@ import {
   hashSpecialistHandoffMaterial,
   type SpecialistHandoffMaterial,
   type BuildSpecialistHandoffManifestInput,
+  type AuthorityBoundSpecialistHandoffManifest,
   type SpecialistHandoffManifest
 } from "../src/specialist-handoff-manifest.js";
 import {
@@ -31,8 +33,103 @@ describe("specialist handoff projection", () => {
     const projection = await project(validRecordedEvents(fixture), materializedStore(fixture));
 
     expect(projection.state).toBe("legacy-unbound");
-    expect(projection.selectedHandoff).toBeUndefined();
+    expect(projection.selectedHandoff).toEqual(fixture.manifest.handoff);
     expect(projection.selectedReadback).toBeUndefined();
+  });
+
+  it("projects a complete V2 authority-bound readback only after exact terminal and task-status evidence", async () => {
+    const fixture = handoffFixture({ runId: "run_projection_v2_001", taskId: "task_projection_v2_001" });
+    const authorityBinding = {
+      workspaceIdentityHash: hash111,
+      mountGeneration: "mount_generation_001",
+      ledgerStoreIdentity: "ledger_store_001",
+      artifactStoreIdentity: "artifact_store_001",
+      ledgerHighWaterEventId: `evt_started_${fixture.runId}`,
+      policyHash: hash222,
+      activeLocksHash: hash333
+    } as const;
+    const manifest = buildAuthorityBoundSpecialistHandoffManifest({
+      handoffId: fixture.manifest.handoffId,
+      handoffRevision: fixture.manifest.handoffRevision,
+      runId: fixture.manifest.runId,
+      taskId: fixture.manifest.taskId,
+      runType: fixture.manifest.runType,
+      residentAgentId: fixture.manifest.residentAgentId,
+      generatedAt: "2026-07-10T15:00:00.000Z",
+      status: fixture.manifest.status,
+      safeSummary: fixture.manifest.safeSummary,
+      stateKind: fixture.manifest.stateKind,
+      finalOutputStepId: fixture.manifest.finalOutputStepId,
+      finalOutputEventId: fixture.manifest.finalOutputEventId,
+      handoffMaterialArtifactHash: fixture.manifest.handoffMaterialArtifactHash,
+      contextPackRefs: fixture.manifest.contextPackRefs,
+      promptArtifactHash: fixture.manifest.promptArtifactHash,
+      outputArtifacts: fixture.manifest.outputArtifacts,
+      toolRequestIds: fixture.manifest.toolRequestIds,
+      approvalRequirements: fixture.manifest.approvalRequirements,
+      nextSafeActions: fixture.manifest.nextSafeActions,
+      sourceEventIds: fixture.manifest.sourceEventIds,
+      relatedEventIds: fixture.manifest.relatedEventIds,
+      authorityBinding
+    });
+    const manifestHash = hashSpecialistHandoffManifest(manifest);
+    const preparedPayload = {
+      ...compactBinding(manifest, manifestHash),
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
+      authorityBinding
+    };
+    const prepared = agentEvent("agent.specialist-handoff.prepared", "evt_handoff_v2_prepared", preparedPayload, {
+      causationId: fixture.finalOutputEventId
+    });
+    const recorded = agentEvent("agent.specialist-handoff.recorded", "evt_handoff_v2_recorded", {
+      ...preparedPayload,
+      preparedEventId: prepared.id,
+      verifiedAt: "2026-07-10T15:01:00.000Z"
+    }, { causationId: prepared.id });
+    const terminal = {
+      ...completedRunEvent({ runId: fixture.runId, manifest }, { causationId: recorded.id }),
+      id: "evt_run_completed_v2"
+    } as KnowledgeEvent;
+    const status = taskStatusEvent(fixture, "completed", { causationId: terminal.id });
+    const store = new ManifestMap()
+      .put(manifestHash, canonicalSpecialistHandoffJson(manifest))
+      .put(fixture.materialHash, canonicalSpecialistHandoffMaterialBytes(fixture.material));
+
+    const projection = await project([
+      startedEvent(fixture),
+      finalOutputStepEvent(fixture),
+      prepared,
+      recorded,
+      terminal,
+      status
+    ], store);
+
+    expect(projection.state).toBe("task-completed");
+    expect(projection.selectedReadback).toMatchObject({
+      outcome: "verified",
+      runId: fixture.runId,
+      taskId: fixture.taskId,
+      manifestHash,
+      preparedEventId: prepared.id,
+      recordedEventId: recorded.id,
+      terminalRunEventId: terminal.id,
+      taskStatusEventId: status.id,
+      authorityBinding
+    });
+
+    const swapped = await project([
+      startedEvent(fixture),
+      finalOutputStepEvent(fixture),
+      prepared,
+      {
+        ...recorded,
+        payload: { ...recorded.payload, authorityBinding: { ...authorityBinding, mountGeneration: "swapped_generation" } }
+      } as KnowledgeEvent,
+      terminal,
+      status
+    ], store);
+    expect(swapped.state).toBe("inconsistent");
+    expect(swapped.diagnostics).toContainEqual(expect.objectContaining({ code: "compact-binding-mismatch" }));
   });
 
   it("projects no-output when no exact final-output step exists", async () => {
@@ -94,7 +191,7 @@ describe("specialist handoff projection", () => {
       terminal,
       taskStatusEvent(fixture, "completed", { causationId: terminal.id })
     ], materializedStore(fixture));
-    expect(projection.state).toBe("task-completed");
+    expect(projection.state).toBe("legacy-unbound");
     expect(projection.selectedHandoff).toEqual(expect.objectContaining({
       runId: fixture.runId,
       taskId: fixture.taskId,
@@ -364,11 +461,11 @@ describe("specialist handoff projection", () => {
 
     const projection = await project(validRecordedEvents(fixture), manifests);
 
-    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("handoff-recorded");
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("legacy-unbound");
     expect(projection.selectedHandoff).toEqual(fixture.manifest.handoff);
     expect(projection.handoffs).toEqual([fixture.manifest.handoff]);
     expect(projection.history).toContainEqual(expect.objectContaining({
-      state: "handoff-recorded",
+      state: "legacy-unbound",
       handoffId: fixture.manifest.handoffId,
       recordedEventId: fixture.recordedEventId
     }));
@@ -435,7 +532,7 @@ describe("specialist handoff projection", () => {
       exactRetry
     ], new ManifestMap().putFixture(fixture));
 
-    expect(exactRetryProjection.state).toBe("handoff-recorded");
+    expect(exactRetryProjection.state).toBe("legacy-unbound");
     expect(exactRetryProjection.handoffs).toEqual([fixture.manifest.handoff]);
 
     const changedTimestamp = {
@@ -491,7 +588,7 @@ describe("specialist handoff projection", () => {
       ...validRecordedEvents(second)
     ], manifests);
 
-    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("handoff-recorded");
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("legacy-unbound");
     expect(projection.diagnostics).toEqual([]);
     expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([
       first.manifest.handoffId,
@@ -500,7 +597,7 @@ describe("specialist handoff projection", () => {
     ]);
     expect(projection.selectedHandoff?.handoffId).toBe(second.manifest.handoffId);
     expect(projection.history).toContainEqual(expect.objectContaining({
-      state: "handoff-recorded",
+      state: "legacy-unbound",
       handoffId: first.manifest.handoffId,
       supersededByHandoffId: firstCorrection.manifest.handoffId
     }));
@@ -514,7 +611,7 @@ describe("specialist handoff projection", () => {
       ...validRecordedEvents(fixture),
       completedRunEvent(fixture, { causationId: fixture.recordedEventId })
     ], manifests);
-    expect(beforeTask.state).toBe("handoff-recorded");
+    expect(beforeTask.state).toBe("legacy-unbound");
 
     const afterTask = await project([
       ...validRecordedEvents(fixture),
@@ -522,7 +619,7 @@ describe("specialist handoff projection", () => {
       taskStatusEvent(fixture, "completed", { causationId: "evt_run_completed" })
     ], manifests);
 
-    expect(afterTask.state).toBe("task-completed");
+    expect(afterTask.state).toBe("legacy-unbound");
     expect(afterTask.selectedHandoff).toEqual(fixture.manifest.handoff);
   });
 
@@ -583,7 +680,7 @@ describe("specialist handoff projection", () => {
         new ManifestMap().putFixture(fixture)
       );
 
-      expect(projection.state, label).toBe("handoff-recorded");
+      expect(projection.state, label).toBe("legacy-unbound");
       expect(projection.selectedHandoff?.handoffId, label).toBe(fixture.manifest.handoffId);
     }
   });
@@ -692,7 +789,7 @@ describe("specialist handoff projection", () => {
         { ...taskEvent, payload: { ...taskEvent.payload, taskId: fixture.taskId!, runId: fixture.runId } } as KnowledgeEvent
       ], new ManifestMap().putFixture(fixture));
 
-      expect(projection.state, status).toBe("handoff-recorded");
+      expect(projection.state, status).toBe("legacy-unbound");
       expect(projection.selectedHandoff?.status, status).toBe(status);
     }
   });
@@ -716,14 +813,14 @@ describe("specialist handoff projection", () => {
       recordedEvent(correction)
     ], manifests);
 
-    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("handoff-recorded");
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("legacy-unbound");
     expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([
       first.manifest.handoffId,
       correction.manifest.handoffId
     ]);
     expect(projection.selectedHandoff?.handoffId).toBe(correction.manifest.handoffId);
     expect(projection.history).toContainEqual(expect.objectContaining({
-      state: "handoff-recorded",
+      state: "legacy-unbound",
       handoffId: first.manifest.handoffId,
       supersededByHandoffId: correction.manifest.handoffId
     }));
@@ -798,7 +895,7 @@ describe("specialist handoff projection", () => {
       .putFixture(correction));
 
     expect(correction.manifest.handoffId).not.toBe(first.manifest.handoffId);
-    expect(projection.state).toBe("handoff-recorded");
+    expect(projection.state).toBe("legacy-unbound");
     expect(projection.selectedHandoff).toEqual(correction.manifest.handoff);
     expect(projection.diagnostics).toEqual([]);
   });
@@ -825,7 +922,7 @@ describe("specialist handoff projection", () => {
       recordedEvent(correction)
     ], manifests);
 
-    expect(projection.state).toBe("task-completed");
+    expect(projection.state).toBe("legacy-unbound");
     expect(projection.selectedHandoff).toEqual(correction.manifest.handoff);
     expect(projection.selectedHandoff?.handoffRevision).toBe(2);
     expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([
@@ -833,12 +930,12 @@ describe("specialist handoff projection", () => {
       correction.manifest.handoffId
     ]);
     expect(projection.history).toContainEqual(expect.objectContaining({
-      state: "handoff-recorded",
+      state: "legacy-unbound",
       handoffId: first.manifest.handoffId,
       supersededByHandoffId: correction.manifest.handoffId
     }));
     expect(projection.history).toContainEqual(expect.objectContaining({
-      state: "task-completed",
+      state: "legacy-unbound",
       handoffId: correction.manifest.handoffId
     }));
   });
@@ -861,7 +958,7 @@ describe("specialist handoff projection", () => {
       .putFixture(first)
       .putFixture(correction));
 
-    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("task-completed");
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("legacy-unbound");
     expect(projection.selectedHandoff).toEqual(first.manifest.handoff);
     expect(projection.diagnostics).toEqual([]);
     expect(projection.history).toContainEqual(expect.objectContaining({
@@ -1306,7 +1403,7 @@ function tamperedManifestFixture(
 }
 
 function compactBinding(
-  manifest: SpecialistHandoffManifest,
+  manifest: SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest,
   handoffManifestHash: `sha256:${string}`
 ): KnowledgeEventOf<"agent.specialist-handoff.prepared">["payload"] {
   return {

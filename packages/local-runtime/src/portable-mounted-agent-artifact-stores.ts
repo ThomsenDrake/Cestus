@@ -3,6 +3,14 @@ import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { mountPortableWorkspace } from "../../workspace/src/index.js";
 import type { SpecialistHandoffManifestStore } from "../../agent/src/specialist-runner-kernel.js";
 import {
+  hashCanonicalSpecialistHandoffJson
+} from "../../agent/src/specialist-handoff-manifest.js";
+import {
+  issueMountedSpecialistHandoffAuthorityWitness,
+  type HandoffAuthorityBinding,
+  type MountedSpecialistHandoffAuthorityWitness
+} from "../../agent/src/specialist-handoff-authority.js";
+import {
   createMountedSpecialistHandoffPreparationBinder,
   type MountedSpecialistHandoffPreparationBinder
 } from "./mounted-agent-artifact-stores.js";
@@ -23,6 +31,7 @@ export interface PortableMountedAgentHandoffBinding {
   readonly preparationBinder: MountedSpecialistHandoffPreparationBinder;
   readonly materialStore: SpecialistHandoffManifestStore;
   readonly manifestStore: SpecialistHandoffManifestStore;
+  readonly authorityWitness: MountedSpecialistHandoffAuthorityWitness;
 }
 
 declare const mountedHandoffAuthorityControllerBrand: unique symbol;
@@ -115,6 +124,7 @@ interface RunBinding {
   readonly attemptId: string;
   readonly approvedRunId: string;
   readonly runType: string;
+  readonly authorityBinding?: HandoffAuthorityBinding;
 }
 
 type NormalizedJson =
@@ -156,6 +166,7 @@ interface CanonicalHandoffBinding {
   readonly recordedEventId?: string;
   readonly terminalEventId?: string;
   readonly terminalStatus?: "completed" | "failed";
+  readonly authorityBinding?: HandoffAuthorityBinding;
 }
 
 type CursorPhase =
@@ -195,7 +206,10 @@ export function createPortableMountedAgentArtifactStoreProducer(
 
       let cursor: CursorState | undefined;
       try {
-        const binding = normalizeBinding(input);
+        const binding = Object.freeze({
+          ...normalizeBinding(input),
+          authorityBinding: deriveHandoffAuthorityBinding(state.origin.snapshot)
+        });
         cursor = {
           authorityOperation: state.authorityOperation,
           origin: state.origin,
@@ -241,11 +255,16 @@ export function createPortableMountedAgentArtifactStoreProducer(
           approvedRunId: binding.approvedRunId,
           runType: binding.runType
         });
+        const authorityWitness = issueMountedSpecialistHandoffAuthorityWitness({
+          authorityBinding: cursor.binding.authorityBinding!,
+          revalidateCurrent: async () => await inspectCursor(cursor!)
+        });
         const handoffBinding = Object.freeze({
           schemaVersion: "portable-mounted-agent-handoff-binding.v1" as const,
           preparationBinder,
           materialStore,
-          manifestStore
+          manifestStore,
+          authorityWitness
         });
         const controller = Object.freeze({}) as MountedHandoffAuthorityController;
         controllerStates.set(controller, cursor);
@@ -536,6 +555,7 @@ function advancePhase(
   }
   if (type === "agent.specialist-handoff.prepared") {
     const finalOutput = requireCanonical(canonical);
+    const authorityBinding = authorityBindingForPayload(payload, binding);
     if (
       phase !== "final-output"
       || record.streamId !== `agent_run_${binding.approvedRunId}`
@@ -568,6 +588,7 @@ function advancePhase(
         toolRequestIds: normalizedStringArray(payload.toolRequestIds),
         sourceEventIds: normalizedStringArray(payload.sourceEventIds),
         relatedEventIds: normalizedStringArray(payload.relatedEventIds),
+        ...(authorityBinding === undefined ? {} : { authorityBinding }),
         preparedEventId: record.id
       })
     };
@@ -775,7 +796,50 @@ function samePreparedHandoffBinding(
     && sameStringArrays(normalizedStringArray(payload.toolRequestIds), canonical.toolRequestIds)
     && sameStringArrays(normalizedStringArray(payload.sourceEventIds), canonical.sourceEventIds)
     && sameStringArrays(normalizedStringArray(payload.relatedEventIds), canonical.relatedEventIds)
+    && sameAuthorityBinding(payload, canonical.authorityBinding)
   );
+}
+
+function authorityBindingForPayload(
+  payload: NormalizedJsonRecord,
+  binding: RunBinding
+): HandoffAuthorityBinding | undefined {
+  const hasSchema = Object.hasOwn(payload, "manifestSchemaVersion");
+  const hasAuthority = Object.hasOwn(payload, "authorityBinding");
+  if (!hasSchema && !hasAuthority) return undefined;
+  if (
+    !hasSchema || !hasAuthority ||
+    payload.manifestSchemaVersion !== "agent-specialist-handoff-manifest.v2" ||
+    binding.authorityBinding === undefined ||
+    !sameAuthorityBinding(payload, binding.authorityBinding)
+  ) {
+    throw authorityError();
+  }
+  return binding.authorityBinding;
+}
+
+function sameAuthorityBinding(payload: NormalizedJsonRecord, expected: HandoffAuthorityBinding | undefined): boolean {
+  if (expected === undefined) {
+    return !Object.hasOwn(payload, "authorityBinding") && !Object.hasOwn(payload, "manifestSchemaVersion");
+  }
+  if (
+    payload.manifestSchemaVersion !== "agent-specialist-handoff-manifest.v2" ||
+    !Object.hasOwn(payload, "authorityBinding")
+  ) return false;
+  const authority = normalizedOwnDataRecord(payload.authorityBinding);
+  const fields = [
+    "workspaceIdentityHash",
+    "mountGeneration",
+    "ledgerStoreIdentity",
+    "artifactStoreIdentity",
+    "ledgerHighWaterEventId",
+    "policyHash",
+    "activeLocksHash"
+  ] as const;
+  if (Object.getOwnPropertyNames(authority).length !== fields.length || fields.some((field) => authority[field] !== expected[field])) {
+    return false;
+  }
+  return Object.getOwnPropertyNames(authority).every((field) => fields.includes(field as typeof fields[number]));
 }
 
 function isExpectedPredecessor(phase: CursorPhase, kind: MountedHandoffAuthorityEffectKind): boolean {
@@ -943,6 +1007,33 @@ function snapshotTuple(value: ReturnType<typeof inspectMountedArtifactAuthorityO
     highWaterMark: value.highWaterMark,
     highWaterOrdinal: value.highWaterOrdinal,
     admissionGenerationId: value.admissionGenerationId
+  });
+}
+
+function deriveHandoffAuthorityBinding(snapshot: SnapshotTuple): HandoffAuthorityBinding {
+  if (
+    !/^evt_[a-zA-Z0-9_-]+$/.test(snapshot.workspaceIdentityEventId) ||
+    !/^evt_[a-zA-Z0-9_-]+$/.test(snapshot.highWaterMark) ||
+    !/^sha256:[a-f0-9]{64}$/.test(snapshot.policyDigest) ||
+    !/^sha256:[a-f0-9]{64}$/.test(snapshot.lockStateDigest) ||
+    snapshot.admissionGenerationId.length === 0 ||
+    snapshot.ledgerStoreEvidenceId.length === 0 ||
+    snapshot.artifactStoreEvidenceId.length === 0
+  ) {
+    throw authorityError();
+  }
+  return Object.freeze({
+    workspaceIdentityHash: hashCanonicalSpecialistHandoffJson({
+      schemaVersion: "mounted-handoff-workspace-identity.v1",
+      workspaceId: snapshot.workspaceId,
+      workspaceIdentityEventId: snapshot.workspaceIdentityEventId
+    }),
+    mountGeneration: snapshot.admissionGenerationId,
+    ledgerStoreIdentity: snapshot.ledgerStoreEvidenceId,
+    artifactStoreIdentity: snapshot.artifactStoreEvidenceId,
+    ledgerHighWaterEventId: snapshot.highWaterMark,
+    policyHash: snapshot.policyDigest as `sha256:${string}`,
+    activeLocksHash: snapshot.lockStateDigest as `sha256:${string}`
   });
 }
 

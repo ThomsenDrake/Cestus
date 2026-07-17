@@ -44,6 +44,7 @@ import {
 import { mintProductionSpecialistInvocationProof } from "./production-specialist-invocation-proof.js";
 import { hashAgentToolPreview } from "./tool-gateway.js";
 import {
+  buildAuthorityBoundSpecialistHandoffManifest,
   buildSpecialistHandoffManifest,
   canonicalSpecialistHandoffMaterialBytes,
   canonicalSpecialistHandoffJson,
@@ -51,10 +52,17 @@ import {
   hashSpecialistHandoffManifest,
   hashSpecialistHandoffMaterial,
   parseSpecialistHandoffMaterial,
+  verifyAuthorityBoundSpecialistHandoffManifest,
   verifySpecialistHandoffManifest,
+  type AuthorityBoundSpecialistHandoffManifest,
   type SpecialistHandoffManifest,
   type SpecialistHandoffMaterial
 } from "./specialist-handoff-manifest.js";
+import {
+  consumeMountedSpecialistHandoffAuthorityWitness,
+  type HandoffAuthorityBinding,
+  type MountedSpecialistHandoffAuthorityWitness
+} from "./specialist-handoff-authority.js";
 import {
   authoritativeFinalOutputStepSchemaId as authoritativeProjectedFinalOutputStepSchemaId,
   buildSpecialistHandoffProjection
@@ -148,6 +156,19 @@ export interface RecordSpecialistHandoffResult {
   readonly prepared: KnowledgeEventOf<"agent.specialist-handoff.prepared">;
   readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
   readonly manifestStore: SpecialistHandoffManifestStore;
+}
+
+export interface RecordAuthorityBoundSpecialistHandoffInput extends RecordSpecialistHandoffInput {
+  readonly handoffAuthorityWitness: MountedSpecialistHandoffAuthorityWitness;
+}
+
+export interface RecordAuthorityBoundSpecialistHandoffResult {
+  readonly manifest: AuthorityBoundSpecialistHandoffManifest;
+  readonly handoff: SpecialistWorkflowHandoffDto;
+  readonly prepared: KnowledgeEventOf<"agent.specialist-handoff.prepared">;
+  readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+  readonly manifestStore: SpecialistHandoffManifestStore;
+  readonly authorityBinding: HandoffAuthorityBinding;
 }
 
 export interface FinalizeSpecialistRunAfterHandoffInput {
@@ -911,6 +932,119 @@ export async function recordSpecialistHandoff(rawInput: RecordSpecialistHandoffI
   return Object.freeze({ manifest, handoff: manifest.handoff, prepared, recorded, manifestStore: input.manifestStore });
 }
 
+/**
+ * Records only the strict V2 family.  It never upgrades a legacy call, and it
+ * accepts the factory's opaque witness rather than a caller-provided binding.
+ */
+export async function recordAuthorityBoundSpecialistHandoff(
+  rawInput: RecordAuthorityBoundSpecialistHandoffInput
+): Promise<RecordAuthorityBoundSpecialistHandoffResult> {
+  const values = handoffInputValues(rawInput, "Record authority-bound specialist handoff input", [
+    "ledger", "manifestStore", "actor", "now", "runId", "taskId", "handoffAuthorityWitness"
+  ]);
+  const input = snapshotRecordHandoffInput(values as RecordSpecialistHandoffInput);
+  const authority = await consumeMountedSpecialistHandoffAuthorityWitness(values.handoffAuthorityWitness);
+  await authority.revalidateCurrent();
+  assertManifestStoreAvailable(input.manifestStore);
+
+  const stream = await input.ledger.readStream(`agent_run_${input.runId}`);
+  await authority.revalidateCurrent();
+  const started = matchingStartedEvent(stream, input.runId, input.taskId);
+  const { finalOutput, material, recorded: alreadyRecorded } = await selectFinalOutputForHandoff(stream, input);
+  await authority.revalidateCurrent();
+  if (alreadyRecorded !== undefined) {
+    throw new Error("Authority-bound handoff recording does not accept legacy recorded handoff reuse.");
+  }
+  const priorRecorded = priorRecordedForMaterial(stream, material);
+  const handoffRevision = material.supersedesHandoffId === undefined ? 1 : (priorRecorded?.payload.handoffRevision ?? 0) + 1;
+  const resolved: ResolvedRecordSpecialistHandoffInput = Object.freeze({
+    ...input,
+    runType: started.payload.runType,
+    material,
+    handoffRevision
+  });
+  await assertHandoffMaterialAuthority(input.ledger, input.manifestStore, material, started, priorRecorded, finalOutput);
+  await authority.revalidateCurrent();
+  const outputArtifactHashes = material.outputArtifacts.map((artifact) => artifact.artifactHash);
+  if (!sameOrderedStrings(finalOutput.payload.outputArtifactHashes ?? [], outputArtifactHashes)) {
+    throw new Error("Specialist handoff output artifacts do not match the ledger-bound final-output step.");
+  }
+  const handoffId = computeSpecialistHandoffId({
+    runId: input.runId,
+    ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
+    runType: resolved.runType,
+    status: material.status,
+    finalOutputEventId: finalOutput.id,
+    outputArtifactHashes,
+    handoffRevision,
+    ...(material.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: material.supersedesHandoffId })
+  });
+  const manifest = buildAuthorityBoundSpecialistHandoffManifest({
+    handoffId,
+    handoffRevision,
+    runId: input.runId,
+    ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
+    runType: resolved.runType,
+    residentAgentId: "agent_default",
+    generatedAt: finalOutput.context.occurredAt,
+    status: material.status,
+    safeSummary: material.safeSummary,
+    stateKind: stateKindForHandoffStatus(material.status),
+    finalOutputStepId: finalOutput.payload.stepId,
+    finalOutputEventId: finalOutput.id,
+    handoffMaterialArtifactHash: contentHashFromLedger(finalOutput.payload.handoffMaterialArtifactHash!),
+    contextPackRefs: material.contextPackRefs,
+    ...(material.promptArtifactHash === undefined ? {} : { promptArtifactHash: material.promptArtifactHash }),
+    outputArtifacts: material.outputArtifacts,
+    toolRequestIds: material.toolRequestIds,
+    approvalRequirements: material.approvalRequirements,
+    nextSafeActions: material.nextSafeActions,
+    ...(material.failure === undefined ? {} : { failure: material.failure }),
+    sourceEventIds: material.sourceEventIds,
+    relatedEventIds: material.relatedEventIds,
+    ...(material.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: material.supersedesHandoffId }),
+    ...(material.supersedesEventId === undefined ? {} : { supersedesEventId: material.supersedesEventId }),
+    authorityBinding: authority.binding
+  });
+  const manifestBytes = canonicalSpecialistHandoffJson(manifest);
+  const manifestHash = hashSpecialistHandoffManifest(manifest);
+  await authority.revalidateCurrent();
+  const stored = await input.manifestStore.put(manifestBytes);
+  await authority.revalidateCurrent();
+  if (stored.contentHash !== manifestHash || stored.sizeBytes !== manifestBytes.byteLength) {
+    throw new Error("Manifest store did not confirm the exact content-addressed manifest bytes.");
+  }
+  const bytes = await input.manifestStore.get(manifestHash);
+  await authority.revalidateCurrent();
+  if (!Buffer.isBuffer(bytes) || !bytes.equals(manifestBytes)) {
+    throw new Error("Manifest readback did not match the verified content-addressed manifest bytes.");
+  }
+  const parsed = verifyAuthorityBoundSpecialistHandoffManifest({ manifest: JSON.parse(bytes.toString("utf8")), handoffManifestHash: manifestHash });
+  if (!sameCanonicalValue(parsed, manifest.handoff)) {
+    throw new Error("Authority-bound manifest readback did not preserve the canonical handoff DTO.");
+  }
+  const binding = compactAuthorityBoundHandoffBinding(manifest, manifestHash);
+  const prepared = await appendOrReuseAuthorityBoundPreparedHandoff(resolved, stream, binding, finalOutput);
+  await authority.revalidateCurrent();
+  const afterPrepared = await input.ledger.readStream(`agent_run_${input.runId}`);
+  await authority.revalidateCurrent();
+  const recorded = await appendOrReuseAuthorityBoundRecordedHandoff(resolved, afterPrepared, binding, prepared);
+  await authority.revalidateCurrent();
+  const projection = await assertAuthorityBoundHandoffProjection(input.ledger, input.manifestStore, input.runId, input.taskId);
+  await authority.revalidateCurrent();
+  if (projection.selectedHandoff?.handoffId !== manifest.handoffId) {
+    throw new Error("Authority-bound recorded handoff projection does not select the verified manifest handoff.");
+  }
+  return Object.freeze({
+    manifest,
+    handoff: manifest.handoff,
+    prepared,
+    recorded,
+    manifestStore: input.manifestStore,
+    authorityBinding: authority.binding
+  });
+}
+
 export async function finalizeSpecialistRunAfterHandoff(
   rawInput: FinalizeSpecialistRunAfterHandoffInput
 ): Promise<FinalizeSpecialistRunAfterHandoffResult> {
@@ -1540,7 +1674,7 @@ function stateKindForHandoffStatus(status: SpecialistWorkflowHandoffDto["status"
 }
 
 function compactHandoffBinding(
-  manifest: SpecialistHandoffManifest,
+  manifest: SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest,
   handoffManifestHash: `sha256:${string}`
 ): KnowledgeEventOf<"agent.specialist-handoff.prepared">["payload"] {
   return {
@@ -1567,6 +1701,28 @@ function compactHandoffBinding(
     ...(manifest.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: manifest.supersedesHandoffId }),
     ...(manifest.supersedesEventId === undefined ? {} : { supersedesEventId: manifest.supersedesEventId })
   };
+}
+
+type AuthorityBoundPreparedPayload = Extract<
+  KnowledgeEventOf<"agent.specialist-handoff.prepared">["payload"],
+  { readonly manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" }
+>;
+
+function compactAuthorityBoundHandoffBinding(
+  manifest: AuthorityBoundSpecialistHandoffManifest,
+  handoffManifestHash: `sha256:${string}`
+): AuthorityBoundPreparedPayload {
+  return Object.freeze({
+    ...compactHandoffBinding(manifest, handoffManifestHash),
+    manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
+    authorityBinding: manifest.authorityBinding
+  }) as AuthorityBoundPreparedPayload;
+}
+
+function isAuthorityBoundHandoffPayload(value: unknown): value is AuthorityBoundPreparedPayload {
+  return typeof value === "object" && value !== null &&
+    (value as { readonly manifestSchemaVersion?: unknown }).manifestSchemaVersion === "agent-specialist-handoff-manifest.v2" &&
+    typeof (value as { readonly authorityBinding?: unknown }).authorityBinding === "object";
 }
 
 async function appendWithExactRaceRecovery<Event extends KnowledgeEvent>(input: {
@@ -1641,6 +1797,51 @@ async function appendOrReusePreparedHandoff(
   });
 }
 
+async function appendOrReuseAuthorityBoundPreparedHandoff(
+  input: ResolvedRecordSpecialistHandoffInput,
+  stream: readonly KnowledgeEvent[],
+  binding: AuthorityBoundPreparedPayload,
+  finalOutput: KnowledgeEventOf<"agent.specialist-run.step.recorded">
+): Promise<KnowledgeEventOf<"agent.specialist-handoff.prepared">> {
+  const prepared = stream.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.prepared"> =>
+    event.type === "agent.specialist-handoff.prepared" && event.payload.runId === input.runId
+  );
+  const existing = prepared.find((event) => sameCanonicalValue(event.payload, binding));
+  if (existing !== undefined) return existing;
+  if (prepared.length > 0) throw new Error("Conflicting prepared specialist handoff exists on the run stream.");
+  const event: AppendableKnowledgeEvent<"agent.specialist-handoff.prepared"> = {
+    type: "agent.specialist-handoff.prepared",
+    version: 1,
+    streamId: `agent_run_${input.runId}`,
+    context: {
+      actor: input.actor,
+      occurredAt: finalOutput.context.occurredAt,
+      causationId: binding.supersedesEventId ?? finalOutput.id,
+      correlationId: `corr_${input.runId}_handoff_prepared`,
+      coreVersion: agentCoreVersion,
+      packVersions: agentPackVersions
+    },
+    payload: binding
+  };
+  return await appendWithExactRaceRecovery({
+    ledger: input.ledger,
+    streamId: `agent_run_${input.runId}`,
+    expectedNextSequence: expectedNextSequenceFromStream(stream),
+    event,
+    findExact: (events) => events.find((candidate): candidate is KnowledgeEventOf<"agent.specialist-handoff.prepared"> =>
+      candidate.type === "agent.specialist-handoff.prepared" && sameCanonicalValue(candidate.payload, binding)
+    ),
+    validateReread: (events) => {
+      if (events.some((candidate) =>
+        candidate.type === "agent.specialist-handoff.prepared" &&
+        candidate.payload.runId === input.runId &&
+        !sameCanonicalValue(candidate.payload, binding)
+      )) throw new Error("Conflicting prepared specialist handoff exists on the run stream.");
+    },
+    conflictMessage: "Conflicting prepared specialist handoff exists on the run stream."
+  });
+}
+
 async function appendOrReuseRecordedHandoff(
   input: ResolvedRecordSpecialistHandoffInput,
   stream: readonly KnowledgeEvent[],
@@ -1699,6 +1900,62 @@ async function appendOrReuseRecordedHandoff(
       ) || (binding.supersedesHandoffId === undefined && recorded.some((candidate) => !sameCanonicalValue(omitRecordedTimestamp(candidate.payload), binding)))) {
         throw new Error("Conflicting recorded specialist handoff exists on the run stream.");
       }
+    },
+    conflictMessage: "Conflicting recorded specialist handoff exists on the run stream."
+  });
+}
+
+async function appendOrReuseAuthorityBoundRecordedHandoff(
+  input: ResolvedRecordSpecialistHandoffInput,
+  stream: readonly KnowledgeEvent[],
+  binding: AuthorityBoundPreparedPayload,
+  prepared: KnowledgeEventOf<"agent.specialist-handoff.prepared">
+): Promise<KnowledgeEventOf<"agent.specialist-handoff.recorded">> {
+  if (!isAuthorityBoundHandoffPayload(prepared.payload) || !sameCanonicalValue(prepared.payload, binding)) {
+    throw new Error("Authority-bound prepared handoff readback does not match the canonical binding.");
+  }
+  const existing = stream.filter((event): event is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
+    event.type === "agent.specialist-handoff.recorded" && event.payload.runId === input.runId
+  );
+  const exact = existing.find((event) =>
+    event.payload.preparedEventId === prepared.id &&
+    isAuthorityBoundHandoffPayload(event.payload) &&
+    sameCanonicalValue(omitRecordedTimestamp(event.payload), binding)
+  );
+  if (exact !== undefined) return exact;
+  if (existing.length > 0) throw new Error("Conflicting recorded specialist handoff exists on the run stream.");
+  const verifiedAt = input.now();
+  const event: AppendableKnowledgeEvent<"agent.specialist-handoff.recorded"> = {
+    type: "agent.specialist-handoff.recorded",
+    version: 1,
+    streamId: `agent_run_${input.runId}`,
+    context: {
+      actor: input.actor,
+      occurredAt: verifiedAt,
+      causationId: prepared.id,
+      correlationId: `corr_${input.runId}_handoff_recorded`,
+      coreVersion: agentCoreVersion,
+      packVersions: agentPackVersions
+    },
+    payload: { ...binding, preparedEventId: prepared.id, verifiedAt }
+  };
+  return await appendWithExactRaceRecovery({
+    ledger: input.ledger,
+    streamId: `agent_run_${input.runId}`,
+    expectedNextSequence: expectedNextSequenceFromStream(stream),
+    event,
+    findExact: (events) => events.find((candidate): candidate is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
+      candidate.type === "agent.specialist-handoff.recorded" &&
+      candidate.payload.preparedEventId === prepared.id &&
+      isAuthorityBoundHandoffPayload(candidate.payload) &&
+      sameCanonicalValue(omitRecordedTimestamp(candidate.payload), binding)
+    ),
+    validateReread: (events) => {
+      if (events.some((candidate) =>
+        candidate.type === "agent.specialist-handoff.recorded" &&
+        candidate.payload.runId === input.runId &&
+        (candidate.payload.preparedEventId !== prepared.id || !isAuthorityBoundHandoffPayload(candidate.payload) || !sameCanonicalValue(omitRecordedTimestamp(candidate.payload), binding))
+      )) throw new Error("Conflicting recorded specialist handoff exists on the run stream.");
     },
     conflictMessage: "Conflicting recorded specialist handoff exists on the run stream."
   });
@@ -1776,8 +2033,28 @@ async function assertHandoffProjection(
   if (conflict !== undefined) {
     throw new Error(`Specialist handoff ${conflict.code} projection verification failed.`);
   }
-  if ((projection.state !== expectedState && !acceptedStates.some((state) => state === projection.state)) || projection.diagnostics.length > 0) {
+  const legacyEquivalent = projection.state === "legacy-unbound" &&
+    (expectedState === "handoff-recorded" || expectedState === "task-completed" || acceptedStates.includes("handoff-recorded") || acceptedStates.includes("task-completed"));
+  if ((projection.state !== expectedState && !acceptedStates.some((state) => state === projection.state) && !legacyEquivalent) || projection.diagnostics.length > 0) {
     throw new Error(`Specialist handoff ${expectedState} projection verification failed.`);
+  }
+  return projection;
+}
+
+async function assertAuthorityBoundHandoffProjection(
+  ledger: EventLedger,
+  manifestStore: SpecialistHandoffManifestStore,
+  runId: string,
+  taskId: string | undefined
+) {
+  const projection = await buildSpecialistHandoffProjection({
+    events: await ledger.readAll(),
+    manifestReader: manifestStore,
+    runId,
+    ...(taskId === undefined ? {} : { taskId })
+  });
+  if (projection.state !== "handoff-recorded" || projection.diagnostics.length > 0 || projection.selectedHandoff === undefined) {
+    throw new Error("Authority-bound handoff recorded projection verification failed.");
   }
   return projection;
 }
