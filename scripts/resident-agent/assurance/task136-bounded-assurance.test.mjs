@@ -319,9 +319,12 @@ function makeTempRepository(registryText) {
   return dir;
 }
 
-function runRepositoryModeInTemp(registryText) {
+function runRepositoryModeInTemp(registryText, { untrackedFile = false } = {}) {
   const dir = makeTempRepository(registryText);
   try {
+    if (untrackedFile) {
+      writeFileSync(join(dir, "untracked-dirty.txt"), "dirty\n");
+    }
     return spawnSync(process.execPath, [scriptPath, "--mode", "repository"], {
       cwd: dir,
       encoding: "utf8"
@@ -881,4 +884,11 @@ test("binds the canonical Task129-MFA record and proves ten-record prefix admiss
     );
     assert.deepEqual(messages, [], testCase.id);
   }
+
+  const untrackedCheckout = runRepositoryModeInTemp(registryText, { untrackedFile: true });
+  const untrackedOutput = `${untrackedCheckout.stdout}\n${untrackedCheckout.stderr}`;
+  assert.notEqual(untrackedCheckout.status, 0);
+  assert.match(untrackedOutput, /repository checkout is dirty/);
+  assert.doesNotMatch(untrackedOutput, /TASK136_REPOSITORY_PREFIX_OK/);
+  assert.doesNotMatch(untrackedOutput, /repository release closure incomplete/);
 });
