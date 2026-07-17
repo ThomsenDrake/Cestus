@@ -18685,3 +18685,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   same generation from its existing RED; this forward specification
   correction does not authorize a new worker, new contract generation,
   history rewrite, registry rewrite, or additional repair.
+
+## RV-1-E-698 — Remaining CF1 ownership collisions require one exact scope choice
+
+- Recorded at: 2026-07-17T20:41:49Z
+- The same assurance owner extended its causal RED at
+  `24669b1b58917e461ae54e21435b17f6c3c9fb60` and stopped before GREEN. A
+  coordinator audit then confirmed that RV-1-E-697 corrected only one of four
+  released-source collisions in the approved fourteen-path CF1-HR scope.
+- Task135B strict record 9 still owns
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` and
+  its test; its canonical record SHA-256 is
+  `73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409`.
+  Task129-MFA strict record 6 still owns
+  `packages/ontology/test/agent-contracts.test.ts`; its already pinned
+  canonical record SHA-256 is
+  `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`.
+  The fourth collision is the Task137B-W `contracts.ts` path already corrected
+  by RV-1-E-697.
+- The current V4 safety rule requires a transfer target to name the source as
+  a direct prerequisite; its frozen design explicitly says transitive ancestry
+  does not authorize modification of a released path. CF1-HR transitively
+  depends on Task135B and Task129-MFA through Task137B-W but does not directly
+  name either. The program owner's Authorization A also froze every
+  prerequisite, so silently allowing a transitive transfer or adding direct
+  edges would exceed one of the approved constraints.
+- The narrowest safety-preserving scope choice is to add the two redundant
+  direct CF1-HR prerequisites and exact Task135B/Task129-MFA-to-CF1 transfers,
+  with historical compatibility for their unchanged raw records. The
+  alternative is to replace the three colliding CF1 paths with new adapter and
+  dedicated-test paths, which preserves the graph but redesigns the approved
+  mounted-authority producer seam. No checker weakening, compatibility relay,
+  GREEN, replacement worker, repair, history rewrite, or raw record mutation
+  is authorized while this exact scope/safety choice is pending.
+- The independent Task126-R exceptional implementation continues through its
+  already authorized local verification. It cannot enter final review until
+  CF1-HR is released as strict record 14.
