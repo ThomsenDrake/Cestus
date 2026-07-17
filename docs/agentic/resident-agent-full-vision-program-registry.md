@@ -18217,3 +18217,59 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   its exact owned paths and test commands, cross-boundary gates, typecheck,
   full verification, factory readiness, clean state, and a real non-symlinked
   dependency tree. Children do not edit this registry or self-integrate.
+
+## RV-1-E-684 — W1-123-H-SHARED-SCHEMA released as strict record 12
+
+- Recorded at: 2026-07-17T19:13:03Z
+- The coordinator independently re-attested exact candidate and integration
+  checkpoint `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`, including ancestry and
+  literal blob identity for all three card paths. The current program bytes
+  remain byte-identical to that approved checkpoint.
+- The frozen command passed as **1 file / 34 tests**. Diff hygiene, factory
+  readiness, clean tracked and untracked state, real non-symlinked local
+  dependencies, and executable local Vitest also passed.
+- The prior exact architecture/invariant and executability/adversarial review
+  pair remains valid because no owned byte changed after its approval. The
+  canonical record below advances the strict V4 release prefix to 12.
+
+## Task136 dispatch release v4: W1-123-H-SHARED-SCHEMA
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "W1-123-H-SHARED-SCHEMA",
+  "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "reviews": [
+    {
+      "threadId": "019f6bda-4dd3-76e2-892d-37e3737a4dfd",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f6bda-4edf-7413-9333-fda7683cd60e",
+      "candidateSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+  "releaseEventId": "task136-release-v4-W1-123-H-SHARED-SCHEMA",
+  "prerequisites": [],
+  "ownedPathBlobs": [
+    {
+      "path": "docs/agentic/claims/task-123-resident-full-vision-handoff-schema-prerequisite.md",
+      "disposition": "owned",
+      "blobSha": "14d4cd3a34b5f3a46e0e2aca29f9e2378005c5b8"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-projection.ts",
+      "disposition": "transferred",
+      "blobSha": "40027d03148d1e89aa64b41420d30b511ce6524c"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-projection.test.ts",
+      "disposition": "transferred",
+      "blobSha": "70342f5734bdfe279606b37860b2bed8f716e9af"
+    }
+  ]
+}
+```
