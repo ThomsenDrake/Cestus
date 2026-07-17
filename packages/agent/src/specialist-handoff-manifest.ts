@@ -434,10 +434,10 @@ export function buildSpecialistHandoffManifest(input: BuildSpecialistHandoffMani
 export function buildAuthorityBoundSpecialistHandoffManifest(
   input: BuildSpecialistHandoffManifestInput & { readonly authorityBinding: HandoffAuthorityBinding }
 ): AuthorityBoundSpecialistHandoffManifest {
-  const values = normalizeJsonValue(input, "$") as Record<string, AgentContextPackJsonValue>;
-  const authorityBinding = authorityBindingSchema.parse(values.authorityBinding) as HandoffAuthorityBinding;
-  const { authorityBinding: _authorityBinding, ...v1Input } = values;
-  const v1 = buildSpecialistHandoffManifest(v1Input as BuildSpecialistHandoffManifestInput);
+  normalizeJsonValue(input, "$");
+  const { authorityBinding: inputAuthorityBinding, ...v1Input } = input;
+  const authorityBinding = authorityBindingSchema.parse(normalizeJsonValue(inputAuthorityBinding, "$.authorityBinding"));
+  const v1 = buildSpecialistHandoffManifest(v1Input);
   return Object.freeze({
     ...v1,
     schemaVersion: specialistHandoffManifestV2SchemaVersion,
@@ -565,25 +565,26 @@ function addStateKindIssue(
   }
 }
 
+interface SpecialistHandoffManifestAgreement {
+  readonly handoffId: unknown;
+  readonly handoffRevision: unknown;
+  readonly runId: unknown;
+  readonly taskId?: unknown | undefined;
+  readonly runType: unknown;
+  readonly residentAgentId: unknown;
+  readonly status: unknown;
+  readonly safeSummary: unknown;
+  readonly contextPackRefs: readonly unknown[];
+  readonly promptArtifactHash?: unknown | undefined;
+  readonly outputArtifacts: unknown;
+  readonly toolRequestIds: unknown;
+  readonly approvalRequirements: unknown;
+  readonly nextSafeActions: unknown;
+  readonly failure?: unknown | undefined;
+}
+
 function assertManifestHandoffAgreement(
-  manifest: Pick<
-    SpecialistHandoffManifest,
-    | "handoffId"
-    | "handoffRevision"
-    | "runId"
-    | "taskId"
-    | "runType"
-    | "residentAgentId"
-    | "status"
-    | "safeSummary"
-    | "contextPackRefs"
-    | "promptArtifactHash"
-    | "outputArtifacts"
-    | "toolRequestIds"
-    | "approvalRequirements"
-    | "nextSafeActions"
-    | "failure"
-  >,
+  manifest: SpecialistHandoffManifestAgreement,
   handoff: SpecialistWorkflowHandoffDto
 ): void {
   const comparisons: Array<readonly [string, unknown, unknown]> = [
