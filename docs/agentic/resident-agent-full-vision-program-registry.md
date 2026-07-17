@@ -18633,3 +18633,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reasoning. Reviewers remain read-only. No new coordinator, relay, watchdog,
   release card, compatibility completion path, history rewrite, `neo` change,
   push, credential use, or external effect is authorized.
+
+## RV-1-E-696 — V4 assurance and exceptional Task126 repairs enter implementation
+
+- Recorded at: 2026-07-17T20:29:23Z
+- The four-file V4 assurance amendment is owned by task
+  `019f71bf-f525-79b1-8068-c28b2c7e4d40` in
+  `/home/drake/.codex/worktrees/377f/Cestus`, using `gpt-5.6-terra` with
+  `xhigh` reasoning. Exact clean base is
+  `dbe9fea17bc2eb0a9a3c8c5661dcc5f6e00f5dfb`; claim commit is
+  `9801dbc01a660d581c4c2270efd2e844e24ee5cf`. Its initially absent ignored
+  dependency directory was restored as a real non-symlinked copy from the
+  verified program checkout; that environment-only recovery changed no Git
+  bytes and consumed no repair.
+- The same Task126-R owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b` continues in the preserved
+  `/home/drake/.codex/worktrees/ee6e/Cestus` worktree, also using
+  `gpt-5.6-terra` with `xhigh` reasoning. It preserved all five prior commits
+  and appended causal RED `4ac56b05228f7891a564146f7dfbc36ccdfb4747`.
+  The exact focused run failed only the new destructured ambient-module route
+  (`1` failed, `17` passed), proving the inherited flat alias map misses the
+  authorized lexical-binding case.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- The lanes are disjoint. Neither child may edit the registry, integrate,
+  self-merge, push, touch `neo`, use credentials/providers/external services,
+  rewrite history, or exceed its approved repair ceiling.
