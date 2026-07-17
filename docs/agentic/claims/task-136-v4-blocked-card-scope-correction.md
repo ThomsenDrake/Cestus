@@ -96,3 +96,28 @@ failure is `requires the corrected CF1-HR and G136-SC ownership and command
 projections`: the old contract supplies only the prior five CF1-HR paths
 instead of the approved ordered fourteen-path list. This proves the test
 detects the authorized scope defect before any contract or checker GREEN.
+
+## Forward RED extension for RV-1-E-697
+
+Coordinator adjudication `RV-1-E-697` (registry commit `cf5487a0`) is carried
+by design/plan correction `0c516cded13099952bf133382ed7782316dbb390`. The
+test-only forward extension now requires the sole Task137B-W-to-CF1 transfer:
+`packages/ontology/src/contracts.ts` is transferred by Task137B-W to its exact
+`[CF1-HR]` target, and the third ordered historical compatibility entry pins
+Task137B-W record 11's canonical SHA-256
+`833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
+with that historical path still `owned`. It adds wrong-disposition,
+wrong-target, and wrong-compatibility-hash one-fact mutants. This is a forward
+RED extension only; no repair is consumed and no contract/checker byte changes
+until its failure is observed.
+
+Command:
+
+```bash
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+```
+
+Result: exit `1`; `16` tests, `14` passed, and exactly `2` failed. The
+original CF1-HR exact-path failure remains, and the new frozen compatibility
+test fails only because current V4 has two entries instead of the required
+ordered third Task137B-W entry. No unrelated test failed.
