@@ -1,6 +1,6 @@
 # Task 136 V3 Wake Schema Ownership Correction Claim
 
-Status: in-progress
+Status: ready-for-review
 
 Plan: `docs/superpowers/plans/2026-07-16-task137b-wake-schema-ownership-correction-implementation.md`
 Task: Task 1, Migrate The Finite Assurance Contract To V3
@@ -37,3 +37,9 @@ Bounded scope and prohibitions:
 - Do not merge, push, reset, rebase, or touch `neo`.
 - Coordinator-only integration occurs only after committed-byte admission and two fresh exact-candidate reviews with literal unqualified **APPROVED** verdicts.
 - Repository mode is expected to exit nonzero only after the ordered ten-record/ten-command prefix marker and incomplete-closure result.
+
+Implementation evidence:
+- RED: `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited `1` with `14` tests, `11` passing, and the three intended v3/default-contract and missing-prefix-admission failures.
+- GREEN: the same command passed `14/14` tests.
+- Contract markers: `TASK136_RELEASE_GRAPH_OK records=29`, `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`, `TASK136_COMMAND_CARDS_OK cards=29`, and `TASK136_ABI_CORPUS_OK green=1 red=15` each emitted once.
+- Self-review: v3 retains a single explicit historical tuple, pins its compact JSON SHA-256 before disposition relaxation, and emits the prefix marker only after prefix Git evidence, commands, and checkout recheck succeed.
