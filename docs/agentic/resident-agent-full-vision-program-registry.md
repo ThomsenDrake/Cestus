@@ -17731,3 +17731,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Completion returns an unapproved candidate to the coordinator. Integration
   remains closed pending exact-candidate admission and two fresh unqualified
   reviewer approvals.
+
+## RV-1-E-671 — Task136 v3 admission dependency recovered locally
+
+- Recorded at: 2026-07-17T02:15:00Z
+- Worker `019f6d71-24ad-7913-a119-12e9fe86517a` produced the exact scoped
+  claim/RED/GREEN chain at candidate
+  `b1ab3361` (`3f18ceab`, `9955c2f5`, `b1ab3361`). The 14-test GREEN and four
+  contract markers passed, but repository admission stopped when Task126's
+  released command could not find `vitest` because the isolated checkout had
+  no dependency tree.
+- Coordinator audit found the candidate checkout clean with exactly four
+  changed paths and no `node_modules`; the verified program checkout had a
+  local non-symlinked dependency tree and executable Vitest. Coordinator
+  copied that existing ignored dependency tree locally with reflink support.
+  No network, install, symlink, tracked edit, provider, credential, or external
+  service was used.
+- The same worker has resumed at unchanged candidate `b1ab3361` solely to
+  rerun the approved fresh-shell admission block and update its report. Any
+  genuine candidate defect must return structured evidence; broader work and
+  every previously closed gate remain closed.
