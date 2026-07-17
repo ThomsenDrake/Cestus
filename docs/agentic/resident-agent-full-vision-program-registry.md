@@ -17688,3 +17688,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credentials, external services, push, reset, rebase, or any `neo` action.
   Task 1 remains closed until both fresh reviewers return literal unqualified
   **APPROVED** verdicts for this same revision.
+
+## RV-1-E-669 — Task137B-W correction dual-approved; v3 migration authorized
+
+- Recorded at: 2026-07-17T02:05:00Z
+- Architecture/invariant reviewer
+  `019f6d6c-5333-75e3-8037-2af7594e596d` and
+  executability/adversarial reviewer
+  `019f6d6c-579a-7183-8d04-18caedfe5d2b` each returned a literal unqualified
+  **APPROVED** verdict for exact correction revision
+  `41350ae9e061aab662c85d8d500a69447952ac84`.
+- The executability reviewer independently reproduced the allowed five-suite
+  baseline at **5 files / 88 tests**, the v2 assurance suite at **12 / 12**,
+  and factory readiness. The architecture reviewer confirmed complete-record
+  compatibility binding, prefix-evidence ordering, transfer/final-owner
+  authority, finite policy change, exact write ceilings, and append-only
+  timestamp correction.
+- Task 1 of the approved correction plan is now authorized on an isolated
+  task branch with explicit task-scoped subagent-driven development and TDD.
+  It owns exactly the four plan paths and must preserve committed RED, exact
+  GREEN/marker evidence, immutable v1/v2 hashes, clean repository-prefix
+  admission, and dual exact-candidate review before coordinator integration.
+- Task 2, Task 3, Task139, full verification, providers, network, credentials,
+  external services, push, reset, rebase, and every `neo` action remain closed.
