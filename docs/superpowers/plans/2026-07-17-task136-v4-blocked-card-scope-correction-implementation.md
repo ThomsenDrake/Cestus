@@ -11,12 +11,12 @@ strict ordered release path without changing prior evidence or safety
 semantics.
 
 **Architecture:** A four-file assurance amendment makes the V4 contract match
-the approved card ownership, including the sole forward Task137B-W-to-CF1
-transfer for `packages/ontology/src/contracts.ts` and its historical release
-compatibility proof. After that reviewed base is integrated, the preserved CF1
-and G136 branches advance with forward commits only. The Task126 analyzer repair
-is independent and may run concurrently, but final review occurs only after its
-branch includes the reviewed assurance base.
+the approved card ownership, including the exact direct Task135B-,
+Task129-MFA-, and Task137B-W-to-CF1 source mappings and their historical
+release compatibility proofs. After that reviewed base is integrated, the
+preserved CF1 and G136 branches advance with forward commits only. The Task126
+analyzer repair is independent and may run concurrently, but final review
+occurs only after its branch includes the reviewed assurance base.
 
 **Tech Stack:** TypeScript, Vitest, Node.js ESM and `node:test`, JSON, Bash,
 Git, the append-only event ledger, and existing Task136 assurance tooling.
@@ -27,12 +27,21 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
   `docs/superpowers/specs/2026-07-17-task136-v4-blocked-card-scope-correction-design.md`.
 - Preserve V1, V2, and V3 at their exact design hashes. Preserve raw strict
   release records 1-13 byte-for-byte and retain the exact 29-card order and
-  every prerequisite.
+  every prerequisite except the exact authorized CF1-HR list.
 - Only the two unreleased V4 cards `CF1-HR` and `G136-SC` gain paths or command
-  tests. Task137B-W changes only `packages/ontology/src/contracts.ts` from
-  `owned` to `transferred`, names exactly `CF1-HR` as its transfer target, and
-  gains the exact historical compatibility entry defined by the design.
-  `Task126-R` retains its current V4 scope and production bytes.
+  tests. CF1-HR `prerequisiteIds` becomes exactly
+  `["W1-123-H-SHARED-SCHEMA", "W1-133.5-PREAPPROVAL-PROMPT-STORE",
+  "Task137B-W", "Task135B", "Task129-MFA"]`. Task135B transfers exactly the
+  two portable mounted-store paths to CF1-HR; Task129-MFA additionally
+  transfers exactly its agent-contract test to CF1-HR while every existing
+  Task137B-W transfer remains unchanged; Task137B-W transfers exactly
+  `packages/ontology/src/contracts.ts` to CF1-HR. The exact historical
+  compatibility entries are those defined by the design. `Task126-R` retains
+  its current V4 scope and production bytes.
+- Implement the three CF1 direct-source groups as finite hard-coded source-
+  target mappings. Do not add a generic multi-target mechanism, transitive
+  authorization, compatibility fallback, bridge card, V5, or alternate
+  mounted-authority producer.
 - Preserve append-only ledger semantics, exact provenance, projection
   rebuildability, one resident identity, no fallback writes, PRR send gates,
   legal locks, and proposal-only ontology mutation.
@@ -70,17 +79,21 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
 
 ### Task 1: Amend and pin the executable V4 scope
 
-**Branch/worktree:** A new isolated worktree from program commit
-`a5c192842bbedb4dc7801bedf8908c025dc33dfb`, on branch
-`codex/task136-v4-blocked-card-scope-correction`.
+**Branch/worktree:** Preserve the existing isolated worktree and branch
+`codex/task136-v4-blocked-card-scope-correction`, including claim
+`9801dbc01a660d581c4c2270efd2e844e24ee5cf`, causal RED
+`760569643fd533262de0051884fbc1bc8a4bb515`, and forward RED extension
+`24669b1b58917e461ae54e21435b17f6c3c9fb60`. Resume the same owner from that
+clean RED; do not create a replacement or recovery generation.
 
 **Interfaces:**
 
 - Consumes: the immutable V1-V3 contracts, current V4, raw release records
   1-13, and the existing checker exports.
 - Produces: the same V4 schema/graph versions with corrected CF1/G136 paths,
-  the sole Task137B-W-to-CF1 transfer and compatibility binding, commands,
-  assurance fingerprint, mutants, and a verified 13-record prefix.
+  the exact three direct-source CF1 transfer groups and compatibility
+  bindings, commands, assurance fingerprint, mutants, and a verified
+  13-record prefix.
 
 - [ ] **Step 1: Claim the four-file assurance amendment**
 
@@ -98,11 +111,20 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
 
   In `task136-bounded-assurance.test.mjs`, define the exact CF1 and G136 arrays
   from the design and assert them against the contract. Assert Task137B-W's
-  sole transferred `contracts.ts` path, exact `CF1-HR` transfer target, and the
-  third historical compatibility entry with canonical record hash
+  sole transferred `contracts.ts` path and exact `CF1-HR` transfer target.
+  Assert CF1-HR's exact five prerequisites. Assert Task135B's two exact CF1
+  paths and target, Task129-MFA's exact additional CF1 path and ordered
+  `["Task137B-W", "CF1-HR"]` targets, and that Task129-MFA's existing
+  Task137B-W paths are unchanged. Assert the exact ordered compatibility table
+  and canonical hashes: Task129-MFA
+  `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`,
+  Task135B
+  `73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409`,
+  and Task137B-W
   `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`.
   Add one-fact mutants for missing, extra, reordered, wrong-disposition,
-  wrong-target, wrong-compatibility-hash, and command-omitted paths. Add
+  wrong-target, wrong-source-target grouping, wrong-prerequisite,
+  wrong-compatibility-hash, and command-omitted paths. Add
   immutable-prefix assertions equivalent to:
 
   ```js
@@ -124,25 +146,31 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
 
 - [ ] **Step 3: Apply the minimal contract and checker GREEN**
 
-  Replace only the card path/command values and sole Task137B-W transfer
-  described by the design. Append the exact Task137B-W historical compatibility
-  entry without rewriting records 1-13. Keep card IDs, order, prerequisites,
-  every other transfer target, all other cards, schema version, graph version,
-  compatibility version, composition grammar/corpus, and ABI corpus unchanged.
+  Replace only the card path/command values, CF1-HR prerequisites, and exact
+  three direct-source transfer groups described by the design. Append the
+  exact Task135B and Task137B-W historical compatibility entries and add only
+  the Task129-MFA agent-contract test to its existing compatibility entry,
+  without rewriting records 1-13. Keep card IDs, order, every other
+  prerequisite, every other transfer target and path, all other cards, schema
+  version, graph version, compatibility version, composition grammar/corpus,
+  and ABI corpus unchanged.
   Recompute the existing canonical assurance fingerprint using the checker's
   own projection and pin that one value in `task136-bounded-assurance.mjs`.
 
-  Generalize current-HEAD migration activation only as far as the three exact
-  historical compatibility groups require: the Task137A and Task129-MFA paths
-  migrate when Task137B-W record 11 exists, while Task137B-W
-  `packages/ontology/src/contracts.ts` migrates only when CF1-HR record 14
-  exists. Before its target record exists, the historical source path must
-  still equal the source record at current HEAD. Candidate and integration
-  blob verification remains mandatory for every historical record.
+  Extend current-HEAD migration with finite source-and-target-specific
+  branches only: Task137A and the unchanged Task129-MFA-to-Task137B-W paths
+  migrate when Task137B-W record 11 exists; Task135B's two paths,
+  Task129-MFA's agent-contract test, and Task137B-W's contracts path migrate
+  only when CF1-HR record 14 exists. Before the applicable target record
+  exists, the historical source path must still equal the source record at
+  current HEAD. Candidate and integration blob verification remains mandatory
+  for every historical record. Do not infer a target from transitive ancestry
+  or apply one source's target to all its transferred paths.
 
   Extend the checker mutants only enough to prove both exact path arrays, the
-  one direct transfer, the exact historical compatibility binding, target-
-  activated current-HEAD migration, and exact test-command projections. Do not
+  three direct source-specific transfer groups, the exact historical
+  compatibility bindings, target-activated current-HEAD migration, CF1-HR's
+  exact prerequisites, and exact test-command projections. Do not
   introduce a generic scope amendment, new card, new contract generation, or
   any other compatibility exception.
 
@@ -170,6 +198,14 @@ Git, the append-only event ledger, and existing Task136 assurance tooling.
 
   The closure message is the expected nonzero terminal result; any earlier
   error is a failure.
+
+  `npm run verify` is mandatory evidence but is not expected to be green in
+  this four-file assurance-only lane. Capture the clean-program baseline and
+  require the candidate to reproduce exactly the inherited record-13 failure
+  signature with no additional failing file or test. The claim must report
+  that differential result accurately. Focused assurance, contract mode,
+  expected repository prefix/closure behavior, typecheck, diff, factory,
+  dependency, and clean-state gates must pass.
 
 - [ ] **Step 5: Commit the GREEN and report exact pins**
 
@@ -463,8 +499,9 @@ forward before the repair RED.
 
   Dispatch exactly one concurrent Terra/xhigh pair against its exact candidate:
   architecture/invariants and executability/adversarial. Architecture checks
-  immutable contracts/records, exact card paths, no generic transfer/scope
-  language, and unchanged prerequisites. Executability runs the assurance
+  immutable contracts/records, exact card paths, exact source-specific
+  mappings, no generic transfer/scope language, every unchanged prerequisite,
+  and CF1-HR's exact five prerequisites. Executability runs the assurance
   test, contract markers, expected 13-record repository prefix/closure failure,
   full verify, diff, factory, dependency, and clean-state gates. At most one
   consolidated assurance repair and one final pair are allowed.

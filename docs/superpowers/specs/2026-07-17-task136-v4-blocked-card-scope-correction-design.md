@@ -3,10 +3,11 @@
 **Date:** 2026-07-17
 
 **Status:** Approved by the sole program owner through the explicit
-“Authorize A and B” decision. This document is the bounded interpretation of
-that authorization; it does not reopen Wave 0, add a release card, change a
-safety invariant, or authorize an additional repair beyond the three packets
-named here.
+“Authorize A and B” decision and the subsequent bounded CF1-HR direct-source
+ownership correction. This document is the bounded interpretation of those
+authorizations; it does not reopen Wave 0, add a release card, change a safety
+invariant, or authorize an additional repair beyond the three packets named
+here.
 
 ## Purpose
 
@@ -23,12 +24,12 @@ scope:
 
 This amendment corrects the executable ownership description for the two
 unreleased V4 cards, updates the assurance fingerprint and tests, and grants
-one finite exceptional Task126-R packet. Because `CF1-HR` must edit
-`packages/ontology/src/contracts.ts`, which strict record 11 historically
-recorded as Task137B-W-owned, it also applies the sole forward transfer and
-historical compatibility correction defined below. V1, V2, V3, existing raw
-strict records, release order, prerequisites, provider behavior, and
-production BYOK behavior remain unchanged.
+one finite exceptional Task126-R packet. Because `CF1-HR` must edit four paths
+whose current owners are already released, it also applies the finite direct-
+source transfers and historical compatibility correction defined below. V1,
+V2, V3, existing raw strict records, release order, all prerequisites except
+the exact CF1-HR list below, provider behavior, and production BYOK behavior
+remain unchanged.
 
 ## Considered Approaches
 
@@ -66,21 +67,52 @@ The correction must preserve these contract bytes exactly:
 The raw JSON bytes of strict records 1-13 remain unchanged. Their candidate,
 integration, review, prerequisite, release-event, and blob evidence remain
 authoritative. The graph still contains exactly 29 cards in the existing order
-and retains every existing prerequisite. Every existing transfer disposition
-remains unchanged except this one direct, already-topological transfer:
+and retains every existing prerequisite except the exact CF1-HR prerequisite
+correction below. Every existing transfer disposition remains unchanged
+except these exact direct-source transfers:
 
-- Task137B-W changes only
-  `packages/ontology/src/contracts.ts` from `owned` to `transferred` and names
-  exactly `CF1-HR` in `transferToIds`.
-- `CF1-HR`, which already directly depends on Task137B-W, owns that path.
-- `releaseCompatibility.historicalRecords` appends a Task137B-W entry with
-  canonical record hash
-  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
-  and exactly that path with historical record disposition `owned`.
-- Record 11 is not rewritten. Before strict CF1-HR record 14 exists, current
-  HEAD must still match record 11 for this path. Once record 14 exists,
-  current-HEAD authority moves to CF1-HR while candidate and integration blob
-  evidence for record 11 remains verified.
+- Task135B changes only
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` and
+  `packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  from `owned` to `transferred`, and names exactly `CF1-HR` in
+  `transferToIds`.
+- Task129-MFA changes only `packages/ontology/test/agent-contracts.test.ts`
+  from `owned` to `transferred`. Its existing paths transferred to
+  Task137B-W remain byte-for-byte and disposition-for-disposition unchanged;
+  its exact `transferToIds` becomes `["Task137B-W", "CF1-HR"]`.
+- Task137B-W changes only `packages/ontology/src/contracts.ts` from `owned` to
+  `transferred` and names exactly `CF1-HR` in `transferToIds`.
+- `CF1-HR` owns exactly those four paths in addition to its otherwise approved
+  boundary. Its `prerequisiteIds` become exactly
+  `["W1-123-H-SHARED-SCHEMA", "W1-133.5-PREAPPROVAL-PROMPT-STORE",
+  "Task137B-W", "Task135B", "Task129-MFA"]`.
+
+The ordered `releaseCompatibility.historicalRecords` table is exactly:
+
+1. the unchanged Task137A entry;
+2. the Task129-MFA entry at canonical record hash
+   `23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76`,
+   retaining its five existing Task137B-W path dispositions and adding only
+   `packages/ontology/test/agent-contracts.test.ts` with historical record
+   disposition `owned`;
+3. a Task135B entry at canonical record hash
+   `73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409`
+   with exactly the two portable mounted-store paths above and historical
+   record disposition `owned`; and
+4. a Task137B-W entry at canonical record hash
+   `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
+   with exactly `packages/ontology/src/contracts.ts` and historical record
+   disposition `owned`.
+
+This is a finite source-and-target-specific mapping, not a generic
+multi-target transfer facility. Task137A and the unchanged Task129-MFA paths
+targeting Task137B-W activate at strict record 11. The two Task135B paths, the
+Task129-MFA agent-contract test, and the Task137B-W contracts source target
+only CF1-HR and activate at strict record 14. Until the applicable target
+record exists, current HEAD must match the historical source record for that
+path. After activation, current-HEAD authority moves to the exact target while
+the source candidate, integration, blob, review, and release evidence remains
+fully verified. No raw record is rewritten.
 
 ## Corrected CF1-HR Boundary
 
@@ -100,6 +132,14 @@ remains unchanged except this one direct, already-topological transfer:
 12. `packages/ontology/test/agent-contracts.test.ts`
 13. `packages/ontology/test/agent-resident-loop-contracts.test.ts`
 14. `docs/agentic/claims/cf1-h-task136-complete-handoff-readback-projection.md`
+
+Its exact prerequisites, in order, are:
+
+1. `W1-123-H-SHARED-SCHEMA`
+2. `W1-133.5-PREAPPROVAL-PROMPT-STORE`
+3. `Task137B-W`
+4. `Task135B`
+5. `Task129-MFA`
 
 Its exact card command is:
 
@@ -245,23 +285,38 @@ The V4 amendment owner changes only:
 - `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`
 - `docs/agentic/claims/task-136-v4-blocked-card-scope-correction.md`
 
-The tests first fail against the old CF1/G136 path and command sets. The GREEN
-updates the two cards, the sole Task137B-W-to-CF1 transfer, the third historical
-compatibility entry, the corrected V4 assurance fingerprint, and one-fact
-mutants for every added/missing/reordered path and command projection. It also
-proves:
+The tests first fail against the old CF1/G136 path and command sets and the
+missing direct-source transfer bindings. The GREEN updates the two cards, the
+exact three direct-source CF1 transfer groups, the ordered compatibility
+entries, the corrected V4 assurance fingerprint, and one-fact mutants for
+every added/missing/reordered path, prerequisite, transfer target, source-
+target binding, and command projection. It also proves:
 
 - V1-V3 hashes are exact;
-- all 29 card IDs and prerequisites are unchanged;
+- all 29 card IDs and their release order are unchanged;
+- every prerequisite except CF1-HR is unchanged, and CF1-HR has exactly the
+  five authorized prerequisites in the authorized order;
 - raw release records 1-13 are byte-identical;
 - repository mode emits exactly
   `TASK136_REPOSITORY_PREFIX_OK records=13 commands=13`, then fails closed with
   `repository release closure incomplete: expected 29 records, found 13`;
 - released candidate and integration blobs still match their records;
-- Task137B-W `contracts.ts` remains current-HEAD-authoritative until record 14,
-  then migrates current-HEAD authority to CF1-HR;
+- Task135B's two mounted-store paths, Task129-MFA's agent-contract test, and
+  Task137B-W's `contracts.ts` remain source-current-HEAD-authoritative until
+  record 14, then migrate current-HEAD authority to CF1-HR;
+- Task129-MFA's existing Task137B-W transfers remain unchanged and still
+  activate only at record 11;
 - no ownership changed except the corrected CF1-HR and G136-SC scopes and the
-  sole Task137B-W-to-CF1 transfer above.
+  three exact direct-source CF1 transfer groups above.
+
+The assurance amendment must still run `npm run verify`. Because released
+record 13 intentionally left a known bounded full-verifier baseline, the
+four-file assurance-only candidate is accepted only if it reproduces that
+exact clean-program failure signature with no additional failure, while its
+focused assurance, contract mode, repository prefix, typecheck, diff,
+factory, dependency, and clean-state gates pass. The claim and executability
+review must record both sides of that differential evidence; it may not
+describe the inherited verifier result as green.
 
 The previous V4 fingerprint and pretty-JSON hash remain historical facts in
 the earlier design. The correction claim records the new values rather than
