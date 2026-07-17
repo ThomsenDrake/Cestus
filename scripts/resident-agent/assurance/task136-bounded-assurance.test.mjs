@@ -323,6 +323,7 @@ function runRepositoryModeInTemp(registryText, { untrackedFile = false } = {}) {
   const dir = makeTempRepository(registryText);
   try {
     if (untrackedFile) {
+      execFileSync("git", ["config", "status.showUntrackedFiles", "no"], { cwd: dir, stdio: "ignore" });
       writeFileSync(join(dir, "untracked-dirty.txt"), "dirty\n");
     }
     return spawnSync(process.execPath, [scriptPath, "--mode", "repository"], {
