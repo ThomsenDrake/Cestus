@@ -231,3 +231,25 @@ or fallback.
   cast, assertion, suppression, API change, or production modification.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passes: **1 file / 15 tests**. `npm run typecheck` exits `0`.
+
+## RV-1-E-740 Dual-Review Recovery RED
+
+- Standing dual-review recovery authority: `RV-1-E-740`. The preserved clean
+  candidate is `b3520865bba54c8cb54b28d149d1354549f5c3a9`; this RED changes
+  only the focused test and this claim. Its production source blob remains
+  `3099b28f9d11b617dd3a67e2137648f7197b3985`, byte-identical to both
+  `b3520865` and the earlier compiler RED candidate `4bee902e`.
+- The focused RED command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exits `1`
+  with **1 failed file / 3 failed and 15 passed tests (18)**. It proves that
+  the candidate admits standard-parser-recognized noncanonical IPv4 host
+  spellings `127.1`, `2130706433`, `0x7f000001`, `127.0.1`, and `0x7f.1`;
+  the same named coverage retains the standards-recognized octal
+  `0177.0.0.1` rejection. It also proves the exact opaque safe-label
+  `reference_https:opaque` is admitted while other delimiter controls remain
+  rejected, and that `localeCompare` orders valid case-distinct released IDs
+  `provider_openai_codex_a` before `provider_openai_codex_A` rather than in
+  bytewise canonical order.
+- The named RED retains the existing ISO timestamp and ordinary
+  `policy.v1`/`adapter.v1` positive controls. `npm run typecheck` exits `0`
+  from the RED bytes without TypeScript diagnostics.

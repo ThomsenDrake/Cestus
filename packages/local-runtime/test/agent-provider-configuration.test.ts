@@ -443,6 +443,87 @@ describe("agent provider configuration", () => {
     });
   });
 
+  it("rejects standard-parser-recognized noncanonical IPv4 host spellings", () => {
+    const materials = [
+      "127.1",
+      "2130706433",
+      "0x7f000001",
+      "127.0.1",
+      "0177.0.0.1",
+      "0x7f.1"
+    ];
+    const accepted: string[] = [];
+
+    for (const material of materials) {
+      const input = byokConfiguration();
+      only(input.capabilities).capability.dataHandlingNotes = material;
+      if (accepts(input)) accepted.push(material);
+    }
+
+    expect(accepted).toEqual([]);
+  });
+
+  it("rejects opaque URI material after non-scheme delimiters in credential labels", () => {
+    const labels = [
+      "reference_https:opaque",
+      "reference-https:opaque",
+      "reference.https:opaque",
+      "reference/https:opaque"
+    ];
+    const accepted: string[] = [];
+
+    for (const safeLabel of labels) {
+      const input = byokConfiguration();
+      only(input.credentialReferences).safeLabel = safeLabel;
+      if (accepts(input)) accepted.push(safeLabel);
+    }
+
+    expect(accepted).toEqual([]);
+  });
+
+  it("sorts case-distinct released provider IDs in bytewise canonical order", () => {
+    const input = officialHarnessConfiguration({ providerId: "provider_openai_codex_a" });
+    const upperCase = officialHarnessConfiguration({ providerId: "provider_openai_codex_A" });
+    const upperCaseCapability = only(upperCase.capabilities);
+    const upperCaseReference = only(upperCase.credentialReferences);
+    const upperCasePolicy = only(upperCase.endpointPolicies);
+    const upperCaseFeasibility = only(upperCase.feasibility);
+    const upperCaseEvidence = requireOfficialEvidence(upperCaseFeasibility);
+
+    upperCaseCapability.capabilityHash = hash("e");
+    upperCaseCapability.capabilitySourceEventId = "evt_capability_harness_upper_1";
+    upperCaseCapability.capabilityRevision = "capability_revision_harness_upper_1";
+    upperCaseReference.credentialRefId = "agent_credref_openai_codex_upper";
+    upperCaseReference.sourceEventIds = ["evt_binding_harness_upper_1"];
+    upperCasePolicy.endpointPolicyId = "endpoint_policy_openai_codex_upper";
+    upperCasePolicy.sourceEventIds = ["evt_endpoint_policy_harness_upper_1"];
+    upperCaseFeasibility.feasibilityId = "provider_feasibility_openai_codex_upper";
+    upperCaseFeasibility.capabilityHash = hash("e");
+    upperCaseFeasibility.capabilitySourceEventId = "evt_capability_harness_upper_1";
+    upperCaseFeasibility.capabilityRevision = "capability_revision_harness_upper_1";
+    upperCaseFeasibility.credentialRefId = "agent_credref_openai_codex_upper";
+    upperCaseFeasibility.endpointPolicyId = "endpoint_policy_openai_codex_upper";
+    upperCaseFeasibility.sourceEventIds = [
+      "evt_binding_harness_upper_1",
+      "evt_capability_harness_upper_1",
+      "evt_endpoint_policy_harness_upper_1",
+      "evt_official_harness_upper_1"
+    ];
+    upperCaseEvidence.officialSourceEventIds = ["evt_official_harness_upper_1"];
+
+    input.capabilities.push(upperCaseCapability);
+    input.credentialReferences.push(upperCaseReference);
+    input.endpointPolicies.push(upperCasePolicy);
+    input.feasibility.push(upperCaseFeasibility);
+
+    const configuration = createAgentProviderConfiguration(input);
+
+    expect(configuration.capabilities.map((entry) => entry.capability.providerId)).toEqual([
+      "provider_openai_codex_A",
+      "provider_openai_codex_a"
+    ]);
+  });
+
   it("applies the text-material boundary across configuration facts", () => {
     const mutations: readonly TextMaterialMutation[] = [
       {
