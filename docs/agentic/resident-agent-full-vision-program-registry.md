@@ -20629,3 +20629,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   P2, style, hypothetical hardening, and unreproduced concerns go to backlog.
 - No integration or release record occurs. Strict prefix remains 16; preserved
   later candidates and `neo` remain untouched.
+
+## RV-1-E-749 — Task139-P1 IDNA-separator root-cause checkpoint
+
+- Recorded at: 2026-07-18T23:54:24Z
+- Fresh architecture/invariants task
+  `019f77a2-6862-75a1-9699-7c38667e10db` and executability/adversarial task
+  `019f77a2-6fb7-7042-abc9-04525fede930` independently return
+  **NEEDS-CHANGES** on exact candidate `1be41f59`. Both reproduce the same P1:
+  otherwise-valid BYOK configurations admit DNS material using IDNA dot
+  equivalents, including `api。例子`, `api。example`, `api．example`, and
+  `api｡example`. The executability review additionally reproduces the
+  combining-mark label `á.b`. Local WHATWG parsing normalizes these values to
+  DNS hostnames, while the frozen all-text no-host invariant requires
+  fail-closed rejection.
+- The root cause is the new structural DNS matcher: it recognizes only ASCII
+  `.` as a label separator and excludes Unicode combining marks from labels.
+  This is a contract-determined hostile-input defect, not a product, scope,
+  safety-invariant, credential, hardware, or external-behavior choice. Both
+  reviews are invalidated by the next code change.
+- Standing recovery resumes the same Task139-P1 owner and preserved history
+  for one causal RED and one minimal GREEN inside the exact three owned paths.
+  RED must pin all reproduced IDNA separators and the combining-mark hostname
+  while retaining released version/prose and non-host Unicode controls. GREEN
+  must canonicalize DNS separators and Unicode label form locally before
+  structural classification, without a TLD list, generic compatibility
+  bypass, DNS/network lookup, cast, assertion, suppression, widening, or
+  external effect. Task-scoped subagent-driven development and test-driven
+  development are explicitly approved for this task.
+- All admission gates and one fresh concurrent Terra/xhigh read-only review
+  pair remain mandatory after code. Strict prefix remains 16; no integration,
+  release record, push, or `neo` action occurs.
