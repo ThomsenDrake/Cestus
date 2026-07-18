@@ -19831,3 +19831,111 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `019f761d-0d24-7893-9546-5df5e297e808` continues unchanged on the same
   candidate. This registry-only transition changes no candidate or review
   bytes and opens no replacement implementation, repair, or review generation.
+
+## RV-1-E-727 — Task133 released as strict record 16
+
+- Recorded at: 2026-07-18T17:12:37Z
+- Architecture/invariants task `019f761d-0d24-7893-9546-5df5e297e808`
+  returned **APPROVED** on exact candidate
+  `44c4d821f9631fcbd2357d8548874578ea159b01`. Replacement
+  executability/adversarial task `019f7620-3633-7861-9294-2024bebf6f73`
+  initially treated immutable array data descriptors as hostile, then withdrew
+  that finding and returned **APPROVED** after reproducing the canonical
+  `assertResolvedContextPacksForExecution` path: its `Object.freeze(...)`
+  result necessarily has non-writable index and length descriptors and is
+  accepted without bypassing the strict sparse, prototype, symbol, extra-key,
+  or accessor rejection boundary. No reviewer mutated candidate bytes.
+- The coordinator integrated the complete preserved six-commit Task133 chain
+  without rewrite as merge
+  `0438e73859d75941953b25d75b2010315b5a8a55`, whose parents are the current
+  program review checkpoint `23f2824124232c2535a25e3db482e0d8efc4b07a`
+  and approved candidate `44c4d821f9631fcbd2357d8548874578ea159b01`.
+- Integrated-byte admission reproduces focused **1 file / 5 tests**,
+  cross-boundary **2 files / 31 tests**, standalone typecheck, diff hygiene,
+  factory readiness, all four V4 contract markers, exact three-path cumulative
+  scope, clean state, and real non-symlinked dependency/Vitest provenance. The
+  sole compile correction remains the typed own `length` descriptor lookup;
+  the focused test is byte-identical to the compiler RED and there is no cast,
+  assertion, suppression, API widening, contract change, or weakened hostile
+  input check.
+- Integrated full `npm test` JSON and `npm run verify` pass typecheck and retain
+  exactly the clean record-15 inherited **12 failing files / 69 failing tests /
+  5 skips**, with the same failing and skipped assertion identities and only
+  Task133's **5** new passes. The two position-sensitive V4 assurance-unit
+  assertions that still expect 13 records reproduce identically on the
+  pre-integration candidate and remain within that inherited cohort; contract
+  mode and all four required V4 markers are green.
+- Pre-record repository mode executes the released prefix and emits
+  `TASK136_REPOSITORY_PREFIX_OK records=15 commands=15` before only
+  `repository release closure incomplete: expected 29 records, found 15`.
+  Status advances Task133 `reviewing -> approved -> integrated -> released`;
+  strict prefix becomes 16, preserved Task121, Task122, and G136-SC candidates
+  remain held for their exact release-order bases, and `neo` remains untouched.
+
+## Task136 dispatch release v4: Task133
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task133",
+  "candidateSha": "44c4d821f9631fcbd2357d8548874578ea159b01",
+  "reviews": [
+    {
+      "threadId": "019f761d-0d24-7893-9546-5df5e297e808",
+      "candidateSha": "44c4d821f9631fcbd2357d8548874578ea159b01",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f7620-3633-7861-9294-2024bebf6f73",
+      "candidateSha": "44c4d821f9631fcbd2357d8548874578ea159b01",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0438e73859d75941953b25d75b2010315b5a8a55",
+  "releaseEventId": "task136-release-v4-Task133",
+  "prerequisites": [
+    {
+      "cardId": "Task126-R",
+      "integrationSha": "4877d7b2900a416cd417b73fc13a55b2e6b845d0",
+      "releaseEventId": "task136-release-v4-Task126-R"
+    },
+    {
+      "cardId": "Task127",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-Task127"
+    },
+    {
+      "cardId": "Task128",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-Task128"
+    },
+    {
+      "cardId": "Task129",
+      "integrationSha": "eb21d466a54ebdf2a8397c08d54167411bfddde2",
+      "releaseEventId": "task136-release-v4-Task129"
+    },
+    {
+      "cardId": "Task130",
+      "integrationSha": "95c13101d61c250fa0008a53caa2976053af46e8",
+      "releaseEventId": "task136-release-v4-Task130"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/agent-runtime-prompt-renderer.ts",
+      "disposition": "owned",
+      "blobSha": "b2477b5446e85e728f4f565515c19a31658e4e4a"
+    },
+    {
+      "path": "packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts",
+      "disposition": "owned",
+      "blobSha": "326126b344a94e44908eca55e874ea17d5eee00e"
+    },
+    {
+      "path": "docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md",
+      "disposition": "owned",
+      "blobSha": "869cbb03bd694b8b9e406e49ac01c93999a01fb9"
+    }
+  ]
+}
+```
