@@ -20432,3 +20432,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent Terra/xhigh read-only review pair are required after code changes.
 - Strict prefix remains 16. No integration, release record, provider/network/
   credential action, push, or `neo` action occurs.
+
+## RV-1-E-743 — Task139-P1 complete-scheme candidate admitted to fresh review
+
+- Recorded at: 2026-07-18T22:30:10Z
+- The same owner preserved causal RED
+  `a33364adef8a4ee75d26ef7094951462a2453b04` and minimal GREEN candidate
+  `b5cbe5d7f5491c5350c99b01085e8ce59f7f146c`. RED changes only test and
+  claim and proves twelve admissions across six bare schemes and two text
+  boundaries while released ISO/`policy.v1`/`adapter.v1` controls remain
+  accepted. GREEN keeps the RED test byte-identical and changes only the URI
+  scheme grammar plus claim.
+- The correction recognizes the scheme separator independently of payload
+  presence. It preserves underscore/non-scheme delimiter detection, local
+  standards-based canonical/noncanonical IP classification, bytewise ordering,
+  exact binding and provenance, immutable hostile-shape/secret-safe output,
+  Task139-PM ownership, and data-only behavior without network, DNS, provider,
+  credential, write, fallback, or external effects.
+- Owner and independent coordinator admission pass focused **1 file / 19
+  tests**, cross-boundary **2 files / 28 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 markers, exact three-path cumulative
+  scope, clean tracked/untracked state, and real non-symlinked dependencies
+  with executable Vitest 4.1.9. Repository mode executes
+  `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before only the expected
+  incomplete-29 boundary.
+- Full `npm test` and `npm run verify` retain the exact inherited **12 failing
+  files / 69 failing tests / 5 skips**, unchanged identities, and **2,741
+  passes**, exactly nineteen above record 16.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  authorized on exact `b5cbe5d7`; SDD/TDD is not relevant or authorized for
+  reviewers. Numeric dotted tokens recognized by the standard parser remain
+  intentionally rejected under the all-IP invariant; only exact reproduced
+  contract violations may block.
+- No integration or release record occurs. Strict prefix remains 16; later
+  candidates and `neo` remain untouched.
