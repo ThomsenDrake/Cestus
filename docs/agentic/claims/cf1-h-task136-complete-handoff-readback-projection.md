@@ -203,3 +203,40 @@ production lifecycle. The causal repair tests require the actual
 authority-bound production call to revalidate across terminal/task-status
 completion, return the complete replayed Task119 readback, and leave no
 task-status effect after a stale authority is observed.
+
+## One-Time Post-Ceiling Safety Packet
+
+- Status transition: `blocked` -> `implementing-post-ceiling-safety-packet`.
+- Human exception: one post-ceiling CF1-HR safety packet only; no repair remains
+  after its fresh final review.
+- Exact base and blocked candidate:
+  `5fc556773c81b46953064dc8fc2b105ebc3cfd12`.
+- Governing registry evidence: `RV-1-E-708` and `RV-1-E-709`.
+- Prior final reviews: architecture/invariants
+  `019f72a7-a377-78a3-9e76-e51071fcb861`; executability/adversarial
+  `019f72a7-a394-7b20-9116-249d473d096f`.
+- Worker: Codex `gpt-5.6-terra` / `xhigh`.
+- This human exception authorizes exactly one causal RED followed by one
+  minimal GREEN within the existing fourteen-path CF1-HR boundary. Preserve
+  every prior commit; do not reset, rebase, amend, squash, drop, reorder, or
+  rewrite history.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+
+The RED adds production-path evidence for the three adjudicated P1s: exact
+created/queued/running task history must issue only for the bound task/run;
+the strict V2 recorder must append `run terminal ->
+agent.task.orchestration.completed -> task status`; and a stale V2 rejection
+must leave exported raw completion and raw terminal/status projection unable
+to produce a verified completed readback. Immutable V1 finalization replay
+remains separately exercised.
+
+RED command:
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts
+```
+
+Observed expected RED: exit `1`; 2 failed files, 3 failed / 73 passed tests.
+The portable exact-history issuance promise rejected; the production lifecycle
+had no orchestration-completed event; and `appendSpecialistCompletion` resolved
+after stale V2 rejection. No production path changed before this evidence.

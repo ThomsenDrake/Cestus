@@ -29,10 +29,12 @@ import {
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
 import {
+  appendSpecialistCompletion,
   recordAuthorityBoundSpecialistHandoff,
   type RecordAuthorityBoundSpecialistHandoffResult
 } from "../src/specialist-runner-kernel.js";
 import { issueMountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
+import { buildSpecialistHandoffProjection } from "../src/specialist-handoff-projection.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import {
   createMountedProductionPromptReadbackAuthority,
@@ -518,7 +520,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     });
   });
 
-  it("drives the authority-bound production record through terminal, task status, and complete replayed readback", async () => {
+  it("drives the authority-bound production record through terminal, orchestration completion, task status, and complete replayed readback", async () => {
     const fixture = await durableHandoffFixture({ runId: "run_authority_v2_complete_001", taskId: "task_authority_v2_complete_001" });
     await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
     const authorityBinding = handoffAuthorityBindingFor(fixture);
@@ -534,11 +536,34 @@ describe("durable specialist handoff runner lifecycle", () => {
       context: { causationId: recorded.recorded.id },
       payload: { runId: fixture.runId }
     });
+    const orchestration = (await fixture.ledger.readAll()).find((event) =>
+      event.type === "agent.task.orchestration.completed" && event.payload.runId === fixture.runId
+    );
+    expect(orchestration).toMatchObject({
+      context: { causationId: recorded.terminal.id },
+      payload: {
+        taskId: fixture.taskId,
+        runId: fixture.runId,
+        finalOutputStepEventId: recorded.manifest.finalOutputEventId,
+        handoffPreparedEventId: recorded.prepared.id,
+        handoffRecordedEventId: recorded.recorded.id,
+        specialistRunCompletedEventId: recorded.terminal.id
+      }
+    });
     expect(recorded.taskStatus).toMatchObject({
       type: "agent.task.status.changed",
-      context: { causationId: recorded.terminal.id },
+      context: { causationId: orchestration?.id },
       payload: { taskId: fixture.taskId, runId: fixture.runId, status: "completed" }
     });
+    expect((await fixture.ledger.readAll()).filter((event) =>
+      event.type === "agent.specialist-run.completed" ||
+      event.type === "agent.task.orchestration.completed" ||
+      (event.type === "agent.task.status.changed" && event.payload.status === "completed")
+    ).map((event) => event.type)).toEqual([
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed",
+      "agent.task.status.changed"
+    ]);
     expect(recorded.readback).toMatchObject({
       outcome: "verified",
       handoffId: recorded.handoff.handoffId,
@@ -581,6 +606,82 @@ describe("durable specialist handoff runner lifecycle", () => {
     )).toEqual([]);
   });
 
+  it("rejects raw completion and projection completion after stale V2 authority rejects", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_raw_bypass_001", taskId: "task_authority_v2_raw_bypass_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    let stale = false;
+    const ledger = new StaleAfterEventLedger(fixture.ledger, "agent.specialist-handoff.recorded", () => { stale = true; });
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: handoffAuthorityBindingFor(fixture),
+      revalidateCurrent: async () => {
+        if (stale) throw new Error("mounted authority is stale");
+      }
+    });
+
+    await expect(recordAuthorityBoundSpecialistHandoff({
+      ...recordInput(fixture),
+      ledger,
+      handoffAuthorityWitness: witness
+    })).rejects.toThrow(/authority|stale/i);
+
+    const recorded = (await fixture.ledger.readAll()).find((event) => event.type === "agent.specialist-handoff.recorded");
+    if (recorded === undefined || recorded.type !== "agent.specialist-handoff.recorded") {
+      throw new Error("fixture must retain the stale V2 recorded handoff");
+    }
+    const terminalCount = (await fixture.ledger.readAll()).filter((event) =>
+      event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed"
+    ).length;
+
+    await expect(appendSpecialistCompletion({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      runId: fixture.runId,
+      summary: "Durable specialist handoff is available for review.",
+      outputArtifactHashes: [fixture.outputArtifact.artifactHash],
+      relatedEventIds: [recorded.id]
+    })).rejects.toThrow(/authority-bound|authority/i);
+    expect((await fixture.ledger.readAll()).filter((event) =>
+      event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed"
+    )).toHaveLength(terminalCount);
+
+    const rawTerminal = await fixture.ledger.append({
+      type: "agent.specialist-run.completed",
+      version: 1,
+      streamId: `agent_run_${fixture.runId}`,
+      context: lifecycleContext(fixture, recorded.id),
+      payload: {
+        runId: fixture.runId,
+        completedAt: fixture.clock.now(),
+        outputArtifactHashes: [fixture.outputArtifact.artifactHash],
+        relatedEventIds: [recorded.id],
+        summary: "Durable specialist handoff is available for review."
+      }
+    });
+    await fixture.ledger.append({
+      type: "agent.task.status.changed",
+      version: 1,
+      streamId: `agent_task_${fixture.taskId}`,
+      context: lifecycleContext(fixture, rawTerminal.id),
+      payload: {
+        taskId: fixture.taskId,
+        status: "completed",
+        changedBy: fixture.actor.id,
+        reason: "Raw caller status must not complete a rejected V2 handoff.",
+        runId: fixture.runId
+      }
+    });
+
+    const projection = await buildSpecialistHandoffProjection({
+      events: await fixture.ledger.readAll(),
+      manifestReader: fixture.manifestStore,
+      runId: fixture.runId,
+      taskId: fixture.taskId
+    });
+    expect(projection.state).not.toBe("task-completed");
+    expect(projection.selectedReadback).toBeUndefined();
+  });
+
   it("uses last stream sequence plus one for expected append sequencing", async () => {
     const eventA = lifecycleEvent("evt_sequence_a", 1);
     const eventB = lifecycleEvent("evt_sequence_b", 1);
@@ -601,8 +702,15 @@ describe("durable specialist handoff runner lifecycle", () => {
       now: fixture.clock.now,
       recorded
     });
+    const replayed = await finalizeSpecialistRunAfterHandoff({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      recorded
+    });
 
     expect(finalized.taskStatus).toBeUndefined();
+    expect(replayed.terminal.id).toBe(finalized.terminal.id);
     expect((await fixture.ledger.readAll()).map((event) => event.type)).toEqual(expect.arrayContaining([
       "agent.specialist-run.step.recorded",
       "agent.specialist-handoff.prepared",
