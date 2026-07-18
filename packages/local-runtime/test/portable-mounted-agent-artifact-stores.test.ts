@@ -99,6 +99,25 @@ describe("portable mounted agent artifact stores", () => {
     expect(String(safeError)).not.toContain(join(fixture.workspaceRoot, "derivatives"));
   });
 
+  it("rejects an unsupported runType before portable witness issuance", async () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      wakeRuntime,
+      lifecyclePorts: fixture.ports,
+      runtimeHandle: fixture.handle
+    });
+    await admit(fixture, "wake");
+    const producer = createPortableMountedAgentArtifactStoreProducer(
+      issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+    );
+
+    await expect(Reflect.apply(producer.bind, producer, [{
+      ...dispatch,
+      runType: "unsupported-specialist-workflow"
+    }])).rejects.toThrow(/authority/i);
+  });
+
   it("derives a non-structural V2 handoff witness from the mounted snapshot", async () => {
     const fixture = authorityFixture();
     const { result } = await issuedBinding(fixture);

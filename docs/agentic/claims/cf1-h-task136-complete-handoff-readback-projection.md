@@ -240,3 +240,29 @@ Observed expected RED: exit `1`; 2 failed files, 3 failed / 73 passed tests.
 The portable exact-history issuance promise rejected; the production lifecycle
 had no orchestration-completed event; and `appendSpecialistCompletion` resolved
 after stale V2 rejection. No production path changed before this evidence.
+
+## One-Time Post-RV-1-E-711 Compile-Closure Packet
+
+- Status transition: `authorized-compile-closure` -> `implementing-compile-closure`.
+- Human authorization: exactly one claim/test-only causal RED followed by one
+  minimal GREEN; no further CF1-HR code or test repair remains after its final
+  pair.
+- Exact merged base: `08eababb9ccde92fe73c8588ab7ea61f0b2b98b7`; source
+  candidate: `9799beead86a3b14544549516087c2af6a5f6d54`.
+- Governing evidence: `RV-1-E-711`, `RV-1-E-712`; blocking reviews:
+  architecture/invariants `019f7306-8ee5-7801-9335-e5f8f37da10d` and
+  executability/adversarial `019f7306-8ed6-75b0-9ce8-66916316fdb2`.
+- Worker: Codex `gpt-5.6-terra` / `xhigh`.
+- Scope is exactly seven paths: this claim; the authority source/test; the
+  runner kernel source/test; and the portable mounted-store source/test.
+- Reproduced before production change with `npm run typecheck`: exit `2` and
+  five diagnostics where unvalidated `string` lifecycle `runType` reaches the
+  closed `AgentSpecialistRunType` orchestration ABI: runner kernel near lines
+  1060, 2345, 2356, and 2375, and portable mounted stores near line 710.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+
+The causal RED names the valid closed-union path and requires unsupported
+`runType` rejection before both direct mounted-witness issuance and portable
+binding can create a witness. On inherited bytes these tests fail because the
+existing normalizers accept arbitrary nonempty strings; the failure is runtime
+validation behavior, not fixture or TypeScript noise.
