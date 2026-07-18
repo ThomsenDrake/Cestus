@@ -155,7 +155,10 @@ function normalizeCredentialReferences(value: unknown): readonly CredentialRefer
   return records.map((value) => {
     const parsed = credentialReferenceSchema.safeParse(value);
     if (!parsed.success) throw invalidConfiguration();
-    const reference = createCredentialReference(parsed.data);
+    const reference = createCredentialReference({
+      ...parsed.data,
+      sourceEventIds: sortEventIds(parsed.data.sourceEventIds.map(requireEventId))
+    });
     if (
       !seen.add(reference.credentialRefId) || reference.status !== "healthy" || !validEventIds(reference.sourceEventIds)
     ) {
@@ -418,7 +421,7 @@ function freezeEventIds(value: unknown): readonly `evt_${string}`[] {
   if (!Array.isArray(value) || value.length === 0) throw invalidConfiguration();
   const ids = value.map(requireEventId);
   if (new Set(ids).size !== ids.length) throw invalidConfiguration();
-  return Object.freeze(ids);
+  return Object.freeze(sortEventIds(ids));
 }
 
 function validEventIds(value: readonly string[]): boolean {
@@ -461,7 +464,15 @@ function freezeSorted<T>(values: readonly T[], key: (value: T) => string): reado
 }
 
 function sortStrings(values: readonly string[]): readonly string[] {
-  return Object.freeze([...values].sort((left, right) => left < right ? -1 : left > right ? 1 : 0));
+  return Object.freeze([...values].sort(compareStrings));
+}
+
+function sortEventIds(ids: readonly `evt_${string}`[]): `evt_${string}`[] {
+  return [...ids].sort(compareStrings);
+}
+
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function hasExactStringList(left: readonly string[], right: readonly string[]): boolean {
