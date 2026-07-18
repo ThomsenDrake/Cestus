@@ -20037,3 +20037,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task139-P1 repair exists after their verdicts.
 - Status advances Task139-P1 `implementing -> candidate -> reviewing`. Strict
   prefix remains 16; later-order candidates and `neo` remain untouched.
+
+## RV-1-E-731 — Task139-P1 durably blocked after final review
+
+- Recorded at: 2026-07-18T18:18:09Z
+- Final architecture/invariants task
+  `019f766c-c005-72e3-8dc7-f40f93a4f012` and final
+  executability/adversarial task `019f766c-c071-7d31-b3b5-0ea7d853eea2`
+  each returned **NEEDS-CHANGES** for exact candidate
+  `d3abf6122c9430ae8e2a9fa2c9da4c345701b4a5`. Both independently found the
+  official-harness boundary incompatible with the released Task129 and
+  Task130 interfaces; neither reviewer changed a file.
+- The coordinator reproduced the P1 exactly from candidate bytes. An otherwise
+  canonical official configuration using released Codex identity
+  `provider_openai_codex_primary` is rejected. Current source hard-codes only
+  `provider_openai_codex_harness` and `provider_xai_harness`, assigns one OAuth
+  kind to each family, and requires credential scope `model-inference`.
+  Released Codex and xAI sources instead accept their frozen
+  `provider_openai_codex_...` / `provider_xai_...` families, either
+  `subscription-oauth` or `device-code-oauth`, and `harness-execution` scope.
+  The recovery design pins those same family, OAuth, and scope semantics. The
+  candidate therefore makes valid released official evidence unrepresentable.
+- Coordinator execution also reproduced the review pair's configuration-text
+  P1s. An otherwise valid BYOK configuration with descriptor text
+  `Remote provider uses api.example.xyz` is accepted because the bare-host
+  matcher recognizes only a finite TLD list. The same configuration with
+  credential-reference safe label `https://api.example.invalid` is accepted
+  because credential-reference normalization never applies the configuration
+  URI/host predicate. These violate the frozen rejection of URL/host material;
+  they are concrete fail-open inputs rather than hypothetical hardening.
+- The repair did close all six previously authorized counterexamples, and its
+  compile, one-to-one, provenance, data-only, immutable, scope, and admission
+  evidence remains preserved. Those successes do not disprove the new P1s.
+  Coordinator adjudication therefore accepts the final findings and advances
+  Task139-P1 `reviewing -> blocked` without integration or strict record 17.
+- The sole consolidated repair and final-pair ceiling are exhausted. No further
+  automatic Task139-P1 code or test edit, replacement owner, recovery
+  generation, compatibility lane, new card, V5, or renamed cycle is permitted.
+  Task139-P1 is the release-position-17 critical path to Task139-PM and the
+  remaining runtime-composition graph. Preserved G136-SC, Task121, and Task122
+  candidates remain held for their exact later-order bases; there is no other
+  fresh card that can be reviewed or integrated at the current strict prefix.
+  Strict records remain 16 and `neo` remains untouched.
