@@ -1,7 +1,7 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
@@ -12,17 +12,32 @@ import {
   createContextPackRegistry,
   createSpecialistDerivativeArtifactStore,
   FakeModelProvider,
-  runInvestigationPlannerWorkflow
+  runInvestigationPlannerWorkflow as runInvestigationPlannerWorkflowKernel
 } from "../src/index.js";
 import type { ProviderReadinessDto } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import { buildSpecialistHandoffMaterial } from "../src/specialist-handoff-manifest.js";
 import { appendSpecialistFinalOutputStep } from "../src/specialist-runner-kernel.js";
+import { issueMountedSpecialistHandoffAuthorityWitness, type MountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
+import { productionSpecialistPromptRegistrationFor, renderProductionSpecialistPrompt } from "../src/production-specialist-prompts.js";
+import type { RunInvestigationPlannerWorkflowInput } from "../src/investigation-planner-workflow.js";
 import { buildTaskAttemptId, taskOrchestrationStreamId } from "../src/task-orchestrator-events.js";
 import type { AgentContextPackJsonValue } from "../src/index.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { resolveLocalRuntimeConfig } from "../../local-runtime/src/config.js";
+import { createMountedPromptArtifactStore } from "../../local-runtime/src/mounted-prompt-artifact-store.js";
+import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../../local-runtime/src/runtime-factory.js";
 
 const now = () => "2026-07-10T01:00:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
+const plannerAuthorityHash: `sha256:${string}` = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+const mountedPlannerDirs: string[] = [];
+const mountedPlannerHandles: LocalRuntimeHandle[] = [];
+
+afterEach(() => {
+  for (const handle of mountedPlannerHandles.splice(0)) handle.close();
+  for (const dir of mountedPlannerDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 describe("investigation planner workflow", () => {
   it("rejects stale evidence before recording the advisory plan handoff", async () => {
@@ -55,7 +70,7 @@ describe("investigation planner workflow", () => {
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.specialist-handoff.recorded");
   });
 
-  it("records the advisory plan through exact durable handoff readback", async () => {
+  it("records the advisory plan through the authority-bound durable handoff readback", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const handoffStore = createDerivativeStore();
     const sourceEventIds = (await ledger.readAll()).map((event) => event.id);
@@ -86,12 +101,21 @@ describe("investigation planner workflow", () => {
     expect("handoffId" in result.handoff).toBe(true);
     expect(result.handoff.status).toBe("ready-for-review");
     expect(result.diagnostics).toEqual([]);
+    expect((result as { readonly readback?: { readonly outcome: string; readonly taskId: string; readonly runId: string; readonly manifestSchemaVersion: string } }).readback)
+      .toMatchObject({
+        outcome: "verified",
+        taskId: "task_investigation_001",
+        runId: "run_investigation_001",
+        manifestSchemaVersion: "agent-specialist-handoff-manifest.v2"
+      });
     const events = await ledger.readAll();
     expect(events.map((event) => event.type)).toEqual(expect.arrayContaining([
       "agent.specialist-run.step.recorded",
       "agent.specialist-handoff.prepared",
       "agent.specialist-handoff.recorded",
-      "agent.specialist-run.completed"
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed",
+      "agent.task.status.changed"
     ]));
     expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
       "agent.tool.requested", "prr.request.sent", "prr.followup.sent"
@@ -102,10 +126,16 @@ describe("investigation planner workflow", () => {
     const preparedIndex = events.findIndex((event) => event.type === "agent.specialist-handoff.prepared");
     const recordedIndex = events.findIndex((event) => event.type === "agent.specialist-handoff.recorded");
     const terminalIndex = events.findIndex((event) => event.type === "agent.specialist-run.completed");
+    const orchestrationIndex = events.findIndex((event) => event.type === "agent.task.orchestration.completed");
+    const taskStatusIndex = events.findIndex((event) =>
+      event.type === "agent.task.status.changed" && event.payload.status === "completed" && event.payload.runId === "run_investigation_001"
+    );
     expect(finalOutputIndex).toBeGreaterThanOrEqual(0);
     expect(finalOutputIndex).toBeLessThan(preparedIndex);
     expect(preparedIndex).toBeLessThan(recordedIndex);
     expect(recordedIndex).toBeLessThan(terminalIndex);
+    expect(terminalIndex).toBeLessThan(orchestrationIndex);
+    expect(orchestrationIndex).toBeLessThan(taskStatusIndex);
     expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
       "assertion.accepted",
       "entity.resolved",
@@ -115,6 +145,37 @@ describe("investigation planner workflow", () => {
       "prr.request.sent",
       "prr.followup.sent"
     ]));
+  });
+
+  it("requires injected opaque current V2 handoff authority before planner model invocation", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const handoffStore = createDerivativeStore();
+    const result = await runInvestigationPlannerWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(false, false, (await ledger.readAll()).map((event) => event.id)),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret" as const
+      },
+      derivativeStore: handoffStore,
+      handoffStore,
+      handoffAuthorityWitness: undefined,
+      investigationId: "inv_scope_001"
+    });
+
+    expect(result.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
+    expect(result.handoff.safeSummary).toMatch(/authority/i);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.specialist-handoff.recorded");
   });
 
   it("permits bounded instructional narrative while producing only local task and PRR draft candidates", async () => {
@@ -574,8 +635,17 @@ describe("investigation planner workflow", () => {
     expect(afterRecovery.slice(beforeRecovery.length).map((event) => event.type)).toEqual([
       "agent.specialist-handoff.prepared",
       "agent.specialist-handoff.recorded",
-      "agent.specialist-run.completed"
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed",
+      "agent.task.status.changed"
     ]);
+    expect((recovered as { readonly readback?: { readonly outcome: string; readonly finalOutputEventId: string } }).readback)
+      .toMatchObject({
+        outcome: "verified",
+        finalOutputEventId: beforeRecovery.find((event) =>
+          event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
+        )?.id
+      });
     expect(afterRecovery.map((event) => event.type)).not.toEqual(expect.arrayContaining([
       "agent.tool.requested", "prr.request.sent", "prr.followup.sent"
     ]));
@@ -807,6 +877,106 @@ describe("investigation planner workflow", () => {
     expect(eventTypes).not.toContain("agent.tool.requested");
   });
 });
+
+type PlannerWorkflowInput = RunInvestigationPlannerWorkflowInput & {
+  readonly handoffAuthorityWitness?: MountedSpecialistHandoffAuthorityWitness | undefined;
+};
+
+async function runInvestigationPlannerWorkflow(input: PlannerWorkflowInput) {
+  const handoffAuthorityWitness = Object.prototype.hasOwnProperty.call(input, "handoffAuthorityWitness")
+    ? input.handoffAuthorityWitness
+    : await mountedPlannerHandoffAuthorityWitness(input);
+  const workflowInput = {
+    ...input,
+    mountedPromptReadbackWitness: await mountedPlannerPromptReadbackWitness(input),
+    handoffAuthorityWitness
+  };
+  return await runInvestigationPlannerWorkflowKernel(workflowInput);
+}
+
+async function mountedPlannerPromptReadbackWitness(input: RunInvestigationPlannerWorkflowInput) {
+  const scope = input.scope ?? { kind: "task" as const, refs: [input.taskId] };
+  const registration = productionSpecialistPromptRegistrationFor("investigation-planner");
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || scope.associatedPrrRequestId !== undefined)
+    .map(async (requirement) => await input.contextPacks.buildResolved(requirement.contextPackId)));
+  const rendered = renderProductionSpecialistPrompt({
+    taskId: input.taskId,
+    runId: input.runId,
+    runType: "investigation-planner",
+    generatedAt: input.now(),
+    scope,
+    resolvedContextPacks
+  });
+  const store = await createMountedPromptArtifactStore({ handle: mountedPlannerHandle("ws_investigation") });
+  await store.put(rendered);
+  const readback = await store.read({
+    inputArtifactHash: rendered.manifest.inputArtifactHash as `sha256:${string}`,
+    authoritativeResolvedContextPacks: rendered.resolvedContextPacks
+  });
+  if (readback.witness === undefined) throw new Error("Expected mounted investigation planner prompt witness.");
+  return readback.witness;
+}
+
+async function mountedPlannerHandoffAuthorityWitness(
+  input: RunInvestigationPlannerWorkflowInput
+): Promise<MountedSpecialistHandoffAuthorityWitness | undefined> {
+  const events = await input.ledger.readAll();
+  const claim = events.findLast((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+    event.type === "agent.task.orchestration.claimed" &&
+    event.payload.taskId === input.taskId &&
+    event.payload.runType === "investigation-planner"
+  );
+  const highWaterEventId = events.at(-1)?.id;
+  if (claim === undefined || highWaterEventId === undefined) return undefined;
+  return issueMountedSpecialistHandoffAuthorityWitness({
+    authorityBinding: {
+      workspaceIdentityHash: plannerAuthorityHash,
+      mountGeneration: "mount_generation_investigation_001",
+      ledgerStoreIdentity: "ledger_store_investigation_001",
+      artifactStoreIdentity: "artifact_store_investigation_001",
+      ledgerHighWaterEventId: highWaterEventId,
+      policyHash: plannerAuthorityHash,
+      activeLocksHash: plannerAuthorityHash
+    },
+    taskLifecycle: {
+      taskId: input.taskId,
+      attemptId: claim.payload.attemptId,
+      runId: input.runId,
+      runType: "investigation-planner",
+      retryGeneration: claim.payload.retryGeneration
+    },
+    revalidateCurrent: async () => undefined
+  });
+}
+
+function mountedPlannerHandle(workspaceId: string): LocalRuntimeHandle {
+  const root = mkdtempSync(join(tmpdir(), "cestus-investigation-planner-mounted-"));
+  const cwd = mkdtempSync(join(tmpdir(), "cestus-investigation-planner-mounted-cwd-"));
+  mountedPlannerDirs.push(root, cwd);
+  createPortableWorkspace({
+    rootDir: root,
+    workspaceId,
+    label: "Investigation planner mounted prompt fixture",
+    createdAt: now(),
+    createdBy: "actor_investigation_planner_test"
+  });
+  const handle = createSqlitePrrRuntime({
+    config: {
+      ...resolveLocalRuntimeConfig({ cwd, env: {} }),
+      storage: {
+        strategy: "portable-workspace",
+        workspaceRoot: root,
+        expectedWorkspaceId: workspaceId,
+        sqlitePath: join(root, "ledger", "ontology.sqlite")
+      }
+    },
+    actor: { id: "actor_investigation_planner_test", kind: "system", label: "Investigation Planner Test" },
+    now
+  });
+  mountedPlannerHandles.push(handle);
+  return handle;
+}
 
 async function preparedRuntime(
   runType: "investigation-planner" | "evidence-triage" = "investigation-planner",
