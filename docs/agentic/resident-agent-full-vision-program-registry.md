@@ -19614,3 +19614,40 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reproduced P0/P1 contract or safety violation may block. Status advances
   Task133 `implementing -> candidate -> reviewing`; strict prefix remains 15
   and `neo` remains untouched.
+
+## RV-1-E-720 — Task133 consolidated P1 repair packet authorized
+
+- Recorded at: 2026-07-18T13:38:21Z
+- Executability/adversarial reviewer
+  `019f756a-ac15-7620-b339-cdf76161e9fb` returned **NEEDS-CHANGES** after
+  reproducing a P1 on exact candidate
+  `b39166785fffc2e46af9ddb07be375521a9e89cb`: changing only the supplied
+  `exactRun.runId` still returns an `agent-production-prompt-binding.v2`
+  artifact. The verified V1 object identity and downstream binder constrain
+  run type and context, but do not compare the canonical V1 prompt's run/task
+  identity before binding caller-controlled exact-run fields.
+- Architecture/invariants reviewer
+  `019f756a-a434-7ab3-a4e7-ff5ac5f38661` independently returned
+  **NEEDS-CHANGES** after adding one enumerable symbol to the otherwise
+  registry-issued `resolvedContextPacks` array. The adapter passed that nested
+  container unchanged, and downstream pack-brand validation accepted it while
+  ignoring the hostile array key.
+- Coordinator adjudication confirms both findings as exact P1 failures of the
+  frozen Task133 requirements for the exact approved run and fail-closed
+  hostile input. The same Task133 owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, branch
+  `codex/task133-runtime-prompt-renderer`, and isolated worktree resume from the
+  preserved three-commit candidate for the card's sole consolidated repair.
+- The repair is limited to one causal test-only RED commit and one minimal
+  GREEN commit in the existing three-path Task133 boundary. It must bind the
+  V1 prompt's canonical run/task identity before V2 issuance and reject
+  symbol/extra/accessor keys on the resolved-context array without widening or
+  minting authority, parsing raw prompt bytes ad hoc, or changing shared
+  contracts. Task-scoped subagent-driven development and test-driven
+  development are explicitly approved for this task.
+- The prior pair is invalidated by code changes. After exact admission, one
+  fresh concurrent final read-only pair is permitted; no further automatic
+  Task133 code/test repair follows that pair. Status advances Task133
+  `reviewing -> repair-authorized -> implementing`; strict prefix remains 15,
+  all candidate/RED/GREEN/review history is preserved, and `neo` remains
+  untouched.
