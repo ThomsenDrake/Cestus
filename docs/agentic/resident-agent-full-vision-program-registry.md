@@ -20500,3 +20500,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent Terra/xhigh read-only review pair remain mandatory after code.
 - Strict prefix remains 16. No integration, release record, provider/network/
   credential action, push, or `neo` action occurs.
+
+## RV-1-E-745 — Task139-P1 embedded-IP and pre-authorization admission root cause
+
+- Recorded at: 2026-07-18T22:55:02Z
+- The same owner preserved DNS/revocation causal RED `57e40c51` and GREEN
+  `4b1a7c8e95e500b61e621fa2dec5b9c1dc67de94`. Owner admission passes focused
+  **1 file / 21 tests**, cross-boundary **2 files / 30 tests**, typecheck,
+  factory/V4/repository, exact differential, scope, dependency, and clean-state
+  gates. No fresh review is dispatched yet.
+- Independent coordinator source admission finds two further P1 assumptions.
+  First, the standard-URL IPv4 token boundary treats `_`, `-`, and `:` as
+  in-token, so noncanonical IPv4 material can be hidden in safe text such as
+  `reference_127.1_suffix`, `reference-0x7f000001`, or `127.1:8080` even though
+  the same bare host forms reject. Second, current feasibility compares only
+  expiry against `assessedAt`; it does not require the credential's
+  `authorizedAt` to be at or before that assessment, so an assessment can bind
+  a credential that did not yet exist.
+- Both corrections are fixed by the frozen all-text IP and exact currentness
+  invariants. Review remains withheld. The changed counterfactual broadens
+  host-token delimiters rather than adding spelling cases, with an exact ISO
+  timestamp control; temporal binding must enforce authorization-before-or-at-
+  assessment while retaining expiration and revocation rules.
+- Standing recovery authority resumes the same owner and preserved history for
+  one causal RED and one minimal GREEN inside the exact three Task139-P1 paths.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Full admission and one fresh concurrent
+  Terra/xhigh read-only review pair remain required after code.
+- Strict prefix remains 16. No integration, release record, provider/network/
+  credential action, push, or `neo` action occurs.
