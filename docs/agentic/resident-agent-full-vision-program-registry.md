@@ -20467,3 +20467,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   contract violations may block.
 - No integration or release record occurs. Strict prefix remains 16; later
   candidates and `neo` remain untouched.
+
+## RV-1-E-744 — Task139-P1 DNS-label and revoked-reference root cause
+
+- Recorded at: 2026-07-18T22:38:52Z
+- Architecture/invariants task `019f775a-99a1-70c2-a07f-3c5f5601f0e1`
+  returned **NEEDS-CHANGES** after exact `b5cbe5d7` admitted `api.x` and `a.b`
+  in configuration text. The DNS classifier requires at least two alphabetic
+  characters in the terminal label even though the frozen rule rejects DNS
+  host material independent of any TLD spelling or length list.
+- Executability/adversarial task `019f775a-997c-7b10-bba8-8817fc81b71d`
+  returned **NEEDS-CHANGES** after exact bytes accepted a canonical BYOK
+  reference with `status: "healthy"` and prior `revokedAt`, then returned its
+  feasibility as `current`. The released Task126/Task139 contract rejects
+  revoked references fail closed; a contradictory status cannot erase the
+  durable revocation timestamp.
+- Coordinator accepts both P1s. Their required corrections are fixed by the
+  non-finite DNS-host and current non-revoked-reference invariants and require
+  no product, scope, safety, credential, or external-behavior decision. Both
+  reviews are invalidated by the next code change.
+- Standing recovery authority resumes the same owner and complete history for
+  one causal RED and one minimal GREEN inside the exact three Task139-P1 paths.
+  RED must pin single-character terminal labels across representative text
+  boundaries and a healthy-status reference carrying `revokedAt`, with
+  positive `policy.v1`/`adapter.v1` controls and a genuinely current unrevoked
+  reference. GREEN must remove the terminal-label length assumption and reject
+  any revoked reference before current feasibility can bind, while preserving
+  all prior URI/IP, family/OAuth/scope, provenance/order, hostile-shape,
+  secret-safety, immutability, authority-ownership, and no-effect rules.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact admission gates and one fresh
+  concurrent Terra/xhigh read-only review pair remain mandatory after code.
+- Strict prefix remains 16. No integration, release record, provider/network/
+  credential action, push, or `neo` action occurs.
