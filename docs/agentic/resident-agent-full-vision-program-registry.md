@@ -19554,3 +19554,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   for its sole final review pair. Status advances Task121 and Task122
   `claimed -> implementing`; Task133 enters current-byte admission. No poll or
   unchanged-status event is recorded, and `neo` remains untouched.
+
+## RV-1-E-718 — Task133 strict-card gap corrected and owner dispatched
+
+- Recorded at: 2026-07-18T12:56:13Z
+- The coordinator's first exact V4 focused admission after RV-1-E-717 exited
+  `1` with `No test files found`: both declared Task133 source/test paths are
+  absent at program checkpoint
+  `e481e23a08ff6d381b93d4dda3b553b1990e2bc3`. The preserved 28-path Task133
+  prompt-authority implementation and reviews at RV-1-E-407 through E-411 are
+  prerequisite history, not the three-path runtime-renderer card. Therefore
+  current-byte re-attestation cannot truthfully create strict record 16.
+- One bounded Task133 owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b` is assigned only to this new card in
+  isolated worktree
+  `/home/drake/.codex/worktrees/task133-runtime-prompt-renderer/Cestus`, branch
+  `codex/task133-runtime-prompt-renderer`, exact base
+  `e481e23a08ff6d381b93d4dda3b553b1990e2bc3`, using GPT-5.6 Terra with
+  `xhigh` reasoning. Reusing the now-idle task identity does not alter or
+  reopen its preserved Task126-R history or worktree.
+- Ownership is exactly the new runtime-renderer source, its focused test, and
+  the existing Task133 claim. The finite packet requires one claim-only
+  commit, one causal RED before production, one minimal GREEN, exact focused
+  and cross-boundary gates, and no repair generation, registry edit,
+  self-integration, or history rewrite. Task-scoped subagent-driven
+  development and test-driven development are explicitly approved for this
+  task.
+- Status advances Task133 `admission-failed -> claimed -> implementing`.
+  Task121 and Task122 continue independently, G136-SC remains preserved and
+  held for record 21, and `neo` remains untouched.
