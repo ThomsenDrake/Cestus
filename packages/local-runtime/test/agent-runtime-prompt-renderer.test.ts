@@ -82,15 +82,23 @@ describe("Task133 strict runtime prompt renderer", () => {
     expect(messages.join("\n")).not.toContain("RENDERER_RAW_BYTES_SENTINEL");
   });
 
-  it("rejects symbols on the otherwise valid resolved context-pack array", async () => {
+  it("rejects symbols, extra keys, and accessors on the otherwise valid resolved context-pack array", async () => {
     const input = await exactBinding("RENDERER_RAW_BYTES_SENTINEL");
-    const resolvedContextPacks = [...input.resolvedContextPacks];
-    Object.defineProperty(resolvedContextPacks, Symbol("forged"), { enumerable: true, value: "forged" });
+    const symbolBearing = [...input.resolvedContextPacks];
+    Object.defineProperty(symbolBearing, Symbol("forged"), { enumerable: true, value: "forged" });
+    const extraKeyBearing = [...input.resolvedContextPacks];
+    Object.defineProperty(extraKeyBearing, "forged", { enumerable: true, value: "forged" });
+    const accessorBearing = [...input.resolvedContextPacks];
+    Object.defineProperty(accessorBearing, "0", {
+      enumerable: true,
+      get: () => input.resolvedContextPacks[0]
+    });
 
-    const message = renderFailure({ ...input, resolvedContextPacks });
+    const messages = [symbolBearing, extraKeyBearing, accessorBearing]
+      .map((resolvedContextPacks) => renderFailure({ ...input, resolvedContextPacks }));
 
-    expect(message).toBe("prompt-binding-invalid");
-    expect(message).not.toContain("RENDERER_RAW_BYTES_SENTINEL");
+    expect(messages).toEqual(["prompt-binding-invalid", "prompt-binding-invalid", "prompt-binding-invalid"]);
+    expect(messages.join("\n")).not.toContain("RENDERER_RAW_BYTES_SENTINEL");
   });
 
   it("rejects hostile accessor, symbol, extra-key, and forged nested inputs before binding", async () => {
