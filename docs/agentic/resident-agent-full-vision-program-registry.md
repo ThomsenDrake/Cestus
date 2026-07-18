@@ -19525,3 +19525,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-717 — Record-15 eligible specialist owners dispatched
+
+- Recorded at: 2026-07-18T12:49:55Z
+- Strict Task126-R release record 15 at program head
+  `986c2a43b018e72acf1104e84853826b06b1abdd` makes Task133, Task121, and
+  Task122 executable under the exact V4 graph. Task133 already has preserved
+  integrated implementation and review history, so the coordinator is
+  re-attesting its current owned bytes for strict position 16 rather than
+  opening a replacement implementation generation.
+- Task121 owner `019f7544-bc61-7201-ae4f-c1742b4f4a8a` is pinned to that
+  exact base in `/home/drake/.codex/worktrees/57e7/Cestus`, branch
+  `codex/task121-cf1-handoff-adoption`, with exclusive ownership of the PRR
+  workflow source, focused test, and Task121 claim. Task122 owner
+  `019f7544-bd1a-7800-ace4-dfa12be1064b` is pinned to the same base in
+  `/home/drake/.codex/worktrees/da35/Cestus`, branch
+  `codex/task122-cf1-handoff-adoption`, with exclusive ownership of the
+  investigation workflow source, focused test, and Task122 claim.
+- Each implementation packet is finite: one claim commit, one causal RED
+  commit, one minimal GREEN commit, exact focused and cross-boundary gates,
+  and no self-integration or program-registry edit. Task-scoped subagent-driven
+  development and test-driven development are explicitly approved for this
+  task.
+- Preserved G136-SC candidate
+  `d74ff4a301613bb5291a896db3a4a3fcf52c9d3e` remains held without rewrite or
+  additional repair until strict record 21 is integrated and forward-merged
+  for its sole final review pair. Status advances Task121 and Task122
+  `claimed -> implementing`; Task133 enters current-byte admission. No poll or
+  unchanged-status event is recorded, and `neo` remains untouched.
