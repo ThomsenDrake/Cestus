@@ -19969,3 +19969,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances Task139-P1 `not started -> claimed -> implementing`. No
   provider, network, credential, live-service, registry-order, contract,
   candidate, or `neo` byte is changed by this dispatch.
+
+## RV-1-E-729 — Task139-P1 candidate rejected at compile and adversarial admission
+
+- Recorded at: 2026-07-18T17:45:16Z
+- The same Task139-P1 owner produced preserved claim
+  `6745d26e433b01d9355b9531409c6656bac99274`, causal absent-module RED
+  `92423e6d85f3e70ec1ba961afa34b7af1be28e8f`, and GREEN candidate
+  `8aed2a4c32d4d38de8e3ad6ab1a7ca1374905884` on its exact three-path
+  boundary. Focused **1 file / 4 tests**, cross-boundary **2 files / 13
+  tests**, the full-suite differential, and all four V4 contract markers pass;
+  the full cohort remains the inherited **12 failing files / 69 failing tests
+  / 5 skips** with Task139-P1 adding four passing tests.
+- The candidate is not admitted for review. Exact committed bytes reproduce
+  **17** TypeScript diagnostics: two source-level narrowing failures and
+  fifteen focused-test type/shape failures. Coordinator adversarial execution
+  also proves that the data-only builder accepts six invalid configurations:
+  an unassessed model family, feasibility provenance unrelated to the bound
+  facts, `wss://` IPv4 host material, a near-BYOK descriptor missing the
+  required transfer-approval marker, an extra secret-bearing credential kind
+  on the local lane, and a lax official-harness classification. These are
+  concrete P1 boundary violations, not style or hypothetical hardening.
+- Under the finite factory ceiling, the coordinator authorizes the sole
+  consolidated Task139-P1 repair packet on the same Terra/xhigh owner task,
+  branch, worktree, and preserved history. It permits exactly one test/claim
+  causal RED commit and one minimal source/claim GREEN commit within the
+  existing three paths. The RED must pin all six reproduced P1s and remove its
+  own test diagnostics without suppressions, unsafe assertions, or widening;
+  the GREEN must close the two production diagnostics and the six exact
+  semantic defects. Task-scoped subagent-driven development and test-driven
+  development are explicitly approved for this task.
+- No review has been dispatched, no candidate byte has been integrated, and
+  strict prefix remains 16. After this packet there is no further automatic
+  Task139-P1 repair authority: a fresh final read-only review pair may approve
+  the exact candidate or durably block it on a reproduced P0/P1. `neo` and all
+  preserved later-order candidates remain untouched.
