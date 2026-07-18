@@ -406,3 +406,21 @@ or fallback.
   rules.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passes: **1 file / 26 tests**. `npm run typecheck` exits `0`.
+
+## RV-1-E-749 IDNA-Equivalent-DNS Recovery RED
+
+- Standing recovery authority: `RV-1-E-749` at program `e6cccdc6`. The
+  preserved clean candidate is `1be41f59eaaf0e32cdf27e181d064ae36182bd1e`;
+  this RED changes only the focused test and this claim. The production source
+  blob remains `8968f5e58fd69a7d312134b344abca3253059b33`, byte-identical to
+  that candidate.
+- The focused RED command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exits `1`
+  with **1 failed file / 1 failed and 26 passed tests (27)**. Its single named
+  capability-data-handling and credential-safe-label matrix proves that
+  `api。例子`, `api。example`, `api．example`, `api｡example`, and `á.b` are
+  admitted at both boundaries. Its positive controls independently retain the
+  exact `agent-provider-auth.v1`, `adapter.v1`, and `policy.v1` version forms,
+  ordinary `policy.v1` prose, canonical ISO-millisecond-Z assessment time, and
+  non-host Unicode prose `résumé data handling`.
+- `npm run typecheck` exits `0` from the RED bytes without diagnostics.
