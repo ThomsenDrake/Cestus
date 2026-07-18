@@ -70,3 +70,35 @@ or fallback.
   canonical local-engine, and canonical official-harness facts.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passed: 1 file / 9 tests. `npm run typecheck` passed.
+
+## RV-1-E-732 Recovery RED
+
+- Coordinator recovery authority: `RV-1-E-732` at program
+  `7cea1f2c889ab213f92886d61826dffe22553cc7`. The preserved candidate base
+  is `d3abf6122c9430ae8e2a9fa2c9da4c345701b4a5`; this recovery remains limited
+  to this claim, the Task139-P1 focused test, and its production source.
+- The RED changes only this claim and the focused test. The production source
+  blob remained byte-identical to the candidate before and after the RED:
+  `3e7f45f215d553ae33886c4258a6cd1af94b84c0`.
+- Released Task129/Task130 harness interfaces require either
+  `subscription-oauth` or `device-code-oauth` with
+  `harness-execution`; BYOK and local facts retain exact
+  `model-inference` scope. The typed RED fixtures also cover the anchored
+  `provider_openai_codex_<suffix>` and `provider_xai_<suffix>` families,
+  representative `provider_openai_codex_primary` and `provider_xai_grok`
+  identities, and lookalike rejection.
+- The exact focused command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exited
+  `1` with **1 failed file / 5 failed and 9 passed tests (14)**. The five
+  causal failures were the updated official-harness positive exception, both
+  released provider-family/OAuth combinations, exact lane-specific credential
+  scopes, TLD-independent URI/IP/localhost/DNS text material, and centralized
+  configuration-wide text-material coverage. The established nine semantics
+  remained passing.
+- The URI/IP/DNS RED includes scheme URLs, IPv4, IPv6, localhost,
+  `api.example.xyz`, and `api.service.corp`; its typed mutation table covers
+  capability, credential-reference safe label and version, endpoint-policy
+  version, feasibility version, and official-evidence ID fields without casts,
+  assertions, suppression directives, `any`, or `unknown` laundering.
+- `npm run typecheck` exited `0` from the RED bytes, confirming the focused
+  fixtures introduce no TypeScript diagnostics.

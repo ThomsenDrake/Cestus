@@ -9,6 +9,7 @@ import type { ProviderCapabilityDescriptorInput } from "../../agent/src/provider
 
 type Hash = `sha256:${string}`;
 type EventId = `evt_${string}`;
+type ConfigurationCapabilityScope = "model-inference" | "harness-execution";
 
 interface RawCapability {
   capability: ProviderCapabilityDescriptorInput;
@@ -22,7 +23,7 @@ interface RawCredentialReference {
   providerId: string;
   credentialKind: CredentialKind;
   scopeKind: "workspace";
-  capabilityScopes: "model-inference"[];
+  capabilityScopes: ConfigurationCapabilityScope[];
   safeLabel: string;
   authorizedBy: string;
   authorizedAt: string;
@@ -76,6 +77,18 @@ interface RawConfiguration {
   feasibility: RawFeasibility[];
 }
 
+interface OfficialHarnessFixtureOptions {
+  readonly providerId?: string;
+  readonly credentialKind?: "subscription-oauth" | "device-code-oauth";
+  readonly capabilityScope?: ConfigurationCapabilityScope;
+}
+
+interface TextMaterialMutation {
+  readonly name: string;
+  readonly create: () => RawConfiguration;
+  readonly apply: (input: RawConfiguration) => void;
+}
+
 const hash = (character: string): Hash => `sha256:${character.repeat(64)}`;
 
 describe("agent provider configuration", () => {
@@ -123,7 +136,7 @@ describe("agent provider configuration", () => {
 
     expect(normalized.feasibility.map((record) => [record.providerId, record.lane])).toEqual([
       ["provider_local_engine", "local-engine"],
-      ["provider_openai_codex_harness", "official-harness"],
+      ["provider_openai_codex_primary", "official-harness"],
       ["provider_openai_compatible", "byok"]
     ]);
 
@@ -265,6 +278,167 @@ describe("agent provider configuration", () => {
       expect(() => createAgentProviderConfiguration(input)).toThrow("invalid provider configuration");
     }
   });
+
+  it("admits both released official provider families with either released OAuth credential kind", () => {
+    const rejected: string[] = [];
+    const providerIds = ["provider_openai_codex_primary", "provider_xai_grok"] as const;
+    const credentialKinds = ["subscription-oauth", "device-code-oauth"] as const;
+
+    for (const providerId of providerIds) {
+      for (const credentialKind of credentialKinds) {
+        const input = officialHarnessConfiguration({ providerId, credentialKind });
+        if (!accepts(input)) rejected.push(`${providerId}:${credentialKind}`);
+      }
+    }
+
+    expect(rejected).toEqual([]);
+  });
+
+  it("rejects official provider lookalikes outside the released family predicates", () => {
+    const lookalikes = [
+      "provider_openai_codex_",
+      "provider_openai_codexish_primary",
+      "provider_xai_",
+      "provider_xai_grokish"
+    ];
+
+    for (const providerId of lookalikes) {
+      const input = officialHarnessConfiguration({ providerId });
+      expect(() => createAgentProviderConfiguration(input)).toThrow("invalid provider configuration");
+    }
+  });
+
+  it("requires exact lane-specific credential scopes", () => {
+    const missingPositiveAdmissions: string[] = [];
+    const acceptedInvalidScopes: string[] = [];
+
+    const byok = byokConfiguration();
+    if (!accepts(byok)) missingPositiveAdmissions.push("BYOK model-inference");
+
+    const local = byokConfiguration();
+    appendLocalLane(local);
+    if (!accepts(local)) missingPositiveAdmissions.push("local model-inference");
+
+    const official = officialHarnessConfiguration({
+      providerId: "provider_openai_codex_harness",
+      capabilityScope: "harness-execution"
+    });
+    if (!accepts(official)) missingPositiveAdmissions.push("official harness-execution");
+
+    const officialModelInference = officialHarnessConfiguration({
+      providerId: "provider_openai_codex_harness",
+      capabilityScope: "model-inference"
+    });
+    if (accepts(officialModelInference)) acceptedInvalidScopes.push("official model-inference");
+
+    const byokHarnessExecution = byokConfiguration();
+    only(byokHarnessExecution.credentialReferences).capabilityScopes = ["harness-execution"];
+    if (accepts(byokHarnessExecution)) acceptedInvalidScopes.push("BYOK harness-execution");
+
+    const localHarnessExecution = byokConfiguration();
+    appendLocalLane(localHarnessExecution);
+    only(localHarnessExecution.credentialReferences).capabilityScopes = ["harness-execution"];
+    if (accepts(localHarnessExecution)) acceptedInvalidScopes.push("local harness-execution");
+
+    expect({ missingPositiveAdmissions, acceptedInvalidScopes }).toEqual({
+      missingPositiveAdmissions: [],
+      acceptedInvalidScopes: []
+    });
+  });
+
+  it("rejects URI, IP, localhost, and DNS-host material independently of a finite TLD list", () => {
+    const materials = [
+      "wss://10.0.0.1/socket",
+      "https://api.example.xyz",
+      "ftp://api.service.corp/archive",
+      "10.0.0.1",
+      "[2001:db8::1]",
+      "localhost",
+      "api.example.xyz",
+      "api.service.corp"
+    ];
+    const accepted: string[] = [];
+
+    for (const material of materials) {
+      const input = byokConfiguration();
+      only(input.credentialReferences).safeLabel = material;
+      if (accepts(input)) accepted.push(material);
+    }
+
+    expect(accepted).toEqual([]);
+  });
+
+  it("applies the text-material boundary across configuration facts", () => {
+    const mutations: readonly TextMaterialMutation[] = [
+      {
+        name: "capability free text",
+        create: byokConfiguration,
+        apply: (input) => {
+          only(input.capabilities).capability.label = "api.example.xyz";
+        }
+      },
+      {
+        name: "capability version",
+        create: byokConfiguration,
+        apply: (input) => {
+          only(input.capabilities).capability.adapterVersion = "adapter.api.example.xyz";
+          only(input.endpointPolicies).adapterVersion = "adapter.api.example.xyz";
+        }
+      },
+      {
+        name: "credential reference free text",
+        create: byokConfiguration,
+        apply: (input) => {
+          only(input.credentialReferences).safeLabel = "https://api.example.invalid";
+        }
+      },
+      {
+        name: "credential reference version",
+        create: byokConfiguration,
+        apply: (input) => {
+          only(input.credentialReferences).policyVersion = "policy.api.example.xyz";
+          only(input.endpointPolicies).policyVersion = "policy.api.example.xyz";
+          only(input.feasibility).policyVersion = "policy.api.example.xyz";
+        }
+      },
+      {
+        name: "endpoint policy version",
+        create: byokConfiguration,
+        apply: (input) => {
+          only(input.endpointPolicies).policyVersion = "policy.api.service.corp";
+          only(input.credentialReferences).policyVersion = "policy.api.service.corp";
+          only(input.feasibility).policyVersion = "policy.api.service.corp";
+        }
+      },
+      {
+        name: "feasibility version",
+        create: byokConfiguration,
+        apply: (input) => {
+          only(input.feasibility).capabilityRevision = "revision.api.example.xyz";
+          only(input.capabilities).capabilityRevision = "revision.api.example.xyz";
+        }
+      },
+      {
+        name: "official evidence ID",
+        create: () => officialHarnessConfiguration({
+          providerId: "provider_openai_codex_harness",
+          capabilityScope: "model-inference"
+        }),
+        apply: (input) => {
+          requireOfficialEvidence(only(input.feasibility)).evidenceId = "https://api.example.xyz";
+        }
+      }
+    ];
+    const accepted: string[] = [];
+
+    for (const mutation of mutations) {
+      const input = mutation.create();
+      mutation.apply(input);
+      if (accepts(input)) accepted.push(mutation.name);
+    }
+
+    expect(accepted).toEqual([]);
+  });
 });
 
 function byokConfiguration(): RawConfiguration {
@@ -276,12 +450,15 @@ function byokConfiguration(): RawConfiguration {
   };
 }
 
-function officialHarnessConfiguration(): RawConfiguration {
+function officialHarnessConfiguration(options: OfficialHarnessFixtureOptions = {}): RawConfiguration {
+  const providerId = options.providerId ?? "provider_openai_codex_primary";
+  const credentialKind = options.credentialKind ?? "subscription-oauth";
+  const capabilityScope = options.capabilityScope ?? "harness-execution";
   const configuration = byokConfiguration();
-  configuration.capabilities = [officialHarnessCapability()];
-  configuration.credentialReferences = [officialHarnessCredentialReference()];
-  configuration.endpointPolicies = [officialHarnessEndpointPolicy()];
-  configuration.feasibility = [officialHarnessFeasibility()];
+  configuration.capabilities = [officialHarnessCapability(providerId, credentialKind)];
+  configuration.credentialReferences = [officialHarnessCredentialReference(providerId, credentialKind, capabilityScope)];
+  configuration.endpointPolicies = [officialHarnessEndpointPolicy(providerId)];
+  configuration.feasibility = [officialHarnessFeasibility(providerId, credentialKind)];
   return configuration;
 }
 
@@ -410,23 +587,28 @@ function appendLocalLane(configuration: RawConfiguration): void {
 }
 
 function appendOfficialHarnessLane(configuration: RawConfiguration): void {
-  configuration.capabilities.push(officialHarnessCapability());
-  configuration.credentialReferences.push(officialHarnessCredentialReference());
-  configuration.endpointPolicies.push(officialHarnessEndpointPolicy());
-  configuration.feasibility.push(officialHarnessFeasibility());
+  const providerId = "provider_openai_codex_primary";
+  const credentialKind = "subscription-oauth";
+  configuration.capabilities.push(officialHarnessCapability(providerId, credentialKind));
+  configuration.credentialReferences.push(officialHarnessCredentialReference(providerId, credentialKind, "harness-execution"));
+  configuration.endpointPolicies.push(officialHarnessEndpointPolicy(providerId));
+  configuration.feasibility.push(officialHarnessFeasibility(providerId, credentialKind));
 }
 
-function officialHarnessCapability(): RawCapability {
+function officialHarnessCapability(
+  providerId: string,
+  credentialKind: "subscription-oauth" | "device-code-oauth"
+): RawCapability {
   return {
     capability: {
       ...byokCapability().capability,
-      providerId: "provider_openai_codex_harness",
+      providerId,
       label: "OpenAI Codex subscription harness",
       backendKind: "openai-codex-harness",
       modelFamilies: ["model_codex_harness_1"],
       toolSupport: "harness-tools",
       structuredOutputSupport: "harness-mediated",
-      credentialRequirements: [{ credentialKind: "subscription-oauth", required: true }],
+      credentialRequirements: [{ credentialKind, required: true }],
       dataHandlingNotes: "Official Codex harness requires device sign in.",
       costPolicy: "subscription-entitlement",
       workspaceScopes: ["workspace", "user"],
@@ -439,39 +621,47 @@ function officialHarnessCapability(): RawCapability {
   };
 }
 
-function officialHarnessCredentialReference(): RawCredentialReference {
+function officialHarnessCredentialReference(
+  providerId: string,
+  credentialKind: "subscription-oauth" | "device-code-oauth",
+  capabilityScope: ConfigurationCapabilityScope
+): RawCredentialReference {
   return {
     ...byokCredentialReference(),
     credentialRefId: "agent_credref_openai_codex_harness",
-    providerId: "provider_openai_codex_harness",
-    credentialKind: "subscription-oauth",
+    providerId,
+    credentialKind,
+    capabilityScopes: [capabilityScope],
     safeLabel: "Official Codex account reference",
     sourceEventIds: ["evt_binding_harness_1"]
   };
 }
 
-function officialHarnessEndpointPolicy(): RawEndpointPolicy {
+function officialHarnessEndpointPolicy(providerId: string): RawEndpointPolicy {
   return {
     ...byokEndpointPolicy(),
     endpointPolicyId: "endpoint_policy_openai_codex_harness",
-    providerId: "provider_openai_codex_harness",
+    providerId,
     modelId: "model_codex_harness_1",
     sourceEventIds: ["evt_endpoint_policy_harness_1"]
   };
 }
 
-function officialHarnessFeasibility(): RawFeasibility {
+function officialHarnessFeasibility(
+  providerId: string,
+  credentialKind: "subscription-oauth" | "device-code-oauth"
+): RawFeasibility {
   return {
     ...byokFeasibility(),
     feasibilityId: "provider_feasibility_openai_codex_harness",
     lane: "official-harness",
-    providerId: "provider_openai_codex_harness",
+    providerId,
     modelId: "model_codex_harness_1",
     capabilityHash: hash("c"),
     capabilitySourceEventId: "evt_capability_harness_1",
     capabilityRevision: "capability_revision_harness_1",
     credentialRefId: "agent_credref_openai_codex_harness",
-    credentialKind: "subscription-oauth",
+    credentialKind,
     endpointPolicyId: "endpoint_policy_openai_codex_harness",
     sourceEventIds: [
       "evt_binding_harness_1",
@@ -495,6 +685,21 @@ function replaceHarnessProviderIdentity(configuration: RawConfiguration, provide
   only(configuration.credentialReferences).providerId = providerId;
   only(configuration.endpointPolicies).providerId = providerId;
   only(configuration.feasibility).providerId = providerId;
+}
+
+function requireOfficialEvidence(feasibility: RawFeasibility): RawOfficialEvidence {
+  const evidence = feasibility.officialEvidence;
+  if (evidence === undefined) throw new Error("expected official evidence");
+  return evidence;
+}
+
+function accepts(input: RawConfiguration): boolean {
+  try {
+    createAgentProviderConfiguration(input);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function assertImmutable(configuration: AgentProviderConfiguration): void {
