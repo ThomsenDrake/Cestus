@@ -570,6 +570,42 @@ describe("agent provider configuration", () => {
     expect({ accepted, controlsAccepted: accepts(controls) }).toEqual({ accepted: [], controlsAccepted: true });
   });
 
+  it("rejects IDNA-equivalent DNS separators and normalized combining-mark labels", () => {
+    const materials = ["api。例子", "api。example", "api．example", "api｡example", "á.b"];
+    const accepted: string[] = [];
+
+    for (const material of materials) {
+      const capability = byokConfiguration();
+      only(capability.capabilities).capability.dataHandlingNotes = material;
+      if (accepts(capability)) accepted.push(`capability:${material}`);
+
+      const credential = byokConfiguration();
+      only(credential.credentialReferences).safeLabel = material;
+      if (accepts(credential)) accepted.push(`credential:${material}`);
+    }
+
+    const agentProviderAuth = byokConfiguration();
+    only(agentProviderAuth.capabilities).capability.adapterVersion = "agent-provider-auth.v1";
+    only(agentProviderAuth.endpointPolicies).adapterVersion = "agent-provider-auth.v1";
+
+    const adapter = byokConfiguration();
+    only(adapter.capabilities).capability.adapterVersion = "adapter.v1";
+    only(adapter.endpointPolicies).adapterVersion = "adapter.v1";
+
+    const controls = byokConfiguration();
+    only(controls.capabilities).capability.dataHandlingNotes = "ordinary policy.v1 prose";
+    only(controls.credentialReferences).safeLabel = "résumé data handling";
+    only(controls.credentialReferences).policyVersion = "policy.v1";
+    only(controls.endpointPolicies).policyVersion = "policy.v1";
+    only(controls.feasibility).policyVersion = "policy.v1";
+    only(controls.feasibility).assessedAt = "2026-07-18T12:00:00.000Z";
+
+    expect({
+      accepted,
+      controlsAccepted: [accepts(agentProviderAuth), accepts(adapter), accepts(controls)]
+    }).toEqual({ accepted: [], controlsAccepted: [true, true, true] });
+  });
+
   it("requires canonical ISO-millisecond-Z assessment timestamps", () => {
     const prose = byokConfiguration();
     only(prose.feasibility).assessedAt = "July 18, 2026 12:00:00 UTC";
