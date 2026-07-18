@@ -180,3 +180,26 @@ an executable handoff state; and ontology rejected the V2 event family.
 - Before the forward commit, the focused seven-file CF1 command passed:
   7 files / 276 tests; `npm run typecheck` passed. The committed-byte gate
   evidence for this correction is retained with the implementation handoff.
+
+## Consolidated Post-Review Repair
+
+- Status transition: `reviewing` -> `implementing-repair`.
+- Exact reviewed candidate: `06b8d6a1b50b208721cd6af4039f36a5e2ce5e7a`.
+- Preserved program base: `0255ac2f8927851fb28220ac05a9b5acddfdcab3`.
+- Independent review findings: architecture/invariants
+  `019f7286-243e-7480-a0ea-bd010118cc17`; executability/adversarial
+  `019f7286-2435-70b3-97de-0a4084dd9342`.
+- Worker: Codex `gpt-5.6-terra` / `xhigh`.
+- This is CF1-HR's sole consolidated post-review repair packet; it is consumed
+  by this RED and exhausted after its single GREEN commit. No automatic CF1
+  code or test change is authorized after that GREEN.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+
+Both reviewers reproduced the same P1: the strict V2 authority-bound producer
+stopped after prepared/recorded, while the only finalizer and its readback
+resolver were V1-only. The V2 result was not assignable to that V1 finalizer,
+and manually assembled projection events did not exercise the required
+production lifecycle. The causal repair tests require the actual
+authority-bound production call to revalidate across terminal/task-status
+completion, return the complete replayed Task119 readback, and leave no
+task-status effect after a stale authority is observed.

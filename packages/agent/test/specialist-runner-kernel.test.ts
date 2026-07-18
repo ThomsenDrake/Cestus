@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 import * as agent from "../src/index.js";
 import {
   bindApprovedProductionSpecialistPromptV2,
@@ -28,7 +28,10 @@ import {
   type SpecialistRunnerBaseInput,
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
-import { recordAuthorityBoundSpecialistHandoff } from "../src/specialist-runner-kernel.js";
+import {
+  recordAuthorityBoundSpecialistHandoff,
+  type RecordAuthorityBoundSpecialistHandoffResult
+} from "../src/specialist-runner-kernel.js";
 import { issueMountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import {
@@ -513,6 +516,67 @@ describe("durable specialist handoff runner lifecycle", () => {
       authorityBinding,
       preparedEventId: recorded.prepared.id
     });
+  });
+
+  it("drives the authority-bound production record through terminal, task status, and complete replayed readback", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_complete_001", taskId: "task_authority_v2_complete_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const authorityBinding = handoffAuthorityBindingFor(fixture);
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding,
+      revalidateCurrent: async () => undefined
+    });
+
+    const recorded = await recordAuthorityBoundSpecialistHandoff({ ...recordInput(fixture), handoffAuthorityWitness: witness });
+
+    expect(recorded.terminal).toMatchObject({
+      type: "agent.specialist-run.completed",
+      context: { causationId: recorded.recorded.id },
+      payload: { runId: fixture.runId }
+    });
+    expect(recorded.taskStatus).toMatchObject({
+      type: "agent.task.status.changed",
+      context: { causationId: recorded.terminal.id },
+      payload: { taskId: fixture.taskId, runId: fixture.runId, status: "completed" }
+    });
+    expect(recorded.readback).toMatchObject({
+      outcome: "verified",
+      handoffId: recorded.handoff.handoffId,
+      taskId: fixture.taskId,
+      runId: fixture.runId,
+      finalOutputEventId: recorded.manifest.finalOutputEventId,
+      preparedEventId: recorded.prepared.id,
+      recordedEventId: recorded.recorded.id,
+      terminalRunEventId: recorded.terminal.id,
+      taskStatusEventId: recorded.taskStatus.id,
+      authorityBinding
+    });
+  });
+
+  it("keeps strict V2 results out of the V1 finalizer and stops a remounted authority before task-status append", async () => {
+    expectTypeOf<RecordAuthorityBoundSpecialistHandoffResult>()
+      .not.toMatchTypeOf<Parameters<typeof finalizeSpecialistRunAfterHandoff>[0]["recorded"]>();
+
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_stale_001", taskId: "task_authority_v2_stale_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    let stale = false;
+    const ledger = new StaleAfterEventLedger(fixture.ledger, "agent.specialist-run.completed", () => { stale = true; });
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: handoffAuthorityBindingFor(fixture),
+      revalidateCurrent: async () => {
+        if (stale) throw new Error("mounted authority is stale");
+      }
+    });
+
+    await expect(recordAuthorityBoundSpecialistHandoff({
+      ...recordInput(fixture),
+      ledger,
+      handoffAuthorityWitness: witness
+    })).rejects.toThrow(/authority|stale/i);
+
+    expect((await fixture.ledger.readStream(`agent_task_${fixture.taskId}`)).filter((event) =>
+      event.type === "agent.task.status.changed" && event.payload.runId === fixture.runId
+    )).toEqual([]);
   });
 
   it("uses last stream sequence plus one for expected append sequencing", async () => {
@@ -1230,6 +1294,18 @@ function recordInput(fixture: DurableHandoffFixture) {
   };
 }
 
+function handoffAuthorityBindingFor(fixture: DurableHandoffFixture) {
+  return {
+    workspaceIdentityHash: runnerHash,
+    mountGeneration: "mount_generation_001",
+    ledgerStoreIdentity: "ledger_store_001",
+    artifactStoreIdentity: "artifact_store_001",
+    ledgerHighWaterEventId: fixture.runStartedEventId,
+    policyHash: runnerHash,
+    activeLocksHash: runnerHash
+  } as const;
+}
+
 function handoffMaterialInput(fixture: DurableHandoffFixture) {
   return {
     status: fixture.status,
@@ -1417,6 +1493,23 @@ class MutatingReadLedger implements EventLedger {
   async readAll() {
     return await this.delegate.readAll();
   }
+}
+
+class StaleAfterEventLedger implements EventLedger {
+  constructor(
+    private readonly delegate: EventLedger,
+    private readonly eventType: KnowledgeEvent["type"],
+    private readonly markStale: () => void
+  ) {}
+
+  async append(event: Parameters<EventLedger["append"]>[0], options?: Parameters<EventLedger["append"]>[1]) {
+    const appended = await this.delegate.append(event, options);
+    if (event.type === this.eventType) this.markStale();
+    return appended;
+  }
+
+  async readStream(streamId: string) { return await this.delegate.readStream(streamId); }
+  async readAll() { return await this.delegate.readAll(); }
 }
 
 class ExactAppendRaceLedger implements EventLedger {
