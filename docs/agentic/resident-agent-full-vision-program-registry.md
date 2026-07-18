@@ -19775,3 +19775,43 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   with no further automatic repair. V1-V3, raw records 1-15, all 29 card IDs
   and order, all prior evidence, and `neo` remain unchanged. Status advances
   Task133 `blocked -> compile-correction-authorized -> implementing`.
+
+## RV-1-E-725 — Task133 compile-corrected candidate admitted to final review
+
+- Recorded at: 2026-07-18T16:44:31Z
+- The same owner produced the one authorized forward correction commit
+  `44c4d821f9631fcbd2357d8548874578ea159b01` from preserved compiler RED
+  `d2bb7366b803791f074ec3fb1570a6fccefc9a38`. Its correction diff is exactly
+  the runtime-renderer source and Task133 claim; cumulative Task133 scope from
+  dispatch base `e481e23a08ff6d381b93d4dda3b553b1990e2bc3` is exactly the
+  source, focused test, and claim. The focused test blob remains byte-identical
+  to the compiler RED.
+- Append-only evidence correction: the owner claim copied the coordinator
+  prompt's incorrect expansion of the E-724 authorization prefix as
+  `35030d93b90e8c41da52e15cd0347e7e59103fc1`. The actual immutable E-724
+  program commit is `35030d937555e316b0acb7cb90aea1eff283fdd5` and is authoritative.
+  Candidate bytes are not changed; this registry correction preserves the
+  sole forward-commit ceiling and supersedes only that mistaken documentary
+  suffix.
+- Coordinator committed-byte admission reproduced focused **1 file / 5
+  tests**, cross-boundary **2 files / 31 tests**, standalone typecheck, diff
+  hygiene, factory readiness, the four exact V4 markers, exact scope, clean
+  state, and real non-symlinked dependency/Vitest provenance. The correction
+  is the typed `Object.getOwnPropertyDescriptor(resolvedContextPacks,
+  "length")` lookup and contains no cast, assertion, `any`, TypeScript
+  suppression, API widening, contract change, or weakened validation.
+- Fresh full-suite JSON evidence against the clean record-15 program branch
+  retained exactly **12 failing files / 69 failing tests / 5 skips**, added or
+  removed no failing assertion or skip, and reproduced byte-equivalent
+  normalized failure messages. Candidate adds exactly the Task133 **1 file / 5
+  passing tests**. `npm run verify` passed typecheck and then stopped only at
+  that unchanged inherited cohort, as required.
+- Repository mode executed all released-card commands, emitted
+  `TASK136_REPOSITORY_PREFIX_OK records=15 commands=15`, then stopped at
+  `repository release closure incomplete: expected 29 records, found 15`.
+  Fresh read-only final reviewers are architecture/invariants task
+  `019f761d-0d24-7893-9546-5df5e297e808` and executability/adversarial task
+  `019f761d-16ef-76b2-9beb-e57c645cd2b8`, each bound to exact candidate
+  `44c4d821`, GPT-5.6 Terra / xhigh, and the complete preserved six-commit
+  Task133 chain. Status advances Task133 `implementing -> candidate ->
+  reviewing`; no further automatic Task133 repair is authorized.
