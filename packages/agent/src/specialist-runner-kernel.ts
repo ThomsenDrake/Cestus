@@ -65,7 +65,8 @@ import {
 } from "./specialist-handoff-authority.js";
 import {
   authoritativeFinalOutputStepSchemaId as authoritativeProjectedFinalOutputStepSchemaId,
-  buildSpecialistHandoffProjection
+  buildSpecialistHandoffProjection,
+  type SpecialistHandoffReadback
 } from "./specialist-handoff-projection.js";
 import type {
   SpecialistWorkflowHandoffDto
@@ -167,6 +168,9 @@ export interface RecordAuthorityBoundSpecialistHandoffResult {
   readonly handoff: SpecialistWorkflowHandoffDto;
   readonly prepared: KnowledgeEventOf<"agent.specialist-handoff.prepared">;
   readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+  readonly terminal: KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed">;
+  readonly taskStatus: KnowledgeEventOf<"agent.task.status.changed">;
+  readonly readback: SpecialistHandoffReadback;
   readonly manifestStore: SpecialistHandoffManifestStore;
   readonly authorityBinding: HandoffAuthorityBinding;
 }
@@ -945,6 +949,9 @@ export async function recordAuthorityBoundSpecialistHandoff(
   const input = snapshotRecordHandoffInput(rawInput);
   const authority = await consumeMountedSpecialistHandoffAuthorityWitness(values.handoffAuthorityWitness);
   await authority.revalidateCurrent();
+  if (input.taskId === undefined) {
+    throw new Error("Authority-bound specialist handoff completion requires a ledger-bound task identity.");
+  }
   assertManifestStoreAvailable(input.manifestStore);
 
   const stream = await input.ledger.readStream(`agent_run_${input.runId}`);
@@ -1030,16 +1037,40 @@ export async function recordAuthorityBoundSpecialistHandoff(
   await authority.revalidateCurrent();
   const recorded = await appendOrReuseAuthorityBoundRecordedHandoff(resolved, afterPrepared, binding, prepared);
   await authority.revalidateCurrent();
-  const projection = await assertAuthorityBoundHandoffProjection(input.ledger, input.manifestStore, input.runId, input.taskId);
+  const terminalStream = await input.ledger.readStream(`agent_run_${input.runId}`);
   await authority.revalidateCurrent();
-  if (projection.selectedHandoff?.handoffId !== manifest.handoffId) {
-    throw new Error("Authority-bound recorded handoff projection does not select the verified manifest handoff.");
-  }
+  const terminal = await appendOrReuseTerminalRun({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: input.now
+  }, manifest, recorded, terminalStream);
+  await authority.revalidateCurrent();
+  const taskStream = await input.ledger.readStream(`agent_task_${input.taskId}`);
+  await authority.revalidateCurrent();
+  const taskStatus = await appendOrReuseAuthorityBoundTaskStatus({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: input.now
+  }, manifest, terminal, taskStream);
+  await authority.revalidateCurrent();
+  const readback = await assertCompleteAuthorityBoundHandoffProjection(
+    input.ledger,
+    input.manifestStore,
+    manifest,
+    prepared,
+    recorded,
+    terminal,
+    taskStatus
+  );
+  await authority.revalidateCurrent();
   return Object.freeze({
     manifest,
     handoff: manifest.handoff,
     prepared,
     recorded,
+    terminal,
+    taskStatus,
+    readback,
     manifestStore: input.manifestStore,
     authorityBinding: authority.binding
   });
@@ -2041,22 +2072,48 @@ async function assertHandoffProjection(
   return projection;
 }
 
-async function assertAuthorityBoundHandoffProjection(
+async function assertCompleteAuthorityBoundHandoffProjection(
   ledger: EventLedger,
   manifestStore: SpecialistHandoffManifestStore,
-  runId: string,
-  taskId: string | undefined
-) {
+  manifest: AuthorityBoundSpecialistHandoffManifest,
+  prepared: KnowledgeEventOf<"agent.specialist-handoff.prepared">,
+  recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">,
+  terminal: KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed">,
+  taskStatus: KnowledgeEventOf<"agent.task.status.changed">
+): Promise<SpecialistHandoffReadback> {
+  const taskId = manifest.taskId;
+  if (taskId === undefined) {
+    throw new Error("Authority-bound complete handoff projection requires a ledger-bound task identity.");
+  }
   const projection = await buildSpecialistHandoffProjection({
     events: await ledger.readAll(),
     manifestReader: manifestStore,
-    runId,
-    ...(taskId === undefined ? {} : { taskId })
+    runId: manifest.runId,
+    taskId
   });
-  if (projection.state !== "handoff-recorded" || projection.diagnostics.length > 0 || projection.selectedHandoff === undefined) {
-    throw new Error("Authority-bound handoff recorded projection verification failed.");
+  const readback = projection.selectedReadback;
+  if (
+    projection.state !== "task-completed" ||
+    projection.diagnostics.length > 0 ||
+    projection.selectedHandoff === undefined ||
+    readback === undefined ||
+    !sameCanonicalValue(projection.selectedHandoff, manifest.handoff) ||
+    readback.handoffId !== manifest.handoffId ||
+    readback.taskId !== taskId ||
+    readback.runId !== manifest.runId ||
+    readback.manifestHash !== hashSpecialistHandoffManifest(manifest) ||
+    readback.finalOutputStepId !== manifest.finalOutputStepId ||
+    readback.finalOutputEventId !== manifest.finalOutputEventId ||
+    readback.preparedEventId !== prepared.id ||
+    readback.recordedEventId !== recorded.id ||
+    readback.terminalRunEventId !== terminal.id ||
+    readback.taskStatusEventId !== taskStatus.id ||
+    !sameCanonicalValue(readback.authorityBinding, manifest.authorityBinding) ||
+    readback.diagnostics.length !== 0
+  ) {
+    throw new Error("Authority-bound complete handoff projection verification failed.");
   }
-  return projection;
+  return readback;
 }
 
 async function assertPreparedHandoffProjection(
@@ -2078,8 +2135,8 @@ async function assertPreparedHandoffProjection(
 }
 
 async function appendOrReuseTerminalRun(
-  input: FinalizeSpecialistRunAfterHandoffInput,
-  manifest: SpecialistHandoffManifest,
+  input: Pick<FinalizeSpecialistRunAfterHandoffInput, "ledger" | "actor" | "now">,
+  manifest: SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest,
   recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">,
   stream: readonly KnowledgeEvent[]
 ): Promise<KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed">> {
@@ -2158,7 +2215,7 @@ async function appendOrReuseTerminalRun(
 
 function terminalMatchesRecordedHandoff(
   event: KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed">,
-  manifest: SpecialistHandoffManifest,
+  manifest: SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest,
   recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">
 ): boolean {
   if (event.context.causationId !== recorded.id || event.payload.runId !== manifest.runId) return false;
@@ -2178,7 +2235,7 @@ function terminalMatchesRecordedHandoff(
 
 function assertNoConflictingTerminal(
   events: readonly KnowledgeEvent[],
-  manifest: SpecialistHandoffManifest,
+  manifest: SpecialistHandoffManifest | AuthorityBoundSpecialistHandoffManifest,
   recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">
 ): void {
   if (events.some((event) =>
@@ -2186,6 +2243,96 @@ function assertNoConflictingTerminal(
     !terminalMatchesRecordedHandoff(event, manifest, recorded)
   )) {
     throw new Error("Conflicting terminal specialist run event exists on the run stream.");
+  }
+}
+
+async function appendOrReuseAuthorityBoundTaskStatus(
+  input: Pick<FinalizeSpecialistRunAfterHandoffInput, "ledger" | "actor" | "now">,
+  manifest: AuthorityBoundSpecialistHandoffManifest,
+  terminal: KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed">,
+  stream: readonly KnowledgeEvent[]
+): Promise<KnowledgeEventOf<"agent.task.status.changed">> {
+  const taskId = manifest.taskId;
+  if (taskId === undefined) {
+    throw new Error("Authority-bound specialist handoff completion requires a ledger-bound task identity.");
+  }
+  const status = terminal.type === "agent.specialist-run.failed" ? "failed" : "completed";
+  const taskStatuses = stream.filter((event): event is KnowledgeEventOf<"agent.task.status.changed"> =>
+    event.type === "agent.task.status.changed"
+  );
+  const exact = taskStatuses.find((event) => authorityBoundTaskStatusMatches(event, taskId, manifest.runId, status, terminal.id));
+  if (exact !== undefined) {
+    assertNoConflictingAuthorityBoundTaskStatus(taskStatuses, taskId, manifest.runId, terminal.id, exact.id);
+    return exact;
+  }
+  assertNoConflictingAuthorityBoundTaskStatus(taskStatuses, taskId, manifest.runId, terminal.id);
+  const occurredAt = input.now();
+  const event: AppendableKnowledgeEvent<"agent.task.status.changed"> = {
+    type: "agent.task.status.changed",
+    version: 1,
+    streamId: `agent_task_${taskId}`,
+    context: {
+      actor: input.actor,
+      occurredAt,
+      causationId: terminal.id,
+      correlationId: `corr_${manifest.runId}_authority_bound_task_${status}`,
+      coreVersion: agentCoreVersion,
+      packVersions: agentPackVersions
+    },
+    payload: {
+      taskId,
+      status,
+      changedBy: input.actor.id,
+      reason: `Task transitioned to ${status} after authority-bound specialist handoff readback.`,
+      runId: manifest.runId
+    }
+  };
+  return await appendWithExactRaceRecovery({
+    ledger: input.ledger,
+    streamId: `agent_task_${taskId}`,
+    expectedNextSequence: expectedNextSequenceFromStream(stream),
+    event,
+    findExact: (events) => events.find((candidate): candidate is KnowledgeEventOf<"agent.task.status.changed"> =>
+      candidate.type === "agent.task.status.changed" && authorityBoundTaskStatusMatches(candidate, taskId, manifest.runId, status, terminal.id)
+    ),
+    validateReread: (events) => assertNoConflictingAuthorityBoundTaskStatus(
+      events.filter((candidate): candidate is KnowledgeEventOf<"agent.task.status.changed"> => candidate.type === "agent.task.status.changed"),
+      taskId,
+      manifest.runId,
+      terminal.id
+    ),
+    conflictMessage: "Conflicting authority-bound task status terminal exists for the durable handoff."
+  });
+}
+
+function authorityBoundTaskStatusMatches(
+  event: KnowledgeEventOf<"agent.task.status.changed">,
+  taskId: string,
+  runId: string,
+  status: "completed" | "failed",
+  terminalEventId: string
+): boolean {
+  return event.payload.taskId === taskId &&
+    event.payload.runId === runId &&
+    event.payload.status === status &&
+    event.context.causationId === terminalEventId;
+}
+
+function assertNoConflictingAuthorityBoundTaskStatus(
+  statuses: readonly KnowledgeEventOf<"agent.task.status.changed">[],
+  taskId: string,
+  runId: string,
+  terminalEventId: string,
+  exactEventId?: string
+): void {
+  const terminalStatuses = new Set(["completed", "waiting-for-approval", "blocked", "failed", "canceled"]);
+  if (statuses.some((event) =>
+    event.id !== exactEventId &&
+    terminalStatuses.has(event.payload.status) &&
+    (event.payload.taskId === taskId && (event.payload.status === "canceled" || event.payload.runId === runId)) &&
+    event.context.causationId !== terminalEventId
+  )) {
+    throw new Error("Conflicting authority-bound task status terminal exists for the durable handoff.");
   }
 }
 
