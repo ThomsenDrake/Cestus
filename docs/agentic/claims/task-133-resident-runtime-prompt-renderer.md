@@ -117,3 +117,30 @@ remains absent from agent source and tests.
   and cross tests, typecheck, inherited-baseline verify differential, diff and
   factory checks, V4 contract and the exact 15-record/incomplete-29 repository
   boundary, exact three-path scope, clean topology, and local dependencies.
+
+### RV-1-E-721 one-time compile-admission correction
+
+- Authorization: coordinator registry commit
+  `35030d93b90e8c41da52e15cd0347e7e59103fc1`; preserved starting head:
+  `d2bb7366b803791f074ec3fb1570a6fccefc9a38`.
+- Causal compiler RED reproduced exactly two diagnostics at
+  `agent-runtime-prompt-renderer.ts:91`: TS2339 (`enumerable` on `number`) and
+  TS2322 (`number` is not assignable to `object`). The focused runtime RED and
+  the committed compiler RED are preserved; no new RED/GREEN cycle was made.
+- The sole forward correction replaces only the incorrectly inferred mapped
+  array descriptor with `Object.getOwnPropertyDescriptor(resolvedContextPacks,
+  "length")`. It adds no cast, assertion, API, contract, or validation change.
+- From the intended correction bytes: focused runtime test passed `1` file / `5`
+  tests; the prompt-artifacts cross test passed `2` files / `31` tests; and
+  `npm run typecheck` passed. Full `npm test` and `npm run verify` retained the
+  inherited `12` failed files / `69` failed tests / `5` skips, with Task133
+  passing all five assertions and no changed failing identity.
+- `git diff --check` and `npm run factory:check` passed. V4 contract markers
+  were `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`. The forward correction diff is the
+  source plus this claim; cumulative Task133 remains its exact three paths.
+- The repository-prefix command intentionally requires a clean checkout, so
+  its exact 15-record/incomplete-29 boundary is run from the committed forward
+  correction bytes rather than the pre-commit working tree.
