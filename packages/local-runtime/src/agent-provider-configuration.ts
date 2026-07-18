@@ -22,7 +22,7 @@ const feasibilityIdPattern = /^provider_feasibility_[a-zA-Z0-9_-]+$/;
 const evidenceIdPattern = /^evidence_[a-zA-Z0-9_-]+$/;
 const openaiCodexProviderIdPattern = /^provider_openai_codex_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
-const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:(?=\/\/|[^\s])/i;
+const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
 const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
 const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9_:-])([0-9a-fx]+(?:\.[0-9a-fx]+){0,3})(?=$|[^a-z0-9_:-])/gi;
 const localhostPattern = /\blocalhost\b/i;
