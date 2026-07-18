@@ -19583,3 +19583,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances Task133 `admission-failed -> claimed -> implementing`.
   Task121 and Task122 continue independently, G136-SC remains preserved and
   held for record 21, and `neo` remains untouched.
+
+## RV-1-E-719 — Task133 strict candidate admitted to final review
+
+- Recorded at: 2026-07-18T13:29:42Z
+- Exact candidate `b39166785fffc2e46af9ddb07be375521a9e89cb` is a clean
+  three-commit descendant of dispatch base
+  `e481e23a08ff6d381b93d4dda3b553b1990e2bc3`: claim
+  `4405a8f5f1de4756914f3e0853da604c6e3e9b24`, causal missing-module RED
+  `e7a60d3cfb24c8c48c0accce7a3d083cf1952428`, and minimal renderer GREEN
+  `b39166785fffc2e46af9ddb07be375521a9e89cb`. The exact diff is limited to
+  the Task133 claim, runtime-renderer source, and focused test.
+- Coordinator admission from committed bytes reproduced focused **1 file / 3
+  tests**, cross-boundary **2 files / 29 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 contract markers, exact three-path
+  scope, clean state, and real non-symlinked dependency/Vitest provenance.
+  Repository mode accepted exactly
+  `TASK136_REPOSITORY_PREFIX_OK records=15 commands=15` before the required
+  `repository release closure incomplete: expected 29 records, found 15`.
+  Full verification retained the exact inherited **12 failing files / 69
+  failing tests / 5 skipped tests** with the Task133 suite green.
+- Fresh concurrent read-only final reviewers are architecture/invariants task
+  `019f756a-a434-7ab3-a4e7-ff5ac5f38661` and
+  executability/adversarial task
+  `019f756a-ac15-7620-b339-cdf76161e9fb`, each rebound to the exact SHA using
+  GPT-5.6 Terra with `xhigh` reasoning. The project worktree creator rejected
+  new targets, so the established same-directory fresh-fork fallback preserves
+  two new task identities and independent completed reviewer configurations.
+- Reviews are read-only; SDD/TDD is not relevant or authorized. Only a
+  reproduced P0/P1 contract or safety violation may block. Status advances
+  Task133 `implementing -> candidate -> reviewing`; strict prefix remains 15
+  and `neo` remains untouched.
