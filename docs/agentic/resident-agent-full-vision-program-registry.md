@@ -18957,3 +18957,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repair allowance. After its GREEN, one final concurrent Terra/xhigh review
   pair is permitted and no further automatic CF1-HR code/test change may
   occur. Strict record count remains 13.
+
+## RV-1-E-707 — CF1-HR sole repair candidate enters its final review pair
+
+- Recorded at: 2026-07-18T00:38:39Z
+- The same owner preserved every prior commit and appended sole repair RED
+  `43cc3d29de85744ba0127c8ee33215f054300e41` followed by sole repair GREEN
+  `5fc556773c81b46953064dc8fc2b105ebc3cfd12`. The causal RED proves the
+  authority-bound production call lacked terminal/task-status completion and
+  failed to reject the exact stale-authority boundary; no history was
+  rewritten.
+- The GREEN retains the already consumed authority closure inside the strict
+  V2 recorder, revalidates through terminal append/readback, task-status
+  append/readback, and final projection, and returns the terminal, exact task
+  status, and complete verified Task119 readback. It exposes no reusable
+  authority handle and does not widen the V1 finalizer.
+- Coordinator final-candidate admission from exact committed bytes passes
+  **7 files / 278 tests** focused, **11 files / 311 tests** cross-boundary,
+  typecheck, diff hygiene, factory readiness, exact fourteen-path scope,
+  dependency/Vitest provenance, and clean tracked/untracked state. Owner full
+  verification preserves the inherited **12-file / 69-test** failure
+  cardinality and adds only the two intended passing tests.
+- The single final concurrent read-only pair is architecture/invariants task
+  `019f72a7-a377-78a3-9e76-e51071fcb861` in worktree
+  `/home/drake/.codex/worktrees/1a8b/Cestus` and
+  executability/adversarial task `019f72a7-a394-7b20-9116-249d473d096f`
+  in worktree `/home/drake/.codex/worktrees/3722/Cestus`. Both are bound to
+  exact candidate `5fc55677`, `gpt-5.6-terra`, and `xhigh` reasoning.
+- Status moves `implementing-repair -> candidate -> reviewing-final`. SDD/TDD
+  is not relevant or authorized for reviewers. No further automatic CF1-HR
+  code/test change is permitted after this pair; a reproduced P0/P1 durably
+  blocks the card. Strict record count remains 13.
