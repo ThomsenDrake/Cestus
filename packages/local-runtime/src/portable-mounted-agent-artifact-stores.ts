@@ -10,6 +10,7 @@ import {
   type HandoffAuthorityBinding,
   type MountedSpecialistHandoffAuthorityWitness
 } from "../../agent/src/specialist-handoff-authority.js";
+import { approvedAgentSpecialistRunTypes, type AgentSpecialistRunType } from "../../agent/src/specialists.js";
 import { taskOrchestrationStreamId } from "../../agent/src/task-orchestrator-events.js";
 import {
   createMountedSpecialistHandoffPreparationBinder,
@@ -24,7 +25,7 @@ export interface BindPortableMountedAgentHandoffInput {
   readonly taskId: string;
   readonly attemptId: string;
   readonly approvedRunId: string;
-  readonly runType: string;
+  readonly runType: AgentSpecialistRunType;
   readonly retryGeneration: number;
 }
 
@@ -125,7 +126,7 @@ interface RunBinding {
   readonly taskId: string;
   readonly attemptId: string;
   readonly approvedRunId: string;
-  readonly runType: string;
+  readonly runType: AgentSpecialistRunType;
   readonly retryGeneration: number;
   readonly authorityBinding?: HandoffAuthorityBinding;
 }
@@ -934,9 +935,18 @@ function normalizeBinding(value: BindPortableMountedAgentHandoffInput): RunBindi
   const taskId = requiredText(record.taskId);
   const attemptId = requiredText(record.attemptId);
   const approvedRunId = requiredText(record.approvedRunId);
-  const runType = requiredText(record.runType);
+  const runType = requiredAgentSpecialistRunType(record.runType);
   const retryGeneration = requiredNonNegativeInteger(record.retryGeneration);
   return Object.freeze({ taskId, attemptId, approvedRunId, runType, retryGeneration });
+}
+
+function requiredAgentSpecialistRunType(value: unknown): AgentSpecialistRunType {
+  if (typeof value !== "string" || !isAgentSpecialistRunType(value)) throw authorityError();
+  return value;
+}
+
+function isAgentSpecialistRunType(value: string): value is AgentSpecialistRunType {
+  return approvedAgentSpecialistRunTypes.some((candidate) => candidate === value);
 }
 
 function normalizeEventIds(value: readonly string[]): readonly string[] {

@@ -29,7 +29,7 @@ import {
 import type { AgentFailureCategory } from "./projection-types.js";
 import type { AgentApprovedToolPreviewResult } from "./scheduler-types.js";
 import { specialistWorkflowDescriptorFor, type SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
-import type { AgentSpecialistRunType } from "./specialists.js";
+import { approvedAgentSpecialistRunTypes, type AgentSpecialistRunType } from "./specialists.js";
 import {
   evaluateProductionContextRequirements,
   productionSpecialistPromptRegistrationFor,
@@ -81,7 +81,7 @@ type MountedHandoffTaskLifecycle = {
   readonly taskId: string;
   readonly attemptId: string;
   readonly runId: string;
-  readonly runType: string;
+  readonly runType: AgentSpecialistRunType;
   readonly retryGeneration: number;
 };
 
@@ -1747,7 +1747,7 @@ function compactHandoffBinding(
     handoffMaterialArtifactHash: manifest.handoffMaterialArtifactHash,
     runId: manifest.runId,
     ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
-    runType: manifest.runType as AgentSpecialistRunType,
+    runType: preparedHandoffRunType(manifest.runType),
     residentAgentId: manifest.residentAgentId,
     status: manifest.status,
     safeSummary: manifest.safeSummary,
@@ -1762,6 +1762,14 @@ function compactHandoffBinding(
     ...(manifest.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: manifest.supersedesHandoffId }),
     ...(manifest.supersedesEventId === undefined ? {} : { supersedesEventId: manifest.supersedesEventId })
   };
+}
+
+function preparedHandoffRunType(value: string): AgentSpecialistRunType {
+  const runType = approvedAgentSpecialistRunTypes.find((candidate) => candidate === value);
+  if (runType === undefined) {
+    throw new Error("Specialist handoff manifest has an unsupported run type.");
+  }
+  return runType;
 }
 
 type AuthorityBoundPreparedPayload = Extract<
@@ -2353,7 +2361,7 @@ async function appendOrReuseAuthorityBoundOrchestrationCompleted(
     },
     payload: {
       taskId: lifecycle.taskId,
-      runType: manifest.runType,
+      runType: lifecycle.runType,
       attemptId: lifecycle.attemptId,
       retryGeneration: lifecycle.retryGeneration,
       runId: lifecycle.runId,
