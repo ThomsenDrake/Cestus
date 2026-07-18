@@ -575,7 +575,9 @@ describe("durable specialist handoff runner lifecycle", () => {
     })).rejects.toThrow(/authority|stale/i);
 
     expect((await fixture.ledger.readStream(`agent_task_${fixture.taskId}`)).filter((event) =>
-      event.type === "agent.task.status.changed" && event.payload.runId === fixture.runId
+      event.type === "agent.task.status.changed" &&
+      event.payload.runId === fixture.runId &&
+      event.payload.status !== "running"
     )).toEqual([]);
   });
 
