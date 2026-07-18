@@ -23,3 +23,16 @@ mounted authority; Task139-PM solely owns that later mounted-authority adapter.
 It performs no provider/network call, secret resolution, ledger or portable
 write, factory mutation, process-global registration, readiness authority mint,
 or fallback.
+
+## GREEN Evidence
+
+- The preserved causal RED commit `92423e6d85f3e70ec1ba961afa34b7af1be28e8f`
+  failed solely because this production module was absent.
+- Coordinator-adjudicated GREEN-only fixture corrections replace the one
+  credential-marker safe label and three credential-marker source-event IDs
+  with secret-safe equivalents. The intentionally secret-bearing
+  `Bearer secret value` rejection remains unchanged.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passed: 1 file / 4 tests. The configuration result is immutable data only and
+  validates exact capability, credential-reference, endpoint-policy, current
+  feasibility, model-scope, lane, provenance, and hostile-shape constraints.
