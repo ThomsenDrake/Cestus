@@ -36,3 +36,22 @@ or fallback.
   passed: 1 file / 4 tests. The configuration result is immutable data only and
   validates exact capability, credential-reference, endpoint-policy, current
   feasibility, model-scope, lane, provenance, and hostile-shape constraints.
+
+## Authorized Repair RED
+
+- Coordinator authorization: one causal repair RED followed by one minimal
+  repair GREEN, preserving candidate `8aed2a4c32d4d38de8e3ad6ab1a7ca1374905884`
+  and all earlier history.
+- Production source remained byte-identical in RED:
+  `167ccc7fdcaa1c52202c3a606bdc15dd4e95bd0b` both at `HEAD` and in the
+  worktree.
+- The focused command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` failed
+  causally with 1 failed file / 6 failed and 3 passed tests. The six failures
+  prove the candidate admitted an extra unassessed model, unrelated feasibility
+  provenance, `wss://10.0.0.1/socket` data-handling material, a missing BYOK
+  transfer-approval diagnostic, an extra local API-key requirement, and lax
+  official-harness classifications.
+- Typed fixture helpers remove all focused-test TypeScript diagnostics. The RED
+  `npm run typecheck` output contains only the two known production narrowing
+  diagnostics in `agent-provider-configuration.ts`.
