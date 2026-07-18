@@ -19032,3 +19032,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   boundary, and the raw completion/projection bypass. No such decision is
   inferred here. `neo`, all prior raw release records, and candidate history
   remain untouched.
+
+## RV-1-E-709 — Human authorizes one post-ceiling CF1-HR safety packet
+
+- Recorded at: 2026-07-18T01:39:01Z
+- The human explicitly overrides CF1-HR's exhausted automatic repair ceiling
+  exactly once to resolve the three reproduced P1 findings recorded in
+  RV-1-E-708. The same implementation owner task
+  `019f7183-e8db-77f2-ac2f-1aabeaae543d`, branch
+  `codex/cf1-handoff-readback`, worktree
+  `/home/drake/.codex/worktrees/00c5/Cestus`, and complete preserved history
+  resume from candidate `5fc556773c81b46953064dc8fc2b105ebc3cfd12`.
+  No replacement owner, recovery generation, bridge card, V5 contract,
+  compatibility lane, or renamed repair cycle is authorized.
+- The packet is limited to one causal RED commit and one minimal GREEN commit
+  within the existing exact fourteen-path CF1-HR boundary. It must make normal
+  queued/running pre-start task history compatible with valid portable V2
+  witness issuance while rejecting stale, conflicting, and cross-run history;
+  implement the exact durable order `run terminal ->
+  agent.task.orchestration.completed -> task status`; and prevent exported or
+  caller-structural completion/status helpers from terminalizing or projecting
+  a rejected V2 lifecycle. Already-authorized immutable V1 replay remains
+  separate and cannot complete or upgrade V2.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The resumed owner is bound to
+  `gpt-5.6-terra` with `xhigh` reasoning and must run the exact focused,
+  cross-boundary, typecheck, full-verifier differential, diff-hygiene,
+  factory-readiness, fourteen-path, clean-state, dependency, and local-Vitest
+  gates from committed bytes.
+- Exactly one fresh concurrent read-only Terra/xhigh final review pair follows
+  the GREEN. SDD/TDD is not relevant or authorized for reviewers. Approval
+  permits immediate full-chain integration and strict release record 14; a
+  reproduced P0/P1 durably blocks CF1-HR with no further automatic repair,
+  while P2, style, hypothetical hardening, and unreproduced concerns enter the
+  backlog.
+- Status moves `blocked -> implementing-post-ceiling-safety-packet`. Strict
+  record count remains 13. V1-V3, raw records 1-13, all candidate and review
+  history, all 29 card IDs and exact order, the finite direct-source transfer
+  mapping, released-source current-HEAD ownership, and `neo` remain untouched.
