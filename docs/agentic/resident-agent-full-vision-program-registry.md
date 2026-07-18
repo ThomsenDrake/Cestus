@@ -20245,3 +20245,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances Task139-P1 `implementing -> candidate -> reviewing`. No
   candidate byte is integrated, strict prefix remains 16, preserved later
   candidates remain held for exact ordered bases, and `neo` remains untouched.
+
+## RV-1-E-737 — Task139-P1 nested-provenance determinism root cause
+
+- Recorded at: 2026-07-18T21:03:19Z
+- Architecture/invariants reviewer
+  `019f7704-a0ca-7841-b098-5c81b48dd1da` returned **NEEDS-CHANGES** for exact
+  candidate `f614549d`; executability/adversarial reviewer
+  `019f7704-a152-7ba0-9019-2d43d5c77b85` returned **APPROVED** for the same
+  bytes. Neither changed a file, and the approval does not carry across a code
+  change.
+- The architecture P1 is accepted. Binding compares the feasibility aggregate
+  against a sorted required provenance set, but the immutable output preserves
+  caller order inside credential-reference, endpoint-policy, and official-
+  evidence source-event arrays. Two semantically identical inputs with those
+  nested arrays reversed both pass exact binding yet produce byte/order-
+  different snapshots. This violates deterministic exact provenance and would
+  leak caller ordering into Task139-PM composition.
+- Standing recovery authority starts a same-owner, exact-three-path causal
+  RED/GREEN cycle. RED must prove two order permutations normalize to the same
+  snapshot and explicitly cover credential-reference, endpoint-policy, and
+  official-evidence provenance. GREEN must canonicalize each nested array once
+  before immutable output while retaining duplicate rejection, exact aggregate
+  provenance, secret safety, and every existing lane/text/authority invariant.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- No candidate byte is integrated and no release record is appended. Strict
+  prefix remains 16; no provider/network/credential/external effect, push, or
+  `neo` action occurs.
