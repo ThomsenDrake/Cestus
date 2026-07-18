@@ -18988,3 +18988,47 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   is not relevant or authorized for reviewers. No further automatic CF1-HR
   code/test change is permitted after this pair; a reproduced P0/P1 durably
   blocks the card. Strict record count remains 13.
+
+## RV-1-E-708 — CF1-HR is durably blocked after its final review pair
+
+- Recorded at: 2026-07-18T00:56:28Z
+- Both final reviewers returned `NEEDS-CHANGES` on exact candidate
+  `5fc556773c81b46953064dc8fc2b105ebc3cfd12` with reproduced P1 safety
+  violations. Per the finite-factory ceiling, no further automatic CF1-HR
+  code/test change, repair owner, recovery generation, or renamed correction
+  is authorized.
+- Architecture/invariants task `019f72a7-a377-78a3-9e76-e51071fcb861`
+  reproduced that normal queued/running task-status history is selected as
+  bound history before the specialist-run start and makes the portable
+  controller reject witness issuance. It also proved the repaired lifecycle
+  emits terminal then task status while the authority state machine requires
+  terminal, `agent.task.orchestration.completed`, then task status. The
+  production path therefore cannot complete the approved authority sequence.
+- Executability/adversarial task
+  `019f72a7-a394-7b20-9116-249d473d096f` reproduced a separate authority
+  bypass. After the strict V2 recorder correctly rejects stale authority after
+  `agent.specialist-handoff.recorded`, exported raw
+  `appendSpecialistCompletion` can append the matching terminal and a raw
+  task-status append can make the projection return `task-completed` with a
+  verified readback. This defeats the required zero-next-effect guarantee.
+- Coordinator adjudication confirms both findings in the exact candidate
+  bytes. The portable cursor selects any matching task/run event before
+  dispatching it through a phase machine that has no queued/running task
+  transition; the phase machine explicitly requires
+  `run-terminal -> orchestration-completed -> task-status`; and the exported
+  raw completion helper remains a caller-structural terminal append surface.
+  These are candidate-specific P1s, not verifier noise or hypothetical
+  hardening.
+- Status moves `reviewing-final -> blocked`. Strict record count remains 13,
+  so release record 14 does not exist and released-source current-HEAD
+  ownership does not migrate to CF1-HR. Task126-R candidate `822fd573` and
+  G136-SC candidate `d74ff4a3` remain preserved but predecessor-bound. The
+  exact executable frontier is `CF1-HR`, `Task126-R`, and `G136-SC`; no other
+  card is independently eligible, and none can advance strict release order
+  past blocked position 14.
+- Reopening the critical path requires an explicit product/scope/safety
+  decision that overrides the exhausted CF1 repair ceiling and authorizes the
+  exact treatment of pre-start task lifecycle, the orchestration-completed
+  boundary, and the raw completion/projection bypass. No such decision is
+  inferred here. `neo`, all prior raw release records, and candidate history
+  remain untouched.
