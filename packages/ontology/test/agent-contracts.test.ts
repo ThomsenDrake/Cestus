@@ -525,6 +525,58 @@ describe("resident agent event contracts", () => {
     ).toBe(false);
   });
 
+  it("accepts only matching authority-bound V2 prepared and recorded handoff payloads", () => {
+    const authorityBinding = {
+      workspaceIdentityHash: hash111,
+      mountGeneration: "mount_generation_001",
+      ledgerStoreIdentity: "ledger_store_001",
+      artifactStoreIdentity: "artifact_store_001",
+      ledgerHighWaterEventId: "evt_ledger_high_water_001",
+      policyHash: hash222,
+      activeLocksHash: hash333
+    } as const;
+    const v2Binding = {
+      handoffId: "handoff_run_handoff_001_0123456789abcdef",
+      handoffRevision: 1,
+      idempotencyKey: `specialist-handoff:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:${hash222}`,
+      handoffManifestHash: hash222,
+      handoffDtoHash: hash333,
+      runId: "run_handoff_001",
+      taskId: "task_handoff_001",
+      runType: "evidence-triage",
+      residentAgentId: "agent_default",
+      status: "ready-for-review",
+      safeSummary: "Evidence triage handoff is ready for human review.",
+      finalOutputStepId: "step_run_handoff_001_final_output",
+      finalOutputEventId: "evt_final_output",
+      handoffMaterialArtifactHash: hash333,
+      contextPackHashes: [hash111],
+      promptArtifactHash: hash111,
+      outputArtifactHashes: [hash222],
+      toolRequestIds: [],
+      sourceEventIds: ["evt_source_001"],
+      relatedEventIds: ["evt_final_output"],
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
+      authorityBinding
+    };
+    const prepared = agentEvent("evt_handoff_v2_prepared", "agent.specialist-handoff.prepared", "agent_run_run_handoff_001", v2Binding);
+    const recorded = agentEvent("evt_handoff_v2_recorded", "agent.specialist-handoff.recorded", "agent_run_run_handoff_001", {
+      ...v2Binding,
+      preparedEventId: prepared.id,
+      verifiedAt: "2026-07-10T14:00:00.000Z"
+    });
+
+    expect(validateKnowledgeEvent(prepared).success).toBe(true);
+    expect(validateKnowledgeEvent(recorded).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      ...recorded,
+      payload: {
+        ...recorded.payload,
+        authorityBinding: { ...authorityBinding, workspaceIdentityHash: "sha256:forged" }
+      }
+    }).success).toBe(false);
+  });
+
   it("accepts the default resident identity and agent actor kind", () => {
     expect(
       validateKnowledgeEvent({
