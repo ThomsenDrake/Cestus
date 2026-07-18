@@ -390,3 +390,40 @@ Task122 candidates remain preserved, rejected, and unintegrated.
   for a fresh independent reviewer with no prior Task122 author or reviewer
   role. It remains unintegrated; no self-review, self-integration, `neo` merge,
   PRR, graph, provider, tool, external, or fallback-store effect occurred.
+
+## V4 CF1-HR Authority-Bound Adoption Claim
+
+- Status transition: `released historical Task122 candidates` -> `in-progress`
+  for strict V4 position 26 only.
+- Worker: `/root` on `codex/task122-cf1-handoff-adoption` in
+  `/home/drake/.codex/worktrees/da35/Cestus`.
+- Immutable program base verified before this transition:
+  `986c2a43b018e72acf1104e84853826b06b1abdd`.
+- Governing authority: released CF1-HR strict record 14 (`RV-1-E-714`), the
+  Task136 V4 contract, and Task122's three owned paths only.
+
+This finite packet migrates investigation planning from the legacy handoff
+recorder/finalizer path to CF1-HR's strict V2 authority-bound lifecycle. The
+workflow must consume only an injected opaque current mounted handoff-authority
+witness and mounted prompt/artifact stores. It must not mint caller-structural
+authority, use V1 compatibility to complete V2, invoke a raw V2 completion
+helper, create a shadow contract, or use a fallback write.
+
+The successful lifecycle is exact durable final output -> V2 prepared -> V2
+recorded -> specialist-run terminal -> agent.task.orchestration.completed ->
+task status, followed by complete authority-bound projection/readback. Exact
+task, run, workspace/currentness, provenance, source/context/prompt, and
+investigation bindings remain required. Stale, cross-run, conflicting, missing,
+or consumed authority fails closed; advisory outputs remain limited to the
+investigation plan, task suggestions, and PRR draft candidates.
+
+The required causal RED and GREEN command is:
+
+```bash
+npm test -- packages/agent/test/investigation-planner-workflow.test.ts
+```
+
+Before the GREEN commit, run the Task122 cross-boundary command, standalone
+typecheck, differential `npm test` and `npm run verify`, `git diff --check`,
+and `npm run factory:check`. No registry, contract, spec, plan, provider,
+credential, network, live-service, integration, or `neo` action is authorized.
