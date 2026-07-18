@@ -19939,3 +19939,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-728 — Record-16 eligible Task139-P1 owner dispatched
+
+- Recorded at: 2026-07-18T17:17:42Z
+- Exact strict record-16 program base
+  `0ba731d3845706dcb0fc0cf0f47726c9d7229e55` releases every prerequisite of
+  `Task139-P1`: Task126-R, Task127, Task128, Task129, Task130, and Task133.
+  Under the V4 graph, the only other currently eligible cards are already
+  preserved candidates: G136-SC at release position 22, Task121 at position
+  25, and Task122 at position 26. They remain held without stale review or
+  integration until their exact ordered bases exist.
+- Sole bounded Task139-P1 implementation owner is Terra/xhigh task
+  `019f763b-a189-7692-8c42-c9a9b8058fa8`, worktree
+  `/home/drake/.codex/worktrees/e06e/Cestus`, with required task branch
+  `codex/task139-p1-provider-configuration`. It owns exactly the provider-
+  configuration source, focused test, and Task139 claim declared by V4. The
+  finite packet requires one claim commit, one causal RED test commit, and one
+  minimal GREEN source commit; the child cannot review, self-integrate, edit
+  this registry, push, or touch `neo`. Task-scoped subagent-driven development
+  and test-driven development are explicitly approved for this task.
+- Task139-P1 is explicitly data-only. It may normalize immutable capability,
+  credential-reference, endpoint-policy, and current feasibility facts, but it
+  may not mint or emulate Task126's branded current-posture reader or any
+  mounted authority. The next exact card, Task139-PM, remains the sole mounted
+  issuer and consumer-facing reader adapter. Historical rejected Task139
+  candidates are negative evidence only and may not be replayed or treated as
+  current authority.
+- Status advances Task139-P1 `not started -> claimed -> implementing`. No
+  provider, network, credential, live-service, registry-order, contract,
+  candidate, or `neo` byte is changed by this dispatch.
