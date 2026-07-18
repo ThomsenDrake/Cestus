@@ -18874,3 +18874,332 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record count remains 13; CF1-HR may now resume from its preserved claim on a
   forward merge of this reviewed assurance base. V1-V3, raw records 1-13, all
   29 card IDs/order, historical evidence, and `neo` remain untouched.
+
+## RV-1-E-704 — G136-SC sole repair packet becomes a predecessor-bound candidate
+
+- Recorded at: 2026-07-17T23:22:20Z
+- The same G136-SC implementation owner preserved claim `57a1f863`, causal RED
+  `c119be76`, and initial GREEN `80c20c81`, then received the reviewed
+  assurance base through merge `d96016f01b58fd298853d7cbc3b42dfd9382b255`.
+  Its one authorized consolidated repair is causal RED
+  `c8588bf9cbfece600c80d6ffd5376b8d38138b0f` followed by minimal GREEN
+  `d74ff4a301613bb5291a896db3a4a3fcf52c9d3e`. No replacement owner or
+  additional generation was created, and no further automatic G136-SC repair
+  is permitted.
+- The exact repair range changes nine paths, all within the corrected eleven-
+  path G136-SC boundary. It makes the structural completion appender closure-
+  only and replaces self-minted resident bookkeeping with causally post-claim,
+  independently appended non-gateway/non-resident domain-result locators.
+- Owner admission reports the corrected focused gate at **6 files / 79 tests**
+  and cross-boundary gate at **9 files / 129 tests**, with typecheck, diff
+  hygiene, factory readiness, exact-scope, dependency, and clean-state gates
+  passing. Coordinator diff and clean-state audits reproduce the exact
+  nine-path repair scope without hygiene defects.
+- Status moves `implementing-repair -> candidate`. The candidate is not yet
+  reviewing or approved: because G136-SC depends on T120-R and releases at
+  position 22, it must receive the integrated record-21 program base and rerun
+  all gates before its sole final Terra/xhigh review pair. Reviewing these bytes
+  now would create a stale verdict. Strict record count remains 13.
+
+## RV-1-E-705 — Corrected CF1-HR candidate enters its review pair
+
+- Recorded at: 2026-07-18T00:01:52Z
+- The preserved CF1-HR lane advanced from reviewed-base merge
+  `0255ac2f8927851fb28220ac05a9b5acddfdcab3` through causal RED
+  `005dead01f2204d46346f1efde12c944c2015506` and initial GREEN
+  `3e2c586c5b90fb6b2d5945cd7ed4acfd7d7164b5`. Coordinator admission then
+  reproduced six exact CF1-owned TypeScript errors before any review was
+  dispatched. The same owner preserved all history and appended forward
+  type-safety correction `06b8d6a1b50b208721cd6af4039f36a5e2ce5e7a`;
+  no review-repair allowance was consumed.
+- Exact candidate scope is the corrected fourteen-path CF1-HR boundary.
+  Coordinator admission from committed bytes passes **7 files / 276 tests**
+  focused, **11 files / 309 tests** cross-boundary, typecheck, diff hygiene,
+  factory readiness, dependency/Vitest provenance, exact scope, and clean
+  tracked/untracked state. Full verification preserves the inherited
+  **12-file / 69-test** failure cardinality while increasing passing totals to
+  212 files / 2704 tests; no CF1-focused failure appears.
+- The single fresh concurrent read-only review pair is architecture/invariants
+  task `019f7286-243e-7480-a0ea-bd010118cc17` in worktree
+  `/home/drake/.codex/worktrees/47b0/Cestus` and
+  executability/adversarial task `019f7286-2435-70b3-97de-0a4084dd9342`
+  in worktree `/home/drake/.codex/worktrees/0b66/Cestus`. Both are bound to
+  exact candidate `06b8d6a1`, `gpt-5.6-terra`, and `xhigh` reasoning.
+- Reviews are read-only; SDD/TDD is not relevant or authorized. Only an exact
+  reproduced P0/P1 may block. Status moves `implementing -> candidate ->
+  reviewing`; strict record count remains 13 and `neo` remains untouched.
+
+## RV-1-E-706 — CF1-HR enters its sole consolidated repair on reproduced V2 lifecycle P1
+
+- Recorded at: 2026-07-18T00:18:56Z
+- Both first-pair reviewers returned `NEEDS-CHANGES` on exact candidate
+  `06b8d6a1b50b208721cd6af4039f36a5e2ce5e7a` with the same reproduced P1.
+  Architecture/invariants task `019f7286-243e-7480-a0ea-bd010118cc17`
+  and executability/adversarial task
+  `019f7286-2435-70b3-97de-0a4084dd9342` each proved that the strict V2
+  authority-bound recorder stops after the recorded handoff while the sole
+  finalizer and finalization readback are V1-only.
+- Coordinator adjudication confirms the finding against frozen Task 3. The V2
+  projection requires terminal and task-status evidence for the complete
+  Task119 readback, but no authority-revalidated production path can create
+  that chain. The positive projection fixture manually assembles evidence and
+  therefore does not prove the production lifecycle. A V2-to-V1 finalizer cast
+  fails statically; forcing it would reject before terminal append or bypass
+  the required current-authority checks.
+- The same CF1-HR owner task `019f7183-e8db-77f2-ac2f-1aabeaae543d` receives
+  the single permitted consolidated repair packet on the same branch and
+  history. It must append one causal RED and one minimal GREEN that retain the
+  consumed authority revalidation closure through terminal/task-status
+  append-readback and final projection, then return the complete verified
+  readback. Structural authority, raw binding input, V1 widening, fallback,
+  and manually assembled completion remain forbidden.
+- Status moves `reviewing -> implementing-repair`. This consumes CF1-HR's one
+  repair allowance. After its GREEN, one final concurrent Terra/xhigh review
+  pair is permitted and no further automatic CF1-HR code/test change may
+  occur. Strict record count remains 13.
+
+## RV-1-E-707 — CF1-HR sole repair candidate enters its final review pair
+
+- Recorded at: 2026-07-18T00:38:39Z
+- The same owner preserved every prior commit and appended sole repair RED
+  `43cc3d29de85744ba0127c8ee33215f054300e41` followed by sole repair GREEN
+  `5fc556773c81b46953064dc8fc2b105ebc3cfd12`. The causal RED proves the
+  authority-bound production call lacked terminal/task-status completion and
+  failed to reject the exact stale-authority boundary; no history was
+  rewritten.
+- The GREEN retains the already consumed authority closure inside the strict
+  V2 recorder, revalidates through terminal append/readback, task-status
+  append/readback, and final projection, and returns the terminal, exact task
+  status, and complete verified Task119 readback. It exposes no reusable
+  authority handle and does not widen the V1 finalizer.
+- Coordinator final-candidate admission from exact committed bytes passes
+  **7 files / 278 tests** focused, **11 files / 311 tests** cross-boundary,
+  typecheck, diff hygiene, factory readiness, exact fourteen-path scope,
+  dependency/Vitest provenance, and clean tracked/untracked state. Owner full
+  verification preserves the inherited **12-file / 69-test** failure
+  cardinality and adds only the two intended passing tests.
+- The single final concurrent read-only pair is architecture/invariants task
+  `019f72a7-a377-78a3-9e76-e51071fcb861` in worktree
+  `/home/drake/.codex/worktrees/1a8b/Cestus` and
+  executability/adversarial task `019f72a7-a394-7b20-9116-249d473d096f`
+  in worktree `/home/drake/.codex/worktrees/3722/Cestus`. Both are bound to
+  exact candidate `5fc55677`, `gpt-5.6-terra`, and `xhigh` reasoning.
+- Status moves `implementing-repair -> candidate -> reviewing-final`. SDD/TDD
+  is not relevant or authorized for reviewers. No further automatic CF1-HR
+  code/test change is permitted after this pair; a reproduced P0/P1 durably
+  blocks the card. Strict record count remains 13.
+
+## RV-1-E-708 — CF1-HR is durably blocked after its final review pair
+
+- Recorded at: 2026-07-18T00:56:28Z
+- Both final reviewers returned `NEEDS-CHANGES` on exact candidate
+  `5fc556773c81b46953064dc8fc2b105ebc3cfd12` with reproduced P1 safety
+  violations. Per the finite-factory ceiling, no further automatic CF1-HR
+  code/test change, repair owner, recovery generation, or renamed correction
+  is authorized.
+- Architecture/invariants task `019f72a7-a377-78a3-9e76-e51071fcb861`
+  reproduced that normal queued/running task-status history is selected as
+  bound history before the specialist-run start and makes the portable
+  controller reject witness issuance. It also proved the repaired lifecycle
+  emits terminal then task status while the authority state machine requires
+  terminal, `agent.task.orchestration.completed`, then task status. The
+  production path therefore cannot complete the approved authority sequence.
+- Executability/adversarial task
+  `019f72a7-a394-7b20-9116-249d473d096f` reproduced a separate authority
+  bypass. After the strict V2 recorder correctly rejects stale authority after
+  `agent.specialist-handoff.recorded`, exported raw
+  `appendSpecialistCompletion` can append the matching terminal and a raw
+  task-status append can make the projection return `task-completed` with a
+  verified readback. This defeats the required zero-next-effect guarantee.
+- Coordinator adjudication confirms both findings in the exact candidate
+  bytes. The portable cursor selects any matching task/run event before
+  dispatching it through a phase machine that has no queued/running task
+  transition; the phase machine explicitly requires
+  `run-terminal -> orchestration-completed -> task-status`; and the exported
+  raw completion helper remains a caller-structural terminal append surface.
+  These are candidate-specific P1s, not verifier noise or hypothetical
+  hardening.
+- Status moves `reviewing-final -> blocked`. Strict record count remains 13,
+  so release record 14 does not exist and released-source current-HEAD
+  ownership does not migrate to CF1-HR. Task126-R candidate `822fd573` and
+  G136-SC candidate `d74ff4a3` remain preserved but predecessor-bound. The
+  exact executable frontier is `CF1-HR`, `Task126-R`, and `G136-SC`; no other
+  card is independently eligible, and none can advance strict release order
+  past blocked position 14.
+- Reopening the critical path requires an explicit product/scope/safety
+  decision that overrides the exhausted CF1 repair ceiling and authorizes the
+  exact treatment of pre-start task lifecycle, the orchestration-completed
+  boundary, and the raw completion/projection bypass. No such decision is
+  inferred here. `neo`, all prior raw release records, and candidate history
+  remain untouched.
+
+## RV-1-E-709 — Human authorizes one post-ceiling CF1-HR safety packet
+
+- Recorded at: 2026-07-18T01:39:01Z
+- The human explicitly overrides CF1-HR's exhausted automatic repair ceiling
+  exactly once to resolve the three reproduced P1 findings recorded in
+  RV-1-E-708. The same implementation owner task
+  `019f7183-e8db-77f2-ac2f-1aabeaae543d`, branch
+  `codex/cf1-handoff-readback`, worktree
+  `/home/drake/.codex/worktrees/00c5/Cestus`, and complete preserved history
+  resume from candidate `5fc556773c81b46953064dc8fc2b105ebc3cfd12`.
+  No replacement owner, recovery generation, bridge card, V5 contract,
+  compatibility lane, or renamed repair cycle is authorized.
+- The packet is limited to one causal RED commit and one minimal GREEN commit
+  within the existing exact fourteen-path CF1-HR boundary. It must make normal
+  queued/running pre-start task history compatible with valid portable V2
+  witness issuance while rejecting stale, conflicting, and cross-run history;
+  implement the exact durable order `run terminal ->
+  agent.task.orchestration.completed -> task status`; and prevent exported or
+  caller-structural completion/status helpers from terminalizing or projecting
+  a rejected V2 lifecycle. Already-authorized immutable V1 replay remains
+  separate and cannot complete or upgrade V2.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The resumed owner is bound to
+  `gpt-5.6-terra` with `xhigh` reasoning and must run the exact focused,
+  cross-boundary, typecheck, full-verifier differential, diff-hygiene,
+  factory-readiness, fourteen-path, clean-state, dependency, and local-Vitest
+  gates from committed bytes.
+- Exactly one fresh concurrent read-only Terra/xhigh final review pair follows
+  the GREEN. SDD/TDD is not relevant or authorized for reviewers. Approval
+  permits immediate full-chain integration and strict release record 14; a
+  reproduced P0/P1 durably blocks CF1-HR with no further automatic repair,
+  while P2, style, hypothetical hardening, and unreproduced concerns enter the
+  backlog.
+- Status moves `blocked -> implementing-post-ceiling-safety-packet`. Strict
+  record count remains 13. V1-V3, raw records 1-13, all candidate and review
+  history, all 29 card IDs and exact order, the finite direct-source transfer
+  mapping, released-source current-HEAD ownership, and `neo` remain untouched.
+
+## RV-1-E-710 — CF1-HR post-ceiling packet freezes for terminal review
+
+- Recorded at: 2026-07-18T02:21:30Z
+- The same CF1-HR owner preserved candidate `5fc556773c81b46953064dc8fc2b105ebc3cfd12`
+  and appended the sole human-exception causal RED
+  `4f844569197782d1435767159efbdbb82714ad60` followed by the sole minimal
+  GREEN `9799beead86a3b14544549516087c2af6a5f6d54`. The RED reproduces all
+  three RV-1-E-708 boundaries. The GREEN changes only owned paths, and the
+  cumulative range remains exactly the fourteen-path CF1-HR boundary. No
+  post-GREEN code or test edit is authorized.
+- Coordinator admission from exact committed bytes passes the focused gate at
+  **7 files / 280 tests**, the cross-boundary gate at **11 files / 313 tests**,
+  diff hygiene, factory readiness, exact scope, dependency/Vitest provenance,
+  and clean tracked/untracked state. The full test set retains the exact
+  inherited 69-failure set: **12 failing / 212 passing / 3 skipped files** and
+  **69 failing / 2708 passing / 5 skipped tests**.
+- Fresh coordinator `npm run typecheck` reproduces five committed-source
+  errors: the new authority lifecycle tuple carries `runType` as unconstrained
+  `string` while existing orchestration helpers and the durable event ABI
+  require the closed specialist-run-type union. The errors occur in
+  `specialist-runner-kernel.ts` near lines 1060, 2345, 2356, and 2375 and in
+  `portable-mounted-agent-artifact-stores.ts` near line 710. Consequently exact
+  `npm run verify` exits at typecheck before running its test/build/factory
+  suffix. Two clean reruns disprove incremental-cache or environment noise.
+- The one fresh concurrent read-only terminal pair is executability/adversarial
+  task `019f7306-8ed6-75b0-9ce8-66916316fdb2` in worktree
+  `/home/drake/.codex/worktrees/23f8/Cestus` and architecture/invariants task
+  `019f7306-8ee5-7801-9335-e5f8f37da10d` in worktree
+  `/home/drake/.codex/worktrees/b076/Cestus`. Both are bound to exact candidate
+  `9799beea`, `gpt-5.6-terra`, and `xhigh` reasoning, and must independently
+  adjudicate the three safety corrections plus the compiler failure.
+- Status moves `implementing-post-ceiling-safety-packet -> reviewing-terminal`.
+  Strict record count remains 13. Reviews are read-only; SDD/TDD is not
+  relevant or authorized. A reproduced P0/P1 durably blocks CF1-HR with no
+  further automatic repair; only dual approval permits integration and strict
+  release record 14. V1-V3, raw records 1-13, released-source current-HEAD
+  ownership, all evidence history, and `neo` remain untouched.
+
+## RV-1-E-711 — CF1-HR is durably blocked after the human-exception final pair
+
+- Recorded at: 2026-07-18T02:35:33Z
+- Both fresh terminal reviewers returned `NEEDS-CHANGES` on exact candidate
+  `9799beead86a3b14544549516087c2af6a5f6d54` with the same independently
+  reproduced P1. Architecture/invariants task
+  `019f7306-8ee5-7801-9335-e5f8f37da10d` and executability/adversarial task
+  `019f7306-8ed6-75b0-9ce8-66916316fdb2` each reproduced the five compiler
+  errors recorded in RV-1-E-710 from clean detached review worktrees at the
+  exact candidate SHA.
+- The committed V2 lifecycle carries `runType` as unrestricted `string` across
+  the new private witness/lifecycle boundary. Existing orchestration stream,
+  event, and matcher APIs require the closed `AgentSpecialistRunType` union.
+  The exact failures are in `packages/agent/src/specialist-runner-kernel.ts`
+  near lines 1060, 2345, 2356, and 2375 and
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` near
+  line 710. `npm run typecheck` and therefore `npm run verify` exit 2. This is
+  a production/build ABI violation, not style, hypothetical hardening,
+  incremental cache state, or missing reviewer dependencies.
+- Both reviewers independently approve the three intended safety semantics:
+  exact queued/running pre-start history now permits witness issuance while
+  cross-run/conflicting history rejects; the production chain is exactly run
+  terminal -> `agent.task.orchestration.completed` -> task status; and stale
+  V2 rejection cannot be converted into verified completion through the
+  exported raw completion/status path. V1 remains legacy-unbound and cannot
+  upgrade V2. No separate P0/P1 or P2 backlog item was reported.
+- Runtime and evidence gates remain exact: focused **7 files / 280 tests**,
+  cross-boundary **11 files / 313 tests**, inherited full-test cohort **12
+  failing / 212 passing / 3 skipped files** and **69 failing / 2708 passing /
+  5 skipped tests**, diff hygiene, factory readiness, fourteen-path scope,
+  dependency/Vitest provenance, and clean state. The typecheck P1 alone blocks
+  admission. Both review worktrees and the candidate worktree remain clean.
+- Status moves `reviewing-terminal -> blocked`. Per the explicit human ceiling,
+  no further automatic CF1-HR code/test repair, owner, recovery generation,
+  renamed cycle, integration, or strict release record 14 is permitted.
+  Released-source current-HEAD ownership therefore does not migrate. Preserved
+  Task126-R candidate `822fd573` and G136-SC candidate `d74ff4a3` remain
+  predecessor-bound; no other release-order card is independently eligible.
+  Strict record count remains 13. V1-V3, raw records 1-13, all 29 card IDs and
+  order, all evidence history, and `neo` remain untouched.
+
+## RV-1-E-712 — Human authorizes one post-E711 CF1-HR compile-closure packet
+
+- Recorded at: 2026-07-18T11:25:16Z
+- The human explicitly overrides the exhausted CF1-HR human-exception ceiling
+  exactly once to close only the five independently reproduced
+  `AgentSpecialistRunType` compiler errors on exact candidate
+  `9799beead86a3b14544549516087c2af6a5f6d54`. The same implementation owner
+  task `019f7183-e8db-77f2-ac2f-1aabeaae543d`, branch
+  `codex/cf1-handoff-readback`, worktree
+  `/home/drake/.codex/worktrees/00c5/Cestus`, and complete preserved history
+  must resume. No replacement owner, recovery generation, bridge card, V5
+  contract, compatibility lane, or renamed repair cycle is authorized.
+- Before implementation, current program head must be forward-merged into the
+  CF1 branch after this registry event commits. That registry-only merge
+  preserves both histories and consumes neither packet commit. Reset, rebase,
+  amend, squash, drop, reorder, history rewrite, or cherry-picking over the
+  preserved branch is forbidden.
+- The packet owns exactly seven paths: the specialist-handoff authority
+  source/test, specialist-runner kernel source/test, portable mounted agent
+  artifact-store source/test, and the existing CF1-HR claim. It consists of
+  exactly one claim/test-only causal RED followed by one minimal GREEN. No
+  production edit may precede the RED, and no automatic CF1 code/test repair
+  is permitted after the GREEN and final pair.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The correction must preserve the
+  canonical `AgentSpecialistRunType` member set byte-identically, carry the
+  closed union through portable bind/normalization, mounted witness lifecycle,
+  consumed lifecycle, and runner lifecycle, and runtime-reject unsupported
+  strings before witness issuance or lifecycle use. Casts, double assertions,
+  `any`, `unknown` laundering, non-null assertions, and orchestration/event API
+  widening are forbidden.
+- The already approved safety semantics remain frozen: exact queued/running
+  pre-start history stays accepted while stale/conflicting/cross-run history
+  rejects; lifecycle order remains run terminal ->
+  `agent.task.orchestration.completed` -> task status; rejected V2 authority
+  cannot be terminalized or projected through raw helpers; and V1 remains
+  legacy-unbound and cannot complete or upgrade V2.
+- Admission requires the exact focused/cross-boundary deltas, standalone
+  typecheck exit 0, inherited full-test and `npm run verify` differential,
+  unchanged 12-file/69-test failure set, diff hygiene, factory readiness, V4
+  contract mode, exact 13-record repository prefix and incomplete-29 boundary,
+  seven-path repair scope, fourteen-path cumulative scope, clean state, and
+  dependency/Vitest provenance. The inherited full-suite cohort remains
+  intermediate differential evidence and must not be misreported as a green
+  `npm run verify`.
+- Only after all admission gates pass may one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair review the exact candidate.
+  Dual approval permits immediate full-history integration and strict record
+  14; any reproduced P0/P1 durably blocks CF1-HR with no further automatic
+  repair. Status moves `blocked -> authorized-compile-closure`. Strict record
+  count remains 13. V1-V3, raw records 1-13, all 29 card IDs/order, finite
+  direct-source transfers, released-source current-HEAD ownership, all prior
+  evidence history, and `neo` remain untouched.
