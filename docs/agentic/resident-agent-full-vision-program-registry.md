@@ -19682,3 +19682,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   and `neo` remains untouched. Reopening release position 16 now requires an
   explicit human program-scope authorization for one finite post-ceiling
   compile-closure packet; no product or safety semantics need change.
+
+## RV-1-E-722 — Task121 ahead-of-order implementation candidate admitted
+
+- Recorded at: 2026-07-18T13:57:21Z
+- Preserved Task121 branch `codex/task121-cf1-handoff-adoption` is a clean
+  three-commit descendant of exact record-15 base
+  `986c2a43b018e72acf1104e84853826b06b1abdd`: claim
+  `fcb0d104dd3d4bc9053e0827ed12d72cdc459d45`, causal RED
+  `d1f8848b07ec1702612686c05726de43239e2972`, and minimal GREEN
+  `280cfff90621334e3769c93279fb59f0f141960f`. Its diff is exactly the
+  Task121 PRR workflow, focused test, and claim.
+- Fresh isolated coordinator admission reproduced focused **1 file / 15
+  tests**, cross-boundary **3 files / 105 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 contract markers, exact three-path
+  scope, clean state, and real dependency/Vitest provenance. Repository mode
+  accepted exactly `TASK136_REPOSITORY_PREFIX_OK records=15 commands=15`
+  before the required incomplete-29 boundary; the earlier import-boundary
+  timeout was contention-only and did not reproduce.
+- Machine-readable full-suite comparison against the preserved 69-failure
+  program baseline removed exactly the **10** Task121 PRR failures, added
+  **zero** failures, retained all five skips, and left the expected
+  intermediate **59** failures. `npm run verify` therefore remains
+  intentionally non-green at this partial release position.
+- Status advances Task121 `implementing -> candidate`. The candidate receives
+  no review or integration until the exact position-24 program base is
+  forward-merged and all cross-boundary gates rerun, preventing stale review.
+  Task133 remains blocked at position 16, strict prefix remains 15, and `neo`
+  remains untouched.
