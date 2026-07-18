@@ -144,6 +144,33 @@ describe("portable mounted agent artifact stores", () => {
     await expect(afterMountedHandoffAuthorityAppend(copied, "final-output", "evt_forged")).rejects.toThrow(/authority/i);
   });
 
+  it("accepts only exact created, queued, and running task history before the portable V2 run", async () => {
+    const fixture = authorityFixture();
+    const normalHistory = [taskCreatedEvent(), queuedTaskStatusEvent(), runningTaskStatusEvent(), startedEvent()];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => normalHistory.map((event) => structuredClone(event))
+    });
+
+    await expect(issuedBinding(fixture)).resolves.toMatchObject({
+      result: { binding: { authorityWitness: { schemaVersion: "agent-mounted-specialist-handoff-authority.v1" } } }
+    });
+
+    const conflicting = authorityFixture();
+    const crossRunHistory = [
+      taskCreatedEvent(),
+      queuedTaskStatusEvent(),
+      runningTaskStatusEvent({ payload: { ...runningTaskStatusEvent().payload, runId: "run_portable_handoff_foreign" } }),
+      startedEvent()
+    ];
+    Object.defineProperty(conflicting.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => crossRunHistory.map((event) => structuredClone(event))
+    });
+
+    await expect(issuedBinding(conflicting)).rejects.toThrow(/authority/i);
+  });
+
   it("advances an exact controller only across the canonical final-output suffix", async () => {
     const fixture = authorityFixture();
     const events = [startedEvent()];
@@ -663,6 +690,60 @@ async function invalidateDuringFileBlobOperation(
 
 function canonicalHandoffEvents(): KnowledgeEvent[] {
   return [startedEvent(), finalOutputEvent(), preparedHandoffEvent(), recordedHandoffEvent(), completedRunEvent()];
+}
+
+function taskCreatedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_task_created_portable_handoff",
+    type: "agent.task.created",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 1,
+    context: eventContext(),
+    payload: {
+      taskId: dispatch.taskId,
+      residentAgentId: "agent_default",
+      title: "Portable handoff task.",
+      requestedBy: "agent_default",
+      priority: "normal"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function queuedTaskStatusEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_task_queued_portable_handoff",
+    type: "agent.task.status.changed",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 2,
+    context: eventContext({ causationId: "evt_task_created_portable_handoff" }),
+    payload: {
+      taskId: dispatch.taskId,
+      status: "queued",
+      changedBy: "agent_default"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function runningTaskStatusEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_task_running_portable_handoff",
+    type: "agent.task.status.changed",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 3,
+    context: eventContext({ causationId: "evt_task_queued_portable_handoff" }),
+    payload: {
+      taskId: dispatch.taskId,
+      status: "running",
+      changedBy: "agent_default",
+      runId: dispatch.approvedRunId
+    },
+    ...patch
+  } as KnowledgeEvent;
 }
 
 function startedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
