@@ -20529,3 +20529,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Terra/xhigh read-only review pair remain required after code.
 - Strict prefix remains 16. No integration, release record, provider/network/
   credential action, push, or `neo` action occurs.
+
+## RV-1-E-746 — Task139-P1 temporal-host candidate admitted to fresh review
+
+- Recorded at: 2026-07-18T23:13:27Z
+- The same owner preserved causal RED
+  `f585ec8c868f630e721b6005710fb855d6fe779e` and minimal GREEN candidate
+  `b8c7469d9f8f3189062639cf14ee704760477815`. RED changes only test and claim
+  and reproduces delimiter-embedded IPv4 plus authorization-after-assessment
+  admissions from unchanged production. GREEN preserves RED tests and changes
+  only source plus claim.
+- GREEN recognizes dotted, hexadecimal, and unambiguous integer URL-host forms
+  across non-alphanumeric delimiters while preserving exact valid ISO strings
+  and released safe identifiers, and requires authorization at or before the
+  feasibility assessment alongside expiry and revocation currentness.
+- Owner and independent coordinator admission pass focused **1 file / 23
+  tests**, cross-boundary **2 files / 32 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 markers, exact three-path cumulative
+  scope, clean tracked/untracked state, and real non-symlinked dependencies
+  with executable Vitest 4.1.9. Repository mode emits the exact prefix-16
+  marker before only the expected incomplete-29 boundary.
+- Full `npm test` and `npm run verify` retain the exact inherited **12 failing
+  files / 69 failing tests / 5 skips**, identical identities, and **2,745
+  passes**, exactly twenty-three above record 16.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  authorized on exact `b8c7469d`; SDD/TDD is not relevant or authorized for
+  reviewers. Review must distinguish released safe identifiers from actual
+  host tokens and may block only on an exact reproduced P0/P1.
+- No integration or release record occurs. Strict prefix remains 16; later
+  candidates and `neo` remain untouched.
