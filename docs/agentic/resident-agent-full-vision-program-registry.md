@@ -19651,3 +19651,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `reviewing -> repair-authorized -> implementing`; strict prefix remains 15,
   all candidate/RED/GREEN/review history is preserved, and `neo` remains
   untouched.
+
+## RV-1-E-721 — Task133 repair GREEN fails compile admission and is blocked
+
+- Recorded at: 2026-07-18T13:49:14Z
+- The same owner preserved exact candidate history and consumed Task133's sole
+  consolidated repair as causal RED
+  `71bfa0c9a56262a26d10f5281b5d073465897fec` followed by GREEN
+  `d2bb7366b803791f074ec3fb1570a6fccefc9a38`. Focused **1 file / 5 tests**
+  and cross-boundary **2 files / 31 tests** pass; the reproduced run-ID and
+  hostile context-array P1 counterexamples are closed in runtime tests.
+- Exact committed-byte typecheck fails before full verification with two
+  diagnostics at
+  `packages/local-runtime/src/agent-runtime-prompt-renderer.ts:91`:
+  `TS2339 Property 'enumerable' does not exist on type 'number'` and
+  `TS2322 Type 'number' is not assignable to type 'object'`. The code reads
+  `descriptors.length` through the array-specialized intersection type, so
+  TypeScript resolves the array length number rather than the intended
+  `PropertyDescriptor` entry.
+- The coordinator independently reproduced the same two diagnostics with
+  `npm run typecheck` at exact GREEN SHA
+  `d2bb7366b803791f074ec3fb1570a6fccefc9a38`. No candidate byte changed after
+  that commit. Because the finite packet authorized exactly one RED and one
+  GREEN and forbids any further automatic repair, the coordinator will not
+  amend, append a renamed compile fix, dispatch the final pair before all
+  admission gates pass, integrate, or create strict record 16.
+- Status advances Task133 `implementing -> blocked`. Strict prefix remains 15;
+  Task121 and Task122 candidate histories remain independently preserved,
+  G136-SC remains held for record 21, all prior evidence remains append-only,
+  and `neo` remains untouched. Reopening release position 16 now requires an
+  explicit human program-scope authorization for one finite post-ceiling
+  compile-closure packet; no product or safety semantics need change.
