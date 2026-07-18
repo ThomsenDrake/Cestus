@@ -19300,11 +19300,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
   "releaseEventId": "task136-release-v4-CF1-HR",
   "prerequisites": [
-    "W1-123-H-SHARED-SCHEMA",
-    "W1-133.5-PREAPPROVAL-PROMPT-STORE",
-    "Task137B-W",
-    "Task135B",
-    "Task129-MFA"
+    {
+      "cardId": "W1-123-H-SHARED-SCHEMA",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-W1-123-H-SHARED-SCHEMA"
+    },
+    {
+      "cardId": "W1-133.5-PREAPPROVAL-PROMPT-STORE",
+      "integrationSha": "75de81f110b4f405f9ec064104bc2c2b4f79e223",
+      "releaseEventId": "task136-release-v4-W1-133.5-PREAPPROVAL-PROMPT-STORE"
+    },
+    {
+      "cardId": "Task137B-W",
+      "integrationSha": "9e680b44c4284456eebaad79c00fabda5c2bd4ea",
+      "releaseEventId": "task136-release-v4-Task137B-W"
+    },
+    {
+      "cardId": "Task135B",
+      "integrationSha": "908d26fa252989c9217cb40e1f22a5b9f583aa8f",
+      "releaseEventId": "task136-release-v4-Task135B"
+    },
+    {
+      "cardId": "Task129-MFA",
+      "integrationSha": "c599f9d7c9e08de155bfb98f49462ad01416ec40",
+      "releaseEventId": "task136-release-v4-Task129-MFA"
+    }
   ],
   "ownedPathBlobs": [
     {
