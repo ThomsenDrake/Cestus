@@ -20595,3 +20595,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remain mandatory after code. Strict prefix remains 16; no integration,
   release record, provider/network/credential action, push, or `neo` action
   occurs.
+
+## RV-1-E-748 — Task139-P1 canonical-host candidate admitted to final review
+
+- Recorded at: 2026-07-18T23:47:56Z
+- The same owner preserved causal RED
+  `a3842d6337df78464aaa132d47d3073ea8d75e8f` and minimal GREEN candidate
+  `1be41f59eaaf0e32cdf27e181d064ae36182bd1e`. RED changes only test and
+  claim and reproduces all four RV-1-E-747 P1 categories with unchanged
+  production; GREEN keeps the RED tests byte-identical and changes only source
+  plus claim.
+- GREEN uses Unicode-aware structural DNS-token classification with only the
+  released `agent-provider-auth.v1`, `policy.v1`, and `adapter.v1` exceptions;
+  local WHATWG parsing for whole short numeric hosts and optional ports; exact
+  canonical ISO-millisecond-Z assessment times; and duplicate-free,
+  deterministic `modalities` and `diagnosticContract` snapshots. It performs
+  no DNS lookup, network, provider, credential, write, fallback, or other
+  external effect.
+- Owner and independent coordinator admission pass focused **1 file / 26
+  tests**, cross-boundary **2 files / 35 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 markers, exact three-path cumulative
+  scope, clean tracked/untracked state, and real non-symlinked dependencies
+  with executable Vitest 4.1.9. Repository mode emits
+  `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before only the expected
+  incomplete-29 boundary.
+- Full `npm test` and `npm run verify` retain the exact inherited **12 failing
+  files / 69 failing tests / 5 skips**, unchanged identities, and **2,748
+  passes**, exactly twenty-six above record 16.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  authorized on exact `1be41f59`; SDD/TDD is not relevant or authorized for
+  reviewers. Only an exact reproduced P0/P1 contract violation may block;
+  P2, style, hypothetical hardening, and unreproduced concerns go to backlog.
+- No integration or release record occurs. Strict prefix remains 16; preserved
+  later candidates and `neo` remain untouched.
