@@ -20397,3 +20397,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   standing recovery authority governs any contract-determined correction.
 - No candidate byte is integrated and no release record is appended. Strict
   prefix remains 16; later candidates and `neo` remain untouched.
+
+## RV-1-E-742 — Task139-P1 payload-empty URI root cause and review adjudication
+
+- Recorded at: 2026-07-18T22:15:20Z
+- Architecture/invariants task `019f7742-1aae-7981-bd26-8a1e24d2147f`
+  returned **NEEDS-CHANGES** because `release version 1.2` is rejected;
+  executability/adversarial task `019f7742-1b82-7630-b76f-af4b490020c4`
+  returned **NEEDS-CHANGES** after proving exact `294929b2` accepts bare
+  `mailto:`, `urn:`, `data:`, `file:`, `http:`, and `https:` text. Both
+  checkouts were exact and clean; bounded focused/cross/factory/V4 evidence
+  remained green.
+- Coordinator adjudicates the numeric-token concern as non-blocking and not a
+  contract violation. The standard URL parser canonically recognizes `1.2` as
+  IPv4 host `1.0.0.2`; the frozen all-IP-material rejection therefore requires
+  fail-closed rejection. The released positive controls are ISO timestamps and
+  alphabetically bound version prose such as `policy.v1` and `adapter.v1`, all
+  of which remain accepted. No broader arbitrary numeric-version exception is
+  authorized because it would create an IP-material bypass.
+- The payload-empty URI finding is accepted P1. URI grammar does not require a
+  non-whitespace payload after the scheme separator, but the candidate regex
+  does, so canonical bare schemes escape the all-text-boundary rejection. The
+  correction is contract-determined and changes no product or safety choice.
+- Standing recovery authority resumes the same owner and preserved history for
+  one causal RED and one minimal GREEN inside the exact three Task139-P1 paths.
+  RED must pin the reproduced bare schemes at representative free-text and
+  credential-label boundaries while retaining ISO, `policy.v1`, and
+  `adapter.v1` controls. GREEN must recognize a complete scheme separator
+  independent of payload presence while preserving the standards-based IPv4
+  classifier, bytewise ordering, and every released family/OAuth/scope,
+  provenance, hostile-shape, secret-safety, immutability, and no-effect rule.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All admission gates and one fresh
+  concurrent Terra/xhigh read-only review pair are required after code changes.
+- Strict prefix remains 16. No integration, release record, provider/network/
+  credential action, push, or `neo` action occurs.
