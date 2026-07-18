@@ -20128,3 +20128,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task121, Task122, and G136-SC remain preserved until their exact ordered
   bases. No provider/network/credential-resolution/fallback/external action is
   authorized by this recovery event, and `neo` remains untouched.
+
+## RV-1-E-733 — Task139-P1 recovery RED fixture root cause isolated
+
+- Recorded at: 2026-07-18T20:29:46Z
+- The same Task139-P1 owner preserved causal RED
+  `821d046fe5e64f4f1f13c3d2d1454635b68b1ac7`: focused **1 file / 14
+  tests** produced the intended five new/updated failures and nine inherited
+  passes, standalone typecheck passed, and the production blob remained exact
+  to candidate `d3abf612`. During the single GREEN attempt, thirteen tests
+  passed and one positive xAI fixture failed.
+- Root cause is the test counterfactual, not a product ambiguity: the typed xAI
+  fixture changes its provider family to `provider_xai_grok` but accidentally
+  retains backend `openai-codex-harness`. Accepting that combination would
+  violate the released family/backend binding. The fixture must use
+  `xai-harness`; this behavior is completely determined by Task130 and the
+  frozen recovery design.
+- Under standing authority `RV-1-E-732`, the flawed RED remains permanently in
+  history. A new causal corrected-RED commit may change only the focused test
+  and claim, while leaving the already-created partial source repair unstaged
+  and preserved. The corrected committed RED must still point to the inherited
+  `d3abf612` production blob and reproduce the contract failures from committed
+  bytes before the partial source patch is sealed as the cycle's minimal GREEN.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- This is a changed counterfactual within the same three-path ownership, not a
+  renamed attempt or evidence reset. No history, provider, network,
+  credential, external service, release record, integration, push, or `neo`
+  action occurs. Strict prefix remains 16 and Task139-P1 remains implementing.
