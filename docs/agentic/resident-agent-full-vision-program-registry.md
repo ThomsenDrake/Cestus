@@ -20182,3 +20182,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   explicitly approved for this task. The cycle remains within the exact three
   Task139-P1 paths, changes no product or safety invariant, creates no effect or
   authority, and leaves strict prefix 16 and `neo` untouched.
+
+## RV-1-E-735 — Task139-P1 compressed-IPv6 admission root cause
+
+- Recorded at: 2026-07-18T20:39:56Z
+- The changed anchored-family tactic produced preserved causal RED
+  `f08c8b68` and GREEN candidate
+  `8c397cbbc829ebe8ffbe8ac2315e90e5127764ce`. Focused **1 file / 14 tests**,
+  the released family/OAuth/scope matrix, TLD-independent DNS/URI examples,
+  typecheck, factory readiness, and all four V4 markers are green. No review is
+  dispatched yet.
+- Coordinator adversarial execution from exact candidate bytes reproduces one
+  remaining P1: descriptor text containing compressed IPv6 loopback `::1` is
+  accepted. The same probe correctly rejects `2001:db8::1`, an IPv4-mapped
+  IPv6 value, URI material, IPv4, localhost, and DNS hosts, and correctly
+  accepts ordinary `policy.v1` prose. The bespoke bare-IPv6 regular expression
+  requires repeated populated groups and therefore misses the canonical
+  compressed loopback form.
+- The required behavior is fixed by the explicit all-IP rejection contract.
+  Standing recovery authority withholds review and starts a new same-owner
+  causal RED/GREEN cycle inside the existing three paths. The changed tactic
+  must use standard-library IP classification over safely tokenized normalized
+  strings, covering compressed, bracketed, scoped, IPv4-mapped, and ordinary
+  IPv4 forms without treating ISO timestamps or version prose as addresses.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- Candidate history and completed admission evidence remain preserved. No
+  integration, release record, provider/network/credential/external action,
+  push, or `neo` action occurs; strict prefix remains 16.
