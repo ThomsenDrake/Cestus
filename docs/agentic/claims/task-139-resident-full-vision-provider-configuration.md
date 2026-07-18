@@ -172,3 +172,19 @@ or fallback.
 - This RED changes only this claim and the focused test. Production remains
   byte-identical to the preserved candidate until the causal proof is committed
   and reproduced from exact clean bytes.
+
+## RV-1-E-735 Compressed-IPv6 Recovery GREEN
+
+- The RED focused command exited `1` with **1 failed file / 1 failed and 13
+  passed tests (14)**. Its sole failure reported `accepted: ["::1"]` with the
+  ISO timestamp and ordinary version-prose control still accepted. The source
+  blob was `7c9685b5a54353fb281b5cd37b39b7e1572844ef` both in the worktree and
+  at the preserved `8c397cbb` candidate. `npm run typecheck` exited `0`.
+- GREEN replaces only the bespoke IP regexes with standard-library
+  `node:net` `isIP` classification over extracted bracketed, scoped, IPv6, and
+  IPv4-shaped strings. It is local string classification only: it performs no
+  socket, DNS, provider, credential, or other network operation.
+- The focused command now passes: **1 file / 14 tests**. It rejects `::1`,
+  `2001:db8::1`, `fe80::1%lo0`, `::ffff:192.0.2.128`, bracketed IPv6, and
+  IPv4 while retaining ISO timestamps and ordinary `policy.v1`/`adapter.v1`
+  prose. The focused test is unchanged from this RED.

@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import {
   createCredentialReference,
   credentialKindSchema,
@@ -22,9 +23,7 @@ const evidenceIdPattern = /^evidence_[a-zA-Z0-9_-]+$/;
 const openaiCodexProviderIdPattern = /^provider_openai_codex_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 const uriSchemePattern = /(?:^|[^a-z0-9_])[a-z][a-z0-9+.-]*:(?=\/\/|[^\s])/i;
-const ipv4AddressPattern = /\b(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}\b/;
-const bracketedIpv6AddressPattern = /\[[a-f0-9:.]+\]/i;
-const bareIpv6AddressPattern = /(?:^|[^0-9T])(?:[a-f0-9]{1,4}:){2,}[a-f0-9:]*(?=$|[^a-f0-9:])/i;
+const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
 const localhostPattern = /\blocalhost\b/i;
 const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/i;
 
@@ -531,12 +530,20 @@ function normalizePlainOwnData(value: unknown): unknown {
 function hasForbiddenTextMaterial(value: string): boolean {
   return (
     (!hashPattern.test(value) && uriSchemePattern.test(value)) ||
-    ipv4AddressPattern.test(value) ||
-    bracketedIpv6AddressPattern.test(value) ||
-    bareIpv6AddressPattern.test(value) ||
+    hasIpAddress(value) ||
     localhostPattern.test(value) ||
     dnsHostPattern.test(value)
   );
+}
+
+function hasIpAddress(value: string): boolean {
+  const tokens = value.match(ipShapedTokenPattern);
+  return tokens !== null && tokens.some((token) => {
+    const bracketless = token.startsWith("[") && token.endsWith("]") ? token.slice(1, -1) : token;
+    const scopeIndex = bracketless.indexOf("%");
+    const address = scopeIndex === -1 ? bracketless : bracketless.slice(0, scopeIndex);
+    return isIP(address) !== 0;
+  });
 }
 
 function invalidConfiguration(): TypeError {
