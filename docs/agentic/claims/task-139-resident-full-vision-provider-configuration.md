@@ -55,3 +55,18 @@ or fallback.
 - Typed fixture helpers remove all focused-test TypeScript diagnostics. The RED
   `npm run typecheck` output contains only the two known production narrowing
   diagnostics in `agent-provider-configuration.ts`.
+
+## Authorized Repair GREEN
+
+- The sole repair keeps P1 data-only and introduces no reader, mounted
+  authority, provider call, network call, credential dereference, or durable
+  mutation.
+- It uses credential schemas and typed hash/event predicates for the two
+  production narrowing repairs, without casts, assertions, suppressions, or API
+  widening.
+- It requires one capability model per exact feasibility model, one-to-one
+  capability/reference/policy/feasibility cardinality, deterministic exact
+  provenance, URI/IP-safe capability text, canonical OpenAI-compatible BYOK,
+  canonical local-engine, and canonical official-harness facts.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passed: 1 file / 9 tests. `npm run typecheck` passed.
