@@ -36,3 +36,111 @@ The artifact contract remains discriminated: v2 construction preserves the
 approved v1 bytes and uses no renderer, caller-owned output hash, or raw
 production prompt rendering. `renderExactlyBoundProductionSpecialistPrompt`
 remains absent from agent source and tests.
+
+## Task133 V4 strict production-renderer claim
+
+- Status: `claimed` → `implementing`.
+- Owner model/reasoning: GPT-5.6 Terra / xhigh.
+- Branch/worktree: `codex/task133-runtime-prompt-renderer` /
+  `/home/drake/.codex/worktrees/task133-runtime-prompt-renderer/Cestus`.
+- Exact source base: `e481e23a08ff6d381b93d4dda3b553b1990e2bc3`, a
+  registry-only descendant of strict record-15
+  `986c2a43b018e72acf1104e84853826b06b1abdd`.
+- V4 card authority: Task133 release-graph card 16 in
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`; prerequisites
+  Task126-R, Task127, Task128, Task129, and Task130 are released.
+- Exclusive paths:
+  - `packages/local-runtime/src/agent-runtime-prompt-renderer.ts`
+  - `packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`
+  - `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`
+- Ordered commits: claim only; causal RED test only; minimum GREEN only. No
+  repair, factory change, registry/spec/plan/contract edit, integration,
+  provider call, credential use, network use, or history rewrite is allowed.
+- The renderer must consume canonical prompt-artifact/registered-renderer
+  authorities, bind one approved run, canonical provider posture, and verified
+  context hashes, fail closed before rendering on missing/stale/mismatched or
+  forged inputs, and never log or expose prompt bytes.
+- Focused command:
+  `npm test -- packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`.
+  Cross-boundary command adds `packages/agent/test/prompt-artifacts.test.ts`.
+  Final gates: typecheck, inherited-baseline differential full verify,
+  diff-check, factory check, V4 contract, exact prefix-15/incomplete-29
+  assurance, exact three-path audit, clean state, and real local dependency
+  checks.
+- Stop for data loss, contract/schema/file-owner conflict, missing canonical
+  authority, unavailable dependency, credential/external behavior choice,
+  safety-invariant conflict, or repeated verifier failure.
+
+### Causal RED evidence
+
+- `npm test -- packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`
+  exited `1`: one suite failed before test execution because
+  `../src/agent-runtime-prompt-renderer.js` is absent. The test imports only
+  existing canonical agent prompt-artifact, specialist-renderer, and verified
+  context-pack authorities and names the required strict V4 adapter surface.
+
+### GREEN candidate evidence
+
+- Status: `implementing` → `green-candidate`; final admission is intentionally
+  rerun only from the committed GREEN bytes.
+- The minimal adapter verifies the registered V1 prompt identity, canonicalizes
+  the exact run and ready provider posture through the existing prompt-artifact
+  authority, and delegates hash-bound V2 construction to the existing binder.
+  It does not render a new V1 prompt, invoke a provider, log prompt content, or
+  mint any reader/capability/context authority.
+- Focused GREEN: `npm test --
+  packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts` passed
+  `1` file / `3` tests. Cross-boundary GREEN: the focused test plus
+  `packages/agent/test/prompt-artifacts.test.ts` passed `2` files / `29`
+  tests.
+- The adversarial cases retain forged V1 source/context, stale verified
+  context, wrong run type, unavailable posture, and outer/nested
+  accessor/symbol/extra-key rejection. Each fails with the generic
+  `prompt-binding-invalid` boundary without exposing the sentinel prompt text.
+
+### RV-1-E-720 sole consolidated repair
+
+- This append-only repair preserves the claim/RED/GREEN history above and is
+  limited to the existing three Task133 V4 paths. It adds one causal test-only
+  RED commit and one minimal GREEN commit; no further automatic repair is
+  authorized.
+- The RED proves the two reproduced P1s: changing only `exactRun.runId` could
+  issue V2 (while the symmetric `taskId` mismatch already failed through the
+  same canonical run/task root), and an otherwise valid verified-context array
+  with an enumerable symbol could issue V2.
+- The GREEN uses the existing canonical V1 verification API with the supplied
+  canonical task/run identity and current verified contexts before V2 binding.
+  It rejects non-dense, symbol-bearing, extra-key, or accessor-bearing context
+  arrays without copying registry-issued pack identities, logging prompt text,
+  invoking a provider, or minting authority.
+- Committed-byte admission remains required after the GREEN commit: focused
+  and cross tests, typecheck, inherited-baseline verify differential, diff and
+  factory checks, V4 contract and the exact 15-record/incomplete-29 repository
+  boundary, exact three-path scope, clean topology, and local dependencies.
+
+### RV-1-E-721 one-time compile-admission correction
+
+- Authorization: coordinator registry commit
+  `35030d93b90e8c41da52e15cd0347e7e59103fc1`; preserved starting head:
+  `d2bb7366b803791f074ec3fb1570a6fccefc9a38`.
+- Causal compiler RED reproduced exactly two diagnostics at
+  `agent-runtime-prompt-renderer.ts:91`: TS2339 (`enumerable` on `number`) and
+  TS2322 (`number` is not assignable to `object`). The focused runtime RED and
+  the committed compiler RED are preserved; no new RED/GREEN cycle was made.
+- The sole forward correction replaces only the incorrectly inferred mapped
+  array descriptor with `Object.getOwnPropertyDescriptor(resolvedContextPacks,
+  "length")`. It adds no cast, assertion, API, contract, or validation change.
+- From the intended correction bytes: focused runtime test passed `1` file / `5`
+  tests; the prompt-artifacts cross test passed `2` files / `31` tests; and
+  `npm run typecheck` passed. Full `npm test` and `npm run verify` retained the
+  inherited `12` failed files / `69` failed tests / `5` skips, with Task133
+  passing all five assertions and no changed failing identity.
+- `git diff --check` and `npm run factory:check` passed. V4 contract markers
+  were `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`. The forward correction diff is the
+  source plus this claim; cumulative Task133 remains its exact three paths.
+- The repository-prefix command intentionally requires a clean checkout, so
+  its exact 15-record/incomplete-29 boundary is run from the committed forward
+  correction bytes rather than the pre-commit working tree.
