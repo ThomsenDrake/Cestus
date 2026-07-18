@@ -97,3 +97,23 @@ remains absent from agent source and tests.
   context, wrong run type, unavailable posture, and outer/nested
   accessor/symbol/extra-key rejection. Each fails with the generic
   `prompt-binding-invalid` boundary without exposing the sentinel prompt text.
+
+### RV-1-E-720 sole consolidated repair
+
+- This append-only repair preserves the claim/RED/GREEN history above and is
+  limited to the existing three Task133 V4 paths. It adds one causal test-only
+  RED commit and one minimal GREEN commit; no further automatic repair is
+  authorized.
+- The RED proves the two reproduced P1s: changing only `exactRun.runId` could
+  issue V2 (while the symmetric `taskId` mismatch already failed through the
+  same canonical run/task root), and an otherwise valid verified-context array
+  with an enumerable symbol could issue V2.
+- The GREEN uses the existing canonical V1 verification API with the supplied
+  canonical task/run identity and current verified contexts before V2 binding.
+  It rejects non-dense, symbol-bearing, extra-key, or accessor-bearing context
+  arrays without copying registry-issued pack identities, logging prompt text,
+  invoking a provider, or minting authority.
+- Committed-byte admission remains required after the GREEN commit: focused
+  and cross tests, typecheck, inherited-baseline verify differential, diff and
+  factory checks, V4 contract and the exact 15-record/incomplete-29 repository
+  boundary, exact three-path scope, clean topology, and local dependencies.
