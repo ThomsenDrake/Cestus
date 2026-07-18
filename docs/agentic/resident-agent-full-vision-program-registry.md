@@ -20210,3 +20210,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Candidate history and completed admission evidence remain preserved. No
   integration, release record, provider/network/credential/external action,
   push, or `neo` action occurs; strict prefix remains 16.
+
+## RV-1-E-736 — Task139-P1 recovered candidate admitted to fresh review
+
+- Recorded at: 2026-07-18T20:57:12Z
+- The same owner preserved compressed-IP causal RED
+  `14a44c864589e65213471d58491136df38b54373` and GREEN candidate
+  `f614549d4c4c8ec886641ccb6651b17bacc4cfc4`. The RED changed no production
+  byte and failed focused **1 file / 1 failed / 13 passed**, with only `::1`
+  admitted; the GREEN replaces bespoke IP regular expressions with local
+  standard-library `node:net` `isIP` classification and keeps the RED test
+  byte-identical.
+- Exact owner and coordinator committed-byte admission reproduces focused **1
+  file / 14 tests**, cross-boundary **2 files / 23 tests**, standalone
+  typecheck, diff hygiene, factory readiness, all four V4 markers, exact
+  three-path scope, clean tracked/untracked state, and real non-symlinked local
+  dependencies with Vitest 4.1.9. Repository mode executes the released prefix
+  and emits `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before only
+  `repository release closure incomplete: expected 29 records, found 16`.
+- Full `npm test` and `npm run verify` differential evidence retains exactly
+  the inherited **12 failing files / 69 failing tests / 5 skips**, with the
+  same failing/skipped identities and Task139-P1 adding exactly fourteen
+  passes. Coordinator probes reject every prior reproduced official-family,
+  provenance, lane, URI/DNS/credential-text, IPv4, compressed/scoped/mapped/
+  bracketed IPv6, and localhost violation while preserving ordinary version
+  prose.
+- Fresh concurrent Terra/xhigh read-only reviewers are architecture/invariants
+  task `019f7704-a0ca-7841-b098-5c81b48dd1da` and
+  executability/adversarial task `019f7704-a152-7ba0-9019-2d43d5c77b85`.
+  SDD/TDD is not relevant or authorized for reviewers. Any P0/P1 must be
+  reproduced on exact `f614549d`; style, P2, hypothetical hardening, and
+  unreproduced concerns are backlog. Standing recovery authority applies to
+  any further contract-determined finding.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. No
+  candidate byte is integrated, strict prefix remains 16, preserved later
+  candidates remain held for exact ordered bases, and `neo` remains untouched.
