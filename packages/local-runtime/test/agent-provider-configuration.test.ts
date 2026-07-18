@@ -604,7 +604,7 @@ function officialHarnessCapability(
       ...byokCapability().capability,
       providerId,
       label: "OpenAI Codex subscription harness",
-      backendKind: "openai-codex-harness",
+      backendKind: providerId.startsWith("provider_xai_") ? "xai-harness" : "openai-codex-harness",
       modelFamilies: ["model_codex_harness_1"],
       toolSupport: "harness-tools",
       structuredOutputSupport: "harness-mediated",
