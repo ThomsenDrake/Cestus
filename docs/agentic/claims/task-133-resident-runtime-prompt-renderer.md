@@ -78,3 +78,22 @@ remains absent from agent source and tests.
   `../src/agent-runtime-prompt-renderer.js` is absent. The test imports only
   existing canonical agent prompt-artifact, specialist-renderer, and verified
   context-pack authorities and names the required strict V4 adapter surface.
+
+### GREEN candidate evidence
+
+- Status: `implementing` → `green-candidate`; final admission is intentionally
+  rerun only from the committed GREEN bytes.
+- The minimal adapter verifies the registered V1 prompt identity, canonicalizes
+  the exact run and ready provider posture through the existing prompt-artifact
+  authority, and delegates hash-bound V2 construction to the existing binder.
+  It does not render a new V1 prompt, invoke a provider, log prompt content, or
+  mint any reader/capability/context authority.
+- Focused GREEN: `npm test --
+  packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts` passed
+  `1` file / `3` tests. Cross-boundary GREEN: the focused test plus
+  `packages/agent/test/prompt-artifacts.test.ts` passed `2` files / `29`
+  tests.
+- The adversarial cases retain forged V1 source/context, stale verified
+  context, wrong run type, unavailable posture, and outer/nested
+  accessor/symbol/extra-key rejection. Each fails with the generic
+  `prompt-binding-invalid` boundary without exposing the sentinel prompt text.
