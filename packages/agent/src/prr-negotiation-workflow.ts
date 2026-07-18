@@ -14,8 +14,10 @@ import { createAgentToolGateway } from "./tool-gateway.js";
 import {
   parseLegacySpecialistWorkflowHandoff,
   type LegacySpecialistWorkflowHandoffDto,
+  type SpecialistOutputArtifactRef,
   type SpecialistWorkflowHandoffDto
 } from "./specialist-handoffs.js";
+import type { MountedSpecialistHandoffAuthorityWitness } from "./specialist-handoff-authority.js";
 import {
   appendSpecialistCompletion,
   appendSpecialistFinalOutputStep,
@@ -23,13 +25,12 @@ import {
   appendSpecialistFailure,
   assertSpecialistDerivativeStoreAvailable,
   assertSpecialistStepNotRecorded,
-  finalizeSpecialistRunAfterHandoff,
   invokeSpecialistModel,
   normalizeSpecialistJsonValue,
   prepareSpecialistRun,
-  recordSpecialistHandoff,
+  recordAuthorityBoundSpecialistHandoff,
+  serializeSpecialistLocalArtifact,
   writeSpecialistDerivativeArtifact,
-  type SpecialistDerivativeArtifactStore,
   type SpecialistHandoffManifestStore,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
@@ -39,10 +40,14 @@ export interface RunPrrNegotiationWorkflowInput extends SpecialistRunnerBaseInpu
   readonly correspondenceId: string;
   readonly jurisdictionRuleRefs: readonly string[];
   readonly followUpApprovalPreview?: PrrNegotiationFollowUpApprovalPreviewInput;
+  /** Opaque current factory authority; this workflow must never construct it. */
+  readonly handoffAuthorityWitness?: MountedSpecialistHandoffAuthorityWitness;
+  /** Mounted content-addressed handoff storage, distinct from derivative storage. */
+  readonly handoffStore?: SpecialistHandoffManifestStore;
 }
 
 export interface RunPrrNegotiationWorkflowResult {
-  readonly handoff: LegacySpecialistWorkflowHandoffDto;
+  readonly handoff: LegacySpecialistWorkflowHandoffDto | SpecialistWorkflowHandoffDto;
   readonly eventIds: readonly string[];
 }
 
@@ -73,6 +78,8 @@ export async function runPrrNegotiationWorkflow(
   const toolRequestId = `toolreq_${input.runId}_followup`;
   const followUpPreflight = preflightFollowUpApprovalPreview(input, toolRequestId);
   assertSpecialistDerivativeStoreAvailable(input);
+  const handoffStore = requirePrrNegotiationHandoffStore(input);
+  const handoffAuthorityWitness = requirePrrNegotiationHandoffAuthority(input);
   const runnerInput: SpecialistRunnerBaseInput = {
     ...input,
     scope: input.scope ?? Object.freeze({
@@ -88,22 +95,23 @@ export async function runPrrNegotiationWorkflow(
   if (output === undefined) {
     return await failedModelOutputResult(input, prepared, invocation.eventIds);
   }
+  const draftPayload = {
+    schemaVersion: "prr-negotiation-handoff.v1",
+    artifactKind: "correspondence-draft-artifact",
+    runId: input.runId,
+    taskId: input.taskId,
+    prrRequestId: input.prrRequestId,
+    correspondenceId: input.correspondenceId,
+    domainSourceBindings: prrAdvisoryDomainSourceBindings(followUpPreflight),
+    draftSummary: output.draftSummary,
+    citedRuleRefs: [...output.citedRuleRefs]
+  };
   let draftArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
   try {
     draftArtifact = await writeSpecialistDerivativeArtifact({
       derivativeStore: input.derivativeStore,
       artifactKind: "correspondence-draft-artifact",
-      payload: {
-        schemaVersion: "prr-negotiation-handoff.v1",
-        artifactKind: "correspondence-draft-artifact",
-        runId: input.runId,
-        taskId: input.taskId,
-        prrRequestId: input.prrRequestId,
-        correspondenceId: input.correspondenceId,
-        domainSourceBindings: prrAdvisoryDomainSourceBindings(followUpPreflight),
-        draftSummary: output.draftSummary,
-        citedRuleRefs: [...output.citedRuleRefs]
-      }
+      payload: draftPayload
     });
   } catch {
     return await failedDerivativeArtifactResult(input, prepared, invocation.eventIds);
@@ -115,27 +123,21 @@ export async function runPrrNegotiationWorkflow(
     invocationId, inputArtifactHashes: [prepared.promptArtifact.manifest.inputArtifactHash, invocation.outputArtifactHash],
     outputArtifactHashes: [draftHash]
   });
+  try {
+    await persistPrrNegotiationDraftArtifact(handoffStore, draftPayload, draftArtifact);
+  } catch {
+    return await failedDraftHandoffStorageResult(input, prepared, [
+      ...invocation.eventIds,
+      draftStep.id
+    ]);
+  }
 
   const approval = output.requestFollowUpApproval
     ? await requestFollowUpApproval(input, followUpPreflight, output.citedRuleRefs)
     : undefined;
-  const handoff = parseLegacySpecialistWorkflowHandoff({
-    schemaVersion: "agent-specialist-handoff.v1", runType: "prr-negotiation", runId: input.runId, taskId: input.taskId,
-    residentAgentId: "agent_default", generatedAt: input.now(), status: approval === undefined ? "ready-for-review" : "waiting-for-approval",
-    safeSummary: approval === undefined
-      ? "PRR negotiation advisory artifact is ready for human review."
-      : "PRR negotiation advisory artifact is ready for review and domain-supplied follow-up approval.",
-    contextPackRefs: prepared.contextPackRefs, promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash,
-    outputArtifacts: [{ artifactId: `artifact_${input.runId}_draft`, artifactKind: "correspondence-draft-artifact", schemaId: "prr-negotiation-handoff.v1", artifactHash: draftHash, safeSummary: "Local PRR negotiation advisory artifact hash is ready for human review." }],
-    toolRequestIds: approval === undefined ? [] : [toolRequestId],
-    approvalRequirements: approval === undefined
-      ? []
-      : [{ approvalClass: "external-message-send", reason: "Human approval is required before a PRR follow-up can leave draft state.", toolRequestId }],
-    nextSafeActions: approval === undefined
-      ? [{ actionId: `action_${input.runId}_review`, label: "Review the PRR correspondence draft", kind: "review", effect: "none", artifactId: `artifact_${input.runId}_draft` }]
-      : [{ actionId: `action_${input.runId}_review`, label: "Review the PRR correspondence draft", kind: "review", effect: "none", artifactId: `artifact_${input.runId}_draft` }, { actionId: `action_${input.runId}_approval`, label: "Request follow-up send approval", kind: "request-approval", effect: "request-approval", toolRequestId }]
-  });
+  const outputArtifacts = prrNegotiationDraftOutputArtifacts(input, draftHash);
   if (approval !== undefined) {
+    const handoff = waitingForApprovalPrrHandoff(input, prepared, outputArtifacts, toolRequestId);
     const completed = await appendSpecialistCompletion({
       ledger: input.ledger,
       actor: input.actor,
@@ -158,49 +160,49 @@ export async function runPrrNegotiationWorkflow(
   }
   let publication: Awaited<ReturnType<typeof appendPrrNegotiationDraftFinalOutput>>;
   try {
-    publication = await appendPrrNegotiationDraftFinalOutput(input, prepared, handoff, {
-      sourceEventIds: [draftStep.id, ...invocation.eventIds],
-      relatedEventIds: [...invocation.eventIds, draftStep.id]
-    });
+    publication = await appendPrrNegotiationDraftFinalOutput(input, prepared, handoffStore, readyForReviewPrrHandoffMaterial(
+      input,
+      prepared,
+      outputArtifacts,
+      {
+        sourceEventIds: [draftStep.id, ...invocation.eventIds],
+        relatedEventIds: [...invocation.eventIds, draftStep.id]
+      }
+    ));
   } catch {
     return await failedDraftHandoffStorageResult(input, prepared, [
       ...invocation.eventIds,
       draftStep.id
     ]);
   }
-  let recorded: Awaited<ReturnType<typeof recordSpecialistHandoff>>;
-  let finalized: Awaited<ReturnType<typeof finalizeSpecialistRunAfterHandoff>>;
+  let recorded: Awaited<ReturnType<typeof recordAuthorityBoundSpecialistHandoff>>;
   try {
-    recorded = await recordSpecialistHandoff({
+    recorded = await recordAuthorityBoundSpecialistHandoff({
       ledger: input.ledger,
       manifestStore: publication.handoffStore,
       actor: input.actor,
       now: input.now,
       runId: input.runId,
-      taskId: input.taskId
-    });
-    finalized = await finalizeSpecialistRunAfterHandoff({
-      ledger: input.ledger,
-      actor: input.actor,
-      now: input.now,
-      recorded
+      taskId: input.taskId,
+      handoffAuthorityWitness
     });
   } catch {
-    return blockedDraftHandoffAfterRecordFailure(input, prepared, handoff, [
+    return blockedDraftHandoffAfterRecordFailure(input, prepared, outputArtifacts, [
       ...invocation.eventIds,
       draftStep.id,
       publication.finalOutput.id
     ]);
   }
   return Object.freeze({
-    handoff,
+    handoff: recorded.handoff,
     eventIds: Object.freeze([
       ...invocation.eventIds,
       draftStep.id,
       publication.finalOutput.id,
       recorded.prepared.id,
       recorded.recorded.id,
-      finalized.terminal.id
+      recorded.terminal.id,
+      recorded.taskStatus.id
     ])
   });
 }
@@ -217,39 +219,28 @@ async function resumePrrNegotiationDraftHandoff(
   );
   if (finalOutput === undefined) return undefined;
   try {
-    const recorded = await recordSpecialistHandoff({
+    const recorded = await recordAuthorityBoundSpecialistHandoff({
       ledger: input.ledger,
-      manifestStore: prrNegotiationHandoffStore(input.derivativeStore),
+      manifestStore: requirePrrNegotiationHandoffStore(input),
       actor: input.actor,
       now: input.now,
       runId: input.runId,
-      taskId: input.taskId
-    });
-    const finalized = await finalizeSpecialistRunAfterHandoff({
-      ledger: input.ledger,
-      actor: input.actor,
-      now: input.now,
-      recorded
+      taskId: input.taskId,
+      handoffAuthorityWitness: requirePrrNegotiationHandoffAuthority(input)
     });
     return Object.freeze({
-      handoff: legacyHandoffFromRecordedHandoff(recorded.handoff),
+      handoff: recorded.handoff,
       eventIds: Object.freeze([
         finalOutput.id,
         recorded.prepared.id,
         recorded.recorded.id,
-        finalized.terminal.id
+        recorded.terminal.id,
+        recorded.taskStatus.id
       ])
     });
   } catch {
     return resumableDraftHandoffFromFinalOutput(input, finalOutput.id);
   }
-}
-
-function legacyHandoffFromRecordedHandoff(
-  handoff: SpecialistWorkflowHandoffDto
-): LegacySpecialistWorkflowHandoffDto {
-  const { handoffId: _handoffId, handoffRevision: _handoffRevision, ...legacy } = handoff;
-  return parseLegacySpecialistWorkflowHandoff(legacy);
 }
 
 function resumableDraftHandoffFromFinalOutput(
@@ -282,7 +273,7 @@ function resumableDraftHandoffFromFinalOutput(
 function blockedDraftHandoffAfterRecordFailure(
   input: RunPrrNegotiationWorkflowInput,
   prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
-  handoff: LegacySpecialistWorkflowHandoffDto,
+  outputArtifacts: readonly SpecialistOutputArtifactRef[],
   eventIds: readonly string[]
 ): RunPrrNegotiationWorkflowResult {
   const blocked = parseLegacySpecialistWorkflowHandoff({
@@ -296,7 +287,7 @@ function blockedDraftHandoffAfterRecordFailure(
     safeSummary: "PRR negotiation draft remains local and requires handoff storage repair before review.",
     contextPackRefs: prepared.contextPackRefs,
     promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash,
-    outputArtifacts: handoff.outputArtifacts,
+    outputArtifacts,
     toolRequestIds: [],
     approvalRequirements: [],
     nextSafeActions: [{
@@ -359,27 +350,10 @@ async function failedDraftHandoffStorageResult(
 async function appendPrrNegotiationDraftFinalOutput(
   input: RunPrrNegotiationWorkflowInput,
   prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
-  handoff: LegacySpecialistWorkflowHandoffDto,
-  refs: {
-    readonly sourceEventIds: readonly string[];
-    readonly relatedEventIds: readonly string[];
-  }
+  handoffStore: SpecialistHandoffManifestStore,
+  handoffMaterial: ReturnType<typeof buildSpecialistHandoffMaterial>
 ) {
-  const handoffStore = prrNegotiationHandoffStore(input.derivativeStore);
-  await seedPrrNegotiationHandoffReferences(handoffStore, prepared, handoff.outputArtifacts);
-  const handoffMaterial = buildSpecialistHandoffMaterial({
-    status: handoff.status,
-    safeSummary: handoff.safeSummary,
-    contextPackRefs: prepared.contextPackRefs,
-    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash as `sha256:${string}`,
-    outputArtifacts: handoff.outputArtifacts,
-    toolRequestIds: handoff.toolRequestIds,
-    approvalRequirements: handoff.approvalRequirements,
-    nextSafeActions: handoff.nextSafeActions,
-    ...(handoff.failure === undefined ? {} : { failure: handoff.failure }),
-    sourceEventIds: refs.sourceEventIds,
-    relatedEventIds: refs.relatedEventIds
-  });
+  await seedPrrNegotiationHandoffReferences(handoffStore, prepared, handoffMaterial.outputArtifacts);
   const finalOutput = await appendSpecialistFinalOutputStep({
     ledger: input.ledger,
     materialStore: handoffStore,
@@ -392,17 +366,124 @@ async function appendPrrNegotiationDraftFinalOutput(
   return Object.freeze({ handoffStore, finalOutput });
 }
 
-function prrNegotiationHandoffStore(store: SpecialistDerivativeArtifactStore | undefined): SpecialistHandoffManifestStore {
-  const candidate = store as unknown;
-  if (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof (candidate as { readonly put?: unknown }).put === "function" &&
-    typeof (candidate as { readonly get?: unknown }).get === "function"
-  ) {
-    return candidate as SpecialistHandoffManifestStore;
+function requirePrrNegotiationHandoffStore(
+  input: RunPrrNegotiationWorkflowInput
+): SpecialistHandoffManifestStore {
+  const store = input.handoffStore;
+  if (store === undefined || typeof store.put !== "function" || typeof store.get !== "function") {
+    throw new Error("PRR negotiation requires the current mounted handoff store before provider invocation.");
   }
-  throw new Error("PRR negotiation durable handoff requires content-addressed artifact readback.");
+  return store;
+}
+
+function requirePrrNegotiationHandoffAuthority(
+  input: RunPrrNegotiationWorkflowInput
+): MountedSpecialistHandoffAuthorityWitness {
+  if (input.handoffAuthorityWitness === undefined) {
+    throw new Error("PRR negotiation requires the current mounted handoff authority before provider invocation.");
+  }
+  return input.handoffAuthorityWitness;
+}
+
+function prrNegotiationDraftOutputArtifacts(
+  input: RunPrrNegotiationWorkflowInput,
+  draftHash: `sha256:${string}`
+): readonly SpecialistOutputArtifactRef[] {
+  return Object.freeze([{
+    artifactId: `artifact_${input.runId}_draft`,
+    artifactKind: "correspondence-draft-artifact",
+    schemaId: "prr-negotiation-handoff.v1",
+    artifactHash: draftHash,
+    safeSummary: "Local PRR negotiation advisory artifact hash is ready for human review."
+  }]);
+}
+
+function readyForReviewPrrHandoffMaterial(
+  input: RunPrrNegotiationWorkflowInput,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
+  outputArtifacts: readonly SpecialistOutputArtifactRef[],
+  refs: {
+    readonly sourceEventIds: readonly string[];
+    readonly relatedEventIds: readonly string[];
+  }
+) {
+  return buildSpecialistHandoffMaterial({
+    status: "ready-for-review",
+    safeSummary: "PRR negotiation advisory artifact is ready for human review.",
+    contextPackRefs: prepared.contextPackRefs,
+    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash as `sha256:${string}`,
+    outputArtifacts,
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.runId}_review`,
+      label: "Review the PRR correspondence draft",
+      kind: "review",
+      effect: "none",
+      artifactId: `artifact_${input.runId}_draft`
+    }],
+    sourceEventIds: refs.sourceEventIds,
+    relatedEventIds: refs.relatedEventIds
+  });
+}
+
+function waitingForApprovalPrrHandoff(
+  input: RunPrrNegotiationWorkflowInput,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
+  outputArtifacts: readonly SpecialistOutputArtifactRef[],
+  toolRequestId: string
+): LegacySpecialistWorkflowHandoffDto {
+  return parseLegacySpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "prr-negotiation",
+    runId: input.runId,
+    taskId: input.taskId,
+    residentAgentId: "agent_default",
+    generatedAt: input.now(),
+    status: "waiting-for-approval",
+    safeSummary: "PRR negotiation advisory artifact is ready for review and domain-supplied follow-up approval.",
+    contextPackRefs: prepared.contextPackRefs,
+    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash,
+    outputArtifacts,
+    toolRequestIds: [toolRequestId],
+    approvalRequirements: [{
+      approvalClass: "external-message-send",
+      reason: "Human approval is required before a PRR follow-up can leave draft state.",
+      toolRequestId
+    }],
+    nextSafeActions: [
+      {
+        actionId: `action_${input.runId}_review`,
+        label: "Review the PRR correspondence draft",
+        kind: "review",
+        effect: "none",
+        artifactId: `artifact_${input.runId}_draft`
+      },
+      {
+        actionId: `action_${input.runId}_approval`,
+        label: "Request follow-up send approval",
+        kind: "request-approval",
+        effect: "request-approval",
+        toolRequestId
+      }
+    ]
+  });
+}
+
+async function persistPrrNegotiationDraftArtifact(
+  store: SpecialistHandoffManifestStore,
+  payload: unknown,
+  artifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>
+): Promise<void> {
+  const bytes = serializeSpecialistLocalArtifact(payload);
+  const stored = await store.put(bytes);
+  if (stored.contentHash !== artifact.artifactHash || stored.sizeBytes !== artifact.sizeBytes) {
+    throw new Error("PRR negotiation mounted handoff store did not bind the local draft bytes.");
+  }
+  const readback = await store.get(artifact.artifactHash);
+  if (!Buffer.isBuffer(readback) || !readback.equals(bytes)) {
+    throw new Error("PRR negotiation mounted handoff draft readback failed.");
+  }
 }
 
 async function seedPrrNegotiationHandoffReferences(
