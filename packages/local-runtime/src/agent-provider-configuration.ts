@@ -24,7 +24,8 @@ const openaiCodexProviderIdPattern = /^provider_openai_codex_[a-zA-Z0-9][a-zA-Z0
 const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
 const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
-const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9_:-])([0-9a-fx]+(?:\.[0-9a-fx]+){0,3})(?=$|[^a-z0-9_:-])/gi;
+const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9])((?:[0-9a-fx]+\.)+[0-9a-fx]+|0x[0-9a-f]+|\d{8,})(?=$|[^a-z0-9])/gi;
+const exactIsoTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const localhostPattern = /\blocalhost\b/i;
 const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+[a-z]+\b/i;
 
@@ -394,8 +395,10 @@ function hasExactCredentialRequirement(capability: ProviderCapabilityDescriptor,
 }
 
 function isReferenceCurrentAt(reference: CredentialReference, assessedAt: string): boolean {
-  if (reference.expiresAt === undefined) return true;
-  return Date.parse(reference.expiresAt) > Date.parse(assessedAt);
+  const assessedAtTime = Date.parse(assessedAt);
+  return reference.revokedAt === undefined &&
+    Date.parse(reference.authorizedAt) <= assessedAtTime &&
+    (reference.expiresAt === undefined || Date.parse(reference.expiresAt) > assessedAtTime);
 }
 
 function requireArray(value: unknown): readonly unknown[] {
@@ -560,6 +563,7 @@ function hasIpAddress(value: string): boolean {
 }
 
 function hasStandardUrlIpv4Host(value: string): boolean {
+  if (exactIsoTimestampPattern.test(value) && !Number.isNaN(Date.parse(value))) return false;
   for (const match of value.matchAll(standardUrlIpv4TokenPattern)) {
     const token = match[1];
     if (token !== undefined && isIP(new URL(`http://${token}`).hostname) === 4) return true;
