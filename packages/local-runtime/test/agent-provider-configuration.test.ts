@@ -299,6 +299,41 @@ describe("agent provider configuration", () => {
     }
   });
 
+  it("canonicalizes deterministic provenance source-event arrays", () => {
+    const reversed = officialHarnessConfiguration();
+    const canonical = officialHarnessConfiguration();
+    const feasibilitySources = [
+      "evt_binding_harness_1",
+      "evt_binding_harness_2",
+      "evt_capability_harness_1",
+      "evt_endpoint_policy_harness_1",
+      "evt_endpoint_policy_harness_2",
+      "evt_official_harness_1",
+      "evt_official_harness_2"
+    ];
+
+    only(reversed.credentialReferences).sourceEventIds = ["evt_binding_harness_2", "evt_binding_harness_1"];
+    only(reversed.endpointPolicies).sourceEventIds = ["evt_endpoint_policy_harness_2", "evt_endpoint_policy_harness_1"];
+    requireOfficialEvidence(only(reversed.feasibility)).officialSourceEventIds = ["evt_official_harness_2", "evt_official_harness_1"];
+    only(reversed.feasibility).sourceEventIds = feasibilitySources;
+
+    only(canonical.credentialReferences).sourceEventIds = ["evt_binding_harness_1", "evt_binding_harness_2"];
+    only(canonical.endpointPolicies).sourceEventIds = ["evt_endpoint_policy_harness_1", "evt_endpoint_policy_harness_2"];
+    requireOfficialEvidence(only(canonical.feasibility)).officialSourceEventIds = ["evt_official_harness_1", "evt_official_harness_2"];
+    only(canonical.feasibility).sourceEventIds = feasibilitySources;
+
+    const reversedSnapshot = createAgentProviderConfiguration(reversed);
+    const canonicalSnapshot = createAgentProviderConfiguration(canonical);
+
+    expect(reversedSnapshot).toEqual(canonicalSnapshot);
+    expect(only(reversedSnapshot.credentialReferences).sourceEventIds).toEqual(["evt_binding_harness_1", "evt_binding_harness_2"]);
+    expect(only(reversedSnapshot.endpointPolicies).sourceEventIds).toEqual(["evt_endpoint_policy_harness_1", "evt_endpoint_policy_harness_2"]);
+    expect(only(reversedSnapshot.feasibility).officialEvidence?.officialSourceEventIds).toEqual([
+      "evt_official_harness_1",
+      "evt_official_harness_2"
+    ]);
+  });
+
   it("admits both released official provider families with either released OAuth credential kind", () => {
     const rejected: string[] = [];
     const credentialKinds = ["subscription-oauth", "device-code-oauth"] as const;
