@@ -349,3 +349,21 @@ or fallback.
   earlier authorization, expiry-boundary, and prior-revocation controls remain
   covered.
 - `npm run typecheck` exits `0` from the RED bytes without diagnostics.
+
+## RV-1-E-745 Delimiter-and-Authorization Recovery GREEN
+
+- GREEN changes only production source and this claim; the focused test is
+  byte-identical to RED `f585ec8c868f630e721b6005710fb855d6fe779e`.
+- Host token extraction now uses every non-alphanumeric delimiter, while its
+  standards-parser candidate grammar remains structural rather than a version
+  exception: dotted, `0x`-prefixed, and compact raw numeric IPv4 forms are
+  classified locally. A valid exact ISO timestamp is narrowly exempted so the
+  released timestamp controls remain accepted; `policy.v1` and `adapter.v1`
+  remain ordinary safe prose, while dotted `1.2` remains rejected as IP
+  material.
+- Current-reference evaluation now requires authorization at or before
+  feasibility assessment, absence of revocation, and expiration strictly after
+  assessment. It preserves existing credential normalization, data-only
+  behavior, and no-effect boundaries.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 23 tests**. `npm run typecheck` exits `0`.
