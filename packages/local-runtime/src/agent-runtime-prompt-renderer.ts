@@ -87,7 +87,7 @@ function canonicalResolvedContextPacks(
     throw new Error("invalid-resolved-context-packs");
   }
   const descriptors = Object.getOwnPropertyDescriptors(resolvedContextPacks);
-  const length = descriptors.length;
+  const length = Object.getOwnPropertyDescriptor(resolvedContextPacks, "length");
   if (length === undefined || length.enumerable || !("value" in length) || length.value !== resolvedContextPacks.length) {
     throw new Error("invalid-resolved-context-packs");
   }
