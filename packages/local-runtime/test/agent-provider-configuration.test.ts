@@ -28,6 +28,7 @@ interface RawCredentialReference {
   safeLabel: string;
   authorizedBy: string;
   authorizedAt: string;
+  revokedAt?: string;
   status: "healthy";
   policyVersion: string;
   sourceEventIds: EventId[];
@@ -441,6 +442,43 @@ describe("agent provider configuration", () => {
       accepted: [],
       ordinaryAccepted: true
     });
+  });
+
+  it("rejects single-character terminal DNS labels across capability and credential text", () => {
+    const hosts = ["api.x", "a.b"];
+    const accepted: string[] = [];
+
+    for (const host of hosts) {
+      const capability = byokConfiguration();
+      only(capability.capabilities).capability.dataHandlingNotes = host;
+      if (accepts(capability)) accepted.push(`capability:${host}`);
+
+      const credential = byokConfiguration();
+      only(credential.credentialReferences).safeLabel = host;
+      if (accepts(credential)) accepted.push(`credential:${host}`);
+    }
+
+    const controls = byokConfiguration();
+    only(controls.capabilities).capability.adapterVersion = "adapter.v1";
+    only(controls.endpointPolicies).adapterVersion = "adapter.v1";
+    only(controls.credentialReferences).policyVersion = "policy.v1";
+    only(controls.endpointPolicies).policyVersion = "policy.v1";
+    only(controls.feasibility).policyVersion = "policy.v1";
+
+    expect({ accepted, controlsAccepted: accepts(controls) }).toEqual({
+      accepted: [],
+      controlsAccepted: true
+    });
+  });
+
+  it("rejects healthy-status credential references with prior revocation from current feasibility", () => {
+    const revoked = byokConfiguration();
+    only(revoked.credentialReferences).status = "healthy";
+    only(revoked.credentialReferences).revokedAt = "2026-07-17T12:00:00.000Z";
+    const healthy = byokConfiguration();
+
+    expect(() => createAgentProviderConfiguration(revoked)).toThrow("invalid provider configuration");
+    expect(createAgentProviderConfiguration(healthy).feasibility).toHaveLength(1);
   });
 
   it("rejects standard-parser-recognized noncanonical IPv4 host spellings", () => {
