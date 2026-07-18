@@ -19070,3 +19070,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record count remains 13. V1-V3, raw records 1-13, all candidate and review
   history, all 29 card IDs and exact order, the finite direct-source transfer
   mapping, released-source current-HEAD ownership, and `neo` remain untouched.
+
+## RV-1-E-710 — CF1-HR post-ceiling packet freezes for terminal review
+
+- Recorded at: 2026-07-18T02:21:30Z
+- The same CF1-HR owner preserved candidate `5fc556773c81b46953064dc8fc2b105ebc3cfd12`
+  and appended the sole human-exception causal RED
+  `4f844569197782d1435767159efbdbb82714ad60` followed by the sole minimal
+  GREEN `9799beead86a3b14544549516087c2af6a5f6d54`. The RED reproduces all
+  three RV-1-E-708 boundaries. The GREEN changes only owned paths, and the
+  cumulative range remains exactly the fourteen-path CF1-HR boundary. No
+  post-GREEN code or test edit is authorized.
+- Coordinator admission from exact committed bytes passes the focused gate at
+  **7 files / 280 tests**, the cross-boundary gate at **11 files / 313 tests**,
+  diff hygiene, factory readiness, exact scope, dependency/Vitest provenance,
+  and clean tracked/untracked state. The full test set retains the exact
+  inherited 69-failure set: **12 failing / 212 passing / 3 skipped files** and
+  **69 failing / 2708 passing / 5 skipped tests**.
+- Fresh coordinator `npm run typecheck` reproduces five committed-source
+  errors: the new authority lifecycle tuple carries `runType` as unconstrained
+  `string` while existing orchestration helpers and the durable event ABI
+  require the closed specialist-run-type union. The errors occur in
+  `specialist-runner-kernel.ts` near lines 1060, 2345, 2356, and 2375 and in
+  `portable-mounted-agent-artifact-stores.ts` near line 710. Consequently exact
+  `npm run verify` exits at typecheck before running its test/build/factory
+  suffix. Two clean reruns disprove incremental-cache or environment noise.
+- The one fresh concurrent read-only terminal pair is executability/adversarial
+  task `019f7306-8ed6-75b0-9ce8-66916316fdb2` in worktree
+  `/home/drake/.codex/worktrees/23f8/Cestus` and architecture/invariants task
+  `019f7306-8ee5-7801-9335-e5f8f37da10d` in worktree
+  `/home/drake/.codex/worktrees/b076/Cestus`. Both are bound to exact candidate
+  `9799beea`, `gpt-5.6-terra`, and `xhigh` reasoning, and must independently
+  adjudicate the three safety corrections plus the compiler failure.
+- Status moves `implementing-post-ceiling-safety-packet -> reviewing-terminal`.
+  Strict record count remains 13. Reviews are read-only; SDD/TDD is not
+  relevant or authorized. A reproduced P0/P1 durably blocks CF1-HR with no
+  further automatic repair; only dual approval permits integration and strict
+  release record 14. V1-V3, raw records 1-13, released-source current-HEAD
+  ownership, all evidence history, and `neo` remain untouched.
