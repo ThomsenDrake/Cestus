@@ -132,3 +132,28 @@ or fallback.
   outside both released predicates. All other focused-test semantics, including
   the corrected xAI backend, remain unchanged. The retained source GREEN patch
   remains unstaged and outside this RED commit.
+
+## RV-1-E-734 Recovery GREEN
+
+- The exact committed-byte RED was reproduced in a detached temporary
+  checkout with a real non-symlinked hardlinked dependency directory. `npm
+  test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  exited `1` with **1 failed file / 6 failed and 8 passed tests (14)**: the
+  updated official exception, both-OAuth positive family matrix, anchored
+  boundary table, lane-specific scope, TLD-independent text material, and
+  configuration-wide text boundary all failed causally. `npm run typecheck`
+  exited `0`. The temporary checkout was removed after the evidence run.
+- The minimal source implementation accepts only anchored nonempty
+  alphanumeric-led `provider_openai_codex_` and `provider_xai_` suffixes with
+  matching backends; either released OAuth kind; exact
+  `harness-execution` official scope; and exact `model-inference` BYOK/local
+  scope. It has no reader, mounted authority, credential resolution, provider
+  call, network operation, fallback, durable write, or process-global effect.
+- A single normalization-time text-material boundary examines every
+  configuration string before lane construction. It rejects URI schemes,
+  IPv4/IPv6, localhost, and alphabetic-terminal DNS hosts without a finite TLD
+  list while preserving hashes, event IDs, ISO timestamps, and `*.v1` policy or
+  adapter versions. Existing secret-safety, hostile-shape, exact provenance,
+  cardinality, and immutable-data boundaries remain in force.
+- From these GREEN source bytes, the focused command passed: **1 file / 14
+  tests**. The focused test remains byte-identical to the anchored-family RED.
