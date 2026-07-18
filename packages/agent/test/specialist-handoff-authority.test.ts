@@ -16,7 +16,7 @@ const binding = {
 } as const;
 
 describe("specialist handoff authority witness", () => {
-  it("rejects structural copied and consumed witnesses while returning a frozen exact binding", async () => {
+  it("accepts a closed AgentSpecialistRunType path and rejects structural copied and consumed witnesses", async () => {
     let current = true;
     const witness = issueMountedSpecialistHandoffAuthorityWitness({
       authorityBinding: binding,
@@ -40,5 +40,19 @@ describe("specialist handoff authority witness", () => {
     current = false;
     await expect(consumed.revalidateCurrent()).rejects.toThrow(/authority/i);
     await expect(consumeMountedSpecialistHandoffAuthorityWitness(witness)).rejects.toThrow(/consumed|authority/i);
+  });
+
+  it("rejects an unsupported runType before issuing the mounted authority witness", () => {
+    expect(() => issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: binding,
+      taskLifecycle: {
+        taskId: "task_authority_witness_unsupported",
+        attemptId: `attempt_${"b".repeat(64)}`,
+        runId: "run_authority_witness_unsupported",
+        runType: "unsupported-specialist-workflow",
+        retryGeneration: 0
+      },
+      revalidateCurrent: async () => undefined
+    })).toThrow(/authority/i);
   });
 });
