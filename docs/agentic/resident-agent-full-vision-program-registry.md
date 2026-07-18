@@ -19245,3 +19245,138 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status moves `authorized-compile-closure -> reviewing-final`. Strict record
   count remains 13, released-source ownership does not migrate, no automatic
   CF1 repair remains, and `neo` remains untouched.
+
+## RV-1-E-714 — CF1-HR released as strict record 14
+
+- Recorded at: 2026-07-18T12:12:48Z
+- The sole final pair both returned **APPROVED** on exact candidate
+  `ebe40a1a85eb848968c95ac0e185bbe332892f18`: architecture/invariants task
+  `019f751a-c528-7220-aca9-9e060fad3f60` and executability/adversarial task
+  `019f751a-c528-7220-aca9-9df5e8d74ec0`. Neither reproduced a P0/P1 or
+  reported a P2 backlog item. Both confirmed the canonical closed run-type
+  boundary, exact witness/lifecycle propagation without casts or API widening,
+  valid-versus-stale task-history behavior, terminal -> orchestration-completed
+  -> task-status order, V2 raw-helper refusal, and V1 isolation.
+- The coordinator merged the complete preserved CF1-HR history without
+  rewriting it as integration
+  `32d4e3fdf8b4b79178d616daff91ecc5dd341548`, with parents registry/review
+  checkpoint `fc025947df7b63a40398e1d764fbfda596231942` and approved candidate
+  `ebe40a1a85eb848968c95ac0e185bbe332892f18`. Integrated-byte gates reproduce
+  focused **7 files / 282 tests**, cross-boundary **11 files / 315 tests**,
+  standalone typecheck, factory readiness, V4 contract mode, diff hygiene,
+  exact fourteen-path scope, clean state, and real dependency/Vitest
+  provenance.
+- Integrated full `npm test` and `npm run verify` retain the exact inherited
+  differential: **12 failing / 212 passing / 3 skipped files** and **69 failing
+  / 2710 passing / 5 skipped tests**. `npm run verify` passes standalone
+  typecheck and exits only at this unchanged intermediate cohort; it is not
+  represented as green.
+- The strict record below activates only the finite approved direct-source
+  transfers from Task135B, Task129-MFA, and Task137B-W. Current ownership of
+  the fourteen paths moves to CF1-HR while all historical candidate,
+  integration, blob, review, release, and raw-record evidence remains
+  verified. Status advances `reviewing-final -> approved -> integrated ->
+  released`. The strict prefix is now 14; `neo` remains untouched.
+
+## Task136 dispatch release v4: CF1-HR
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "CF1-HR",
+  "candidateSha": "ebe40a1a85eb848968c95ac0e185bbe332892f18",
+  "reviews": [
+    {
+      "threadId": "019f751a-c528-7220-aca9-9e060fad3f60",
+      "candidateSha": "ebe40a1a85eb848968c95ac0e185bbe332892f18",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f751a-c528-7220-aca9-9df5e8d74ec0",
+      "candidateSha": "ebe40a1a85eb848968c95ac0e185bbe332892f18",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+  "releaseEventId": "task136-release-v4-CF1-HR",
+  "prerequisites": [
+    "W1-123-H-SHARED-SCHEMA",
+    "W1-133.5-PREAPPROVAL-PROMPT-STORE",
+    "Task137B-W",
+    "Task135B",
+    "Task129-MFA"
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/specialist-runner-kernel.ts",
+      "disposition": "owned",
+      "blobSha": "64534b0c683ff74755690e7d0cb41ef9b9e19b5f"
+    },
+    {
+      "path": "packages/agent/test/specialist-runner-kernel.test.ts",
+      "disposition": "owned",
+      "blobSha": "63763932317f3935cb66818dc8073fc79ca0cd5a"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-projection.ts",
+      "disposition": "owned",
+      "blobSha": "311120f59e9d40628c4d091f958f3ba2bf2ff53d"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-projection.test.ts",
+      "disposition": "owned",
+      "blobSha": "4b512655dcd2d52875f82959d24817226bbd3b61"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-manifest.ts",
+      "disposition": "owned",
+      "blobSha": "f98f04941b75b3d8d99f8fb12c6c1ba5e6e4b8be"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-manifest.test.ts",
+      "disposition": "owned",
+      "blobSha": "dedd73ed96b9a4f8e89f3e490b956f6b063a6395"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-authority.ts",
+      "disposition": "owned",
+      "blobSha": "81d2df45b2c74f118bea22fdce23a5fd698ddbd0"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-authority.test.ts",
+      "disposition": "owned",
+      "blobSha": "309d26e487e200f7a430b261910e4f6ef11b19a1"
+    },
+    {
+      "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+      "disposition": "owned",
+      "blobSha": "c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+      "disposition": "owned",
+      "blobSha": "a1f1b04fa75d573bd3c8851a5fb4f15610109d40"
+    },
+    {
+      "path": "packages/ontology/src/contracts.ts",
+      "disposition": "owned",
+      "blobSha": "a80d216da75e73ce1ffec52626822d3670ffa846"
+    },
+    {
+      "path": "packages/ontology/test/agent-contracts.test.ts",
+      "disposition": "owned",
+      "blobSha": "12232233aef27ba1ffa3150e39fe956296dbf77c"
+    },
+    {
+      "path": "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+      "disposition": "owned",
+      "blobSha": "e91d1848b389a03f03ce841458de3c8543b85035"
+    },
+    {
+      "path": "docs/agentic/claims/cf1-h-task136-complete-handoff-readback-projection.md",
+      "disposition": "owned",
+      "blobSha": "389ac3a36e084b77559709cdc8d546a6ff324e50"
+    }
+  ]
+}
+```
