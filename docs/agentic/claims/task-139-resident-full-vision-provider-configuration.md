@@ -267,3 +267,20 @@ or fallback.
   or other external action occurs.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passes: **1 file / 18 tests**. `npm run typecheck` exits `0`.
+
+## RV-1-E-742 Bare-Scheme Recovery RED
+
+- Standing recovery authority: `RV-1-E-742`. The preserved clean candidate is
+  `294929b2d60fb226ed947bbdf068d9b4add803dc`; this RED changes only the
+  focused test and this claim. The production source blob remains
+  `d7164b2b39eee0648c067fb1406b0b294002d657`, byte-identical to that
+  candidate.
+- The focused RED command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exits `1`
+  with **1 failed file / 1 failed and 18 passed tests (19)**. Its named
+  capability/free-text and credential-safe-label matrix proves the candidate
+  admits payload-empty `mailto:`, `urn:`, `data:`, `file:`, `http:`, and
+  `https:` schemes at both centralized recursive text boundaries (12 invalid
+  admissions). The same test explicitly confirms the released ISO timestamp,
+  `policy.v1`, and `adapter.v1` controls remain accepted.
+- `npm run typecheck` exits `0` from the RED bytes without diagnostics.
