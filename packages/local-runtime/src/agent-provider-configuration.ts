@@ -25,9 +25,11 @@ const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
 const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
 const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9])((?:[0-9a-fx]+\.)+[0-9a-fx]+|0x[0-9a-f]+|\d{8,})(?=$|[^a-z0-9])/gi;
+const wholeNumericUrlHostPattern = /^(?:0x[0-9a-f]+|\d+)(?::\d+)?$/i;
 const exactIsoTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const localhostPattern = /\blocalhost\b/i;
-const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+[a-z]+\b/i;
+const dnsHostTokenPattern = /(?:^|[^\p{L}\p{N}_-])((?:[\p{L}\p{N}-]+\.)+[\p{L}\p{N}-]+)(?=$|[^\p{L}\p{N}_-])/gu;
+const releasedVersionPattern = /^(?:agent-provider-auth|policy|adapter)\.v1$/;
 
 export type ProviderConfigurationLane = "byok" | "local-engine" | "official-harness";
 
@@ -138,7 +140,12 @@ function normalizeCapabilities(value: unknown): readonly CanonicalProviderCapabi
   const seen = new Set<string>();
   return records.map((value) => {
     if (!isRecord(value) || !hasExactKeys(value, capabilityKeys)) throw invalidConfiguration();
-    const capability = createProviderCapabilityDescriptor(value.capability);
+    const parsedCapability = createProviderCapabilityDescriptor(value.capability);
+    const capability = createProviderCapabilityDescriptor({
+      ...parsedCapability,
+      modalities: sortUniqueStrings(parsedCapability.modalities),
+      diagnosticContract: sortUniqueStrings(parsedCapability.diagnosticContract)
+    });
     if (
       capability.fakeSupport || capability.modelFamilies.length !== 1 || !seen.add(capability.providerId)
     ) {
@@ -460,8 +467,16 @@ function isSafeText(value: string): boolean {
 }
 
 function requireIsoDate(value: unknown): string {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value)) || !isSafeText(value)) throw invalidConfiguration();
+  if (typeof value !== "string" || !isCanonicalIsoTimestamp(value) || !isSafeText(value)) {
+    throw invalidConfiguration();
+  }
   return value;
+}
+
+function isCanonicalIsoTimestamp(value: string): boolean {
+  if (!exactIsoTimestampPattern.test(value)) return false;
+  const timestamp = Date.parse(value);
+  return !Number.isNaN(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
 function freezeSorted<T>(values: readonly T[], key: (value: T) => string): readonly T[] {
@@ -470,6 +485,11 @@ function freezeSorted<T>(values: readonly T[], key: (value: T) => string): reado
 
 function sortStrings(values: readonly string[]): readonly string[] {
   return Object.freeze([...values].sort(compareStrings));
+}
+
+function sortUniqueStrings(values: readonly string[]): readonly string[] {
+  if (new Set(values).size !== values.length) throw invalidConfiguration();
+  return [...values].sort(compareStrings);
 }
 
 function sortEventIds(ids: readonly `evt_${string}`[]): `evt_${string}`[] {
@@ -544,12 +564,21 @@ function normalizePlainOwnData(value: unknown): unknown {
 }
 
 function hasForbiddenTextMaterial(value: string): boolean {
+  if (isCanonicalIsoTimestamp(value)) return false;
   return (
     (!hashPattern.test(value) && uriSchemePattern.test(value)) ||
     hasIpAddress(value) ||
     localhostPattern.test(value) ||
-    dnsHostPattern.test(value)
+    hasDnsHostMaterial(value)
   );
+}
+
+function hasDnsHostMaterial(value: string): boolean {
+  for (const match of value.matchAll(dnsHostTokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && !releasedVersionPattern.test(token)) return true;
+  }
+  return false;
 }
 
 function hasIpAddress(value: string): boolean {
@@ -563,12 +592,21 @@ function hasIpAddress(value: string): boolean {
 }
 
 function hasStandardUrlIpv4Host(value: string): boolean {
-  if (exactIsoTimestampPattern.test(value) && !Number.isNaN(Date.parse(value))) return false;
+  if (isCanonicalIsoTimestamp(value)) return false;
+  if (wholeNumericUrlHostPattern.test(value) && isStandardUrlIpv4Host(value)) return true;
   for (const match of value.matchAll(standardUrlIpv4TokenPattern)) {
     const token = match[1];
-    if (token !== undefined && isIP(new URL(`http://${token}`).hostname) === 4) return true;
+    if (token !== undefined && isStandardUrlIpv4Host(token)) return true;
   }
   return false;
+}
+
+function isStandardUrlIpv4Host(token: string): boolean {
+  try {
+    return isIP(new URL(`http://${token}`).hostname) === 4;
+  } catch {
+    return false;
+  }
 }
 
 function invalidConfiguration(): TypeError {

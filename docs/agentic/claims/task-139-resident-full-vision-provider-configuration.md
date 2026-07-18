@@ -388,3 +388,21 @@ or fallback.
   arrays but returns byte-different snapshots; it also pins duplicate
   rejection for those set-like arrays.
 - `npm run typecheck` exits `0` from the RED bytes without diagnostics.
+
+## RV-1-E-747 Unicode-DNS-and-Canonical-Shape Recovery GREEN
+
+- GREEN changes only production source and this claim; the focused test is
+  byte-identical to RED `a3842d6337df78464aaa132d47d3073ea8d75e8f`.
+- The centralized text boundary now classifies Unicode-aware structural DNS
+  tokens with an alphanumeric terminal label and no TLD list. Its only
+  version exception is the exact released `agent-provider-auth.v1`,
+  `policy.v1`, and `adapter.v1` token set. Whole short numeric and optional
+  numeric-port host values are classified locally through the WHATWG URL
+  parser, while canonical ISO millisecond-Z instants are narrowly retained.
+  Assessment timestamps now require that exact format and round-trip as valid
+  instants. Capability `modalities` and `diagnosticContract` are duplicate-free
+  bytewise canonical sets before their immutable descriptor snapshot, without
+  changing the fixed model-family, credential-requirement, or workspace-scope
+  rules.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 26 tests**. `npm run typecheck` exits `0`.
