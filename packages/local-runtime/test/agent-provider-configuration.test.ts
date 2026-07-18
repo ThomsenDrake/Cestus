@@ -376,6 +376,10 @@ describe("agent provider configuration", () => {
       "https://api.example.xyz",
       "ftp://api.service.corp/archive",
       "10.0.0.1",
+      "::1",
+      "2001:db8::1",
+      "fe80::1%lo0",
+      "::ffff:192.0.2.128",
       "[2001:db8::1]",
       "localhost",
       "api.example.xyz",
@@ -385,11 +389,23 @@ describe("agent provider configuration", () => {
 
     for (const material of materials) {
       const input = byokConfiguration();
-      only(input.credentialReferences).safeLabel = material;
+      only(input.capabilities).capability.dataHandlingNotes = material;
       if (accepts(input)) accepted.push(material);
     }
 
-    expect(accepted).toEqual([]);
+    const ordinary = byokConfiguration();
+    only(ordinary.capabilities).capability.dataHandlingNotes = "ordinary policy.v1 prose";
+    only(ordinary.capabilities).capability.adapterVersion = "adapter.v1";
+    only(ordinary.endpointPolicies).adapterVersion = "adapter.v1";
+    only(ordinary.credentialReferences).policyVersion = "policy.v1";
+    only(ordinary.endpointPolicies).policyVersion = "policy.v1";
+    only(ordinary.feasibility).policyVersion = "policy.v1";
+    only(ordinary.feasibility).assessedAt = "2026-07-18T12:00:00.000Z";
+
+    expect({ accepted, ordinaryAccepted: accepts(ordinary) }).toEqual({
+      accepted: [],
+      ordinaryAccepted: true
+    });
   });
 
   it("applies the text-material boundary across configuration facts", () => {

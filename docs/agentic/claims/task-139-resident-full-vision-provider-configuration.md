@@ -157,3 +157,18 @@ or fallback.
   cardinality, and immutable-data boundaries remain in force.
 - From these GREEN source bytes, the focused command passed: **1 file / 14
   tests**. The focused test remains byte-identical to the anchored-family RED.
+
+## RV-1-E-735 Compressed-IPv6 Recovery RED
+
+- Coordinator root-cause authority: `RV-1-E-735` at program
+  `1dcf36ffe815dca0fb20d914f430452fb1aa4c6a`. The preserved candidate base is
+  `8c397cbbc829ebe8ffbe8ac2315e90e5127764ce`.
+- An otherwise valid BYOK configuration with `dataHandlingNotes: "::1"` is
+  admitted by that candidate, despite the all-IP material boundary. This RED
+  extends the existing text-material test without changing its 14-test shape:
+  it requires rejection of unbracketed compressed, documented, scoped, and
+  IPv4-mapped IPv6, bracketed IPv6, and IPv4 material, while positively
+  retaining ISO timestamps and ordinary `policy.v1`/`adapter.v1` prose.
+- This RED changes only this claim and the focused test. Production remains
+  byte-identical to the preserved candidate until the causal proof is committed
+  and reproduced from exact clean bytes.
