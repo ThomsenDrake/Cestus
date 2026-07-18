@@ -22,8 +22,9 @@ const feasibilityIdPattern = /^provider_feasibility_[a-zA-Z0-9_-]+$/;
 const evidenceIdPattern = /^evidence_[a-zA-Z0-9_-]+$/;
 const openaiCodexProviderIdPattern = /^provider_openai_codex_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
 const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
-const uriSchemePattern = /(?:^|[^a-z0-9_])[a-z][a-z0-9+.-]*:(?=\/\/|[^\s])/i;
+const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:(?=\/\/|[^\s])/i;
 const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
+const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9_:-])([0-9a-fx]+(?:\.[0-9a-fx]+){0,3})(?=$|[^a-z0-9_:-])/gi;
 const localhostPattern = /\blocalhost\b/i;
 const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/i;
 
@@ -460,7 +461,7 @@ function requireIsoDate(value: unknown): string {
 }
 
 function freezeSorted<T>(values: readonly T[], key: (value: T) => string): readonly T[] {
-  return Object.freeze([...values].sort((left, right) => key(left).localeCompare(key(right))));
+  return Object.freeze([...values].sort((left, right) => compareStrings(key(left), key(right))));
 }
 
 function sortStrings(values: readonly string[]): readonly string[] {
@@ -549,12 +550,20 @@ function hasForbiddenTextMaterial(value: string): boolean {
 
 function hasIpAddress(value: string): boolean {
   const tokens = value.match(ipShapedTokenPattern);
-  return tokens !== null && tokens.some((token) => {
+  return (tokens !== null && tokens.some((token) => {
     const bracketless = token.startsWith("[") && token.endsWith("]") ? token.slice(1, -1) : token;
     const scopeIndex = bracketless.indexOf("%");
     const address = scopeIndex === -1 ? bracketless : bracketless.slice(0, scopeIndex);
     return isIP(address) !== 0;
-  });
+  })) || hasStandardUrlIpv4Host(value);
+}
+
+function hasStandardUrlIpv4Host(value: string): boolean {
+  for (const match of value.matchAll(standardUrlIpv4TokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && isIP(new URL(`http://${token}`).hostname) === 4) return true;
+  }
+  return false;
 }
 
 function invalidConfiguration(): TypeError {

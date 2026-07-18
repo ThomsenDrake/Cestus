@@ -253,3 +253,17 @@ or fallback.
 - The named RED retains the existing ISO timestamp and ordinary
   `policy.v1`/`adapter.v1` positive controls. `npm run typecheck` exits `0`
   from the RED bytes without TypeScript diagnostics.
+
+## RV-1-E-740 Dual-Review Recovery GREEN
+
+- GREEN changes only the production source and this claim; the focused test is
+  byte-identical to RED `7ec6807d2be94e500253030a818f1406785e58dc`.
+- The centralized text boundary now extracts safely bounded numeric/hex/octal
+  host-like tokens and passes them through the local standards-based `URL`
+  parser before rejecting canonical IPv4 hostnames. It tightens URI detection
+  so `_` cannot hide an opaque scheme and replaces the sole locale-sensitive
+  configuration sort with the existing bytewise comparator. These are local
+  deterministic string operations only: no DNS, socket, provider, credential,
+  or other external action occurs.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 18 tests**. `npm run typecheck` exits `0`.
