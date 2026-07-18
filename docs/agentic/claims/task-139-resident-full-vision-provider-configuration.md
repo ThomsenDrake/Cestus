@@ -102,3 +102,17 @@ or fallback.
   assertions, suppression directives, `any`, or `unknown` laundering.
 - `npm run typecheck` exited `0` from the RED bytes, confirming the focused
   fixtures introduce no TypeScript diagnostics.
+
+## RV-1-E-733 Corrected Recovery RED
+
+- Coordinator root-cause authority: `RV-1-E-733` at program
+  `2f678687dc7ab54c47eea52efadc84b7337772ee`. The prior causal RED
+  `821d046fe5e64f4f1f13c3d2d1454635b68b1ac7` is preserved permanently.
+- The sole fixture defect was contract-determined: the representative
+  `provider_xai_grok` fact retained `openai-codex-harness` rather than the
+  released `xai-harness` backend. The corrected fixture chooses
+  `xai-harness` for the `provider_xai_` family only; no other RED semantic or
+  production byte changes in this commit.
+- The uncommitted partial GREEN source remains intentionally outside this RED
+  commit. The corrected RED is reproduced from its exact committed bytes in a
+  detached temporary checkout before that source patch is resumed.
