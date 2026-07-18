@@ -297,3 +297,22 @@ or fallback.
   boundaries.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passes: **1 file / 19 tests**. `npm run typecheck` exits `0`.
+
+## RV-1-E-744 DNS-and-Revocation Recovery RED
+
+- Standing recovery authority: `RV-1-E-744`. The preserved clean candidate is
+  `b5cbe5d7f5491c5350c99b01085e8ce59f7f146c`; this RED changes only the
+  focused test and this claim. The production source blob remains
+  `7bf376b62fb7c132cc5afe2fe6d3208f073879c7`, byte-identical to that
+  candidate.
+- The focused RED command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exits `1`
+  with **1 failed file / 2 failed and 19 passed tests (21)**. The named
+  capability/free-text and credential-safe-label matrix proves that `api.x`
+  and `a.b` are accepted at all four DNS text boundaries despite their
+  single-character alphabetic terminal labels; its `policy.v1` and
+  `adapter.v1` controls remain accepted. The second named test proves that an
+  otherwise valid `healthy` BYOK reference with prior `revokedAt` returns a
+  current feasibility result instead of failing closed, while an unrevoked
+  healthy reference remains admitted.
+- `npm run typecheck` exits `0` from the RED bytes without diagnostics.
