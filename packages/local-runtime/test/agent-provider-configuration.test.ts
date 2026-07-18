@@ -10,6 +10,7 @@ import type { ProviderCapabilityDescriptorInput } from "../../agent/src/provider
 type Hash = `sha256:${string}`;
 type EventId = `evt_${string}`;
 type ConfigurationCapabilityScope = "model-inference" | "harness-execution";
+type OfficialHarnessBackend = "openai-codex-harness" | "xai-harness";
 
 interface RawCapability {
   capability: ProviderCapabilityDescriptorInput;
@@ -81,6 +82,7 @@ interface OfficialHarnessFixtureOptions {
   readonly providerId?: string;
   readonly credentialKind?: "subscription-oauth" | "device-code-oauth";
   readonly capabilityScope?: ConfigurationCapabilityScope;
+  readonly backendKind?: OfficialHarnessBackend;
 }
 
 interface TextMaterialMutation {
@@ -89,7 +91,25 @@ interface TextMaterialMutation {
   readonly apply: (input: RawConfiguration) => void;
 }
 
+interface OfficialProviderFamilyBoundary {
+  readonly providerId: string;
+  readonly backendKind: OfficialHarnessBackend;
+  readonly admitted: boolean;
+}
+
 const hash = (character: string): Hash => `sha256:${character.repeat(64)}`;
+const officialProviderFamilyBoundaries: readonly OfficialProviderFamilyBoundary[] = [
+  { providerId: "provider_openai_codex_primary", backendKind: "openai-codex-harness", admitted: true },
+  { providerId: "provider_openai_codex_review_2", backendKind: "openai-codex-harness", admitted: true },
+  { providerId: "provider_xai_grok", backendKind: "xai-harness", admitted: true },
+  { providerId: "provider_xai_grokish", backendKind: "xai-harness", admitted: true },
+  { providerId: "provider_openai_codex_", backendKind: "openai-codex-harness", admitted: false },
+  { providerId: "provider_xai_", backendKind: "xai-harness", admitted: false },
+  { providerId: "provider_openai_codexish_primary", backendKind: "openai-codex-harness", admitted: false },
+  { providerId: "provider_openai_codex-primary", backendKind: "openai-codex-harness", admitted: false },
+  { providerId: "provider_xaiish_grok", backendKind: "xai-harness", admitted: false },
+  { providerId: "provider_xa1_grok", backendKind: "xai-harness", admitted: false }
+];
 
 describe("agent provider configuration", () => {
   it("normalizes exact capability, credential, policy, and current feasibility facts into immutable data", () => {
@@ -281,31 +301,35 @@ describe("agent provider configuration", () => {
 
   it("admits both released official provider families with either released OAuth credential kind", () => {
     const rejected: string[] = [];
-    const providerIds = ["provider_openai_codex_primary", "provider_xai_grok"] as const;
     const credentialKinds = ["subscription-oauth", "device-code-oauth"] as const;
 
-    for (const providerId of providerIds) {
+    for (const provider of officialProviderFamilyBoundaries) {
+      if (!provider.admitted) continue;
       for (const credentialKind of credentialKinds) {
-        const input = officialHarnessConfiguration({ providerId, credentialKind });
-        if (!accepts(input)) rejected.push(`${providerId}:${credentialKind}`);
+        const input = officialHarnessConfiguration({
+          providerId: provider.providerId,
+          backendKind: provider.backendKind,
+          credentialKind
+        });
+        if (!accepts(input)) rejected.push(`${provider.providerId}:${credentialKind}`);
       }
     }
 
     expect(rejected).toEqual([]);
   });
 
-  it("rejects official provider lookalikes outside the released family predicates", () => {
-    const lookalikes = [
-      "provider_openai_codex_",
-      "provider_openai_codexish_primary",
-      "provider_xai_",
-      "provider_xai_grokish"
-    ];
+  it("enforces the typed anchored official-provider family boundary", () => {
+    const unexpectedAdmissions: string[] = [];
 
-    for (const providerId of lookalikes) {
-      const input = officialHarnessConfiguration({ providerId });
-      expect(() => createAgentProviderConfiguration(input)).toThrow("invalid provider configuration");
+    for (const provider of officialProviderFamilyBoundaries) {
+      const input = officialHarnessConfiguration({
+        providerId: provider.providerId,
+        backendKind: provider.backendKind
+      });
+      if (accepts(input) !== provider.admitted) unexpectedAdmissions.push(provider.providerId);
     }
+
+    expect(unexpectedAdmissions).toEqual([]);
   });
 
   it("requires exact lane-specific credential scopes", () => {
@@ -454,8 +478,11 @@ function officialHarnessConfiguration(options: OfficialHarnessFixtureOptions = {
   const providerId = options.providerId ?? "provider_openai_codex_primary";
   const credentialKind = options.credentialKind ?? "subscription-oauth";
   const capabilityScope = options.capabilityScope ?? "harness-execution";
+  const backendKind = options.backendKind ?? (
+    providerId.startsWith("provider_xai_") ? "xai-harness" : "openai-codex-harness"
+  );
   const configuration = byokConfiguration();
-  configuration.capabilities = [officialHarnessCapability(providerId, credentialKind)];
+  configuration.capabilities = [officialHarnessCapability(providerId, credentialKind, backendKind)];
   configuration.credentialReferences = [officialHarnessCredentialReference(providerId, credentialKind, capabilityScope)];
   configuration.endpointPolicies = [officialHarnessEndpointPolicy(providerId)];
   configuration.feasibility = [officialHarnessFeasibility(providerId, credentialKind)];
@@ -589,7 +616,8 @@ function appendLocalLane(configuration: RawConfiguration): void {
 function appendOfficialHarnessLane(configuration: RawConfiguration): void {
   const providerId = "provider_openai_codex_primary";
   const credentialKind = "subscription-oauth";
-  configuration.capabilities.push(officialHarnessCapability(providerId, credentialKind));
+  const backendKind = "openai-codex-harness";
+  configuration.capabilities.push(officialHarnessCapability(providerId, credentialKind, backendKind));
   configuration.credentialReferences.push(officialHarnessCredentialReference(providerId, credentialKind, "harness-execution"));
   configuration.endpointPolicies.push(officialHarnessEndpointPolicy(providerId));
   configuration.feasibility.push(officialHarnessFeasibility(providerId, credentialKind));
@@ -597,14 +625,15 @@ function appendOfficialHarnessLane(configuration: RawConfiguration): void {
 
 function officialHarnessCapability(
   providerId: string,
-  credentialKind: "subscription-oauth" | "device-code-oauth"
+  credentialKind: "subscription-oauth" | "device-code-oauth",
+  backendKind: OfficialHarnessBackend
 ): RawCapability {
   return {
     capability: {
       ...byokCapability().capability,
       providerId,
       label: "OpenAI Codex subscription harness",
-      backendKind: providerId.startsWith("provider_xai_") ? "xai-harness" : "openai-codex-harness",
+      backendKind,
       modelFamilies: ["model_codex_harness_1"],
       toolSupport: "harness-tools",
       structuredOutputSupport: "harness-mediated",
