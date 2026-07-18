@@ -20330,3 +20330,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - No candidate byte is integrated and no release record is appended. Strict
   prefix remains 16; preserved later candidates remain held for their exact
   ordered bases, and `neo` remains untouched.
+
+## RV-1-E-740 — Task139-P1 host-material and canonical-order root cause
+
+- Recorded at: 2026-07-18T21:42:08Z
+- The exact `b3520865` fresh pair both returned **NEEDS-CHANGES** with
+  reproduced P1 evidence. Architecture/invariants task
+  `019f7720-cd38-7a12-9d07-8ee3614f47e3` proved that `127.1`,
+  `2130706433`, and `0x7f000001` are admitted in configuration text even
+  though the standard URL host parser canonicalizes each to loopback IPv4.
+  Executability/adversarial task `019f7720-cf19-7221-807d-cad64b43170f`
+  proved that safe label `reference_https:opaque` is admitted because `_`
+  suppresses the embedded URI-scheme match, and that `localeCompare` changes
+  immutable provider ordering between `en-US` and `tr-TR`.
+- Coordinator accepts all three findings. They violate the frozen reject-all-
+  IP/URI text boundary and deterministic canonical-output invariant; their
+  required behavior is fully determined by released contracts and therefore
+  requires no product or human decision. Both reviews are invalidated by the
+  next code change.
+- Standing recovery authority resumes the same Task139-P1 owner and complete
+  history for one causal RED and one minimal GREEN inside the exact three-path
+  ownership. RED must pin standard-parser-recognized noncanonical IPv4 host
+  forms, embedded URI schemes after non-scheme delimiters including `_`, and
+  exact bytewise output ordering with case-distinct valid provider IDs while
+  preserving ISO timestamps and ordinary version prose. GREEN must use local,
+  deterministic classification only and the existing bytewise comparator; it
+  must add no DNS lookup, socket, provider/credential action, locale authority,
+  fallback, API widening, or external effect.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Review remains withheld until the new
+  committed candidate passes every focused/cross, typecheck, full
+  differential, diff, factory, V4, repository-prefix, scope, clean-state, and
+  dependency gate; one fresh concurrent Terra/xhigh pair follows any code
+  change.
+- Strict prefix remains 16. No integration, release record, push, or `neo`
+  action occurs; preserved later candidates remain held for ordered bases.
