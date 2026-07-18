@@ -302,7 +302,7 @@ describe("agent provider configuration", () => {
   it("canonicalizes deterministic provenance source-event arrays", () => {
     const reversed = officialHarnessConfiguration();
     const canonical = officialHarnessConfiguration();
-    const feasibilitySources = [
+    const feasibilitySources: EventId[] = [
       "evt_binding_harness_1",
       "evt_binding_harness_2",
       "evt_capability_harness_1",
