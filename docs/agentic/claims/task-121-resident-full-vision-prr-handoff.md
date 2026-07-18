@@ -40,3 +40,30 @@ The task consumes CF-1's frozen handoff contract and produces only a provenance-
 - GREEN: the exact focused command exited 0 with 2 test files and 47 tests passing. New failure-window coverage proves one final-output step, one draft step, one provider invocation, no prepared/recorded/terminal before recovery, then exact resumed prepared -> recorded -> completed readback/projection after storage repair; it also proves no PRR send, graph, tool, or external effect and no raw storage error in either DTO.
 - Verification: `git diff --check` exited 0; `npm run factory:check` exited 0 with `factory-readiness passed`; and a fresh `npm run verify` exited 0 on this dedicated recovery worktree: typecheck passed; 189 test files passed with 3 skipped; 2,230 tests passed with 5 skipped; Vite production build passed with the existing chunk-size warning; factory readiness passed. The SQLite experimental warnings were non-failing and contained no task data.
 - Review stop: ready for a distinct fresh review after one final post-record full gate and a single forward repair commit. This repair author must not self-review, self-integrate, dispatch a dependent lane, or merge `neo`.
+
+## V4 CF1-HR Authority-Bound Adoption
+
+- Status transition: `in-progress` -> `implementing`.
+- Worker: `/root` (sole bounded Task121 implementation owner).
+- Branch: `codex/task121-cf1-handoff-adoption`.
+- Worktree: `/home/drake/.codex/worktrees/57e7/Cestus`.
+- Exact immutable base: `986c2a43b018e72acf1104e84853826b06b1abdd`.
+- Released prerequisite: strict V4 record 14, `CF1-HR`; repository strict
+  prefix is 15 and the incomplete card boundary remains 29.
+- Exact owned paths remain this claim,
+  `packages/agent/src/prr-negotiation-workflow.ts`, and
+  `packages/agent/test/prr-negotiation-workflow.test.ts` only.
+- This finite packet is exactly claim transition, causal RED test, then
+  minimal GREEN production adoption. It consumes the released opaque mounted
+  authority witness and mounted stores through the CF1-HR V2 lifecycle; it
+  does not mint caller authority, use V1 to complete V2, recreate a shadow
+  contract, send a PRR, decide approval, complete legal escalation, clear a
+  lock, invoke external services, or create a fallback write.
+- Initial reproduction after restoring real offline lockfile dependencies:
+  `npm test -- packages/agent/test/prr-negotiation-workflow.test.ts` exited 1
+  with 10 failures. Each affected normal workflow fixture is missing the
+  current mounted production prompt readback witness and therefore stops in
+  `prepareSpecialistRun` before model, derivative, PRR, tool, or handoff
+  effects. The causal RED will provide the released prompt authority and
+  mounted handoff inputs so it can prove the still-legacy V1 completion path
+  is rejected by the required V2 lifecycle assertions.
