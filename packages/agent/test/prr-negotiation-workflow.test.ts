@@ -488,7 +488,7 @@ describe("PRR negotiation workflow", () => {
     let failManifestWrite = true;
     const recordFailingStore = {
       put: async (content: Buffer) => {
-        if (failManifestWrite && content.toString("utf8").includes("agent-specialist-handoff-manifest.v1")) {
+        if (failManifestWrite && content.toString("utf8").includes("agent-specialist-handoff-manifest.v2")) {
           failManifestWrite = false;
           throw new Error("private handoff manifest write failure");
         }
@@ -1821,12 +1821,19 @@ async function runMountedPrrNegotiationWorkflow(
     },
     revalidateCurrent: async () => undefined
   });
+  const derivativeStore = input.derivativeStore as {
+    readonly put: (content: Buffer) => Promise<{ readonly contentHash: `sha256:${string}`; readonly sizeBytes: number }>;
+    readonly get?: (contentHash: `sha256:${string}`) => Promise<Buffer>;
+  } | undefined;
+  const handoffStore = input.handoffStore ?? (typeof derivativeStore?.get === "function"
+    ? { put: derivativeStore.put, get: derivativeStore.get.bind(derivativeStore) }
+    : createDerivativeStore());
   return await runPrrNegotiationWorkflow({
     ...input,
     promptArtifact,
     mountedPromptReadbackWitness,
     handoffAuthorityWitness,
-    handoffStore: input.derivativeStore
+    handoffStore
   } as Parameters<typeof runPrrNegotiationWorkflow>[0]);
 }
 
