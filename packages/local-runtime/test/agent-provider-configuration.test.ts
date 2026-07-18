@@ -187,12 +187,12 @@ function credentialReference() {
     credentialKind: "api-key-bearer",
     scopeKind: "workspace",
     capabilityScopes: ["model-inference"],
-    safeLabel: "OpenAI compatible credential reference",
+    safeLabel: "OpenAI compatible account reference",
     authorizedBy: "human_operator",
     authorizedAt: "2026-07-18T12:00:00.000Z",
     status: "healthy",
     policyVersion: "policy_provider_v1",
-    sourceEventIds: ["evt_credential_1"]
+    sourceEventIds: ["evt_binding_1"]
   };
 }
 
@@ -256,7 +256,7 @@ function localCredentialReference() {
     providerId: "provider_local_engine",
     credentialKind: "local-no-secret",
     safeLabel: "Local engine no secret reference",
-    sourceEventIds: ["evt_credential_local_1"]
+    sourceEventIds: ["evt_binding_local_1"]
   };
 }
 
@@ -316,7 +316,7 @@ function officialHarnessCredentialReference() {
     providerId: "provider_official_harness",
     credentialKind: "subscription-oauth",
     safeLabel: "Official harness subscription reference",
-    sourceEventIds: ["evt_credential_harness_1"]
+    sourceEventIds: ["evt_binding_harness_1"]
   };
 }
 
