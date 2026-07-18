@@ -26,7 +26,7 @@ const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
 const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
 const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9_:-])([0-9a-fx]+(?:\.[0-9a-fx]+){0,3})(?=$|[^a-z0-9_:-])/gi;
 const localhostPattern = /\blocalhost\b/i;
-const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/i;
+const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+[a-z]+\b/i;
 
 export type ProviderConfigurationLane = "byok" | "local-engine" | "official-harness";
 
@@ -161,7 +161,8 @@ function normalizeCredentialReferences(value: unknown): readonly CredentialRefer
       sourceEventIds: sortEventIds(parsed.data.sourceEventIds.map(requireEventId))
     });
     if (
-      !seen.add(reference.credentialRefId) || reference.status !== "healthy" || !validEventIds(reference.sourceEventIds)
+      !seen.add(reference.credentialRefId) || reference.status !== "healthy" || reference.revokedAt !== undefined ||
+      !validEventIds(reference.sourceEventIds)
     ) {
       throw invalidConfiguration();
     }
