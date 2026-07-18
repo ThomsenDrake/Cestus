@@ -18928,3 +18928,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Reviews are read-only; SDD/TDD is not relevant or authorized. Only an exact
   reproduced P0/P1 may block. Status moves `implementing -> candidate ->
   reviewing`; strict record count remains 13 and `neo` remains untouched.
+
+## RV-1-E-706 — CF1-HR enters its sole consolidated repair on reproduced V2 lifecycle P1
+
+- Recorded at: 2026-07-18T00:18:56Z
+- Both first-pair reviewers returned `NEEDS-CHANGES` on exact candidate
+  `06b8d6a1b50b208721cd6af4039f36a5e2ce5e7a` with the same reproduced P1.
+  Architecture/invariants task `019f7286-243e-7480-a0ea-bd010118cc17`
+  and executability/adversarial task
+  `019f7286-2435-70b3-97de-0a4084dd9342` each proved that the strict V2
+  authority-bound recorder stops after the recorded handoff while the sole
+  finalizer and finalization readback are V1-only.
+- Coordinator adjudication confirms the finding against frozen Task 3. The V2
+  projection requires terminal and task-status evidence for the complete
+  Task119 readback, but no authority-revalidated production path can create
+  that chain. The positive projection fixture manually assembles evidence and
+  therefore does not prove the production lifecycle. A V2-to-V1 finalizer cast
+  fails statically; forcing it would reject before terminal append or bypass
+  the required current-authority checks.
+- The same CF1-HR owner task `019f7183-e8db-77f2-ac2f-1aabeaae543d` receives
+  the single permitted consolidated repair packet on the same branch and
+  history. It must append one causal RED and one minimal GREEN that retain the
+  consumed authority revalidation closure through terminal/task-status
+  append-readback and final projection, then return the complete verified
+  readback. Structural authority, raw binding input, V1 widening, fallback,
+  and manually assembled completion remain forbidden.
+- Status moves `reviewing -> implementing-repair`. This consumes CF1-HR's one
+  repair allowance. After its GREEN, one final concurrent Terra/xhigh review
+  pair is permitted and no further automatic CF1-HR code/test change may
+  occur. Strict record count remains 13.
