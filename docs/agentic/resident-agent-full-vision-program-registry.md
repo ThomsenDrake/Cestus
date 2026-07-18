@@ -19710,3 +19710,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward-merged and all cross-boundary gates rerun, preventing stale review.
   Task133 remains blocked at position 16, strict prefix remains 15, and `neo`
   remains untouched.
+
+## RV-1-E-723 — Task122 ahead-of-order implementation candidate admitted
+
+- Recorded at: 2026-07-18T14:01:32Z
+- Preserved Task122 branch `codex/task122-cf1-handoff-adoption` is a clean
+  three-commit descendant of exact record-15 base
+  `986c2a43b018e72acf1104e84853826b06b1abdd`: claim
+  `15703c08775192e257b1c741b274070d79601792`, causal RED
+  `89c5c6d2b59ec3ba576454e70e258c9879e9087e`, and minimal GREEN
+  `5a49258f3a4ab56920ee23511731d520fb7bd61f`. Its diff is exactly the
+  Task122 investigation workflow, focused test, and claim.
+- Fresh isolated coordinator admission reproduced focused **1 file / 16
+  tests**, cross-boundary **3 files / 106 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 contract markers, exact three-path
+  scope, clean state, and real dependency/Vitest provenance. Repository mode
+  accepted exactly `TASK136_REPOSITORY_PREFIX_OK records=15 commands=15`
+  before the required incomplete-29 boundary.
+- Machine-readable full-suite comparison against the preserved 69-failure
+  program baseline removed exactly the **11** Task122 investigation failures,
+  added **zero** failures, retained all five skips, and left the expected
+  intermediate **58** failures. The earlier 59 result was contention-tainted;
+  the isolated rerun resolves the differential without changing candidate
+  bytes. `npm run verify` remains intentionally non-green at this position.
+- Status advances Task122 `implementing -> candidate`. As with Task121, no
+  review or integration occurs until the exact position-25 program base is
+  forward-merged and all gates rerun. Task133 remains blocked at position 16,
+  strict prefix remains 15, G136-SC remains preserved, and `neo` remains
+  untouched.
