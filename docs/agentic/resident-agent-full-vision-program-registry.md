@@ -20273,3 +20273,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - No candidate byte is integrated and no release record is appended. Strict
   prefix remains 16; no provider/network/credential/external effect, push, or
   `neo` action occurs.
+
+## RV-1-E-738 — Task139-P1 deterministic-provenance fixture compiler root cause
+
+- Recorded at: 2026-07-18T21:12:48Z
+- The same owner preserved deterministic-provenance causal RED
+  `ba2bd136bcd1c12dc5d4b1ee66172b95df753be3` and runtime GREEN candidate
+  `4bee902eb8b08200b5e473ecf2dad9276cca4fe4`. Exact committed bytes pass
+  focused **1 file / 15 tests**, cross-boundary **2 files / 24 tests**, full
+  differential with the unchanged inherited **12 failing files / 69 failing
+  tests / 5 skips** and exactly fifteen added passes, factory readiness, and
+  all four V4 markers.
+- Admission stops before review because standalone typecheck reproduces exactly
+  two TS2322 diagnostics in the new deterministic-provenance test at lines 318
+  and 323. Its local `feasibilitySources` array widened to `string[]`, while
+  both fixture assignments require the released `EventId[]` type. Production
+  behavior is already green; this is a test-fixture compile defect fixed by
+  the existing closed type.
+- Exact candidate `4bee902e` is the preserved causal compiler RED. Standing
+  recovery authority resumes the same owner, task, branch, worktree, and
+  complete history for one minimal GREEN limited to an explicit `EventId[]`
+  fixture annotation and claim evidence. No production edit, cast, assertion,
+  suppression, API widening, or contract change is authorized.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Fresh review remains withheld until the
+  exact focused/cross, typecheck, full differential, diff, factory, V4,
+  repository-prefix, scope, clean-state, and dependency gates pass from new
+  committed bytes.
+- Strict prefix remains 16. No integration, release record, provider/network/
+  credential/external effect, push, or `neo` action occurs.
