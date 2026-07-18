@@ -188,3 +188,17 @@ or fallback.
   `2001:db8::1`, `fe80::1%lo0`, `::ffff:192.0.2.128`, bracketed IPv6, and
   IPv4 while retaining ISO timestamps and ordinary `policy.v1`/`adapter.v1`
   prose. The focused test is unchanged from this RED.
+
+## RV-1-E-737 Deterministic-Provenance Recovery RED
+
+- Coordinator root-cause authority: `RV-1-E-737` at program
+  `8f796ef9de05037b0541639d0788e0411777416e`. The preserved candidate base is
+  `f614549d4c4c8ec886641ccb6651b17bacc4cfc4`.
+- Two canonical official configurations may carry opposite multi-event orders
+  in credential-reference, endpoint-policy, and official-evidence producer
+  arrays while sharing the same canonically sorted feasibility aggregate.
+  Both validate today, but their immutable snapshots serialize differently.
+- This RED adds one named focused test (15 total) that proves the two accepted
+  snapshots must deep-equal and retain exact sorted nested producer arrays. It
+  changes only this claim and the focused test; production remains byte-for-byte
+  identical to the preserved candidate until the causal proof is committed.
