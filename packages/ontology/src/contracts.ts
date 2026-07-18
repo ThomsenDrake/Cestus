@@ -1846,7 +1846,17 @@ function expectedAgentSpecialistHandoffIdempotencyKey(value: {
   return `specialist-handoff:${value.runId}:${value.taskId ?? "none"}:${value.runType}:${value.status}:${value.handoffManifestHash}`;
 }
 
-const agentSpecialistHandoffCompactBindingObjectSchema = z.object({
+const agentSpecialistHandoffAuthorityBindingSchema = z.object({
+  workspaceIdentityHash: contentHashSchema,
+  mountGeneration: secretSafeStringSchema.min(1),
+  ledgerStoreIdentity: secretSafeStringSchema.min(1),
+  artifactStoreIdentity: secretSafeStringSchema.min(1),
+  ledgerHighWaterEventId: eventIdSchema,
+  policyHash: contentHashSchema,
+  activeLocksHash: contentHashSchema
+}).strict();
+
+const agentSpecialistHandoffCompactBindingV1ObjectSchema = z.object({
   handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/),
   handoffRevision: z.number().int().positive(),
   idempotencyKey: z.string().min(1),
@@ -1872,7 +1882,7 @@ const agentSpecialistHandoffCompactBindingObjectSchema = z.object({
 }).strict();
 
 function addAgentSpecialistHandoffIdempotencyIssue(
-  value: z.infer<typeof agentSpecialistHandoffCompactBindingObjectSchema>,
+  value: z.infer<typeof agentSpecialistHandoffCompactBindingV1ObjectSchema>,
   ctx: z.RefinementCtx
 ): void {
   if (value.idempotencyKey !== expectedAgentSpecialistHandoffIdempotencyKey(value)) {
@@ -1884,15 +1894,36 @@ function addAgentSpecialistHandoffIdempotencyIssue(
   }
 }
 
-const agentSpecialistHandoffCompactBindingSchema = agentSpecialistHandoffCompactBindingObjectSchema
+const agentSpecialistHandoffCompactBindingV1Schema = agentSpecialistHandoffCompactBindingV1ObjectSchema
   .superRefine((value, ctx) => addAgentSpecialistHandoffIdempotencyIssue(value, ctx));
 
-const agentSpecialistHandoffPreparedPayloadSchema = agentSpecialistHandoffCompactBindingSchema;
+const agentSpecialistHandoffCompactBindingV2ObjectSchema = agentSpecialistHandoffCompactBindingV1ObjectSchema.extend({
+  manifestSchemaVersion: z.literal("agent-specialist-handoff-manifest.v2"),
+  authorityBinding: agentSpecialistHandoffAuthorityBindingSchema
+}).strict();
 
-const agentSpecialistHandoffRecordedPayloadSchema = agentSpecialistHandoffCompactBindingObjectSchema.extend({
+const agentSpecialistHandoffCompactBindingV2Schema = agentSpecialistHandoffCompactBindingV2ObjectSchema
+  .superRefine((value, ctx) => addAgentSpecialistHandoffIdempotencyIssue(value, ctx));
+
+const agentSpecialistHandoffPreparedPayloadSchema = z.union([
+  agentSpecialistHandoffCompactBindingV1Schema,
+  agentSpecialistHandoffCompactBindingV2Schema
+]);
+
+const agentSpecialistHandoffRecordedV1PayloadSchema = agentSpecialistHandoffCompactBindingV1ObjectSchema.extend({
   preparedEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
   verifiedAt: z.string().datetime()
 }).strict().superRefine((value, ctx) => addAgentSpecialistHandoffIdempotencyIssue(value, ctx));
+
+const agentSpecialistHandoffRecordedV2PayloadSchema = agentSpecialistHandoffCompactBindingV2ObjectSchema.extend({
+  preparedEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
+  verifiedAt: z.string().datetime()
+}).strict().superRefine((value, ctx) => addAgentSpecialistHandoffIdempotencyIssue(value, ctx));
+
+const agentSpecialistHandoffRecordedPayloadSchema = z.union([
+  agentSpecialistHandoffRecordedV1PayloadSchema,
+  agentSpecialistHandoffRecordedV2PayloadSchema
+]);
 
 const agentSpecialistRunCompletedPayloadSchema = z.object({
   runId: agentRunIdSchema,

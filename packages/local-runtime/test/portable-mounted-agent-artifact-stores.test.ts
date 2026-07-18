@@ -10,6 +10,8 @@ import type {
 } from "../../agent/src/wake-supervisor.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { hashCanonicalSpecialistHandoffJson } from "../../agent/src/specialist-handoff-manifest.js";
+import { consumeMountedSpecialistHandoffAuthorityWitness } from "../../agent/src/specialist-handoff-authority.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
   issueMountedArtifactAuthorityOperationForFactory,
@@ -37,7 +39,8 @@ const dispatch = Object.freeze({
   taskId: "task_portable_handoff",
   attemptId: "attempt_portable_handoff",
   approvedRunId: "run_portable_handoff",
-  runType: "evidence-triage"
+  runType: "evidence-triage",
+  retryGeneration: 0
 });
 
 afterEach(() => {
@@ -64,7 +67,7 @@ describe("portable mounted agent artifact stores", () => {
     expect(Object.keys(result)).toEqual(["schemaVersion", "binding", "controller"]);
     expect(Object.isFrozen(result.binding)).toBe(true);
     expect(Object.keys(result.binding)).toEqual([
-      "schemaVersion", "preparationBinder", "materialStore", "manifestStore"
+      "schemaVersion", "preparationBinder", "materialStore", "manifestStore", "authorityWitness"
     ]);
     expect(result.binding.materialStore).not.toBe(result.binding.manifestStore);
     expect(Reflect.ownKeys(result.controller)).toEqual([]);
@@ -96,6 +99,51 @@ describe("portable mounted agent artifact stores", () => {
     expect(String(safeError)).not.toContain(join(fixture.workspaceRoot, "derivatives"));
   });
 
+  it("rejects an unsupported runType before portable witness issuance", async () => {
+    const fixture = authorityFixture();
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      wakeRuntime,
+      lifecyclePorts: fixture.ports,
+      runtimeHandle: fixture.handle
+    });
+    await admit(fixture, "wake");
+    const producer = createPortableMountedAgentArtifactStoreProducer(
+      issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+    );
+
+    await expect(Reflect.apply(producer.bind, producer, [{
+      ...dispatch,
+      runType: "unsupported-specialist-workflow"
+    }])).rejects.toThrow(/authority/i);
+  });
+
+  it("derives a non-structural V2 handoff witness from the mounted snapshot", async () => {
+    const fixture = authorityFixture();
+    const { result } = await issuedBinding(fixture);
+
+    expect(result.binding.authorityWitness).toMatchObject({
+      schemaVersion: "agent-mounted-specialist-handoff-authority.v1"
+    });
+    expect(Object.keys(result.binding.authorityWitness)).toEqual(["schemaVersion"]);
+    const consumed = await consumeMountedSpecialistHandoffAuthorityWitness(result.binding.authorityWitness);
+    expect(consumed.binding).toEqual({
+      workspaceIdentityHash: hashCanonicalSpecialistHandoffJson({
+        schemaVersion: "mounted-handoff-workspace-identity.v1",
+        workspaceId: fixture.workspaceId,
+        workspaceIdentityEventId: "evt_workspace_identity"
+      }),
+      mountGeneration: expect.any(String),
+      ledgerStoreIdentity: "evidence_ledger",
+      artifactStoreIdentity: "evidence_artifact",
+      ledgerHighWaterEventId: "evt_high_water_005",
+      policyHash: `sha256:${"d".repeat(64)}`,
+      activeLocksHash: `sha256:${"e".repeat(64)}`
+    });
+    fixture.ports.authority.invalidate!("authority-loss");
+    await expect(consumed.revalidateCurrent()).rejects.toThrow(/authority/i);
+  });
+
   it("binds exactly once and rejects copied controller identities before authority activity", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};
@@ -114,6 +162,33 @@ describe("portable mounted agent artifact stores", () => {
     await expect(producer.bind(dispatch)).rejects.toThrow(/bound|consumed|authority/i);
     await expect(beforeMountedHandoffAuthorityEffect(copied, "final-output")).rejects.toThrow(/authority/i);
     await expect(afterMountedHandoffAuthorityAppend(copied, "final-output", "evt_forged")).rejects.toThrow(/authority/i);
+  });
+
+  it("accepts only exact created, queued, and running task history before the portable V2 run", async () => {
+    const fixture = authorityFixture();
+    const normalHistory = [taskCreatedEvent(), queuedTaskStatusEvent(), runningTaskStatusEvent(), startedEvent()];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => normalHistory.map((event) => structuredClone(event))
+    });
+
+    await expect(issuedBinding(fixture)).resolves.toMatchObject({
+      result: { binding: { authorityWitness: { schemaVersion: "agent-mounted-specialist-handoff-authority.v1" } } }
+    });
+
+    const conflicting = authorityFixture();
+    const crossRunHistory = [
+      taskCreatedEvent(),
+      queuedTaskStatusEvent(),
+      runningTaskStatusEvent({ payload: { ...runningTaskStatusEvent().payload, runId: "run_portable_handoff_foreign" } }),
+      startedEvent()
+    ];
+    Object.defineProperty(conflicting.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => crossRunHistory.map((event) => structuredClone(event))
+    });
+
+    await expect(issuedBinding(conflicting)).rejects.toThrow(/authority/i);
   });
 
   it("advances an exact controller only across the canonical final-output suffix", async () => {
@@ -483,10 +558,10 @@ function authorityFixture(): {
             artifactStoreEvidenceId: "evidence_artifact",
             derivativeStoreEvidenceId: "evidence_derivative",
             policyVersion: "policy.v1",
-            policyDigest: "sha256:policy",
-            lockStateDigest: "sha256:lock",
+            policyDigest: `sha256:${"d".repeat(64)}`,
+            lockStateDigest: `sha256:${"e".repeat(64)}`,
             policyAndLockReadbackEventId: "evt_policy_lock_readback",
-            highWaterMark: "high-water:5",
+            highWaterMark: "evt_high_water_005",
             highWaterReadbackEventId: "evt_high_water_readback",
             highWaterOrdinal: 5
           }
@@ -516,8 +591,8 @@ async function admit(
     residentId: "agent_default",
     supervisorEpoch: "epoch_portable_handoff",
     policyVersion: "policy.v1",
-    policyDigest: "sha256:policy",
-    lockStateDigest: "sha256:lock",
+    policyDigest: `sha256:${"d".repeat(64)}`,
+    lockStateDigest: `sha256:${"e".repeat(64)}`,
     causationId: "cause_portable_handoff",
     correlationId: "correlation_portable_handoff"
   });
@@ -548,9 +623,9 @@ function leaseReadback(workspaceId: string, supervisorEpoch: string): Supervisor
     mountEvidenceId: "evidence_mount",
     authorityEvidenceId: "evidence_authority",
     policyVersion: "policy.v1",
-    policyDigest: "sha256:policy",
-    lockStateDigest: "sha256:lock",
-    highWaterMark: "high-water:5",
+    policyDigest: `sha256:${"d".repeat(64)}`,
+    lockStateDigest: `sha256:${"e".repeat(64)}`,
+    highWaterMark: "evt_high_water_005",
     leaseEventId: "evt_lease",
     readbackEventId: "evt_lease_readback",
     expiresAt: "2026-07-16T01:00:00.000Z",
@@ -561,8 +636,8 @@ function leaseReadback(workspaceId: string, supervisorEpoch: string): Supervisor
       leaseEventId: "evt_lease",
       leaseReadbackEventId: "evt_lease_readback",
       policyVersion: "policy.v1",
-      policyDigest: "sha256:policy",
-      lockStateDigest: "sha256:lock",
+      policyDigest: `sha256:${"d".repeat(64)}`,
+      lockStateDigest: `sha256:${"e".repeat(64)}`,
       readbackEventId: "evt_policy_lock_readback"
     },
     highWater: {
@@ -570,7 +645,7 @@ function leaseReadback(workspaceId: string, supervisorEpoch: string): Supervisor
       mountEvidenceId: "evidence_mount",
       leaseEventId: "evt_lease",
       leaseReadbackEventId: "evt_lease_readback",
-      highWaterMark: "high-water:5",
+      highWaterMark: "evt_high_water_005",
       readbackEventId: "evt_high_water_readback"
     }
   };
@@ -635,6 +710,60 @@ async function invalidateDuringFileBlobOperation(
 
 function canonicalHandoffEvents(): KnowledgeEvent[] {
   return [startedEvent(), finalOutputEvent(), preparedHandoffEvent(), recordedHandoffEvent(), completedRunEvent()];
+}
+
+function taskCreatedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_task_created_portable_handoff",
+    type: "agent.task.created",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 1,
+    context: eventContext(),
+    payload: {
+      taskId: dispatch.taskId,
+      residentAgentId: "agent_default",
+      title: "Portable handoff task.",
+      requestedBy: "agent_default",
+      priority: "normal"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function queuedTaskStatusEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_task_queued_portable_handoff",
+    type: "agent.task.status.changed",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 2,
+    context: eventContext({ causationId: "evt_task_created_portable_handoff" }),
+    payload: {
+      taskId: dispatch.taskId,
+      status: "queued",
+      changedBy: "agent_default"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function runningTaskStatusEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_task_running_portable_handoff",
+    type: "agent.task.status.changed",
+    streamId: `agent_task_${dispatch.taskId}`,
+    sequence: 3,
+    context: eventContext({ causationId: "evt_task_queued_portable_handoff" }),
+    payload: {
+      taskId: dispatch.taskId,
+      status: "running",
+      changedBy: "agent_default",
+      runId: dispatch.approvedRunId
+    },
+    ...patch
+  } as KnowledgeEvent;
 }
 
 function startedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
@@ -729,7 +858,7 @@ function orchestrationCompletedEvent(patch: Record<string, unknown> = {}): Knowl
     ...startedEvent(),
     id: "evt_orchestration_portable_handoff",
     type: "agent.task.orchestration.completed",
-    streamId: `agent_task_${dispatch.taskId}`,
+    streamId: `agent_task_orchestration_${dispatch.taskId}_${dispatch.runType}`,
     sequence: 6,
     context: eventContext({ causationId: "evt_completed_portable_handoff" }),
     payload: {

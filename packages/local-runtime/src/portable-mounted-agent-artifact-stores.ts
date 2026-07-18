@@ -3,6 +3,16 @@ import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { mountPortableWorkspace } from "../../workspace/src/index.js";
 import type { SpecialistHandoffManifestStore } from "../../agent/src/specialist-runner-kernel.js";
 import {
+  hashCanonicalSpecialistHandoffJson
+} from "../../agent/src/specialist-handoff-manifest.js";
+import {
+  issueMountedSpecialistHandoffAuthorityWitness,
+  type HandoffAuthorityBinding,
+  type MountedSpecialistHandoffAuthorityWitness
+} from "../../agent/src/specialist-handoff-authority.js";
+import { approvedAgentSpecialistRunTypes, type AgentSpecialistRunType } from "../../agent/src/specialists.js";
+import { taskOrchestrationStreamId } from "../../agent/src/task-orchestrator-events.js";
+import {
   createMountedSpecialistHandoffPreparationBinder,
   type MountedSpecialistHandoffPreparationBinder
 } from "./mounted-agent-artifact-stores.js";
@@ -15,7 +25,8 @@ export interface BindPortableMountedAgentHandoffInput {
   readonly taskId: string;
   readonly attemptId: string;
   readonly approvedRunId: string;
-  readonly runType: string;
+  readonly runType: AgentSpecialistRunType;
+  readonly retryGeneration: number;
 }
 
 export interface PortableMountedAgentHandoffBinding {
@@ -23,6 +34,7 @@ export interface PortableMountedAgentHandoffBinding {
   readonly preparationBinder: MountedSpecialistHandoffPreparationBinder;
   readonly materialStore: SpecialistHandoffManifestStore;
   readonly manifestStore: SpecialistHandoffManifestStore;
+  readonly authorityWitness: MountedSpecialistHandoffAuthorityWitness;
 }
 
 declare const mountedHandoffAuthorityControllerBrand: unique symbol;
@@ -114,7 +126,9 @@ interface RunBinding {
   readonly taskId: string;
   readonly attemptId: string;
   readonly approvedRunId: string;
-  readonly runType: string;
+  readonly runType: AgentSpecialistRunType;
+  readonly retryGeneration: number;
+  readonly authorityBinding?: HandoffAuthorityBinding;
 }
 
 type NormalizedJson =
@@ -156,11 +170,16 @@ interface CanonicalHandoffBinding {
   readonly recordedEventId?: string;
   readonly terminalEventId?: string;
   readonly terminalStatus?: "completed" | "failed";
+  readonly authorityBinding?: HandoffAuthorityBinding;
 }
 
 type CursorPhase =
   | "initial"
+  | "task-created"
+  | "task-queued"
+  | "task-running"
   | "started"
+  | "started-running"
   | "final-output"
   | "handoff-prepared"
   | "handoff-recorded"
@@ -195,7 +214,10 @@ export function createPortableMountedAgentArtifactStoreProducer(
 
       let cursor: CursorState | undefined;
       try {
-        const binding = normalizeBinding(input);
+        const binding = Object.freeze({
+          ...normalizeBinding(input),
+          authorityBinding: deriveHandoffAuthorityBinding(state.origin.snapshot)
+        });
         cursor = {
           authorityOperation: state.authorityOperation,
           origin: state.origin,
@@ -241,11 +263,23 @@ export function createPortableMountedAgentArtifactStoreProducer(
           approvedRunId: binding.approvedRunId,
           runType: binding.runType
         });
+        const authorityWitness = issueMountedSpecialistHandoffAuthorityWitness({
+          authorityBinding: cursor.binding.authorityBinding!,
+          taskLifecycle: {
+            taskId: cursor.binding.taskId,
+            attemptId: cursor.binding.attemptId,
+            runId: cursor.binding.approvedRunId,
+            runType: cursor.binding.runType,
+            retryGeneration: cursor.binding.retryGeneration
+          },
+          revalidateCurrent: async () => await inspectCursor(cursor!)
+        });
         const handoffBinding = Object.freeze({
           schemaVersion: "portable-mounted-agent-handoff-binding.v1" as const,
           preparationBinder,
           materialStore,
-          manifestStore
+          manifestStore,
+          authorityWitness
         });
         const controller = Object.freeze({}) as MountedHandoffAuthorityController;
         controllerStates.set(controller, cursor);
@@ -360,19 +394,18 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
     let lastRelevantEventId = cursor.lastRelevantEventId;
     const newEventIds: string[] = [];
     for (const event of events.slice(cursor.accepted.length)) {
-      const previousPhase = phase;
       const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical);
       phase = advanced.phase;
       canonical = advanced.canonical;
       lastRelevantEventId = advanced.eventId;
-      if (!(previousPhase === "initial" && advanced.phase === "started")) {
+      if (isHandoffEffectPhase(advanced.phase)) {
         newEventIds.push(advanced.eventId);
       }
     }
     cursor.phase = phase;
     cursor.canonical = canonical;
     cursor.lastRelevantEventId = lastRelevantEventId;
-    cursor.handoffEventIds.push(...newEventIds.filter((eventId) => eventId !== `evt_started_${cursor.binding.approvedRunId}`));
+    cursor.handoffEventIds.push(...newEventIds);
     cursor.accepted = encoded;
   } catch {
     cursor.burned = true;
@@ -454,12 +487,11 @@ function deriveInitialState(events: readonly NormalizedJson[], binding: RunBindi
   const handoffEventIds: string[] = [];
   for (const event of events) {
     if (!isBoundEvent(event, binding)) continue;
-    const previousPhase = phase;
     const advanced = advancePhase(phase, event, binding, lastRelevantEventId, canonical);
     phase = advanced.phase;
     canonical = advanced.canonical;
     lastRelevantEventId = advanced.eventId;
-    if (!(previousPhase === "initial" && advanced.phase === "started")) {
+    if (isHandoffEffectPhase(advanced.phase)) {
       handoffEventIds.push(advanced.eventId);
     }
   }
@@ -493,9 +525,42 @@ function advancePhase(
     throw authorityError();
   }
   const type = record.type;
-  if (type === "agent.specialist-run.started") {
+  if (type === "agent.task.created") {
     if (
       phase !== "initial"
+      || record.streamId !== `agent_task_${binding.taskId}`
+      || payload.taskId !== binding.taskId
+      || payload.residentAgentId !== "agent_default"
+    ) {
+      throw authorityError();
+    }
+    return { phase: "task-created", eventId: record.id, canonical: undefined };
+  }
+  if (
+    type === "agent.task.status.changed" &&
+    (phase === "initial" || phase === "task-created" || phase === "task-queued" || phase === "started")
+  ) {
+    if (
+      record.streamId !== `agent_task_${binding.taskId}`
+      || payload.taskId !== binding.taskId
+      || payload.changedBy !== "agent_default"
+    ) {
+      throw authorityError();
+    }
+    if (payload.status === "queued") {
+      if (phase !== "task-created" || payload.runId !== undefined) throw authorityError();
+      return { phase: "task-queued", eventId: record.id, canonical: undefined };
+    }
+    if (payload.status === "running") {
+      if (payload.runId !== binding.approvedRunId) throw authorityError();
+      if (phase === "task-queued") return { phase: "task-running", eventId: record.id, canonical: undefined };
+      if (phase === "started") return { phase: "started-running", eventId: record.id, canonical };
+    }
+    throw authorityError();
+  }
+  if (type === "agent.specialist-run.started") {
+    if (
+      (phase !== "initial" && phase !== "task-queued" && phase !== "task-running")
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.taskId !== binding.taskId
@@ -505,11 +570,15 @@ function advancePhase(
     ) {
       throw authorityError();
     }
-    return { phase: "started", eventId: record.id, canonical: undefined };
+    return {
+      phase: phase === "task-running" ? "started-running" : "started",
+      eventId: record.id,
+      canonical: undefined
+    };
   }
   if (type === "agent.specialist-run.step.recorded") {
     if (
-      phase !== "started"
+      (phase !== "started" && phase !== "started-running")
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.stepKind !== "final-output"
@@ -536,6 +605,7 @@ function advancePhase(
   }
   if (type === "agent.specialist-handoff.prepared") {
     const finalOutput = requireCanonical(canonical);
+    const authorityBinding = authorityBindingForPayload(payload, binding);
     if (
       phase !== "final-output"
       || record.streamId !== `agent_run_${binding.approvedRunId}`
@@ -568,6 +638,7 @@ function advancePhase(
         toolRequestIds: normalizedStringArray(payload.toolRequestIds),
         sourceEventIds: normalizedStringArray(payload.sourceEventIds),
         relatedEventIds: normalizedStringArray(payload.relatedEventIds),
+        ...(authorityBinding === undefined ? {} : { authorityBinding }),
         preparedEventId: record.id
       })
     };
@@ -637,11 +708,12 @@ function advancePhase(
     const handoffReadback = normalizedOwnDataRecord(payload.handoffReadback);
     if (
       phase !== "run-terminal"
-      || record.streamId !== `agent_task_${binding.taskId}`
+      || record.streamId !== taskOrchestrationStreamId(binding.taskId, binding.runType)
       || payload.taskId !== binding.taskId
       || payload.runId !== binding.approvedRunId
       || payload.runType !== binding.runType
       || payload.attemptId !== binding.attemptId
+      || payload.retryGeneration !== binding.retryGeneration
       || payload.finalOutputStepEventId !== terminal.finalOutputEventId
       || payload.handoffPreparedEventId !== terminal.preparedEventId
       || payload.handoffRecordedEventId !== terminal.recordedEventId
@@ -678,6 +750,15 @@ function isBoundEvent(event: NormalizedJson, binding: RunBinding): boolean {
   const record = normalizedOwnDataRecord(event);
   const payload = normalizedOwnDataRecord(record.payload);
   return payload.runId === binding.approvedRunId || payload.taskId === binding.taskId;
+}
+
+function isHandoffEffectPhase(phase: CursorPhase): boolean {
+  return phase === "final-output" ||
+    phase === "handoff-prepared" ||
+    phase === "handoff-recorded" ||
+    phase === "run-terminal" ||
+    phase === "orchestration-completed" ||
+    phase === "task-status";
 }
 
 function requireCanonical(value: CanonicalHandoffBinding | undefined): CanonicalHandoffBinding {
@@ -775,12 +856,55 @@ function samePreparedHandoffBinding(
     && sameStringArrays(normalizedStringArray(payload.toolRequestIds), canonical.toolRequestIds)
     && sameStringArrays(normalizedStringArray(payload.sourceEventIds), canonical.sourceEventIds)
     && sameStringArrays(normalizedStringArray(payload.relatedEventIds), canonical.relatedEventIds)
+    && sameAuthorityBinding(payload, canonical.authorityBinding)
   );
+}
+
+function authorityBindingForPayload(
+  payload: NormalizedJsonRecord,
+  binding: RunBinding
+): HandoffAuthorityBinding | undefined {
+  const hasSchema = Object.hasOwn(payload, "manifestSchemaVersion");
+  const hasAuthority = Object.hasOwn(payload, "authorityBinding");
+  if (!hasSchema && !hasAuthority) return undefined;
+  if (
+    !hasSchema || !hasAuthority ||
+    payload.manifestSchemaVersion !== "agent-specialist-handoff-manifest.v2" ||
+    binding.authorityBinding === undefined ||
+    !sameAuthorityBinding(payload, binding.authorityBinding)
+  ) {
+    throw authorityError();
+  }
+  return binding.authorityBinding;
+}
+
+function sameAuthorityBinding(payload: NormalizedJsonRecord, expected: HandoffAuthorityBinding | undefined): boolean {
+  if (expected === undefined) {
+    return !Object.hasOwn(payload, "authorityBinding") && !Object.hasOwn(payload, "manifestSchemaVersion");
+  }
+  if (
+    payload.manifestSchemaVersion !== "agent-specialist-handoff-manifest.v2" ||
+    !Object.hasOwn(payload, "authorityBinding")
+  ) return false;
+  const authority = normalizedOwnDataRecord(payload.authorityBinding);
+  const fields = [
+    "workspaceIdentityHash",
+    "mountGeneration",
+    "ledgerStoreIdentity",
+    "artifactStoreIdentity",
+    "ledgerHighWaterEventId",
+    "policyHash",
+    "activeLocksHash"
+  ] as const;
+  if (Object.getOwnPropertyNames(authority).length !== fields.length || fields.some((field) => authority[field] !== expected[field])) {
+    return false;
+  }
+  return Object.getOwnPropertyNames(authority).every((field) => fields.includes(field as typeof fields[number]));
 }
 
 function isExpectedPredecessor(phase: CursorPhase, kind: MountedHandoffAuthorityEffectKind): boolean {
   return (
-    (kind === "final-output" && phase === "started")
+    (kind === "final-output" && (phase === "started" || phase === "started-running"))
     || (kind === "handoff-prepared" && phase === "final-output")
     || (kind === "handoff-recorded" && phase === "handoff-prepared")
     || (kind === "run-terminal" && phase === "handoff-recorded")
@@ -807,12 +931,22 @@ function cursorFor(controller: MountedHandoffAuthorityController): CursorState {
 }
 
 function normalizeBinding(value: BindPortableMountedAgentHandoffInput): RunBinding {
-  const record = exactOwnDataRecord(value, ["taskId", "attemptId", "approvedRunId", "runType"]);
+  const record = exactOwnDataRecord(value, ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration"]);
   const taskId = requiredText(record.taskId);
   const attemptId = requiredText(record.attemptId);
   const approvedRunId = requiredText(record.approvedRunId);
-  const runType = requiredText(record.runType);
-  return Object.freeze({ taskId, attemptId, approvedRunId, runType });
+  const runType = requiredAgentSpecialistRunType(record.runType);
+  const retryGeneration = requiredNonNegativeInteger(record.retryGeneration);
+  return Object.freeze({ taskId, attemptId, approvedRunId, runType, retryGeneration });
+}
+
+function requiredAgentSpecialistRunType(value: unknown): AgentSpecialistRunType {
+  if (typeof value !== "string" || !isAgentSpecialistRunType(value)) throw authorityError();
+  return value;
+}
+
+function isAgentSpecialistRunType(value: string): value is AgentSpecialistRunType {
+  return approvedAgentSpecialistRunTypes.some((candidate) => candidate === value);
 }
 
 function normalizeEventIds(value: readonly string[]): readonly string[] {
@@ -946,6 +1080,33 @@ function snapshotTuple(value: ReturnType<typeof inspectMountedArtifactAuthorityO
   });
 }
 
+function deriveHandoffAuthorityBinding(snapshot: SnapshotTuple): HandoffAuthorityBinding {
+  if (
+    !/^evt_[a-zA-Z0-9_-]+$/.test(snapshot.workspaceIdentityEventId) ||
+    !/^evt_[a-zA-Z0-9_-]+$/.test(snapshot.highWaterMark) ||
+    !/^sha256:[a-f0-9]{64}$/.test(snapshot.policyDigest) ||
+    !/^sha256:[a-f0-9]{64}$/.test(snapshot.lockStateDigest) ||
+    snapshot.admissionGenerationId.length === 0 ||
+    snapshot.ledgerStoreEvidenceId.length === 0 ||
+    snapshot.artifactStoreEvidenceId.length === 0
+  ) {
+    throw authorityError();
+  }
+  return Object.freeze({
+    workspaceIdentityHash: hashCanonicalSpecialistHandoffJson({
+      schemaVersion: "mounted-handoff-workspace-identity.v1",
+      workspaceId: snapshot.workspaceId,
+      workspaceIdentityEventId: snapshot.workspaceIdentityEventId
+    }),
+    mountGeneration: snapshot.admissionGenerationId,
+    ledgerStoreIdentity: snapshot.ledgerStoreEvidenceId,
+    artifactStoreIdentity: snapshot.artifactStoreEvidenceId,
+    ledgerHighWaterEventId: snapshot.highWaterMark,
+    policyHash: snapshot.policyDigest as `sha256:${string}`,
+    activeLocksHash: snapshot.lockStateDigest as `sha256:${string}`
+  });
+}
+
 function workspaceTuple(value: ReturnType<typeof inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores>["workspace"]): WorkspaceTuple {
   return Object.freeze({
     workspaceId: value.workspaceId,
@@ -1061,6 +1222,11 @@ function requiredHash(value: unknown): string {
 
 function requiredPositiveInteger(value: unknown): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) throw authorityError();
+  return value;
+}
+
+function requiredNonNegativeInteger(value: unknown): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) throw authorityError();
   return value;
 }
 
