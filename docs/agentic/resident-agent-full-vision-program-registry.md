@@ -19400,3 +19400,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-715 — Task126-R record-14-forwarded candidate enters final review
+
+- Recorded at: 2026-07-18T12:23:25Z
+- After strict CF1-HR record 14 passed repository assurance, the coordinator
+  forward-merged exact program head
+  `10c3469aca63d2918fdd95be6d0a49afcf5ebaad` into preserved exceptional
+  Task126-R candidate `822fd573d3937ad77a9d173028899ce3f74c1247`
+  without rewriting either history. Exact review candidate
+  `16e8ceb05ff60ced327fc0c03d25d09f5a9d7fc8` has those two commits as its
+  parents; its Task126-R-owned bytes remain the preserved seven-commit packet.
+- Fresh coordinator admission from exact forwarded bytes passes focused **2
+  files / 18 tests**, cross-boundary **4 files / 46 tests**, standalone
+  typecheck, factory readiness, V4 contract mode, exact 14-record repository
+  prefix and incomplete-29 boundary, diff hygiene, exact three-path cumulative
+  task diff, clean tracked/untracked state, and real dependency/Vitest
+  provenance. Full `npm test` and `npm run verify` retain the identical
+  inherited **12 failing / 213 passing / 3 skipped files** and **69 failing /
+  2717 passing / 5 skipped tests**; `npm run verify` passes typecheck and exits
+  only at that unchanged intermediate cohort.
+- The single authorized fresh final read-only Terra/xhigh pair is active:
+  architecture/invariants task `019f752e-2887-7eb3-a906-16fa80b30580` and
+  executability/adversarial task `019f752e-288d-7340-9e8b-c91d58c3f1fb`.
+  SDD/TDD is not relevant or authorized for reviewers. They are bound to the
+  RV-1-C-134 trusted-injection ruling and must verify the binding-aware loader
+  inventory against destructured, computed, indirect, `createRequire`, and
+  shadowed/custom forms. Only a reproduced P0/P1 may block; no further
+  automatic Task126-R code or test repair is authorized.
+- Status moves `candidate -> reviewing-final`. Strict record count remains 14;
+  P2/style/hypothetical/unreproduced concerns go to backlog and `neo` remains
+  untouched.
