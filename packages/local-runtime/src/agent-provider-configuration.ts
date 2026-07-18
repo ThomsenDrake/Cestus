@@ -19,7 +19,14 @@ const credentialRefIdPattern = /^agent_credref_[a-zA-Z0-9_-]+$/;
 const endpointPolicyIdPattern = /^endpoint_policy_[a-zA-Z0-9_-]+$/;
 const feasibilityIdPattern = /^provider_feasibility_[a-zA-Z0-9_-]+$/;
 const evidenceIdPattern = /^evidence_[a-zA-Z0-9_-]+$/;
-const urlOrHostPattern = /(?:\b(?:wss?|https?|ftp):\/\/|\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:localhost|(?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|ai|app|co|uk|invalid))\b)/i;
+const openaiCodexProviderIdPattern = /^provider_openai_codex_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
+const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
+const uriSchemePattern = /(?:^|[^a-z0-9_])[a-z][a-z0-9+.-]*:(?=\/\/|[^\s])/i;
+const ipv4AddressPattern = /\b(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}\b/;
+const bracketedIpv6AddressPattern = /\[[a-f0-9:.]+\]/i;
+const bareIpv6AddressPattern = /(?:^|[^0-9T])(?:[a-f0-9]{1,4}:){2,}[a-f0-9:]*(?=$|[^a-f0-9:])/i;
+const localhostPattern = /\blocalhost\b/i;
+const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/i;
 
 export type ProviderConfigurationLane = "byok" | "local-engine" | "official-harness";
 
@@ -132,8 +139,7 @@ function normalizeCapabilities(value: unknown): readonly CanonicalProviderCapabi
     if (!isRecord(value) || !hasExactKeys(value, capabilityKeys)) throw invalidConfiguration();
     const capability = createProviderCapabilityDescriptor(value.capability);
     if (
-      capability.fakeSupport || capability.modelFamilies.length !== 1 ||
-      hasNetworkMaterial(capability) || !seen.add(capability.providerId)
+      capability.fakeSupport || capability.modelFamilies.length !== 1 || !seen.add(capability.providerId)
     ) {
       throw invalidConfiguration();
     }
@@ -152,10 +158,7 @@ function normalizeCredentialReferences(value: unknown): readonly CredentialRefer
     if (!parsed.success) throw invalidConfiguration();
     const reference = createCredentialReference(parsed.data);
     if (
-      !seen.add(reference.credentialRefId) ||
-      reference.status !== "healthy" ||
-      !reference.capabilityScopes.includes("model-inference") ||
-      !validEventIds(reference.sourceEventIds)
+      !seen.add(reference.credentialRefId) || reference.status !== "healthy" || !validEventIds(reference.sourceEventIds)
     ) {
       throw invalidConfiguration();
     }
@@ -304,6 +307,7 @@ function validateLane(
     if (
       record.lane !== "local-engine" || record.officialEvidence !== undefined ||
       reference.credentialKind !== "local-no-secret" ||
+      !hasExactStringList(reference.capabilityScopes, ["model-inference"]) ||
       capability.costPolicy !== "local-compute" || capability.approvalProfile !== "local-only" ||
       !hasExactCredentialRequirement(capability, "local-no-secret")
     ) {
@@ -316,6 +320,7 @@ function validateLane(
     if (
       record.lane !== "official-harness" || record.officialEvidence === undefined ||
       !hasCanonicalOfficialHarnessIdentity(capability, reference) ||
+      !hasExactStringList(reference.capabilityScopes, ["harness-execution"]) ||
       capability.costPolicy !== "subscription-entitlement" || capability.approvalProfile !== "harness-workspace-gated" ||
       capability.toolSupport !== "harness-tools" || capability.structuredOutputSupport !== "harness-mediated" ||
       !hasExactStringList(capability.workspaceScopes, ["workspace", "user"]) ||
@@ -331,6 +336,7 @@ function validateLane(
     record.lane !== "byok" || record.officialEvidence !== undefined ||
     capability.backendKind !== "openai-compatible-api" ||
     reference.credentialKind !== "api-key-bearer" ||
+    !hasExactStringList(reference.capabilityScopes, ["model-inference"]) ||
     capability.costPolicy !== "metered-api" || capability.approvalProfile !== "remote-byte-transfer-gated" ||
     !capability.diagnosticContract.includes("requires-byte-transfer-approval") ||
     !hasExactCredentialRequirement(capability, "api-key-bearer")
@@ -362,13 +368,17 @@ function hasCanonicalOfficialHarnessIdentity(
 ): boolean {
   return (
     capability.backendKind === "openai-codex-harness" &&
-    capability.providerId === "provider_openai_codex_harness" &&
-    reference.credentialKind === "subscription-oauth"
+    openaiCodexProviderIdPattern.test(capability.providerId) &&
+    isOfficialHarnessCredentialKind(reference.credentialKind)
   ) || (
     capability.backendKind === "xai-harness" &&
-    capability.providerId === "provider_xai_harness" &&
-    reference.credentialKind === "device-code-oauth"
+    xaiProviderIdPattern.test(capability.providerId) &&
+    isOfficialHarnessCredentialKind(reference.credentialKind)
   );
+}
+
+function isOfficialHarnessCredentialKind(credentialKind: CredentialKind): boolean {
+  return credentialKind === "subscription-oauth" || credentialKind === "device-code-oauth";
 }
 
 function hasExactCredentialRequirement(capability: ProviderCapabilityDescriptor, credentialKind: CredentialKind): boolean {
@@ -439,18 +449,7 @@ function requireSafeText(value: unknown): string {
 }
 
 function isSafeText(value: string): boolean {
-  return value.length > 0 && isAgentSecretSafeText(value) && !urlOrHostPattern.test(value);
-}
-
-function hasNetworkMaterial(capability: ProviderCapabilityDescriptor): boolean {
-  return [
-    capability.providerId,
-    capability.label,
-    capability.adapterVersion,
-    ...capability.modelFamilies,
-    capability.dataHandlingNotes,
-    ...capability.diagnosticContract
-  ].some((value) => urlOrHostPattern.test(value));
+  return value.length > 0 && isAgentSecretSafeText(value);
 }
 
 function requireIsoDate(value: unknown): string {
@@ -480,7 +479,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizePlainOwnData(value: unknown): unknown {
-  if (value === null || value === undefined || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+  if (typeof value === "string") {
+    if (hasForbiddenTextMaterial(value)) throw invalidConfiguration();
+    return value;
+  }
+  if (value === null || value === undefined || typeof value === "number" || typeof value === "boolean") {
     return value;
   }
   if (typeof value !== "object") throw invalidConfiguration();
@@ -523,6 +526,17 @@ function normalizePlainOwnData(value: unknown): unknown {
     });
   }
   return Object.freeze(normalized);
+}
+
+function hasForbiddenTextMaterial(value: string): boolean {
+  return (
+    (!hashPattern.test(value) && uriSchemePattern.test(value)) ||
+    ipv4AddressPattern.test(value) ||
+    bracketedIpv6AddressPattern.test(value) ||
+    bareIpv6AddressPattern.test(value) ||
+    localhostPattern.test(value) ||
+    dnsHostPattern.test(value)
+  );
 }
 
 function invalidConfiguration(): TypeError {
