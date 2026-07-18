@@ -36,3 +36,37 @@ The artifact contract remains discriminated: v2 construction preserves the
 approved v1 bytes and uses no renderer, caller-owned output hash, or raw
 production prompt rendering. `renderExactlyBoundProductionSpecialistPrompt`
 remains absent from agent source and tests.
+
+## Task133 V4 strict production-renderer claim
+
+- Status: `claimed`.
+- Owner model/reasoning: GPT-5.6 Terra / xhigh.
+- Branch/worktree: `codex/task133-runtime-prompt-renderer` /
+  `/home/drake/.codex/worktrees/task133-runtime-prompt-renderer/Cestus`.
+- Exact source base: `e481e23a08ff6d381b93d4dda3b553b1990e2bc3`, a
+  registry-only descendant of strict record-15
+  `986c2a43b018e72acf1104e84853826b06b1abdd`.
+- V4 card authority: Task133 release-graph card 16 in
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`; prerequisites
+  Task126-R, Task127, Task128, Task129, and Task130 are released.
+- Exclusive paths:
+  - `packages/local-runtime/src/agent-runtime-prompt-renderer.ts`
+  - `packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`
+  - `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`
+- Ordered commits: claim only; causal RED test only; minimum GREEN only. No
+  repair, factory change, registry/spec/plan/contract edit, integration,
+  provider call, credential use, network use, or history rewrite is allowed.
+- The renderer must consume canonical prompt-artifact/registered-renderer
+  authorities, bind one approved run, canonical provider posture, and verified
+  context hashes, fail closed before rendering on missing/stale/mismatched or
+  forged inputs, and never log or expose prompt bytes.
+- Focused command:
+  `npm test -- packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`.
+  Cross-boundary command adds `packages/agent/test/prompt-artifacts.test.ts`.
+  Final gates: typecheck, inherited-baseline differential full verify,
+  diff-check, factory check, V4 contract, exact prefix-15/incomplete-29
+  assurance, exact three-path audit, clean state, and real local dependency
+  checks.
+- Stop for data loss, contract/schema/file-owner conflict, missing canonical
+  authority, unavailable dependency, credential/external behavior choice,
+  safety-invariant conflict, or repeated verifier failure.
