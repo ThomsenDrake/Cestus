@@ -19108,3 +19108,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   further automatic repair; only dual approval permits integration and strict
   release record 14. V1-V3, raw records 1-13, released-source current-HEAD
   ownership, all evidence history, and `neo` remain untouched.
+
+## RV-1-E-711 — CF1-HR is durably blocked after the human-exception final pair
+
+- Recorded at: 2026-07-18T02:35:33Z
+- Both fresh terminal reviewers returned `NEEDS-CHANGES` on exact candidate
+  `9799beead86a3b14544549516087c2af6a5f6d54` with the same independently
+  reproduced P1. Architecture/invariants task
+  `019f7306-8ee5-7801-9335-e5f8f37da10d` and executability/adversarial task
+  `019f7306-8ed6-75b0-9ce8-66916316fdb2` each reproduced the five compiler
+  errors recorded in RV-1-E-710 from clean detached review worktrees at the
+  exact candidate SHA.
+- The committed V2 lifecycle carries `runType` as unrestricted `string` across
+  the new private witness/lifecycle boundary. Existing orchestration stream,
+  event, and matcher APIs require the closed `AgentSpecialistRunType` union.
+  The exact failures are in `packages/agent/src/specialist-runner-kernel.ts`
+  near lines 1060, 2345, 2356, and 2375 and
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` near
+  line 710. `npm run typecheck` and therefore `npm run verify` exit 2. This is
+  a production/build ABI violation, not style, hypothetical hardening,
+  incremental cache state, or missing reviewer dependencies.
+- Both reviewers independently approve the three intended safety semantics:
+  exact queued/running pre-start history now permits witness issuance while
+  cross-run/conflicting history rejects; the production chain is exactly run
+  terminal -> `agent.task.orchestration.completed` -> task status; and stale
+  V2 rejection cannot be converted into verified completion through the
+  exported raw completion/status path. V1 remains legacy-unbound and cannot
+  upgrade V2. No separate P0/P1 or P2 backlog item was reported.
+- Runtime and evidence gates remain exact: focused **7 files / 280 tests**,
+  cross-boundary **11 files / 313 tests**, inherited full-test cohort **12
+  failing / 212 passing / 3 skipped files** and **69 failing / 2708 passing /
+  5 skipped tests**, diff hygiene, factory readiness, fourteen-path scope,
+  dependency/Vitest provenance, and clean state. The typecheck P1 alone blocks
+  admission. Both review worktrees and the candidate worktree remain clean.
+- Status moves `reviewing-terminal -> blocked`. Per the explicit human ceiling,
+  no further automatic CF1-HR code/test repair, owner, recovery generation,
+  renamed cycle, integration, or strict release record 14 is permitted.
+  Released-source current-HEAD ownership therefore does not migrate. Preserved
+  Task126-R candidate `822fd573` and G136-SC candidate `d74ff4a3` remain
+  predecessor-bound; no other release-order card is independently eligible.
+  Strict record count remains 13. V1-V3, raw records 1-13, all 29 card IDs and
+  order, all evidence history, and `neo` remain untouched.
