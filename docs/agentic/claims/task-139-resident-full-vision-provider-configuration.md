@@ -284,3 +284,16 @@ or fallback.
   admissions). The same test explicitly confirms the released ISO timestamp,
   `policy.v1`, and `adapter.v1` controls remain accepted.
 - `npm run typecheck` exits `0` from the RED bytes without diagnostics.
+
+## RV-1-E-742 Bare-Scheme Recovery GREEN
+
+- GREEN changes only production source and this claim; the focused test is
+  byte-identical to RED `a33364adef8a4ee75d26ef7094951462a2453b04`.
+- The centralized URI grammar now rejects a valid scheme separator independent
+  of payload presence. It preserves underscore/other delimiter detection and
+  the released ISO timestamp, `policy.v1`, and `adapter.v1` controls without
+  altering the existing local URL/IP parser, provider-family/scope/binding,
+  provenance, hostile-shape, secret-safety, immutability, or data-only
+  boundaries.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 19 tests**. `npm run typecheck` exits `0`.
