@@ -116,3 +116,19 @@ or fallback.
 - The uncommitted partial GREEN source remains intentionally outside this RED
   commit. The corrected RED is reproduced from its exact committed bytes in a
   detached temporary checkout before that source patch is resumed.
+
+## RV-1-E-734 Anchored-Family Recovery RED
+
+- Coordinator tactic authority: `RV-1-E-734` at program
+  `e62e5af61bf70d65c8ee7900fe03d8d23a9d557f`. The preceding corrected RED
+  `88201283e9728543ced7c67308bc1643f3202431` remains preserved.
+- The prior negative `provider_xai_grokish` assertion was invalid because it
+  exactly satisfies the released `provider_xai_<nonempty suffix>` predicate.
+  This RED replaces that ad hoc assumption with a typed anchored-family table.
+- The table admits four matching-backend family members:
+  `provider_openai_codex_primary`, `provider_openai_codex_review_2`,
+  `provider_xai_grok`, and `provider_xai_grokish`; it rejects only
+  outer-schema-valid empty-suffix, missing-delimiter, and near-prefix values
+  outside both released predicates. All other focused-test semantics, including
+  the corrected xAI backend, remain unchanged. The retained source GREEN patch
+  remains unstaged and outside this RED commit.
