@@ -18,22 +18,25 @@ import {
 import {
   appendSpecialistFailure,
   appendSpecialistFinalOutputStep,
-  finalizeSpecialistRunAfterHandoff,
   governanceLockIsActive,
   invokeSpecialistModel,
   prepareSpecialistRun,
-  recordSpecialistHandoff,
+  recordAuthorityBoundSpecialistHandoff,
   writeSpecialistDerivativeArtifact,
   type PreparedSpecialistRun,
   type SpecialistHandoffManifestStore,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
+import type { MountedSpecialistHandoffAuthorityWitness } from "./specialist-handoff-authority.js";
+import type { SpecialistHandoffReadback } from "./specialist-handoff-projection.js";
 import { taskOrchestrationStreamId } from "./task-orchestrator-events.js";
 
 export interface RunInvestigationPlannerWorkflowInput extends SpecialistRunnerBaseInput {
   readonly investigationId?: string;
   /** Exact mounted artifact capability for durable handoff dependencies and outputs. */
   readonly handoffStore?: SpecialistHandoffManifestStore;
+  /** Factory-injected opaque authority for one exact V2 task/run handoff lifecycle. */
+  readonly handoffAuthorityWitness?: MountedSpecialistHandoffAuthorityWitness | undefined;
 }
 
 export interface InvestigationPlannerWorkflowDiagnostic {
@@ -49,6 +52,8 @@ export interface RunInvestigationPlannerWorkflowResult {
   readonly handoff: InvestigationPlannerWorkflowHandoff;
   readonly diagnostics: readonly InvestigationPlannerWorkflowDiagnostic[];
   readonly eventIds: readonly string[];
+  /** Present only after the authority-bound V2 lifecycle has replayed completely. */
+  readonly readback?: SpecialistHandoffReadback | undefined;
 }
 
 export async function runInvestigationPlannerWorkflow(
@@ -83,6 +88,13 @@ export async function runInvestigationPlannerWorkflow(
     return blockedHandoff(input, "Active governance lock blocks investigation planning.", prepared.contextPackRefs);
   }
   const handoffStore = requireHandoffStore(input);
+  if (input.handoffAuthorityWitness === undefined) {
+    return blockedHandoff(
+      input,
+      "A current mounted authority is required before investigation planning can record a durable handoff.",
+      prepared.contextPackRefs
+    );
+  }
   const sourceEventIds = await verifiedSourceEventIds(input, prepared.contextPackRefs);
   if (sourceEventIds === undefined) {
     return blockedHandoff(
@@ -297,15 +309,18 @@ async function resumeDurableFinalOutput(
   if (persisted === undefined) {
     return blockedHandoff(input, "Recovered final output cannot be read back as a durable investigation planner handoff.");
   }
-  let recorded: Awaited<ReturnType<typeof recordSpecialistHandoff>>;
+  const handoffAuthorityWitness = input.handoffAuthorityWitness;
+  if (handoffAuthorityWitness === undefined) return persisted;
+  let recorded: Awaited<ReturnType<typeof recordAuthorityBoundSpecialistHandoff>>;
   try {
-    recorded = await recordSpecialistHandoff({
+    recorded = await recordAuthorityBoundSpecialistHandoff({
       ledger: input.ledger,
       manifestStore: handoffStore,
       actor: input.actor,
       now: input.now,
       runId: input.runId,
-      taskId: input.taskId
+      taskId: input.taskId,
+      handoffAuthorityWitness
     });
   } catch {
     return persisted;
@@ -313,28 +328,18 @@ async function resumeDurableFinalOutput(
   if (recorded.manifest.finalOutputEventId !== finalOutput.id) {
     return blockedHandoff(input, "Recovered investigation handoff did not read back the exact durable final-output event.");
   }
-  try {
-    const finalized = await finalizeSpecialistRunAfterHandoff({
-      ledger: input.ledger,
-      actor: input.actor,
-      now: input.now,
-      recorded
-    });
-    return Object.freeze({
-      handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
-      diagnostics: Object.freeze([]),
-      eventIds: Object.freeze([finalOutput.id, recorded.prepared.id, recorded.recorded.id, finalized.terminal.id])
-    });
-  } catch {
-    return Object.freeze({
-      handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
-      diagnostics: Object.freeze([Object.freeze({
-        category: "artifact-missing" as const,
-        safeSummary: "The durable handoff was recovered, but terminal run finalization must be retried."
-      })]),
-      eventIds: Object.freeze([finalOutput.id, recorded.prepared.id, recorded.recorded.id])
-    });
-  }
+  return Object.freeze({
+    handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
+    diagnostics: Object.freeze([]),
+    eventIds: Object.freeze([
+      finalOutput.id,
+      recorded.prepared.id,
+      recorded.recorded.id,
+      recorded.terminal.id,
+      recorded.taskStatus.id
+    ]),
+    readback: recorded.readback
+  });
 }
 
 function isExactInvestigationPlannerRecovery(
@@ -535,41 +540,35 @@ async function recordDurableHandoff(input: {
   } catch {
     return await finalOutputStorageFailureResult(input);
   }
-  let recorded: Awaited<ReturnType<typeof recordSpecialistHandoff>>;
+  const handoffAuthorityWitness = input.input.handoffAuthorityWitness;
+  if (handoffAuthorityWitness === undefined) return outputPersistedResult(input, finalOutput.id);
+  let recorded: Awaited<ReturnType<typeof recordAuthorityBoundSpecialistHandoff>>;
   try {
-    recorded = await recordSpecialistHandoff({
+    recorded = await recordAuthorityBoundSpecialistHandoff({
       ledger: input.input.ledger,
       manifestStore: input.handoffStore,
       actor: input.input.actor,
       now: input.input.now,
       runId: input.input.runId,
-      taskId: input.input.taskId
+      taskId: input.input.taskId,
+      handoffAuthorityWitness
     });
   } catch {
     return outputPersistedResult(input, finalOutput.id);
   }
-  try {
-    const finalized = await finalizeSpecialistRunAfterHandoff({
-      ledger: input.input.ledger,
-      actor: input.input.actor,
-      now: input.input.now,
-      recorded
-    });
-    return Object.freeze({
-      handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
-      diagnostics: Object.freeze([]),
-      eventIds: Object.freeze([...input.eventIds, finalOutput.id, recorded.prepared.id, recorded.recorded.id, finalized.terminal.id])
-    });
-  } catch {
-    return Object.freeze({
-      handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
-      diagnostics: Object.freeze([Object.freeze({
-        category: "artifact-missing" as const,
-        safeSummary: "The durable handoff was recorded, but terminal run finalization must be retried."
-      })]),
-      eventIds: Object.freeze([...input.eventIds, finalOutput.id, recorded.prepared.id, recorded.recorded.id])
-    });
-  }
+  return Object.freeze({
+    handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
+    diagnostics: Object.freeze([]),
+    eventIds: Object.freeze([
+      ...input.eventIds,
+      finalOutput.id,
+      recorded.prepared.id,
+      recorded.recorded.id,
+      recorded.terminal.id,
+      recorded.taskStatus.id
+    ]),
+    readback: recorded.readback
+  });
 }
 
 async function finalOutputStorageFailureResult(input: {
