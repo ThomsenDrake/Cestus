@@ -39,7 +39,7 @@ remains absent from agent source and tests.
 
 ## Task133 V4 strict production-renderer claim
 
-- Status: `claimed`.
+- Status: `claimed` → `implementing`.
 - Owner model/reasoning: GPT-5.6 Terra / xhigh.
 - Branch/worktree: `codex/task133-runtime-prompt-renderer` /
   `/home/drake/.codex/worktrees/task133-runtime-prompt-renderer/Cestus`.
@@ -70,3 +70,11 @@ remains absent from agent source and tests.
 - Stop for data loss, contract/schema/file-owner conflict, missing canonical
   authority, unavailable dependency, credential/external behavior choice,
   safety-invariant conflict, or repeated verifier failure.
+
+### Causal RED evidence
+
+- `npm test -- packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts`
+  exited `1`: one suite failed before test execution because
+  `../src/agent-runtime-prompt-renderer.js` is absent. The test imports only
+  existing canonical agent prompt-artifact, specialist-renderer, and verified
+  context-pack authorities and names the required strict V4 adapter surface.
