@@ -19738,3 +19738,40 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward-merged and all gates rerun. Task133 remains blocked at position 16,
   strict prefix remains 15, G136-SC remains preserved, and `neo` remains
   untouched.
+
+## RV-1-E-724 — Human-approved Task133 compile-admission correction authorized
+
+- Recorded at: 2026-07-18T16:20:34Z
+- The user explicitly authorizes one post-RV-1-E-721 exception to Task133's
+  exhausted consolidated repair ceiling. Exact candidate
+  `d2bb7366b803791f074ec3fb1570a6fccefc9a38` is the committed compiler RED;
+  its focused **1 file / 5 tests** and cross-boundary **2 files / 31 tests**
+  remain green while typecheck reproduces only `TS2339` and `TS2322` at
+  `packages/local-runtime/src/agent-runtime-prompt-renderer.ts:91`.
+- The same owner task `019f717a-3a5c-7df1-9216-59464d5c206b`, branch
+  `codex/task133-runtime-prompt-renderer`, and worktree
+  `/home/drake/.codex/worktrees/task133-runtime-prompt-renderer/Cestus` resume
+  from the preserved history. The packet permits exactly one minimal forward
+  compile-correction commit and no manufactured RED/GREEN cycle. Task-scoped
+  subagent-driven development and test-driven development are explicitly
+  approved for this task.
+- Correction ownership is exactly
+  `packages/local-runtime/src/agent-runtime-prompt-renderer.ts` and
+  `docs/agentic/claims/task-133-resident-runtime-prompt-renderer.md`. The fix
+  must use a correctly typed own-property-descriptor lookup for the array
+  `length` property and may not use casts, assertions, `any`, TypeScript
+  suppression, API widening, contract changes, or weakened hostile-array
+  validation. The focused test file remains byte-identical.
+- Admission requires the exact focused and cross-boundary counts, standalone
+  typecheck, full-test and `npm run verify` differential with no new failure or
+  skip, diff and factory checks, all four V4 markers, the exact
+  15-record/incomplete-29 repository boundary, exact two-path correction and
+  three-path cumulative scope, clean state, and real non-symlinked local
+  dependencies with executable Vitest.
+- Only after admission may one fresh concurrent read-only Terra/xhigh final
+  review pair inspect architecture/invariants and executability/adversarial
+  behavior. Both approvals authorize immediate preserved-history integration
+  and strict release record 16; any reproduced P0/P1 durably blocks Task133
+  with no further automatic repair. V1-V3, raw records 1-15, all 29 card IDs
+  and order, all prior evidence, and `neo` remain unchanged. Status advances
+  Task133 `blocked -> compile-correction-authorized -> implementing`.
