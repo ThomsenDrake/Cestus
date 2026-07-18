@@ -19203,3 +19203,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   count remains 13. V1-V3, raw records 1-13, all 29 card IDs/order, finite
   direct-source transfers, released-source current-HEAD ownership, all prior
   evidence history, and `neo` remain untouched.
+
+## RV-1-E-713 — CF1-HR compile closure enters final review
+
+- Recorded at: 2026-07-18T12:02:30Z
+- The preserved CF1-HR branch forward-merged registry authorization commit
+  `4ab39f3d5974704d16c8d477df932073d903a3d4` as merge
+  `08eababb9ccde92fe73c8588ab7ea61f0b2b98b7`, then the same implementation
+  owner appended the sole compile-closure RED
+  `1faae2cfd5d056195f9124d58872fcedaf730f65` and sole GREEN
+  `ebe40a1a85eb848968c95ac0e185bbe332892f18`. The RED is claim/test-only and
+  proves both direct and portable unsupported-run-type paths issued authority
+  on inherited bytes. The GREEN changes only three authorized production
+  paths, removes the participating `as AgentSpecialistRunType`, validates
+  canonical membership before witness/lifecycle use, and carries the closed
+  union through the approved lifecycle without API widening.
+- Coordinator admission from exact committed GREEN bytes passes the focused
+  gate at **7 files / 282 tests**, cross-boundary gate at **11 files / 315
+  tests**, standalone typecheck, diff hygiene, factory readiness, V4 contract
+  mode, exact six-path repair subset, exact fourteen-path cumulative CF1-HR
+  scope, clean state, and real dependency/Vitest provenance. Full `npm test`
+  and `npm run verify` retain the exact inherited **12 failing / 212 passing /
+  3 skipped files** and **69 failing / 2710 passing / 5 skipped tests**; the
+  failure and skip identities are byte-for-byte stable and the two passing-test
+  delta from candidate `9799beea` is exactly the two named RED tests.
+- Repository assurance is evaluated on the released record-13 program HEAD,
+  where released-source current-HEAD ownership remains authoritative until
+  record 14. It emits `TASK136_REPOSITORY_PREFIX_OK records=13 commands=13`
+  followed by `repository release closure incomplete: expected 29 records,
+  found 13`. The unreleased CF1 candidate correctly cannot migrate transferred
+  current-HEAD ownership before record 14. V1-V3 and raw records 1-13 remain
+  byte-identical.
+- The single authorized fresh concurrent Terra/xhigh final pair is now active:
+  architecture/invariants task `019f751a-c528-7220-aca9-9e060fad3f60` and
+  executability/adversarial task `019f751a-c528-7220-aca9-9df5e8d74ec0`.
+  Reviews are read-only; SDD/TDD is not relevant or authorized. They must
+  verify the closed run-type boundary without casts or widening and confirm
+  all three approved safety semantics remain unchanged. Only a reproduced
+  P0/P1 may block; P2, style, hypothetical hardening, and unreproduced concerns
+  go to backlog.
+- Status moves `authorized-compile-closure -> reviewing-final`. Strict record
+  count remains 13, released-source ownership does not migrate, no automatic
+  CF1 repair remains, and `neo` remains untouched.
