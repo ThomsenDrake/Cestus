@@ -550,6 +550,50 @@ describe("agent provider configuration", () => {
     expect({ rejected, admitted }).toEqual({ rejected: [], admitted: [] });
   });
 
+  it("rejects Unicode DNS and whole short numeric host material while retaining released versions", () => {
+    const materials = ["api.a1", "api.3com", "service.123", "x.y9", "api.例子", "0", "1", "01", "127", "1:80", "127:443"];
+    const accepted: string[] = [];
+    for (const material of materials) {
+      const capability = byokConfiguration();
+      only(capability.capabilities).capability.dataHandlingNotes = material;
+      if (accepts(capability)) accepted.push(`capability:${material}`);
+      const credential = byokConfiguration();
+      only(credential.credentialReferences).safeLabel = material;
+      if (accepts(credential)) accepted.push(`credential:${material}`);
+    }
+    const controls = byokConfiguration();
+    only(controls.capabilities).capability.adapterVersion = "adapter.v1";
+    only(controls.endpointPolicies).adapterVersion = "adapter.v1";
+    only(controls.credentialReferences).policyVersion = "policy.v1";
+    only(controls.endpointPolicies).policyVersion = "policy.v1";
+    only(controls.feasibility).policyVersion = "policy.v1";
+    expect({ accepted, controlsAccepted: accepts(controls) }).toEqual({ accepted: [], controlsAccepted: true });
+  });
+
+  it("requires canonical ISO-millisecond-Z assessment timestamps", () => {
+    const prose = byokConfiguration();
+    only(prose.feasibility).assessedAt = "July 18, 2026 12:00:00 UTC";
+    const canonical = byokConfiguration();
+    expect(() => createAgentProviderConfiguration(prose)).toThrow("invalid provider configuration");
+    expect(createAgentProviderConfiguration(canonical).feasibility).toHaveLength(1);
+  });
+
+  it("canonicalizes set-like capability arrays and rejects their duplicates", () => {
+    const reversed = byokConfiguration();
+    const canonical = byokConfiguration();
+    only(reversed.capabilities).capability.modalities = ["text", "image"];
+    only(reversed.capabilities).capability.diagnosticContract = ["requires-byte-transfer-approval", "needs-api-key"];
+    only(canonical.capabilities).capability.modalities = ["image", "text"];
+    only(canonical.capabilities).capability.diagnosticContract = ["needs-api-key", "requires-byte-transfer-approval"];
+    const duplicateModalities = byokConfiguration();
+    only(duplicateModalities.capabilities).capability.modalities = ["text", "text"];
+    const duplicateDiagnostics = byokConfiguration();
+    only(duplicateDiagnostics.capabilities).capability.diagnosticContract = ["needs-api-key", "needs-api-key"];
+    expect(createAgentProviderConfiguration(reversed)).toEqual(createAgentProviderConfiguration(canonical));
+    expect(() => createAgentProviderConfiguration(duplicateModalities)).toThrow("invalid provider configuration");
+    expect(() => createAgentProviderConfiguration(duplicateDiagnostics)).toThrow("invalid provider configuration");
+  });
+
   it("rejects standard-parser-recognized noncanonical IPv4 host spellings", () => {
     const materials = [
       "127.1",
