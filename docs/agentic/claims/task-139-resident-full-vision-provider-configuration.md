@@ -316,3 +316,16 @@ or fallback.
   current feasibility result instead of failing closed, while an unrevoked
   healthy reference remains admitted.
 - `npm run typecheck` exits `0` from the RED bytes without diagnostics.
+
+## RV-1-E-744 DNS-and-Revocation Recovery GREEN
+
+- GREEN changes only production source and this claim; the focused test is
+  byte-identical to RED `57e40c518b7ae37dd639f7f3816e784e9c23f342`.
+- The centralized DNS text boundary now classifies every alphabetic terminal
+  label without a length or TLD spelling list, while terminal digits continue
+  to preserve `policy.v1` and `adapter.v1`. Credential-reference normalization
+  now rejects any `revokedAt` before a reference can participate in current
+  feasibility binding; healthy, unrevoked references and the existing
+  expiration-at-assessment rule remain unchanged.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 21 tests**. `npm run typecheck` exits `0`.
