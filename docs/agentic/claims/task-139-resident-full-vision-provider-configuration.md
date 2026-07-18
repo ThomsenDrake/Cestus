@@ -220,3 +220,14 @@ or fallback.
 - The RED test is byte-identical in GREEN. Its exact focused command passes:
   **1 file / 15 tests**, including deep-equal snapshots with exact sorted nested
   event arrays for opposite valid producer orders.
+
+## RV-1-E-738 Compiler Recovery GREEN
+
+- Standing compile-only recovery authority: `RV-1-E-738`. The preserved causal
+  compiler RED is `4bee902eb8b08200b5e473ecf2dad9276cca4fe4`.
+- Its only compiler defect was fixture inference: `feasibilitySources` widened
+  to `string[]`, producing the two `TS2322` assignment diagnostics. This GREEN
+  changes that local fixture declaration only to `EventId[]`; it introduces no
+  cast, assertion, suppression, API change, or production modification.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 15 tests**. `npm run typecheck` exits `0`.
