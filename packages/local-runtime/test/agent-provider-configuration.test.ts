@@ -481,6 +481,35 @@ describe("agent provider configuration", () => {
     expect(accepted).toEqual([]);
   });
 
+  it("rejects payload-empty bare URI schemes across capability and credential text", () => {
+    const schemes = ["mailto:", "urn:", "data:", "file:", "http:", "https:"];
+    const accepted: string[] = [];
+
+    for (const scheme of schemes) {
+      const capability = byokConfiguration();
+      only(capability.capabilities).capability.dataHandlingNotes = scheme;
+      if (accepts(capability)) accepted.push(`capability:${scheme}`);
+
+      const credential = byokConfiguration();
+      only(credential.credentialReferences).safeLabel = scheme;
+      if (accepts(credential)) accepted.push(`credential:${scheme}`);
+    }
+
+    const controls = byokConfiguration();
+    only(controls.capabilities).capability.dataHandlingNotes = "ordinary policy.v1 prose";
+    only(controls.capabilities).capability.adapterVersion = "adapter.v1";
+    only(controls.endpointPolicies).adapterVersion = "adapter.v1";
+    only(controls.credentialReferences).policyVersion = "policy.v1";
+    only(controls.endpointPolicies).policyVersion = "policy.v1";
+    only(controls.feasibility).policyVersion = "policy.v1";
+    only(controls.feasibility).assessedAt = "2026-07-18T12:00:00.000Z";
+
+    expect({ accepted, controlsAccepted: accepts(controls) }).toEqual({
+      accepted: [],
+      controlsAccepted: true
+    });
+  });
+
   it("sorts case-distinct released provider IDs in bytewise canonical order", () => {
     const input = officialHarnessConfiguration({ providerId: "provider_openai_codex_a" });
     const upperCase = officialHarnessConfiguration({ providerId: "provider_openai_codex_A" });
