@@ -71,6 +71,28 @@ describe("Task133 strict runtime prompt renderer", () => {
     }
   });
 
+  it("fails closed when the approved V1 prompt does not match the supplied exact run or task", async () => {
+    const input = await exactBinding("RENDERER_RAW_BYTES_SENTINEL");
+    const messages = [
+      renderFailure({ ...input, exactRun: { ...input.exactRun, runId: "run_runtime_002" } }),
+      renderFailure({ ...input, exactRun: { ...input.exactRun, taskId: "task_runtime_002" } })
+    ];
+
+    expect(messages).toEqual(["prompt-binding-invalid", "prompt-binding-invalid"]);
+    expect(messages.join("\n")).not.toContain("RENDERER_RAW_BYTES_SENTINEL");
+  });
+
+  it("rejects symbols on the otherwise valid resolved context-pack array", async () => {
+    const input = await exactBinding("RENDERER_RAW_BYTES_SENTINEL");
+    const resolvedContextPacks = [...input.resolvedContextPacks];
+    Object.defineProperty(resolvedContextPacks, Symbol("forged"), { enumerable: true, value: "forged" });
+
+    const message = renderFailure({ ...input, resolvedContextPacks });
+
+    expect(message).toBe("prompt-binding-invalid");
+    expect(message).not.toContain("RENDERER_RAW_BYTES_SENTINEL");
+  });
+
   it("rejects hostile accessor, symbol, extra-key, and forged nested inputs before binding", async () => {
     const input = await exactBinding("RENDERER_RAW_BYTES_SENTINEL");
     const outerAccessor = { ...input };
