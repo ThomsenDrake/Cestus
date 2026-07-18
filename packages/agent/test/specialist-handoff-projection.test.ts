@@ -92,7 +92,8 @@ describe("specialist handoff projection", () => {
       relatedEventIds: [manifest.finalOutputEventId],
       summary: "Authority-bound specialist run reached terminal local state."
     }, eventOptions(recorded.id));
-    const status = taskStatusEvent(fixture, "completed", { causationId: terminal.id });
+    const orchestration = orchestrationCompletedEvent(fixture, manifest, prepared, recorded, terminal);
+    const status = taskStatusEvent(fixture, "completed", { causationId: orchestration.id });
     const store = new ManifestMap()
       .put(manifestHash, canonicalSpecialistHandoffJson(manifest))
       .put(fixture.materialHash, canonicalSpecialistHandoffMaterialBytes(fixture.material));
@@ -103,6 +104,7 @@ describe("specialist handoff projection", () => {
       prepared,
       recorded,
       terminal,
+      orchestration,
       status
     ], store);
 
@@ -128,6 +130,7 @@ describe("specialist handoff projection", () => {
         payload: { ...recorded.payload, authorityBinding: { ...authorityBinding, mountGeneration: "swapped_generation" } }
       } as KnowledgeEvent,
       terminal,
+      orchestration,
       status
     ], store);
     expect(swapped.state).toBe("inconsistent");
@@ -1532,6 +1535,36 @@ function failedRunEvent(
     allowedActions: ["inspect-retry"],
     relatedEventIds: [fixture.recordedEventId]
   }, eventOptions(options.causationId));
+}
+
+function orchestrationCompletedEvent(
+  fixture: Pick<HandoffFixture, "taskId" | "runId" | "runType">,
+  manifest: AuthorityBoundSpecialistHandoffManifest,
+  prepared: KnowledgeEventOf<"agent.specialist-handoff.prepared">,
+  recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">,
+  terminal: KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed">
+): KnowledgeEventOf<"agent.task.orchestration.completed"> {
+  return {
+    ...agentEvent("agent.task.orchestration.completed", "evt_task_orchestration_completed_v2", {
+      taskId: fixture.taskId ?? "task_handoff_001",
+      runType: fixture.runType,
+      attemptId: `attempt_${fixture.runId}`,
+      retryGeneration: 0,
+      runId: fixture.runId,
+      completedAt: "2026-07-10T15:03:00.000Z",
+      specialistRunCompletedEventId: terminal.id,
+      finalOutputStepEventId: manifest.finalOutputEventId,
+      handoffPreparedEventId: prepared.id,
+      handoffRecordedEventId: recorded.id,
+      handoffReadback: {
+        handoffId: manifest.handoffId,
+        handoffManifestHash: hashSpecialistHandoffManifest(manifest),
+        handoffRecordedEventId: recorded.id,
+        verifiedAt: recorded.payload.verifiedAt
+      }
+    }, eventOptions(terminal.id)),
+    streamId: `agent_task_orchestration_${fixture.taskId ?? "task_handoff_001"}_${fixture.runType}`
+  };
 }
 
 function taskStatusEvent(

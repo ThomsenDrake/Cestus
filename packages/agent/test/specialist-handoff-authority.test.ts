@@ -20,6 +20,13 @@ describe("specialist handoff authority witness", () => {
     let current = true;
     const witness = issueMountedSpecialistHandoffAuthorityWitness({
       authorityBinding: binding,
+      taskLifecycle: {
+        taskId: "task_authority_witness_001",
+        attemptId: `attempt_${"a".repeat(64)}`,
+        runId: "run_authority_witness_001",
+        runType: "evidence-triage",
+        retryGeneration: 0
+      },
       revalidateCurrent: async () => {
         if (!current) throw new Error("stale mounted authority");
       }

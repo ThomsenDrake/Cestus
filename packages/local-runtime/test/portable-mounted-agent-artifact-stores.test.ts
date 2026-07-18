@@ -39,7 +39,8 @@ const dispatch = Object.freeze({
   taskId: "task_portable_handoff",
   attemptId: "attempt_portable_handoff",
   approvedRunId: "run_portable_handoff",
-  runType: "evidence-triage"
+  runType: "evidence-triage",
+  retryGeneration: 0
 });
 
 afterEach(() => {
@@ -838,7 +839,7 @@ function orchestrationCompletedEvent(patch: Record<string, unknown> = {}): Knowl
     ...startedEvent(),
     id: "evt_orchestration_portable_handoff",
     type: "agent.task.orchestration.completed",
-    streamId: `agent_task_${dispatch.taskId}`,
+    streamId: `agent_task_orchestration_${dispatch.taskId}_${dispatch.runType}`,
     sequence: 6,
     context: eventContext({ causationId: "evt_completed_portable_handoff" }),
     payload: {

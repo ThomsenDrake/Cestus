@@ -21,11 +21,25 @@ export interface MountedSpecialistHandoffAuthorityWitness {
 
 export interface ConsumedMountedSpecialistHandoffAuthorityWitness {
   readonly binding: HandoffAuthorityBinding;
+  readonly taskLifecycle: {
+    readonly taskId: string;
+    readonly attemptId: string;
+    readonly runId: string;
+    readonly runType: string;
+    readonly retryGeneration: number;
+  };
   readonly revalidateCurrent: () => Promise<void>;
 }
 
 interface WitnessState {
   readonly binding: HandoffAuthorityBinding;
+  readonly taskLifecycle: {
+    readonly taskId: string;
+    readonly attemptId: string;
+    readonly runId: string;
+    readonly runType: string;
+    readonly retryGeneration: number;
+  };
   readonly revalidate: () => Promise<void>;
   state: "available" | "consuming" | "consumed";
 }
@@ -38,16 +52,25 @@ const witnessStates = new WeakMap<object, WitnessState>();
  */
 export function issueMountedSpecialistHandoffAuthorityWitness(input: {
   readonly authorityBinding: HandoffAuthorityBinding;
+  readonly taskLifecycle: {
+    readonly taskId: string;
+    readonly attemptId: string;
+    readonly runId: string;
+    readonly runType: string;
+    readonly retryGeneration: number;
+  };
   readonly revalidateCurrent: () => Promise<void>;
 }): MountedSpecialistHandoffAuthorityWitness {
-  const values = exactOwnDataRecord(input, ["authorityBinding", "revalidateCurrent"]);
+  const values = exactOwnDataRecord(input, ["authorityBinding", "taskLifecycle", "revalidateCurrent"]);
   if (typeof values.revalidateCurrent !== "function") throw authorityError();
   const binding = normalizeBinding(values.authorityBinding);
+  const taskLifecycle = normalizeTaskLifecycle(values.taskLifecycle);
   const witness = Object.freeze({
     schemaVersion: "agent-mounted-specialist-handoff-authority.v1" as const
   }) as MountedSpecialistHandoffAuthorityWitness;
   witnessStates.set(witness, {
     binding,
+    taskLifecycle,
     revalidate: async () => {
       try {
         await (values.revalidateCurrent as () => Promise<void>)();
@@ -74,11 +97,33 @@ export async function consumeMountedSpecialistHandoffAuthorityWitness(
     const binding = state.binding;
     return Object.freeze({
       binding,
+      taskLifecycle: state.taskLifecycle,
       revalidateCurrent: async () => await state.revalidate()
     });
   } finally {
     state.state = "consumed";
   }
+}
+
+function normalizeTaskLifecycle(value: unknown): {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly runType: string;
+  readonly retryGeneration: number;
+} {
+  const record = exactOwnDataRecord(value, ["taskId", "attemptId", "runId", "runType", "retryGeneration"]);
+  const retryGeneration = record.retryGeneration;
+  if (typeof retryGeneration !== "number" || !Number.isSafeInteger(retryGeneration) || retryGeneration < 0) {
+    throw authorityError();
+  }
+  return Object.freeze({
+    taskId: text(record.taskId),
+    attemptId: text(record.attemptId),
+    runId: text(record.runId),
+    runType: text(record.runType),
+    retryGeneration
+  });
 }
 
 function normalizeBinding(value: unknown): HandoffAuthorityBinding {

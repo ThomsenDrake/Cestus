@@ -10,6 +10,7 @@ import {
   type HandoffAuthorityBinding,
   type MountedSpecialistHandoffAuthorityWitness
 } from "../../agent/src/specialist-handoff-authority.js";
+import { taskOrchestrationStreamId } from "../../agent/src/task-orchestrator-events.js";
 import {
   createMountedSpecialistHandoffPreparationBinder,
   type MountedSpecialistHandoffPreparationBinder
@@ -24,6 +25,7 @@ export interface BindPortableMountedAgentHandoffInput {
   readonly attemptId: string;
   readonly approvedRunId: string;
   readonly runType: string;
+  readonly retryGeneration: number;
 }
 
 export interface PortableMountedAgentHandoffBinding {
@@ -124,6 +126,7 @@ interface RunBinding {
   readonly attemptId: string;
   readonly approvedRunId: string;
   readonly runType: string;
+  readonly retryGeneration: number;
   readonly authorityBinding?: HandoffAuthorityBinding;
 }
 
@@ -171,7 +174,11 @@ interface CanonicalHandoffBinding {
 
 type CursorPhase =
   | "initial"
+  | "task-created"
+  | "task-queued"
+  | "task-running"
   | "started"
+  | "started-running"
   | "final-output"
   | "handoff-prepared"
   | "handoff-recorded"
@@ -257,6 +264,13 @@ export function createPortableMountedAgentArtifactStoreProducer(
         });
         const authorityWitness = issueMountedSpecialistHandoffAuthorityWitness({
           authorityBinding: cursor.binding.authorityBinding!,
+          taskLifecycle: {
+            taskId: cursor.binding.taskId,
+            attemptId: cursor.binding.attemptId,
+            runId: cursor.binding.approvedRunId,
+            runType: cursor.binding.runType,
+            retryGeneration: cursor.binding.retryGeneration
+          },
           revalidateCurrent: async () => await inspectCursor(cursor!)
         });
         const handoffBinding = Object.freeze({
@@ -379,19 +393,18 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
     let lastRelevantEventId = cursor.lastRelevantEventId;
     const newEventIds: string[] = [];
     for (const event of events.slice(cursor.accepted.length)) {
-      const previousPhase = phase;
       const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical);
       phase = advanced.phase;
       canonical = advanced.canonical;
       lastRelevantEventId = advanced.eventId;
-      if (!(previousPhase === "initial" && advanced.phase === "started")) {
+      if (isHandoffEffectPhase(advanced.phase)) {
         newEventIds.push(advanced.eventId);
       }
     }
     cursor.phase = phase;
     cursor.canonical = canonical;
     cursor.lastRelevantEventId = lastRelevantEventId;
-    cursor.handoffEventIds.push(...newEventIds.filter((eventId) => eventId !== `evt_started_${cursor.binding.approvedRunId}`));
+    cursor.handoffEventIds.push(...newEventIds);
     cursor.accepted = encoded;
   } catch {
     cursor.burned = true;
@@ -473,12 +486,11 @@ function deriveInitialState(events: readonly NormalizedJson[], binding: RunBindi
   const handoffEventIds: string[] = [];
   for (const event of events) {
     if (!isBoundEvent(event, binding)) continue;
-    const previousPhase = phase;
     const advanced = advancePhase(phase, event, binding, lastRelevantEventId, canonical);
     phase = advanced.phase;
     canonical = advanced.canonical;
     lastRelevantEventId = advanced.eventId;
-    if (!(previousPhase === "initial" && advanced.phase === "started")) {
+    if (isHandoffEffectPhase(advanced.phase)) {
       handoffEventIds.push(advanced.eventId);
     }
   }
@@ -512,9 +524,42 @@ function advancePhase(
     throw authorityError();
   }
   const type = record.type;
-  if (type === "agent.specialist-run.started") {
+  if (type === "agent.task.created") {
     if (
       phase !== "initial"
+      || record.streamId !== `agent_task_${binding.taskId}`
+      || payload.taskId !== binding.taskId
+      || payload.residentAgentId !== "agent_default"
+    ) {
+      throw authorityError();
+    }
+    return { phase: "task-created", eventId: record.id, canonical: undefined };
+  }
+  if (
+    type === "agent.task.status.changed" &&
+    (phase === "initial" || phase === "task-created" || phase === "task-queued" || phase === "started")
+  ) {
+    if (
+      record.streamId !== `agent_task_${binding.taskId}`
+      || payload.taskId !== binding.taskId
+      || payload.changedBy !== "agent_default"
+    ) {
+      throw authorityError();
+    }
+    if (payload.status === "queued") {
+      if (phase !== "task-created" || payload.runId !== undefined) throw authorityError();
+      return { phase: "task-queued", eventId: record.id, canonical: undefined };
+    }
+    if (payload.status === "running") {
+      if (payload.runId !== binding.approvedRunId) throw authorityError();
+      if (phase === "task-queued") return { phase: "task-running", eventId: record.id, canonical: undefined };
+      if (phase === "started") return { phase: "started-running", eventId: record.id, canonical };
+    }
+    throw authorityError();
+  }
+  if (type === "agent.specialist-run.started") {
+    if (
+      (phase !== "initial" && phase !== "task-queued" && phase !== "task-running")
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.taskId !== binding.taskId
@@ -524,11 +569,15 @@ function advancePhase(
     ) {
       throw authorityError();
     }
-    return { phase: "started", eventId: record.id, canonical: undefined };
+    return {
+      phase: phase === "task-running" ? "started-running" : "started",
+      eventId: record.id,
+      canonical: undefined
+    };
   }
   if (type === "agent.specialist-run.step.recorded") {
     if (
-      phase !== "started"
+      (phase !== "started" && phase !== "started-running")
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.stepKind !== "final-output"
@@ -658,11 +707,12 @@ function advancePhase(
     const handoffReadback = normalizedOwnDataRecord(payload.handoffReadback);
     if (
       phase !== "run-terminal"
-      || record.streamId !== `agent_task_${binding.taskId}`
+      || record.streamId !== taskOrchestrationStreamId(binding.taskId, binding.runType)
       || payload.taskId !== binding.taskId
       || payload.runId !== binding.approvedRunId
       || payload.runType !== binding.runType
       || payload.attemptId !== binding.attemptId
+      || payload.retryGeneration !== binding.retryGeneration
       || payload.finalOutputStepEventId !== terminal.finalOutputEventId
       || payload.handoffPreparedEventId !== terminal.preparedEventId
       || payload.handoffRecordedEventId !== terminal.recordedEventId
@@ -699,6 +749,15 @@ function isBoundEvent(event: NormalizedJson, binding: RunBinding): boolean {
   const record = normalizedOwnDataRecord(event);
   const payload = normalizedOwnDataRecord(record.payload);
   return payload.runId === binding.approvedRunId || payload.taskId === binding.taskId;
+}
+
+function isHandoffEffectPhase(phase: CursorPhase): boolean {
+  return phase === "final-output" ||
+    phase === "handoff-prepared" ||
+    phase === "handoff-recorded" ||
+    phase === "run-terminal" ||
+    phase === "orchestration-completed" ||
+    phase === "task-status";
 }
 
 function requireCanonical(value: CanonicalHandoffBinding | undefined): CanonicalHandoffBinding {
@@ -844,7 +903,7 @@ function sameAuthorityBinding(payload: NormalizedJsonRecord, expected: HandoffAu
 
 function isExpectedPredecessor(phase: CursorPhase, kind: MountedHandoffAuthorityEffectKind): boolean {
   return (
-    (kind === "final-output" && phase === "started")
+    (kind === "final-output" && (phase === "started" || phase === "started-running"))
     || (kind === "handoff-prepared" && phase === "final-output")
     || (kind === "handoff-recorded" && phase === "handoff-prepared")
     || (kind === "run-terminal" && phase === "handoff-recorded")
@@ -871,12 +930,13 @@ function cursorFor(controller: MountedHandoffAuthorityController): CursorState {
 }
 
 function normalizeBinding(value: BindPortableMountedAgentHandoffInput): RunBinding {
-  const record = exactOwnDataRecord(value, ["taskId", "attemptId", "approvedRunId", "runType"]);
+  const record = exactOwnDataRecord(value, ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration"]);
   const taskId = requiredText(record.taskId);
   const attemptId = requiredText(record.attemptId);
   const approvedRunId = requiredText(record.approvedRunId);
   const runType = requiredText(record.runType);
-  return Object.freeze({ taskId, attemptId, approvedRunId, runType });
+  const retryGeneration = requiredNonNegativeInteger(record.retryGeneration);
+  return Object.freeze({ taskId, attemptId, approvedRunId, runType, retryGeneration });
 }
 
 function normalizeEventIds(value: readonly string[]): readonly string[] {
@@ -1152,6 +1212,11 @@ function requiredHash(value: unknown): string {
 
 function requiredPositiveInteger(value: unknown): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) throw authorityError();
+  return value;
+}
+
+function requiredNonNegativeInteger(value: unknown): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) throw authorityError();
   return value;
 }
 

@@ -29,6 +29,7 @@ type RunStartedEvent = KnowledgeEventOf<"agent.specialist-run.started">;
 type RunTerminalEvent =
   | KnowledgeEventOf<"agent.specialist-run.completed">
   | KnowledgeEventOf<"agent.specialist-run.failed">;
+type OrchestrationCompletedEvent = KnowledgeEventOf<"agent.task.orchestration.completed">;
 type TaskStatusEvent = KnowledgeEventOf<"agent.task.status.changed">;
 
 type AuthorityAwareSpecialistHandoffProjectionState = LegacySpecialistHandoffProjectionState | "legacy-unbound";
@@ -140,6 +141,7 @@ interface ProjectionContext {
   readonly prepared: readonly IndexedEvent<HandoffPreparedEvent>[];
   readonly recorded: readonly IndexedEvent<HandoffRecordedEvent>[];
   readonly terminals: readonly IndexedEvent<RunTerminalEvent>[];
+  readonly orchestrationCompletions: readonly IndexedEvent<OrchestrationCompletedEvent>[];
   readonly taskStatuses: readonly IndexedEvent<TaskStatusEvent>[];
   readonly diagnostics: SpecialistHandoffProjectionDiagnostic[];
 }
@@ -422,6 +424,7 @@ function collectContext(input: BuildSpecialistHandoffProjectionInput): Projectio
   const prepared: IndexedEvent<HandoffPreparedEvent>[] = [];
   const recorded: IndexedEvent<HandoffRecordedEvent>[] = [];
   const terminals: IndexedEvent<RunTerminalEvent>[] = [];
+  const orchestrationCompletions: IndexedEvent<OrchestrationCompletedEvent>[] = [];
   const taskStatuses: IndexedEvent<TaskStatusEvent>[] = [];
 
   input.events.forEach((event, index) => {
@@ -445,6 +448,9 @@ function collectContext(input: BuildSpecialistHandoffProjectionInput): Projectio
       case "agent.specialist-run.failed":
         terminals.push({ event, index });
         break;
+      case "agent.task.orchestration.completed":
+        orchestrationCompletions.push({ event, index });
+        break;
       case "agent.task.status.changed":
         taskStatuses.push({ event, index });
         break;
@@ -464,6 +470,7 @@ function collectContext(input: BuildSpecialistHandoffProjectionInput): Projectio
     prepared,
     recorded,
     terminals,
+    orchestrationCompletions,
     taskStatuses,
     diagnostics: []
   };
@@ -504,6 +511,7 @@ function runIdForEvent(event: KnowledgeEvent): string | undefined {
     case "agent.specialist-run.failed":
     case "agent.specialist-handoff.prepared":
     case "agent.specialist-handoff.recorded":
+    case "agent.task.orchestration.completed":
       return event.payload.runId;
     case "agent.task.status.changed":
       return event.payload.runId;
@@ -517,6 +525,7 @@ function taskIdForEvent(event: KnowledgeEvent, runIdentities: ReadonlyMap<string
     case "agent.specialist-run.started":
     case "agent.specialist-handoff.prepared":
     case "agent.specialist-handoff.recorded":
+    case "agent.task.orchestration.completed":
       return event.payload.taskId;
     case "agent.task.status.changed":
       return event.payload.taskId;
@@ -1393,7 +1402,7 @@ function completeAuthorityBoundReadback(
   ) {
     return undefined;
   }
-  const terminal = context.terminals.find((item) =>
+  const terminals = context.terminals.filter((item) =>
     item.index > record.recordedIndex &&
     item.event.payload.runId === record.handoff.runId &&
     item.event.context.causationId === record.recorded.id &&
@@ -1401,16 +1410,35 @@ function completeAuthorityBoundReadback(
     (item.event.type !== "agent.specialist-run.completed" ||
       sameStringArray(item.event.payload.outputArtifactHashes, outputArtifactHashes(record.manifest)))
   );
-  if (terminal === undefined) return undefined;
-  const expectedStatus = terminal.event.type === "agent.specialist-run.completed" ? "completed" : "failed";
-  const taskStatus = context.taskStatuses.find((item) =>
+  if (terminals.length !== 1) return undefined;
+  const terminal = terminals[0]!;
+  const orchestrationCompletions = context.orchestrationCompletions.filter((item) =>
     item.index > terminal.index &&
     item.event.payload.taskId === record.handoff.taskId &&
     item.event.payload.runId === record.handoff.runId &&
-    item.event.payload.status === expectedStatus &&
-    item.event.context.causationId === terminal.event.id
+    item.event.payload.runType === record.handoff.runType &&
+    item.event.context.causationId === terminal.event.id &&
+    item.event.payload.specialistRunCompletedEventId === terminal.event.id &&
+    item.event.payload.finalOutputStepEventId === record.manifest.finalOutputEventId &&
+    item.event.payload.handoffPreparedEventId === record.prepared.id &&
+    item.event.payload.handoffRecordedEventId === record.recorded.id &&
+    item.event.payload.handoffReadback.handoffId === record.handoff.handoffId &&
+    item.event.payload.handoffReadback.handoffManifestHash === record.manifestHash &&
+    item.event.payload.handoffReadback.handoffRecordedEventId === record.recorded.id &&
+    item.event.payload.handoffReadback.verifiedAt === record.recorded.payload.verifiedAt
   );
-  if (taskStatus === undefined) return undefined;
+  if (orchestrationCompletions.length !== 1) return undefined;
+  const orchestration = orchestrationCompletions[0]!;
+  const expectedStatus = terminal.event.type === "agent.specialist-run.completed" ? "completed" : "failed";
+  const taskStatuses = context.taskStatuses.filter((item) =>
+    item.index > orchestration.index &&
+    item.event.payload.taskId === record.handoff.taskId &&
+    item.event.payload.runId === record.handoff.runId &&
+    item.event.payload.status === expectedStatus &&
+    item.event.context.causationId === orchestration.event.id
+  );
+  if (taskStatuses.length !== 1) return undefined;
+  const taskStatus = taskStatuses[0]!;
   return Object.freeze({
     outcome: "verified",
     handoffId: record.handoff.handoffId,
@@ -1454,24 +1482,51 @@ function hasCompletedTaskChain(context: ProjectionContext, record: VerifiedHando
     return false;
   }
 
-  const terminal = context.terminals.find((item) =>
+  const terminals = context.terminals.filter((item) =>
     item.index > record.recordedIndex &&
     item.event.type === "agent.specialist-run.completed" &&
     item.event.payload.runId === record.handoff.runId &&
     item.event.context.causationId === record.recorded.id &&
     sameStringArray(item.event.payload.outputArtifactHashes, outputArtifactHashes(record.manifest))
   );
-  if (terminal === undefined) {
+  if (terminals.length !== 1) {
     return false;
   }
+  const terminal = terminals[0]!;
+  if (record.manifest.schemaVersion !== specialistHandoffManifestV2SchemaVersion) {
+    return context.taskStatuses.some((item) =>
+      item.index > terminal.index &&
+      item.event.payload.taskId === record.handoff.taskId &&
+      item.event.payload.runId === record.handoff.runId &&
+      item.event.payload.status === "completed" &&
+      item.event.context.causationId === terminal.event.id
+    );
+  }
 
-  return context.taskStatuses.some((item) =>
+  const orchestrationCompletions = context.orchestrationCompletions.filter((item) =>
     item.index > terminal.index &&
     item.event.payload.taskId === record.handoff.taskId &&
     item.event.payload.runId === record.handoff.runId &&
-    item.event.payload.status === "completed" &&
-    item.event.context.causationId === terminal.event.id
+    item.event.payload.runType === record.handoff.runType &&
+    item.event.context.causationId === terminal.event.id &&
+    item.event.payload.specialistRunCompletedEventId === terminal.event.id &&
+    item.event.payload.finalOutputStepEventId === record.manifest.finalOutputEventId &&
+    item.event.payload.handoffPreparedEventId === record.prepared.id &&
+    item.event.payload.handoffRecordedEventId === record.recorded.id &&
+    item.event.payload.handoffReadback.handoffId === record.handoff.handoffId &&
+    item.event.payload.handoffReadback.handoffManifestHash === record.manifestHash &&
+    item.event.payload.handoffReadback.handoffRecordedEventId === record.recorded.id &&
+    item.event.payload.handoffReadback.verifiedAt === record.recorded.payload.verifiedAt
   );
+  if (orchestrationCompletions.length !== 1) return false;
+  const orchestration = orchestrationCompletions[0]!;
+  return context.taskStatuses.filter((item) =>
+    item.index > orchestration.index &&
+    item.event.payload.taskId === record.handoff.taskId &&
+    item.event.payload.runId === record.handoff.runId &&
+    item.event.payload.status === "completed" &&
+    item.event.context.causationId === orchestration.event.id
+  ).length === 1;
 }
 
 function sameCompletionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHandoffRecord): boolean {
