@@ -329,3 +329,23 @@ or fallback.
   expiration-at-assessment rule remain unchanged.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passes: **1 file / 21 tests**. `npm run typecheck` exits `0`.
+
+## RV-1-E-745 Delimiter-and-Authorization Recovery RED
+
+- Standing recovery authority: `RV-1-E-745`. The preserved clean candidate is
+  `4b1a7c8e95e500b61e621fa2dec5b9c1dc67de94`; this RED changes only the
+  focused test and this claim. The production source blob remains
+  `6804e113d1d68ed7873f2d55b1c0e7dbf47f03e5`, byte-identical to that
+  candidate.
+- The focused RED command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exits `1`
+  with **1 failed file / 2 failed and 21 passed tests (23)**. Its named
+  capability/free-text and credential-safe-label matrix admits
+  `reference_127.1_suffix` and `reference-0x7f000001` at both boundaries;
+  the same matrix retains canonical, port-style, `1.2`, exact ISO timestamp,
+  `policy.v1`, and `adapter.v1` rejection/positive controls. The second
+  named test proves a healthy, unexpired, unrevoked credential authorized
+  after feasibility assessment is incorrectly admitted, while equality,
+  earlier authorization, expiry-boundary, and prior-revocation controls remain
+  covered.
+- `npm run typecheck` exits `0` from the RED bytes without diagnostics.

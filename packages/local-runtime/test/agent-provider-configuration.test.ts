@@ -28,6 +28,7 @@ interface RawCredentialReference {
   safeLabel: string;
   authorizedBy: string;
   authorizedAt: string;
+  expiresAt?: string;
   revokedAt?: string;
   status: "healthy";
   policyVersion: string;
@@ -479,6 +480,74 @@ describe("agent provider configuration", () => {
 
     expect(() => createAgentProviderConfiguration(revoked)).toThrow("invalid provider configuration");
     expect(createAgentProviderConfiguration(healthy).feasibility).toHaveLength(1);
+  });
+
+  it("rejects embedded canonical and noncanonical IPv4 material without delimiter escapes", () => {
+    const materials = [
+      "reference_127.1_suffix",
+      "reference-0x7f000001",
+      "127.1:8080",
+      "reference_127.0.0.1_suffix",
+      "reference-127.0.0.1",
+      "127.0.0.1:8080",
+      "1.2"
+    ];
+    const accepted: string[] = [];
+
+    for (const material of materials) {
+      const capability = byokConfiguration();
+      only(capability.capabilities).capability.dataHandlingNotes = material;
+      if (accepts(capability)) accepted.push(`capability:${material}`);
+
+      const credential = byokConfiguration();
+      only(credential.credentialReferences).safeLabel = material;
+      if (accepts(credential)) accepted.push(`credential:${material}`);
+    }
+
+    const controls = byokConfiguration();
+    only(controls.capabilities).capability.dataHandlingNotes = "ordinary policy.v1 prose";
+    only(controls.capabilities).capability.adapterVersion = "adapter.v1";
+    only(controls.endpointPolicies).adapterVersion = "adapter.v1";
+    only(controls.credentialReferences).policyVersion = "policy.v1";
+    only(controls.endpointPolicies).policyVersion = "policy.v1";
+    only(controls.feasibility).policyVersion = "policy.v1";
+    only(controls.feasibility).assessedAt = "2026-07-18T12:00:00.000Z";
+
+    expect({ accepted, controlsAccepted: accepts(controls) }).toEqual({
+      accepted: [],
+      controlsAccepted: true
+    });
+  });
+
+  it("requires credentials to be authorized at the current feasibility assessment", () => {
+    const authorizedAfterAssessment = byokConfiguration();
+    only(authorizedAfterAssessment.credentialReferences).authorizedAt = "2026-07-18T12:00:00.001Z";
+
+    const authorizedAtAssessment = byokConfiguration();
+
+    const authorizedBeforeAssessment = byokConfiguration();
+    only(authorizedBeforeAssessment.credentialReferences).authorizedAt = "2026-07-18T11:59:59.999Z";
+
+    const unexpired = byokConfiguration();
+    only(unexpired.credentialReferences).expiresAt = "2026-07-18T12:00:00.001Z";
+
+    const expiresAtAssessment = byokConfiguration();
+    only(expiresAtAssessment.credentialReferences).expiresAt = "2026-07-18T12:00:00.000Z";
+
+    const revoked = byokConfiguration();
+    only(revoked.credentialReferences).revokedAt = "2026-07-17T12:00:00.000Z";
+
+    const rejected: string[] = [];
+    if (accepts(authorizedAfterAssessment)) rejected.push("authorized-after-assessment");
+    if (accepts(expiresAtAssessment)) rejected.push("expires-at-assessment");
+    if (accepts(revoked)) rejected.push("revoked");
+
+    const admitted: string[] = [];
+    if (!accepts(authorizedAtAssessment)) admitted.push("authorized-at-assessment");
+    if (!accepts(authorizedBeforeAssessment)) admitted.push("authorized-before-assessment");
+    if (!accepts(unexpired)) admitted.push("unexpired");
+
+    expect({ rejected, admitted }).toEqual({ rejected: [], admitted: [] });
   });
 
   it("rejects standard-parser-recognized noncanonical IPv4 host spellings", () => {
