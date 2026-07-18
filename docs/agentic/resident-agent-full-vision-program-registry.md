@@ -19431,3 +19431,97 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status moves `candidate -> reviewing-final`. Strict record count remains 14;
   P2/style/hypothetical/unreproduced concerns go to backlog and `neo` remains
   untouched.
+
+## RV-1-E-716 — Task126-R released as strict record 15
+
+- Recorded at: 2026-07-18T12:43:22Z
+- The sole post-record-14 final pair both returned **APPROVED** on exact
+  forwarded candidate `16e8ceb05ff60ced327fc0c03d25d09f5a9d7fc8`:
+  architecture/invariants task `019f752e-2887-7eb3-a906-16fa80b30580` and
+  executability/adversarial task `019f752e-288d-7340-9e8b-c91d58c3f1fb`.
+  Neither reproduced a P0/P1 or reported a P2 backlog item. They confirmed the
+  safe public barrel, RV-1-C-134 trusted injection seam, binding-aware ambient
+  and `createRequire` families, computed/indirect/destructured loader coverage,
+  fail-closed unresolved standard targets, and allowed shadowed/custom
+  controls.
+- The coordinator integrated the complete preserved seven-commit Task126-R
+  history without rewrite as merge
+  `4877d7b2900a416cd417b73fc13a55b2e6b845d0`, whose parents are review registry
+  checkpoint `e2a761eb8084059eee561301d1c1dde1189234b3` and approved forwarded
+  candidate `16e8ceb05ff60ced327fc0c03d25d09f5a9d7fc8`.
+- Integrated-byte admission reproduces focused **2 files / 18 tests**,
+  cross-boundary **4 files / 46 tests**, standalone typecheck, factory
+  readiness, V4 contract mode, diff hygiene, exact three-path task diff, clean
+  state, and real dependency/Vitest provenance. Integrated full `npm test` and
+  `npm run verify` retain the exact inherited **12 failing / 213 passing / 3
+  skipped files** and **69 failing / 2717 passing / 5 skipped tests**;
+  `npm run verify` passes typecheck and exits only at that unchanged
+  intermediate cohort.
+- The strict record below transfers current ownership of its five declared
+  paths to Task126-R while preserving the exact historical Task126 and
+  Task135D release evidence. Status advances `reviewing-final -> approved ->
+  integrated -> released`; strict prefix becomes 15 and `neo` remains
+  untouched.
+
+## Task136 dispatch release v4: Task126-R
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task126-R",
+  "candidateSha": "16e8ceb05ff60ced327fc0c03d25d09f5a9d7fc8",
+  "reviews": [
+    {
+      "threadId": "019f752e-2887-7eb3-a906-16fa80b30580",
+      "candidateSha": "16e8ceb05ff60ced327fc0c03d25d09f5a9d7fc8",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f752e-288d-7340-9e8b-c91d58c3f1fb",
+      "candidateSha": "16e8ceb05ff60ced327fc0c03d25d09f5a9d7fc8",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "4877d7b2900a416cd417b73fc13a55b2e6b845d0",
+  "releaseEventId": "task136-release-v4-Task126-R",
+  "prerequisites": [
+    {
+      "cardId": "Task126",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-Task126"
+    },
+    {
+      "cardId": "Task135D",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task135D"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/byok-provider.ts",
+      "disposition": "owned",
+      "blobSha": "947af4d4a3c62fe5a1f274d0a1b682e77918f53d"
+    },
+    {
+      "path": "packages/agent/src/index.ts",
+      "disposition": "owned",
+      "blobSha": "69f60a5bb231a9041cd6dfea29203302293edeb8"
+    },
+    {
+      "path": "packages/agent/test/byok-provider.test.ts",
+      "disposition": "owned",
+      "blobSha": "29d0582fa9f99a51fb62b67a7076ef80360bf7a1"
+    },
+    {
+      "path": "packages/agent/test/byok-provider-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "43ed09357534a1311c1a417e79875b62f2f74a1d"
+    },
+    {
+      "path": "docs/agentic/claims/task-126-resident-full-vision-w1-byok-provider.md",
+      "disposition": "owned",
+      "blobSha": "9f310f7f90aa77e3a58b31fda2442cff3c8b268a"
+    }
+  ]
+}
+```
