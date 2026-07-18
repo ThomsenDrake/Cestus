@@ -20559,3 +20559,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   host tokens and may block only on an exact reproduced P0/P1.
 - No integration or release record occurs. Strict prefix remains 16; later
   candidates and `neo` remain untouched.
+
+## RV-1-E-747 — Task139-P1 complete-host and nested-canonicalization root cause
+
+- Recorded at: 2026-07-18T23:25:12Z
+- Architecture/invariants task `019f7782-5210-7cc0-b589-191f385b4a1a`
+  returned **NEEDS-CHANGES** after exact `b8c7469d` accepted `api.a1`,
+  `api.3com`, `service.123`, `x.y9`, and Unicode `api.例子`, and after reversing
+  accepted `modalities` and `diagnosticContract` arrays produced byte-different
+  immutable snapshots. These violate the all-DNS and deterministic nested-
+  output invariants.
+- Executability/adversarial task `019f7782-52fb-7080-8bdb-f2344b67a87b`
+  returned **NEEDS-CHANGES** after exact runtime accepted short numeric/port
+  WHATWG hosts `0`, `1`, `01`, `127`, `1:80`, and `127:443`, Unicode and
+  alphanumeric DNS material across multiple text leaves, and noncanonical
+  assessment timestamp `July 18, 2026 12:00:00 UTC`. Focused **23/23**,
+  cross-boundary **32/32**, typecheck, factory, V4, and the inherited full
+  differential otherwise remained exact; authorization, expiry, and revocation
+  temporal boundaries behaved correctly.
+- Coordinator accepts all four P1 categories. The DNS terminal-regex tactic has
+  now failed twice, so standing recovery changes tactic: use Unicode-aware
+  structural DNS-host token classification with a narrow released version-
+  shape exception, never a TLD list. Short whole numeric hosts and optional
+  ports must use local standards parsing independent of decimal length.
+  `assessedAt` must use one canonical ISO form, and accepted set-like nested
+  capability arrays must reject duplicates and snapshot in deterministic order.
+- Standing recovery resumes the same owner and complete history for one causal
+  RED and one minimal GREEN inside the exact three Task139-P1 paths.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. RED must pin every exact reproduction and
+  released positive controls; GREEN must preserve family/OAuth/scope,
+  temporal currentness, exact provenance, hostile-shape/secret-safety,
+  immutability, Task139-PM ownership, and no-effect behavior.
+- All admission gates and one fresh concurrent Terra/xhigh read-only review pair
+  remain mandatory after code. Strict prefix remains 16; no integration,
+  release record, provider/network/credential action, push, or `neo` action
+  occurs.
