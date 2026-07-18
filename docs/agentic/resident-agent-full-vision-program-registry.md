@@ -20156,3 +20156,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   renamed attempt or evidence reset. No history, provider, network,
   credential, external service, release record, integration, push, or `neo`
   action occurs. Strict prefix remains 16 and Task139-P1 remains implementing.
+
+## RV-1-E-734 — Task139-P1 family-boundary test tactic corrected
+
+- Recorded at: 2026-07-18T20:34:13Z
+- The owner preserved corrected causal RED
+  `88201283e9728543ced7c67308bc1643f3202431`, whose committed production blob
+  remains byte-identical to `d3abf612`. Detached committed-byte execution
+  reproduces focused **1 file / 5 failed / 9 passed** and green typecheck.
+  Thirteen tests pass against the retained unstaged source repair; the sole
+  remaining failure is another invalid manual negative fixture.
+- `provider_xai_grokish` is not a lookalike outside the released family. It
+  satisfies the exact `provider_xai_` prefix with a nonempty valid suffix and
+  therefore must be accepted. Rejecting it would narrow the released Task130
+  interface. The failed assumption is test-only and contract-determined.
+- Because two manual fixture corrections have failed under the same tactic,
+  standing recovery authority now requires a changed tactic. The next
+  corrected RED must replace ad hoc lookalike naming with an explicit anchored
+  family-boundary table: valid arbitrary nonempty suffixes are positive cases;
+  empty suffixes, missing required delimiters, and near-miss family prefixes
+  are negative cases. Both flawed RED commits remain preserved, and the
+  unstaged source repair remains intact until the corrected committed RED is
+  causally reproduced.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The cycle remains within the exact three
+  Task139-P1 paths, changes no product or safety invariant, creates no effect or
+  authority, and leaves strict prefix 16 and `neo` untouched.
