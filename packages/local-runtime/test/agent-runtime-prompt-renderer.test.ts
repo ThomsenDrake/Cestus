@@ -11,6 +11,7 @@ import {
   renderProductionSpecialistPrompt,
   type BindApprovedProductionSpecialistPromptV2Input
 } from "../../agent/src/production-specialist-prompts.js";
+import { specialistWorkflowDescriptorFor } from "../../agent/src/specialist-workflows.js";
 import { renderExactlyBoundProductionSpecialistPrompt } from "../src/agent-runtime-prompt-renderer.js";
 
 const hash = "sha256:1111111111111111111111111111111111111111111111111111111111";
@@ -42,8 +43,8 @@ describe("Task133 strict runtime prompt renderer", () => {
       },
       resolvedPayloadAudits: input.approvedPromptArtifact.manifest.production?.resolvedPayloadAudits
     });
-    expect(rendered).toBeFrozen();
-    expect(rendered.manifest).toBeFrozen();
+    expect(Object.isFrozen(rendered)).toBe(true);
+    expect(Object.isFrozen(rendered.manifest)).toBe(true);
     expect(JSON.stringify(rendered.manifest)).not.toContain(rendered.text);
   });
 
@@ -69,7 +70,54 @@ describe("Task133 strict runtime prompt renderer", () => {
       expect(message).not.toContain("RENDERER_RAW_BYTES_SENTINEL");
     }
   });
+
+  it("rejects hostile accessor, symbol, extra-key, and forged nested inputs before binding", async () => {
+    const input = await exactBinding("RENDERER_RAW_BYTES_SENTINEL");
+    const outerAccessor = { ...input };
+    Object.defineProperty(outerAccessor, "approvedPromptArtifact", {
+      enumerable: true,
+      get: () => input.approvedPromptArtifact
+    });
+    const outerSymbol = { ...input };
+    Object.defineProperty(outerSymbol, Symbol("forged"), { enumerable: true, value: "forged" });
+    const exactRunAccessor = { ...input, exactRun: { ...input.exactRun } };
+    Object.defineProperty(exactRunAccessor.exactRun, "taskId", {
+      enumerable: true,
+      get: () => input.exactRun.taskId
+    });
+    const postureAccessor = { ...input, exactRun: { ...input.exactRun, providerPosture: { ...input.exactRun.providerPosture } } };
+    Object.defineProperty(postureAccessor.exactRun.providerPosture, "providerId", {
+      enumerable: true,
+      get: () => input.exactRun.providerPosture.providerId
+    });
+    const forgedContext = { ...input, resolvedContextPacks: [{ ...input.resolvedContextPacks[0]! }] };
+    const invalids: readonly unknown[] = [
+      outerAccessor,
+      outerSymbol,
+      { ...input, unexpected: "forged" },
+      exactRunAccessor,
+      { ...input, exactRun: { ...input.exactRun, unexpected: "forged" } },
+      postureAccessor,
+      { ...input, exactRun: { ...input.exactRun, providerPosture: { ...input.exactRun.providerPosture, unexpected: "forged" } } },
+      forgedContext
+    ];
+
+    for (const invalid of invalids) {
+      const message = renderFailure(invalid);
+      expect(message).toBe("prompt-binding-invalid");
+      expect(message).not.toContain("RENDERER_RAW_BYTES_SENTINEL");
+    }
+  });
 });
+
+function renderFailure(input: unknown): string {
+  try {
+    Reflect.apply(renderExactlyBoundProductionSpecialistPrompt, undefined, [input]);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  return "rendered";
+}
 
 async function exactBinding(evidenceNarrative = "Verified evidence is ready for review."): Promise<BindApprovedProductionSpecialistPromptV2Input> {
   const registry = rendererRegistry(evidenceNarrative);
@@ -97,7 +145,7 @@ async function exactBinding(evidenceNarrative = "Verified evidence is ready for 
       residentAgentId: "agent_default",
       workspaceId: "workspace_runtime_001",
       mountInstanceId: "mount_runtime_001",
-      workflowDescriptor: productionSpecialistPromptRegistrationFor("evidence-triage") as never,
+      workflowDescriptor: specialistWorkflowDescriptorFor("evidence-triage"),
       policyVersion: "policy_runtime_001",
       providerPosture: {
         providerId: "provider_runtime_001",
@@ -114,11 +162,11 @@ async function exactBinding(evidenceNarrative = "Verified evidence is ready for 
 function rendererRegistry(evidenceNarrative: string): ContextPackRegistry {
   const registry = createContextPackRegistry();
   const payloads: Readonly<Record<string, AgentContextPackJsonValue>> = {
-    "accepted-graph-projection.v1": { items: { assertions: [], entities: [], relationships: [] } },
+    "accepted-graph-projection.v1": { items: { assertions: [{ assertionId: "assertion_runtime_001", evidenceId: "ev_runtime_001", evidenceContentHash: hash, proposedByEventId: "evt_runtime_001", acceptedByEventId: "evt_runtime_002", sourceEventIds: ["evt_runtime_001"], rowHash: hash, safeStatement: "Verified runtime assertion." }], entities: [], relationships: [] } },
     "evidence-summary.v1": { items: [{ evidenceId: "ev_runtime_001", ingestionEventId: "evt_runtime_001", contentHash: hash, occurrenceIds: [], parseJobs: [], governanceTags: [], safeNarrative: evidenceNarrative }] },
-    "governance-locks.v1": { items: { activeLocks: [], governanceRestrictions: [] } },
-    "agent-memory-summary.v1": { memory: { activeMemory: [], aggregateCounts: {}, sourceEventIds: ["evt_runtime_001"], artifactHashes: [] } },
-    "task-run-history.v1": { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection", tasks: [], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: {}, sourceEventIds: ["evt_runtime_001"], artifactHashes: [], window: { order: "created-at", limit: 1, hasMore: false, totalCount: 0, omissionCodes: [] } } },
+    "governance-locks.v1": { items: { activeLocks: [{ lockId: "lock_runtime_001", lockKind: "review", safeReason: "Review required.", activatedBy: "agent_default", activatedAt: "2026-07-18T12:00:00.000Z", relatedEventIds: ["evt_runtime_001"], projectionEventIds: ["evt_runtime_001"] }], governanceRestrictions: [] } },
+    "agent-memory-summary.v1": { memory: { activeMemory: ["Verified runtime memory."], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_runtime_001"], artifactHashes: [] } },
+    "task-run-history.v1": { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection", tasks: [{ taskId: "task_runtime_001", status: "queued", statusReasonCode: "Awaiting review." }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: ["evt_runtime_001"], artifactHashes: [], window: { order: "created-at", limit: 1, hasMore: false, totalCount: 1, omissionCodes: [] } } },
     "workspace-runtime-status.v1": { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "local", bindPosture: "bound", authPosture: "none", providerStates: [], diagnostics: [], projectionHighWaterMarks: {}, omissionCodes: [] } }
   };
   for (const [contextPackId, payload] of Object.entries(payloads)) {
@@ -152,6 +200,7 @@ function rendererRegistry(evidenceNarrative: string): ContextPackRegistry {
 async function resolvedPacks(registry: ContextPackRegistry): Promise<readonly VerifiedResolvedContextPack[]> {
   return await Promise.all(
     productionSpecialistPromptRegistrationFor("evidence-triage").contextRequirements
+      .filter((requirement) => requirement.requirementMode === "always")
       .map(async (requirement) => await registry.buildResolved(requirement.contextPackId))
   );
 }
