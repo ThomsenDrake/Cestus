@@ -18900,3 +18900,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   position 22, it must receive the integrated record-21 program base and rerun
   all gates before its sole final Terra/xhigh review pair. Reviewing these bytes
   now would create a stale verdict. Strict record count remains 13.
+
+## RV-1-E-705 — Corrected CF1-HR candidate enters its review pair
+
+- Recorded at: 2026-07-18T00:01:52Z
+- The preserved CF1-HR lane advanced from reviewed-base merge
+  `0255ac2f8927851fb28220ac05a9b5acddfdcab3` through causal RED
+  `005dead01f2204d46346f1efde12c944c2015506` and initial GREEN
+  `3e2c586c5b90fb6b2d5945cd7ed4acfd7d7164b5`. Coordinator admission then
+  reproduced six exact CF1-owned TypeScript errors before any review was
+  dispatched. The same owner preserved all history and appended forward
+  type-safety correction `06b8d6a1b50b208721cd6af4039f36a5e2ce5e7a`;
+  no review-repair allowance was consumed.
+- Exact candidate scope is the corrected fourteen-path CF1-HR boundary.
+  Coordinator admission from committed bytes passes **7 files / 276 tests**
+  focused, **11 files / 309 tests** cross-boundary, typecheck, diff hygiene,
+  factory readiness, dependency/Vitest provenance, exact scope, and clean
+  tracked/untracked state. Full verification preserves the inherited
+  **12-file / 69-test** failure cardinality while increasing passing totals to
+  212 files / 2704 tests; no CF1-focused failure appears.
+- The single fresh concurrent read-only review pair is architecture/invariants
+  task `019f7286-243e-7480-a0ea-bd010118cc17` in worktree
+  `/home/drake/.codex/worktrees/47b0/Cestus` and
+  executability/adversarial task `019f7286-2435-70b3-97de-0a4084dd9342`
+  in worktree `/home/drake/.codex/worktrees/0b66/Cestus`. Both are bound to
+  exact candidate `06b8d6a1`, `gpt-5.6-terra`, and `xhigh` reasoning.
+- Reviews are read-only; SDD/TDD is not relevant or authorized. Only an exact
+  reproduced P0/P1 may block. Status moves `implementing -> candidate ->
+  reviewing`; strict record count remains 13 and `neo` remains untouched.
