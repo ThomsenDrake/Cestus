@@ -19149,3 +19149,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   predecessor-bound; no other release-order card is independently eligible.
   Strict record count remains 13. V1-V3, raw records 1-13, all 29 card IDs and
   order, all evidence history, and `neo` remain untouched.
+
+## RV-1-E-712 — Human authorizes one post-E711 CF1-HR compile-closure packet
+
+- Recorded at: 2026-07-18T11:25:16Z
+- The human explicitly overrides the exhausted CF1-HR human-exception ceiling
+  exactly once to close only the five independently reproduced
+  `AgentSpecialistRunType` compiler errors on exact candidate
+  `9799beead86a3b14544549516087c2af6a5f6d54`. The same implementation owner
+  task `019f7183-e8db-77f2-ac2f-1aabeaae543d`, branch
+  `codex/cf1-handoff-readback`, worktree
+  `/home/drake/.codex/worktrees/00c5/Cestus`, and complete preserved history
+  must resume. No replacement owner, recovery generation, bridge card, V5
+  contract, compatibility lane, or renamed repair cycle is authorized.
+- Before implementation, current program head must be forward-merged into the
+  CF1 branch after this registry event commits. That registry-only merge
+  preserves both histories and consumes neither packet commit. Reset, rebase,
+  amend, squash, drop, reorder, history rewrite, or cherry-picking over the
+  preserved branch is forbidden.
+- The packet owns exactly seven paths: the specialist-handoff authority
+  source/test, specialist-runner kernel source/test, portable mounted agent
+  artifact-store source/test, and the existing CF1-HR claim. It consists of
+  exactly one claim/test-only causal RED followed by one minimal GREEN. No
+  production edit may precede the RED, and no automatic CF1 code/test repair
+  is permitted after the GREEN and final pair.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The correction must preserve the
+  canonical `AgentSpecialistRunType` member set byte-identically, carry the
+  closed union through portable bind/normalization, mounted witness lifecycle,
+  consumed lifecycle, and runner lifecycle, and runtime-reject unsupported
+  strings before witness issuance or lifecycle use. Casts, double assertions,
+  `any`, `unknown` laundering, non-null assertions, and orchestration/event API
+  widening are forbidden.
+- The already approved safety semantics remain frozen: exact queued/running
+  pre-start history stays accepted while stale/conflicting/cross-run history
+  rejects; lifecycle order remains run terminal ->
+  `agent.task.orchestration.completed` -> task status; rejected V2 authority
+  cannot be terminalized or projected through raw helpers; and V1 remains
+  legacy-unbound and cannot complete or upgrade V2.
+- Admission requires the exact focused/cross-boundary deltas, standalone
+  typecheck exit 0, inherited full-test and `npm run verify` differential,
+  unchanged 12-file/69-test failure set, diff hygiene, factory readiness, V4
+  contract mode, exact 13-record repository prefix and incomplete-29 boundary,
+  seven-path repair scope, fourteen-path cumulative scope, clean state, and
+  dependency/Vitest provenance. The inherited full-suite cohort remains
+  intermediate differential evidence and must not be misreported as a green
+  `npm run verify`.
+- Only after all admission gates pass may one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair review the exact candidate.
+  Dual approval permits immediate full-history integration and strict record
+  14; any reproduced P0/P1 durably blocks CF1-HR with no further automatic
+  repair. Status moves `blocked -> authorized-compile-closure`. Strict record
+  count remains 13. V1-V3, raw records 1-13, all 29 card IDs/order, finite
+  direct-source transfers, released-source current-HEAD ownership, all prior
+  evidence history, and `neo` remain untouched.
