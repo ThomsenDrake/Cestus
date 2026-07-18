@@ -20365,3 +20365,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   change.
 - Strict prefix remains 16. No integration, release record, push, or `neo`
   action occurs; preserved later candidates remain held for ordered bases.
+
+## RV-1-E-741 — Task139-P1 standards-host candidate admitted to fresh review
+
+- Recorded at: 2026-07-18T22:03:22Z
+- The same owner preserved causal RED
+  `7ec6807d2be94e500253030a818f1406785e58dc` and minimal GREEN candidate
+  `294929b2d60fb226ed947bbdf068d9b4add803dc`. RED changes only the test and
+  claim and reproduces the noncanonical IPv4, embedded opaque-URI, and
+  locale-order failures from unchanged production. GREEN keeps that test
+  byte-identical and changes only production plus claim.
+- GREEN uses local standard URL host canonicalization over bounded host-like
+  tokens, permits `_` to delimit an embedded scheme, and routes all top-level
+  output ordering through the existing bytewise comparator. It performs no DNS
+  lookup, socket, provider/credential action, locale lookup, write, fallback,
+  authority mint, or external effect.
+- Owner and independent coordinator admission from exact committed bytes pass
+  focused **1 file / 18 tests**, cross-boundary **2 files / 27 tests**,
+  standalone typecheck, diff hygiene, factory readiness, all four V4 markers,
+  exact three-path cumulative scope, clean tracked/untracked state, and real
+  non-symlinked dependencies with executable Vitest 4.1.9. Repository mode
+  executes `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before only
+  `repository release closure incomplete: expected 29 records, found 16`.
+- Full `npm test` and `npm run verify` retain exactly the inherited **12
+  failing files / 69 failing tests / 5 skips**, identical failure/skip
+  identities, and **2,740 passes**, exactly eighteen above record 16.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  authorized on exact `294929b2`; SDD/TDD is not relevant or authorized for
+  reviewers. Any block requires a reproduced P0/P1 on these exact bytes, and
+  standing recovery authority governs any contract-determined correction.
+- No candidate byte is integrated and no release record is appended. Strict
+  prefix remains 16; later candidates and `neo` remain untouched.
