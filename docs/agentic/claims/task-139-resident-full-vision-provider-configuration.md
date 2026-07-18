@@ -202,3 +202,21 @@ or fallback.
   snapshots must deep-equal and retain exact sorted nested producer arrays. It
   changes only this claim and the focused test; production remains byte-for-byte
   identical to the preserved candidate until the causal proof is committed.
+
+## RV-1-E-737 Deterministic-Provenance Recovery GREEN
+
+- The causal RED focused command exited `1` with **1 failed file / 1 failed
+  and 14 passed tests (15)**. Both canonical official inputs were accepted, but
+  the deep-equality diff isolated only credential-reference, endpoint-policy,
+  and official-evidence producer event-array order. Its production blob was
+  `18250b71faed9fb13bd718046e031182e1d6c706`, exact to `f614549d`; `npm run
+  typecheck` exited `0`.
+- GREEN sorts credential-reference event IDs before
+  `createCredentialReference`, and the shared event-ID freezer sorts endpoint,
+  feasibility, and official-evidence arrays before immutable output. Duplicate
+  rejection, exact sorted provenance-aggregate comparison, secret safety,
+  hostile-shape validation, family/scope/text/IP boundaries, and data-only
+  behavior remain unchanged.
+- The RED test is byte-identical in GREEN. Its exact focused command passes:
+  **1 file / 15 tests**, including deep-equal snapshots with exact sorted nested
+  event arrays for opposite valid producer orders.
