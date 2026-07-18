@@ -1,5 +1,7 @@
 import {
   createCredentialReference,
+  credentialKindSchema,
+  credentialReferenceSchema,
   type CredentialReference,
   type CredentialKind
 } from "../../agent/src/credential-reference.js";
@@ -9,7 +11,7 @@ import {
 } from "../../agent/src/provider-registry.js";
 import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
 
-const configurationVersion = "agent-provider-configuration.v1" as const;
+const configurationVersion = "agent-provider-configuration.v1";
 const hashPattern = /^sha256:[a-f0-9]{64}$/;
 const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const capabilityIdPattern = /^provider_[a-zA-Z0-9_-]+$/;
@@ -17,7 +19,7 @@ const credentialRefIdPattern = /^agent_credref_[a-zA-Z0-9_-]+$/;
 const endpointPolicyIdPattern = /^endpoint_policy_[a-zA-Z0-9_-]+$/;
 const feasibilityIdPattern = /^provider_feasibility_[a-zA-Z0-9_-]+$/;
 const evidenceIdPattern = /^evidence_[a-zA-Z0-9_-]+$/;
-const urlOrHostPattern = /(?:https?:\/\/|\b(?:localhost|(?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|ai|app|co|uk|invalid))\b)/i;
+const urlOrHostPattern = /(?:\b(?:wss?|https?|ftp):\/\/|\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:localhost|(?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|ai|app|co|uk|invalid))\b)/i;
 
 export type ProviderConfigurationLane = "byok" | "local-engine" | "official-harness";
 
@@ -129,7 +131,12 @@ function normalizeCapabilities(value: unknown): readonly CanonicalProviderCapabi
   return records.map((value) => {
     if (!isRecord(value) || !hasExactKeys(value, capabilityKeys)) throw invalidConfiguration();
     const capability = createProviderCapabilityDescriptor(value.capability);
-    if (capability.fakeSupport || !seen.add(capability.providerId)) throw invalidConfiguration();
+    if (
+      capability.fakeSupport || capability.modelFamilies.length !== 1 ||
+      hasNetworkMaterial(capability) || !seen.add(capability.providerId)
+    ) {
+      throw invalidConfiguration();
+    }
     const capabilityHash = requireHash(value.capabilityHash);
     const capabilitySourceEventId = requireEventId(value.capabilitySourceEventId);
     const capabilityRevision = requireSafeText(value.capabilityRevision);
@@ -141,7 +148,9 @@ function normalizeCredentialReferences(value: unknown): readonly CredentialRefer
   const records = requireArray(value);
   const seen = new Set<string>();
   return records.map((value) => {
-    const reference = createCredentialReference(value);
+    const parsed = credentialReferenceSchema.safeParse(value);
+    if (!parsed.success) throw invalidConfiguration();
+    const reference = createCredentialReference(parsed.data);
     if (
       !seen.add(reference.credentialRefId) ||
       reference.status !== "healthy" ||
@@ -162,16 +171,17 @@ function normalizeEndpointPolicies(value: unknown): readonly CanonicalEndpointPo
     const endpointPolicyId = requireId(value.endpointPolicyId, endpointPolicyIdPattern);
     if (!seen.add(endpointPolicyId)) throw invalidConfiguration();
     if (value.scope !== "exact-provider-model" || value.status !== "approved") throw invalidConfiguration();
-    return Object.freeze({
+    const policy: CanonicalEndpointPolicy = {
       endpointPolicyId,
       providerId: requireId(value.providerId, capabilityIdPattern),
       modelId: requireSafeText(value.modelId),
       adapterVersion: requireSafeText(value.adapterVersion),
       policyVersion: requireSafeText(value.policyVersion),
-      scope: "exact-provider-model" as const,
-      status: "approved" as const,
+      scope: "exact-provider-model",
+      status: "approved",
       sourceEventIds: freezeEventIds(value.sourceEventIds)
-    });
+    };
+    return Object.freeze(policy);
   });
 }
 
@@ -234,10 +244,21 @@ function validateBindings(
   endpointPolicies: readonly CanonicalEndpointPolicy[],
   feasibility: readonly CurrentProviderFeasibility[]
 ): void {
+  if (
+    capabilities.length === 0 ||
+    credentialReferences.length !== capabilities.length ||
+    endpointPolicies.length !== capabilities.length ||
+    feasibility.length !== capabilities.length
+  ) {
+    throw invalidConfiguration();
+  }
   const capabilityByProvider = new Map(capabilities.map((entry) => [entry.capability.providerId, entry]));
   const referenceById = new Map(credentialReferences.map((entry) => [entry.credentialRefId, entry]));
   const policyById = new Map(endpointPolicies.map((entry) => [entry.endpointPolicyId, entry]));
   const assessedScopes = new Set<string>();
+  const boundProviders = new Set<string>();
+  const boundReferences = new Set<string>();
+  const boundPolicies = new Set<string>();
 
   for (const record of feasibility) {
     const capability = capabilityByProvider.get(record.providerId);
@@ -249,7 +270,8 @@ function validateBindings(
       capability.capabilityHash !== record.capabilityHash ||
       capability.capabilitySourceEventId !== record.capabilitySourceEventId ||
       capability.capabilityRevision !== record.capabilityRevision ||
-      !capability.capability.modelFamilies.includes(record.modelId) ||
+      capability.capability.modelFamilies.length !== 1 ||
+      capability.capability.modelFamilies[0] !== record.modelId ||
       capability.capability.adapterVersion !== policy.adapterVersion ||
       reference.providerId !== record.providerId ||
       reference.credentialKind !== record.credentialKind ||
@@ -258,14 +280,16 @@ function validateBindings(
       policy.modelId !== record.modelId ||
       policy.policyVersion !== record.policyVersion ||
       !reference.sourceEventIds.every((id) => validEventId(id)) ||
-      !isReferenceCurrentAt(reference, record.assessedAt)
+      !isReferenceCurrentAt(reference, record.assessedAt) ||
+      !boundProviders.add(record.providerId) ||
+      !boundReferences.add(record.credentialRefId) ||
+      !boundPolicies.add(record.endpointPolicyId)
     ) {
       throw invalidConfiguration();
     }
+    validateExactProvenance(record, capability, reference, policy);
     validateLane(record, capability.capability, reference);
   }
-
-  if (feasibility.length !== capabilities.length) throw invalidConfiguration();
 }
 
 function validateLane(
@@ -280,7 +304,8 @@ function validateLane(
     if (
       record.lane !== "local-engine" || record.officialEvidence !== undefined ||
       reference.credentialKind !== "local-no-secret" ||
-      capability.costPolicy !== "local-compute" || capability.approvalProfile !== "local-only"
+      capability.costPolicy !== "local-compute" || capability.approvalProfile !== "local-only" ||
+      !hasExactCredentialRequirement(capability, "local-no-secret")
     ) {
       throw invalidConfiguration();
     }
@@ -290,17 +315,68 @@ function validateLane(
   if (isOfficialHarness) {
     if (
       record.lane !== "official-harness" || record.officialEvidence === undefined ||
-      (reference.credentialKind !== "subscription-oauth" && reference.credentialKind !== "device-code-oauth") ||
-      capability.costPolicy !== "subscription-entitlement" || capability.approvalProfile !== "harness-workspace-gated"
+      !hasCanonicalOfficialHarnessIdentity(capability, reference) ||
+      capability.costPolicy !== "subscription-entitlement" || capability.approvalProfile !== "harness-workspace-gated" ||
+      capability.toolSupport !== "harness-tools" || capability.structuredOutputSupport !== "harness-mediated" ||
+      !hasExactStringList(capability.workspaceScopes, ["workspace", "user"]) ||
+      !capability.diagnosticContract.includes("needs-device-sign-in") ||
+      !hasExactCredentialRequirement(capability, reference.credentialKind)
     ) {
       throw invalidConfiguration();
     }
     return;
   }
 
-  if (record.lane !== "byok" || record.officialEvidence !== undefined || reference.credentialKind === "local-no-secret") {
+  if (
+    record.lane !== "byok" || record.officialEvidence !== undefined ||
+    capability.backendKind !== "openai-compatible-api" ||
+    reference.credentialKind !== "api-key-bearer" ||
+    capability.costPolicy !== "metered-api" || capability.approvalProfile !== "remote-byte-transfer-gated" ||
+    !capability.diagnosticContract.includes("requires-byte-transfer-approval") ||
+    !hasExactCredentialRequirement(capability, "api-key-bearer")
+  ) {
     throw invalidConfiguration();
   }
+}
+
+function validateExactProvenance(
+  record: CurrentProviderFeasibility,
+  capability: CanonicalProviderCapability,
+  reference: CredentialReference,
+  policy: CanonicalEndpointPolicy
+): void {
+  const required = [
+    capability.capabilitySourceEventId,
+    ...reference.sourceEventIds,
+    ...policy.sourceEventIds,
+    ...(record.officialEvidence?.officialSourceEventIds ?? [])
+  ];
+  if (new Set(required).size !== required.length || !hasExactStringList(record.sourceEventIds, sortStrings(required))) {
+    throw invalidConfiguration();
+  }
+}
+
+function hasCanonicalOfficialHarnessIdentity(
+  capability: ProviderCapabilityDescriptor,
+  reference: CredentialReference
+): boolean {
+  return (
+    capability.backendKind === "openai-codex-harness" &&
+    capability.providerId === "provider_openai_codex_harness" &&
+    reference.credentialKind === "subscription-oauth"
+  ) || (
+    capability.backendKind === "xai-harness" &&
+    capability.providerId === "provider_xai_harness" &&
+    reference.credentialKind === "device-code-oauth"
+  );
+}
+
+function hasExactCredentialRequirement(capability: ProviderCapabilityDescriptor, credentialKind: CredentialKind): boolean {
+  const requirement = capability.credentialRequirements[0];
+  return capability.credentialRequirements.length === 1 &&
+    requirement !== undefined &&
+    requirement.credentialKind === credentialKind &&
+    requirement.required;
 }
 
 function isReferenceCurrentAt(reference: CredentialReference, assessedAt: string): boolean {
@@ -314,21 +390,19 @@ function requireArray(value: unknown): readonly unknown[] {
 }
 
 function requireCredentialKind(value: unknown): CredentialKind {
-  const kinds: readonly CredentialKind[] = [
-    "api-key-bearer", "workload-identity-token", "subscription-oauth", "device-code-oauth", "local-no-secret", "mtls-certificate", "enterprise-gateway"
-  ];
-  if (typeof value !== "string" || !kinds.includes(value as CredentialKind)) throw invalidConfiguration();
-  return value as CredentialKind;
+  const parsed = credentialKindSchema.safeParse(value);
+  if (!parsed.success) throw invalidConfiguration();
+  return parsed.data;
 }
 
 function requireHash(value: unknown): `sha256:${string}` {
-  if (typeof value !== "string" || !hashPattern.test(value)) throw invalidConfiguration();
+  if (!isHash(value)) throw invalidConfiguration();
   return value;
 }
 
 function requireEventId(value: unknown): `evt_${string}` {
-  if (typeof value !== "string" || !eventIdPattern.test(value) || !isSafeText(value)) throw invalidConfiguration();
-  return value as `evt_${string}`;
+  if (!isEventId(value)) throw invalidConfiguration();
+  return value;
 }
 
 function freezeEventIds(value: unknown): readonly `evt_${string}`[] {
@@ -346,6 +420,14 @@ function validEventId(value: string): boolean {
   return eventIdPattern.test(value) && isSafeText(value);
 }
 
+function isHash(value: unknown): value is `sha256:${string}` {
+  return typeof value === "string" && hashPattern.test(value);
+}
+
+function isEventId(value: unknown): value is `evt_${string}` {
+  return typeof value === "string" && eventIdPattern.test(value) && isSafeText(value);
+}
+
 function requireId(value: unknown, pattern: RegExp): string {
   if (typeof value !== "string" || !pattern.test(value) || !isSafeText(value)) throw invalidConfiguration();
   return value;
@@ -360,6 +442,17 @@ function isSafeText(value: string): boolean {
   return value.length > 0 && isAgentSecretSafeText(value) && !urlOrHostPattern.test(value);
 }
 
+function hasNetworkMaterial(capability: ProviderCapabilityDescriptor): boolean {
+  return [
+    capability.providerId,
+    capability.label,
+    capability.adapterVersion,
+    ...capability.modelFamilies,
+    capability.dataHandlingNotes,
+    ...capability.diagnosticContract
+  ].some((value) => urlOrHostPattern.test(value));
+}
+
 function requireIsoDate(value: unknown): string {
   if (typeof value !== "string" || Number.isNaN(Date.parse(value)) || !isSafeText(value)) throw invalidConfiguration();
   return value;
@@ -367,6 +460,14 @@ function requireIsoDate(value: unknown): string {
 
 function freezeSorted<T>(values: readonly T[], key: (value: T) => string): readonly T[] {
   return Object.freeze([...values].sort((left, right) => key(left).localeCompare(key(right))));
+}
+
+function sortStrings(values: readonly string[]): readonly string[] {
+  return Object.freeze([...values].sort((left, right) => left < right ? -1 : left > right ? 1 : 0));
+}
+
+function hasExactStringList(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function hasExactKeys(value: Record<string, unknown>, keys: ReadonlySet<string>): boolean {
@@ -409,7 +510,7 @@ function normalizePlainOwnData(value: unknown): unknown {
   if (Object.getPrototypeOf(value) !== Object.prototype) throw invalidConfiguration();
   const descriptors = Object.getOwnPropertyDescriptors(value);
   if (Reflect.ownKeys(value).some((key) => typeof key !== "string")) throw invalidConfiguration();
-  const normalized: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const normalized: Record<string, unknown> = {};
   for (const [key, descriptor] of Object.entries(descriptors)) {
     if (!("value" in descriptor) || !descriptor.enumerable || descriptor.get !== undefined || descriptor.set !== undefined) {
       throw invalidConfiguration();
