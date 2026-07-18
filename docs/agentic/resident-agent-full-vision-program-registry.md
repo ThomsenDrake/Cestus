@@ -20079,3 +20079,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidates remain held for their exact later-order bases; there is no other
   fresh card that can be reviewed or integrated at the current strict prefix.
   Strict records remain 16 and `neo` remains untouched.
+
+## RV-1-E-732 — Standing software-factory recovery authority restored through Wave 5
+
+- Recorded at: 2026-07-18T20:19:35Z
+- Human authorization restores full program-wide software-factory recovery
+  authority for the remaining Resident Agent Full-Vision Program through Wave
+  5. This event supersedes `RV-1-E-731` and every earlier or future per-card
+  no-further-repair, final-pair, repair-count, or recovery-generation ceiling
+  whenever the required correction is already determined by approved
+  contracts, plans, released interfaces, and preserved safety/truth
+  invariants. Repair-count exhaustion is an internal root-cause checkpoint,
+  not a human authorization boundary.
+- The coordinator continues automatically through compiler/typecheck,
+  focused/cross-boundary/factory/scope/dependency/claim/clean-state failures;
+  contract-determined P0/P1 findings; stale or non-executing workers or
+  reviewers; predecessor-API incompatibilities; and hostile-input,
+  provenance, exact-binding, secret-safety, or fail-closed defects. A failed
+  candidate, admission gate, or review pair does not require human approval
+  merely because another repair or review cycle is necessary.
+- Every recovery cycle preserves all history without reset, rebase, amend,
+  squash, drop, reorder, or rewrite; records a root-cause checkpoint; commits
+  one causal RED and one minimal GREEN inside the card's existing ownership;
+  runs complete admission before review; and dispatches one fresh concurrent
+  architecture/executability read-only pair after code changes. A further
+  contract-determined P0/P1 starts another internal cycle with a changed
+  counterfactual, tactic, or owner. Two unsuccessful corrections with the same
+  tactic require changing tactic or owner, while preserving the evidence chain.
+- Human escalation remains limited to a genuine unresolved product or scope
+  choice, a proposed safety/truth-invariant change, data loss or irreversible
+  action, unavailable required credential or hardware, or changed externally
+  observable behavior. Routine recovery approval is neither required nor
+  requested. Every implementation authorization continues to state:
+  “Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.”
+- Task139-P1 resumes on the same Terra/xhigh owner task
+  `019f763b-a189-7692-8c42-c9a9b8058fa8`, branch
+  `codex/task139-p1-provider-configuration`, worktree
+  `/home/drake/.codex/worktrees/e06e/Cestus`, and preserved candidate history
+  through `d3abf6122c9430ae8e2a9fa2c9da4c345701b4a5`. Its next exact three-path
+  RED/GREEN cycle must restore released Codex/xAI provider-family, OAuth-kind,
+  and `harness-execution` compatibility; apply TLD-independent URI/IP/
+  localhost/DNS-host rejection to credential-reference labels and every other
+  configuration text boundary; and preserve exact provenance, one-to-one
+  binding, immutable data-only output, secret safety, and Task139-PM's sole
+  mounted-authority ownership.
+- Strict prefix remains 16 until dual approval, integration, and record 17.
+  Task121, Task122, and G136-SC remain preserved until their exact ordered
+  bases. No provider/network/credential-resolution/fallback/external action is
+  authorized by this recovery event, and `neo` remains untouched.
