@@ -20004,3 +20004,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task139-P1 repair authority: a fresh final read-only review pair may approve
   the exact candidate or durably block it on a reproduced P0/P1. `neo` and all
   preserved later-order candidates remain untouched.
+
+## RV-1-E-730 — Repaired Task139-P1 candidate admitted to final review
+
+- Recorded at: 2026-07-18T18:11:25Z
+- The same implementation owner completed the sole consolidated packet as
+  causal repair RED `4e47de2011e2dbefe612e64387fb3779884aac4a` and minimal
+  repair GREEN `d3abf6122c9430ae8e2a9fa2c9da4c345701b4a5`, preserving the
+  earlier claim/RED/GREEN chain and exact three-path cumulative scope. The RED
+  retained the candidate production blob and failed exactly the six reproduced
+  counterexamples; the GREEN changes no test byte and uses typed schema and
+  predicate narrowing without assertions, suppressions, `any`, or API
+  widening.
+- Exact committed-byte coordinator admission reproduces focused **1 file / 9
+  tests**, cross-boundary **2 files / 18 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 contract markers, exact three-path
+  scope, clean tracked/untracked state, and real non-symlinked local
+  dependencies with Vitest 4.1.9. Repository mode executes all released cards
+  and emits `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before only
+  `repository release closure incomplete: expected 29 records, found 16`.
+- Full-suite and `npm run verify` differential evidence retains exactly the
+  record-16 inherited **12 failing files / 69 failing tests / 5 skips**, with
+  no changed failing or skipped assertion and Task139-P1 adding exactly nine
+  passing tests. No live provider, network, credential, Nous, mounted-authority,
+  integration, push, or `neo` action occurred.
+- The single fresh final Terra/xhigh read-only pair is architecture/invariants
+  task `019f766c-c005-72e3-8dc7-f40f93a4f012` and
+  executability/adversarial task `019f766c-c071-7d31-b3b5-0ea7d853eea2`.
+  Reviews must reproduce any P0/P1 against exact `d3abf612`; P2, style,
+  hypothetical hardening, and unreproduced concerns are backlog. SDD/TDD is
+  not relevant or authorized for reviewers, and no further automatic
+  Task139-P1 repair exists after their verdicts.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. Strict
+  prefix remains 16; later-order candidates and `neo` remain untouched.
