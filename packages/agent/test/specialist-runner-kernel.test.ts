@@ -35,6 +35,7 @@ import {
 } from "../src/specialist-runner-kernel.js";
 import { issueMountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
 import { buildSpecialistHandoffProjection } from "../src/specialist-handoff-projection.js";
+import { buildTaskAttemptId } from "../src/task-orchestrator-events.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import {
   createMountedProductionPromptReadbackAuthority,
@@ -500,6 +501,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     } as const;
     const witness = issueMountedSpecialistHandoffAuthorityWitness({
       authorityBinding,
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
       revalidateCurrent: async () => undefined
     });
 
@@ -526,6 +528,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     const authorityBinding = handoffAuthorityBindingFor(fixture);
     const witness = issueMountedSpecialistHandoffAuthorityWitness({
       authorityBinding,
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
       revalidateCurrent: async () => undefined
     });
 
@@ -588,6 +591,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     const ledger = new StaleAfterEventLedger(fixture.ledger, "agent.specialist-run.completed", () => { stale = true; });
     const witness = issueMountedSpecialistHandoffAuthorityWitness({
       authorityBinding: handoffAuthorityBindingFor(fixture),
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
       revalidateCurrent: async () => {
         if (stale) throw new Error("mounted authority is stale");
       }
@@ -613,6 +617,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     const ledger = new StaleAfterEventLedger(fixture.ledger, "agent.specialist-handoff.recorded", () => { stale = true; });
     const witness = issueMountedSpecialistHandoffAuthorityWitness({
       authorityBinding: handoffAuthorityBindingFor(fixture),
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
       revalidateCurrent: async () => {
         if (stale) throw new Error("mounted authority is stale");
       }
@@ -1305,6 +1310,7 @@ interface DurableHandoffFixture {
   readonly clock: { readonly now: () => string; readonly calls: number };
   readonly runId: string;
   readonly taskId: string;
+  readonly runType: "evidence-triage" | "ontology-bootstrap";
   readonly status: DurableHandoffStatus;
   readonly runStartedEventId: string;
   readonly manifestStore: MemoryManifestStore;
@@ -1332,6 +1338,7 @@ async function durableHandoffFixture(options: {
   const actor = { id: "actor_durable_handoff", kind: "agent" as const, label: "Durable Handoff Test" };
   const runId = options.runId ?? "run_durable_handoff_001";
   const taskId = options.taskId ?? "task_durable_handoff_001";
+  const runType = options.runType ?? "evidence-triage";
   const status = options.status ?? "ready-for-review";
   const clock = steppedClock(options.clockValues ?? ["2026-07-10T15:00:00.000Z"]);
   const lifecycle = createAgentRuntime({ ledger, actor, now: () => "2026-07-10T14:00:00.000Z", providers: [] });
@@ -1340,7 +1347,7 @@ async function durableHandoffFixture(options: {
   const started = await lifecycle.startRun({
     runId,
     taskId,
-    runType: options.runType ?? "evidence-triage",
+    runType,
     scope: { kind: "workspace", refs: ["ws_durable_handoff"] }
   });
   if (!started.ok) throw new Error("Unable to start durable handoff fixture run.");
@@ -1362,6 +1369,7 @@ async function durableHandoffFixture(options: {
     clock,
     runId,
     taskId,
+    runType,
     status,
     runStartedEventId: started.eventIds[0]!,
     manifestStore,
@@ -1413,6 +1421,16 @@ function handoffAuthorityBindingFor(fixture: DurableHandoffFixture) {
     ledgerHighWaterEventId: fixture.runStartedEventId,
     policyHash: runnerHash,
     activeLocksHash: runnerHash
+  } as const;
+}
+
+function handoffTaskLifecycleFor(fixture: DurableHandoffFixture) {
+  return {
+    taskId: fixture.taskId,
+    attemptId: buildTaskAttemptId({ taskId: fixture.taskId, runType: fixture.runType, retryGeneration: 0 }),
+    runId: fixture.runId,
+    runType: fixture.runType,
+    retryGeneration: 0
   } as const;
 }
 
