@@ -20302,3 +20302,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   committed bytes.
 - Strict prefix remains 16. No integration, release record, provider/network/
   credential/external effect, push, or `neo` action occurs.
+
+## RV-1-E-739 — Task139-P1 compiler-closed candidate admitted to fresh review
+
+- Recorded at: 2026-07-18T21:26:54Z
+- The same owner preserved causal compiler RED `4bee902e` and committed minimal
+  GREEN `b3520865bba54c8cb54b28d149d1354549f5c3a9`. GREEN changes only the
+  deterministic-provenance test fixture and claim, annotating the local array
+  as the released `EventId[]`; the production blob remains byte-identical at
+  `3099b28f9d11b617dd3a67e2137648f7197b3985`.
+- Owner and independent coordinator admission from exact committed bytes pass
+  focused **1 file / 15 tests**, cross-boundary **2 files / 24 tests**,
+  standalone typecheck, diff hygiene, factory readiness, all four V4 markers,
+  exact three-path cumulative scope, clean tracked/untracked state, and real
+  non-symlinked local dependencies with executable Vitest 4.1.9. Repository
+  mode executes `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before
+  only `repository release closure incomplete: expected 29 records, found 16`.
+- Full `npm test` and `npm run verify` retain exactly the record-16 inherited
+  **12 failing files / 69 failing tests / 5 skips**, the same failing and
+  skipped identities, and **2,737 passes**, exactly fifteen more than the clean
+  record-16 base. No failure, removal, changed assertion, or skip is introduced.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  authorized on exact `b3520865`; SDD/TDD is not relevant or authorized for
+  reviewers. Any P0/P1 must be reproduced on these bytes. Standing recovery
+  authority applies to contract-determined findings.
+- No candidate byte is integrated and no release record is appended. Strict
+  prefix remains 16; preserved later candidates remain held for their exact
+  ordered bases, and `neo` remains untouched.
