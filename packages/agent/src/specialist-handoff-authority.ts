@@ -2,6 +2,8 @@
  * The V2 handoff binding is durable data.  The witness carrying it is not:
  * membership in this module's WeakMap is the only authority to use it.
  */
+import { approvedAgentSpecialistRunTypes, type AgentSpecialistRunType } from "./specialists.js";
+
 export interface HandoffAuthorityBinding {
   readonly workspaceIdentityHash: `sha256:${string}`;
   readonly mountGeneration: string;
@@ -19,27 +21,23 @@ export interface MountedSpecialistHandoffAuthorityWitness {
   readonly schemaVersion: "agent-mounted-specialist-handoff-authority.v1";
 }
 
+interface MountedSpecialistHandoffTaskLifecycle {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly runType: AgentSpecialistRunType;
+  readonly retryGeneration: number;
+}
+
 export interface ConsumedMountedSpecialistHandoffAuthorityWitness {
   readonly binding: HandoffAuthorityBinding;
-  readonly taskLifecycle: {
-    readonly taskId: string;
-    readonly attemptId: string;
-    readonly runId: string;
-    readonly runType: string;
-    readonly retryGeneration: number;
-  };
+  readonly taskLifecycle: MountedSpecialistHandoffTaskLifecycle;
   readonly revalidateCurrent: () => Promise<void>;
 }
 
 interface WitnessState {
   readonly binding: HandoffAuthorityBinding;
-  readonly taskLifecycle: {
-    readonly taskId: string;
-    readonly attemptId: string;
-    readonly runId: string;
-    readonly runType: string;
-    readonly retryGeneration: number;
-  };
+  readonly taskLifecycle: MountedSpecialistHandoffTaskLifecycle;
   readonly revalidate: () => Promise<void>;
   state: "available" | "consuming" | "consumed";
 }
@@ -105,13 +103,7 @@ export async function consumeMountedSpecialistHandoffAuthorityWitness(
   }
 }
 
-function normalizeTaskLifecycle(value: unknown): {
-  readonly taskId: string;
-  readonly attemptId: string;
-  readonly runId: string;
-  readonly runType: string;
-  readonly retryGeneration: number;
-} {
+function normalizeTaskLifecycle(value: unknown): MountedSpecialistHandoffTaskLifecycle {
   const record = exactOwnDataRecord(value, ["taskId", "attemptId", "runId", "runType", "retryGeneration"]);
   const retryGeneration = record.retryGeneration;
   if (typeof retryGeneration !== "number" || !Number.isSafeInteger(retryGeneration) || retryGeneration < 0) {
@@ -121,9 +113,18 @@ function normalizeTaskLifecycle(value: unknown): {
     taskId: text(record.taskId),
     attemptId: text(record.attemptId),
     runId: text(record.runId),
-    runType: text(record.runType),
+    runType: agentSpecialistRunType(record.runType),
     retryGeneration
   });
+}
+
+function agentSpecialistRunType(value: unknown): AgentSpecialistRunType {
+  if (typeof value !== "string" || !isAgentSpecialistRunType(value)) throw authorityError();
+  return value;
+}
+
+function isAgentSpecialistRunType(value: string): value is AgentSpecialistRunType {
+  return approvedAgentSpecialistRunTypes.some((candidate) => candidate === value);
 }
 
 function normalizeBinding(value: unknown): HandoffAuthorityBinding {
