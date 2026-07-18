@@ -367,3 +367,24 @@ or fallback.
   behavior, and no-effect boundaries.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passes: **1 file / 23 tests**. `npm run typecheck` exits `0`.
+
+## RV-1-E-747 Unicode-DNS-and-Canonical-Shape Recovery RED
+
+- Standing recovery authority: `RV-1-E-747`. The preserved clean candidate is
+  `b8c7469d9f8f3189062639cf14ee704760477815`; this RED changes only the
+  focused test and this claim. The production source blob remains
+  `b89cb4ba96023ee803d798cb34a53e2aca47a30e`, byte-identical to that
+  candidate.
+- The focused RED command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exits `1`
+  with **1 failed file / 3 failed and 23 passed tests (26)**. The named
+  capability/free-text and credential-safe-label matrix proves that
+  `api.a1`, `api.3com`, `service.123`, `x.y9`, `api.例子`, and each of `0`,
+  `1`, `01`, `127`, `1:80`, and `127:443` are admitted at both recursive
+  text boundaries, while the released `adapter.v1` and `policy.v1` controls
+  remain admitted. The second named proof admits prose `assessedAt`
+  `July 18, 2026 12:00:00 UTC`. The third accepts semantically identical
+  configurations with reversed capability modalities and diagnostic contract
+  arrays but returns byte-different snapshots; it also pins duplicate
+  rejection for those set-like arrays.
+- `npm run typecheck` exits `0` from the RED bytes without diagnostics.
