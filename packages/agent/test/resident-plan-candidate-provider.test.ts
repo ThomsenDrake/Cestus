@@ -168,7 +168,7 @@ const replan = deepFreeze({
   planRevision: 1,
   priorPlanReadback: { ...priorPlanReadback, priorPlanRecordEventId: priorPlanReadback.planRecordEventId },
   replanObservationReadback: observation,
-  budget: budget(1, 1, 1),
+  budget: budget(1, 0, 1),
   steps: [initialPlan.steps[0]]
 });
 
@@ -246,7 +246,7 @@ describe("resident plan candidate provider", () => {
     const widenedOutput = deepFreeze({ ...replan, steps: [{ ...replan.steps[0], expectedSafeOutputClass: "proposal" }] });
     const widenedSource = deepFreeze({ ...replan, sourceEventIds: ["evt_source_001", "evt_source_002", "evt_source_003"] });
     const widenedBudget = deepFreeze({ ...replan, budget: { ...replan.budget, ceilings: { ...replan.budget.ceilings, toolSteps: 13 } } });
-    const widerApproval = deepFreeze({ ...constraints, requiredApprovalClasses: [...constraints.requiredApprovalClasses, "external-message-send"] });
+    const stricterApproval = deepFreeze({ ...constraints, requiredApprovalClasses: [...constraints.requiredApprovalClasses, "external-message-send"] });
     const changedModel = deepFreeze({ ...posture, selection: { ...posture.selection, modelId: "model_other" } });
 
     await expect(provider.createReplanCandidate(deepFreeze({ ...base, plan: invalidSteps }))).rejects.toThrow(/plan candidate/i);
@@ -254,8 +254,124 @@ describe("resident plan candidate provider", () => {
     await expect(provider.createReplanCandidate(deepFreeze({ ...base, plan: widenedOutput }))).rejects.toThrow(/plan candidate/i);
     await expect(provider.createReplanCandidate(deepFreeze({ ...base, plan: widenedSource }))).rejects.toThrow(/plan candidate/i);
     await expect(provider.createReplanCandidate(deepFreeze({ ...base, plan: widenedBudget }))).rejects.toThrow(/plan candidate/i);
-    await expect(provider.createReplanCandidate(deepFreeze({ ...base, policyConstraints: widerApproval }))).rejects.toThrow(/plan candidate/i);
     await expect(provider.createReplanCandidate(deepFreeze({ ...base, providerPosture: changedModel }))).rejects.toThrow(/plan candidate/i);
+    await expect(provider.createReplanCandidate(deepFreeze({ ...base, policyConstraints: stricterApproval }))).resolves.toMatchObject({
+      schemaVersion: "resident-replan-candidate.v1"
+    });
+  });
+
+  it("rejects a numeric runMode", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const numericRunMode = deepFreeze({ ...initialPlan, runMode: 7 });
+
+    await expect(provider.createInitialCandidate(deepFreeze({
+      plan: numericRunMode,
+      providerPosture: posture,
+      policyConstraints: constraints
+    }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a runMode outside the released enum", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const unknownRunMode = deepFreeze({ ...initialPlan, runMode: "unreleased-mode" });
+
+    await expect(provider.createInitialCandidate(deepFreeze({
+      plan: unknownRunMode,
+      providerPosture: posture,
+      policyConstraints: constraints
+    }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a numeric correlationId", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const numericCorrelation = deepFreeze({ ...initialPlan, correlationId: 42 });
+
+    await expect(provider.createInitialCandidate(deepFreeze({
+      plan: numericCorrelation,
+      providerPosture: posture,
+      policyConstraints: constraints
+    }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a scalar plan slot substituted with nested URL, DNS, IP, or localhost material", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const hostilePlanScalar = deepFreeze({
+      ...initialPlan,
+      correlationId: { material: "https://api.x/path localhost 127.0.0.1" }
+    });
+
+    await expect(provider.createInitialCandidate(deepFreeze({
+      plan: hostilePlanScalar,
+      providerPosture: posture,
+      policyConstraints: constraints
+    }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a scalar provider-posture slot substituted with nested authorization material", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const hostilePostureScalar = deepFreeze({
+      ...posture,
+      selection: { ...posture.selection, modelId: { headers: { Authorization: "Bearer review-token" } } }
+    });
+
+    await expect(provider.createInitialCandidate(deepFreeze({
+      plan: initialPlan,
+      providerPosture: hostilePostureScalar,
+      policyConstraints: constraints
+    }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("requires the exact Task139-P2 provider-byte-transfer approval class", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const substitutedApproval = deepFreeze({
+      ...posture,
+      approval: { ...posture.approval, requiredApprovalClass: "none" }
+    });
+
+    await expect(provider.createInitialCandidate(deepFreeze({
+      plan: initialPlan,
+      providerPosture: substitutedApproval,
+      policyConstraints: constraints
+    }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a replan that removes a previously required approval class", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    await provider.createInitialCandidate(deepFreeze({
+      plan: initialPlan,
+      providerPosture: posture,
+      policyConstraints: constraints
+    }));
+    const removedApproval = deepFreeze({
+      ...constraints,
+      requiredApprovalClasses: constraints.requiredApprovalClasses.filter((entry) => entry !== "human-review")
+    });
+
+    await expect(provider.createReplanCandidate(deepFreeze({
+      plan: replan,
+      providerPosture: posture,
+      policyConstraints: removedApproval,
+      priorPlanReadback,
+      replanObservationReadback: observation
+    }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a replan whose consumed and remaining budget jump beyond actionConsumption", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    await provider.createInitialCandidate(deepFreeze({
+      plan: initialPlan,
+      providerPosture: posture,
+      policyConstraints: constraints
+    }));
+    const jumpedBudget = deepFreeze({ ...replan, budget: budget(2, 0, 1) });
+
+    await expect(provider.createReplanCandidate(deepFreeze({
+      plan: jumpedBudget,
+      providerPosture: posture,
+      policyConstraints: constraints,
+      priorPlanReadback,
+      replanObservationReadback: observation
+    }))).rejects.toThrow(/plan candidate/i);
   });
 });
 
