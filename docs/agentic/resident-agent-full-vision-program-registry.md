@@ -21248,3 +21248,142 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-763 — Record-18 closure proof and Task136-FC-Core dispatch
+
+- Recorded at: 2026-07-19T02:57:36Z
+- From clean record-18 program commit
+  `ac5c3500681c8c2d485618a13635d3f68bd6ae73`, repository mode executes
+  all eighteen exact release commands and emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=18 commands=18` followed only by
+  `repository release closure incomplete: expected 29 records, found 18`.
+  This activates Task139-PM current ownership of its three direct-source
+  transfers and confirms `Task136-FC-Core` as exact release position 19.
+- Contract computation confirms every Task136-FC-Core prerequisite is released:
+  Task137B-W, CF1-HR, Task139-PM, and Task135D. Preserved G136-SC, Task121,
+  and Task122 candidates remain held without stale review or integration until
+  their exact ordered bases at positions 22, 25, and 26.
+- Sole Terra/xhigh implementation owner is task
+  `019f784e-8e24-74c2-a0a4-a5636cbec576`, worktree
+  `/home/drake/.codex/worktrees/18af/Cestus`, authorized branch
+  `codex/task136-fc-core-factory-composition`. Its exact four-path boundary is
+  the V4 core factory composition source, focused test, import-policy test, and
+  claim.
+- The owner must commit one claim transition, one causal test-only RED, and one
+  minimal GREEN. It composes only released factory-held wake, handoff/readback,
+  mounted-provider, and mounted-runtime authority through static named,
+  cycle-free interfaces; caller data, copied/structural/proxied values,
+  provider configuration, compatibility paths, and fallback writes gain no
+  authority or effect.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused/cross-boundary,
+  typecheck/full-differential, assurance/repository, factory/scope/clean/deps
+  admission and one fresh concurrent Terra/xhigh read-only review pair are
+  mandatory before integration. Status advances Task136-FC-Core
+  `blocked -> claimed -> implementing`; strict prefix remains 18. No push,
+  external effect, or `neo` action occurs.
+
+## RV-1-E-764 — Record-18 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T03:22:41Z
+- Task136-FC-Core owner task
+  `019f784e-8e24-74c2-a0a4-a5636cbec576` preserves claim
+  `f631062b`, causal RED `5e5f27c9`, and minimal GREEN candidate
+  `6adba773`. Its exact contract command passes **2 files / 2 tests** and
+  standalone typecheck exits zero; no further FC-Core edit is implicated.
+- The record-18 base exposes a bounded assurance-fixture drift outside the
+  card's four-path ownership. The 19-test assurance suite passes 17 tests and
+  fails exactly two assertions at lines 1112 and 1428 because both still
+  require parsed registry length 17 after strict Task139-PM record 18 was
+  validly appended. Production contract mode remains exact, and repository
+  mode independently emits the accepted 18-command prefix and expected
+  incomplete-29 boundary.
+- Root cause is therefore stale test-fixture cardinality, not a contract,
+  checker, product, scope, safety, credential, hardware, external-behavior, or
+  FC-Core implementation defect. Standing recovery resumes the existing V4
+  assurance owner task `019f717a-3a5c-7df1-9216-59464d5c206b`, preserved
+  branch `codex/task136-v4-task139-pm-direct-source-ownership`, and worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`.
+- The coordinator will forward-merge this current program head into that same
+  branch. One claim-only causal RED checkpoint must preserve and reproduce the
+  exact two failures, followed by one minimal GREEN limited to the assurance
+  test and V4 claim. Contract/checker bytes, V1-V3, raw records 1-18, all 29
+  IDs/order, release evidence, and every existing history commit remain
+  byte-identical. Task-scoped subagent-driven development and test-driven
+  development are explicitly approved for this task.
+- After exact assurance, contract/repository, typecheck, factory, diff,
+  scope/clean/dependency admission, one fresh concurrent Terra/xhigh read-only
+  architecture/executability pair is mandatory. The corrected program head
+  will then be forward-merged into the preserved FC-Core candidate before its
+  remaining admission and review. Strict prefix remains 18; no push, external
+  effect, or `neo` action occurs.
+
+## RV-1-E-765 — Record-18 assurance pin-audit tactic
+
+- Recorded at: 2026-07-19T03:26:57Z
+- The same assurance owner commits claim-only causal RED
+  `a64f22a0` after reproducing exact **19 tests / 17 pass / 2 fail** on the
+  unchanged assurance test. Contract, checker, registry, production, and
+  historical input bytes remain unchanged in that RED.
+- The first minimal GREEN probe confirms the two visible length assertions are
+  paired with full-prefix order slices still bounded at 17. Advancing those
+  pairs exposes two previously unreachable record-18 pins in the same affected
+  flows: repository closure still expects `found 17`, and the record-18
+  transfer test still treats the current prefix as 17.
+- These are one stale-cardinality family created by the valid strict record-18
+  transition, not separate product or safety decisions. The recovery tactic is
+  therefore a comprehensive audit of record-17-derived expectations inside
+  only the two affected assurance test blocks, followed by one minimal GREEN
+  commit. Every replacement must assert the exact record-18 count/order,
+  repository boundary, and Task139-PM transfer currentness; unrelated
+  historical 17-record fixtures and raw records remain frozen.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact two-path scope, unchanged
+  contract/checker/V1-V3/raw records 1-18/all 29 IDs/order, full bounded gates,
+  and a fresh concurrent Terra/xhigh review pair remain mandatory. Strict
+  prefix remains 18; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-766 — Record-18 assurance correction approved
+
+- Recorded at: 2026-07-19T03:43:32Z
+- Preserved assurance candidate `b843ff25b116701319bcec6436e74419f63e377c`
+  retains forward-merge `41ae93ab`, claim-only causal RED `a64f22a0`, and
+  minimal GREEN `b843ff25` without rewriting either program or assurance
+  history. Cumulative correction scope is exactly the V4 assurance test and
+  V4 claim.
+- Fresh concurrent Terra/xhigh read-only architecture review task
+  `019f7871-9080-72d1-baa8-89f61c923fa6` and executability/adversarial review
+  task `019f7871-923d-7052-9c1c-5ee29bb7c463` both approve with no reproduced
+  P0/P1 finding.
+- Review evidence reproduces **19/19 assurance tests**, all four exact V4
+  markers, typecheck, factory readiness, diff hygiene, exact scope, clean
+  state, real non-symlinked dependencies, and repository prefix
+  `records=18 commands=18` followed by the expected incomplete-29 boundary.
+  Historical record-17 source-current ownership and record-18 finite transfer
+  activation remain fail-closed and fully verified.
+- Contract/checker bytes, V1-V3, raw records 1-18, all 29 card IDs/order, and
+  existing release evidence remain byte-identical. Status advances record-18
+  assurance `reviewing -> approved`; the coordinator will integrate the full
+  preserved history and refresh Task136-FC-Core onto that corrected base.
+  Strict prefix remains 18; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-767 — Record-18 assurance correction integrated
+
+- Recorded at: 2026-07-19T03:47:46Z
+- The coordinator integrates the complete approved assurance lineage through
+  `b843ff25` by merge commit
+  `3097e2d936a31b79bb0ec1f4a03801c2673fd79e`; no commit is reset, rebased,
+  amended, squashed, dropped, reordered, or rewritten.
+- Integrated-byte reproduction passes **19/19 assurance tests**, all four exact
+  V4 contract markers, standalone typecheck, factory readiness, diff hygiene,
+  clean tracked/untracked state, and real non-symlinked Vitest 4.1.9
+  dependencies. Repository mode emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=18 commands=18` followed only by
+  `repository release closure incomplete: expected 29 records, found 18`.
+- The corrected program base will now be forward-merged into preserved
+  Task136-FC-Core candidate `a04fe8a614d1074d8d62a82e1d4739e1bd7ead4b`.
+  That environment/assurance-only merge does not alter its four owned paths or
+  invalidate its causal RED/GREEN bytes; exact admission is rerun before a
+  fresh review pair. Status advances record-18 assurance
+  `approved -> integrated`; strict prefix remains 18. No push, external
+  effect, or `neo` action occurs.
