@@ -83,3 +83,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 ## RV-1-E-831 Changed-Tactic RED
 
 - Authority `0ed8116e490312ef0d7481f2a2aef1801c06aa80` authorizes two frozen counterfactuals: full-width `１２７。０。０。１` must normalize to `127.0.0.1` for classification and fail closed; `external-byte-transfer` with `none` approval must fail closed. Production remains unchanged until the RED is committed.
+
+## RV-1-E-831 Changed-Tactic GREEN
+
+- GREEN preserves RED test blob `f736412ab51a5102ef8436bab86219c4969cd2a7`. It uses released `approvalClassForSideEffect`, closes resident side effects, folds NFKC then IDNA dots for host classification, and rejects weak or mismatched allowlist approvals.
