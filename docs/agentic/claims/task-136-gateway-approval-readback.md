@@ -121,3 +121,34 @@ owned bridge source: it imports `AgentToolSideEffectClass` from
 `projection-types.js`, and uses the required `AgentApprovalClass` after the
 bridge has rejected `none`. It changes no runtime flow, ledger write, preview,
 approval predicate, completion route, or test assertion.
+
+## RV-1-E-817 Final-Review Causal RED
+
+The registry-only normal merge `34e37c511e5f17dad2dc4faa37e91519a5a1dae5`
+preserves the initial claim/runtime RED/initial GREEN/compiler RED/compiler
+GREEN chain through candidate `598ab0a7d6bf3f9ebe569a234e81e22f67bdcaf2`.
+Fresh architecture and executability verdicts recorded in `RV-1-E-817` expose
+one contract-determined P1 packet, so status advances **implementing-repair ->
+ recovery-red** before any new production edit.
+
+This causal RED adds adversarial assertions only in the two owned test paths.
+They require the bridge to reject an old plan when a newer plan for the same
+`agent_default` resident/task/attempt/run changes every policy and provenance
+field; reject complete selected-plan byte substitution across awaits; reject a
+claim whose `claimedBy` or context actor is not exact `agent_default` before
+execution or completion; bind the durable requested side-effect class to the
+parsed command; and ignore unbranded structural request/completion gateway
+objects. The existing source fails these assertions because it compares an
+incomplete plan identity, does not preserve complete plan bytes across the
+request await, omits exact claim-actor/claimant checks and durable side-effect
+binding, and delegates request/completion to a caller-supplied structural
+gateway. Hostile cases assert no completion.
+
+The next and only recovery GREEN will remain within the four owned paths. It
+will compose the released `createAgentToolGateway` directly over the ledger
+with fixed exact `agent_default` actor identity, retain only the released
+opaque G136-SC scheduler-evidence completion path, bind complete plan bytes
+through opaque issued readbacks, and update this claim to **green**. No
+registry, released dependency, contract/spec/plan, generic completion route,
+provider/credential/network/external effect, or non-ledger storage write is
+authorized.
