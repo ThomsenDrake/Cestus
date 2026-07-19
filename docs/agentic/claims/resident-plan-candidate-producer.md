@@ -99,3 +99,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 ## RV-1-E-835 RED
 
 - Authority `cd2e518afdebeff34dd0829dbb40fc6416e59a01` authorizes the causal proof that an otherwise valid frozen initial candidate cannot add `unreleased-approval` globally. Production remains untouched through this RED.
+
+## RV-1-E-835 GREEN
+
+- GREEN retains RED test blob `ceb68bd9b257c96c2970ab258fed969ef25f6e7d` and derives accepted global approval classes from released `approvalClassForSideEffect` across the closed resident side-effect set, plus `human-review`.
