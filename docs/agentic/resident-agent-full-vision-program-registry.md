@@ -21133,3 +21133,118 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   from integrated bytes, and append strict release record 18. Task137B-W stays
   current owner of the three transferred source paths until that record exists.
   No provider/network/credential effect, push, or `neo` action occurs.
+
+## RV-1-E-762 — Task139-PM integrated and released
+
+- Recorded at: 2026-07-19T02:53:22Z
+- The coordinator integrates the complete preserved Task139-PM history without
+  rewrite as merge `41b44b7cad2547acd3fd5986cbe29594d77b44fd`, whose
+  parents are approval checkpoint
+  `87982c96260e6c573371a1a36a72aed74c2f9826` and exact approved
+  candidate `dbc1debd9d59931b6bcbab0db7c0490cebb9a047`. Every claim,
+  causal RED, minimal GREEN, assurance-forward merge, review checkpoint,
+  recovery RED, and recovery GREEN remains in ancestry.
+- Integrated-byte admission reproduces focused **2 files / 10 tests** and
+  cross-boundary **8 files / 124 tests**, exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker per suite,
+  standalone typecheck, assurance **19/19**, all four V4 markers, diff hygiene,
+  factory readiness, exact six-path candidate blob identity, clean tracked and
+  untracked state, and real non-symlinked Vitest 4.1.9 dependencies.
+- Integrated full `npm test` and `npm run verify` retain exactly the
+  inherited **12 failing files / 69 failing tests / 5 skips / 2,756 passes**,
+  with unchanged failure and skip identities and no Task139-PM failure.
+  Standalone typecheck is green; the full commands are correctly recorded as
+  an inherited non-green differential at this intermediate release position.
+- Status advances Task139-PM `approved -> integrated -> released`. Strict
+  record 18 below activates current-HEAD ownership of the three finite
+  Task137B-W source transfers while preserving all historical candidate,
+  integration, blob, review, and release evidence. No provider/network/
+  credential effect, push, or `neo` action occurs.
+
+## Task136 dispatch release v4: Task139-PM
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task139-PM",
+  "candidateSha": "dbc1debd9d59931b6bcbab0db7c0490cebb9a047",
+  "reviews": [
+    {
+      "threadId": "019f7836-f254-7d42-a733-e36f45472d7d",
+      "candidateSha": "dbc1debd9d59931b6bcbab0db7c0490cebb9a047",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f7839-03f4-7050-99c6-f2c7ee12825a",
+      "candidateSha": "dbc1debd9d59931b6bcbab0db7c0490cebb9a047",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "41b44b7cad2547acd3fd5986cbe29594d77b44fd",
+  "releaseEventId": "task136-release-v4-Task139-PM",
+  "prerequisites": [
+    {
+      "cardId": "Task126-R",
+      "integrationSha": "4877d7b2900a416cd417b73fc13a55b2e6b845d0",
+      "releaseEventId": "task136-release-v4-Task126-R"
+    },
+    {
+      "cardId": "Task139-P1",
+      "integrationSha": "3d2d365ea8ea2cc3b706309f8f584a5c4c117379",
+      "releaseEventId": "task136-release-v4-Task139-P1"
+    },
+    {
+      "cardId": "Task135D",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task135D"
+    },
+    {
+      "cardId": "Task137A",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task137A"
+    },
+    {
+      "cardId": "T120-R",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-T120-R"
+    },
+    {
+      "cardId": "Task137B-W",
+      "integrationSha": "9e680b44c4284456eebaad79c00fabda5c2bd4ea",
+      "releaseEventId": "task136-release-v4-Task137B-W"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/mounted-provider-authority.ts",
+      "disposition": "owned",
+      "blobSha": "1f5a4287ad68381cb07ecc4ab2ab457994cb1443"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-provider-authority.test.ts",
+      "disposition": "owned",
+      "blobSha": "1752f714c2ee9f03d2b276b242f0b3c5f667961b"
+    },
+    {
+      "path": "docs/agentic/claims/task-139-mounted-provider-authority.md",
+      "disposition": "owned",
+      "blobSha": "d76d140a90470ff44f95a8669d063e959c244acc"
+    },
+    {
+      "path": "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+      "disposition": "owned",
+      "blobSha": "dadd5c0568b5d8bbbab356c26c3892f3d98732fb"
+    },
+    {
+      "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "7d91615d0aca23bd0bafdf42ac9fe2e4b803e44d"
+    },
+    {
+      "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+      "disposition": "owned",
+      "blobSha": "8e4b11414d21d06c4ec0f47e0e62bf27a6265b40"
+    }
+  ]
+}
+```
