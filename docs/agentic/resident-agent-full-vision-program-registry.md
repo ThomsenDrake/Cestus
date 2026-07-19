@@ -23819,3 +23819,64 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
   remains C136-P `reviewing -> implementing-repair`; no push, external effect,
   or `neo` action occurs.
+
+## RV-1-E-834 — State-bound C136-P candidate enters final review
+
+- Recorded at: 2026-07-19T16:48:40Z
+- The same owner preserves registry merge `86cb98c0`, causal RED
+  `297e7e5e89506b8a8616cc18dde153e3f3d80bc2`, and minimal GREEN exact
+  candidate `f921a72151230a9d5a7a6727c04a2f9919c082fb`. RED fails exactly six
+  high-water, global-approval, initial-budget, and repeated-initial cases;
+  test blob `5b805082` is byte-identical in GREEN.
+- GREEN binds authority high-water to the final ordered source, requires every
+  allowlist approval in the global required set, requires a zeroed revision-
+  zero budget transition, and rejects any second initial candidate before
+  state mutation. The original initial remains the sole basis for contiguous
+  replans; all earlier normalization/policy repairs remain unchanged.
+- Exact committed-byte admission passes focused **1 file / 22 tests**,
+  cross-boundary **4 files / 37 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory, diff, exact three-path scope,
+  clean/dependency gates. Full/verify retain **13 files / 70 failures / 5
+  skips** with **2,809 passes**, an exact +6-pass-only delta.
+- A first repository-mode attempt overlapped other heavy gates and terminated
+  at Task135D. No candidate path overlaps Task135D. An isolated unchanged-byte
+  serial rerun executes all 23 release commands and emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=23 commands=23` followed only by the
+  expected incomplete-29 boundary, disproving a candidate or released-command
+  regression. No environment or repository byte changed between attempts.
+- Status remains C136-P `implementing-repair -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair now
+  reviews exact SHA `f921a72151230a9d5a7a6727c04a2f9919c082fb`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
+
+## RV-1-E-835 — C136-P global approval enum checkpoint
+
+- Recorded at: 2026-07-19T16:58:28Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b49-5f3c-7822-930b-8cd1c0a05883` and executability/adversarial task
+  `019f7b49-6a7e-73f0-a0ec-b6ebaa677963` independently return `BLOCKED` for
+  exact candidate `f921a72151230a9d5a7a6727c04a2f9919c082fb` on the same
+  reproduced P1. Each appends only `unreleased-approval` to the otherwise
+  valid frozen global `requiredApprovalClasses` and observes an accepted
+  `resident-initial-plan-candidate.v1`.
+- Both reviewers confirm all latest state/binding and prior hostile cases
+  reject, the valid path passes, exact three-path scope and clean before/after
+  HEAD remain unchanged, and no other P0/P1 is reproduced. The sole gap is
+  that the global approval array enforces unique safe strings but not the
+  released closed approval enum.
+- Coordinator adjudication accepts one exact contract-determined correction:
+  derive the runtime closed approval set from released
+  `approvalClassForSideEffect` across the already closed resident side-effect
+  set plus the strictly stronger `human-review`, then require every global
+  member to belong to that set. This reuses released permission authority and
+  adds no divergent approval mapping.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0`, preserving all history. It
+  forward-merges this authority, commits one causal RED for the exact unknown-
+  global-class case, then one minimal GREEN within the same three owned paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All exact admission gates and one fresh
+  concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
+  remains C136-P `reviewing -> implementing-repair`; no push, external effect,
+  or `neo` action occurs.
