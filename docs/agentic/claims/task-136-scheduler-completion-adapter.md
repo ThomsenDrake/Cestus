@@ -103,3 +103,10 @@ It retains exact request/run/tool/version/preview/claim and current-stream
 checks, rejects unrelated, swapped, cross-request/run, self-minted gateway or
 resident bookkeeping, pre-claim, duplicate, unreadable, stale, terminal, and
 concurrent evidence, and never restores public `completeTool` compatibility.
+
+GREEN rereads each result locator after the claim and accepts durable
+non-agent ancestry only when it reaches one of the exact request's stored
+source-event IDs before that request. Direct causal binding to the exact claim
+remains valid. Read-model changes remain normalized, frozen, secret-safe, and
+duplicate-free; their domain-specific related IDs remain owned by the domain
+service rather than a generic scheduler schema.
