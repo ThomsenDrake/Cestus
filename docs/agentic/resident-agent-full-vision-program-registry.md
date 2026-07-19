@@ -22872,3 +22872,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   21. Dual approval authorizes Task9 integration first, then the complete
   reviewed G136 merge, integrated-byte gates, and strict release record 22.
   No push, external effect, or `neo` action occurs.
+
+## RV-1-E-809 — Repaired G136-SC receives dual final approval
+
+- Recorded at: 2026-07-19T11:38:05Z
+- Fresh read-only architecture/invariants review task
+  `019f7a1e-ec22-75c2-9660-c50899f81a79` returns `APPROVED` for exact clean
+  candidate `70814c1259871c5458a3578fae8a5c8281540377` with no reproduced
+  P0/P1. It independently passes focused **6 files / 86 tests** and the four
+  released domain adapters **4 files / 56 tests**, verifies canonical-agent
+  rejection before either causal route, both shared-source claim orderings,
+  result-append ambiguity timing, direct independent-domain positives, exact
+  scope, unchanged post-`846a5062` production bytes, and Task9 blob identity.
+- Fresh read-only executability/adversarial review task
+  `019f7a1e-f92a-7830-acb9-702245806f00` returns `APPROVED` for the same exact
+  candidate with no reproduced P0/P1. It independently passes focused **6/86**,
+  cross-boundary **9/136**, four adapters **4/56**, standalone typecheck,
+  bounded assurance **19/19**, all four V4 markers, factory/diff/scope/
+  dependency gates, and repository prefix **21/21** followed only by the
+  expected incomplete-29 boundary. Both accepted-review P1 counterfactuals
+  fail closed and the Task9 no-approval fixture remains byte-identical.
+- Both reviewers confirm identical before/after HEAD, branch, clean status,
+  and unset common/local `core.worktree`; no candidate, dependency, Git
+  configuration, or history byte changed during review. Status advances Task9
+  maintenance `approved-for-integration -> approved` and G136-SC `reviewing ->
+  approved`.
+- The coordinator now integrates the preserved Task9 maintenance history
+  first, then the complete reviewed G136-SC history, reruns every required
+  gate from integrated bytes, and appends strict V4 release record 22. Strict
+  prefix remains 21 until that record exists. No push, external effect, or
+  `neo` action occurs.
