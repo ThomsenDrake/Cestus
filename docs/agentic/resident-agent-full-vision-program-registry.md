@@ -23545,3 +23545,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   its preserved candidate remains neither reviewed nor integrated until all
   exact gates rerun from that non-stale merge. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-826 — C136-P exact-base candidate enters review
+
+- Recorded at: 2026-07-19T15:18:28Z
+- The original Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0` preserves claim `6eb485dd`, causal
+  RED `346e00cf`, initial GREEN `06157253`, test-oracle corrections
+  `03e04dce` and `4f937c21`, and compiler closure
+  `8b02245feba48ff897857b238a928dc45cfe578e`. Normal two-parent merge
+  `0b7af5a9835ded758b0b0ea9c2c921c95d29cc79` forward-merges exact current
+  program authority `89b9125eb441a13ba11527128eee1b45b7208bfd`
+  without conflict or history rewrite; all three reviewed implementation
+  blobs remain byte-identical to `8b02245f`.
+- Exact committed-byte admission passes focused **1 file / 3 tests**,
+  cross-boundary **4 files / 18 tests**, standalone typecheck, bounded
+  assurance **19/19**, all four V4 markers, factory readiness, diff hygiene,
+  exact three-path candidate scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked executable Vitest 4.1.9. Repository
+  mode emits exact prefix **23/23** followed only by the expected incomplete-29
+  boundary.
+- Full `npm test` and `npm run verify` retain the inherited **13 failing files
+  / 70 failing tests / 5 skips** with **2,790 passes**, an exact +3-pass-only
+  C136-P delta over record 23 and no new failure, removal, or skip.
+- Status advances C136-P `candidate -> reviewing`. One fresh concurrent
+  read-only Terra/xhigh architecture/executability pair now reviews exact SHA
+  `0b7af5a9835ded758b0b0ea9c2c921c95d29cc79`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
