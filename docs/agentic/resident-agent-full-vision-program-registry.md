@@ -23140,3 +23140,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Status advances record-22 assurance `approved -> integrated`; `G136-R` is
   now the next exact executable release card. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-815 — G136-R gateway readback card claimed
+
+- Recorded at: 2026-07-19T12:23:51Z
+- Strict V4 prefix 22 and the corrected **19/19** assurance base make
+  `G136-R` the next exact executable card. Its released prerequisites are
+  `T120-R` and `G136-SC`; no later card is integrated or used as authority.
+- One task-scoped Terra/xhigh implementation owner starts from exact clean
+  program base `0b86128c` and owns only the V4 four-path boundary:
+  `packages/agent/src/resident-loop-tool-gateway.ts`,
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`, transferred-now-
+  owned `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`,
+  and `docs/agentic/claims/task-136-gateway-approval-readback.md`.
+- The card implements the minimum concrete resident-loop gateway/readback
+  bridge required by the frozen Task136 plan over the released Task120 and
+  G136 interfaces. Durable gateway request, human decision, execution claim,
+  scheduler completion evidence, and terminal result must be reread and bound
+  to the exact request/task/run/tool/version/preview/approval/provenance facts.
+  Caller-shaped copies, structural lookalikes, missing/unreadable/duplicate/
+  stale/denied/terminal/cross-request/cross-run evidence, changed preview or
+  policy facts, and self-issued authority fail closed before an execution or
+  completion append.
+- G136-R must preserve G136-SC as the sole private completion path and make the
+  transferred import test prove that no public/generic structural completion,
+  alternate result event, compatibility authority, fallback write, provider,
+  credential, network, or external-effect route exists. Append-only ledger
+  semantics, projection rebuildability, exact provenance, and secret safety
+  remain unchanged.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The owner must commit a claim first,
+  one causal test RED before production, and one minimal GREEN; then run the
+  exact two-file V4 command, justified G136/Task120 cross-boundary gates,
+  standalone typecheck, exact record-22 full/verify differential, assurance,
+  V4/repository, diff/factory/scope/clean/dependency gates. Children never
+  edit the registry, self-integrate, push, contact external systems, or touch
+  `neo`. Status advances G136-R `not started -> claimed -> implementing`.
