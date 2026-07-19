@@ -146,3 +146,22 @@ events whose canonical `context.actor.kind` is `agent`, while retaining the
 existing `agent.*` event-family rejection. Human, extractor, and system domain
 results remain admissible only after every exact causal, request/run,
 currentness, reread, cross-request-correlation, and overlapping-claim check.
+
+## RV-1-E-807 fake-loop fixture-only recovery
+
+Status remains `implementing-repair` under the next finite, forward-only
+fixture cycle. Exact immutable authority is RV-1-E-807 at
+`bd2b8982820b996089395c7278c59c3960eea75a`, forward-merged after GREEN
+`846a5062`. Committed-byte RED evidence is the exact focused command's
+`packages/agent/test/execution-loop.test.ts`: **3 failures / 17 passes**,
+yielding **83 passes / 3 failures** across six files. All three failures use
+`appendFakeDomainResult`, which correctly fails because it labels the alleged
+independent `evidence.ingested` result with the resident `agentActor`.
+
+This claim-only RED changes no production or test bytes. The one minimal GREEN
+may change only that fake-loop test and this claim: it introduces one stable,
+explicit, non-agent domain-service actor and uses it only for the helper's
+result event context. It preserves the exact execution-claim causation,
+per-request correlation, payload, interleaving behavior, and assertions. It
+must not weaken RV-1-E-806's production actor boundary, alter any API/event
+type/descriptor/expectation, expand scope, or change Task9 bytes.
