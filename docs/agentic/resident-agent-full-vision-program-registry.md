@@ -24556,3 +24556,43 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   released predecessor APIs make a compliant three-path GREEN impossible, the
   owner must stop with exact counterexample evidence rather than weaken or
   simulate authority. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-855 — Task122 durably blocked on released portable-cursor ownership
+
+- Recorded at: 2026-07-19T20:13:31Z
+- The same owner forward-merges authority as
+  `84861d1a975d9ec9688a1fa6e74165ddd017e947` and commits causal RED
+  `358a683aaacf3e4ffb18de5ef1f4efefdbb71fce`. RED retains all **16** prior
+  focused passes and adds three exact failures: swapped investigation completes
+  the normal V2 path; swapped investigation does not fail closed in recovery;
+  and the actual portable mounted producer/controller rejects the genuine
+  planner model-invocation history with
+  `portable-mounted-handoff-authority-invalid` instead of completing V2.
+- RED changes only the Task122 test and append-only claim. Production blob
+  `7e195eb539685f8fcf200c59f429311fd28e40af` is byte-identical to the
+  authority merge, and the branch is clean with real non-symlinked dependencies
+  and executable Vitest 4.1.9. No GREEN is created.
+- The exact ownership blocker is reproduced. Task122's three owned paths can
+  bind the durable started-run `investigationId`, but they cannot make the
+  released portable cursor accept the mandatory same-run
+  `agent.model-invocation.*` provenance. The cursor processes every subsequent
+  event as a lifecycle transition and burns because model invocation is not a
+  permitted predecessor/successor. Deferred binding also fails because initial
+  cursor derivation processes the same task/run-bound historical invocation
+  events. Task122 owns neither the cursor implementation/test nor an existing
+  released deferred producer/controller/two-store adapter.
+- A Task122-only workaround would require suppressing or redirecting model
+  provenance, minting/shadowing authority, weakening the cursor, widening the
+  released input boundary, or simulating the positive path; each violates the
+  frozen safety or ownership contract. A compliant correction therefore
+  requires an explicit V4 scope/ownership decision for the current CF1-HR
+  portable-store source and test. Raw strict record 14 cannot simply be
+  mutated, and current-owner verification prevents an unrecorded post-release
+  CF1 edit.
+- Status advances Task122 `reviewing -> implementing-repair -> blocked-scope`.
+  Exact release order makes record 26 the active frontier. Card
+  `W1-123-BOOTSTRAP-HANDOFF` requires released Task122; Task138-H requires
+  both; final Task136 requires Task138-H. No later V4 card is independently
+  eligible. All earlier commits, raw records 1-25, candidates, reviews, REDs,
+  and integration evidence remain preserved. No reset, rebase, amend, squash,
+  drop, rewrite, push, external effect, or `neo` action occurs.
