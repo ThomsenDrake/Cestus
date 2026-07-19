@@ -23914,3 +23914,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
   remains C136-P `implementing-repair`; no push, external effect, or `neo`
   action occurs.
+
+## RV-1-E-837 — C136-P approved for integration
+
+- Recorded at: 2026-07-19T17:38:41Z
+- The same owner preserves authority merge `5e6ac609`, claim-only compiler
+  RED `23995726d21d27aefc2da9e3f18499e0e88ed62f`, and minimal compiler GREEN
+  exact candidate `a64f29cafedaeec9ca46288d847b46c5473018d3`. The correction changes only
+  the provider source and claim after the registry-only authority merge; all
+  owned test blobs remain `ceb68bd9b257c96c2970ab258fed969ef25f6e7d`.
+- Exact committed-byte admission passes focused **1 file / 23 tests**,
+  cross-boundary **4 files / 38 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory, diff, exact three-path cumulative
+  scope, two-path compile-correction scope, clean/dependency gates, and
+  repository prefix **23/23** followed only by the expected incomplete-29
+  boundary. Serial full test and `npm run verify` retain exactly **13 files /
+  70 failures / 2,810 passes / 5 skips**. One loaded full run omitted one
+  inherited prerequisite-check failure, but an isolated candidate rerun and
+  clean record-23 differential restored the exact cohort; the isolated test
+  passes on both byte sets and no owned-path regression exists.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b6a-a5be-7eb3-bdf7-e3b2441593e1` returns `APPROVED`. It confirms the
+  closed released approval set, exact source/high-water/posture/budget/replan
+  bindings, one-initial transition, deep immutability, and data-only/no-effect
+  boundary remain intact without casts or widening.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b6a-b0d1-7962-93b4-87667bb350aa` independently returns `APPROVED`.
+  It reproduces focused/cross/typecheck/assurance/V4 gates and ten hostile,
+  state, approval, high-water, and immutable-output counterexamples; unknown
+  approval strings fail closed and no provider, credential, ledger, gateway,
+  or network capability is introduced.
+- Status advances C136-P `reviewing -> approved`. The coordinator will now
+  integrate the complete preserved candidate chain and rerun all gates from
+  integrated bytes before strict record 24. No push, external effect, or
+  `neo` action occurs.
