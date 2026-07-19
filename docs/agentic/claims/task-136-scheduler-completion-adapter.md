@@ -110,3 +110,30 @@ source-event IDs before that request. Direct causal binding to the exact claim
 remains valid. Read-model changes remain normalized, frozen, secret-safe, and
 duplicate-free; their domain-specific related IDs remain owned by the domain
 service rather than a generic scheduler schema.
+
+## RV-1-E-805 independent-result binding recovery
+
+Status transitions `reviewing -> implementing-repair` under the standing
+contract-determined recovery. Exact immutable review evidence is RV-1-E-805
+at program authority `bfcf096ccdec4dd69ddf0d9e93eb1eac97be5c4e`, forward-merged
+from preserved combined candidate `ba48161e288e6569561477092ac948f2d0dac78b`.
+The causal counterfactual is that a non-`agent.*` event is not independent
+merely by type: it must not be authored by the resident identity or the exact
+execution claimant. Separately, source ancestry alone cannot choose between
+two active approved requests that share frozen sources; a result correlated to
+another request/run, or occurring while an overlapping competing claim remains
+unterminated, cannot terminalize this request.
+
+This sole recovery packet is authorized to change only
+`resident-loop-scheduler-completion.ts`, its completion test,
+`tool-gateway.test.ts`, and this claim. RED converts gateway positive fixtures
+to a distinct domain-service actor and proves resident/claimant self-minting,
+both A/B claim orderings, and terminal competing-request correlation reject
+without completion. GREEN preserves direct exact-claim completion only for
+independently authored result evidence and preserves released domain actors and
+native correlations. It must retain opaque WeakSet evidence, durable reread,
+exact request/run/tool/version/preview/claim/currentness binding, append-only
+rebuildability, no public `completeTool`, no generic result/attestation,
+fallback, actor/event-family allowlist, structural DTO authority, or Task9
+fixture change. Stop for the stated factory safety, ownership, dependency, or
+repeated-verifier conditions.

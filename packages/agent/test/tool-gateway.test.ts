@@ -9,6 +9,7 @@ import {
 import { createResidentLoopSchedulerCompletionAdapter } from "../src/resident-loop-scheduler-completion.js";
 
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+const gatewayDomainServiceActor = { id: "actor_gateway_domain_service", kind: "system" as const, label: "Gateway Domain Service" };
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const policyActor = { id: "actor_policy_guard", kind: "system" as const, label: "Policy Guard" };
 const schedulerActor = { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" };
@@ -1272,7 +1273,7 @@ async function completeThroughDurableEvidence(
     version: 1,
     streamId: `evidence_gateway_completion_${command.toolRequestId}`,
     context: {
-      actor: agentActor,
+      actor: gatewayDomainServiceActor,
       occurredAt: fixedNow(),
       causationId: claim.id,
       correlationId: `corr_${command.toolRequestId}_result`,
