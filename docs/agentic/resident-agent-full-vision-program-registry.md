@@ -20857,3 +20857,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   edit this registry, push, use credentials, contact providers, or touch `neo`.
 - Status advances Task139-PM `not started -> claimed -> implementing`. Strict
   prefix remains 17; no candidate, integration, or release record exists yet.
+
+## RV-1-E-754 — Task139-PM released-interface ownership root-cause checkpoint
+
+- Recorded at: 2026-07-19T00:57:56Z
+- The same Task139-PM owner preserves claim
+  `b47db7bffbe7022177793f61fa0042a03416bc3b` and causal RED
+  `8479f8ece61417a49e880e7cf76687342a6230f7`. RED uses the released
+  mounted runtime and `MountedArtifactAuthorityOperation` path, then proves the
+  required opaque issue/readback API is absent while rejecting structural,
+  copied, proxied, cross-workspace, stale, closed-runtime, and caller-shaped
+  authority. The owner stopped before production GREEN and left its worktree
+  clean.
+- Root cause is a released-interface ownership conflict. Task137B-W's import
+  policy permits protected mounted-operation inspection only through finite
+  source-specific seams, but Task139-PM owns neither the mounted-operation
+  source nor the policy/import test that may authorize its consumer. Task126's
+  private reader factory is likewise not an authorized Task139-PM production
+  import, and Task139-P1 remains immutable data-only rather than unforgeable
+  authority. Implementing around either boundary would contradict released
+  predecessor APIs and frozen exact-binding safety.
+- Standing recovery therefore authorizes one bounded V4 direct-source
+  correction before PM GREEN. Add `Task137B-W` to Task139-PM's exact
+  prerequisites and transfer only these Task137B-W paths directly to
+  Task139-PM: `packages/local-runtime/src/mounted-artifact-authority-operation.ts`,
+  `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`,
+  and `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`.
+  Task139-PM's exact command must also execute its focused test and the
+  transferred import-policy test. Historical compatibility for unchanged raw
+  Task137B-W record 11 uses canonical hash
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`.
+- The correction is finite and source-specific: no V5, new card, bridge,
+  generic or transitive transfer facility, compatibility fallback, alternate
+  authority producer, raw-record mutation, or history rewrite is authorized.
+  V1-V3, all 29 card IDs/order, raw strict records 1-17, every existing
+  candidate/integration/review/registry commit, and `neo` remain byte-identical.
+  Task137B-W current-HEAD ownership stays authoritative until strict Task139-PM
+  record 18 exists.
+- A bounded assurance owner must commit one claim/test-only causal RED and one
+  minimal GREEN in the existing four-path assurance boundary, run V4 contract
+  and exact repository-prefix-17 admission, and receive one fresh concurrent
+  Terra/xhigh read-only architecture/executability pair. After dual approval,
+  the coordinator will integrate the assurance chain, forward-merge the
+  corrected program head into the same Task139-PM branch, and resume its same
+  owner from preserved RED for one minimal GREEN using the PM-specific static
+  inspection seam. Task-scoped subagent-driven development and test-driven
+  development are explicitly approved for this task.
+- Strict prefix remains 17. No Task139-PM production edit, release record,
+  provider/network/credential effect, push, or `neo` action occurs at this
+  checkpoint.
