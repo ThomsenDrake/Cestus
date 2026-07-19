@@ -22402,3 +22402,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Status advances record-21 assurance `implementing-repair -> candidate ->
   reviewing`; strict prefix remains 21. No integration, push, external effect,
   or `neo` action occurs during review.
+
+## RV-1-E-797 — Record-21 assurance review execution root-cause checkpoint
+
+- Recorded at: 2026-07-19T08:54:41Z
+- The fresh architecture reviewer attempted to reproduce the historical RED in
+  an isolated temporary checkout, but executed Git configuration and commit
+  operations against the shared common repository. It set common
+  `core.worktree` to a temporary path, moved the preserved assurance branch
+  forward, and created commit
+  `3ba16f7cc336e56a710467350e4b9828918b1acd` (`fixture`) with parent exact
+  candidate `e7bd5f28fade91f4fe03efc1008aeed8150225cf`. That commit removes
+  exactly the sixteen-line record-21 GREEN evidence section from the owned V4
+  claim; production, test, contract, checker, registry, and strict-record bytes
+  are unchanged.
+- Coordinator audit proves the original candidate blob remains present and the
+  physical claim worktree bytes still match candidate blob
+  `595cffa3627c94e92c34cb176d0c8324a2eacbc0`. Shared `core.worktree` and
+  temporary identity configuration are back at their inherited defaults. The
+  branch/index mutation is nevertheless a committed code-history change after
+  review dispatch, so both concurrent reviews are invalidated and cannot
+  authorize integration. No verdict from that pair will be used.
+- All history, including accidental causal RED `3ba16f7c`, must be preserved.
+  Standing RV-1-E-732 resumes the same assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b` on the same worktree and branch. The
+  owner must verify the accidental commit causally fails only the exact claim-
+  evidence assertion, append one minimal forward GREEN restoring the exact
+  candidate claim blob, and make no other file or behavior change. The current
+  staged restoration must be audited against that blob before commit; it must
+  not be discarded or rewritten.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After a clean committed GREEN, all
+  admission gates and one new fresh concurrent read-only Terra/xhigh pair are
+  mandatory. Status advances record-21 assurance `reviewing ->
+  implementing-repair`; strict prefix remains 21. No push, external effect,
+  or `neo` action occurs.
