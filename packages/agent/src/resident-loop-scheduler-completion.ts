@@ -1,4 +1,4 @@
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentToolReadModelChange, AgentToolResult } from "./tool-gateway.js";
@@ -46,8 +46,8 @@ export function createResidentLoopSchedulerCompletionAdapter(
       const stream = await input.ledger.readStream(toolRequestStreamId(command.toolRequestId));
       const allEvents = await input.ledger.readAll();
 
-      assertCurrentGatewayState(stream, command);
-      assertDurableResultEvidence(allEvents, command, result);
+      const request = assertCurrentGatewayState(stream, command);
+      assertDurableResultEvidence(allEvents, command, result, request);
 
       // Reread the tool stream after reading the evidence so a concurrent
       // terminal record cannot be treated as an executable completion.
@@ -69,7 +69,10 @@ export function isResidentLoopSchedulerCompletionEvidence(value: unknown): value
   return typeof value === "object" && value !== null && issuedEvidence.has(value);
 }
 
-function assertCurrentGatewayState(events: readonly KnowledgeEvent[], command: ResidentLoopSchedulerCompletionReadInput): void {
+function assertCurrentGatewayState(
+  events: readonly KnowledgeEvent[],
+  command: ResidentLoopSchedulerCompletionReadInput
+): KnowledgeEventOf<"agent.tool.requested"> {
   const requests = events.filter((event) => event.type === "agent.tool.requested");
   if (requests.length !== 1) {
     throw new Error("Completion requires exactly one durable tool request.");
@@ -104,12 +107,15 @@ function assertCurrentGatewayState(events: readonly KnowledgeEvent[], command: R
   ) {
     throw new Error("Completion requires the exact durable execution claim.");
   }
+
+  return request;
 }
 
 function assertDurableResultEvidence(
   events: readonly KnowledgeEvent[],
   command: ResidentLoopSchedulerCompletionReadInput,
-  result: AgentToolResult
+  result: AgentToolResult,
+  request: KnowledgeEventOf<"agent.tool.requested">
 ): void {
   if (result.eventIds.length === 0) {
     throw new Error("Completion requires durable result evidence.");
@@ -134,17 +140,58 @@ function assertDurableResultEvidence(
       event === undefined ||
       eventIndex <= claimIndex ||
       event.type.startsWith("agent.") ||
-      event.context.causationId !== command.executionClaimEventId
+      !hasExactCausalBinding(events, event, command, request)
     ) {
       throw new Error("Completion requires independently appended causal domain result evidence.");
     }
   }
 
   for (const change of result.readModelChanges) {
-    if (change.relatedIds !== undefined && change.relatedIds.some((id) => !result.eventIds.includes(id) && !result.artifactHashes.includes(id))) {
-      throw new Error("Completion read-model evidence is not bound to the durable result.");
+    if (change.relatedIds !== undefined && new Set(change.relatedIds).size !== change.relatedIds.length) {
+      throw new Error("Completion read-model evidence must not duplicate related IDs.");
     }
   }
+}
+
+function hasExactCausalBinding(
+  events: readonly KnowledgeEvent[],
+  resultEvent: KnowledgeEvent,
+  command: ResidentLoopSchedulerCompletionReadInput,
+  request: KnowledgeEventOf<"agent.tool.requested">
+): boolean {
+  if (resultEvent.context.causationId === command.executionClaimEventId) {
+    return true;
+  }
+
+  const sourceEventIds = request.payload.sourceEventIds;
+  if (sourceEventIds === undefined || sourceEventIds.length === 0) {
+    return false;
+  }
+  const requestIndex = events.findIndex((event) => event.id === request.id);
+  if (requestIndex < 0) {
+    return false;
+  }
+  const eventsById = new Map(events.map((event, index) => [event.id, { event, index }]));
+  const sourceIds = new Set(sourceEventIds);
+  const visited = new Set([resultEvent.id]);
+  let causationId = resultEvent.context.causationId;
+
+  while (causationId !== undefined) {
+    if (visited.has(causationId)) {
+      return false;
+    }
+    visited.add(causationId);
+    const ancestor = eventsById.get(causationId);
+    if (ancestor === undefined || ancestor.event.type.startsWith("agent.")) {
+      return false;
+    }
+    if (sourceIds.has(ancestor.event.id)) {
+      return ancestor.index < requestIndex;
+    }
+    causationId = ancestor.event.context.causationId;
+  }
+
+  return false;
 }
 
 function copyResult(value: AgentToolResult): AgentToolResult {
