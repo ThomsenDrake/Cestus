@@ -152,3 +152,29 @@ through opaque issued readbacks, and update this claim to **green**. No
 registry, released dependency, contract/spec/plan, generic completion route,
 provider/credential/network/external effect, or non-ledger storage write is
 authorized.
+
+## RV-1-E-817 Final-Review GREEN
+
+The minimal forward correction advances **recovery-red -> green**. The bridge
+now composes the released `createAgentToolGateway` directly with the fixed
+`agent_default` agent actor; its constructor accepts no request or completion
+gateway object. It retains only `completeToolFromSchedulerEvidence` on that
+genuine gateway after the released private G136-SC adapter has reread opaque
+evidence.
+
+Every issued readback now privately retains exact serialized bytes of its
+selected Task120 plan. Each later current reread and every await boundary must
+match those complete bytes, while supersession compares the required resident,
+task, attempt, and run identity independent of mutable policy/provenance
+fields. Request readback explicitly carries the durable side-effect class and
+requires it to equal the parsed command. Claims must have both `claimedBy` and
+agent context actor equal to exact `agent_default` before the execution
+callback or completion path is reached.
+
+The RED assertions are retained. The owned test helper passes a deliberately
+unbranded extra gateway property only through an erased structural cast, proving
+that it has no authority at runtime; no compatibility input or fallback is
+added to the production API. The focused card is GREEN at **2 files / 9
+tests**. This correction creates no provider, credential, network, external
+effect, generic result event, public completion method, or storage write
+outside the ledger.

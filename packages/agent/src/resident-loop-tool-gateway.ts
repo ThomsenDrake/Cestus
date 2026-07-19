@@ -6,14 +6,13 @@ import type { AgentApprovalClass } from "./permission-policy.js";
 import type { AgentToolSideEffectClass } from "./projection-types.js";
 import {
   createResidentLoopSchedulerCompletionAdapter,
-  type ResidentLoopSchedulerCompletionEvidence
 } from "./resident-loop-scheduler-completion.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
-import type {
-  AgentToolReadModelChange,
-  AgentToolResult,
-  AgentToolPreview,
-  RequestAgentToolInput
+import {
+  createAgentToolGateway,
+  type AgentToolReadModelChange,
+  type AgentToolResult,
+  type AgentToolPreview
 } from "./tool-gateway.js";
 
 type ResidentPlanEvent = KnowledgeEventOf<"agent.resident-plan.recorded.v1">;
@@ -25,15 +24,11 @@ type ToolCompletionEvent = KnowledgeEventOf<"agent.tool.completed">;
 const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const unsafeKeys = new Set(["__proto__", "constructor", "prototype"]);
 const issuedReadbacks = new WeakSet<object>();
+const issuedPlanBytes = new WeakMap<object, string>();
+const residentGatewayActor = Object.freeze({ id: "agent_default", kind: "agent" as const, label: "Cestus Agent" });
 
 export interface ResidentLoopToolGatewayInput {
   readonly ledger: EventLedger;
-  readonly gateway: {
-    readonly requestTool: (input: RequestAgentToolInput) => Promise<ToolRequestEvent>;
-    readonly completeToolFromSchedulerEvidence: (
-      evidence: ResidentLoopSchedulerCompletionEvidence
-    ) => Promise<ToolCompletionEvent>;
-  };
   readonly now: () => string;
 }
 
@@ -68,6 +63,7 @@ export interface ResidentLoopToolGatewayReadback {
   readonly runId: string;
   readonly toolId: string;
   readonly toolVersion: string;
+  readonly sideEffectClass: AgentToolSideEffectClass;
   readonly previewHash: string;
   readonly approvalClass: string;
   readonly approvedBy?: string;
@@ -80,6 +76,7 @@ export interface ResidentLoopToolGatewayReadback {
 
 export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInput) {
   const completionAdapter = createResidentLoopSchedulerCompletionAdapter({ ledger: input.ledger });
+  const gateway = createAgentToolGateway({ ledger: input.ledger, actor: residentGatewayActor, now: input.now });
 
   return Object.freeze({
     async requestAndReadback(value: ResidentLoopToolRequestInput): Promise<ResidentLoopToolGatewayReadback> {
@@ -99,7 +96,7 @@ export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInpu
         relatedEventIds: sourceEventIds,
         artifactHashes: plan.payload.contextArtifactHashes
       });
-      const requested = await input.gateway.requestTool({
+      const requested = await gateway.requestTool({
         toolRequestId: command.toolRequestId,
         residentAgentId: plan.payload.residentAgentId,
         taskId: command.taskId,
@@ -113,18 +110,17 @@ export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInpu
         estimatedEffect: command.preview.estimatedEffect,
         inputArtifactHashes: plan.payload.contextArtifactHashes
       });
-      const readback = await readCurrentGatewayState(input, command, requested.id, "request");
-      return issue(readback);
+      return issue(await readCurrentGatewayState(input, command, requested.id, "request", undefined, planBytes(plan)));
     },
 
     async readRequest(value: ResidentLoopToolGatewayReadback): Promise<ResidentLoopToolGatewayReadback> {
       const issued = requireIssued(value, "request");
-      return issue(await readCurrentGatewayState(input, issued, issued.requestEventId, "request"));
+      return issue(await readCurrentGatewayState(input, issued, issued.requestEventId, "request", undefined, requiredPlanBytes(issued)));
     },
 
     async readDecision(value: ResidentLoopToolGatewayReadback): Promise<ResidentLoopToolGatewayReadback> {
       const issued = requireIssued(value, "decision");
-      return issue(await readCurrentGatewayState(input, issued, issued.requestEventId, "decision"));
+      return issue(await readCurrentGatewayState(input, issued, issued.requestEventId, "decision", undefined, requiredPlanBytes(issued)));
     },
 
     async executeAndReadback(
@@ -135,22 +131,30 @@ export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInpu
       if (typeof execute !== "function" || isProxy(execute)) {
         throw new Error("Resident-loop execution must be a non-proxy function.");
       }
-      const beforeExecution = await readCurrentGatewayState(input, issued, issued.requestEventId, "claim");
-      const rawResult = await execute(beforeExecution);
-      const afterExecution = await readCurrentGatewayState(input, beforeExecution, beforeExecution.requestEventId, "claim");
+      const beforeExecution = await readCurrentGatewayState(
+        input, issued, issued.requestEventId, "claim", undefined, requiredPlanBytes(issued)
+      );
+      const rawResult = await execute(beforeExecution.readback);
+      const afterExecution = await readCurrentGatewayState(
+        input, beforeExecution.readback, beforeExecution.readback.requestEventId, "claim", undefined, beforeExecution.planBytes
+      );
       const result = copyResult(rawResult);
       const evidence = await completionAdapter.reread({
-        toolRequestId: afterExecution.toolRequestId,
-        runId: afterExecution.runId,
-        toolId: afterExecution.toolId,
-        toolVersion: afterExecution.toolVersion,
-        approvedPreviewHash: afterExecution.previewHash,
-        executionClaimEventId: requiredClaimEventId(afterExecution),
+        toolRequestId: afterExecution.readback.toolRequestId,
+        runId: afterExecution.readback.runId,
+        toolId: afterExecution.readback.toolId,
+        toolVersion: afterExecution.readback.toolVersion,
+        approvedPreviewHash: afterExecution.readback.previewHash,
+        executionClaimEventId: requiredClaimEventId(afterExecution.readback),
         result
       });
-      const beforeCompletion = await readCurrentGatewayState(input, afterExecution, afterExecution.requestEventId, "claim");
-      const completed = await input.gateway.completeToolFromSchedulerEvidence(evidence);
-      return issue(await readCurrentGatewayState(input, beforeCompletion, beforeCompletion.requestEventId, "result", completed.id));
+      const beforeCompletion = await readCurrentGatewayState(
+        input, afterExecution.readback, afterExecution.readback.requestEventId, "claim", undefined, afterExecution.planBytes
+      );
+      const completed = await gateway.completeToolFromSchedulerEvidence(evidence);
+      return issue(await readCurrentGatewayState(
+        input, beforeCompletion.readback, beforeCompletion.readback.requestEventId, "result", completed.id, beforeCompletion.planBytes
+      ));
     },
 
     async readResult(value: ResidentLoopToolGatewayReadback): Promise<ResidentLoopToolGatewayReadback> {
@@ -159,21 +163,32 @@ export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInpu
       if (resultEventId === undefined) {
         throw new Error("Resident-loop result readback requires an issued completion readback.");
       }
-      return issue(await readCurrentGatewayState(input, issued, issued.requestEventId, "result", resultEventId));
+      return issue(await readCurrentGatewayState(
+        input, issued, issued.requestEventId, "result", resultEventId, requiredPlanBytes(issued)
+      ));
     }
   });
 }
 
 type RequestSnapshot = Readonly<ResidentLoopToolRequestInput>;
+interface CurrentGatewayState {
+  readonly readback: ResidentLoopToolGatewayReadback;
+  readonly planBytes: string;
+}
 
 async function readCurrentGatewayState(
   input: ResidentLoopToolGatewayInput,
   binding: RequestSnapshot | ResidentLoopToolGatewayReadback,
   requestEventId: string,
   stage: "request" | "decision" | "claim" | "result",
-  expectedResultEventId?: string
-): Promise<ResidentLoopToolGatewayReadback> {
+  expectedResultEventId?: string,
+  expectedPlanBytes?: string
+): Promise<CurrentGatewayState> {
   const plan = await readCurrentPlan(input.ledger, binding);
+  const selectedPlanBytes = planBytes(plan);
+  if (expectedPlanBytes !== undefined && selectedPlanBytes !== expectedPlanBytes) {
+    throw new Error("Resident-loop complete selected plan changed during durable gateway reread.");
+  }
   const stream = await input.ledger.readStream(toolRequestStreamId(binding.toolRequestId));
   const requests = stream.filter((event): event is ToolRequestEvent => event.type === "agent.tool.requested");
   if (requests.length !== 1 || requests[0]?.id !== requestEventId) {
@@ -186,32 +201,36 @@ async function readCurrentGatewayState(
   const claim = readExactClaim(stream, request, approval, binding, input.now, stage);
   const completion = readExactCompletion(stream, request, claim, stage, expectedResultEventId);
   const rereadPlan = await readCurrentPlan(input.ledger, binding);
-  if (!samePlan(plan, rereadPlan)) {
-    throw new Error("Resident-loop plan changed during durable gateway reread.");
+  if (selectedPlanBytes !== planBytes(rereadPlan)) {
+    throw new Error("Resident-loop complete selected plan changed during durable gateway reread.");
   }
 
   return Object.freeze({
-    schemaVersion: "resident-loop-tool-gateway-readback.v1",
-    planRecordEventId: plan.id,
-    requestEventId: request.id,
-    ...(approval === undefined ? {} : { decisionEventId: approval.id, approvedBy: approval.payload.approvedBy }),
-    ...(claim === undefined ? {} : { executionClaimEventId: claim.id }),
-    ...(completion === undefined
-      ? {}
-      : { resultEventId: completion.id, resultEvidenceEventIds: Object.freeze([...completion.payload.eventIds]) }),
-    toolRequestId: binding.toolRequestId,
-    residentAgentId: "agent_default",
-    taskId: plan.payload.taskId,
-    attemptId: plan.payload.attemptId,
-    runId: plan.payload.runId,
-    toolId: request.payload.toolId,
-    toolVersion: request.payload.toolVersion,
-    previewHash: request.payload.previewHash,
-    approvalClass: request.payload.requiredApprovalClass,
-    policyHash: plan.payload.policyHash,
-    authorityHash: plan.payload.authorityHash,
-    sourceEventIds: Object.freeze([...plan.payload.sourceEventIds]),
-    contextArtifactHashes: Object.freeze([...plan.payload.contextArtifactHashes])
+    readback: Object.freeze({
+      schemaVersion: "resident-loop-tool-gateway-readback.v1",
+      planRecordEventId: plan.id,
+      requestEventId: request.id,
+      ...(approval === undefined ? {} : { decisionEventId: approval.id, approvedBy: approval.payload.approvedBy }),
+      ...(claim === undefined ? {} : { executionClaimEventId: claim.id }),
+      ...(completion === undefined
+        ? {}
+        : { resultEventId: completion.id, resultEvidenceEventIds: Object.freeze([...completion.payload.eventIds]) }),
+      toolRequestId: binding.toolRequestId,
+      residentAgentId: "agent_default",
+      taskId: plan.payload.taskId,
+      attemptId: plan.payload.attemptId,
+      runId: plan.payload.runId,
+      toolId: request.payload.toolId,
+      toolVersion: request.payload.toolVersion,
+      sideEffectClass: request.payload.sideEffectClass,
+      previewHash: request.payload.previewHash,
+      approvalClass: request.payload.requiredApprovalClass,
+      policyHash: plan.payload.policyHash,
+      authorityHash: plan.payload.authorityHash,
+      sourceEventIds: Object.freeze([...plan.payload.sourceEventIds]),
+      contextArtifactHashes: Object.freeze([...plan.payload.contextArtifactHashes])
+    }),
+    planBytes: selectedPlanBytes
   });
 }
 
@@ -253,6 +272,7 @@ function assertRequestMatches(
     request.payload.toolId !== binding.toolId ||
     request.payload.toolVersion !== binding.toolVersion ||
     request.payload.requestedBy !== "agent_default" ||
+    request.payload.sideEffectClass !== binding.sideEffectClass ||
     request.payload.requiredApprovalClass !== binding.approvalClass ||
     !sameStrings(request.payload.sourceEventIds ?? [], expectedSources) ||
     !sameStrings(request.payload.inputArtifactHashes ?? [], plan.payload.contextArtifactHashes) ||
@@ -325,6 +345,9 @@ function readExactClaim(
     claim.payload.toolRequestId !== request.payload.toolRequestId ||
     claim.payload.approvedPreviewHash !== request.payload.previewHash ||
     claim.context.causationId !== approval.id ||
+    claim.payload.claimedBy !== "agent_default" ||
+    claim.context.actor.id !== "agent_default" ||
+    claim.context.actor.kind !== "agent" ||
     Date.parse(claim.payload.leaseExpiresAt) <= Date.parse(now()) ||
     ("executionClaimEventId" in binding &&
       binding.executionClaimEventId !== undefined &&
@@ -413,9 +436,10 @@ function requireIssued(value: ResidentLoopToolGatewayReadback, stage: string): R
   return value;
 }
 
-function issue(value: ResidentLoopToolGatewayReadback): ResidentLoopToolGatewayReadback {
-  const frozen = Object.freeze(value);
+function issue(state: CurrentGatewayState): ResidentLoopToolGatewayReadback {
+  const frozen = Object.freeze(state.readback);
   issuedReadbacks.add(frozen);
+  issuedPlanBytes.set(frozen, state.planBytes);
   return frozen;
 }
 
@@ -514,16 +538,27 @@ function safeString(value: unknown, label: string, pattern?: RegExp, prefix?: st
   return value;
 }
 
-function samePlan(left: ResidentPlanEvent, right: ResidentPlanEvent): boolean {
-  return left.id === right.id && left.payload.planRevision === right.payload.planRevision &&
-    left.payload.policyHash === right.payload.policyHash && left.payload.authorityHash === right.payload.authorityHash;
+function requiredPlanBytes(value: ResidentLoopToolGatewayReadback): string {
+  const bytes = issuedPlanBytes.get(value);
+  if (bytes === undefined) {
+    throw new Error("Resident-loop readback does not retain an exact selected plan binding.");
+  }
+  return bytes;
 }
 
 function samePlanIdentity(left: ResidentPlanEvent, right: ResidentPlanEvent): boolean {
-  return left.payload.taskId === right.payload.taskId &&
+  return left.payload.residentAgentId === right.payload.residentAgentId &&
+    left.payload.taskId === right.payload.taskId &&
     left.payload.attemptId === right.payload.attemptId &&
-    left.payload.runId === right.payload.runId &&
-    left.payload.policyHash === right.payload.policyHash;
+    left.payload.runId === right.payload.runId;
+}
+
+function planBytes(plan: ResidentPlanEvent): string {
+  const bytes = JSON.stringify(plan);
+  if (bytes === undefined) {
+    throw new Error("Resident-loop selected plan must have exact durable bytes.");
+  }
+  return bytes;
 }
 
 function sameStrings(left: readonly string[], right: readonly string[]): boolean {
