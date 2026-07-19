@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const schedulerPath = fileURLToPath(new URL("../src/scheduler.ts", import.meta.url));
 const completionAdapterPath = fileURLToPath(new URL("../src/resident-loop-scheduler-completion.ts", import.meta.url));
+const residentLoopGatewayPath = fileURLToPath(new URL("../src/resident-loop-tool-gateway.ts", import.meta.url));
 const gatewayPath = fileURLToPath(new URL("../src/tool-gateway.ts", import.meta.url));
 const executionLoopPath = fileURLToPath(new URL("../src/execution-loop.ts", import.meta.url));
 
@@ -16,5 +17,11 @@ describe("resident-loop scheduler completion import boundary", () => {
     expect(scheduler).not.toMatch(/gateway\.completeTool\s*\(/);
     expect(readFileSync(gatewayPath, "utf8")).toContain("const { completeTool: _structuralCompletion, ...publicGateway }");
     expect(readFileSync(executionLoopPath, "utf8")).not.toMatch(/gateway\.completeTool\s*\(/);
+
+    expect(existsSync(residentLoopGatewayPath)).toBe(true);
+    const residentLoopGateway = readFileSync(residentLoopGatewayPath, "utf8");
+    expect(residentLoopGateway).toContain("completeToolFromSchedulerEvidence");
+    expect(residentLoopGateway).not.toMatch(/\.completeTool\s*\(/);
+    expect(residentLoopGateway).not.toContain("completeTool:");
   });
 });
