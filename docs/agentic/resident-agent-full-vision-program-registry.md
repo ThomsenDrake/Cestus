@@ -23355,3 +23355,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward-merge this registry-only event and rerun every admission gate before
   the fresh review pair. Status remains G136-R `implementing-repair`; no
   integration, release record, push, external effect, or `neo` action occurs.
+
+## RV-1-E-821 — G136-R receives dual final approval
+
+- Recorded at: 2026-07-19T14:34:01Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7abd-7a9c-7c10-bf91-d5780d39a505` returns `APPROVED` for exact clean
+  candidate `7e26999b607191c5dea84297ac0c91b7a208d045` with no P0/P1. It verifies
+  the exact four-path delta, byte-identical runtime source after compiler
+  GREEN, request-local guarded ledger, preserved stream-sequence precondition,
+  atomic global precondition, official opaque-evidence completion route,
+  complete-plan currentness, fixed resident identity, claim/approval/
+  provenance boundaries, and focused **2/10**, cross **7/77**, typecheck,
+  assurance **19/19**, V4, factory, diff, and clean-state gates.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7abd-6d0f-7cb0-86e1-0ec97bc025ea` independently returns `APPROVED`
+  for the same candidate with no P0/P1. Independent probes prove valid
+  completion succeeds; a newer plan or unrelated global append after the
+  final reread conflicts before completion; and forced concurrent executions
+  produce one completion and one conflict while retaining both global and
+  stream guards. The inherited full differential remains **13 files / 70
+  failures / 2,787 passes / 5 skips** after typecheck.
+- Coordinator adjudication accepts both verdicts. Every claim, causal RED,
+  minimal GREEN, compiler checkpoint, registry merge, and review remains in
+  preserved ancestry. Status advances G136-R `reviewing -> approved`; the
+  coordinator now integrates the complete chain and reruns all gates from
+  program bytes before strict release record 23. No push, external effect, or
+  `neo` action occurs.
