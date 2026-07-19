@@ -39,7 +39,7 @@ const expectedCardIds = Object.freeze([
   "Task136"
 ]);
 
-const expectedAssuranceFingerprint = "413eee42f5311deca2a0681752d011ccf7bccb8f99a59cf1dbdbd19189201631";
+const expectedAssuranceFingerprint = "47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0";
 const immutableContractPins = Object.freeze([
   Object.freeze({ label: "v1", path: "docs/agentic/contracts/task136-bounded-assurance-v1.json", sha256: "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed" }),
   Object.freeze({ label: "v2", path: "docs/agentic/contracts/task136-bounded-assurance-v2.json", sha256: "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4" }),
@@ -58,7 +58,11 @@ const rawPrefixPins = Object.freeze([
   Object.freeze({ cardId: "T120-R", sha256: "f220cb62ab803c938e4e97c538f55e24628bbf46d6e06060cb0169c1adbf2cdb" }),
   Object.freeze({ cardId: "Task137B-W", sha256: "26f33ac286836459e723edd5ad2d4e34202bccd3f1a92e5533be30e7d881c9b7" }),
   Object.freeze({ cardId: "W1-123-H-SHARED-SCHEMA", sha256: "9bb5838f7782eaeb327280040a514119f8c0ba1fd76dee6268ead6013ac8f292" }),
-  Object.freeze({ cardId: "W1-133.5-PREAPPROVAL-PROMPT-STORE", sha256: "119f9aea548038d600edadbca60e2bb8f92f08aacdaf081c0f6dadc928438070" })
+  Object.freeze({ cardId: "W1-133.5-PREAPPROVAL-PROMPT-STORE", sha256: "119f9aea548038d600edadbca60e2bb8f92f08aacdaf081c0f6dadc928438070" }),
+  Object.freeze({ cardId: "CF1-HR", sha256: "8491645c21cdd6ca54e5701318a0f9febb794c5fc1f032beaca05c8acd960351" }),
+  Object.freeze({ cardId: "Task126-R", sha256: "f27c06337227fcc4584d199a804226276cb1d63eca0dfbca410490324a11ef3f" }),
+  Object.freeze({ cardId: "Task133", sha256: "3abba468fd3fe80a3b1f1e08367ddbd8fb3b30884f08876c911deed774fe1bd4" }),
+  Object.freeze({ cardId: "Task139-P1", sha256: "9b268556a169bf270e0995d2b50ab137c65fe9341e91ddbcd9454c087279218d" })
 ]);
 const expectedHistoricalCompatibility = Object.freeze([
   Object.freeze({
@@ -93,7 +97,10 @@ const expectedHistoricalCompatibility = Object.freeze([
     cardId: "Task137B-W",
     canonicalJsonSha256: "833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29",
     pathDispositions: Object.freeze([
-      Object.freeze({ path: "packages/ontology/src/contracts.ts", recordDisposition: "owned" })
+      Object.freeze({ path: "packages/ontology/src/contracts.ts", recordDisposition: "owned" }),
+      Object.freeze({ path: "packages/local-runtime/src/mounted-artifact-authority-operation.ts", recordDisposition: "owned" }),
+      Object.freeze({ path: "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts", recordDisposition: "owned" }),
+      Object.freeze({ path: "packages/local-runtime/test/support/task137-authority-boundary-policy.ts", recordDisposition: "owned" })
     ])
   })
 ]);
@@ -124,6 +131,11 @@ const task135bToCf1Paths = Object.freeze([
 const task137bToCf1Paths = Object.freeze([
   "packages/ontology/src/contracts.ts"
 ]);
+const task137bToTask139PmPaths = Object.freeze([
+  "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+  "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+  "packages/local-runtime/test/support/task137-authority-boundary-policy.ts"
+]);
 const task137bOwnedPaths = Object.freeze([
   "packages/local-runtime/src/portable-workspace-lifecycle.ts",
   "packages/local-runtime/test/portable-workspace-lifecycle.test.ts",
@@ -141,6 +153,13 @@ const task137bOwnedPaths = Object.freeze([
   "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md"
 ]);
 const task137bCommand = "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts";
+const task139PmOwnedPaths = Object.freeze([
+  "packages/local-runtime/src/mounted-provider-authority.ts",
+  "packages/local-runtime/test/mounted-provider-authority.test.ts",
+  "docs/agentic/claims/task-139-mounted-provider-authority.md",
+  ...task137bToTask139PmPaths
+]);
+const task139PmCommand = "npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts";
 const cf1HrOwnedPaths = Object.freeze([
   "packages/agent/src/specialist-runner-kernel.ts",
   "packages/agent/test/specialist-runner-kernel.test.ts",
@@ -509,18 +528,46 @@ function validateTask135BTransfer(graph) {
 
 function validateTask137bCeiling(graph) {
   const card = graph.get("Task137B-W");
-  if (!card) throw new Error("Task137B-W card");
+  const cf1Hr = graph.get("CF1-HR");
+  const task139Pm = graph.get("Task139-PM");
+  if (!card || !cf1Hr || !task139Pm) throw new Error("Task137B-W card");
   assertExactStrings(card.prerequisiteIds, ["Task135B", "T120-R", "Task137A", "Task129-MFA"], "Task137B-W prerequisites");
   if (
-    card.ownedPaths.some((ownedPath) => ownedPath.path !== task137bToCf1Paths[0] && ownedPath.disposition !== "owned") ||
-    card.ownedPaths.find((ownedPath) => ownedPath.path === task137bToCf1Paths[0])?.disposition !== "transferred" ||
+    card.ownedPaths.some((ownedPath) =>
+      ![...task137bToCf1Paths, ...task137bToTask139PmPaths].includes(ownedPath.path) && ownedPath.disposition !== "owned"
+    ) ||
+    card.ownedPaths.some((ownedPath) =>
+      [...task137bToCf1Paths, ...task137bToTask139PmPaths].includes(ownedPath.path) && ownedPath.disposition !== "transferred"
+    ) ||
     JSON.stringify(card.ownedPaths.map((ownedPath) => ownedPath.path)) !== JSON.stringify(task137bOwnedPaths)
   ) {
     throw new Error("Task137B-W owned paths");
   }
-  assertExactStrings(card.transferToIds, ["CF1-HR"], "Task137B-W transfer targets");
+  assertExactStrings(card.transferToIds, ["CF1-HR", "Task139-PM"], "Task137B-W transfer targets");
+  validateTransferredPathGroup(card, cf1Hr, task137bToCf1Paths, "Task137B-W:CF1-HR");
+  validateTransferredPathGroup(card, task139Pm, task137bToTask139PmPaths, "Task137B-W:Task139-PM");
   if (card.command !== task137bCommand) {
     throw new Error("Task137B-W command");
+  }
+}
+
+function validateTask139PmScope(graph) {
+  const card = graph.get("Task139-PM");
+  if (!card) throw new Error("Task139-PM card");
+  assertExactStrings(card.prerequisiteIds, [
+    "Task126-R",
+    "Task139-P1",
+    "Task135D",
+    "Task137A",
+    "T120-R",
+    "Task137B-W"
+  ], "Task139-PM prerequisites");
+  if (
+    card.ownedPaths.some((ownedPath) => ownedPath.disposition !== "owned") ||
+    JSON.stringify(card.ownedPaths.map((ownedPath) => ownedPath.path)) !== JSON.stringify(task139PmOwnedPaths) ||
+    card.command !== task139PmCommand
+  ) {
+    throw new Error("Task139-PM scope");
   }
 }
 
@@ -558,7 +605,10 @@ function historicalTargetGroups(cardId) {
     { targetId: "CF1-HR", paths: task129MfaToCf1Paths }
   ];
   if (cardId === "Task135B") return [{ targetId: "CF1-HR", paths: task135bToCf1Paths }];
-  if (cardId === "Task137B-W") return [{ targetId: "CF1-HR", paths: task137bToCf1Paths }];
+  if (cardId === "Task137B-W") return [
+    { targetId: "CF1-HR", paths: task137bToCf1Paths },
+    { targetId: "Task139-PM", paths: task137bToTask139PmPaths }
+  ];
   throw new Error(`invalid historical transfer source: ${cardId}`);
 }
 
@@ -663,6 +713,7 @@ export function verifyStaticGraph(contract = loadContract()) {
   validateTask129MfaTransfer(graph);
   validateTask135BTransfer(graph);
   validateTask137bCeiling(graph);
+  validateTask139PmScope(graph);
   validateCorrectedCardScopes(graph);
 
   const finalOwners = new Map();
@@ -674,7 +725,7 @@ export function verifyStaticGraph(contract = loadContract()) {
         throw new Error(`non-topological prerequisite: ${card.id}:${prerequisiteId}`);
       }
     }
-    if (card.id !== "Task137A" && card.id !== "Task129-MFA") {
+    if (card.id !== "Task137A" && card.id !== "Task129-MFA" && card.id !== "Task137B-W") {
       const transferred = card.ownedPaths.filter((ownedPath) => ownedPath.disposition === "transferred");
       if (transferred.length > 0 && card.transferToIds.length !== 1) {
         throw new Error(`undeclared transfer: ${card.id}`);
@@ -1327,6 +1378,7 @@ function currentHeadMigrationTarget(cardId, path) {
   if (cardId === "Task129-MFA" && task129MfaToCf1Paths.includes(path)) return "CF1-HR";
   if (cardId === "Task135B" && task135bToCf1Paths.includes(path)) return "CF1-HR";
   if (cardId === "Task137B-W" && task137bToCf1Paths.includes(path)) return "CF1-HR";
+  if (cardId === "Task137B-W" && task137bToTask139PmPaths.includes(path)) return "Task139-PM";
   return undefined;
 }
 
