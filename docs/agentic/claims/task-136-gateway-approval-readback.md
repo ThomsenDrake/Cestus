@@ -271,3 +271,13 @@ The sole forward compiler GREEN will make no runtime change: it will explicitly
 type the guarded ledger object as `EventLedger`, allowing its delegated methods
 to retain the released ledger parameter and return types while preserving the
 captured global-count append precondition and every hostile assertion.
+
+## RV-1-E-732 Completion-Guard Compiler GREEN
+
+The forward compiler GREEN contextually types the card-local guarded object as
+`EventLedger` before freezing it. That supplies the released append/read
+parameter types without changing the guard's snapshot, plan-reread ordering,
+captured global-count precondition, request-local closure, opaque evidence, or
+completion authority. The focused card remains **2 files / 10 tests** and
+`npm run typecheck` passes. Status advances **compiler-recovery-red -> green**
+with no runtime or external behavior change.
