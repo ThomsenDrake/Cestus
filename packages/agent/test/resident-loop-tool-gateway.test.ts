@@ -319,7 +319,7 @@ function createBridge(
   ledger: EventLedger,
   gateway: Pick<ReturnType<typeof createAgentToolGateway>, "requestTool" | "completeToolFromSchedulerEvidence">
 ) {
-  return createResidentLoopToolGateway({ ledger, gateway, now: fixedNow });
+  return createResidentLoopToolGateway({ ledger, gateway, now: fixedNow } as unknown as Parameters<typeof createResidentLoopToolGateway>[0]);
 }
 
 function mutateSelectedPlanAfterFirstRead(
