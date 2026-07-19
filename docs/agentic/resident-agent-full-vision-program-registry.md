@@ -23650,3 +23650,43 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reviews exact SHA `673c1ea6bd46e2d6412c11e66cc607075b0d4934`; SDD/TDD is not relevant or
   authorized for reviewers. No integration, release record, push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-829 — C136-P final-review policy and normalization checkpoint
+
+- Recorded at: 2026-07-19T16:01:33Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b13-6c56-7fa3-b8eb-ccac7ccea884` returns `BLOCKED` for exact candidate
+  `673c1ea6bd46e2d6412c11e66cc607075b0d4934`. Its frozen-input probe changes
+  only `permittedAutomaticActionClasses` to `provider-byte-transfer` and
+  observes an accepted candidate. Frozen policy permits only `read-only`,
+  `local-derivative`, and `ledger-proposal` automatic classes; provider byte
+  transfer is an approval class, never automatic. No P0 is reproduced.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b13-7644-7a23-8322-e4cf6e766507` independently returns `BLOCKED` with
+  two reproduced P1s. A non-canonical `feasibility.assessedAt` value is
+  admitted, and correlation ID `127。0。0。1` using IDNA dot equivalents is
+  admitted even though WHATWG host normalization resolves it to `127.0.0.1`.
+  Released P2 authority requires a canonical timestamp and normalized host
+  material to fail closed.
+- Both reviewers confirm focused **1/11**, cross **4/26**, typecheck,
+  assurance/V4, factory, exact clean scope, unchanged before/after HEAD, and
+  successful rejection of the prior eight P1 cases. The new findings are not
+  regressions in that repair; they are distinct uncovered policy and
+  normalization counterfactuals.
+- Coordinator adjudication accepts one further contract-determined packet:
+  close automatic action classes to the frozen three-member set; require the
+  exact released canonical, real ISO timestamp form; and normalize Unicode/
+  IDNA dot equivalents before all IP/DNS/URL host classification. No product,
+  scope, safety-invariant, credential, hardware, data-loss, or external-
+  behavior choice exists.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0`, branch
+  `codex/c136-p-resident-plan-candidate-producer`, and worktree
+  `/home/drake/.codex/worktrees/8403/Cestus`. It must preserve every commit,
+  forward-merge this registry authority, commit one causal RED for these exact
+  three cases, then one minimal GREEN within the existing three owned paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Every admission gate and one fresh
+  concurrent read-only Terra/xhigh architecture/executability pair remain
+  mandatory after GREEN. Status remains C136-P `reviewing -> implementing-
+  repair`; no push, external effect, or `neo` action occurs.
