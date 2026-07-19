@@ -21829,3 +21829,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   No code, test, claim, provider/network/credential, push, integration, record
   20, or `neo` action occurs during review. Status advances Task139-P2
   `implementing -> candidate -> reviewing`; strict prefix remains 19.
+
+## RV-1-E-781 — Task139-P2 exact candidate approved
+
+- Recorded at: 2026-07-19T06:28:13Z
+- Fresh concurrent Terra/xhigh architecture/invariants review task
+  `019f7903-2617-7ee0-a464-e931933ac24f` and executability/adversarial review
+  task `019f7903-30af-7331-8ff9-bbb70a7753a6` each return unqualified
+  `APPROVED` for exact candidate
+  `b32dd62d8b1c1b461c3fea34d0f7e38639cffab9`; neither reproduces a P0/P1.
+- Both independently verify the clean three-path scope, preserved history,
+  focused **1 file / 6 tests**, cross-boundary **6 files / 53 tests**,
+  standalone typecheck, V4/repository prefix, factory readiness, opaque PM
+  authority/currentness, P1 structural revalidation, exact frozen binding data,
+  hostile-text fail-closure, compiler predicates/interfaces, and absence of
+  Task126 coupling, casts/widening, writes, provider calls, credential
+  resolution, fallbacks, or external effects.
+- The executability review's terminal transport detached its attempted full
+  suites; the reviewer terminated only those read-only test process groups,
+  confirmed they drained without candidate mutation, and relied on the owner
+  and coordinator's already-reproduced serial **69 failure / 5 skip** exact
+  differential. This is environment-only and does not qualify either verdict.
+- Status advances Task139-P2 `reviewing -> approved`. The coordinator will now
+  integrate the complete preserved lineage and rerun all release gates from
+  integrated bytes before strict record 20. No repair, push, or `neo` action
+  occurs; strict prefix remains 19 until that record exists.
