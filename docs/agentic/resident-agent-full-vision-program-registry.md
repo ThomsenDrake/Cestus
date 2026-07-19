@@ -22791,3 +22791,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   forward-merge this registry-only correction before committing GREEN and run
   every RV-1-E-805 gate. Strict prefix remains 21; no push, external effect,
   or `neo` action occurs.
+
+## RV-1-E-807 — G136 fake-loop domain-actor fixture root cause
+
+- Recorded at: 2026-07-19T11:10:53Z
+- The same owner preserved causal RED `1aaa63ad`, registry-only tactic merge
+  `a0614150`, and GREEN `846a5062`. GREEN correctly rejects canonical `agent`
+  result actors and implements explicit other-request correlation plus
+  unterminated overlapping-source claim rejection. Its owned regression tests
+  for both accepted P1s pass.
+- Exact focused admission now reports **5 files passing**, while
+  `packages/agent/test/execution-loop.test.ts` has exactly **3 failures / 17
+  passes**, yielding **83 passes / 3 failures** across the six-file command.
+  All three failures call the shared `appendFakeDomainResult` helper, which
+  labels its alleged independent `evidence.ingested` domain result with the
+  resident `agentActor`; production now correctly rejects it before completion.
+- This is a contract-determined stale owned fixture, not a production defect or
+  reason to weaken actor independence. The frozen G136 design explicitly says
+  the legacy fake executor must independently append the exact durable domain
+  result it returns. `packages/agent/test/execution-loop.test.ts` is already one
+  of G136-SC's exact eleven owned paths.
+- Standing RV-1-E-732 resumes the same owner and history for a new finite
+  fixture-only recovery cycle after forward-merging this registry authority.
+  One claim-only causal RED must record the exact committed GREEN admission
+  failure without changing production or tests. One minimal GREEN may change
+  only `packages/agent/test/execution-loop.test.ts` and
+  `docs/agentic/claims/task-136-scheduler-completion-adapter.md`: replace the
+  helper's result actor with one explicit, stable, non-agent domain-service
+  actor distinct from the resident requester while preserving exact claim
+  causation, request-specific correlation, event payload, interleaving checks,
+  and every existing assertion.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. No event type, descriptor, production,
+  API, compatibility, authority, or test expectation may be weakened. After
+  GREEN, every focused/cross/adapter, typecheck, full differential, assurance/
+  V4/repository, factory/diff/scope/clean/dependency gate and one new fresh
+  concurrent read-only Terra/xhigh pair are mandatory. Task9 remains byte-
+  identical; strict prefix remains 21. No push, external effect, or `neo`
+  action occurs.
