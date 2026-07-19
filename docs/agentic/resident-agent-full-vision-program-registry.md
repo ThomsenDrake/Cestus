@@ -23499,3 +23499,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   fresh concurrent read-only Terra/xhigh architecture/executability pair are
   required before integration. No push, external effect, or `neo` action
   occurs.
+
+## RV-1-E-824 — Record-23 assurance correction receives dual approval
+
+- Recorded at: 2026-07-19T15:04:04Z
+- The same assurance owner preserves authority merge `cf18c8e6`, claim-only
+  causal RED `68c9264c`, and minimal GREEN exact candidate
+  `9290bb01c2b00b24b41c8e7c5caf590e95d5f14f`. Its two-path delta advances
+  only the two current-prefix groups and their coherent repository closure,
+  success-marker, and executed-command expectations from 22 to 23.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7ade-c38f-70e0-8d29-0b8d57657790` returns `APPROVED` with no P0/P1.
+  It verifies immutable contract/history preservation, exact fixed-prefix
+  semantics, causal RED/GREEN evidence, no generic count authority, and
+  unchanged clean candidate bytes.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7ade-d023-7b90-b7e2-03d1be1a9278` independently returns `APPROVED`
+  with no P0/P1. It reproduces assurance **19/19**, all four V4 markers,
+  repository `TASK136_REPOSITORY_PREFIX_OK records=23 commands=23` followed
+  only by the expected incomplete-29 boundary, standalone typecheck, factory
+  readiness, clean exact scope, and real non-symlinked Vitest 4.1.9.
+- Both reviewers confirm before/after HEAD
+  `9290bb01c2b00b24b41c8e7c5caf590e95d5f14f` and clean tracked/untracked
+  state. Status advances record-23 assurance `reviewing -> approved`; the
+  coordinator now integrates the complete preserved lineage before moving
+  C136-P onto the exact record-23 base. No push, external effect, or `neo`
+  action occurs.
