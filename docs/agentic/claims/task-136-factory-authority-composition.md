@@ -61,3 +61,20 @@ effect, authority upgrade, or secret material.
 
 The task is implementation-only.  Review, integration, release-record edits,
 pushes, history rewriting, and self-merge remain outside this claim.
+
+## Causal RED
+
+The exact card command ran before any production source existed:
+
+```bash
+npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts
+```
+
+It exited `1` with **2 files / 2 tests: 1 failed, 1 passed**.  The only
+failure was the real mounted-fixture API assertion at
+`factoryCompositionApi`: the absent module did not expose
+`createResidentLoopFactoryComposition` (`expected false to be true`).  The
+portable-workspace fixture, released W/PM/H calls, local Vitest 4.1.9, and the
+import-policy harness all loaded successfully; this is neither a dependency,
+syntax, nor invented-fixture failure.  Vite's missing TypeScript source-map
+notice is inherited dependency noise and is not a test failure.
