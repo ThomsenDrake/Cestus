@@ -284,3 +284,137 @@ non-symlinked `node_modules` and executable local Vitest `4.1.9`; and the
 final status command has empty output: clean tracked and untracked state.
 The cumulative implementation source scope is exactly the four owned files:
 the V4 contract, its checker, its focused assurance test, and this claim.
+
+## RV-1-E-754 direct Task137B-W to Task139-PM correction
+
+- Status: `claimed -> implementing` at the exact clean base
+  `e6b3a0060d0929b436f630bad74ac8668f72d6a5` on
+  `codex/task136-v4-task139-pm-direct-source-ownership`.
+- Authority: registry event `RV-1-E-754`; strict release prefix is 17 and
+  Task139-PM is absent. This is a finite direct-source correction only: the
+  existing Task137B-W `contracts.ts -> CF1-HR` mapping remains, while exactly
+  the released mounted-operation source, its import-policy test, and the
+  Task137 authority-boundary policy test move directly to Task139-PM.
+- The causal RED retains contract and checker bytes unchanged. It updates the
+  stale test fixture from the released 13-record boundary to the actual pinned
+  raw 17-record prefix, then requires Task139-PM's appended Task137B-W
+  prerequisite, exact two targets, source/target dispositions, command,
+  historical record-11 compatibility, and source-before/target-at-record-18
+  current-head behavior. Its mutations reject missing, extra, reordered,
+  wrong-target, transitive, generic, command, and historical-path changes.
+- Planned exact command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Stop rules: no contract/checker GREEN until the causal test failure is
+  observed; stop for an immutable raw-record, V1-V3, scope, dependency, or
+  repeated-verifier conflict. No registry, PM, provider, credential, network,
+  `neo`, integration, merge, push, or review action is authorized.
+
+## RV-1-E-755 changed-counterfactual RED correction
+
+- `RV-1-E-755` preserves first RED `f1524c3a780576e851d537d13f95fb7f9e1a5c28`
+  and authorizes this forward claim/test-only counterfactual after registry-only
+  merge `7bee7ea13768fcbf3da55588f7b889faf933444a`.
+- The correction replaces only the two obsolete single-target Task137B-W
+  transfer/disposition assertions with the finite ordered
+  `["CF1-HR", "Task139-PM"]` mapping: `contracts.ts` remains the CF1-HR
+  path, and exactly the mounted-operation source, import-policy test, and
+  authority-boundary policy test are transferred to Task139-PM. The record-11
+  historical compatibility assertion expands to those same four historically
+  owned paths. The first RED's exact mutations, current-head simulation, and
+  raw-17 compatibility coverage remain intact.
+- Contract and checker bytes remain unchanged for this forward RED. The
+  required command is `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`; only
+  the absent finite contract/checker mapping may cause its observed failure.
+
+Observed RED result: exit `1`; `19` tests ran, `18` passed, and exactly one
+failed: `requires the finite Task137B-W to Task139-PM transfer only at record
+18`. The direct cause is the missing appended `Task137B-W` prerequisite from
+the current Task139-PM contract card. No contract or checker bytes changed.
+
+## RV-1-E-756 complete future-pin audit RED
+
+- `RV-1-E-756` preserves both prior REDs and requires one complete test-pin
+  audit before the intended GREEN stash is applied. The audited future pins are
+  V4 SHA-256 `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`
+  and assurance fingerprint
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`.
+- The only V3 command-parity exception added is `Task139-PM`; its command is
+  the finite two-test projection required by RV-1-E-754. All existing
+  Task137B-W target/disposition, PM prerequisite/scope/command, historical
+  record-11 compatibility, raw-record-1-through-17, and record-count-17/18
+  assertions were audited and retained without weakening.
+- This forward RED changes only this claim and the assurance test. The named
+  intended-GREEN stash is read-only until this causal failure is recorded;
+  contract and checker remain byte-identical at RED HEAD.
+
+Observed RED result: exit `1`; `19` tests ran, `16` passed, and exactly three
+failed assertions. They are all future-pin deltas against unchanged production
+bytes: V4 file SHA (`063f11d…` versus `2a5cf62b…`), assurance fingerprint
+(`413eee…` versus `47cfd2…`), and the missing Task139-PM `Task137B-W`
+prerequisite. No syntax, fixture, dependency, raw-record, or contradictory
+expectation failure occurred.
+
+## RV-1-E-754 / RV-1-E-756 minimal GREEN
+
+- Applied (without dropping) the named intended-GREEN stash after the complete
+  pin-audit RED. Its sole correction was the audited checker fingerprint
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`;
+  the V4 pretty-JSON SHA-256 is
+  `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`.
+- GREEN makes only the finite direct Task137B-W mappings: `contracts.ts` stays
+  transferred to CF1-HR; the mounted-operation source, import-policy test, and
+  authority-boundary policy test transfer to Task139-PM. Task139-PM appends
+  Task137B-W after T120-R, owns exactly those three transferred paths, and has
+  the exact two-test command. No generic or transitive transfer rule exists.
+- The checker pins raw records 1-17, preserves V1-V3 and the 29-card order,
+  keeps Task137B-W source HEAD authoritative before record 18, and changes
+  current ownership only for those three paths when Task139-PM record 18
+  exists. Record 11 compatibility retains canonical SHA-256
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
+  with all four historical paths disposition `owned`.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited
+  `0`: `19` passed, `0` failed. The forward RED test blob is byte-identical;
+  the named stash remains preserved as required.
+
+## RV-1-E-849 record-25 fixture causal RED
+
+- Status: `claimed -> implementing` after normal forward merge
+  `c4c67c00872b66dad07507e605dc3801f278f983` of coordinator authority
+  `8357a9fe68217319dfdbceeba6b7a85b9e617d1e` into
+  `codex/task136-v4-task139-pm-direct-source-ownership`.
+- The merged assurance-test blob is
+  `261bfb8fcf81937ddf7ed4c23db9464d7df70852`; this causal checkpoint changes
+  no assurance-test, contract, checker, V1-V3, raw-record, or runtime byte.
+- Command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Observed result: exit `1`; `19` tests ran, `17` passed, `2` failed, and
+  no test was skipped. The only failures are current-prefix assertions at
+  lines `1112` and `1428`, each observing strict record prefix `25` against
+  the stale expected value `24` (`25 !== 24`).
+- RV-1-E-849 establishes the direct cause: strict record-25 repository mode
+  emits `TASK136_REPOSITORY_PREFIX_OK records=25 commands=25`, followed only
+  by `repository release closure incomplete: expected 29 records, found 25`.
+  The finite GREEN may therefore update only the two current strict-prefix
+  fixture groups and their coupled repository expectations from `24` to `25`.
+  Historical/pre-activation fixtures and all immutable assurance inputs remain
+  unchanged. Stop for any scope, raw-record, V1-V4, dependency, or verifier
+  conflict; no registry, review, integration, push, external, or `neo` action
+  is authorized here.
+
+## RV-1-E-849 record-25 minimal GREEN evidence
+
+- The two current-prefix fixture groups now require a parsed/released prefix
+  length of `25` and `expectedIds.slice(0, 25)`. Their coupled repository
+  admission assertions now require the sole closure boundary `expected 29
+  records, found 25`, the marker `records=25 commands=25`, and exactly `25`
+  adapter command calls.
+- No historical, pre-activation, raw-record, transfer, ownership, contract,
+  checker, V1-V3, command-card, or runtime assertion changed. The only test
+  edits are the six current record-count-derived expectations described above.
+- Focused proof command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`; the
+  committed-byte admission additionally requires contract and repository
+  markers, standalone typecheck, factory readiness, diff/scope audit, and
+  clean real local dependencies with executable Vitest.
