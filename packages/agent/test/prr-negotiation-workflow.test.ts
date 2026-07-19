@@ -235,18 +235,28 @@ describe("PRR negotiation workflow", () => {
       drafted?.id
     ]));
     expect(events.filter((event) => event.type === "agent.tool.requested")).toHaveLength(1);
-    const step = events.find((event) => event.type === "agent.specialist-run.step.recorded");
-    const completed = events.find((event): event is Extract<typeof events[number], { type: "agent.specialist-run.completed" }> =>
-      event.type === "agent.specialist-run.completed"
+    const terminalEvents = events.filter((event) =>
+      event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed"
     );
-    expect(completed?.payload.outputArtifactHashes).toEqual([draftHash]);
-    expect(completed?.payload.relatedEventIds).toEqual([step?.id, requested?.id]);
-    expect(result.eventIds).toEqual(expect.arrayContaining([completed!.id]));
+    expect(terminalEvents).toEqual([]);
+    expect(events.filter((event) => event.type === "agent.task.orchestration.completed")).toEqual([]);
+    expect(events.filter((event) =>
+      event.type === "agent.task.status.changed" && event.payload.status === "completed"
+    )).toEqual([]);
+    expect(result.eventIds).not.toEqual(expect.arrayContaining(terminalEvents.map((event) => event.id)));
     expect(buildAgentProjection(events).runs.get("run_prr_001")).toMatchObject({
-      state: "completed",
+      state: "running",
       toolRequestIds: [requested?.payload.toolRequestId]
     });
+    expect(result.handoff.nextSafeActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: "request-approval",
+        effect: "request-approval",
+        toolRequestId: requested?.payload.toolRequestId
+      })
+    ]));
     expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.tool.execution.claimed", "agent.tool.executed", "agent.tool.completed",
       "prr.request.sent", "prr.followup.sent", "prr.legal-escalation.confirmed"
     ]));
   });
