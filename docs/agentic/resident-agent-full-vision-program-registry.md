@@ -24129,3 +24129,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   merged bytes before integration.
 - Status advances Task121 `candidate-waiting-base -> candidate`. No push,
   provider, credential, network, external effect, or `neo` action occurs.
+
+## RV-1-E-843 — Task121 exact-base candidate enters review
+
+- Recorded at: 2026-07-19T18:16:44Z
+- Coordinator forward merge
+  `efee7660fccf2609bf7e8d38f944fef0f37f98e2` combines current record-24
+  authority `58b2c04c` with preserved Task121 candidate
+  `280cfff90621334e3769c93279fb59f0f141960f` without conflict or owned-path
+  change. Claim `fcb0d104`, causal RED `d1f8848b`, and minimal GREEN
+  `280cfff9` remain ordered and unmodified; GREEN test blob `bdea3d97` is
+  byte-identical after the forward merge.
+- Exact merged-byte admission passes focused **1 file / 15 tests** and
+  cross-boundary **3 files / 105 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory readiness, diff hygiene, exact
+  three-path cumulative/original scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9. Repository mode executes all 24 released
+  commands and emits exact prefix **24/24** followed only by the expected
+  incomplete-29 boundary.
+- Machine-readable full and `npm run verify` differentials are identical:
+  **12 failing files / 60 failing tests / 2,820 passes / 5 skips**. Relative
+  to clean record-24 program bytes, exactly the ten Task121 PRR workflow
+  failures become passes; no other failure is added, removed, changed, or
+  skipped.
+- The candidate consumes only the released opaque mounted CF1-HR V2 authority
+  and injected mounted store, preserves terminal -> orchestration-completed
+  -> task-status order and verified projection readback, and leaves the
+  approval-pending branch non-completing. It adds no PRR send, approval
+  decision, legal escalation completion, lock clearing, credential/provider
+  authority, fallback write, or other external effect.
+- Status advances Task121 `candidate -> reviewing`. One fresh concurrent
+  read-only Terra/xhigh architecture/executability pair now reviews exact SHA
+  `efee7660fccf2609bf7e8d38f944fef0f37f98e2`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, strict record 25, push, external
+  effect, or `neo` action occurs before dual approval.
