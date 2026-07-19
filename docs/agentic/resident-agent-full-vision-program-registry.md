@@ -21366,3 +21366,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance `reviewing -> approved`; the coordinator will integrate the full
   preserved history and refresh Task136-FC-Core onto that corrected base.
   Strict prefix remains 18; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-767 — Record-18 assurance correction integrated
+
+- Recorded at: 2026-07-19T03:47:46Z
+- The coordinator integrates the complete approved assurance lineage through
+  `b843ff25` by merge commit
+  `3097e2d936a31b79bb0ec1f4a03801c2673fd79e`; no commit is reset, rebased,
+  amended, squashed, dropped, reordered, or rewritten.
+- Integrated-byte reproduction passes **19/19 assurance tests**, all four exact
+  V4 contract markers, standalone typecheck, factory readiness, diff hygiene,
+  clean tracked/untracked state, and real non-symlinked Vitest 4.1.9
+  dependencies. Repository mode emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=18 commands=18` followed only by
+  `repository release closure incomplete: expected 29 records, found 18`.
+- The corrected program base will now be forward-merged into preserved
+  Task136-FC-Core candidate `a04fe8a614d1074d8d62a82e1d4739e1bd7ead4b`.
+  That environment/assurance-only merge does not alter its four owned paths or
+  invalidate its causal RED/GREEN bytes; exact admission is rerun before a
+  fresh review pair. Status advances record-18 assurance
+  `approved -> integrated`; strict prefix remains 18. No push, external
+  effect, or `neo` action occurs.
