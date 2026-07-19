@@ -402,3 +402,19 @@ expectation failure occurred.
   unchanged. Stop for any scope, raw-record, V1-V4, dependency, or verifier
   conflict; no registry, review, integration, push, external, or `neo` action
   is authorized here.
+
+## RV-1-E-849 record-25 minimal GREEN evidence
+
+- The two current-prefix fixture groups now require a parsed/released prefix
+  length of `25` and `expectedIds.slice(0, 25)`. Their coupled repository
+  admission assertions now require the sole closure boundary `expected 29
+  records, found 25`, the marker `records=25 commands=25`, and exactly `25`
+  adapter command calls.
+- No historical, pre-activation, raw-record, transfer, ownership, contract,
+  checker, V1-V3, command-card, or runtime assertion changed. The only test
+  edits are the six current record-count-derived expectations described above.
+- Focused proof command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`; the
+  committed-byte admission additionally requires contract and repository
+  markers, standalone typecheck, factory readiness, diff/scope audit, and
+  clean real local dependencies with executable Vitest.

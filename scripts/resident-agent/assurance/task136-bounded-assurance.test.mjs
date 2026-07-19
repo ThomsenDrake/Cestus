@@ -1109,8 +1109,8 @@ test("binds four historical source records and exact record-11 and record-14 cur
   const task137ARecord = parsedPrefix.find((record) => record.cardId === "Task137A");
   const task129MfaRecord = parsedPrefix.find((record) => record.cardId === "Task129-MFA");
 
-  assert.equal(parsedPrefix.length, 24);
-  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 24));
+  assert.equal(parsedPrefix.length, 25);
+  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 25));
   assert.equal(
     createHash("sha256").update(JSON.stringify(task137ARecord)).digest("hex"),
     historicalTask137ASha256
@@ -1273,10 +1273,10 @@ test("binds four historical source records and exact record-11 and record-14 cur
         successfulMessages.push(message);
       }
     }),
-    /repository release closure incomplete: expected 29 records, found 24/
+    /repository release closure incomplete: expected 29 records, found 25/
   );
-  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=24 commands=24"]);
-  assert.equal(successfulAdapter.commandCalls.length, 24);
+  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=25 commands=25"]);
+  assert.equal(successfulAdapter.commandCalls.length, 25);
 
   const task126 = parsedPrefix.find((record) => record.cardId === "Task126");
   const task137A = parsedPrefix.find((record) => record.cardId === "Task137A");
@@ -1425,8 +1425,8 @@ test("requires the finite Task137B-W to Task139-PM transfer only at record 18", 
     pathDispositions: [...task137bToCf1Paths, ...task137bToTask139PmPaths]
       .map((path) => ({ path, recordDisposition: "owned" }))
   });
-  assert.equal(releasedPrefix.length, 24);
-  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 24));
+  assert.equal(releasedPrefix.length, 25);
+  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 25));
   for (const [cardId, expectedHash] of rawPrefixPins) {
     assert.equal(createHash("sha256").update(rawRecordJson(cardId)).digest("hex"), expectedHash, cardId);
   }
