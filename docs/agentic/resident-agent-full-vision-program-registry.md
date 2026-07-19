@@ -21799,3 +21799,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   by the child, provider/network/credential action, push, or `neo` action is
   authorized. Status remains Task139-P2 `implementing`; strict prefix remains
   19.
+
+## RV-1-E-780 — Task139-P2 admitted to exact-candidate review
+
+- Recorded at: 2026-07-19T06:16:03Z
+- Exact clean candidate `b32dd62d8b1c1b461c3fea34d0f7e38639cffab9`
+  preserves every claim, RED, GREEN, registry-forward merge, hostile-input
+  correction, exact-binding correction, and compiler-closure commit. Relative
+  to current record-19 program head `196dbf4d`, cumulative task scope is exactly
+  the three owned P2 paths; the worktree is clean with a real non-symlinked
+  dependency tree and executable Vitest 4.1.9.
+- Owner and coordinator admission each reproduce focused **1 file / 6 tests**,
+  cross-boundary **6 files / 53 tests**, standalone typecheck exit `0`, factory
+  readiness, all four V4 contract markers, `git diff --check`, and repository
+  `TASK136_REPOSITORY_PREFIX_OK records=19 commands=19` followed by the expected
+  incomplete-29 boundary. Serial `npm test` and `npm run verify` differentials
+  against the clean record-19 base retain the exact inherited **69 failures /
+  5 skips** with identical normalized failure blocks and add exactly one
+  passing file / six passing tests; verify is differential evidence, not green.
+- One fresh concurrent read-only Terra/xhigh pair now reviews the immutable
+  SHA: architecture/invariants task
+  `019f7903-2617-7ee0-a464-e931933ac24f` and
+  executability/adversarial task
+  `019f7903-30af-7331-8ff9-bbb70a7753a6`. Reviewers may block only on an exact
+  reproduced P0/P1 contract, released-interface, authority, provenance,
+  secret-safety, fail-closed, or executability violation; P2/style/hypothetical
+  hardening is non-blocking.
+- Reviews are read-only. SDD/TDD is not relevant or authorized for reviewers.
+  No code, test, claim, provider/network/credential, push, integration, record
+  20, or `neo` action occurs during review. Status advances Task139-P2
+  `implementing -> candidate -> reviewing`; strict prefix remains 19.
