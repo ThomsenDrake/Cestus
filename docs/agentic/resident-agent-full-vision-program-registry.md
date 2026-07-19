@@ -23948,3 +23948,84 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integrate the complete preserved candidate chain and rerun all gates from
   integrated bytes before strict record 24. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-838 — C136-P integrated and released
+
+- Recorded at: 2026-07-19T17:45:52Z
+- Coordinator merge `b69ebd003ec1c3afd7cc849f076cb245e98c58f6`
+  integrates the complete reviewed C136-P lineage. Exact candidate
+  `a64f29cafedaeec9ca46288d847b46c5473018d3` is an ancestor; every claim,
+  causal RED, minimal GREEN, root-cause checkpoint, registry-authority merge,
+  failed review, changed tactic, and dual final approval remains preserved
+  without reset, rebase, amend, squash, drop, reorder, or rewrite.
+- Integrated-byte admission passes focused **1 file / 23 tests** and
+  cross-boundary **4 files / 38 tests**. Standalone typecheck, bounded
+  assurance **19/19**, all four exact V4 markers, factory readiness, diff
+  hygiene, exact three-path scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9 are green. Repository mode emits exact prefix
+  **23/23** followed only by the expected incomplete-29 boundary before this
+  record is appended.
+- Integrated `npm test` reports the unchanged intermediate differential of
+  **13 failing files / 70 failing tests / 2,810 passes / 5 skips**. `npm run
+  verify` passes standalone typecheck and reproduces that exact inherited
+  cohort with no new failure, removal, or skip. All 23 C136-P proofs remain
+  green, including the closed approval, source/high-water, budget, hostile
+  text, repeat-initial, and immutable contiguous-replan cases.
+- Status advances C136-P `approved -> integrated -> released`. Strict V4
+  release record 24 below makes `Task121` the next exact release card. No
+  provider, credential, network, external effect, push, or `neo` action
+  occurs.
+
+## Task136 dispatch release v4: C136-P
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "C136-P",
+  "candidateSha": "a64f29cafedaeec9ca46288d847b46c5473018d3",
+  "reviews": [
+    {
+      "threadId": "019f7b6a-a5be-7eb3-bdf7-e3b2441593e1",
+      "candidateSha": "a64f29cafedaeec9ca46288d847b46c5473018d3",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f7b6a-b0d1-7962-93b4-87667bb350aa",
+      "candidateSha": "a64f29cafedaeec9ca46288d847b46c5473018d3",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "b69ebd003ec1c3afd7cc849f076cb245e98c58f6",
+  "releaseEventId": "task136-release-v4-C136-P",
+  "prerequisites": [
+    {
+      "cardId": "T120-R",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-T120-R"
+    },
+    {
+      "cardId": "Task139-P2",
+      "integrationSha": "6472c92bce3b6cd23e3128666524e575d9f9d236",
+      "releaseEventId": "task136-release-v4-Task139-P2"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/resident-plan-candidate-provider.ts",
+      "disposition": "owned",
+      "blobSha": "ed5c8d9f98b9c433099045f2ad2112b2ecdab74e"
+    },
+    {
+      "path": "packages/agent/test/resident-plan-candidate-provider.test.ts",
+      "disposition": "owned",
+      "blobSha": "ceb68bd9b257c96c2970ab258fed969ef25f6e7d"
+    },
+    {
+      "path": "docs/agentic/claims/resident-plan-candidate-producer.md",
+      "disposition": "owned",
+      "blobSha": "e3c984fa2fed907fe92ff8820393ace39fad52ea"
+    }
+  ]
+}
+```
