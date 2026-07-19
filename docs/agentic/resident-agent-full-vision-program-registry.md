@@ -23754,3 +23754,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
   remains C136-P `reviewing -> implementing-repair`; no push, external effect,
   or `neo` action occurs.
+
+## RV-1-E-832 — Changed-tactic C136-P candidate enters final review
+
+- Recorded at: 2026-07-19T16:26:57Z
+- The same owner preserves registry merge `a5c1c377`, causal RED
+  `0f87df4c251c8789b9e6c0509265e212916b5e39`, and minimal GREEN exact
+  candidate `0051e682f43d1823e069a55b060d3e6a4d29e369`. RED fails exactly the
+  full-width compatibility-IP and mismatched external-transfer approval
+  counterfactuals; test blob `f736412a` is byte-identical in GREEN.
+- The changed-tactic GREEN applies NFKC before IDNA-dot/host classification,
+  imports released `approvalClassForSideEffect`, closes resident side-effect
+  classes, and accepts only the released baseline approval or strictly stronger
+  `human-review` where baseline is `none`. It adds no divergent permission
+  table or authority/effect route.
+- Exact committed-byte admission passes focused **1 file / 16 tests**,
+  cross-boundary **4 files / 31 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, repository **23/23** plus only the expected
+  incomplete-29 boundary, factory, diff, exact three-path scope, clean and
+  dependency gates. Full/verify retain **13 files / 70 failures / 5 skips**
+  with **2,803 passes**, an exact +2-pass-only delta.
+- Status remains C136-P `implementing-repair -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair now
+  reviews exact SHA `0051e682f43d1823e069a55b060d3e6a4d29e369`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
