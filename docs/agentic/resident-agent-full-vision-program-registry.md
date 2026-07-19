@@ -23880,3 +23880,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
   remains C136-P `reviewing -> implementing-repair`; no push, external effect,
   or `neo` action occurs.
+
+## RV-1-E-836 — C136-P closed approval compile checkpoint
+
+- Recorded at: 2026-07-19T17:06:40Z
+- The same owner preserves authority merge `e17cf904`, causal RED
+  `f23bb3b0`, and minimal GREEN exact candidate
+  `cdb9f9e2c5a3f961abc62a7f6ea14c571f24d769`. Focused **1 file / 23 tests**,
+  cross-boundary **4 files / 38 tests**, assurance **19/19**, all four V4
+  markers, factory, diff, exact three-path scope, clean/dependency gates, and
+  repository prefix **23/23** followed only by the expected incomplete-29
+  boundary all pass from committed bytes. Full test retains exactly **13
+  files / 70 failures / 2,810 passes / 5 skips**.
+- Standalone typecheck reproduces the sole owned diagnostic
+  `packages/agent/src/resident-plan-candidate-provider.ts(278,105): TS2345:
+  string is not assignable to AgentApprovalClass`; `npm run verify` exits at
+  that identical typecheck diagnostic before its test stage. The runtime
+  closed-set rejection is already proven; the source passes a structurally
+  validated string directly to the inferred `Set<AgentApprovalClass>.has`
+  boundary without a type-safe membership bridge.
+- Coordinator adjudication accepts a contract-determined compile closure:
+  preserve the released closed approval member set and runtime behavior while
+  expressing membership through typed comparison or equivalent narrowing.
+  Casts, assertions, `any`, `unknown` laundering, API widening, contract
+  changes, and weaker validation remain forbidden.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0`, preserving all history. It
+  forward-merges this authority, commits one claim/test-only causal compiler
+  RED recording the exact TS2345 with production unchanged, then one minimal
+  source/claim GREEN within the same three owned paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All exact admission gates and one fresh
+  concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
+  remains C136-P `implementing-repair`; no push, external effect, or `neo`
+  action occurs.
