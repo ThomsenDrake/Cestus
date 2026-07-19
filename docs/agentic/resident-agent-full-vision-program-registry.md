@@ -23622,3 +23622,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   architecture/executability pair remain mandatory after GREEN. Status
   advances C136-P `reviewing -> implementing-repair`; no push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-828 — Repaired C136-P candidate enters final review
+
+- Recorded at: 2026-07-19T15:50:40Z
+- The same owner preserves registry-authority merge `eb552f94`, consolidated
+  causal RED `659425ec4c204cb92edda153c73beb09de4d033a`, and minimal GREEN exact
+  candidate `673c1ea6bd46e2d6412c11e66cc607075b0d4934`. The RED reports **9 failures
+  / 2 passes / 11 tests** and pins eight named hostile cases plus the corrected
+  restrictive-approval oracle; its test blob `3701adea` is byte-identical in
+  GREEN.
+- GREEN closes the released scalar/enum boundary, recursive secret/host
+  classification, exact P2 approval class, restrictive approval-set
+  evolution, and exact consumed/remaining action accounting without changing
+  downstream authority or adding an effect/fallback/compatibility path.
+- Exact committed-byte admission passes focused **1 file / 11 tests** and
+  cross-boundary **4 files / 26 tests**, an exact +8-test delta. Standalone
+  typecheck, assurance **19/19**, all four V4 markers, repository **23/23**
+  plus only the expected incomplete-29 boundary, factory readiness, diff
+  hygiene, exact three-path repair/cumulative scope, clean state, unset
+  `core.worktree`, and real non-symlinked Vitest 4.1.9 are green.
+- Full `npm test` and `npm run verify` retain **13 failing files / 70 failing
+  tests / 5 skips** with **2,798 passes**, exactly +8 passes over the admitted
+  pre-repair candidate and no new failure, removal, or skip.
+- Status advances C136-P `implementing-repair -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair now
+  reviews exact SHA `673c1ea6bd46e2d6412c11e66cc607075b0d4934`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
