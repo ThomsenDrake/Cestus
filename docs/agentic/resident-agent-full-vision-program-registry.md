@@ -20829,3 +20829,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-753 — Record-18 eligible Task139-PM owner dispatched
+
+- Recorded at: 2026-07-19T00:42:31Z
+- Exact strict record-17 program base
+  `c160f5ad5b1841a9e7b2ae23d410327592445143` releases every Task139-PM
+  prerequisite: Task126-R, Task139-P1, Task135D, Task137A, and T120-R. Contract
+  computation also reports G136-SC, Task121, and Task122 eligible, but their
+  already-preserved candidates remain held without stale review or integration
+  until their exact release-order bases at positions 22, 25, and 26.
+- Sole Task139-PM implementation owner is Terra/xhigh task
+  `019f77d2-c59e-79b3-a4a4-9393117304c2`, worktree
+  `/home/drake/.codex/worktrees/fab0/Cestus`, on required task branch
+  `codex/task139-pm-mounted-provider-authority`. It owns exactly the V4 mounted
+  provider authority source, focused test, and claim.
+- The finite implementation sequence is one claim commit, one causal RED
+  commit, and one minimal GREEN commit. It must derive opaque provider authority
+  only from released mounted/factory and current durable sources; preserve
+  Task139-P1 as data-only and RV-1-C-134's trusted Task126 injection seam; obey
+  the released production-import boundary; and reject caller-scalar, structural,
+  copied, stale, remounted, swapped, revoked, expired, noncurrent, secret-bearing,
+  fallback, or alternate-store authority without provider/network/credential/
+  write effects.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The owner cannot review, self-integrate,
+  edit this registry, push, use credentials, contact providers, or touch `neo`.
+- Status advances Task139-PM `not started -> claimed -> implementing`. Strict
+  prefix remains 17; no candidate, integration, or release record exists yet.
