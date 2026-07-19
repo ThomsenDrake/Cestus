@@ -30,6 +30,7 @@ const exactIsoTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 const localhostPattern = /\blocalhost\b/i;
 const dnsHostTokenPattern = /(?:^|[^\p{L}\p{N}\p{M}_-])((?:[\p{L}\p{N}\p{M}-]+\.)+[\p{L}\p{N}\p{M}-]+)(?=$|[^\p{L}\p{N}\p{M}_-])/gu;
 const idnaDotEquivalentPattern = /[\u3002\uFF0E\uFF61]/gu;
+const idnaDotEquivalentInOriginalPattern = /[\u3002\uFF0E\uFF61]/u;
 const releasedVersionPattern = /^(?:agent-provider-auth|policy|adapter)\.v1$/;
 
 export type ProviderConfigurationLane = "byok" | "local-engine" | "official-harness";
@@ -575,10 +576,11 @@ function hasForbiddenTextMaterial(value: string): boolean {
 }
 
 function hasDnsHostMaterial(value: string): boolean {
+  const containsIdnaDotEquivalent = idnaDotEquivalentInOriginalPattern.test(value);
   const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
   for (const match of classificationText.matchAll(dnsHostTokenPattern)) {
     const token = match[1];
-    if (token !== undefined && !releasedVersionPattern.test(token)) return true;
+    if (token !== undefined && (containsIdnaDotEquivalent || !releasedVersionPattern.test(token))) return true;
   }
   return false;
 }
