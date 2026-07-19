@@ -55,3 +55,19 @@ import boundary. The final candidate will be verified from committed bytes with
 these commands, typecheck, full-test/verify differential, V4 contract and
 repository modes, factory readiness, scope and cleanliness checks, and real
 local dependency evidence.
+
+## Causal RED
+
+The RED adds only the focused test and this claim; the P2 production module is
+absent. It derives its real fixture through FC-Core's started wake composition,
+the factory-issued mounted operation, PM's opaque locator, and Core's exact
+PM/H bind readback. The three named cases require a frozen, secret-safe BYOK
+posture with exact run and mounted bindings; rejection of hostile envelopes,
+copied authority, mismatched currentness, and caller substitution; and PM
+reinspection after the mounted runtime closes.
+
+From the RED bytes, the exact focused command exited `1` with **1 failed file
+/ 3 failed tests**. Every failure is the intentional API-presence assertion at
+`postureApi` (`expected false to be true`) because
+`resident-loop-provider-posture.ts` is absent; no fixture, dependency, or
+TypeScript failure occurred. The RED test has no production edit.
