@@ -24288,3 +24288,79 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `reviewing -> approved`; the complete chain will now be integrated and
   reverified before strict record 25. No push, external effect, or `neo`
   action occurs.
+
+## RV-1-E-848 — Task121 integrated and released
+
+- Recorded at: 2026-07-19T19:07:51Z
+- Coordinator merge `e3bf834d1adeca8146cd26d5c2dbce7a54a9626a`
+  integrates the complete approved Task121 lineage. Exact candidate
+  `4cbc8824cc63c097d6269e863075167b8d84f636` is an ancestor; every claim,
+  causal RED, failed-oracle RED, changed test-oracle checkpoint, corrected
+  RED, minimal GREEN, review, and registry-authority merge remains preserved
+  without reset, rebase, amend, squash, drop, reorder, or rewrite.
+- Integrated-byte admission passes focused **1 file / 15 tests** and
+  cross-boundary **3 files / 105 tests**, standalone typecheck, bounded
+  assurance **19/19**, all four exact V4 markers, factory readiness, diff
+  hygiene, exact three-path scope, clean tracked/untracked state, and real
+  non-symlinked top-level dependencies with executable local Vitest 4.1.9.
+  Repository mode executes all 24 released commands and emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=24 commands=24` followed only by
+  `repository release closure incomplete: expected 29 records, found 24`.
+- Integrated `npm test` and `npm run verify` retain the identical intermediate
+  differential of **12 failing files / 60 failing tests / 2,820 passes / 5
+  skips**. Approval-pending execution appends no terminal, orchestration-
+  completed, or completed task-status event; ready-for-review V2 authority,
+  exact lifecycle ordering/readback, restart recovery, and no-send behavior
+  remain green.
+- Status advances Task121 `approved -> integrated -> released`. Strict V4
+  release record 25 below makes Task122 the next exact release card. No PRR
+  send, provider, credential, network, external effect, push, or `neo` action
+  occurs.
+
+## Task136 dispatch release v4: Task121
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task121",
+  "candidateSha": "4cbc8824cc63c097d6269e863075167b8d84f636",
+  "reviews": [
+    {
+      "threadId": "019f7bb4-87d0-7df0-94ed-563edca5792c",
+      "candidateSha": "4cbc8824cc63c097d6269e863075167b8d84f636",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f7bb4-924f-7a02-8c1d-e33608d78838",
+      "candidateSha": "4cbc8824cc63c097d6269e863075167b8d84f636",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "e3bf834d1adeca8146cd26d5c2dbce7a54a9626a",
+  "releaseEventId": "task136-release-v4-Task121",
+  "prerequisites": [
+    {
+      "cardId": "CF1-HR",
+      "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+      "releaseEventId": "task136-release-v4-CF1-HR"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/prr-negotiation-workflow.ts",
+      "disposition": "owned",
+      "blobSha": "da676cafee9d7655b01538c5feb1fa2f45c1ab90"
+    },
+    {
+      "path": "packages/agent/test/prr-negotiation-workflow.test.ts",
+      "disposition": "owned",
+      "blobSha": "4e49810ff00085ef2008ccbc2aa459997656bfe0"
+    },
+    {
+      "path": "docs/agentic/claims/task-121-resident-full-vision-prr-handoff.md",
+      "disposition": "owned",
+      "blobSha": "97dea2ef7fbe13f1f137379ee0cb7ded0b9438fd"
+    }
+  ]
+}
+```
