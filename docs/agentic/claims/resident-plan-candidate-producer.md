@@ -47,3 +47,7 @@ The initial minimal implementation reached the positive candidate assertion. Its
 The corrected focused GREEN command passed: 1 file and 3 tests. It proves the producer emits frozen initial and replan candidates, rejects hostile/secret/stale input before output, and blocks invalid or widening replan data. The source remains data-only and does not append, invoke a provider, resolve credentials, access a network, execute a tool, write an artifact, project, approve, or select a fallback.
 
 The widening fixture now establishes an initial candidate on the same producer before every replan mutation, so each rejection reaches the immutable prior-plan, exact provider-posture, policy-constraint, source/context, and budget comparisons. The exact card command remains green at 1 file / 3 tests; the defined Task120/P2 cross-boundary command is green at 4 files / 18 tests. Standalone `npm run typecheck` exits 0.
+
+## RV-1-E-732 Compiler Recovery
+
+The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecord`: the recursive `NormalizedRecord | NormalizedArray` union does not narrow through `Array.isArray` under the repository TypeScript configuration. The fail-closed runtime check remains correct; the minimal repair introduces an explicit `isNormalizedRecord` type predicate with the identical null/object/array condition. It adds no input shape, output field, authority, effect, fallback, or compatibility behavior.

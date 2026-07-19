@@ -397,8 +397,12 @@ function normalizeImmutablePlainData(input: unknown): NormalizedValue {
 }
 
 function requireNormalizedRecord(value: NormalizedValue): NormalizedRecord {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) throw unavailable();
+  if (!isNormalizedRecord(value)) throw unavailable();
   return value;
+}
+
+function isNormalizedRecord(value: NormalizedValue): value is NormalizedRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function requireRecord(record: NormalizedRecord, key: string): NormalizedRecord {
