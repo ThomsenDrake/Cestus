@@ -284,3 +284,27 @@ non-symlinked `node_modules` and executable local Vitest `4.1.9`; and the
 final status command has empty output: clean tracked and untracked state.
 The cumulative implementation source scope is exactly the four owned files:
 the V4 contract, its checker, its focused assurance test, and this claim.
+
+## RV-1-E-754 direct Task137B-W to Task139-PM correction
+
+- Status: `claimed -> implementing` at the exact clean base
+  `e6b3a0060d0929b436f630bad74ac8668f72d6a5` on
+  `codex/task136-v4-task139-pm-direct-source-ownership`.
+- Authority: registry event `RV-1-E-754`; strict release prefix is 17 and
+  Task139-PM is absent. This is a finite direct-source correction only: the
+  existing Task137B-W `contracts.ts -> CF1-HR` mapping remains, while exactly
+  the released mounted-operation source, its import-policy test, and the
+  Task137 authority-boundary policy test move directly to Task139-PM.
+- The causal RED retains contract and checker bytes unchanged. It updates the
+  stale test fixture from the released 13-record boundary to the actual pinned
+  raw 17-record prefix, then requires Task139-PM's appended Task137B-W
+  prerequisite, exact two targets, source/target dispositions, command,
+  historical record-11 compatibility, and source-before/target-at-record-18
+  current-head behavior. Its mutations reject missing, extra, reordered,
+  wrong-target, transitive, generic, command, and historical-path changes.
+- Planned exact command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Stop rules: no contract/checker GREEN until the causal test failure is
+  observed; stop for an immutable raw-record, V1-V3, scope, dependency, or
+  repeated-verifier conflict. No registry, PM, provider, credential, network,
+  `neo`, integration, merge, push, or review action is authorized.

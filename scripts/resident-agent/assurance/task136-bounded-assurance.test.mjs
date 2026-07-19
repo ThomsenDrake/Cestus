@@ -67,6 +67,18 @@ const task137bOwnedPaths = [
   "docs/agentic/claims/task-137-resident-full-vision-w2-wake-supervisor-runtime.md"
 ];
 const task137bToCf1Paths = ["packages/ontology/src/contracts.ts"];
+const task137bToTask139PmPaths = [
+  "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+  "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+  "packages/local-runtime/test/support/task137-authority-boundary-policy.ts"
+];
+const task139PmOwnedPaths = [
+  "packages/local-runtime/src/mounted-provider-authority.ts",
+  "packages/local-runtime/test/mounted-provider-authority.test.ts",
+  "docs/agentic/claims/task-139-mounted-provider-authority.md",
+  ...task137bToTask139PmPaths
+];
+const task139PmCommand = "npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts";
 const task135bToCf1Paths = [
   "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
   "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
@@ -116,7 +128,11 @@ const rawPrefixPins = new Map([
   ["T120-R", "f220cb62ab803c938e4e97c538f55e24628bbf46d6e06060cb0169c1adbf2cdb"],
   ["Task137B-W", "26f33ac286836459e723edd5ad2d4e34202bccd3f1a92e5533be30e7d881c9b7"],
   ["W1-123-H-SHARED-SCHEMA", "9bb5838f7782eaeb327280040a514119f8c0ba1fd76dee6268ead6013ac8f292"],
-  ["W1-133.5-PREAPPROVAL-PROMPT-STORE", "119f9aea548038d600edadbca60e2bb8f92f08aacdaf081c0f6dadc928438070"]
+  ["W1-133.5-PREAPPROVAL-PROMPT-STORE", "119f9aea548038d600edadbca60e2bb8f92f08aacdaf081c0f6dadc928438070"],
+  ["CF1-HR", "8491645c21cdd6ca54e5701318a0f9febb794c5fc1f032beaca05c8acd960351"],
+  ["Task126-R", "f27c06337227fcc4584d199a804226276cb1d63eca0dfbca410490324a11ef3f"],
+  ["Task133", "3abba468fd3fe80a3b1f1e08367ddbd8fb3b30884f08876c911deed774fe1bd4"],
+  ["Task139-P1", "9b268556a169bf270e0995d2b50ab137c65fe9341e91ddbcd9454c087279218d"]
 ]);
 
 function loadV4Contract() {
@@ -228,7 +244,7 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
   assert.equal(createHash("sha256").update(readFileSync(v1ContractPath)).digest("hex"), v1ContractSha256);
   assert.equal(createHash("sha256").update(readFileSync(v2ContractPath)).digest("hex"), v2ContractSha256);
   assert.equal(createHash("sha256").update(readFileSync(v3ContractPath)).digest("hex"), v3ContractSha256);
-  assert.deepEqual([...rawPrefixPins.keys()], expectedIds.slice(0, 13));
+  assert.deepEqual([...rawPrefixPins.keys()], expectedIds.slice(0, 17));
 
   const cardMutants = [
     {
@@ -396,7 +412,7 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
   assert.equal(createHash("sha256").update(readFileSync(v4ContractPath)).digest("hex"), v4ContractSha256);
 });
 
-test("preserves immutable v1, v2, v3, and first-thirteen raw release inputs", () => {
+test("preserves immutable v1, v2, v3, and first-seventeen raw release inputs", () => {
   const v1Before = readFileSync(v1ContractPath);
   const v1 = JSON.parse(v1Before.toString("utf8"));
   const v2Before = readFileSync(v2ContractPath);
@@ -514,7 +530,7 @@ function rawRecordJson(cardId) {
 }
 
 function registryPrefixRecords() {
-  return expectedIds.slice(0, 13).map((cardId) => recordFromRegistry(cardId));
+  return expectedIds.slice(0, 17).map((cardId) => recordFromRegistry(cardId));
 }
 
 function releaseRecordsFor(contract) {
@@ -1113,8 +1129,8 @@ test("binds four historical source records and exact record-11 and record-14 cur
   const task137ARecord = parsedPrefix.find((record) => record.cardId === "Task137A");
   const task129MfaRecord = parsedPrefix.find((record) => record.cardId === "Task129-MFA");
 
-  assert.equal(parsedPrefix.length, 13);
-  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 13));
+  assert.equal(parsedPrefix.length, 17);
+  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 17));
   assert.equal(
     createHash("sha256").update(JSON.stringify(task137ARecord)).digest("hex"),
     historicalTask137ASha256
@@ -1277,10 +1293,10 @@ test("binds four historical source records and exact record-11 and record-14 cur
         successfulMessages.push(message);
       }
     }),
-    /repository release closure incomplete: expected 29 records, found 13/
+    /repository release closure incomplete: expected 29 records, found 17/
   );
-  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=13 commands=13"]);
-  assert.equal(successfulAdapter.commandCalls.length, 13);
+  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=17 commands=17"]);
+  assert.equal(successfulAdapter.commandCalls.length, 17);
 
   const task126 = parsedPrefix.find((record) => record.cardId === "Task126");
   const task137A = parsedPrefix.find((record) => record.cardId === "Task137A");
@@ -1362,18 +1378,20 @@ test("moves the three exact CF1 transfers at record 14 and never before", () => 
     ...task129MfaToCf1Paths,
     ...task137bToCf1Paths
   ];
+  const preCf1Records = releasedPrefix.slice(0, 13);
+  const preCf1Registry = releaseRecordMarkdown(preCf1Records);
 
   const beforeActivation = assurance.verifyTask136ReleasePrefix(contract, {
-    registryText,
-    adapter: fakeRepositoryAdapter(releasedPrefix)
+    registryText: preCf1Registry,
+    adapter: fakeRepositoryAdapter(preCf1Records)
   });
   assert.equal(beforeActivation.records, 13);
 
   for (const path of sourcePaths) {
     assert.throws(
       () => assurance.verifyTask136ReleasePrefix(contract, {
-        registryText,
-        adapter: fakeRepositoryAdapter(releasedPrefix, { blobMismatch: { commitish: "HEAD", path } })
+        registryText: preCf1Registry,
+        adapter: fakeRepositoryAdapter(preCf1Records, { blobMismatch: { commitish: "HEAD", path } })
       }),
       new RegExp(`blob mismatch: (Task135B|Task129-MFA|Task137B-W):${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
       `source remains current before CF1-HR: ${path}`
@@ -1382,11 +1400,11 @@ test("moves the three exact CF1 transfers at record 14 and never before", () => 
 
   const cf1Record = clone(releaseRecordsFor(contract).find((record) => record.cardId === "CF1-HR"));
   for (const prerequisite of cf1Record.prerequisites) {
-    const releasedPrerequisite = releasedPrefix.find((record) => record.cardId === prerequisite.cardId);
+    const releasedPrerequisite = preCf1Records.find((record) => record.cardId === prerequisite.cardId);
     prerequisite.integrationSha = releasedPrerequisite.integrationSha;
     prerequisite.releaseEventId = releasedPrerequisite.releaseEventId;
   }
-  const activatedRecords = [...releasedPrefix, cf1Record];
+  const activatedRecords = [...preCf1Records, cf1Record];
   const activatedRegistry = releaseRecordMarkdown(activatedRecords);
   const afterActivation = assurance.verifyTask136ReleasePrefix(contract, {
     registryText: activatedRegistry,
@@ -1402,6 +1420,188 @@ test("moves the three exact CF1 transfers at record 14 and never before", () => 
       }),
       new RegExp(`blob mismatch: CF1-HR:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
       `CF1-HR becomes current at record 14: ${path}`
+    );
+  }
+});
+
+test("requires the finite Task137B-W to Task139-PM transfer only at record 18", () => {
+  const contract = loadV4Contract();
+  const source = contract.releaseGraph.cards.find((card) => card.id === "Task137B-W");
+  const target = contract.releaseGraph.cards.find((card) => card.id === "Task139-PM");
+  const registryText = readFileSync(registryPath, "utf8");
+  const releasedPrefix = assurance.parseTask136ReleasePrefix(registryText, contract);
+
+  assert.deepEqual(target.prerequisiteIds, ["Task126-R", "Task139-P1", "Task135D", "Task137A", "T120-R", "Task137B-W"]);
+  assert.deepEqual(source.transferToIds, ["CF1-HR", "Task139-PM"]);
+  assert.deepEqual(source.ownedPaths, task137bOwnedPaths.map((path) => ({
+    disposition: [...task137bToCf1Paths, ...task137bToTask139PmPaths].includes(path) ? "transferred" : "owned",
+    path
+  })));
+  assert.deepEqual(target.ownedPaths, task139PmOwnedPaths.map((path) => ({ disposition: "owned", path })));
+  assert.equal(target.command, task139PmCommand);
+  assert.deepEqual(contract.releaseCompatibility.historicalRecords[3], {
+    cardId: "Task137B-W",
+    canonicalJsonSha256: historicalTask137bSha256,
+    pathDispositions: [...task137bToCf1Paths, ...task137bToTask139PmPaths]
+      .map((path) => ({ path, recordDisposition: "owned" }))
+  });
+  assert.equal(releasedPrefix.length, 17);
+  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 17));
+  for (const [cardId, expectedHash] of rawPrefixPins) {
+    assert.equal(createHash("sha256").update(rawRecordJson(cardId)).digest("hex"), expectedHash, cardId);
+  }
+
+  const mutations = [
+    {
+      id: "Task139-PM missing Task137B-W prerequisite",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task139-PM").prerequisiteIds.pop();
+      }
+    },
+    {
+      id: "Task139-PM extra prerequisite",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task139-PM").prerequisiteIds.push("CF1-HR");
+      }
+    },
+    {
+      id: "Task139-PM reordered prerequisite",
+      mutate(mutant) {
+        const prerequisites = mutant.releaseGraph.cards.find((card) => card.id === "Task139-PM").prerequisiteIds;
+        [prerequisites[4], prerequisites[5]] = [prerequisites[5], prerequisites[4]];
+      }
+    },
+    {
+      id: "Task137B-W missing Task139-PM target",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task137B-W").transferToIds.pop();
+      }
+    },
+    {
+      id: "Task137B-W reordered targets",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task137B-W").transferToIds.reverse();
+      }
+    },
+    {
+      id: "Task137B-W wrong target",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task137B-W").transferToIds[1] = "Task136-FC-Core";
+      }
+    },
+    {
+      id: "Task137B-W generic transitive target",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task137B-W").transferToIds.push("Task136-FC-Core");
+      }
+    },
+    {
+      id: "Task137B-W PM source path remains owned",
+      mutate(mutant) {
+        mutant.releaseGraph.cards
+          .find((card) => card.id === "Task137B-W")
+          .ownedPaths.find((ownedPath) => ownedPath.path === task137bToTask139PmPaths[0]).disposition = "owned";
+      }
+    },
+    {
+      id: "Task139-PM missing transferred path",
+      mutate(mutant) {
+        const targetCard = mutant.releaseGraph.cards.find((card) => card.id === "Task139-PM");
+        targetCard.ownedPaths = targetCard.ownedPaths.filter((ownedPath) => ownedPath.path !== task137bToTask139PmPaths[0]);
+      }
+    },
+    {
+      id: "Task139-PM extra transferred path",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task139-PM").ownedPaths.push({
+          disposition: "owned",
+          path: "packages/local-runtime/test/mounted-artifact-authority-operation.test.ts"
+        });
+      }
+    },
+    {
+      id: "Task139-PM command omission",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task139-PM").command =
+          "npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts";
+      }
+    },
+    {
+      id: "Task137B-W missing historical PM path",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords[3].pathDispositions.pop();
+      }
+    },
+    {
+      id: "Task137B-W reordered historical PM paths",
+      mutate(mutant) {
+        const paths = mutant.releaseCompatibility.historicalRecords[3].pathDispositions;
+        [paths[1], paths[2]] = [paths[2], paths[1]];
+      }
+    },
+    {
+      id: "Task137B-W historical PM path loses owned disposition",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords[3].pathDispositions[1].recordDisposition = "transferred";
+      }
+    }
+  ];
+
+  for (const testCase of mutations) {
+    const mutant = clone(contract);
+    testCase.mutate(mutant);
+    assert.throws(() => verifyStaticGraph(mutant), undefined, testCase.id);
+  }
+
+  const beforeActivation = assurance.verifyTask136ReleasePrefix(contract, {
+    registryText,
+    adapter: fakeRepositoryAdapter(releasedPrefix)
+  });
+  assert.equal(beforeActivation.records, 17);
+  for (const path of task137bToTask139PmPaths) {
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText,
+        adapter: fakeRepositoryAdapter(releasedPrefix, { blobMismatch: { commitish: "HEAD", path } })
+      }),
+      new RegExp(`blob mismatch: Task137B-W:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `Task137B-W remains current before Task139-PM record 18: ${path}`
+    );
+  }
+
+  const task139PmRecord = clone(releaseRecordsFor(contract).find((record) => record.cardId === "Task139-PM"));
+  for (const prerequisite of task139PmRecord.prerequisites) {
+    const releasedPrerequisite = releasedPrefix.find((record) => record.cardId === prerequisite.cardId);
+    prerequisite.integrationSha = releasedPrerequisite.integrationSha;
+    prerequisite.releaseEventId = releasedPrerequisite.releaseEventId;
+  }
+  const activatedRecords = [...releasedPrefix, task139PmRecord];
+  const activatedRegistry = releaseRecordMarkdown(activatedRecords);
+  const afterActivation = assurance.verifyTask136ReleasePrefix(contract, {
+    registryText: activatedRegistry,
+    adapter: fakeRepositoryAdapter(activatedRecords)
+  });
+  assert.equal(afterActivation.records, 18);
+  for (const path of task137bToTask139PmPaths) {
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: activatedRegistry,
+        adapter: fakeRepositoryAdapter(activatedRecords, { blobMismatch: { commitish: "HEAD", path } })
+      }),
+      new RegExp(`blob mismatch: Task139-PM:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `Task139-PM becomes current at record 18: ${path}`
+    );
+  }
+  const sourceRecord = releasedPrefix.find((record) => record.cardId === "Task137B-W");
+  for (const commitish of [sourceRecord.candidateSha, sourceRecord.integrationSha]) {
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: activatedRegistry,
+        adapter: fakeRepositoryAdapter(activatedRecords, {
+          blobMismatch: { commitish, path: task137bToTask139PmPaths[0] }
+        })
+      }),
+      new RegExp(`blob mismatch: Task137B-W:${task137bToTask139PmPaths[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
     );
   }
 });
