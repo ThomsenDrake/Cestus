@@ -21569,3 +21569,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   explicitly approved for this task. Status advances Task139-P2
   `not started -> claimed`; strict prefix remains 19 until coordinator
   integration and strict record 20.
+
+## RV-1-E-772 — Record-19 assurance correction admitted to final review
+
+- Recorded at: 2026-07-19T04:35:24Z
+- Exact clean GREEN candidate
+  `6f9ad49b2123756b04d591379951a56749ea7fe6` preserves the record-19
+  forward merge `eb288977`, claim-only causal RED `4c0d92c1`, and every
+  earlier assurance/release-history commit. Its correction scope is exactly
+  the V4 assurance test and V4 authority-transfer claim; contract, checker,
+  registry, V1-V3, raw records 1-19, FC-Core, and release evidence bytes are
+  unchanged.
+- Committed-byte admission passes **19/19 assurance tests**, all four exact V4
+  contract markers, standalone typecheck, factory readiness, diff hygiene,
+  exact two-path scope, clean state, and real non-symlinked Vitest 4.1.9
+  dependencies. Repository mode emits
+  `TASK136_REPOSITORY_PREFIX_OK records=19 commands=19` followed only by
+  `repository release closure incomplete: expected 29 records, found 19`.
+- Full `npm test` and `npm run verify` retain the exact inherited **12 failing
+  files / 69 failing tests / 5 skips / 2,758 passes** differential with no
+  assurance failure. The RED independently pinned the two stale current-prefix
+  assertions at **17 pass / 2 fail** before the minimal GREEN advanced only
+  record-19-derived fixtures.
+- One fresh concurrent read-only Terra/xhigh architecture/executability pair
+  now reviews the exact candidate. Reviews may block only on a reproduced
+  P0/P1 contract, evidence, history, or executability defect; SDD/TDD is not
+  relevant or authorized for reviewers. Status advances record-19 assurance
+  `candidate -> reviewing`; strict prefix remains 19 and no `neo` action
+  occurs.
