@@ -24471,3 +24471,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   merged bytes before integration.
 - Status advances Task122 `candidate-waiting-base -> candidate`. No push,
   provider, credential, network, external effect, or `neo` action occurs.
+
+## RV-1-E-853 — Task122 exact-base candidate enters review
+
+- Recorded at: 2026-07-19T19:37:44Z
+- Coordinator forward merge
+  `1eedf290cc7fa0b37692042b79744a53a518464b` combines current record-25
+  authority `19181678` with preserved Task122 candidate
+  `5a49258f3a4ab56920ee23511731d520fb7bd61f` without conflict or owned-path
+  change. Claim `15703c08`, causal RED `89c5c6d2`, and minimal GREEN
+  `5a49258f` remain ordered and unmodified.
+- Exact merged-byte admission passes focused **1 file / 16 tests** and
+  cross-boundary **3 files / 106 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory readiness, diff hygiene, exact
+  three-path cumulative/original scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9. Repository mode executes all 25 released
+  commands and emits exact prefix **25/25** followed only by the expected
+  incomplete-29 boundary.
+- Machine-readable full and `npm run verify` differentials are identical:
+  **11 failing files / 49 failing tests / 2,832 passes / 5 skips**. Relative
+  to clean record-25 program bytes, exactly the eleven Task122 investigation-
+  workflow failures become passes and the new opaque-authority refusal case
+  passes; no unrelated failure is added, removed, changed, or skipped.
+- The candidate consumes only injected opaque/current mounted CF1-HR V2
+  authority and mounted stores, preserves terminal -> orchestration-completed
+  -> task-status order and verified projection readback, and remains advisory
+  only. It adds no task creation, crawl, PRR send, provider transfer,
+  credential authority, fallback write, or other external effect.
+- Status advances Task122 `candidate -> reviewing`. One fresh concurrent
+  read-only Terra/xhigh architecture/executability pair now reviews exact SHA
+  `1eedf290cc7fa0b37692042b79744a53a518464b`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, strict record 26, push, external
+  effect, or `neo` action occurs before dual approval.
