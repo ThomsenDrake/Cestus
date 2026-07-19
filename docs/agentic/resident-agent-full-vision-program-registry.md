@@ -23176,3 +23176,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   V4/repository, diff/factory/scope/clean/dependency gates. Children never
   edit the registry, self-integrate, push, contact external systems, or touch
   `neo`. Status advances G136-R `not started -> claimed -> implementing`.
+
+## RV-1-E-816 — G136-R compiler-admission root-cause checkpoint
+
+- Recorded at: 2026-07-19T12:49:59Z
+- The preserved claim -> causal runtime RED -> initial GREEN lineage ends at
+  exact candidate `2ce618e5`. Its exact two-file card command is green at
+  **2 files / 4 tests**, the required G136/Task120 cross-boundary command is
+  green, contract mode emits all four frozen V4 markers, and repository mode
+  retains strict prefix **22/22** followed only by the expected incomplete-29
+  boundary.
+- Root `npm run typecheck` then reproduces exactly two owned-source compiler
+  diagnostics: `AgentToolSideEffectClass` is imported from a module that does
+  not export it, and indexing the optional
+  `RequestAgentToolInput["requiredApprovalClass"]` widens an already validated
+  non-`none` approval class to include `undefined` under
+  `exactOptionalPropertyTypes`. The exact card command remains green; no
+  released interface, runtime behavior, safety invariant, product choice, or
+  external effect is in dispute.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7a56-6b88-7220-9925-39a52d083da6`, branch
+  `codex/g136-r-gateway-approval-readback`, and worktree
+  `/home/drake/.codex/worktrees/9c75/Cestus`. It must preserve `2ce618e5`,
+  commit one claim/evidence-only causal compiler RED, then one minimal GREEN
+  that imports the side-effect type from its released owning module and uses
+  the required closed approval-class type without widening. No amend, rebase,
+  squash, reset, history rewrite, or scope expansion is authorized.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After GREEN, all exact G136-R admission
+  gates must rerun from committed bytes before one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair. Status remains G136-R
+  `implementing -> implementing-repair`; no push, external effect, or `neo`
+  action occurs.
