@@ -21935,3 +21935,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-783 — Record-20 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T06:39:55Z
+- Strict Task139-P2 record 20 parses and executes in exact V4 order:
+  repository mode emits `TASK136_REPOSITORY_PREFIX_OK records=20 commands=20`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 20`. Contract mode retains all four frozen V4 markers.
+- Appending the valid record makes the 19-test bounded assurance suite pass 17
+  tests and fail exactly the two current-prefix assertions at lines 1112 and
+  1428 because each remains pinned to 19 while the parsed current prefix is
+  now 20. This is the same release-cardinality fixture family corrected at
+  records 18 and 19, not a Task139-P2, contract, checker, product, scope,
+  safety, credential, hardware, or external-behavior defect.
+- Standing RV-1-E-732 resumes the same V4 assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, branch
+  `codex/task136-v4-task139-pm-direct-source-ownership`, and preserved
+  worktree. The coordinator forward-merged record-20 authority as
+  `a3d464c67a052f348fbebd707572bdf5090582f4`; the owner must add one
+  claim-only causal RED checkpoint, leaving assurance code byte-identical,
+  followed by one minimal GREEN limited exactly to the V4 assurance test and
+  V4 claim.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The correction must audit only current
+  record-19-derived count/order/repository/current-prefix pins in the two
+  affected blocks, preserve intentional historical 19-record and raw
+  fixtures, and retain contract/checker/V1-V3/raw records 1-20/all 29
+  IDs/order/evidence byte-identically. Fresh Terra/xhigh read-only
+  architecture/executability review follows full admission. Strict prefix is
+  20; no push, external effect, or `neo` action occurs.
