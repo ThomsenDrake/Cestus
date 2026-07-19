@@ -23382,3 +23382,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   coordinator now integrates the complete chain and reruns all gates from
   program bytes before strict release record 23. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-822 — G136-R integrated and released
+
+- Recorded at: 2026-07-19T14:43:16Z
+- Coordinator merge `4e7e4f8069ad494b865c4c134b21767be4d7f961`
+  integrates the complete reviewed G136-R lineage. Exact candidate
+  `7e26999b607191c5dea84297ac0c91b7a208d045` is an ancestor; every claim,
+  causal RED, minimal GREEN, compiler checkpoint, registry-authority merge,
+  failed review, recovery, and dual final approval remains preserved without
+  reset, rebase, amend, squash, drop, reorder, or rewrite.
+- Integrated-byte admission passes focused **2 files / 10 tests** and
+  cross-boundary **7 files / 77 tests**. Standalone typecheck, bounded
+  assurance **19/19**, all four exact V4 markers, factory readiness, diff
+  hygiene, exact four-path scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked executable Vitest 4.1.9 dependencies
+  are green. Repository mode emits exact prefix **22/22** followed only by
+  the expected incomplete-29 boundary before this record is appended.
+- Integrated `npm test` reports the unchanged intermediate differential of
+  **13 failing files / 70 failing tests / 2,787 passes / 5 skips**. `npm run
+  verify` passes standalone typecheck and reproduces that exact inherited
+  cohort with no new failure, removal, or skip. Normal completion, stale-plan
+  rejection, unrelated-global-append conflict, and concurrent single-winner
+  counterfactuals remain green through the released opaque-evidence path.
+- Status advances G136-R `approved -> integrated -> released`. Strict V4
+  release record 23 below makes `C136-P` the next exact release card. No
+  provider, credential, network, external effect, push, or `neo` action
+  occurs.
+
+## Task136 dispatch release v4: G136-R
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "G136-R",
+  "candidateSha": "7e26999b607191c5dea84297ac0c91b7a208d045",
+  "reviews": [
+    {
+      "threadId": "019f7abd-7a9c-7c10-bf91-d5780d39a505",
+      "candidateSha": "7e26999b607191c5dea84297ac0c91b7a208d045",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f7abd-6d0f-7cb0-86e1-0ec97bc025ea",
+      "candidateSha": "7e26999b607191c5dea84297ac0c91b7a208d045",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "4e7e4f8069ad494b865c4c134b21767be4d7f961",
+  "releaseEventId": "task136-release-v4-G136-R",
+  "prerequisites": [
+    {
+      "cardId": "T120-R",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-T120-R"
+    },
+    {
+      "cardId": "G136-SC",
+      "integrationSha": "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
+      "releaseEventId": "task136-release-v4-G136-SC"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/resident-loop-tool-gateway.ts",
+      "disposition": "owned",
+      "blobSha": "1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe"
+    },
+    {
+      "path": "packages/agent/test/resident-loop-tool-gateway.test.ts",
+      "disposition": "owned",
+      "blobSha": "86d3d4cfa0af753c10fa1324e91f956dc8f9c68d"
+    },
+    {
+      "path": "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "7c46ff3556cb82d05bb3f38334bb1084e9a82d22"
+    },
+    {
+      "path": "docs/agentic/claims/task-136-gateway-approval-readback.md",
+      "disposition": "owned",
+      "blobSha": "1d522949c9209440773142a18d5817a57262e606"
+    }
+  ]
+}
+```
