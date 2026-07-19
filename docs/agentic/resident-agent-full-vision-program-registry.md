@@ -23053,3 +23053,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Status advances record-22 assurance `released -> implementing-repair`;
   `G136-R` remains next but will receive the corrected record-22 base before
   implementation. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-812 — Record-22 assurance correction enters fresh review
+
+- Recorded at: 2026-07-19T12:02:30Z
+- The same assurance owner preserves normal authority merge
+  `7c3dfd18ac7fb8eaddc2b0b75d6faa5cd0a81c69`, claim-only causal RED
+  `1f252a98cee0a5482d8c9f25e6606ca5e056b62c`, and minimal GREEN
+  `61a257639786f49424da3f8309f73b570a487c5b`. No history is rewritten and
+  the recovery diff is exactly the existing V4 authority-transfer claim and
+  assurance test.
+- Committed RED reproduces exact **17/19** assurance with only lines 1112 and
+  1428 observing `22 !== 21`. GREEN changes the two current-prefix blocks to
+  22 and passes exact assurance **19/19**, all four V4 markers, standalone
+  typecheck, factory/diff/scope/clean/dependency gates, and repository
+  `TASK136_REPOSITORY_PREFIX_OK records=22 commands=22` followed only by the
+  expected incomplete-29 boundary.
+- Full `npm test` and `npm run verify` each retain exact record-22
+  intermediate evidence at **13 failing files / 70 failing tests / 2,778
+  passes / 5 skips**; verify first passes standalone typecheck. V1-V3, raw
+  strict records 1-22, V4 contract/checker, all 29 card IDs/order, historical
+  compatibility fixtures, production/runtime bytes, reviewed candidates, and
+  integration evidence remain unchanged.
+- One fresh concurrent read-only Terra/xhigh architecture/invariants and
+  executability/adversarial pair now reviews exact clean SHA
+  `61a257639786f49424da3f8309f73b570a487c5b`. Reviewers must verify the
+  forward-only RED/GREEN topology, exact two-path scope, current-prefix-only
+  correction, preserved historical fixtures, and repository **22/22**
+  executability. Reviews are read-only; SDD/TDD is not relevant or authorized
+  for reviewers. Status advances record-22 assurance `implementing-repair ->
+  candidate -> reviewing`; no push, external effect, or `neo` action occurs.
