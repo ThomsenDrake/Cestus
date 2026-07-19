@@ -150,3 +150,31 @@ Implementation evidence:
   `0` with `19` passed and `0` failed. Final committed-byte admission will
   rerun the full required assurance, repository, typecheck, differential,
   factory, diff, scope, and clean/dependency gates.
+
+## RV-1-E-783 record-20 fixture checkpoint
+
+- Resumed on `codex/task136-v4-task139-pm-direct-source-ownership` at the
+  clean forward-merged record-20 authority
+  `d5c1ddcdcf4daf517de710fbc68d1ea9af09dff9`. This claim-only checkpoint
+  preserves all inherited assurance history and leaves the assurance test,
+  contract, checker, V1-V3, raw strict records 1-20, all 29 card IDs and
+  order, Task139-P2 bytes, and all candidate/integration/review/release
+  evidence byte-identical.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `19` tests, `17` passed, and exactly two failed. The only
+  failures are direct current-prefix assertions at lines `1112` and `1428`,
+  each reporting `20 !== 19` after valid strict Task139-P2 record 20. No
+  contract, checker, blob, command, dependency, Task139-P2, or unrelated
+  fixture failure occurred.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  will audit only record-19-derived current count/order/repository/current
+  prefix pins in the two affected blocks and advance them to record 20 while
+  preserving intentional historical/pre-activation/raw 19-record fixtures.
+  Required committed-byte admission includes assurance 19/19, record-20 V4
+  contract and repository markers, typecheck, full `npm test` and `npm run
+  verify` differential retaining the inherited 12 failing files / 69 failing
+  tests / 2,764 passing tests / 5 skips, factory/diff/scope/clean, and real
+  local Vitest 4.1.9 dependencies. No registry, integration, review, push,
+  network, credential, provider, `neo`, or task creation is authorized.
