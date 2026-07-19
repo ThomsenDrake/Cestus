@@ -21317,3 +21317,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   will then be forward-merged into the preserved FC-Core candidate before its
   remaining admission and review. Strict prefix remains 18; no push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-765 — Record-18 assurance pin-audit tactic
+
+- Recorded at: 2026-07-19T03:26:57Z
+- The same assurance owner commits claim-only causal RED
+  `a64f22a0` after reproducing exact **19 tests / 17 pass / 2 fail** on the
+  unchanged assurance test. Contract, checker, registry, production, and
+  historical input bytes remain unchanged in that RED.
+- The first minimal GREEN probe confirms the two visible length assertions are
+  paired with full-prefix order slices still bounded at 17. Advancing those
+  pairs exposes two previously unreachable record-18 pins in the same affected
+  flows: repository closure still expects `found 17`, and the record-18
+  transfer test still treats the current prefix as 17.
+- These are one stale-cardinality family created by the valid strict record-18
+  transition, not separate product or safety decisions. The recovery tactic is
+  therefore a comprehensive audit of record-17-derived expectations inside
+  only the two affected assurance test blocks, followed by one minimal GREEN
+  commit. Every replacement must assert the exact record-18 count/order,
+  repository boundary, and Task139-PM transfer currentness; unrelated
+  historical 17-record fixtures and raw records remain frozen.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact two-path scope, unchanged
+  contract/checker/V1-V3/raw records 1-18/all 29 IDs/order, full bounded gates,
+  and a fresh concurrent Terra/xhigh review pair remain mandatory. Strict
+  prefix remains 18; no push, external effect, or `neo` action occurs.
