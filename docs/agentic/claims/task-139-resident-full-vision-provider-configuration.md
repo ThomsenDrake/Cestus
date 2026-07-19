@@ -438,3 +438,21 @@ or fallback.
   external effect.
 - `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
   passes: **1 file / 27 tests**. `npm run typecheck` exits `0`.
+
+## RV-1-E-750 IDNA-Version-Lookalike Recovery RED
+
+- Standing recovery authority: `RV-1-E-750` at program `cbc7ff83`. The
+  preserved clean candidate is `04d08582726443b5d0c88f4893c8691f74f7fb49`;
+  this RED changes only the focused test and this claim. The production source
+  blob remains `f0233b0f225088cabad75d06421bf874fbedc5e2`, byte-identical to
+  that candidate.
+- The focused RED command `npm test --
+  packages/local-runtime/test/agent-provider-configuration.test.ts` exits `1`
+  with **1 failed file / 1 failed and 27 passed tests (28)**. Its single named
+  capability-data-handling and credential-safe-label matrix proves that each
+  of `agent-provider-auth.v1`, `policy.v1`, and `adapter.v1` with U+3002,
+  U+FF0E, or U+FF61 replacing the dot is admitted at both boundaries (18
+  invalid admissions). The exact ASCII versions remain accepted in internally
+  consistent fixtures, as do ordinary `policy.v1` prose, canonical
+  ISO-millisecond-Z assessment time, and non-host Unicode prose.
+- `npm run typecheck` exits `0` from the RED bytes without diagnostics.
