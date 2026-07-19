@@ -207,3 +207,31 @@ The exact focused card is again **2 files / 9 tests** and `npm run typecheck`
 passes. Status advances **compiler-recovery-red -> green** with no production
 flow, source authority, ledger write shape, completion route, or external
 behavior change.
+
+## RV-1-E-819 Completion-Boundary Race RED
+
+Normal registry merge `884a688bd4c21e00d21830f49f17168ef2c4401f` preserves
+every prior G136-R commit through the clean candidate `3e6fdf29`. The exact
+adversarial verdict `019f7aa2-20ba-78c3-8cb6-b750ce91e8aa` reproduces one P1:
+a newer policy/authority/provenance-changed plan can append after the bridge's
+last plan-currentness reread but before the official completion append. The
+current bridge then appends `agent.tool.completed` and only rejects on the
+post-completion reread.
+
+This causal RED adds one deterministic hostile assertion in the owned gateway
+test. Its ledger wrapper injects that newer same resident/task/attempt/run plan
+on the effect-boundary tool-stream read after the eleventh plan read (the final
+current-plan reread). It requires `executeAndReadback` to reject with
+`wasInjected=true` and no durable completion. Existing production rejects but
+leaves completion behind, so the RED fails solely on the forbidden completed
+event. The existing nine tests and every hostile assertion remain unchanged.
+
+The sole follow-on GREEN will remain within the four owned paths. Immediately
+before the final exact plan reread it will capture the ledger's global event
+count, then call released `createAgentToolGateway().completeToolFromSchedulerEvidence`
+with the unchanged adapter-issued evidence over a request-local guarded ledger
+view. That view will preserve the released `expectedNextSequence` and add only
+the captured `expectedGlobalEventCount` to its append options, forcing any
+competing plan or global append to conflict before completion. It will add no
+direct completion append, alternate route, widened released API, provider,
+credential, network, external behavior, or non-ledger storage.
