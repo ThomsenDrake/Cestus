@@ -256,3 +256,18 @@ state. The focused card is GREEN at **2 files / 10 tests**; all earlier hostile
 assertions are retained. No released source/API changes, direct completion,
 alternate authority, provider/credential/network/external behavior, or
 non-ledger storage is introduced.
+
+## RV-1-E-732 Completion-Guard Compiler RED
+
+The first post-GREEN `npm run typecheck` reproduces exactly three scoped
+`noImplicitAny` diagnostics in the owned completion-guard implementation:
+the delegated `append` event/options and `readStream` stream ID parameters
+lacked their inherited `EventLedger` method annotations. The focused runtime
+card remains GREEN at 2 files / 10 tests, and no authority or behavior issue is
+reproduced. This claim-only checkpoint advances **green -> compiler-recovery-red**
+before the production correction.
+
+The sole forward compiler GREEN will make no runtime change: it will explicitly
+type the guarded ledger object as `EventLedger`, allowing its delegated methods
+to retain the released ledger parameter and return types while preserving the
+captured global-count append precondition and every hostile assertion.
