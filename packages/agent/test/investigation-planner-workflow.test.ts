@@ -17,7 +17,11 @@ import {
 import type { ProviderReadinessDto } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import { buildSpecialistHandoffMaterial } from "../src/specialist-handoff-manifest.js";
-import { appendSpecialistFinalOutputStep } from "../src/specialist-runner-kernel.js";
+import {
+  appendSpecialistFinalOutputStep,
+  invokeSpecialistModel,
+  prepareSpecialistRun
+} from "../src/specialist-runner-kernel.js";
 import { issueMountedSpecialistHandoffAuthorityWitness, type MountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
 import { productionSpecialistPromptRegistrationFor, renderProductionSpecialistPrompt } from "../src/production-specialist-prompts.js";
 import type { RunInvestigationPlannerWorkflowInput } from "../src/investigation-planner-workflow.js";
@@ -27,6 +31,12 @@ import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../../local-runtime/src/config.js";
 import { createMountedPromptArtifactStore } from "../../local-runtime/src/mounted-prompt-artifact-store.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../../local-runtime/src/runtime-factory.js";
+import {
+  issueMountedArtifactAuthorityOperationForFactory,
+  registerMountedArtifactAuthorityIssuerForWakeRuntime
+} from "../../local-runtime/src/mounted-artifact-authority-operation.js";
+import { createPortableMountedAgentArtifactStoreProducer } from "../../local-runtime/src/portable-mounted-agent-artifact-stores.js";
+import { createPortableWorkspaceLifecyclePorts } from "../../local-runtime/src/portable-workspace-lifecycle.js";
 
 const now = () => "2026-07-10T01:00:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
@@ -176,6 +186,73 @@ describe("investigation planner workflow", () => {
     expect(result.handoff.safeSummary).toMatch(/authority/i);
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.specialist-handoff.recorded");
+  });
+
+  it("rejects a swapped investigation before normal planner effects", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const handoffStore = createDerivativeStore();
+    const input = {
+      ...plannerWorkflowInput({
+        ledger,
+        runtime,
+        handoffStore,
+        sourceEventIds: (await ledger.readAll()).map((event) => event.id)
+      }),
+      investigationId: "inv_scope_swapped"
+    };
+    const before = await ledger.readAll();
+
+    const result = await runInvestigationPlannerWorkflow(input);
+
+    expect(result.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
+    expect(result.handoff.safeSummary).toMatch(/investigation/i);
+    expect(await ledger.readAll()).toEqual(before);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+  });
+
+  it("rejects a swapped investigation before recovery completion effects", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const backingStore = createDerivativeStore();
+    let putAttempts = 0;
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        putAttempts += 1;
+        if (putAttempts >= 14) throw new Error("private recovery manifest interruption");
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+    const input = plannerWorkflowInput({
+      ledger,
+      runtime,
+      handoffStore,
+      sourceEventIds: (await ledger.readAll()).map((event) => event.id)
+    });
+
+    const interrupted = await runInvestigationPlannerWorkflow(input);
+    expect(interrupted.handoff).toMatchObject({ status: "blocked", lifecycle: "output-persisted" });
+    const before = await ledger.readAll();
+    const beforePuts = putAttempts;
+
+    const result = await runInvestigationPlannerWorkflow({ ...input, investigationId: "inv_scope_swapped" });
+
+    expect(result.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
+    expect(result.handoff.safeSummary).toMatch(/investigation/i);
+    expect(putAttempts).toBe(beforePuts);
+    expect(await ledger.readAll()).toEqual(before);
+  });
+
+  it("keeps a real portable mounted handoff cursor current across planner model invocation before final output", async () => {
+    const fixture = await portablePlannerModelInvocationFixture();
+    expect(fixture.handoff.controller).toBeDefined();
+    expect(fixture.handoff.binding.authorityWitness).toMatchObject({
+      schemaVersion: "agent-mounted-specialist-handoff-authority.v1"
+    });
+    const prepared = await prepareSpecialistRun(fixture.input, "investigation-planner");
+    await invokeSpecialistModel(fixture.input, prepared, "inv_run_portable_investigation_planner");
+
+    await expect(fixture.handoff.binding.materialStore.put(Buffer.from("planner final-output material", "utf8")))
+      .resolves.toMatchObject({ contentHash: expect.stringMatching(/^sha256:/) });
   });
 
   it("permits bounded instructional narrative while producing only local task and PRR draft candidates", async () => {
@@ -976,6 +1053,199 @@ function mountedPlannerHandle(workspaceId: string): LocalRuntimeHandle {
   });
   mountedPlannerHandles.push(handle);
   return handle;
+}
+
+async function portablePlannerModelInvocationFixture() {
+  const workspaceId = "ws_investigation";
+  const portableActor = { id: "agent_default", kind: "agent" as const, label: "Cestus Agent" };
+  const root = mkdtempSync(join(tmpdir(), "cestus-portable-investigation-planner-"));
+  mountedPlannerDirs.push(root);
+  createPortableWorkspace({
+    rootDir: root,
+    workspaceId,
+    label: "Portable investigation planner handoff fixture",
+    createdAt: now(),
+    createdBy: "actor_investigation_planner_test"
+  });
+  const handle = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({
+      cwd: root,
+      env: { CESTUS_LOCAL_STORAGE: "portable-workspace", CESTUS_WORKSPACE_ROOT: root }
+    }),
+    actor: { id: "actor_investigation_planner_test", kind: "system", label: "Investigation Planner Test" },
+    now
+  });
+  mountedPlannerHandles.push(handle);
+  const provider = new FakeModelProvider({
+    providerId: "provider_fake_local",
+    modelFamilies: ["fake-local"],
+    responseText: JSON.stringify({ planSummary: "Review the evidence." })
+  });
+  const runtime = createAgentRuntime({ ledger: handle.ledger, actor: portableActor, now, providers: [provider] });
+  await runtime.initializeDefaultIdentity({ workspaceId });
+  await runtime.createTask({
+    taskId: "task_portable_investigation",
+    title: "Portable investigation planning",
+    requestedBy: "actor_investigator",
+    priority: "normal"
+  });
+  await runtime.startRun({
+    runId: "run_portable_investigation",
+    taskId: "task_portable_investigation",
+    runType: "investigation-planner",
+    scope: { kind: "investigation", refs: ["inv_scope_001"] }
+  });
+  const ports = createPortableWorkspaceLifecyclePorts({
+    workspaceId,
+    residentId: "agent_default",
+    supervisorEpoch: "epoch_portable_investigation",
+    mountedFacts: {
+      async read() {
+        return {
+          ok: true as const,
+          facts: {
+            schemaVersion: "portable-workspace-mounted-facts.v1" as const,
+            workspaceId,
+            residentId: "agent_default" as const,
+            workspaceIdentityEventId: "evt_portable_investigation_identity",
+            mountInstanceId: "mount-instance:portable-investigation",
+            mountEvidenceId: "evidence_portable_investigation_mount",
+            authorityEvidenceId: "evidence_portable_investigation_authority",
+            ledgerStoreEvidenceId: "evidence_portable_investigation_ledger",
+            artifactStoreEvidenceId: "evidence_portable_investigation_artifact",
+            derivativeStoreEvidenceId: "evidence_portable_investigation_derivative",
+            policyVersion: "policy_portable_investigation.v1",
+            policyDigest: plannerAuthorityHash,
+            lockStateDigest: plannerAuthorityHash,
+            policyAndLockReadbackEventId: "evt_portable_investigation_policy",
+            highWaterMark: "evt_portable_investigation_high_water",
+            highWaterReadbackEventId: "evt_portable_investigation_high_water_readback",
+            highWaterOrdinal: 5
+          }
+        };
+      }
+    },
+    supervisorLease: {
+      async readOrAcquire() {
+        return {
+          outcome: "acquired-and-read-back" as const,
+          readback: {
+            schemaVersion: "resident-supervisor-lease-readback.v1" as const,
+            workspaceId,
+            residentId: "agent_default" as const,
+            supervisorEpoch: "epoch_portable_investigation",
+            workspaceIdentityEventId: "evt_portable_investigation_identity",
+            mountEvidenceId: "evidence_portable_investigation_mount",
+            authorityEvidenceId: "evidence_portable_investigation_authority",
+            policyVersion: "policy_portable_investigation.v1",
+            policyDigest: plannerAuthorityHash,
+            lockStateDigest: plannerAuthorityHash,
+            highWaterMark: "evt_portable_investigation_high_water",
+            leaseEventId: "evt_portable_investigation_lease",
+            readbackEventId: "evt_portable_investigation_lease_readback",
+            expiresAt: "2026-07-10T02:00:00.000Z",
+            causation: {
+              causationId: "cause_portable_investigation",
+              correlationId: "correlation_portable_investigation"
+            },
+            policyAndLock: {
+              authorityEvidenceId: "evidence_portable_investigation_authority",
+              mountEvidenceId: "evidence_portable_investigation_mount",
+              leaseEventId: "evt_portable_investigation_lease",
+              leaseReadbackEventId: "evt_portable_investigation_lease_readback",
+              policyVersion: "policy_portable_investigation.v1",
+              policyDigest: plannerAuthorityHash,
+              lockStateDigest: plannerAuthorityHash,
+              readbackEventId: "evt_portable_investigation_policy"
+            },
+            highWater: {
+              authorityEvidenceId: "evidence_portable_investigation_authority",
+              mountEvidenceId: "evidence_portable_investigation_mount",
+              leaseEventId: "evt_portable_investigation_lease",
+              leaseReadbackEventId: "evt_portable_investigation_lease_readback",
+              highWaterMark: "evt_portable_investigation_high_water",
+              readbackEventId: "evt_portable_investigation_high_water_readback"
+            }
+          }
+        };
+      }
+    },
+    activeClaimReconciliation: {
+      async readByIdempotencyKey() {
+        return undefined;
+      },
+      async appendAndReadBack() {
+        throw new Error("reconciliation is not expected");
+      }
+    },
+    now,
+    createSafeOutageObservationId: () => "outage_portable_investigation"
+  });
+  const wakeRuntime = {};
+  registerMountedArtifactAuthorityIssuerForWakeRuntime({ wakeRuntime, lifecyclePorts: ports, runtimeHandle: handle });
+  const grant = await ports.authority.revalidate({
+    operation: "wake",
+    expectedWorkspaceId: workspaceId,
+    requiredCapabilities: ["wake", "lifecycle"]
+  });
+  if (!grant.ok) throw new Error("portable investigation fixture requires an admission");
+  const lease = await ports.supervisorLease.readOrAcquire({
+    admission: grant.admission,
+    residentId: "agent_default",
+    supervisorEpoch: "epoch_portable_investigation",
+    policyVersion: "policy_portable_investigation.v1",
+    policyDigest: plannerAuthorityHash,
+    lockStateDigest: plannerAuthorityHash,
+    causationId: "cause_portable_investigation",
+    correlationId: "correlation_portable_investigation"
+  });
+  if (lease.outcome !== "acquired-and-read-back") throw new Error("portable investigation fixture requires a lease");
+  const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
+  const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+    taskId: "task_portable_investigation",
+    attemptId: "attempt_portable_investigation",
+    approvedRunId: "run_portable_investigation",
+    runType: "investigation-planner",
+    retryGeneration: 0
+  });
+  const contextPacks = createPlannerContextPacks(false, false, (await handle.ledger.readAll()).map((event) => event.id));
+  const input = {
+    ledger: handle.ledger,
+    actor: portableActor,
+    now,
+    contextPacks,
+    scope: { kind: "investigation" as const, refs: ["inv_scope_001"] },
+    runtime,
+    providerReadiness: providerReadinessDto(),
+    runId: "run_portable_investigation",
+    taskId: "task_portable_investigation",
+    providerId: "provider_fake_local",
+    modelFamily: "fake-local",
+    credentialRef: {
+      credentialRefId: "agent_credref_fake_local",
+      providerId: "provider_fake_local",
+      kind: "local-no-secret" as const
+    },
+    mountedPromptReadbackWitness: await mountedPlannerPromptReadbackWitness({
+      ledger: handle.ledger,
+      actor: portableActor,
+      now,
+      contextPacks,
+      scope: { kind: "investigation", refs: ["inv_scope_001"] },
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_portable_investigation",
+      taskId: "task_portable_investigation",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret" as const
+      }
+    })
+  };
+  return { handoff, input };
 }
 
 async function preparedRuntime(

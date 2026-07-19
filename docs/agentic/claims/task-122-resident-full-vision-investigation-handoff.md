@@ -427,3 +427,31 @@ Before the GREEN commit, run the Task122 cross-boundary command, standalone
 typecheck, differential `npm test` and `npm run verify`, `git diff --check`,
 and `npm run factory:check`. No registry, contract, spec, plan, provider,
 credential, network, live-service, integration, or `neo` action is authorized.
+
+## RV-1-E-854 Consolidated Causal RED
+
+- Authority merge: `84861d1a975d9ec9688a1fa6e74165ddd017e947` forward-merges
+  exact program authority `3b43a00294bed9e6e4e0532a1389dc3d0b27d0e2` into the
+  preserved reviewed candidate history. No history was rewritten.
+- RED scope is this append-only claim and
+  `packages/agent/test/investigation-planner-workflow.test.ts`; production
+  `packages/agent/src/investigation-planner-workflow.ts` remains byte-identical
+  to the authority merge.
+- Causal coverage adds exact normal and restored/recovery swapped-
+  `investigationId` cases, each requiring fail-closed rejection before model,
+  recovery store, or completing effect. The unchanged workflow instead records
+  the normal swap as `ready-for-review`/`handoff-recorded`; the recovery swap
+  continues only as `output-persisted` rather than rejecting the mismatched
+  durable start binding.
+- The mounted cursor case uses a real portable workspace, SQLite ledger,
+  portable producer, opaque controller/witness, separate bound material and
+  manifest stores, mounted production prompt readback, and the actual planner
+  model invocation. It expects the bound material store to remain current for
+  final-output material. The released producer instead rejects with
+  `portable-mounted-handoff-authority-invalid` from its post-invocation cursor
+  check, before final output can be appended; no no-op witness or ordinary
+  store satisfies this positive path.
+- RED command on the exact authority-merge bytes plus these test/claim changes:
+  `npm test -- packages/agent/test/investigation-planner-workflow.test.ts`
+  exited `1` with 3 expected failures and 16 retained passes (19 total): the
+  normal swap, recovery swap, and real mounted post-model cursor assertion.
