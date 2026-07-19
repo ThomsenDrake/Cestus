@@ -24364,3 +24364,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-849 — Record-25 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T19:09:46Z
+- Clean strict record-25 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=25 commands=25`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 25`.
+- The standalone assurance corpus then reproduces exactly two failures at
+  lines 1112 and 1428: both current-registry-length fixtures still pin strict
+  prefix **24**, observe **25**, and leave the other **17/19** tests green.
+  No contract, checker, blob, command, dependency, transfer, ownership,
+  historical fixture, or released Task121 failure is reproduced.
+- This is the contract-determined append-only count-fixture transition.
+  V1-V3, raw strict records 1-25, the V4 contract/checker, all 29 card
+  IDs/order, finite direct-source mappings, and every candidate, integration,
+  review, and release evidence item remain immutable.
+- Standing RV-1-E-732 resumes the same Terra/xhigh assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, branch
+  `codex/task136-v4-task139-pm-direct-source-ownership`, and worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`.
+  It forward-merges the exact record-25 program authority, commits one
+  claim-only causal RED recording the two **25 != 24** failures with
+  production/test bytes unchanged, then one minimal test/claim GREEN changing
+  only both current strict-prefix count fixtures from 24 to 25.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After GREEN, exact assurance,
+  contract/repository, typecheck, factory, diff, scope, clean, and dependency
+  gates plus one fresh concurrent read-only Terra/xhigh review pair remain
+  mandatory. No push, external effect, or `neo` action occurs.
