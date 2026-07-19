@@ -22829,3 +22829,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh pair are mandatory. Task9 remains byte-
   identical; strict prefix remains 21. No push, external effect, or `neo`
   action occurs.
+
+## RV-1-E-808 — Repaired G136-SC enters fresh final review
+
+- Recorded at: 2026-07-19T11:23:43Z
+- Exact clean candidate `70814c1259871c5458a3578fae8a5c8281540377`
+  preserves the complete combined Task9/G136 lineage and both accepted-review
+  recovery cycles. Independent-result causal RED `1aaa63ad` and GREEN
+  `846a5062` are followed by fixture authority merge `6cb83ca2`, claim-only RED
+  `ebd24123`, and minimal fixture GREEN `70814c12`; no history is rewritten.
+- Production GREEN rejects canonical `agent` result actors, explicit indirect
+  result correlation to another tool request, and another unterminated
+  overlapping-source execution claim at result append in either claim order.
+  It preserves direct exact-claim evidence only for non-agent domain actors and
+  preserves released human/system domain actors plus their native correlations.
+  The fake-loop fixture now uses one stable system domain-service actor while
+  retaining exact claim causation, request correlation, payload, interleaving,
+  and every prior assertion.
+- Coordinator committed-byte admission reproduces focused **6 files / 86
+  tests**, exact historical cross **9 files / 136 tests**, and four released
+  adapters **4 files / 56 tests**, all passing. Owner evidence additionally
+  passes standalone typecheck, assurance **19/19**, all four V4 markers,
+  factory readiness, diff hygiene, exact recovery/cumulative scopes, Task9
+  blob identity, clean state, unset `core.worktree`, and real non-symlinked
+  executable Vitest 4.1.9 dependencies. Repository emits exact prefix **21/21**
+  followed only by the expected incomplete-29 boundary.
+- Full `npm test` and `npm run verify` retain the inherited intermediate
+  cohort at **13 failing files / 70 failures / 2,778 passes / 5 skips** after
+  adding five passing P1 counterfactuals and removing the three stale fake-loop
+  failures. Verify passes standalone typecheck before the expected test stop;
+  no changed substantive inherited assertion or skip is introduced.
+- One new fresh concurrent read-only Terra/xhigh architecture/invariants and
+  executability/adversarial pair now reviews exact SHA `70814c12`. Reviewers
+  must independently verify the two accepted P1 closures, both A/B claim
+  orders, non-agent domain positives, exact Task9/G136 scopes, absence of a
+  public completion route, and unchanged request/run/preview/claim/currentness
+  and append-only invariants. They must not mutate Git configuration, branch,
+  index, worktree, dependencies, or history; SDD/TDD is not relevant or
+  authorized for reviewers.
+- Status advances G136-SC `implementing-repair -> candidate -> reviewing`;
+  Task9 maintenance remains approved-for-integration and strict prefix remains
+  21. Dual approval authorizes Task9 integration first, then the complete
+  reviewed G136 merge, integrated-byte gates, and strict release record 22.
+  No push, external effect, or `neo` action occurs.
