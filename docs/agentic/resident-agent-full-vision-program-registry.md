@@ -23330,3 +23330,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh review pair are required after GREEN.
   Status remains G136-R `reviewing -> implementing-repair`; no integration,
   release record, push, external effect, or `neo` action occurs.
+
+## RV-1-E-820 — G136-R completion-guard compiler checkpoint
+
+- Recorded at: 2026-07-19T14:07:03Z
+- Registry merge `884a688b` preserves RV-1-E-819; causal race RED
+  `9e8d04b3` fails exactly because the rejected interleaving leaves a durable
+  completion, and minimal runtime GREEN `3d9344b1` makes the exact card green
+  at **2 files / 10 tests** by adding a request-local global-count precondition
+  to the released opaque-evidence completion route.
+- Post-GREEN typecheck reproduces exactly three scoped `noImplicitAny`
+  diagnostics on the card-local guarded ledger's delegated append event/
+  options and read-stream ID parameters. No runtime assertion, completion
+  invariant, released interface, product choice, or external behavior is in
+  dispute.
+- The same owner preserves claim-only compiler RED
+  `0137abc7cfdb9a1a46865b9b544452f32b7b37e2` and is authorized for one
+  minimal compiler GREEN that contextually types the local guard as the
+  released `EventLedger`. The closure, captured count, append options, opaque
+  evidence, completion route, and every hostile test must remain byte-
+  identical in behavior.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After the compiler GREEN, the owner must
+  forward-merge this registry-only event and rerun every admission gate before
+  the fresh review pair. Status remains G136-R `implementing-repair`; no
+  integration, release record, push, external effect, or `neo` action occurs.
