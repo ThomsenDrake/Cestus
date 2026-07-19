@@ -23545,3 +23545,80 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   its preserved candidate remains neither reviewed nor integrated until all
   exact gates rerun from that non-stale merge. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-826 — C136-P exact-base candidate enters review
+
+- Recorded at: 2026-07-19T15:18:28Z
+- The original Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0` preserves claim `6eb485dd`, causal
+  RED `346e00cf`, initial GREEN `06157253`, test-oracle corrections
+  `03e04dce` and `4f937c21`, and compiler closure
+  `8b02245feba48ff897857b238a928dc45cfe578e`. Normal two-parent merge
+  `0b7af5a9835ded758b0b0ea9c2c921c95d29cc79` forward-merges exact current
+  program authority `89b9125eb441a13ba11527128eee1b45b7208bfd`
+  without conflict or history rewrite; all three reviewed implementation
+  blobs remain byte-identical to `8b02245f`.
+- Exact committed-byte admission passes focused **1 file / 3 tests**,
+  cross-boundary **4 files / 18 tests**, standalone typecheck, bounded
+  assurance **19/19**, all four V4 markers, factory readiness, diff hygiene,
+  exact three-path candidate scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked executable Vitest 4.1.9. Repository
+  mode emits exact prefix **23/23** followed only by the expected incomplete-29
+  boundary.
+- Full `npm test` and `npm run verify` retain the inherited **13 failing files
+  / 70 failing tests / 5 skips** with **2,790 passes**, an exact +3-pass-only
+  C136-P delta over record 23 and no new failure, removal, or skip.
+- Status advances C136-P `candidate -> reviewing`. One fresh concurrent
+  read-only Terra/xhigh architecture/executability pair now reviews exact SHA
+  `0b7af5a9835ded758b0b0ea9c2c921c95d29cc79`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
+
+## RV-1-E-827 — C136-P review P1 root-cause checkpoint
+
+- Recorded at: 2026-07-19T15:31:38Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7af5-e98f-7ae3-b030-b26da7c993cf` returns `BLOCKED` for exact candidate
+  `0b7af5a9835ded758b0b0ea9c2c921c95d29cc79`. Its direct runtime probe
+  changes only `plan.runMode` and `plan.correlationId` to numbers and observes
+  an accepted candidate carrying both malformed values. The released T120-R
+  contract requires the closed run-mode enum and a secret-safe correlation
+  string; the C136-P claim requires exact binding. No P0 is reproduced.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7af5-f2bc-7052-825c-dd90cfb530a4` independently returns `BLOCKED`.
+  Its frozen-input probe reproduces six fail-open cases: wrong-typed run mode,
+  wrong-typed correlation ID, nested DNS/authorization material in scalar
+  plan/posture slots, provider-posture approval-class substitution, removal
+  of a restrictive required-approval class on replan, and consumed-budget
+  jumps not accounted by `actionConsumption`. Each produces a candidate.
+- Both reviewers retain unchanged before/after HEAD `0b7af5a9`, clean status,
+  exact three-path scope, and green focused **1/3**, cross **4/18**, typecheck,
+  assurance **19/19**, V4, factory, and inherited full differential gates.
+  Those gates omit the reproduced hostile semantics; downstream CF-1
+  reparsing protects append authority but does not satisfy this card's own
+  typed fail-closed producer boundary.
+- Coordinator adjudication accepts the findings as one contract-determined
+  P1 packet. Released interfaces and frozen invariants require: the exact
+  run-mode enum; a secret-safe correlation string; every released scalar
+  plan/posture slot to reject object substitution and recursively hidden
+  secret/URL/URI/IP/localhost/DNS-host material; exact P2 remote posture
+  approval class `provider-byte-transfer`; required-approval evolution that
+  cannot remove prior restrictions; and replan consumed/remaining values that
+  advance exactly by action consumption without changing ceilings. No product,
+  scope, safety-invariant, credential, hardware, data-loss, or external-
+  behavior choice exists.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0`, branch
+  `codex/c136-p-resident-plan-candidate-producer`, and worktree
+  `/home/drake/.codex/worktrees/8403/Cestus`. It must preserve every commit,
+  forward-merge this registry authority, commit one consolidated causal RED
+  reproducing all six cases, then one minimal GREEN within the existing three
+  C136-P paths. It must not import a wider authority, change released schemas,
+  or add any effect/fallback/compatibility route.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused/cross-boundary, typecheck,
+  full/verify differential, assurance, V4/repository, factory, diff/scope/
+  clean/dependency admission and one fresh concurrent read-only Terra/xhigh
+  architecture/executability pair remain mandatory after GREEN. Status
+  advances C136-P `reviewing -> implementing-repair`; no push, external
+  effect, or `neo` action occurs.
