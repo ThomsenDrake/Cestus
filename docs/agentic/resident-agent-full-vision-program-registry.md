@@ -23690,3 +23690,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh architecture/executability pair remain
   mandatory after GREEN. Status remains C136-P `reviewing -> implementing-
   repair`; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-830 — C136-P policy-normalization repair enters final review
+
+- Recorded at: 2026-07-19T16:10:18Z
+- The same owner preserves registry merge `4ce3b041`, causal RED
+  `001b009857c7f79eaa31ab84f9de863166399ed3`, and minimal GREEN exact
+  candidate `5f560c1b667df59d5399f56a1c79a95a21d26f69`. RED fails exactly the three
+  named counterfactuals; its test blob `da5fa7d0` is byte-identical in GREEN.
+- GREEN closes automatic action classes to `read-only`, `local-derivative`,
+  and `ledger-proposal`; requires a real canonical UTC ISO feasibility
+  timestamp; and normalizes Unicode/IDNA dot equivalents before IP/host
+  classification. Every prior P1 rejection and valid frozen initial/replan
+  path remains green.
+- Exact committed-byte admission passes focused **1 file / 14 tests** and
+  cross-boundary **4 files / 29 tests**, an exact +3-test delta. Standalone
+  typecheck, assurance **19/19**, all four V4 markers, repository **23/23**
+  plus only the expected incomplete-29 boundary, factory, diff, exact
+  three-path scope, clean/dependency gates are green. Full/verify retain the
+  inherited **13 files / 70 failures / 5 skips** with **2,801 passes**, an
+  exact +3-pass-only delta.
+- Status remains C136-P `implementing-repair -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair now
+  reviews exact SHA `5f560c1b667df59d5399f56a1c79a95a21d26f69`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
