@@ -24471,3 +24471,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   merged bytes before integration.
 - Status advances Task122 `candidate-waiting-base -> candidate`. No push,
   provider, credential, network, external effect, or `neo` action occurs.
+
+## RV-1-E-853 — Task122 exact-base candidate enters review
+
+- Recorded at: 2026-07-19T19:37:44Z
+- Coordinator forward merge
+  `1eedf290cc7fa0b37692042b79744a53a518464b` combines current record-25
+  authority `19181678` with preserved Task122 candidate
+  `5a49258f3a4ab56920ee23511731d520fb7bd61f` without conflict or owned-path
+  change. Claim `15703c08`, causal RED `89c5c6d2`, and minimal GREEN
+  `5a49258f` remain ordered and unmodified.
+- Exact merged-byte admission passes focused **1 file / 16 tests** and
+  cross-boundary **3 files / 106 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory readiness, diff hygiene, exact
+  three-path cumulative/original scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9. Repository mode executes all 25 released
+  commands and emits exact prefix **25/25** followed only by the expected
+  incomplete-29 boundary.
+- Machine-readable full and `npm run verify` differentials are identical:
+  **11 failing files / 49 failing tests / 2,832 passes / 5 skips**. Relative
+  to clean record-25 program bytes, exactly the eleven Task122 investigation-
+  workflow failures become passes and the new opaque-authority refusal case
+  passes; no unrelated failure is added, removed, changed, or skipped.
+- The candidate consumes only injected opaque/current mounted CF1-HR V2
+  authority and mounted stores, preserves terminal -> orchestration-completed
+  -> task-status order and verified projection readback, and remains advisory
+  only. It adds no task creation, crawl, PRR send, provider transfer,
+  credential authority, fallback write, or other external effect.
+- Status advances Task122 `candidate -> reviewing`. One fresh concurrent
+  read-only Terra/xhigh architecture/executability pair now reviews exact SHA
+  `1eedf290cc7fa0b37692042b79744a53a518464b`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, strict record 26, push, external
+  effect, or `neo` action occurs before dual approval.
+
+## RV-1-E-854 — Task122 mounted-lifecycle and investigation-binding root-cause checkpoint
+
+- Recorded at: 2026-07-19T19:58:02Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7be3-0b74-71e2-a8b0-dcae7ef61f7a` returns `BLOCKED` with one exact
+  P1 on clean candidate `1eedf290cc7fa0b37692042b79744a53a518464b`.
+  Normal and recovery guards bind task, run, specialist type, attempt, retry,
+  lease, and currentness but never require the durable specialist-started
+  event's `investigationId` to equal the caller's exact investigation. A
+  swapped investigation can therefore reuse the same task/run lifecycle and
+  complete V2 handoff recording.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7be3-16ae-7c63-94b0-90b83c1ad5d9` independently returns `BLOCKED`
+  with a second exact P1. The focused test helper issues a no-op witness and
+  ordinary store. A real portable mounted binding instead observes the
+  post-bind `agent.model-invocation.*` events through its cursor before the
+  final-output transition, burns authority, and makes the workflow return only
+  `output-persisted`; the required mounted V2 lifecycle cannot complete.
+- Coordinator adjudication accepts both findings. They are fixed by the
+  frozen exact investigation/provenance binding, real mounted-store,
+  fail-closed, and complete V2 lifecycle requirements, not a product choice.
+  All admission evidence remains valid: focused **16/16**, cross-boundary
+  **106/106**, typecheck, assurance **19/19**, four V4 markers, repository
+  **25/25** then incomplete-29/found-25, factory/scope/clean/dependency gates,
+  and exact full/verify **11 files / 49 failures / 2,832 passes / 5 skips**.
+  Those green tests are insufficient because they do not exercise the real
+  mounted cursor or swapped-investigation counterfactual.
+- Standing RV-1-E-732 resumes the same Terra/xhigh Task122 owner task
+  `019f7544-bd1a-7800-ace4-dfa12be1064b`, branch
+  `codex/task122-cf1-handoff-adoption`, and worktree
+  `/home/drake/.codex/worktrees/da35/Cestus`, preserving exact candidate and
+  review history. It forward-merges this registry authority, commits one
+  causal test/claim RED reproducing both P1s with the actual portable mounted
+  producer/controller and exact investigation swap, then one minimal
+  source/claim GREEN within Task122's existing three-path ownership.
+- GREEN must make the ordinary and restored/recovery paths complete through
+  the real mounted V2 stores/witness with exact terminal -> orchestration-
+  completed -> task-status ordering/readback; bind exact investigation before
+  any recovery or completing effect; reject missing, stale, consumed,
+  cross-run, conflicting, or swapped-investigation authority; and retain all
+  attempt/release, provenance, no-fallback, no-send, and advisory-only
+  counterfactuals. Fake/no-op authority may not satisfy the positive path, and
+  no predecessor, contract, registry, or non-owned source change is authorized.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All focused, cross-boundary, typecheck,
+  full/verify differential, assurance/V4/repository, factory, diff, exact
+  three-path scope, clean, and dependency gates plus one fresh concurrent
+  read-only Terra/xhigh review pair remain mandatory after GREEN. If the
+  released predecessor APIs make a compliant three-path GREEN impossible, the
+  owner must stop with exact counterexample evidence rather than weaken or
+  simulate authority. No push, external effect, or `neo` action occurs.
