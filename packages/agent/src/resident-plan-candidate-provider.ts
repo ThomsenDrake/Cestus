@@ -77,12 +77,13 @@ export function createResidentPlanCandidateProvider(): ResidentPlanCandidateProv
   return Object.freeze({
     async createInitialCandidate(input: unknown): Promise<ResidentInitialPlanCandidate> {
       try {
+        if (latest !== undefined) throw unavailable();
         const envelope = exactRecord(input, ["plan", "providerPosture", "policyConstraints"]);
         const plan = requireRecord(envelope, "plan");
         const providerPosture = requireRecord(envelope, "providerPosture");
         const policyConstraints = requireRecord(envelope, "policyConstraints");
         validatePlan(plan, providerPosture, policyConstraints);
-        if (number(plan, "planRevision") !== 0 || value(plan, "priorPlanReadback") !== null || value(plan, "replanObservationReadback") !== null) {
+        if (number(plan, "planRevision") !== 0 || value(plan, "priorPlanReadback") !== null || value(plan, "replanObservationReadback") !== null || !isInitialBudget(requireRecord(plan, "budget"))) {
           throw unavailable();
         }
         const candidate = freezeInitial(plan, providerPosture, policyConstraints);
@@ -132,6 +133,8 @@ function validatePlan(plan: NormalizedRecord, posture: NormalizedRecord, constra
   validatePolicy(requireRecord(plan, "policy"));
   validateAuthority(requireRecord(plan, "authority"), plan);
   validateSources(requireArray(plan, "sourceEventIds"), requireArray(plan, "contextPackRefs"));
+  const sourceIds = requireArray(plan, "sourceEventIds");
+  if (string(requireRecord(plan, "authority"), "ledgerHighWaterEventId") !== sourceIds[sourceIds.length - 1]) throw unavailable();
   validateBudget(requireRecord(plan, "budget"));
   validateConstraints(constraints);
   validateSteps(requireArray(plan, "steps"), constraints);
@@ -261,6 +264,7 @@ function validateConstraints(constraints: NormalizedRecord): void {
     const requiredApprovalClass = string(record, "requiredApprovalClass");
     const baselineApproval = approvalClassForSideEffect(sideEffectClass);
     if (!residentSideEffectClasses.has(sideEffectClass) || (requiredApprovalClass !== baselineApproval && !(baselineApproval === "none" && requiredApprovalClass === "human-review"))) throw unavailable();
+    if (!requireArray(constraints, "requiredApprovalClasses").includes(requiredApprovalClass)) throw unavailable();
     signatures.push(`${toolId}\u0000${toolVersion}\u0000${string(record, "allowlistEntryHash")}`);
   }
   if (new Set(signatures).size !== signatures.length) throw unavailable();
@@ -402,6 +406,13 @@ function isBudgetNarrower(next: NormalizedRecord, prior: NormalizedRecord): bool
       number(nextConsumed, field) !== number(previousConsumed, field) + actionConsumption ||
       number(nextRemaining, field) !== number(previousRemaining, field) - actionConsumption
     ) return false;
+  }
+  return true;
+}
+
+function isInitialBudget(budget: NormalizedRecord): boolean {
+  for (const field of budgetFields) {
+    if (number(requireRecord(budget, "consumed"), field) !== 0 || number(requireRecord(budget, "actionConsumption"), field) !== 0 || number(requireRecord(budget, "remaining"), field) !== number(requireRecord(budget, "ceilings"), field)) return false;
   }
   return true;
 }
