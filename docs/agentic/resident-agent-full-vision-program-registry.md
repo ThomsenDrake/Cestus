@@ -21854,3 +21854,84 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integrate the complete preserved lineage and rerun all release gates from
   integrated bytes before strict record 20. No repair, push, or `neo` action
   occurs; strict prefix remains 19 until that record exists.
+
+## RV-1-E-782 — Task139-P2 integrated and released
+
+- Recorded at: 2026-07-19T06:37:19Z
+- The coordinator integrates the complete preserved Task139-P2 lineage by
+  merge `6472c92bce3b6cd23e3128666524e575d9f9d236`, whose parents are approval
+  checkpoint `6ca5dd99df58742d56b5ed7a821288ac53fc9615` and exact approved candidate
+  `b32dd62d8b1c1b461c3fea34d0f7e38639cffab9`. Every claim, causal RED,
+  minimal GREEN, recovery checkpoint, registry-forward merge, compiler
+  closure, and review-evidence commit remains in ancestry without rewrite.
+- Integrated-byte admission reproduces focused **1 file / 6 tests** and
+  cross-boundary **6 files / 53 tests**; standalone typecheck, factory
+  readiness, all four V4 markers, repository prefix **19/19**, diff hygiene,
+  exact three-path scope/blob identity, clean state, and real non-symlinked
+  Vitest 4.1.9 dependencies are green.
+- Integrated full `npm test` and `npm run verify` each retain exactly the
+  inherited **12 failing files / 69 failing tests / 5 skips / 2,764 passes**,
+  with the same substantive failure cohort and all six P2 tests passing.
+  Verify is correctly retained as differential evidence rather than reported
+  green at this intermediate release position.
+- Status advances Task139-P2 `approved -> integrated -> released`. Strict
+  record 20 below makes `Task136-FC-Ports` the next exact release card. No
+  provider/network/credential effect, push, or `neo` action occurs.
+
+## Task136 dispatch release v4: Task139-P2
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task139-P2",
+  "candidateSha": "b32dd62d8b1c1b461c3fea34d0f7e38639cffab9",
+  "reviews": [
+    {
+      "threadId": "019f7903-2617-7ee0-a464-e931933ac24f",
+      "candidateSha": "b32dd62d8b1c1b461c3fea34d0f7e38639cffab9",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f7903-30af-7331-8ff9-bbb70a7753a6",
+      "candidateSha": "b32dd62d8b1c1b461c3fea34d0f7e38639cffab9",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "6472c92bce3b6cd23e3128666524e575d9f9d236",
+  "releaseEventId": "task136-release-v4-Task139-P2",
+  "prerequisites": [
+    {
+      "cardId": "T120-R",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-T120-R"
+    },
+    {
+      "cardId": "Task139-PM",
+      "integrationSha": "41b44b7cad2547acd3fd5986cbe29594d77b44fd",
+      "releaseEventId": "task136-release-v4-Task139-PM"
+    },
+    {
+      "cardId": "Task136-FC-Core",
+      "integrationSha": "7a7a650e7db97c1aad63447e3669e66ddf3dc7fe",
+      "releaseEventId": "task136-release-v4-Task136-FC-Core"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/resident-loop-provider-posture.ts",
+      "disposition": "owned",
+      "blobSha": "3d64cfbdbc8bcc342b55385e01db5cb4a61a149b"
+    },
+    {
+      "path": "packages/local-runtime/test/resident-loop-provider-posture.test.ts",
+      "disposition": "owned",
+      "blobSha": "dd799c19c46d391ce9bb78c94de9eb65f83c71b6"
+    },
+    {
+      "path": "docs/agentic/claims/task-139-resident-loop-provider-posture.md",
+      "disposition": "owned",
+      "blobSha": "035ef43a330b3aefe8baaa87cea6d6aee5ac15cf"
+    }
+  ]
+}
+```
