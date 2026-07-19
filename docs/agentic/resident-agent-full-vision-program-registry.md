@@ -22703,3 +22703,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integration in two preserved steps: Task9 maintenance first, then the exact
   combined G136 merge, followed by integrated-byte gates and strict record 22.
   No push, external effect, or `neo` action occurs.
+
+## RV-1-E-805 — G136-SC independent-result binding review root cause
+
+- Recorded at: 2026-07-19T10:57:56Z
+- Fresh architecture/invariants review task
+  `019f79fc-5ed4-73e3-b258-83a10639a6b2` returns `BLOCKED` for exact combined
+  candidate `ba48161e288e6569561477092ac948f2d0dac78b` after reproducing a
+  P1: the gateway's passing completion helper appends `evidence.ingested` with
+  the same agent actor that claimed execution, and the adapter accepts that
+  self-minted non-agent-typed event as independent domain authority.
+- Fresh executability/adversarial review task
+  `019f79fc-695e-7001-9a4d-8caaf20614b9` independently returns `BLOCKED` after
+  reproducing a second P1. Two approved/claimed requests A and B share one
+  frozen source event. A post-claim result explicitly correlated to B/run B,
+  with ancestry to that shared source, is accepted as A's evidence and
+  terminalizes A because indirect lineage checks ancestry and ordering but not
+  competing request/run/correlation ownership.
+- Coordinator adjudication accepts both exact findings. They are fixed by the
+  frozen independent-domain-result, exact request/run/claim, cross-request/run
+  rejection, and fail-closed invariants. No product or scope decision is
+  required. Both review worktrees remained read-only and exact focused **6/81**,
+  cross **9/131**, four-adapter **4/56**, assurance **19/19**, V4, typecheck,
+  factory, scope, and clean-state gates otherwise pass.
+- Standing RV-1-E-732 resumes the same G136-SC implementation owner task
+  `019f717a-3a5c-7df1-9216-592473d3244f`, branch
+  `codex/g136-scheduler-completion-adapter`, and worktree
+  `/home/drake/.codex/worktrees/7837/Cestus` from exact preserved combined
+  candidate `ba48161e288e6569561477092ac948f2d0dac78b`. Before editing, the owner
+  must forward-merge this registry-only authority and preserve the complete
+  G136, Task9, review, RED/GREEN, and coordinator histories.
+- One causal RED and one minimal GREEN may change only existing G136 paths:
+  `packages/agent/src/resident-loop-scheduler-completion.ts`,
+  `packages/agent/test/resident-loop-scheduler-completion.test.ts`,
+  `packages/agent/test/tool-gateway.test.ts`, and
+  `docs/agentic/claims/task-136-scheduler-completion-adapter.md`. RED must prove
+  rejection of an agent-authored/same-claimer non-agent event and both orderings
+  of a cross-request/run substitution sharing one source. It must convert
+  positive gateway fixtures to an explicitly distinct domain-service actor.
+- GREEN must keep direct exact-claim binding valid, but indirect source-lineage
+  binding must fail when the result is authored by the resident/claiming actor,
+  is explicitly correlated to another agent-tool request, or is ambiguous with
+  another unterminated execution claim whose frozen sources overlap at the
+  result append. Released accepted-graph, PRR, and export domain actors and
+  their native causal correlations remain valid. No event family, result DTO,
+  actor label, correlation string, ordering alone, or generic attestation may
+  become authority; no public completion route or generic result event returns.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After GREEN, all exact focused/cross/
+  adapter, standalone typecheck, full/verify differential, assurance/V4/
+  repository, factory/diff/scope/clean/dependency gates and one new fresh
+  concurrent read-only Terra/xhigh pair are mandatory. The prior pair is
+  invalidated by any code/test change. Task9 GREEN and its two-path scope remain
+  byte-identical. Status advances G136-SC `reviewing -> implementing-repair`;
+  strict prefix remains 21. No push, external effect, or `neo` action occurs.
