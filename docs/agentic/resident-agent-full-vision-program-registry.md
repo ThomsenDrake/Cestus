@@ -21028,3 +21028,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   test-driven development are explicitly approved for this task.
 - Strict prefix remains 17. No release record, provider/network/credential
   effect, push, or `neo` action occurs at this transition.
+
+## RV-1-E-759 — Task139-PM candidate admitted to review
+
+- Recorded at: 2026-07-19T02:04:58Z
+- The same Task139-PM owner preserves claim
+  `b47db7bffbe7022177793f61fa0042a03416bc3b`, causal RED
+  `8479f8ece61417a49e880e7cf76687342a6230f7`, assurance-forward merge
+  `8b55872a27ad3e97a0a5666c7404ff6c8ba073fb`, and one minimal GREEN
+  candidate `28072e576f7fb9f3937d4596d975c4fe80aeef3e`. The focused RED test
+  blob remains byte-identical; GREEN changes five paths inside the exact
+  corrected six-path boundary.
+- The candidate adds only the PM-specific static mounted-operation inspection,
+  opaque locator, exact import-policy projection, and claim evidence. It binds
+  current operation/workspace/mount/admission/policy/lock/high-water/ledger
+  identity, revalidates before and after the asynchronous durable read, burns
+  stale authority, rejects caller-shaped and P1-shaped inputs, and exposes no
+  runtime handle, writer, Task126 reader mint, provider/credential/network/
+  fallback/external effect.
+- Owner and independent coordinator admission pass focused **2 files / 8
+  tests**, cross-boundary **8 files / 122 tests**, exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker per suite,
+  standalone typecheck, assurance **19/19**, all four V4 markers, diff hygiene,
+  factory readiness, exact scope/RED blob, clean tracked/untracked state, and
+  real non-symlinked dependencies with Vitest 4.1.9.
+- Full `npm test` and `npm run verify` retain exactly the inherited **12 failing
+  files / 69 failing tests / 5 skips**, unchanged identities, with **2,754
+  passes**. Typecheck completes before verifier reaches that inherited boundary;
+  the four PM RED tests are the exact positive delta.
+- Status advances Task139-PM `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  architecture task `019f781e-3a31-72a2-8b11-dc33c26def7b` and executability
+  task `019f781e-3a3c-7e70-bd40-a87fc4a86897`. SDD/TDD is not relevant or
+  authorized for reviewers. Only exact reproduced P0/P1 contract violations
+  block; P2, style, hypothetical hardening, and unreproduced concerns are
+  backlog.
+- Strict prefix remains 17. Repository current-head admission intentionally
+  remains at the released program bytes until record 18 activates the three
+  source transfers. No integration, release record, external effect, push, or
+  `neo` action occurs.
+
+## RV-1-E-760 — Task139-PM proxy-envelope P1 recovery checkpoint
+
+- Recorded at: 2026-07-19T02:19:22Z
+- Architecture/invariants task
+  `019f781e-3a31-72a2-8b11-dc33c26def7b` and
+  executability/adversarial task
+  `019f781e-3a3c-7e70-bd40-a87fc4a86897` both return
+  **NEEDS-CHANGES** on exact `28072e576f7fb9f3937d4596d975c4fe80aeef3e`
+  for the same reproduced P1. A transparent
+  `new Proxy({ operation }, {})` passes the envelope's prototype/key/data-
+  descriptor checks, authenticates the genuine operation, mints
+  `mounted-provider-authority.v1`, and returns verified readback. Both reviewers
+  reproduce this against the real factory-mounted fixture; neither changes a
+  file.
+- The coordinator accepts the finding. It directly violates the frozen proxy-
+  input rejection and fail-closed authority invariants; it is not style or
+  hypothetical hardening. All other admission remains exact: focused **8/8**,
+  cross-boundary **122/122**, typecheck, assurance, factory, scope, full-suite
+  differential, and secret/no-effect boundaries pass.
+- Standing recovery resumes the same owner and preserved branch for one causal
+  RED and one minimal GREEN in exactly
+  `packages/local-runtime/test/mounted-provider-authority.test.ts`,
+  `packages/local-runtime/src/mounted-provider-authority.ts`, and the PM claim.
+  RED must pin both transparent and trap-bearing proxy envelopes and prove no
+  proxy trap executes. GREEN must reject the envelope by unforgeable runtime
+  proxy identity before prototype/key/descriptor inspection, using the local
+  platform proxy predicate rather than another structural heuristic. Preserve
+  valid plain `{ operation }`, operation/capability identity, async currentness,
+  readback, import policy, no-effect behavior, and the complete prior history.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- Full focused/cross/typecheck/differential/assurance/factory/scope/clean/deps
+  admission and one fresh concurrent Terra/xhigh read-only review pair remain
+  mandatory after code. Strict prefix remains 17; no integration, record 18,
+  external effect, push, or `neo` action occurs.
