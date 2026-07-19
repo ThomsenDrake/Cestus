@@ -21103,3 +21103,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   admission and one fresh concurrent Terra/xhigh read-only review pair remain
   mandatory after code. Strict prefix remains 17; no integration, record 18,
   external effect, push, or `neo` action occurs.
+
+## RV-1-E-761 — Task139-PM proxy-envelope recovery approved
+
+- Recorded at: 2026-07-19T02:46:45Z
+- The same Task139-PM owner preserves the complete claim, original RED/GREEN,
+  assurance-forward merge, review checkpoint, causal recovery RED
+  `1543c1adc6a352cfc38354dece7b0ce6100bc7ed`, and minimal recovery GREEN
+  candidate `dbc1debd9d59931b6bcbab0db7c0490cebb9a047`. The recovery RED test
+  blob remains byte-identical in GREEN and the candidate worktree is clean.
+- Fresh concurrent architecture/invariants task
+  `019f7836-f254-7d42-a733-e36f45472d7d` and executability/adversarial task
+  `019f7839-03f4-7050-99c6-f2c7ee12825a` both return **APPROVE** on exact
+  `dbc1debd9d59931b6bcbab0db7c0490cebb9a047` with no reproduced P0/P1.
+  Both reviews are read-only and change no file.
+- The pair independently confirms that `node:util` proxy identity rejection
+  precedes every prototype, key, and descriptor operation; transparent,
+  trap-bearing, nested, and revoked proxies reject without executing handler
+  traps. The executability reviewer reproduces the exact two-failure causal RED,
+  focused **2 files / 10 tests**, cross-boundary **8 files / 124 tests**, one
+  exact policy marker per suite, typecheck, assurance **19/19**, all four V4
+  markers, factory readiness, exact scope, clean state, and real dependency
+  provenance. Its full-suite terminal capture reaches only the unchanged
+  inherited non-green cohort without a PM failure; the coordinator's admitted
+  exact **12 files / 69 tests / 5 skips / 2,756 passes** differential remains
+  authoritative.
+- Status advances Task139-PM `reviewing -> approved`. The coordinator is now
+  authorized to integrate the complete candidate history, reproduce all gates
+  from integrated bytes, and append strict release record 18. Task137B-W stays
+  current owner of the three transferred source paths until that record exists.
+  No provider/network/credential effect, push, or `neo` action occurs.
