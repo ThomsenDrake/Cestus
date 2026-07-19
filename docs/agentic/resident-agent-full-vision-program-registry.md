@@ -24596,3 +24596,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   eligible. All earlier commits, raw records 1-25, candidates, reviews, REDs,
   and integration evidence remain preserved. No reset, rebase, amend, squash,
   drop, rewrite, push, external effect, or `neo` action occurs.
+
+## RV-1-E-856 — Task122 finite direct-source transfer decision audit
+
+- Recorded at: 2026-07-19T20:18:28Z
+- Coordinator re-audit of the V4 checker confirms one finite append-only route
+  can preserve the exact 29-card order and raw records 1-25: transfer only
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` and
+  `packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  from current owner CF1-HR to prerequisite-bound target Task122 at strict
+  record 26.
+- Raw CF1-HR record 14 remains byte-identical. Its canonical compatibility hash
+  is `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`;
+  its two historical owned blobs are respectively
+  `c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091` and
+  `a1f1b04fa75d573bd3c8851a5fb4f15610109d40`, which still equal current
+  record-25 HEAD.
+- A finite V4 mapping would mark only those two CF1-HR paths transferred,
+  declare only target Task122, add the two paths to Task122's current ownership,
+  and extend Task122's exact command with the portable-store test. Before
+  record 26, current-HEAD verification continues to bind the record-14 blobs.
+  Once record 26 exists, current ownership and new blobs bind Task122 while
+  record-14 candidate, integration, review, release, and historical blobs
+  remain verified.
+- The corresponding cursor correction is also finite: while phase is
+  `started` or `started-running`, accept only the released provider runtime's
+  exact same-run `agent.model-invocation.requested` followed by one matching
+  `agent.model-invocation.completed` or `agent.model-invocation.failed`
+  provenance chain without advancing the handoff phase. It must bind actor,
+  stream, run, invocation, provider, input/output artifact, causation, and
+  terminal pairing; mutation, duplication, reordering, unknown bound events,
+  cross-run material, or an incomplete/conflicting invocation still burns
+  authority. Final-output and all later V2 transitions remain unchanged.
+- This route requires an explicit product/scope authorization because it
+  changes the frozen V4 ownership mapping, CF1-HR cursor acceptance semantics,
+  Task122 cumulative scope, and Task122 exact command. It does not require a
+  V5 contract, new card, bridge, generic or transitive transfer facility,
+  prerequisite/order change, raw-record mutation, compatibility fallback,
+  provenance suppression, or weakened authority. No implementation is started
+  without that decision; `neo` remains untouched.
