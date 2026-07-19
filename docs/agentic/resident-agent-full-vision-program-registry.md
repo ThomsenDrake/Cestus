@@ -23715,3 +23715,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reviews exact SHA `5f560c1b667df59d5399f56a1c79a95a21d26f69`; SDD/TDD is not relevant or
   authorized for reviewers. No integration, release record, push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-831 — C136-P compatibility normalization and approval-matrix checkpoint
+
+- Recorded at: 2026-07-19T16:17:48Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b25-3642-7ff1-bccf-85b81162ab70` returns `BLOCKED` for exact candidate
+  `5f560c1b667df59d5399f56a1c79a95a21d26f69`. With only correlation ID
+  changed to `１２７。０。０。１`, its probe observes an accepted candidate;
+  WHATWG normalizes the same compatibility characters to host `127.0.0.1`.
+  NFC plus dot-equivalent replacement does not fold full-width digits, so the
+  frozen normalized-IP fail-closed invariant remains incomplete.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b25-4128-7031-8d73-a143f49a1221` returns `BLOCKED`. Its frozen-input
+  probe changes only one allowlist entry to side-effect
+  `external-byte-transfer` while retaining required approval `none`, and
+  observes acceptance. Released `permission-policy.ts` requires
+  `provider-byte-transfer` for that side effect; the plan producer may permit
+  stricter human review on locally safe classes but never a weaker or
+  mismatched approval for a higher-risk effect.
+- Both reviewers retain clean unchanged before/after HEAD, focused **1/14**,
+  cross **4/29**, and successful rejection of all prior counterfactuals. The
+  new findings are exact contract-determined P1s; no P0 or product choice is
+  reproduced.
+- Two prior corrections used bespoke field checks. Standing RV-1-E-732 now
+  requires and authorizes a changed tactic with the same owner: use Unicode
+  compatibility normalization before IP/DNS classification, and validate
+  each closed side-effect/approval pair against the released permission-policy
+  mapping, allowing `human-review` only as a stricter replacement for baseline
+  `none`. Unknown side effects and weaker/mismatched approvals fail closed.
+- The same Terra/xhigh owner task `019f7921-b595-7080-93e7-31daf67634f0`
+  preserves every commit, forward-merges this authority, commits one causal
+  RED for the exact two cases, then one minimal GREEN within the existing
+  three C136-P paths. It must not duplicate a divergent permission matrix,
+  widen a released interface, or add any effect/fallback/compatibility route.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All exact admission gates and one fresh
+  concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
+  remains C136-P `reviewing -> implementing-repair`; no push, external effect,
+  or `neo` action occurs.
