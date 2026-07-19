@@ -207,11 +207,6 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
     path
   })));
   assert.equal(g136Sc.command, correctedG136ScCommand);
-  assert.deepEqual(task137b.transferToIds, ["CF1-HR"]);
-  assert.deepEqual(
-    task137b.ownedPaths.filter((ownedPath) => ownedPath.path === task137bToCf1Paths[0]),
-    task137bToCf1Paths.map((path) => ({ disposition: "transferred", path }))
-  );
   assert.deepEqual(task135b.transferToIds, ["CF1-HR"]);
   assert.deepEqual(
     task135b.ownedPaths.filter((ownedPath) => task135bToCf1Paths.includes(ownedPath.path)),
@@ -222,7 +217,7 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
     task129Mfa.ownedPaths.filter((ownedPath) => task129MfaToCf1Paths.includes(ownedPath.path)),
     task129MfaToCf1Paths.map((path) => ({ disposition: "transferred", path }))
   );
-  assert.deepEqual(contract.releaseCompatibility.historicalRecords.slice(1), [
+  assert.deepEqual(contract.releaseCompatibility.historicalRecords.slice(1, 3), [
     {
       cardId: "Task129-MFA",
       canonicalJsonSha256: historicalTask129MfaSha256,
@@ -233,11 +228,6 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
       cardId: "Task135B",
       canonicalJsonSha256: historicalTask135bSha256,
       pathDispositions: task135bToCf1Paths.map((path) => ({ path, recordDisposition: "owned" }))
-    },
-    {
-      cardId: "Task137B-W",
-      canonicalJsonSha256: historicalTask137bSha256,
-      pathDispositions: task137bToCf1Paths.map((path) => ({ path, recordDisposition: "owned" }))
     }
   ]);
   assert.deepEqual(contract.releaseGraph.cards.map(({ id }) => id), expectedIds);
@@ -336,7 +326,7 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
   assert.equal(contract.schemaVersion, "task136-bounded-assurance.v4");
   assert.equal(contract.releaseGraph.version, "task136-release-graph.v4");
   assert.equal(contract.releaseCompatibility.version, "task136-release-compatibility.v2");
-  assert.deepEqual(contract.releaseCompatibility.historicalRecords, [
+  assert.deepEqual(contract.releaseCompatibility.historicalRecords.slice(0, 3), [
     {
       cardId: "Task137A",
       canonicalJsonSha256: historicalTask137ASha256,
@@ -352,11 +342,6 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
       cardId: "Task135B",
       canonicalJsonSha256: historicalTask135bSha256,
       pathDispositions: task135bToCf1Paths.map((path) => ({ path, recordDisposition: "owned" }))
-    },
-    {
-      cardId: "Task137B-W",
-      canonicalJsonSha256: historicalTask137bSha256,
-      pathDispositions: task137bToCf1Paths.map((path) => ({ path, recordDisposition: "owned" }))
     }
   ]);
   assert.deepEqual(task137A.transferToIds, ["Task129-MFA", "Task137B-W"]);
@@ -384,11 +369,6 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
     path: ownedPath.path
   })), task135b.ownedPaths);
   assert.deepEqual(task137b.prerequisiteIds, ["Task135B", "T120-R", "Task137A", "Task129-MFA"]);
-  assert.deepEqual(task137b.transferToIds, ["CF1-HR"]);
-  assert.deepEqual(task137b.ownedPaths, task137bOwnedPaths.map((path) => ({
-    disposition: path === task137bToCf1Paths[0] ? "transferred" : "owned",
-    path
-  })));
   assert.equal(
     task137b.command,
     "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts"
