@@ -373,6 +373,27 @@ describe("resident plan candidate provider", () => {
       replanObservationReadback: observation
     }))).rejects.toThrow(/plan candidate/i);
   });
+
+  it("rejects provider-byte-transfer as an initial automatic action class", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const automaticProviderTransfer = deepFreeze({
+      ...constraints,
+      permittedAutomaticActionClasses: [...constraints.permittedAutomaticActionClasses, "provider-byte-transfer"]
+    });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: posture, policyConstraints: automaticProviderTransfer }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a non-canonical feasibility assessment timestamp", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const nonCanonicalTimestamp = deepFreeze({ ...posture, feasibility: { ...posture.feasibility, assessedAt: "July 19, 2026 00:00 UTC" } });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: nonCanonicalTimestamp, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects IDNA-dot IP material in a correlationId after WHATWG-equivalent normalization", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const idnaDotIp = deepFreeze({ ...initialPlan, correlationId: "127。0。0。1" });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: idnaDotIp, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+  });
 });
 
 async function candidateApi(): Promise<ResidentPlanCandidateProviderApi> {
