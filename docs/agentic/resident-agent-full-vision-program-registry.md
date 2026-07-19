@@ -21965,3 +21965,412 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   IDs/order/evidence byte-identically. Fresh Terra/xhigh read-only
   architecture/executability review follows full admission. Strict prefix is
   20; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-784 — Task136-FC-Ports claimed from strict record 20
+
+- Recorded at: 2026-07-19T06:44:54Z
+- Strict record 20 and the V4 contract make `Task136-FC-Ports` the exact next
+  release card. Its released prerequisites are Task135D, Task136-FC-Core, and
+  Task139-P2; no unreleased or preserved later candidate is used as authority.
+- Sole Terra/xhigh implementation owner is task
+  `019f791e-3548-7d61-8f06-5c7743d11927`, worktree
+  `/home/drake/.codex/worktrees/7fcc/Cestus`, branch
+  `codex/task136-fc-ports`, from exact clean program base
+  `f2e283d138a35e9f8a7247a4041a5ea5847065d6`. Its V4 ownership boundary is
+  exactly the factory-ports source, focused test, factory-ports import-policy
+  test, runtime-handle mounted-authority import-policy test, and claim.
+- The owner must preserve one claim commit, one causal test/claim RED, and one
+  minimal GREEN. The card composes only released Core/P2/mounted authority
+  through static named, cycle-free ports; structural or copied values,
+  runtime handles, authority issuers, provider configuration, credentials,
+  compatibility paths, and fallback storage gain no authority or effect.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused/cross-boundary,
+  typecheck/full-differential, assurance/repository, factory/scope/clean/deps
+  admission and one fresh concurrent Terra/xhigh read-only
+  architecture/executability pair are mandatory before integration. Status
+  advances Task136-FC-Ports `blocked -> claimed -> implementing`; strict
+  prefix remains 20. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-785 — C136-P eligible plan-candidate producer claimed
+
+- Recorded at: 2026-07-19T06:50:21Z
+- Contract computation at strict prefix 20 confirms both C136-P prerequisites
+  are released: T120-R and Task139-P2. Implementation may run ahead without
+  changing the exact release order; no review or integration may use a stale
+  base, and strict record 24 remains impossible before records 21 through 23.
+- Sole Terra/xhigh implementation owner is task
+  `019f7921-b595-7080-93e7-31daf67634f0`, worktree
+  `/home/drake/.codex/worktrees/8403/Cestus`, branch
+  `codex/c136-p-resident-plan-candidate-producer`, from exact clean program
+  base `e6ba8d111abb5c96695daff8f8d3b1a294798e40`. Its V4 ownership is exactly
+  the resident plan-candidate provider source, focused test, and claim.
+- The owner must preserve a claim commit, causal test/claim RED, and minimal
+  GREEN. The producer returns only normalized frozen untrusted candidate data
+  that CF-1 reparses; it cannot widen released plan, source/context, budget,
+  provider-posture, tool, approval, or authority bindings and performs no
+  provider, credential, gateway, ledger, artifact, fallback, or external
+  effect.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Full focused/cross-boundary,
+  typecheck/differential, V4/repository, factory/scope/clean/dependency gates
+  and one fresh concurrent read-only Terra/xhigh review pair are mandatory
+  before ordered integration. Status advances C136-P
+  `blocked -> claimed -> implementing`; strict prefix remains 20. No push or
+  `neo` action occurs.
+
+## RV-1-E-786 — Record-20 assurance correction admitted to final review
+
+- Recorded at: 2026-07-19T06:50:21Z
+- Exact clean candidate `1426a95cff179e6a010eec725328f95f8fc079ab`
+  preserves forward merges through record-20 authority, claim-only causal RED
+  `2ab4d7f9bbd13b22a26e82368d0db52e09796922`, and every earlier assurance
+  and release-history commit. Correction scope is exactly the V4 assurance
+  test and V4 authority-transfer claim.
+- Committed-byte admission passes **19/19 assurance tests**, all four exact V4
+  markers, standalone typecheck, factory readiness, diff hygiene, exact
+  two-path scope, clean state, real non-symlinked Vitest 4.1.9 dependencies,
+  and repository `TASK136_REPOSITORY_PREFIX_OK records=20 commands=20`
+  followed only by the expected incomplete-29 boundary. Full test and verify
+  retain exactly the inherited **12 failing files / 69 failing tests / 5 skips
+  / 2,764 passes** with no assurance failure.
+- Fresh concurrent read-only Terra/xhigh architecture/invariants review task
+  `019f7923-7089-7eb2-82e0-bca6fd920e23` and executability/adversarial review
+  task `019f7923-c080-7ac3-a141-369c714b00e0` now review that immutable SHA.
+  Reviews are read-only; SDD/TDD is not relevant or authorized for reviewers.
+  Contract/checker, V1-V3, raw records 1-20, registry, all 29 IDs/order,
+  Task139-P2, and historical ownership fixtures must remain unchanged.
+- Status advances record-20 assurance `candidate -> reviewing`; strict prefix
+  remains 20. No integration, push, external effect, or `neo` action occurs
+  during review.
+
+## RV-1-E-787 — Record-20 assurance correction approved
+
+- Recorded at: 2026-07-19T07:08:00Z
+- Fresh concurrent Terra/xhigh architecture/invariants review task
+  `019f7923-7089-7eb2-82e0-bca6fd920e23` and
+  executability/adversarial review task
+  `019f7923-c080-7ac3-a141-369c714b00e0` each return unqualified `APPROVED`
+  for exact candidate `1426a95cff179e6a010eec725328f95f8fc079ab`;
+  neither reproduces a P0/P1.
+- Both verify exact base/RED/GREEN ancestry, two-path scope, **19/19** focused
+  assurance, all four V4 markers, strict twenty-record order and Git evidence,
+  repository **20/20** closure boundary, standalone typecheck, factory
+  readiness, immutable V1-V4/checker/registry/Task139-P2 bytes, and preserved
+  historical 17/18/19 fixtures. The architecture review's first concurrent
+  full run showed three extra timing failures while other eligible-card
+  Vitest runs were active; its final isolated run reproduced exactly the
+  admitted **12 files / 69 tests / 2,764 passes / 5 skips** cohort.
+- Status advances record-20 assurance `reviewing -> approved`. The coordinator
+  will integrate the complete preserved lineage and rerun all bounded gates
+  from integrated bytes before refreshing active dependent candidates. No
+  repair, push, external effect, or `neo` action occurs.
+
+## RV-1-E-788 — Record-20 assurance correction integrated
+
+- Recorded at: 2026-07-19T07:12:05Z
+- Coordinator merge `c5f0387bff9314f10404bfb4c663e272d2c85288`
+  integrates the complete approved record-20 assurance lineage through
+  candidate `1426a95cff179e6a010eec725328f95f8fc079ab` without rewriting either
+  parent history. The integrated correction remains limited exactly to the V4
+  assurance test and V4 authority-transfer claim.
+- Integrated-byte gates pass **19/19 assurance tests**, all four exact V4
+  markers, standalone typecheck, factory readiness, diff hygiene, clean state,
+  and real non-symlinked Vitest 4.1.9 dependencies. Repository mode emits
+  `TASK136_REPOSITORY_PREFIX_OK records=20 commands=20` followed only by
+  `repository release closure incomplete: expected 29 records, found 20`.
+- V1-V3, the V4 contract/checker, raw strict records 1-20, all 29 card IDs and
+  exact order, runtime behavior, released evidence, and historical fixtures
+  remain unchanged. Status advances record-20 assurance
+  `approved -> integrated`; this corrected current program base will be
+  forward-merged into each active eligible implementation lane only at a clean
+  preserved commit checkpoint. Strict prefix remains 20. No push, external
+  effect, or `neo` action occurs.
+
+## RV-1-E-789 — Task136-FC-Ports candidate admitted to review
+
+- Recorded at: 2026-07-19T07:32:34Z
+- Exact clean candidate `26429f20b1be530e4274a4303aa6f5c63f0831e1`
+  preserves claim `669c0324ffdf2c1af5997eff87d9fe18650fa89f`,
+  causal RED `1b2a91cad0e9b28d56e3357f808ccbdd69883d3a`, minimal
+  GREEN `ac58dd94431f7da0018b8dc83d2d64c5686c7a3d`, and the
+  forward merge of corrected record-20 program base
+  `be57649e62f19d0b392af44ee5d8af23e429620d`. The cumulative
+  candidate diff is exactly the five V4-owned Task136-FC-Ports paths.
+- Committed-byte admission passes focused **3 files / 6 tests** and serial
+  cross-boundary **14 files / 91 tests**, standalone typecheck, corrected
+  assurance **19/19**, all four exact V4 markers, repository **20/20** followed
+  only by the expected incomplete-29 boundary, diff hygiene, factory
+  readiness, exact scope, clean state, and real non-symlinked Vitest 4.1.9
+  dependencies. Against the exact clean current base, `npm test` retains
+  **67 failures / 5 skips** and `npm run verify` retains **69 failures / 5
+  skips**; each candidate run adds exactly the three named FC-Ports passing
+  tests and changes no surviving failure.
+- Fresh concurrent read-only Terra/xhigh architecture/invariants review task
+  `019f794a-05ff-7ff2-b3df-7f407b193a5d` and
+  executability/adversarial review task
+  `019f794a-0621-7850-897a-feaf5de48acc` are bound to that immutable SHA.
+  Reviews are read-only; SDD/TDD is not relevant or authorized for reviewers.
+  Only a reproduced P0/P1 contract violation can trigger standing internal
+  recovery; P2, style, hypothetical hardening, and unreproduced concerns are
+  backlog.
+- Status advances Task136-FC-Ports `implementing -> candidate -> reviewing`.
+  Strict prefix remains 20. C136-P remains preserved on its corrected
+  record-20 base for ordered release position 24. No push, external effect, or
+  `neo` action occurs.
+
+## RV-1-E-790 — Task136-FC-Ports hostile-posture root-cause checkpoint
+
+- Recorded at: 2026-07-19T07:39:00Z
+- Architecture/invariants review task
+  `019f794a-05ff-7ff2-b3df-7f407b193a5d` approves exact candidate
+  `26429f20b1be530e4274a4303aa6f5c63f0831e1`, but
+  executability/adversarial review task
+  `019f794a-0621-7850-897a-feaf5de48acc` reproduces one P1: the port
+  validates only selected P2 members, never traverses `credentialReference`
+  or `feasibility`, and its identifier predicate accepts secret-pattern text.
+  The focused **3 files / 6 tests** gate remains green because it uses a real
+  P2 posture and checks only the outer proxy plus binding mutations.
+- Coordinator adjudication independently reproduces the exact fail-open from
+  immutable candidate bytes. A fully frozen structural Core/P2-shaped input
+  with proxied ignored credential-reference data and provider ID
+  `sk_live_abcdefghijklmnopqrst` exits successfully and returns exactly that
+  provider ID, without touching the nested proxy. This contradicts the
+  released P2 secret-safety parity and the FC-Ports fail-closed requirement
+  for hostile structural/copy/proxy input; no product, scope, invariant,
+  credential, hardware, or external-behavior choice remains unresolved.
+- Standing RV-1-E-732 resumes the same Task136-FC-Ports implementation owner
+  task `019f791e-3548-7d61-8f06-5c7743d11927`, worktree
+  `/home/drake/.codex/worktrees/7fcc/Cestus`, and branch
+  `codex/task136-fc-ports` from the preserved reviewed candidate. The recovery
+  is limited to the existing five-path card ownership and must append one
+  causal RED followed by one minimal GREEN using the released P2 hostile-text,
+  exact nested-shape, immutability, and cross-field rules. Structural data may
+  remain data, but ignored hostile fields, proxies, credentials, secrets,
+  endpoint/host material, and inconsistent posture facts must fail closed.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All admission gates precede one fresh
+  concurrent read-only Terra/xhigh architecture/executability pair after code
+  changes. Status advances Task136-FC-Ports `reviewing -> implementing-repair`;
+  strict prefix remains 20. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-791 — C136-P becomes a preserved run-ahead candidate
+
+- Recorded at: 2026-07-19T07:41:15Z
+- The sole C136-P owner task
+  `019f7921-b595-7080-93e7-31daf67634f0` preserves exact ordered commits
+  `6eb485dd` claim, `346e00cf` causal RED, `06157253` initial GREEN,
+  `03e04dce` frozen-candidate test-oracle correction, `4f937c21` replan-
+  narrowing evidence, and `8b02245feba48ff897857b238a928dc45cfe578e`
+  compiler closure. No history is rewritten. Coordinator merge
+  `1bfda390` forwards the corrected record-20 base without changing the exact
+  three-path C136-P ownership diff.
+- The claim records both contract-determined recovery causes: the first test
+  oracle treated primitive immutable leaves as mutable, and the final compiler
+  gate could not narrow the recursive normalized record/array union through
+  `Array.isArray`. The preserved corrections make primitive leaves valid and
+  add an explicit fail-closed record predicate; they do not widen runtime
+  input, output, authority, effect, fallback, provider, credential, or
+  compatibility behavior.
+- Exact focused **1 file / 3 tests**, cross-boundary **4 files / 18 tests**,
+  standalone typecheck, diff hygiene, factory readiness, exact three-path
+  scope, clean state, and real non-symlinked Vitest 4.1.9 dependencies pass.
+  The last full differential before compiler-only predicate closure retained
+  the record-20 **69 failures / 5 skips** cohort with exactly three added
+  passes; final V4/repository/full differential and review remain deliberately
+  deferred until strict records 21-23 are integrated and the exact ordered
+  base can be forward-merged.
+- Status advances C136-P `implementing -> candidate`. This candidate is
+  preserved, not reviewing, approved, integrated, or released. Strict prefix
+  remains 20. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-792 — Repaired Task136-FC-Ports candidate enters fresh review
+
+- Recorded at: 2026-07-19T08:08:25Z
+- Exact clean candidate `a05a0c862a85b014002cdfa1a9227ba57983a4a1`
+  preserves all original implementation and first-review history, root-cause
+  authority merge `c75b1ec5720058572f93c2c7a7c9c1cf06ce2a07`, causal
+  hostile-posture RED `a283121a78be8e879c082d24c3e3978328ad70ea`,
+  minimal GREEN `b250ff94aa629a4293c76ce09b4bf860bc09038f`,
+  and current program merge parent
+  `00ecb0f21180b6c0f67827fcf6ab186e96877efb`. Cumulative scope is
+  exactly the five V4-owned paths; recovery edits are confined to the owned
+  source, focused/import tests, and claim.
+- Committed-byte admission passes focused **3 files / 7 tests**, serial
+  cross-boundary **14 files / 92 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, repository **20/20** followed only by the
+  expected incomplete-29 boundary, diff hygiene, factory readiness, exact
+  scope, clean state, and real non-symlinked Vitest 4.1.9 dependencies.
+  Verify-to-verify differential retains exactly **12 failing files / 69
+  failures / 5 skips** and adds four passes: the original three card tests plus
+  the named hostile-posture recovery test. A raw base run resolved only the
+  two known prerequisite timeout assertions; no new or changed substantive
+  failure is present.
+- Fresh concurrent read-only Terra/xhigh architecture/invariants review task
+  `019f796a-ca84-7fd3-b3bd-09fc574ff23c` and
+  executability/adversarial review task
+  `019f796a-d686-7af1-994b-a2ba992fb1bf` are bound to the immutable SHA.
+  Reviews are read-only; SDD/TDD is not relevant or authorized for reviewers.
+  They must verify the exact original trace now rejects, full P2 nested-shape
+  and hostile-text parity, preserved exact bindings, minimized immutable
+  output, and absence of authority/effect/import widening.
+- Status advances Task136-FC-Ports `implementing-repair -> candidate ->
+  reviewing`. Strict prefix remains 20. No push, external effect, or `neo`
+  action occurs.
+
+## RV-1-E-793 — Repaired Task136-FC-Ports candidate approved
+
+- Recorded at: 2026-07-19T08:22:49Z
+- Fresh concurrent Terra/xhigh architecture/invariants review task
+  `019f796a-ca84-7fd3-b3bd-09fc574ff23c` and
+  executability/adversarial review task
+  `019f796a-d686-7af1-994b-a2ba992fb1bf` each return unqualified
+  `APPROVED` for exact candidate
+  `a05a0c862a85b014002cdfa1a9227ba57983a4a1`; neither reproduces a
+  remaining P0/P1.
+- Both verify complete forward-only ancestry, exact five-path cumulative and
+  four-path recovery scope, the original secret-plus-proxy trace now rejecting
+  without proxy/accessor traps, valid immutable structural input acceptance,
+  full P2 nested-shape/hostile-text/cross-field validation, exact Core/P2
+  bindings, minimized frozen output, and absence of credential, endpoint,
+  feasibility, callable, authority, fallback, provider, network, storage, or
+  external-effect escape. Executability also reproduces representative nested
+  proxy, accessor, sparse-array, host, secret, and cross-field rejection.
+- Focused **3 files / 7 tests**, typecheck, factory readiness, assurance
+  **19/19**, all four V4 markers, repository **20/20** plus expected
+  incomplete-29, diff and clean-state gates remain green. Full-suite timing
+  noise affects only already-known prerequisite/repository-policy timeouts and
+  adds no FC-Ports or substantive failure.
+- Status advances Task136-FC-Ports `reviewing -> approved`. The coordinator
+  will integrate the complete preserved lineage and rerun all gates before
+  strict record 21. No repair, push, external effect, or `neo` action occurs.
+
+## RV-1-E-794 — Task136-FC-Ports integrated and released
+
+- Recorded at: 2026-07-19T08:34:59Z
+- The coordinator integrates the complete preserved Task136-FC-Ports lineage
+  by merge `365279fdd4e772c389188d05376ba87afe9782df`, whose parents are
+  approval checkpoint `f73a44da7a2202b863fdf32483c68d15db6a6f09` and exact approved
+  candidate `a05a0c862a85b014002cdfa1a9227ba57983a4a1`. Every claim, causal
+  RED, minimal GREEN, first review, root-cause checkpoint, recovery RED/GREEN,
+  forward authority merge, and final-review evidence commit remains in
+  ancestry without rewrite.
+- Integrated-byte admission reproduces focused **3 files / 7 tests** and
+  serial cross-boundary **14 files / 92 tests**, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. Standalone
+  typecheck, assurance **19/19**, all four exact V4 markers, repository prefix
+  **20/20**, diff hygiene, factory readiness, exact five-path scope, clean
+  state, and real non-symlinked executable Vitest 4.1.9 dependencies are
+  green.
+- Integrated `npm test` and `npm run verify` each retain exactly the inherited
+  **12 failing files / 69 failing tests / 5 skips / 2,768 passes**, with no new
+  failure, removal, skip, or changed substantive assertion. Verify remains
+  differential evidence at this intermediate release position rather than a
+  green full-program claim.
+- Status advances Task136-FC-Ports `approved -> integrated -> released`.
+  Strict record 21 below makes `G136-SC` the next exact release card. No
+  provider, credential, network, external effect, push, or `neo` action
+  occurs.
+
+## Task136 dispatch release v4: Task136-FC-Ports
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task136-FC-Ports",
+  "candidateSha": "a05a0c862a85b014002cdfa1a9227ba57983a4a1",
+  "reviews": [
+    {
+      "threadId": "019f796a-ca84-7fd3-b3bd-09fc574ff23c",
+      "candidateSha": "a05a0c862a85b014002cdfa1a9227ba57983a4a1",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f796a-d686-7af1-994b-a2ba992fb1bf",
+      "candidateSha": "a05a0c862a85b014002cdfa1a9227ba57983a4a1",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "365279fdd4e772c389188d05376ba87afe9782df",
+  "releaseEventId": "task136-release-v4-Task136-FC-Ports",
+  "prerequisites": [
+    {
+      "cardId": "Task135D",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task135D"
+    },
+    {
+      "cardId": "Task136-FC-Core",
+      "integrationSha": "7a7a650e7db97c1aad63447e3669e66ddf3dc7fe",
+      "releaseEventId": "task136-release-v4-Task136-FC-Core"
+    },
+    {
+      "cardId": "Task139-P2",
+      "integrationSha": "6472c92bce3b6cd23e3128666524e575d9f9d236",
+      "releaseEventId": "task136-release-v4-Task139-P2"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/resident-loop-factory-ports.ts",
+      "disposition": "owned",
+      "blobSha": "f60b07537d0efa98ca9934ac3bcf5e79af246a6e"
+    },
+    {
+      "path": "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
+      "disposition": "owned",
+      "blobSha": "e448dad8f57f9c87957ffb1b4a2d99cb24dffc51"
+    },
+    {
+      "path": "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "2dd1161d2a168d13d3fc8add6f7f82b201800538"
+    },
+    {
+      "path": "packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "0d3bdc674ac08278453dcba67023da4a177cceb0"
+    },
+    {
+      "path": "docs/agentic/claims/task-136-factory-ports-composition.md",
+      "disposition": "owned",
+      "blobSha": "c570144b67c5a15536b54155ffc0e402602a0acd"
+    }
+  ]
+}
+```
+
+## RV-1-E-795 — Record-21 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T08:39:30Z
+- Clean strict record-21 repository mode succeeds through all released command
+  cards and emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=21 commands=21` followed only by
+  `repository release closure incomplete: expected 29 records, found 21`.
+  The separate V4 assurance suite then reproduces exactly two failures: the
+  current-registry-length assertions at lines 1112 and 1428 still pin the
+  prior strict prefix **20**, observe **21**, and leave the other **17/19**
+  tests green.
+- This is the same release-count fixture cause already corrected at earlier
+  strict-prefix transitions. It is contract-determined by the newly accepted
+  immutable record 21 and requires no product, scope, safety-invariant,
+  credential, hardware, data-loss, or external-behavior choice. V1-V3, raw
+  records 1-21, the V4 contract/checker, all 29 IDs/order, historical
+  compatibility fixtures, and runtime behavior remain immutable.
+- Standing RV-1-E-732 resumes the same assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`,
+  and branch `codex/task136-v4-task139-pm-direct-source-ownership`. The owner
+  must first forward-merge this exact record-21 program authority, then append
+  one claim-only causal RED and one minimal GREEN limited to the existing V4
+  assurance test and authority-transfer claim. The GREEN changes only the two
+  current-prefix expectations from 20 to 21 and preserves every historical
+  fixture.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused assurance, V4 markers,
+  repository 21/21, typecheck/full differential, factory/scope/clean/dependency
+  admission and one fresh concurrent read-only Terra/xhigh
+  architecture/executability review pair are required after code changes.
+  Status advances record-21 assurance `integrated -> implementing-repair`;
+  G136-SC remains preserved and unreviewed until this corrected authority is
+  integrated. No push, external effect, or `neo` action occurs.
