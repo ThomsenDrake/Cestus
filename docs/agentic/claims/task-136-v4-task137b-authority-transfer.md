@@ -341,3 +341,18 @@ Implementation evidence:
   diff, exact scope/blob evidence, clean-state, and dependency gates. No
   registry, integration, review, push, network, credential, provider, `neo`,
   or task creation is authorized.
+
+## RV-1-E-839 minimal GREEN evidence
+
+- The two authorized current-prefix groups now require `24` records and
+  `expectedIds.slice(0, 24)`. The first group's repository closure, success
+  marker, and released-command count advance together to `found 24` and
+  `records=24 commands=24`.
+- Historical/pre-activation counts, V1-V4, raw strict records, finite
+  direct-source mappings, all card IDs/order and commands, runtime bytes, and
+  existing evidence remain unchanged; no generic count behavior is added.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `19` passed and `0` failed. Final committed-byte admission reruns
+  the required assurance, contract/repository, typecheck, factory, diff,
+  scope/blob, clean-state, and dependency gates.
