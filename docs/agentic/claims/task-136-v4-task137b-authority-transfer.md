@@ -317,3 +317,42 @@ Implementation evidence:
   `0` with `19` passed and `0` failed. Final committed-byte admission reruns
   the required focused assurance, contract/repository, typecheck, factory,
   diff, scope, clean-state, and dependency gates.
+
+## RV-1-E-839 record-24 fixture checkpoint
+
+- Resumed at preserved record-23 candidate
+  `9290bb01c2b00b24b41c8e7c5caf590e95d5f14f` and forward-merged exact program
+  authority `0f6d228b31d14eb1680b5726e7d9f9ab38a6310e` as normal merge
+  `f69b4b94fbc56385c2d1350d6e04587f5725c03f`. This claim-only causal RED
+  preserves the inherited assurance test blob
+  `b6680c68dac558732c72e3a91999fa9d7b7f1473`, V1-V4, raw strict records
+  1-24, all 29 card IDs/order, historical/pre-activation fixtures, finite
+  direct-source mappings, runtime bytes, and existing evidence.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited
+  `1`: `19` tests, `17` passed, and exactly `2` failed. Only lines `1112` and
+  `1428` report `24 !== 23` after valid strict record 24. No contract,
+  checker, blob, command, dependency, or unrelated fixture failure occurred.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  will advance only the two current-prefix groups from `23` to `24`, preserving
+  all historical facts and immutable evidence. Required committed-byte
+  admission reruns focused assurance, contract/repository, typecheck, factory,
+  diff, exact scope/blob evidence, clean-state, and dependency gates. No
+  registry, integration, review, push, network, credential, provider, `neo`,
+  or task creation is authorized.
+
+## RV-1-E-839 minimal GREEN evidence
+
+- The two authorized current-prefix groups now require `24` records and
+  `expectedIds.slice(0, 24)`. The first group's repository closure, success
+  marker, and released-command count advance together to `found 24` and
+  `records=24 commands=24`.
+- Historical/pre-activation counts, V1-V4, raw strict records, finite
+  direct-source mappings, all card IDs/order and commands, runtime bytes, and
+  existing evidence remain unchanged; no generic count behavior is added.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `19` passed and `0` failed. Final committed-byte admission reruns
+  the required assurance, contract/repository, typecheck, factory, diff,
+  scope/blob, clean-state, and dependency gates.
