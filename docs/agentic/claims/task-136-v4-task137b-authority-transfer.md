@@ -66,3 +66,25 @@ Implementation evidence:
   `TASK136_ABI_CORPUS_OK green=1 red=15`.
 - Pre-commit bounded checks: `git diff --check` and `npm run factory:check`
   passed. Full verification was not run by approval.
+
+## RV-1-E-764 record-18 fixture checkpoint
+
+- Resumed on `codex/task136-v4-task139-pm-direct-source-ownership` at the
+  clean forward-merged record-18 authority
+  `41ae93ab764cedd72bf22c8f8291e9860c197b5a`.
+- This claim-only causal RED preserves every inherited assurance RED/GREEN,
+  contract/checker byte, V1-V3 pin, raw release record, card order, and
+  release-evidence byte. The only authorized GREEN will update two stale test
+  fixture cardinality assertions from `17` to `18`.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `19` tests, `17` passed, and exactly two failed. Both are
+  direct parsed-prefix assertions: line `1112` and line `1428` report
+  `18 !== 17` now that strict Task139-PM record 18 is valid. No contract,
+  checker, blob, command, dependency, or unrelated fixture failure occurred.
+- Exact next GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`; it
+  may not alter the historical raw-prefix checks, source-currentness,
+  Task139-PM finite-transfer, Git/blob/review/release, or repository-closure
+  coverage. No registry, integration, push, network, credential, provider,
+  `neo`, review, or task creation is authorized.
