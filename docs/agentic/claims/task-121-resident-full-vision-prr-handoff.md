@@ -93,3 +93,7 @@ The task consumes CF-1's frozen handoff contract and produces only a provenance-
   every returned event ID to be absent from that set. Production remains
   byte-identical to the restored RED while the current raw completion still
   makes the approval-pending case fail.
+- GREEN removes only the raw approval-pending `appendSpecialistCompletion`
+  call and its terminal event ID. The corrected RED test blob is unchanged;
+  ready-for-review V2 completion and all failure/restart behavior remain
+  unchanged.

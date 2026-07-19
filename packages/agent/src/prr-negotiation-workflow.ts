@@ -19,7 +19,6 @@ import {
 } from "./specialist-handoffs.js";
 import type { MountedSpecialistHandoffAuthorityWitness } from "./specialist-handoff-authority.js";
 import {
-  appendSpecialistCompletion,
   appendSpecialistFinalOutputStep,
   appendSpecialistDerivativeStep,
   appendSpecialistFailure,
@@ -138,23 +137,13 @@ export async function runPrrNegotiationWorkflow(
   const outputArtifacts = prrNegotiationDraftOutputArtifacts(input, draftHash);
   if (approval !== undefined) {
     const handoff = waitingForApprovalPrrHandoff(input, prepared, outputArtifacts, toolRequestId);
-    const completed = await appendSpecialistCompletion({
-      ledger: input.ledger,
-      actor: input.actor,
-      now: input.now,
-      runId: input.runId,
-      summary: "PRR negotiation advisory artifact is complete; the exact PRR follow-up approval request is pending separately.",
-      outputArtifactHashes: [draftHash],
-      relatedEventIds: [draftStep.id, approval.requested.id]
-    });
     return Object.freeze({
       handoff,
       eventIds: Object.freeze([
         ...invocation.eventIds,
         draftStep.id,
         approval.drafted.id,
-        approval.requested.id,
-        completed.id
+        approval.requested.id
       ])
     });
   }
