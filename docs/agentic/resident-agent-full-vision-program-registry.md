@@ -23286,3 +23286,47 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh review pair remain required after the
   compiler GREEN. Status remains G136-R `implementing-repair`; no integration,
   release record, push, external effect, or `neo` action occurs.
+
+## RV-1-E-819 — G136-R completion-boundary race checkpoint
+
+- Recorded at: 2026-07-19T13:59:43Z
+- Exact post-repair candidate
+  `3e6fdf29ef9e912b6fe19ffa5ec1aabf55f3de86` passes focused **2/9**,
+  cross-boundary **7/76**, typecheck, assurance **19/19**, factory, V4,
+  repository **22/22**, diff/scope/clean/dependency, and inherited full-suite
+  differential admission. Fresh Terra/xhigh architecture task
+  `019f7aa2-1502-7b01-ad8b-411337fd1fc7` returns `APPROVED` with no P0/P1.
+- Fresh Terra/xhigh executability/adversarial task
+  `019f7aa2-20ba-78c3-8cb6-b750ce91e8aa` returns `BLOCKED` with one exact P1.
+  Its deterministic ledger wrapper inserts a newer same resident/task/attempt/
+  run plan after the bridge's last plan reread but before the official
+  completion append. The official route appends `agent.tool.completed`; only
+  the subsequent plan reread rejects. Reproduced outcome is
+  `rejected=true, injected=true, completed=true`, violating fail-closed
+  currentness and the requirement that rejection leave no completion.
+- Coordinator adjudication accepts the race. The released ledger already
+  supplies atomic `expectedGlobalEventCount`; the frozen contract requires a
+  current plan at the effect boundary. The determined correction is to bind a
+  global ledger snapshot immediately before the final plan reread and require
+  the released opaque-evidence completion append to use that exact global
+  count. A plan or any competing append after the snapshot must conflict
+  before `agent.tool.completed`; a plan inserted before the reread must be
+  rejected by exact plan currentness. No released G136-SC/Task120 edit,
+  alternate completion route, product choice, or external behavior change is
+  required.
+- Standing RV-1-E-732 resumes the same owner task
+  `019f7a56-6b88-7220-9925-39a52d083da6`, branch
+  `codex/g136-r-gateway-approval-readback`, and worktree
+  `/home/drake/.codex/worktrees/9c75/Cestus`. It must preserve every commit
+  through `3e6fdf29`, forward-merge this registry-only authority, commit one
+  causal race RED proving rejection with no completion, then one minimal
+  GREEN within the existing four G136-R paths. The GREEN must still call the
+  released `completeToolFromSchedulerEvidence` with adapter-issued evidence;
+  it may compose that released gateway over a card-local guarded ledger view
+  solely to add the captured global-count precondition. It must not directly
+  append completion or widen any released API.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All admission gates and one fresh
+  concurrent read-only Terra/xhigh review pair are required after GREEN.
+  Status remains G136-R `reviewing -> implementing-repair`; no integration,
+  release record, push, external effect, or `neo` action occurs.
