@@ -39,3 +39,7 @@ This claim-only checkpoint precedes the causal RED. The RED changes only the own
 The focused test introduces three fixture-backed cases before production source exists: exact initial/replan output, hostile and secret-safe boundary rejection, and invalid/widening replan rejection. It requires the named `createResidentPlanCandidateProvider` API after all frozen Task120/P2-shaped fixtures load.
 
 `npm test -- packages/agent/test/resident-plan-candidate-provider.test.ts` exited `1` with one failed file and three failed tests. Each failed solely at the intentional API-presence assertion (`expected false to be true`) for the absent `resident-plan-candidate-provider` module; all fixtures loaded successfully and no production path existed.
+
+## RV-1-E-732 Test-Oracle Recovery
+
+The initial minimal implementation reached the positive candidate assertion. Its only remaining failure was the RED helper `deeplyFrozen`: it returned `false` for primitive leaves before checking the enclosing frozen object, making the assertion unsatisfiable for every ordinary own-data candidate containing a string or number. This is a test-oracle defect, not a source, contract, scope, provider, credential, or external-behavior change. The correction treats primitive leaves as already immutable and preserves the original causal RED commit `346e00cf` byte-for-byte in history; no source behavior is widened.
