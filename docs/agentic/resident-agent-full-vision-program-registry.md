@@ -24448,3 +24448,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   now receive this exact record-25 base. The P2 wording observation from
   RV-1-E-850 remains backlog. No push, external effect, or `neo` action
   occurs.
+
+## RV-1-E-852 — Task122 exact record-25 base promotion
+
+- Recorded at: 2026-07-19T19:30:59Z
+- Strict V4 release record 25 and its approved assurance fixtures are clean
+  and integrated at current program head
+  `fb582c402c8ba17eff760cf60e276b83a0e3058f`. The next exact release card is
+  Task122 with sole prerequisite CF1-HR already released at record 14.
+- Preserved Task122 candidate
+  `5a49258f3a4ab56920ee23511731d520fb7bd61f` remains clean on branch
+  `codex/task122-cf1-handoff-adoption` and changes exactly its three V4-owned
+  source, test, and claim paths over immutable base `986c2a43`. Claim
+  `15703c08`, causal RED `89c5c6d2`, and minimal GREEN `5a49258f` remain in
+  order. The current program lineage has not changed any of those three paths
+  since that base.
+- Coordinator authority permits only a forward merge of this registry-bearing
+  exact record-25 program head into the preserved Task122 branch. No rebase,
+  reset, amend, squash, drop, reorder, cherry-pick-over, conflict resolution,
+  code/test repair, self-integration, or history rewrite is authorized by this
+  transition. The candidate must be admitted and freshly reviewed from the
+  merged bytes before integration.
+- Status advances Task122 `candidate-waiting-base -> candidate`. No push,
+  provider, credential, network, external effect, or `neo` action occurs.
