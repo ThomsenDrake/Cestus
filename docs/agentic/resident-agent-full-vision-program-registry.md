@@ -21965,3 +21965,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   IDs/order/evidence byte-identically. Fresh Terra/xhigh read-only
   architecture/executability review follows full admission. Strict prefix is
   20; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-784 — Task136-FC-Ports claimed from strict record 20
+
+- Recorded at: 2026-07-19T06:44:54Z
+- Strict record 20 and the V4 contract make `Task136-FC-Ports` the exact next
+  release card. Its released prerequisites are Task135D, Task136-FC-Core, and
+  Task139-P2; no unreleased or preserved later candidate is used as authority.
+- Sole Terra/xhigh implementation owner is task
+  `019f791e-3548-7d61-8f06-5c7743d11927`, worktree
+  `/home/drake/.codex/worktrees/7fcc/Cestus`, branch
+  `codex/task136-fc-ports`, from exact clean program base
+  `f2e283d138a35e9f8a7247a4041a5ea5847065d6`. Its V4 ownership boundary is
+  exactly the factory-ports source, focused test, factory-ports import-policy
+  test, runtime-handle mounted-authority import-policy test, and claim.
+- The owner must preserve one claim commit, one causal test/claim RED, and one
+  minimal GREEN. The card composes only released Core/P2/mounted authority
+  through static named, cycle-free ports; structural or copied values,
+  runtime handles, authority issuers, provider configuration, credentials,
+  compatibility paths, and fallback storage gain no authority or effect.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused/cross-boundary,
+  typecheck/full-differential, assurance/repository, factory/scope/clean/deps
+  admission and one fresh concurrent Terra/xhigh read-only
+  architecture/executability pair are mandatory before integration. Status
+  advances Task136-FC-Ports `blocked -> claimed -> implementing`; strict
+  prefix remains 20. No push, external effect, or `neo` action occurs.
