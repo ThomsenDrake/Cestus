@@ -424,3 +424,17 @@ or fallback.
   ordinary `policy.v1` prose, canonical ISO-millisecond-Z assessment time, and
   non-host Unicode prose `résumé data handling`.
 - `npm run typecheck` exits `0` from the RED bytes without diagnostics.
+
+## RV-1-E-749 IDNA-Equivalent-DNS Recovery GREEN
+
+- GREEN changes only production source and this claim; the focused test is
+  byte-identical to RED `173b6832f2a3a13487ec8c5af2b380585dc39d66`.
+- Centralized DNS classification now normalizes local comparison input to NFC,
+  maps U+3002, U+FF0E, and U+FF61 to ASCII dot before structural matching, and
+  treats Unicode combining marks as label material. The only version exception
+  remains the exact released `agent-provider-auth.v1`, `policy.v1`, and
+  `adapter.v1` set. This is deterministic local string classification only; it
+  performs no lookup, provider or credential action, write, fallback, or other
+  external effect.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 27 tests**. `npm run typecheck` exits `0`.
