@@ -78,3 +78,46 @@ portable-workspace fixture, released W/PM/H calls, local Vitest 4.1.9, and the
 import-policy harness all loaded successfully; this is neither a dependency,
 syntax, nor invented-fixture failure.  Vite's missing TypeScript source-map
 notice is inherited dependency noise and is not a test failure.
+
+## GREEN Admission Evidence
+
+The committed GREEN is `6adba773c67948135f848d080eeea79f3d82719b`. The
+exact card command passed: **2 files / 2 tests**. Its justified cross-boundary
+run passed: **8 files / 108 tests**, covering the W wake/runtime, H
+handoff/readback, PM mounted-provider authority, Task135D mounted-handle
+operation, and specialist-runner consumer boundaries. It emitted exactly one
+`TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+
+`npm run typecheck` exited `0` (`typecheck passed`). Contract mode exited `0`
+and emitted all four V4 markers:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+Repository mode emitted the required incomplete-prefix result:
+
+```text
+TASK136_REPOSITORY_PREFIX_OK records=18 commands=18
+repository release closure incomplete: expected 29 records, found 18
+```
+
+Both `npm test` and `npm run verify` retained the inherited record-18 result:
+**12 failing files / 69 failing tests / 5 skipped**, with **2,758 passed**
+tests, a positive delta of `2` from the `2,756` baseline. `npm run verify`
+also reported `typecheck passed`. `npm run factory:check` passed.
+
+The bounded-assurance node-test runner is the one unresolved gate: it has
+**17 passing / 2 failing** tests. The two failures are an inherited
+contract/verifier conflict, not Task136 production behavior: lines 1112 and
+1428 of the unowned runner assert `parsedPrefix.length === 17`, while the
+required immutable base `ac5c3500681c8c2d485618a13635d3f68bd6ae73` already
+contains the mandated record-18 release prefix. The same assertions and
+failure are present at that exact base. Contract mode and repository mode
+confirm the intended state above. Repairing the assertion would require an
+unowned assurance/registry contract change, so no in-scope RED/GREEN tactic
+can truthfully change this result; the four-path boundary and release-prefix
+authority are preserved.
