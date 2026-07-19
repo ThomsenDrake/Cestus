@@ -22757,3 +22757,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   invalidated by any code/test change. Task9 GREEN and its two-path scope remain
   byte-identical. Status advances G136-SC `reviewing -> implementing-repair`;
   strict prefix remains 21. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-806 — G136 result-actor independence tactic correction
+
+- Recorded at: 2026-07-19T11:05:48Z
+- The same G136 owner preserved authority merge `fbbaf6d5` and causal RED
+  `1aaa63ad`. RED is exact: the focused suite retains **81 passes** and adds
+  **5 failing counterfactuals** for resident-agent-authored result evidence and
+  both shared-source A/B claim orderings. No production change precedes RED.
+- The first uncommitted GREEN experiment rejected every result whose actor ID
+  matched the execution claimer. Three released focused positives prove that
+  predicate is overbroad: an independently invoked domain service may append
+  its durable result under the same system scheduler actor identity. Actor ID
+  equality alone does not prove which append path produced a non-agent domain
+  event, and breaking these released positives is not authorized.
+- The accepted review P1 is narrower and durable: the resident agent that
+  requested/claimed execution can append a non-agent-typed event directly and
+  pass it back as alleged independent authority. GREEN must reject result
+  events whose canonical actor kind is `agent`; existing `agent.*` and resident
+  bookkeeping family rejection remains unchanged. Human, extractor, and
+  system domain-service actors remain valid when every other exact evidence,
+  causation, request, claim, ordering, currentness, and ambiguity check passes.
+- The shared-source cross-request correction remains exactly as RV-1-E-805:
+  indirect ancestry rejects explicit correlation to another tool request and
+  any other unterminated overlapping-source execution claim at the result
+  append, in either claim ordering. Direct exact-claim evidence still requires
+  a non-agent domain actor and every existing durable/currentness check.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. This is a changed counterfactual inside
+  the same already committed RED/minimal GREEN packet and the same four-path
+  recovery ceiling; it does not authorize another RED, GREEN, owner, card,
+  contract, test-fixture expansion, or compatibility path. The owner must
+  forward-merge this registry-only correction before committing GREEN and run
+  every RV-1-E-805 gate. Strict prefix remains 21; no push, external effect,
+  or `neo` action occurs.
