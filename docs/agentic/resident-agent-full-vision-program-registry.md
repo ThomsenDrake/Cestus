@@ -24029,3 +24029,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-839 — Record-24 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T17:47:43Z
+- Clean strict record-24 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=24 commands=24`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 24`.
+- The standalone assurance corpus then reproduces exactly two failures at
+  lines 1112 and 1428: both current-registry-length fixtures still pin strict
+  prefix **23**, observe **24**, and leave the other **17/19** tests green.
+  No contract, checker, blob, command, dependency, transfer, ownership,
+  historical fixture, or released C136-P failure is reproduced.
+- This is the contract-determined append-only count-fixture transition used
+  at earlier strict-prefix releases. V1-V3, raw strict records 1-24, the V4
+  contract/checker, all 29 card IDs/order, finite direct-source mappings, and
+  every candidate/integration/review/release evidence item remain immutable.
+- Standing RV-1-E-732 resumes the same Terra/xhigh assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, branch
+  `codex/task136-v4-task139-pm-direct-source-ownership`, and worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`.
+  It forward-merges the exact record-24 program authority, commits one
+  claim-only causal RED recording the two **24 != 23** failures with
+  production/test bytes unchanged, then one minimal test/claim GREEN changing
+  only both current strict-prefix count fixtures from 23 to 24.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After GREEN, exact assurance,
+  contract/repository, typecheck, factory, diff, scope, clean, and dependency
+  gates plus one fresh concurrent read-only Terra/xhigh review pair remain
+  mandatory. No push, external effect, or `neo` action occurs.
