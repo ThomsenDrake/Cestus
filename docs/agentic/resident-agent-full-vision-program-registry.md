@@ -21622,3 +21622,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   will integrate the complete preserved candidate history immediately and
   rerun the bounded gates from integrated bytes. Strict prefix remains 19; no
   push, external effect, or `neo` action occurs.
+
+## RV-1-E-774 — Record-19 assurance correction integrated
+
+- Recorded at: 2026-07-19T04:52:01Z
+- The coordinator integrates the complete preserved assurance lineage through
+  candidate `6f9ad49b` by merge
+  `9eab6d38c004771c352801d2dfa5dcd33cfd64a0`. Its parents are approval
+  checkpoint `f98a33e2` and the exact approved candidate; no commit is reset,
+  rebased, amended, squashed, dropped, reordered, or rewritten.
+- Integrated-byte reproduction passes **19/19 assurance tests**, all four
+  exact V4 contract markers, standalone typecheck, factory readiness, diff
+  hygiene, exact two-path correction scope, clean tracked/untracked state,
+  and real non-symlinked Vitest 4.1.9 dependencies.
+- Repository mode emits exactly
+  `TASK136_REPOSITORY_PREFIX_OK records=19 commands=19` followed only by
+  `repository release closure incomplete: expected 29 records, found 19`.
+  V1-V3, V4 contract/checker, raw strict records 1-19, all 29 IDs/order,
+  current ownership, FC-Core release evidence, and runtime behavior remain
+  unchanged.
+- Status advances record-19 assurance `approved -> integrated`. This corrected
+  current program base will be forward-merged into Task139-P2 after its next
+  committed checkpoint and before admission/review; the merge is external to
+  the card's three-path ownership and will not replace its claim/RED/GREEN
+  history. Strict prefix remains 19; no push, external effect, or `neo` action
+  occurs.
