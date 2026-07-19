@@ -21707,3 +21707,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   compatibility alias, provider/network/credential action, registry edit by
   the child, push, or `neo` action is authorized. Status remains Task139-P2
   `implementing`; strict prefix remains 19.
+
+## RV-1-E-777 — Task139-P2 mounted-fixture identity checkpoint
+
+- Recorded at: 2026-07-19T05:16:12Z
+- After precise RED `2e8b0ada`, the first uncommitted GREEN run reaches the
+  released FC-Core fixture and fails before P2 because the test actor ID and
+  label contain `provider`. Resident identity bootstrap intentionally rejects
+  provider-shaped identity material so a backend cannot become a second
+  resident identity. No PM, Core, P1, or P2 production contract failed.
+- Root cause is confined to the owned P2 test fixture and was masked during
+  earlier API-absence REDs. The exact changed tactic is neutral resident actor
+  metadata while keeping the canonical `ws_` workspace, the same mounted
+  runtime, policy, lock, high-water, P1 configuration, and PM authority facts.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Before any production commit, the owner
+  must preserve the uncommitted source bytes safely, run and commit the
+  fixture/claim-only causal correction with the P2 module absent, then restore
+  and minimize the GREEN source. Earlier REDs remain immutable.
+- No non-owned dependency edit, identity relaxation, second resident, provider
+  identity, compatibility path, external effect, push, registry edit by the
+  child, or `neo` action is authorized. Status remains Task139-P2
+  `implementing`; strict prefix remains 19.
