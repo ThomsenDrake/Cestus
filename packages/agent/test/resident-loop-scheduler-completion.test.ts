@@ -99,15 +99,12 @@ describe("resident-loop scheduler completion adapter", () => {
     })).rejects.toThrow(/causal domain result evidence/i);
   });
 
-  it.each([
-    ["the resident agent", { id: "agent_default", kind: "agent", label: "Cestus Agent" }],
-    ["the exact claiming actor", { id: "scheduler_completion", kind: "system", label: "Scheduler" }]
-  ] as const)("rejects non-agent result evidence authored by %s", async (_label, actor) => {
-    const fixture = await prepareCompletionFixture();
+  it("rejects non-agent result evidence authored by the resident agent", async () => {
+    const fixture = await prepareCompletionFixture({ claimWithResidentAgent: true });
     const selfMintedResult = await appendEvidence(fixture.ledger, {
-      evidenceId: `ev_completion_self_minted_${actor.id}`,
+      evidenceId: "ev_completion_self_minted_agent",
       causationId: fixture.command.executionClaimEventId,
-      actor
+      actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" }
     });
 
     await expect(fixture.adapter.reread({
@@ -123,6 +120,25 @@ describe("resident-loop scheduler completion adapter", () => {
     expect((await fixture.ledger.readStream(`agent_tool_request_${fixture.command.toolRequestId}`)).some(
       (event) => event.type === "agent.tool.completed"
     )).toBe(false);
+  });
+
+  it("accepts direct exact-claim evidence from the system domain actor", async () => {
+    const fixture = await prepareCompletionFixture();
+    const domainResult = await appendEvidence(fixture.ledger, {
+      evidenceId: "ev_completion_system_domain_result",
+      causationId: fixture.command.executionClaimEventId,
+      actor: { id: "scheduler_completion", kind: "system", label: "Scheduler" }
+    });
+
+    await expect(fixture.adapter.reread({
+      ...fixture.command,
+      result: {
+        eventIds: [domainResult.id],
+        artifactHashes: [],
+        readModelChanges: [],
+        resultSummary: "System domain evidence remains independently appended."
+      }
+    })).resolves.toMatchObject({ toolRequestId: fixture.command.toolRequestId });
   });
 
   it.each(["B-before-A", "A-before-B"] as const)(
@@ -178,7 +194,7 @@ describe("resident-loop scheduler completion adapter", () => {
   });
 });
 
-async function prepareCompletionFixture() {
+async function prepareCompletionFixture(input: { readonly claimWithResidentAgent?: boolean } = {}) {
   const ledger = new InMemoryEventLedger();
   const now = () => "2026-07-09T12:00:00.000Z";
   const source = await appendEvidence(ledger, { evidenceId: "ev_completion_source" });
@@ -209,7 +225,7 @@ async function prepareCompletionFixture() {
     actor: { id: "human_completion", kind: "human", label: "Reviewer" },
     rationale: "Approved the exact completion lineage test."
   });
-  const claim = await schedulerGateway.claimExecution({
+  const claim = await (input.claimWithResidentAgent ? agentGateway : schedulerGateway).claimExecution({
     toolRequestId: requested.payload.toolRequestId,
     approvedPreviewHash: requested.payload.previewHash,
     leaseExpiresAt: "2026-07-09T12:05:00.000Z"

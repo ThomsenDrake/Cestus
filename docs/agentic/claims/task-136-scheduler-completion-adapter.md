@@ -137,3 +137,12 @@ rebuildability, no public `completeTool`, no generic result/attestation,
 fallback, actor/event-family allowlist, structural DTO authority, or Task9
 fixture change. Stop for the stated factory safety, ownership, dependency, or
 repeated-verifier conditions.
+
+RV-1-E-806 narrows this packet's GREEN counterfactual without changing the
+preserved RED: actor-ID equality alone is not proof of a self-minted result
+because a separately invoked system domain service can share a scheduler actor
+identity. The durable independence predicate therefore rejects only result
+events whose canonical `context.actor.kind` is `agent`, while retaining the
+existing `agent.*` event-family rejection. Human, extractor, and system domain
+results remain admissible only after every exact causal, request/run,
+currentness, reread, cross-request-correlation, and overlapping-claim check.

@@ -140,6 +140,7 @@ function assertDurableResultEvidence(
       event === undefined ||
       eventIndex <= claimIndex ||
       event.type.startsWith("agent.") ||
+      event.context.actor.kind === "agent" ||
       !hasExactCausalBinding(events, event, command, request)
     ) {
       throw new Error("Completion requires independently appended causal domain result evidence.");
@@ -161,6 +162,13 @@ function hasExactCausalBinding(
 ): boolean {
   if (resultEvent.context.causationId === command.executionClaimEventId) {
     return true;
+  }
+
+  if (
+    resultCorrelatesToAnotherToolRequest(events, resultEvent, command.toolRequestId) ||
+    hasUnterminatedOverlappingExecutionClaim(events, resultEvent, command.toolRequestId, request)
+  ) {
+    return false;
   }
 
   const sourceEventIds = request.payload.sourceEventIds;
@@ -189,6 +197,61 @@ function hasExactCausalBinding(
       return ancestor.index < requestIndex;
     }
     causationId = ancestor.event.context.causationId;
+  }
+
+  return false;
+}
+
+function resultCorrelatesToAnotherToolRequest(
+  events: readonly KnowledgeEvent[],
+  resultEvent: KnowledgeEvent,
+  toolRequestId: string
+): boolean {
+  return events.some(
+    (event) =>
+      event.type === "agent.tool.requested" &&
+      event.payload.toolRequestId !== toolRequestId &&
+      event.context.correlationId === resultEvent.context.correlationId
+  );
+}
+
+function hasUnterminatedOverlappingExecutionClaim(
+  events: readonly KnowledgeEvent[],
+  resultEvent: KnowledgeEvent,
+  toolRequestId: string,
+  request: KnowledgeEventOf<"agent.tool.requested">
+): boolean {
+  const sourceEventIds = request.payload.sourceEventIds;
+  const resultIndex = events.findIndex((event) => event.id === resultEvent.id);
+  if (sourceEventIds === undefined || sourceEventIds.length === 0 || resultIndex < 0) {
+    return false;
+  }
+
+  const requestsById = new Map<string, KnowledgeEventOf<"agent.tool.requested">>();
+  for (const event of events.slice(0, resultIndex)) {
+    if (event.type === "agent.tool.requested") {
+      requestsById.set(event.payload.toolRequestId, event);
+    }
+  }
+  const sourceIds = new Set(sourceEventIds);
+
+  for (let claimIndex = 0; claimIndex < resultIndex; claimIndex += 1) {
+    const claim = events[claimIndex];
+    if (claim === undefined || claim.type !== "agent.tool.execution.claimed" || claim.payload.toolRequestId === toolRequestId) {
+      continue;
+    }
+    const competingSourceIds = requestsById.get(claim.payload.toolRequestId)?.payload.sourceEventIds;
+    if (competingSourceIds === undefined || !competingSourceIds.some((sourceId) => sourceIds.has(sourceId))) {
+      continue;
+    }
+    const terminalized = events.slice(claimIndex + 1, resultIndex).some(
+      (event) =>
+        (event.type === "agent.tool.completed" || event.type === "agent.tool.denied" || event.type === "agent.tool.failed") &&
+        event.payload.toolRequestId === claim.payload.toolRequestId
+    );
+    if (!terminalized) {
+      return true;
+    }
   }
 
   return false;
