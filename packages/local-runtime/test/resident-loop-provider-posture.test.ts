@@ -302,7 +302,7 @@ async function mountedFixture(suffix: string): Promise<{
       cwd: root,
       env: { CESTUS_LOCAL_STORAGE: "portable-workspace", CESTUS_WORKSPACE_ROOT: workspaceRoot }
     }),
-    actor: { id: "actor_provider_posture", kind: "human", label: "Provider posture" },
+    actor: { id: "actor_resident_posture", kind: "human", label: "Resident posture" },
     now: () => "2026-07-19T00:00:00.000Z"
   });
   handles.push(handle);
@@ -310,7 +310,7 @@ async function mountedFixture(suffix: string): Promise<{
 
   const composition = createResidentLoopFactoryComposition(Object.freeze({
     runtimeHandle: handle,
-    actor: { id: "agent_provider_posture", kind: "agent", label: "Provider posture" },
+    actor: { id: "agent_resident_posture", kind: "agent", label: "Resident posture" },
     supervisorEpoch: `epoch_provider_posture_${suffix}`,
     policy,
     now: () => "2026-07-19T00:00:00.000Z",

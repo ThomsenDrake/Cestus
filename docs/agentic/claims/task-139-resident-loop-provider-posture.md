@@ -107,3 +107,12 @@ bearer/basic values; URL/URI, localhost, DNS-host, and IP material. It neither
 weakens P1 secret safety nor permits a raw credential, endpoint, host, token,
 or authorization value. The missing-module RED remains the only failure before
 the P2 source exists.
+
+## Fixture Bootstrap Repair
+
+The first executed GREEN fixture proved the released resident bootstrap rejects
+bootstrap actor IDs and labels containing `provider`. The mounted fixture now
+uses neutral resident bootstrap actor data while retaining its canonical
+`ws_provider_posture_*` workspace identity and all P2 provider facts. This is
+fixture construction only: it neither changes the workspace ID nor grants a
+provider identity or any additional authority.
