@@ -24231,3 +24231,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   explicitly approved for this task. All exact admission gates and one fresh
   concurrent read-only Terra/xhigh pair remain mandatory after GREEN. No
   push, external effect, or `neo` action occurs.
+
+## RV-1-E-846 — Task121 approval-suspension candidate enters final review
+
+- Recorded at: 2026-07-19T18:46:38Z
+- The same owner preserves the original candidate/review lineage, failed-
+  oracle RED `b6df504a`, authority merge `cb03906f`, corrected causal RED
+  `b58b6022e386f5b46a32a0601466b33377d4f951`, and minimal GREEN exact
+  candidate `4cbc8824cc63c097d6269e863075167b8d84f636`. The intended GREEN was
+  restored to RED bytes with an exact patch before the corrected RED; no
+  reset, checkout, amend, or history rewrite occurred.
+- Corrected RED fails only the approval-pending case with **14/15** passes
+  because inherited production returns the raw completed-event ID. GREEN
+  removes only `appendSpecialistCompletion` import/call and its returned ID
+  from that branch. RED/GREEN test blob is byte-identical at
+  `4e49810ff00085ef2008ccbc2aa459997656bfe0`.
+- Exact committed-byte admission passes focused **1 file / 15 tests**,
+  cross-boundary **3 files / 105 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory, diff, exact three-path scope,
+  clean/dependency gates, and repository prefix **24/24** followed only by
+  incomplete-29/found-24. Full and `npm run verify` identically retain **12
+  files / 60 failures / 2,820 passes / 5 skips** with no new differential.
+- The waiting branch now retains its exact draft, tool request, provenance,
+  advisory handoff, and resumable run projection while appending no specialist
+  terminal, orchestration-completed, completed task-status, send, execution,
+  legal, or other external-effect event. The ready-for-review V2 lifecycle and
+  all failure/restart recovery paths remain unchanged.
+- Status advances Task121 `implementing-repair -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair now reviews
+  exact SHA `4cbc8824cc63c097d6269e863075167b8d84f636`; SDD/TDD is not relevant
+  or authorized for reviewers. No integration, record 25, push, external
+  effect, or `neo` action occurs before dual approval.
