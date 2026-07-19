@@ -27,6 +27,7 @@ const mountedWakeStoreSource = "packages/local-runtime/src/mounted-wake-lifecycl
 const issuerSource = "packages/local-runtime/src/agent-runtime-factory.ts";
 const portableStoreSource = "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts";
 const mountedFeasibilitySource = "packages/local-runtime/src/mounted-official-flow-feasibility.ts";
+const mountedProviderAuthoritySource = "packages/local-runtime/src/mounted-provider-authority.ts";
 const temporaryFixtureRoots: string[] = [];
 
 const allowedFixtures: readonly FixtureCase[] = [
@@ -91,6 +92,12 @@ const allowedFixtures: readonly FixtureCase[] = [
         'import { inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore, type FactoryAuthenticatedMountedWakeCapability } from "./mounted-artifact-authority-operation.js";',
         "void inspectFactoryAuthenticatedMountedWakeCapabilityForMountedWakeLifecycleStore;",
         "type Allowed = FactoryAuthenticatedMountedWakeCapability;",
+        "void (0 as unknown as Allowed);"
+      ].join("\n"),
+      [mountedProviderAuthoritySource]: [
+        'import { inspectMountedArtifactAuthorityOperationForMountedProviderAuthority, type MountedProviderAuthorityOperationInspection } from "./mounted-artifact-authority-operation.js";',
+        "void inspectMountedArtifactAuthorityOperationForMountedProviderAuthority;",
+        "type Allowed = MountedProviderAuthorityOperationInspection;",
         "void (0 as unknown as Allowed);"
       ].join("\n")
     }
