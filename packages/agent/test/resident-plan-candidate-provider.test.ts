@@ -309,6 +309,7 @@ function deepFreeze<T>(value: T): T {
 }
 
 function deeplyFrozen(value: unknown): boolean {
-  if (value === null || typeof value !== "object" || !Object.isFrozen(value)) return false;
+  if (value === null || typeof value !== "object") return true;
+  if (!Object.isFrozen(value)) return false;
   return Reflect.ownKeys(value).every((key) => deeplyFrozen(Reflect.get(value, key)));
 }
