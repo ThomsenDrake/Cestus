@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -83,8 +83,9 @@ afterEach(() => {
 });
 
 describe("resident loop provider posture", () => {
-  it("derives immutable secret-safe BYOK posture only from one P1 configuration and current FC-Core/PM authority", async () => {
+  it("derives immutable secret-safe BYOK posture from one P1 configuration, binding data, and current PM authority", async () => {
     const api = await postureApi();
+    expectNoTask126ReaderCoupling();
     const fixture = await mountedFixture("current");
     const configuration = createAgentProviderConfiguration(configurationInput());
     let appendCalls = 0;
@@ -153,9 +154,10 @@ describe("resident loop provider posture", () => {
     expect(JSON.stringify(result)).not.toMatch(/authorization|bearer|api[ _-]?key|https?:\/\/|localhost|\b\d{1,3}(?:\.\d{1,3}){3}\b/i);
   });
 
-  it("rejects hostile, copied, mismatched, or ambiguous P1/currentness inputs without invoking getters or minting posture", async () => {
+  it("rejects hostile, copied, provisional, swapped, or mismatched P1/currentness inputs without invoking getters or minting posture", async () => {
     const api = await postureApi();
     const fixture = await mountedFixture("hostile");
+    const swappedFixture = await mountedFixture("swapped");
     const configuration = createAgentProviderConfiguration(configurationInput());
     let getterCalls = 0;
     let proxyCalls = 0;
@@ -180,9 +182,24 @@ describe("resident loop provider posture", () => {
       feasibility: [{ ...configuration.feasibility[0], policyVersion: "policy_other_v1" }]
     };
     const copiedAuthority = { ...fixture.authority };
+    const customPrototype = Object.assign(Object.create({ inherited: true }), {
+      configuration,
+      authority: fixture.authority
+    });
+    const withSymbol = Object.assign({ configuration, authority: fixture.authority }, { [Symbol("provider-posture")]: true });
+    const withExtraKey = { configuration, authority: fixture.authority, extra: undefined };
+    const sparseArray: unknown[] = [];
+    sparseArray[1] = fixture.authority;
+    const extraIndexArray = [configuration, fixture.authority];
+    Object.assign(extraIndexArray, { 2: "extra" });
 
     expect(() => api.createResidentLoopProviderPosture(accessor)).toThrow(/provider posture/i);
     expect(() => api.createResidentLoopProviderPosture(proxy)).toThrow(/provider posture/i);
+    expect(() => api.createResidentLoopProviderPosture(customPrototype)).toThrow(/provider posture/i);
+    expect(() => api.createResidentLoopProviderPosture(withSymbol)).toThrow(/provider posture/i);
+    expect(() => api.createResidentLoopProviderPosture(withExtraKey)).toThrow(/provider posture/i);
+    expect(() => api.createResidentLoopProviderPosture(sparseArray)).toThrow(/provider posture/i);
+    expect(() => api.createResidentLoopProviderPosture(extraIndexArray)).toThrow(/provider posture/i);
     expect(() => api.createResidentLoopProviderPosture({ configuration: copiedConfiguration, authority: fixture.authority }))
       .toThrow(/provider posture/i);
     expect(getterCalls).toBe(0);
@@ -191,14 +208,23 @@ describe("resident loop provider posture", () => {
     const copied = api.createResidentLoopProviderPosture({ configuration, authority: copiedAuthority });
     await expect(copied.read(requestedUse(fixture))).rejects.toThrow(/provider posture/i);
 
+    const swapped = api.createResidentLoopProviderPosture({ configuration, authority: swappedFixture.authority });
+    await expect(swapped.read(requestedUse(fixture))).rejects.toThrow(/provider posture/i);
+
     const posture = api.createResidentLoopProviderPosture({ configuration, authority: fixture.authority });
     for (const [field, value] of [
-      ["workspaceId", "workspace_other"],
+      ["workspaceId", "workspace_provider_posture_provisional"],
+      ["workspaceId", "ws_other"],
       ["mountInstanceId", "mount_other"],
+      ["admissionGenerationId", "admission_generation_other"],
       ["taskId", "task_other"],
       ["attemptId", "attempt_other"],
       ["runId", "run_other"],
       ["policyVersion", "policy_other_v1"],
+      ["policyDigest", hash("d")],
+      ["lockStateDigest", hash("e")],
+      ["highWaterMark", "high_water_other"],
+      ["highWaterOrdinal", 999],
       ["promptArtifactHash", hash("d")],
       ["approvalPreviewHash", hash("e")]
     ] as const) {
@@ -222,10 +248,18 @@ describe("resident loop provider posture", () => {
 });
 
 async function postureApi(): Promise<ResidentLoopProviderPostureApi> {
-  const imported = await import("../src/resident-loop-provider-posture.js").catch(() => undefined);
+  const sourceModule = ["..", "src", "resident-loop-provider-posture.js"].join("/");
+  const imported: unknown = await import(sourceModule).catch(() => undefined);
   expect(isPostureApi(imported)).toBe(true);
   if (!isPostureApi(imported)) throw new Error("resident loop provider posture module is unavailable");
   return imported;
+}
+
+function expectNoTask126ReaderCoupling(): void {
+  const source = readFileSync(join(process.cwd(), "packages/local-runtime/src/resident-loop-provider-posture.ts"), "utf8");
+  expect(source).not.toContain("byok-provider");
+  expect(source).not.toContain("createByokProviderAuthorityReader");
+  expect(source).not.toContain("createByokProviderBoundary");
 }
 
 function isPostureApi(value: unknown): value is ResidentLoopProviderPostureApi {
@@ -246,7 +280,7 @@ async function mountedFixture(suffix: string): Promise<{
 }> {
   const root = mkdtempSync(join(tmpdir(), "cestus-provider-posture-"));
   directories.push(root);
-  const workspaceId = `workspace_provider_posture_${suffix}`;
+  const workspaceId = `ws_provider_posture_${suffix}`;
   const workspaceRoot = join(root, workspaceId);
   createPortableWorkspace({
     rootDir: workspaceRoot,
@@ -306,12 +340,17 @@ function requestedUse(fixture: Awaited<ReturnType<typeof mountedFixture>>) {
   return {
     workspaceId: fixture.readback.workspaceId,
     mountInstanceId: fixture.readback.mountInstanceId,
+    admissionGenerationId: fixture.readback.admissionGenerationId,
     taskId: "task_provider_posture",
     attemptId: "attempt_provider_posture",
     runId: "run_provider_posture",
     promptArtifactHash: hash("a"),
     approvalPreviewHash: hash("b"),
-    policyVersion: policy.policyVersion
+    policyVersion: policy.policyVersion,
+    policyDigest: policy.policyDigest,
+    lockStateDigest: policy.lockStateDigest,
+    highWaterMark: fixture.readback.highWaterMark,
+    highWaterOrdinal: fixture.readback.highWaterOrdinal
   };
 }
 
