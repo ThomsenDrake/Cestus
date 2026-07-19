@@ -24059,3 +24059,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   contract/repository, typecheck, factory, diff, scope, clean, and dependency
   gates plus one fresh concurrent read-only Terra/xhigh review pair remain
   mandatory. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-840 — Record-24 assurance fixture approved
+
+- Recorded at: 2026-07-19T18:05:38Z
+- The same assurance owner preserves authority merge `f69b4b94`, claim-only
+  RED `215bfa3225b77fb73fcd1aad3d4d134f13fd0123`, and minimal GREEN exact
+  candidate `5002cdd5b9bd8a223aa44b16cf2976367837e8b5`. The RED retains test blob
+  `b6680c68dac558732c72e3a91999fa9d7b7f1473`; GREEN test blob
+  `261bfb8fcf81937ddf7ed4c23db9464d7df70852` changes only the two current
+  prefix groups and their coupled repository expectations from 23 to 24.
+- Exact candidate admission passes assurance **19/19**, all four V4 markers,
+  repository prefix **24/24** followed only by incomplete-29/found-24,
+  typecheck, factory, diff, exact two-path scope, clean, and dependency gates.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b83-1063-7211-8ab0-d19628787cbd` returns `APPROVED`. It verifies
+  V1-V4, checker, registry/raw records, graph/order/commands, and mappings are
+  byte-identical to the authority merge and the checkout stays clean.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b83-1a6d-7b90-99fb-3ec289ebb480` independently returns `APPROVED`.
+  It reproduces the exact two-failure RED, 19/19 GREEN, all 24 released
+  commands, exact repository boundary, frozen raw records, typecheck,
+  factory, scope, dependency, and final clean-state evidence.
+- Coordinator adjudication accepts both verdicts. Status advances the
+  record-24 fixture update `reviewing -> approved`; its complete preserved
+  history will now be integrated before Task121 receives the exact current
+  record-24 base. No push, external effect, or `neo` action occurs.
