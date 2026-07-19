@@ -20660,3 +20660,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - All admission gates and one fresh concurrent Terra/xhigh read-only review
   pair remain mandatory after code. Strict prefix remains 16; no integration,
   release record, push, or `neo` action occurs.
+
+## RV-1-E-750 — Task139-P1 exact-version exception-order root cause
+
+- Recorded at: 2026-07-19T00:02:56Z
+- The same owner preserved IDNA causal RED
+  `173b6832b30a016b9a8c1a3075be437719803bbd` and minimal GREEN candidate
+  `04d08582726443b5d0c88f4893c8691f74f7fb49`. RED changes only test and
+  claim; GREEN keeps the RED test byte-identical and locally maps IDNA dot
+  equivalents plus NFC-normalizes combining-mark labels before structural DNS
+  classification. Focused **1 file / 27 tests** and standalone typecheck pass.
+- Before review, coordinator exact-byte admission reproduces a further P1: an
+  otherwise-valid BYOK configuration with `dataHandlingNotes: "policy。v1"`
+  is admitted. Canonicalization converts the IDNA separator to ASCII before
+  applying the released-version exemption, so a byte-different DNS lookalike
+  is treated as exact `policy.v1`. The same defect applies to the other two
+  released version shapes and IDNA dot equivalents.
+- The correction is fixed by the frozen exact-version/no-host invariants:
+  released version exemptions apply only to original ASCII-dot bytes, while
+  IDNA-canonicalized lookalikes remain DNS host material. This is a changed
+  exception-order counterfactual within the same Unicode tactic, not a product,
+  scope, safety, credential, hardware, or external-behavior decision.
+- Standing recovery resumes the same owner and complete history for one causal
+  RED and one minimal GREEN in the exact three owned paths. RED must pin every
+  released version with every IDNA dot equivalent at capability and credential
+  text boundaries while retaining the exact ASCII versions and ordinary
+  Unicode prose. GREEN must keep exact-original exemption authority separate
+  from classification canonicalization without a TLD list, generic fallback,
+  cast, assertion, suppression, widening, DNS/network operation, or external
+  effect. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task.
+- Full admission and one fresh concurrent Terra/xhigh read-only pair remain
+  mandatory after code. Strict prefix remains 16; no integration, release
+  record, push, or `neo` action occurs.
