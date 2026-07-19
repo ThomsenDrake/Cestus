@@ -21282,3 +21282,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   mandatory before integration. Status advances Task136-FC-Core
   `blocked -> claimed -> implementing`; strict prefix remains 18. No push,
   external effect, or `neo` action occurs.
+
+## RV-1-E-764 — Record-18 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T03:22:41Z
+- Task136-FC-Core owner task
+  `019f784e-8e24-74c2-a0a4-a5636cbec576` preserves claim
+  `f631062b`, causal RED `5e5f27c9`, and minimal GREEN candidate
+  `6adba773`. Its exact contract command passes **2 files / 2 tests** and
+  standalone typecheck exits zero; no further FC-Core edit is implicated.
+- The record-18 base exposes a bounded assurance-fixture drift outside the
+  card's four-path ownership. The 19-test assurance suite passes 17 tests and
+  fails exactly two assertions at lines 1112 and 1428 because both still
+  require parsed registry length 17 after strict Task139-PM record 18 was
+  validly appended. Production contract mode remains exact, and repository
+  mode independently emits the accepted 18-command prefix and expected
+  incomplete-29 boundary.
+- Root cause is therefore stale test-fixture cardinality, not a contract,
+  checker, product, scope, safety, credential, hardware, external-behavior, or
+  FC-Core implementation defect. Standing recovery resumes the existing V4
+  assurance owner task `019f717a-3a5c-7df1-9216-59464d5c206b`, preserved
+  branch `codex/task136-v4-task139-pm-direct-source-ownership`, and worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`.
+- The coordinator will forward-merge this current program head into that same
+  branch. One claim-only causal RED checkpoint must preserve and reproduce the
+  exact two failures, followed by one minimal GREEN limited to the assurance
+  test and V4 claim. Contract/checker bytes, V1-V3, raw records 1-18, all 29
+  IDs/order, release evidence, and every existing history commit remain
+  byte-identical. Task-scoped subagent-driven development and test-driven
+  development are explicitly approved for this task.
+- After exact assurance, contract/repository, typecheck, factory, diff,
+  scope/clean/dependency admission, one fresh concurrent Terra/xhigh read-only
+  architecture/executability pair is mandatory. The corrected program head
+  will then be forward-merged into the preserved FC-Core candidate before its
+  remaining admission and review. Strict prefix remains 18; no push, external
+  effect, or `neo` action occurs.
