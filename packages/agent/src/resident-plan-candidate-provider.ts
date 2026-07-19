@@ -49,6 +49,8 @@ const runModes = new Set([
 ]);
 const permittedAutomaticActionClasses = new Set(["read-only", "local-derivative", "ledger-proposal"]);
 const residentSideEffectClasses = new Set(["read-only", "local-derivative", "ledger-proposal", "external-byte-transfer", "external-message-send", "legal-escalation", "export-or-publication", "destructive-or-repair", "ledger-review"]);
+const releasedApprovalClasses = new Set([...residentSideEffectClasses].map((sideEffectClass) => approvalClassForSideEffect(sideEffectClass)));
+releasedApprovalClasses.add("human-review");
 const outputClasses = new Set(["observation", "derivative", "proposal", "approval-request"]);
 const budgetFields = [
   "planRevisions", "observationRecords", "toolSteps", "providerInvocations", "providerRequestBytes",
@@ -271,7 +273,9 @@ function validateConstraints(constraints: NormalizedRecord): void {
   const automaticActionClasses = requireArray(constraints, "permittedAutomaticActionClasses");
   validateUniqueStrings(automaticActionClasses);
   if (automaticActionClasses.some((entry) => typeof entry !== "string" || !permittedAutomaticActionClasses.has(entry))) throw unavailable();
-  validateUniqueStrings(requireArray(constraints, "requiredApprovalClasses"));
+  const requiredApprovalClasses = requireArray(constraints, "requiredApprovalClasses");
+  validateUniqueStrings(requiredApprovalClasses);
+  if (requiredApprovalClasses.some((entry) => typeof entry !== "string" || !releasedApprovalClasses.has(entry))) throw unavailable();
 }
 
 function validateSteps(steps: NormalizedArray, constraints: NormalizedRecord): void {
