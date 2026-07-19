@@ -23622,3 +23622,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   architecture/executability pair remain mandatory after GREEN. Status
   advances C136-P `reviewing -> implementing-repair`; no push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-828 — Repaired C136-P candidate enters final review
+
+- Recorded at: 2026-07-19T15:50:40Z
+- The same owner preserves registry-authority merge `eb552f94`, consolidated
+  causal RED `659425ec4c204cb92edda153c73beb09de4d033a`, and minimal GREEN exact
+  candidate `673c1ea6bd46e2d6412c11e66cc607075b0d4934`. The RED reports **9 failures
+  / 2 passes / 11 tests** and pins eight named hostile cases plus the corrected
+  restrictive-approval oracle; its test blob `3701adea` is byte-identical in
+  GREEN.
+- GREEN closes the released scalar/enum boundary, recursive secret/host
+  classification, exact P2 approval class, restrictive approval-set
+  evolution, and exact consumed/remaining action accounting without changing
+  downstream authority or adding an effect/fallback/compatibility path.
+- Exact committed-byte admission passes focused **1 file / 11 tests** and
+  cross-boundary **4 files / 26 tests**, an exact +8-test delta. Standalone
+  typecheck, assurance **19/19**, all four V4 markers, repository **23/23**
+  plus only the expected incomplete-29 boundary, factory readiness, diff
+  hygiene, exact three-path repair/cumulative scope, clean state, unset
+  `core.worktree`, and real non-symlinked Vitest 4.1.9 are green.
+- Full `npm test` and `npm run verify` retain **13 failing files / 70 failing
+  tests / 5 skips** with **2,798 passes**, exactly +8 passes over the admitted
+  pre-repair candidate and no new failure, removal, or skip.
+- Status advances C136-P `implementing-repair -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair now
+  reviews exact SHA `673c1ea6bd46e2d6412c11e66cc607075b0d4934`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
+
+## RV-1-E-829 — C136-P final-review policy and normalization checkpoint
+
+- Recorded at: 2026-07-19T16:01:33Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b13-6c56-7fa3-b8eb-ccac7ccea884` returns `BLOCKED` for exact candidate
+  `673c1ea6bd46e2d6412c11e66cc607075b0d4934`. Its frozen-input probe changes
+  only `permittedAutomaticActionClasses` to `provider-byte-transfer` and
+  observes an accepted candidate. Frozen policy permits only `read-only`,
+  `local-derivative`, and `ledger-proposal` automatic classes; provider byte
+  transfer is an approval class, never automatic. No P0 is reproduced.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b13-7644-7a23-8322-e4cf6e766507` independently returns `BLOCKED` with
+  two reproduced P1s. A non-canonical `feasibility.assessedAt` value is
+  admitted, and correlation ID `127。0。0。1` using IDNA dot equivalents is
+  admitted even though WHATWG host normalization resolves it to `127.0.0.1`.
+  Released P2 authority requires a canonical timestamp and normalized host
+  material to fail closed.
+- Both reviewers confirm focused **1/11**, cross **4/26**, typecheck,
+  assurance/V4, factory, exact clean scope, unchanged before/after HEAD, and
+  successful rejection of the prior eight P1 cases. The new findings are not
+  regressions in that repair; they are distinct uncovered policy and
+  normalization counterfactuals.
+- Coordinator adjudication accepts one further contract-determined packet:
+  close automatic action classes to the frozen three-member set; require the
+  exact released canonical, real ISO timestamp form; and normalize Unicode/
+  IDNA dot equivalents before all IP/DNS/URL host classification. No product,
+  scope, safety-invariant, credential, hardware, data-loss, or external-
+  behavior choice exists.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0`, branch
+  `codex/c136-p-resident-plan-candidate-producer`, and worktree
+  `/home/drake/.codex/worktrees/8403/Cestus`. It must preserve every commit,
+  forward-merge this registry authority, commit one causal RED for these exact
+  three cases, then one minimal GREEN within the existing three owned paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Every admission gate and one fresh
+  concurrent read-only Terra/xhigh architecture/executability pair remain
+  mandatory after GREEN. Status remains C136-P `reviewing -> implementing-
+  repair`; no push, external effect, or `neo` action occurs.
