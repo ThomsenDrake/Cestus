@@ -88,3 +88,21 @@ Implementation evidence:
   Task139-PM finite-transfer, Git/blob/review/release, or repository-closure
   coverage. No registry, integration, push, network, credential, provider,
   `neo`, review, or task creation is authorized.
+
+## RV-1-E-764 minimal GREEN evidence
+
+- The fixture now recognizes the actual strict record-18 prefix in both
+  parsed-prefix projections (`length` and exact ordered IDs) and in the
+  repository-admission marker/closure count (`records=18 commands=18`, then
+  `expected 29 records, found 18`).
+- The record-18 source-currentness proof is preserved by making its existing
+  before-activation fixture explicit: it uses only records 1-17, still rejects
+  stale Task137B-W source HEAD paths, then appends the synthetic Task139-PM
+  record 18 and rejects stale Task139-PM target HEAD paths. This is the same
+  historical/current ownership boundary, not a weakened assertion.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited
+  `0`: `19` passed, `0` failed. Contract and checker SHA-256 values remain
+  `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`
+  and `7199f315245cb986975ec3a8801526075e39cb27eed01f3cc816e9311b63715e`
+  respectively; V1-V3 and raw release evidence are unchanged.
