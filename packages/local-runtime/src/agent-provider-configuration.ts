@@ -28,7 +28,8 @@ const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9])((?:[0-9a-fx]+\.)+[0-9a-fx]+
 const wholeNumericUrlHostPattern = /^(?:0x[0-9a-f]+|\d+)(?::\d+)?$/i;
 const exactIsoTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const localhostPattern = /\blocalhost\b/i;
-const dnsHostTokenPattern = /(?:^|[^\p{L}\p{N}_-])((?:[\p{L}\p{N}-]+\.)+[\p{L}\p{N}-]+)(?=$|[^\p{L}\p{N}_-])/gu;
+const dnsHostTokenPattern = /(?:^|[^\p{L}\p{N}\p{M}_-])((?:[\p{L}\p{N}\p{M}-]+\.)+[\p{L}\p{N}\p{M}-]+)(?=$|[^\p{L}\p{N}\p{M}_-])/gu;
+const idnaDotEquivalentPattern = /[\u3002\uFF0E\uFF61]/gu;
 const releasedVersionPattern = /^(?:agent-provider-auth|policy|adapter)\.v1$/;
 
 export type ProviderConfigurationLane = "byok" | "local-engine" | "official-harness";
@@ -574,7 +575,8 @@ function hasForbiddenTextMaterial(value: string): boolean {
 }
 
 function hasDnsHostMaterial(value: string): boolean {
-  for (const match of value.matchAll(dnsHostTokenPattern)) {
+  const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
+  for (const match of classificationText.matchAll(dnsHostTokenPattern)) {
     const token = match[1];
     if (token !== undefined && !releasedVersionPattern.test(token)) return true;
   }
