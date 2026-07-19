@@ -23019,3 +23019,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-811 — Record-22 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T11:53:08Z
+- Clean strict record-22 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=22 commands=22`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 22`. The standalone assurance suite then reproduces exactly
+  two failures at lines 1112 and 1428: both current-registry-length fixtures
+  still pin strict prefix **21**, observe **22**, and leave the other **17/19**
+  tests green.
+- This is the same contract-determined count-fixture transition already
+  corrected at earlier strict-prefix releases. V1-V3, raw strict records 1-22,
+  the V4 contract/checker, all 29 card IDs/order, historical compatibility
+  fixtures, runtime behavior, and G136 review/integration evidence remain
+  authoritative and immutable. No product, scope, safety-invariant,
+  credential, hardware, data-loss, or external-behavior decision exists.
+- Standing RV-1-E-732 resumes the same assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, branch
+  `codex/task136-v4-task139-pm-direct-source-ownership`, and worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`.
+  The owner must forward-merge this exact record-22 program authority while
+  preserving all history, then commit one claim-only causal RED and one
+  minimal GREEN limited to the existing V4 assurance test and authority-
+  transfer claim. GREEN changes only the two current-prefix expectations from
+  21 to 22 and preserves every historical fixture.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused assurance, all four V4
+  markers, repository **22/22**, typecheck/full differential, factory/scope/
+  clean/dependency admission and one fresh concurrent read-only Terra/xhigh
+  architecture/executability review pair are required after code changes.
+  Status advances record-22 assurance `released -> implementing-repair`;
+  `G136-R` remains next but will receive the corrected record-22 base before
+  implementation. No push, external effect, or `neo` action occurs.
