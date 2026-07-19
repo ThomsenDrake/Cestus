@@ -80,3 +80,20 @@ their five tests passed. The production path
 `packages/local-runtime/src/resident-loop-factory-ports.ts` remained absent.
 The Vite TypeScript source-map warning is inherited local dependency noise, not
 a test failure.
+
+## GREEN
+
+The minimal GREEN adds only the owned
+`resident-loop-factory-ports.ts` production module. It type-imports the
+released Core readback and P2 posture interfaces, validates their frozen
+plain-data envelopes, and projects only a newly frozen workspace/run/provider
+posture value. It performs no async work and therefore introduces no unchecked
+await boundary; Core and P2 retain their released async currentness checks.
+The projection verifies the exact workspace, mount, admission, policy, lock,
+high-water, task, attempt, run, and H binding tuple before returning any data.
+It neither retains nor returns a runtime handle, ledger, mounted operation,
+witness, issuer, configuration, credential, endpoint, or callable capability.
+
+From these GREEN bytes, the unchanged exact card command exits `0` with
+**3 files / 6 tests passed**. `npm run typecheck` exits `0`. The test blobs are
+byte-identical to the committed RED.
