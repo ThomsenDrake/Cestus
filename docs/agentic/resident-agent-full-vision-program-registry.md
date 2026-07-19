@@ -22627,3 +22627,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   its full admission/review resumes. Strict prefix remains 21. No new release
   card, contract/version change, raw-record mutation, push, external effect,
   or `neo` action occurs.
+
+## RV-1-E-803 — Task9 no-approval fixture tactic correction
+
+- Recorded at: 2026-07-19T10:25:21Z
+- The Task9 owner reproduced exact causal RED evidence without changing test or
+  production bytes: G136 candidate `44f2dcd2075805106786ece7a77633395b8a87fc`
+  reports **13/14** legacy-staging tests with the sole line-348 `TypeError`, and
+  standalone TypeScript exits 2 with only the same `TS2339`. Claim-only RED
+  `a2165f97` records that immutable evidence on the independent Task9 branch.
+- Pre-GREEN interface inspection disproves RV-1-E-802's proposed scheduler-
+  execution tactic. Canonical `legacyStagingExecuteDescriptor` is a released
+  no-approval descriptor (`requiredApprovalClass: "none"`), while the frozen
+  private G136 completion path requires one independently approved request and
+  exact execution claim before domain-result reread. Reclassifying the
+  descriptor, wrapping it as an approval lookalike, directly appending a claim,
+  or manufacturing approval evidence would weaken exact binding and is
+  forbidden.
+- The contract-determined minimal GREEN remains inside the same two historical
+  Task9 paths but changes tactic: the fixture must stop calling public
+  structural completion and stop asserting an `agent.tool.completed` record for
+  this no-approval direct domain execution. It must continue verifying the
+  exact returned `assertion.proposed` event IDs, read-model change, and absence
+  of old ontology import, accepted assertion, entity resolution, and accepted
+  relationship events; it must positively assert that no structural agent-tool
+  completion was appended. G136's owned focused and adversarial tests remain
+  the authority for the independently approved private completion path.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The same owner must forward-merge this
+  registry-only authority before the single minimal GREEN, preserve RED and all
+  prior history, run the complete RV-1-E-802 gate set, and dispatch no review.
+  After owner admission, one fresh concurrent read-only Terra/xhigh pair is
+  mandatory. Strict prefix remains 21; no production, descriptor, compatibility,
+  V4, raw-record, release-order, external, push, or `neo` change is authorized.
