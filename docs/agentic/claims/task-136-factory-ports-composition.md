@@ -97,3 +97,36 @@ witness, issuer, configuration, credential, endpoint, or callable capability.
 From these GREEN bytes, the unchanged exact card command exits `0` with
 **3 files / 6 tests passed**. `npm run typecheck` exits `0`. The test blobs are
 byte-identical to the committed RED.
+
+## RV-1-E-790 Causal Recovery RED
+
+The reviewed candidate is resumed from the coordinator-forwarded recovery
+authority at `c75b1ec5720058572f93c2c7a7c9c1cf06ce2a07`. The reproduced P1 is
+that FC-Ports accepts a fully frozen structural Core/P2-shaped input with a
+secret-pattern provider identifier and a proxied, ignored credential-reference
+member, then returns the hostile identifier without traversing the nested
+proxy. The root cause is local and contract-determined: the previous P2
+normalizer inspected only projected selection, capability, approval, and
+binding members; it silently ignored credential-reference and feasibility
+shape, text, and cross-field facts.
+
+The recovery RED changes only this claim plus the two owned FC-Ports test
+paths. The production source is byte-identical to the reviewed candidate. It
+requires rejection after normal fixture/API loading of secret-pattern provider
+and credential-reference text, an ignored nested proxy, non-BYOK credential
+and feasibility enums, feasibility extra keys and URI-host material, mismatched
+capability/provider identity, and missing required provenance. The import
+policy continues to allow only the existing three static imports or the exact
+five-import Green set with Node IP classification and the released pure
+secret-safety predicate; it passes at RED and does not cause the causal
+failure.
+
+From these RED bytes, the exact card command exits `1` with **3 files / 7
+tests: 1 failed, 6 passed**. The only failure is
+`rejects hostile P2 posture text, nested proxies, exact-shape drift, and
+cross-field substitutions` at `resident-loop-factory-ports.test.ts:193`:
+`expected [Function] to throw an error`, but the current production returns.
+The normal real workspace/Core/PM/P2 fixture and API import complete first;
+the import-boundary tests pass. The production blob is exactly
+`9c529b81e4df9dc4dbd620aa29884cfdf6c23027` both before and after this RED.
+The inherited local TypeScript source-map warning is not a test failure.
