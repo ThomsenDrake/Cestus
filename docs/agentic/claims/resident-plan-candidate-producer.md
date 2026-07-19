@@ -1,6 +1,6 @@
 # C136-P Resident Plan Candidate Producer Claim
 
-- Status: `claimed`.
+- Status: `implementing`.
 - Card: `C136-P`, strict V4 release-card position 24.
 - Worker: Codex `gpt-5.6-terra` / `xhigh`.
 - Branch: `codex/c136-p-resident-plan-candidate-producer`.
@@ -33,3 +33,9 @@
 ## History contract
 
 This claim-only checkpoint precedes the causal RED. The RED changes only the owned test and this claim to `implementing`; the minimal GREEN then changes only the owned source and this claim while preserving the RED test blob byte-identically.
+
+## Causal RED
+
+The focused test introduces three fixture-backed cases before production source exists: exact initial/replan output, hostile and secret-safe boundary rejection, and invalid/widening replan rejection. It requires the named `createResidentPlanCandidateProvider` API after all frozen Task120/P2-shaped fixtures load.
+
+`npm test -- packages/agent/test/resident-plan-candidate-provider.test.ts` exited `1` with one failed file and three failed tests. Each failed solely at the intentional API-presence assertion (`expected false to be true`) for the absent `resident-plan-candidate-provider` module; all fixtures loaded successfully and no production path existed.
