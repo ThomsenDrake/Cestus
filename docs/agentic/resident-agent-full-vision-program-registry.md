@@ -24129,3 +24129,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   merged bytes before integration.
 - Status advances Task121 `candidate-waiting-base -> candidate`. No push,
   provider, credential, network, external effect, or `neo` action occurs.
+
+## RV-1-E-843 — Task121 exact-base candidate enters review
+
+- Recorded at: 2026-07-19T18:16:44Z
+- Coordinator forward merge
+  `efee7660fccf2609bf7e8d38f944fef0f37f98e2` combines current record-24
+  authority `58b2c04c` with preserved Task121 candidate
+  `280cfff90621334e3769c93279fb59f0f141960f` without conflict or owned-path
+  change. Claim `fcb0d104`, causal RED `d1f8848b`, and minimal GREEN
+  `280cfff9` remain ordered and unmodified; GREEN test blob `bdea3d97` is
+  byte-identical after the forward merge.
+- Exact merged-byte admission passes focused **1 file / 15 tests** and
+  cross-boundary **3 files / 105 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory readiness, diff hygiene, exact
+  three-path cumulative/original scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9. Repository mode executes all 24 released
+  commands and emits exact prefix **24/24** followed only by the expected
+  incomplete-29 boundary.
+- Machine-readable full and `npm run verify` differentials are identical:
+  **12 failing files / 60 failing tests / 2,820 passes / 5 skips**. Relative
+  to clean record-24 program bytes, exactly the ten Task121 PRR workflow
+  failures become passes; no other failure is added, removed, changed, or
+  skipped.
+- The candidate consumes only the released opaque mounted CF1-HR V2 authority
+  and injected mounted store, preserves terminal -> orchestration-completed
+  -> task-status order and verified projection readback, and leaves the
+  approval-pending branch non-completing. It adds no PRR send, approval
+  decision, legal escalation completion, lock clearing, credential/provider
+  authority, fallback write, or other external effect.
+- Status advances Task121 `candidate -> reviewing`. One fresh concurrent
+  read-only Terra/xhigh architecture/executability pair now reviews exact SHA
+  `efee7660fccf2609bf7e8d38f944fef0f37f98e2`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, strict record 25, push, external
+  effect, or `neo` action occurs before dual approval.
+
+## RV-1-E-844 — Task121 approval-suspension root-cause checkpoint
+
+- Recorded at: 2026-07-19T18:25:29Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b99-34e0-7a40-a8c0-058e65b10ee7` returns `BLOCKED` with one exact
+  P1 on clean candidate `efee7660fccf2609bf7e8d38f944fef0f37f98e2`.
+  The approval-requested branch returns `waiting-for-approval` while calling
+  raw `appendSpecialistCompletion`, appending
+  `agent.specialist-run.completed`, and projecting the run `completed`.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b99-41b1-70a2-9913-b3b0d8c0e4ee` independently reproduces the same
+  P1. The focused test at lines 239-247 currently passes while asserting that
+  contradictory terminal event/projection after the opaque V2 witness is
+  injected. Both reviewers retain clean before/after HEAD and reproduce all
+  candidate-local gates; no second P0/P1 is found.
+- Coordinator adjudication confirms the frozen Task119/CF1-HR approval-
+  suspension invariant: pending approval is resumable and non-completing.
+  This branch may retain its advisory `waiting-for-approval` handoff and
+  durable draft/request evidence, but must append no specialist terminal,
+  orchestration-completed, or completed task-status event; V1/raw helpers
+  cannot complete or upgrade the injected V2 lifecycle.
+- Standing RV-1-E-732 resumes the same Terra/xhigh Task121 owner task
+  `019f7544-bc61-7201-ae4f-c1742b4f4a8a`, branch
+  `codex/task121-cf1-handoff-adoption`, and worktree
+  `/home/drake/.codex/worktrees/57e7/Cestus`, preserving exact merged
+  candidate history. It forward-merges this registry authority, commits one
+  causal test/claim RED that requires the waiting branch to remain
+  nonterminal, then one minimal source/claim GREEN removing only the raw
+  completion from that branch.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All focused, cross-boundary, typecheck,
+  full/verify differential, assurance/V4/repository, factory, diff, scope,
+  clean, and dependency gates plus one fresh concurrent read-only Terra/xhigh
+  pair remain mandatory after GREEN. No push, external effect, or `neo`
+  action occurs.
