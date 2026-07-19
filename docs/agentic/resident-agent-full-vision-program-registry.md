@@ -22660,3 +22660,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   After owner admission, one fresh concurrent read-only Terra/xhigh pair is
   mandatory. Strict prefix remains 21; no production, descriptor, compatibility,
   V4, raw-record, release-order, external, push, or `neo` change is authorized.
+
+## RV-1-E-804 — Task9 maintenance and G136-SC enter combined final review
+
+- Recorded at: 2026-07-19T10:45:47Z
+- Historical Task9 maintenance preserves claim-only causal RED
+  `a2165f97409e73c813e80ba6c1da4d710272ab7a`, registry-only authority merge
+  `5b538d765a9196b94f2eb5f3be3dabebad8511eb`, and minimal GREEN
+  `3be15212776ab3c96e66bf0bade4630960c362eb`. It changes exactly the existing
+  Task9 claim and legacy-staging fixture, leaves production untouched, retains
+  exact domain-result/read-model assertions, and proves the canonical
+  no-approval execution appends no structural `agent.tool.completed` event.
+- Normal merge `ba48161e288e6569561477092ac948f2d0dac78b` composes that approved-
+  for-admission maintenance with preserved G136-SC GREEN `44f2dcd2075805106786ece7a77633395b8a87fc`
+  without rewriting either lineage. Relative to Task9 GREEN, the exact sorted
+  G136 release diff is its eleven V4-owned paths; relative to RV-1-E-803, the
+  Task9 implementation diff is exactly its two historical owned paths.
+- Exact combined committed-byte gates pass G136 focused **6 files / 81 tests**,
+  cross-boundary **9 files / 131 tests**, the four domain-adapter differential
+  **4 files / 56 tests**, standalone typecheck, **19/19** bounded assurance, all
+  four V4 markers, factory readiness, diff hygiene, exact scopes, clean state,
+  unset `core.worktree`, and real non-symlinked executable Vitest 4.1.9
+  dependencies. Repository mode emits `TASK136_REPOSITORY_PREFIX_OK records=21
+  commands=21` followed only by the expected incomplete-29 boundary.
+- Canonical `npm run verify` passes typecheck and retains **69 failing tests /
+  2,774 passes / 5 skips** across **13 failing files**. The failing assertion
+  cohort is inherited; file/count variance is confined to the known
+  prerequisite timeout cohort. A preceding raw full run reports **70 failures /
+  2,773 passes / 5 skips**. All changed Task9/G136 paths and their exact
+  cross-boundary consumers are green.
+- One fresh concurrent read-only Terra/xhigh architecture/invariants and
+  executability/adversarial pair now reviews exact immutable combined SHA
+  `ba48161e288e6569561477092ac948f2d0dac78b`. Reviewers must verify both the
+  historical no-approval fixture correction and G136's private completion
+  authority, including direct-claim or exact frozen source-lineage ancestry,
+  and must attempt unrelated/swapped/cross-request/run/self-minted/pre-claim/
+  stale/terminal bypasses. Reviews must not mutate Git configuration, branch,
+  index, worktree, dependencies, or history; SDD/TDD is not relevant or
+  authorized for reviewers.
+- Status advances Task9 maintenance `candidate -> reviewing` and G136-SC
+  `candidate -> reviewing`; strict prefix remains 21. Dual approval authorizes
+  integration in two preserved steps: Task9 maintenance first, then the exact
+  combined G136 merge, followed by integrated-byte gates and strict record 22.
+  No push, external effect, or `neo` action occurs.
