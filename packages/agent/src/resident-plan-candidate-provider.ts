@@ -46,6 +46,7 @@ const runModes = new Set([
   "evidence-triage", "ontology-bootstrap", "investigation-planner", "prr-negotiation",
   "timeline-builder", "contradiction-finder", "report-builder", "memory-curation"
 ]);
+const permittedAutomaticActionClasses = new Set(["read-only", "local-derivative", "ledger-proposal"]);
 const outputClasses = new Set(["observation", "derivative", "proposal", "approval-request"]);
 const budgetFields = [
   "planRevisions", "observationRecords", "toolSteps", "providerInvocations", "providerRequestBytes",
@@ -259,7 +260,9 @@ function validateConstraints(constraints: NormalizedRecord): void {
     signatures.push(`${toolId}\u0000${toolVersion}\u0000${string(record, "allowlistEntryHash")}`);
   }
   if (new Set(signatures).size !== signatures.length) throw unavailable();
-  validateUniqueStrings(requireArray(constraints, "permittedAutomaticActionClasses"));
+  const automaticActionClasses = requireArray(constraints, "permittedAutomaticActionClasses");
+  validateUniqueStrings(automaticActionClasses);
+  if (automaticActionClasses.some((entry) => typeof entry !== "string" || !permittedAutomaticActionClasses.has(entry))) throw unavailable();
   validateUniqueStrings(requireArray(constraints, "requiredApprovalClasses"));
 }
 
@@ -340,7 +343,7 @@ function validatePosture(posture: NormalizedRecord, plan: NormalizedRecord, cons
   const credentialKind = string(credentialReference, "credentialKind");
   string(feasibility, "feasibilityId");
   const feasibilityLane = string(feasibility, "lane");
-  string(feasibility, "assessedAt");
+  if (!isCanonicalIsoTimestamp(string(feasibility, "assessedAt"))) throw unavailable();
   const approvalRequired = boolean(approval, "required");
   const approvalProfile = string(approval, "approvalProfile");
   const requiredApprovalClass = string(approval, "requiredApprovalClass");
@@ -542,19 +545,26 @@ function hasDnsHostMaterial(value: string): boolean {
 }
 
 function hasIpAddress(value: string): boolean {
-  if (canonicalIsoTimestampPattern.test(value) || releasedDottedVersionPattern.test(value)) return false;
-  const tokens = value.match(ipShapedTokenPattern);
+  const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
+  if (canonicalIsoTimestampPattern.test(classificationText) || releasedDottedVersionPattern.test(classificationText)) return false;
+  const tokens = classificationText.match(ipShapedTokenPattern);
   if (tokens !== null && tokens.some((token) => {
     const bracketless = token.startsWith("[") && token.endsWith("]") ? token.slice(1, -1) : token;
     const scopeIndex = bracketless.indexOf("%");
     return isIP(scopeIndex === -1 ? bracketless : bracketless.slice(0, scopeIndex)) !== 0;
   })) return true;
-  if (wholeNumericUrlHostPattern.test(value) && isStandardUrlIpv4Host(value)) return true;
-  for (const match of value.matchAll(standardUrlIpv4TokenPattern)) {
+  if (wholeNumericUrlHostPattern.test(classificationText) && isStandardUrlIpv4Host(classificationText)) return true;
+  for (const match of classificationText.matchAll(standardUrlIpv4TokenPattern)) {
     const token = match[1];
     if (token !== undefined && isStandardUrlIpv4Host(token)) return true;
   }
   return false;
+}
+
+function isCanonicalIsoTimestamp(value: string): boolean {
+  if (!canonicalIsoTimestampPattern.test(value)) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString() === value;
 }
 
 function isStandardUrlIpv4Host(token: string): boolean {
