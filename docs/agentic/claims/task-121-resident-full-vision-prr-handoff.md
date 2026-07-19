@@ -79,3 +79,17 @@ The task consumes CF-1's frozen handoff contract and produces only a provenance-
   specialist terminal event, orchestration completion, or completed task
   status. The run must remain resumable and no send/external execution event
   may appear.
+
+## V4 Approval-Pending Suspension Repair — Corrected RED
+
+- Restored the uncommitted GREEN candidate with `apply_patch` to exact
+  `b6df504aace9ba16a0195fdc0f6d7ac413a180e9` bytes before editing; no
+  committed history was changed.
+- Forward-merged program authority
+  `4ce84e2638409407cc9a4cb39353332d7768d8fe` containing RV-1-E-845.
+- The corrected causal RED replaces only the empty-array asymmetric matcher.
+  It builds the forbidden returned-ID set from specialist terminal,
+  orchestration-completed, and completed task-status events, then requires
+  every returned event ID to be absent from that set. Production remains
+  byte-identical to the restored RED while the current raw completion still
+  makes the approval-pending case fail.
