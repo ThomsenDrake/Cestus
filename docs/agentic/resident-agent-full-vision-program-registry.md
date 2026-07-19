@@ -20932,3 +20932,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - All RV-1-E-754 transfer limits and preservation requirements remain exact.
   Strict prefix stays 17; no PM production, integration, release, external,
   push, or `neo` action occurs.
+
+## RV-1-E-756 — Task139-PM assurance changes pin-audit tactic
+
+- Recorded at: 2026-07-19T01:15:22Z
+- The same assurance owner preserved forward causal RED
+  `0205463be76859cb25756cce2c768e45e0a63e07`. It corrects the two
+  contradictory transfer assertions from RV-1-E-755, retains the first RED,
+  and again produces **19 tests / 18 pass / 1 fail** solely because the
+  inherited contract lacks Task139-PM's Task137B-W prerequisite.
+- GREEN assembly then exposed three remaining immutable-test assumptions: the
+  old V4 file SHA, old assurance fingerprint, and V3 parity set that still
+  treats Task139-PM's command as unchanged. Required corrected values from the
+  finite intended contract are V4 SHA
+  `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`
+  and assurance fingerprint
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`;
+  Task139-PM must join only the explicit V3-parity exemption set. The owner
+  stopped before GREEN commit.
+- This is the second unsuccessful incremental assertion correction with the
+  same tactic. Standing recovery therefore changes tactic: comprehensively
+  audit and update every V4-derived test pin in one forward claim/test-only RED,
+  accept the exact contract-derived failure set on unchanged contract/checker
+  bytes, and only then apply one minimal GREEN. The uncommitted two-path intended
+  GREEN patch is preserved without discard in named stash
+  `task139-pm-assurance-intended-green-after-0205463b` on the same branch.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- RV-1-E-754's exact finite transfer, historical/source-currentness semantics,
+  four-path boundary, and all preservation limits remain unchanged. Strict
+  prefix remains 17; no PM production, integration, release, external, push,
+  or `neo` action occurs.
