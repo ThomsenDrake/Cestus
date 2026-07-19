@@ -1,6 +1,5 @@
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import type { ActorRef, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
-import type { ActorRef } from "../../ontology/src/contracts.js";
 import { describe, expect, it } from "vitest";
 import { createResidentPlanObservationStore } from "../src/plan-observation-contracts.js";
 import { createResidentLoopToolGateway, type ResidentLoopToolGatewayReadback } from "../src/resident-loop-tool-gateway.js";
@@ -252,7 +251,7 @@ describe("resident-loop tool gateway", () => {
     const completed = await bridge.executeAndReadback(decision, async (execution) => {
       const result = await appendEvidence(fixture.ledger, {
         evidenceId: "ev_gateway_structural_authority",
-        causationId: execution.executionClaimEventId
+        causationId: requiredExecutionClaimEventId(execution)
       });
       return {
         eventIds: [result.id],
@@ -322,6 +321,13 @@ function createBridge(
   return createResidentLoopToolGateway({ ledger, gateway, now: fixedNow } as unknown as Parameters<typeof createResidentLoopToolGateway>[0]);
 }
 
+function requiredExecutionClaimEventId(readback: ResidentLoopToolGatewayReadback): string {
+  if (readback.executionClaimEventId === undefined) {
+    throw new Error("Test fixture must supply an execution claim before domain evidence.");
+  }
+  return readback.executionClaimEventId;
+}
+
 function mutateSelectedPlanAfterFirstRead(
   ledger: InMemoryEventLedger,
   planId: string,
@@ -336,16 +342,19 @@ function mutateSelectedPlanAfterFirstRead(
       if (streamId !== planStreamId || ++planReads === 1) {
         return events;
       }
-      return events.map((event) => event.id !== planId
-        ? event
-        : {
-            ...event,
-            payload: {
-              ...event.payload,
-              descriptorHash: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
-            }
+      return events.map((event): KnowledgeEvent => {
+        if (event.id !== planId || event.type !== "agent.resident-plan.recorded.v1") {
+          return event;
+        }
+        const plan: KnowledgeEventOf<"agent.resident-plan.recorded.v1"> = event;
+        return {
+          ...plan,
+          payload: {
+            ...plan.payload,
+            descriptorHash: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
           }
-      );
+        };
+      });
     }
   };
 }

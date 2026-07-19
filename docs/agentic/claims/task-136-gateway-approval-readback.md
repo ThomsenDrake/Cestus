@@ -196,3 +196,14 @@ production change: it will require the callback's already-validated claim ID
 before building its evidence DTO, and preserve the ledger union discriminator
 while constructing the hostile selected-plan mutation. It remains strictly
 within the four owned paths and creates no new authority or external behavior.
+
+## RV-1-E-732 Post-GREEN Compiler GREEN
+
+The forward compiler GREEN is test-only. It retains all nine focused
+assertions, explicitly narrows the callback claim ID before it becomes durable
+evidence causation, and constructs the hostile plan readback as an exact
+`agent.resident-plan.recorded.v1` event rather than widening the ledger union.
+The exact focused card is again **2 files / 9 tests** and `npm run typecheck`
+passes. Status advances **compiler-recovery-red -> green** with no production
+flow, source authority, ledger write shape, completion route, or external
+behavior change.
