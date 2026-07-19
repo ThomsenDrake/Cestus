@@ -20963,3 +20963,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   four-path boundary, and all preservation limits remain unchanged. Strict
   prefix remains 17; no PM production, integration, release, external, push,
   or `neo` action occurs.
+
+## RV-1-E-757 — Task139-PM direct-source assurance candidate admitted to review
+
+- Recorded at: 2026-07-19T01:34:13Z
+- The changed pin-audit tactic commits causal RED
+  `c96ba5ccecc533c50e5ca5a73dfa7440847a2dd0` and minimal GREEN
+  candidate `23e4299530e0946f5974a5089563608ed1013978`, preserving earlier
+  stopped REDs `f1524c3a780576e851d537d13f95fb7f9e1a5c28` and
+  `0205463be76859cb25756cce2c768e45e0a63e07`. The final RED produces
+  the exact three contract-derived failures for the future V4 SHA, assurance
+  fingerprint, and absent PM prerequisite; GREEN retains its test blob
+  byte-identically and changes only contract, checker, and claim.
+- Exact committed-byte admission passes **19/19** assurance tests, standalone
+  typecheck, diff hygiene, factory readiness, all four markers
+  (`records=29`, composition `green=1 red=20`, command cards `29`, ABI
+  `green=1 red=15`), exact four-path implementation scope, immutable V1-V3 and
+  raw records 1-17, exact 29-card order, clean tracked/untracked state, and real
+  non-symlinked dependencies with Vitest 4.1.9.
+- Persistent coordinator execution of exact repository mode completes all
+  released commands and emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=17 commands=17` followed only by
+  `repository release closure incomplete: expected 29 records, found 17`.
+- Status advances the bounded assurance correction `implementing -> candidate
+  -> reviewing`. One fresh concurrent Terra/xhigh read-only pair reviews exact
+  `23e42995`: architecture/invariants task
+  `019f7801-f10e-7300-8f04-14d5b7beb2dc` and
+  executability/adversarial task
+  `019f7801-f128-7a41-a78e-0cb96e5023eb`. SDD/TDD is not relevant or
+  authorized for reviewers. Only exact reproduced P0/P1 violations block;
+  P2, style, terminology, hypothetical hardening, and unreproduced concerns
+  are backlog.
+- Strict prefix remains 17. PM production, integration, release, provider/
+  network/credential effects, push, and `neo` remain untouched.
