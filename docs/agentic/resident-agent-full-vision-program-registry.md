@@ -22118,3 +22118,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Strict prefix remains 20. C136-P remains preserved on its corrected
   record-20 base for ordered release position 24. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-790 — Task136-FC-Ports hostile-posture root-cause checkpoint
+
+- Recorded at: 2026-07-19T07:39:00Z
+- Architecture/invariants review task
+  `019f794a-05ff-7ff2-b3df-7f407b193a5d` approves exact candidate
+  `26429f20b1be530e4274a4303aa6f5c63f0831e1`, but
+  executability/adversarial review task
+  `019f794a-0621-7850-897a-feaf5de48acc` reproduces one P1: the port
+  validates only selected P2 members, never traverses `credentialReference`
+  or `feasibility`, and its identifier predicate accepts secret-pattern text.
+  The focused **3 files / 6 tests** gate remains green because it uses a real
+  P2 posture and checks only the outer proxy plus binding mutations.
+- Coordinator adjudication independently reproduces the exact fail-open from
+  immutable candidate bytes. A fully frozen structural Core/P2-shaped input
+  with proxied ignored credential-reference data and provider ID
+  `sk_live_abcdefghijklmnopqrst` exits successfully and returns exactly that
+  provider ID, without touching the nested proxy. This contradicts the
+  released P2 secret-safety parity and the FC-Ports fail-closed requirement
+  for hostile structural/copy/proxy input; no product, scope, invariant,
+  credential, hardware, or external-behavior choice remains unresolved.
+- Standing RV-1-E-732 resumes the same Task136-FC-Ports implementation owner
+  task `019f791e-3548-7d61-8f06-5c7743d11927`, worktree
+  `/home/drake/.codex/worktrees/7fcc/Cestus`, and branch
+  `codex/task136-fc-ports` from the preserved reviewed candidate. The recovery
+  is limited to the existing five-path card ownership and must append one
+  causal RED followed by one minimal GREEN using the released P2 hostile-text,
+  exact nested-shape, immutability, and cross-field rules. Structural data may
+  remain data, but ignored hostile fields, proxies, credentials, secrets,
+  endpoint/host material, and inconsistent posture facts must fail closed.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All admission gates precede one fresh
+  concurrent read-only Terra/xhigh architecture/executability pair after code
+  changes. Status advances Task136-FC-Ports `reviewing -> implementing-repair`;
+  strict prefix remains 20. No push, external effect, or `neo` action occurs.
