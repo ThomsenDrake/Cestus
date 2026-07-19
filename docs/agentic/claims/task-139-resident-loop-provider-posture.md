@@ -193,3 +193,14 @@ The causal compiler GREEN will make the type representation explicit through
 readonly recursive interfaces and use a real hash predicate at both return
 sites. It will not alter P2 runtime normalization, selection, authority,
 binding, output, or test behavior.
+
+## RV-1-E-779 Compiler GREEN
+
+This GREEN replaces the directly recursive alias with explicit readonly array
+and readonly string-indexed record interfaces, and preserves the existing
+record runtime condition through a normalized-record predicate so strict
+TypeScript can narrow the union. It also adds `isHash`, a real template-literal
+type predicate, and uses it at both `requiredHash` return sites. There are no
+casts, assertions, `any`, or `unknown` laundering, and no test edit. The
+pre-commit `npm run typecheck` exits `0`; all final-SHA admission commands are
+rerun after this commit.

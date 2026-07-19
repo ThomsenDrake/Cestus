@@ -30,7 +30,13 @@ const idnaDotEquivalentInOriginalPattern = /[\u3002\uFF0E\uFF61]/u;
 const releasedVersionPattern = /^(?:agent-provider-auth|policy|adapter)\.v1$/;
 const p2ReleasedVersionPattern = /^(?:agent-provider-configuration|mounted-provider-authority-readback)\.v1$/;
 
-type NormalizedValue = string | number | boolean | null | readonly NormalizedValue[] | Readonly<Record<string, NormalizedValue>>;
+interface NormalizedArray extends ReadonlyArray<NormalizedValue> {}
+
+interface NormalizedRecord {
+  readonly [key: string]: NormalizedValue;
+}
+
+type NormalizedValue = string | number | boolean | null | NormalizedArray | NormalizedRecord;
 
 export interface ResidentLoopProviderPosture {
   readonly schemaVersion: "resident-loop-provider-posture.v1";
@@ -590,8 +596,12 @@ function requireExactRecord(value: NormalizedValue, keys: readonly string[]): Re
 }
 
 function requireRecord(value: NormalizedValue): Readonly<Record<string, NormalizedValue>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) throw unavailable();
+  if (!isNormalizedRecord(value)) throw unavailable();
   return value;
+}
+
+function isNormalizedRecord(value: NormalizedValue): value is NormalizedRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function requiredValue(record: Readonly<Record<string, NormalizedValue>>, key: string): NormalizedValue {
@@ -618,7 +628,7 @@ function requiredPatternString(
 
 function requiredHash(record: Readonly<Record<string, NormalizedValue>>, key: string): `sha256:${string}` {
   const value = requiredString(record, key);
-  if (!hashPattern.test(value)) throw unavailable();
+  if (!isHash(value)) throw unavailable();
   return value;
 }
 
@@ -663,8 +673,12 @@ function requiredPatternUnknown(record: Readonly<Record<string, unknown>>, key: 
 
 function requiredHashUnknown(record: Readonly<Record<string, unknown>>, key: string): `sha256:${string}` {
   const value = requiredUnknownString(record, key);
-  if (!hashPattern.test(value)) throw unavailable();
+  if (!isHash(value)) throw unavailable();
   return value;
+}
+
+function isHash(value: string): value is `sha256:${string}` {
+  return hashPattern.test(value);
 }
 
 function requiredNonnegativeIntegerUnknown(record: Readonly<Record<string, unknown>>, key: string): number {
