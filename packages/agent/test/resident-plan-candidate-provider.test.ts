@@ -229,6 +229,11 @@ describe("resident plan candidate provider", () => {
 
   it("rejects invalid steps and every wider or substituted replan before it can become a candidate", async () => {
     const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    await provider.createInitialCandidate(deepFreeze({
+      plan: initialPlan,
+      providerPosture: posture,
+      policyConstraints: constraints
+    }));
     const base = deepFreeze({
       plan: replan,
       providerPosture: posture,
