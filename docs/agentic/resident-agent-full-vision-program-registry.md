@@ -20996,3 +20996,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   are backlog.
 - Strict prefix remains 17. PM production, integration, release, provider/
   network/credential effects, push, and `neo` remain untouched.
+
+## RV-1-E-758 — Task139-PM direct-source assurance approved and integrated
+
+- Recorded at: 2026-07-19T01:43:25Z
+- Architecture/invariants task
+  `019f7801-f10e-7300-8f04-14d5b7beb2dc` and
+  executability/adversarial task
+  `019f7801-f128-7a41-a78e-0cb96e5023eb` both return **APPROVE** on exact
+  assurance candidate `23e4299530e0946f5974a5089563608ed1013978` with no
+  reproduced P0/P1 finding. Both reviews are read-only and change no file.
+  The executability reviewer independently reproduces all 17 targeted commands,
+  the exact repository prefix marker and incomplete-29 boundary, raw record-11
+  binding, pre-record-18 source currentness, record-18 target currentness, and
+  non-blob/blob-mismatch rejection.
+- The coordinator integrates the complete assurance history without rewrite as
+  merge `e0e635e427e9e4719db4b186240c674ef117ddf1`, preserving every stopped
+  RED, corrected RED, pin-audit RED, registry-only forward merge, and GREEN.
+  V1-V3, raw records 1-17, all 29 IDs/order, existing transfers, and prior
+  evidence remain byte-identical.
+- Status advances the bounded correction `reviewing -> approved -> integrated`.
+  Task139-PM now has the exact V4 prerequisite and six-path ownership boundary;
+  Task137B-W remains current-HEAD owner of the three direct-source paths until
+  strict record 18 exists.
+- The coordinator will forward-merge this current program head into the same
+  Task139-PM branch, preserving claim `b47db7b...` and causal RED `8479f8ec...`,
+  then resume the same Terra/xhigh owner for one minimal GREEN. GREEN may add
+  only the PM-specific static inspection seam, exact import-policy permission,
+  PM source, and claim evidence within the corrected six paths. The focused
+  test stays byte-identical. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task.
+- Strict prefix remains 17. No release record, provider/network/credential
+  effect, push, or `neo` action occurs at this transition.
