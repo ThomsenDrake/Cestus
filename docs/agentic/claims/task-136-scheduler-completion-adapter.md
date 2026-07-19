@@ -88,3 +88,18 @@ swapped/cross-request/cross-run/stale/unreadable locators, result mismatches,
 and concurrent terminalization. Only an independently appended causally bound
 domain result may authorize completion. No later automatic G136-SC repair is
 permitted.
+
+## RV-1-E-801 released-domain-lineage recovery
+
+Status advances from `candidate` to `implementing-repair` under the standing
+contract-determined recovery authorization. The forward-merged record-21
+authority identified that three released domain verticals retain their own
+append-only domain causation chains after the exact execution claim. This
+recovery adds one causal RED and one minimal GREEN only within the existing
+eleven-path V4 boundary. The adapter must bind every post-claim non-agent
+result either directly to the exact claim or through durable ancestry to the
+exact request's frozen source-event lineage; ordering alone is insufficient.
+It retains exact request/run/tool/version/preview/claim and current-stream
+checks, rejects unrelated, swapped, cross-request/run, self-minted gateway or
+resident bookkeeping, pre-claim, duplicate, unreadable, stale, terminal, and
+concurrent evidence, and never restores public `completeTool` compatibility.
