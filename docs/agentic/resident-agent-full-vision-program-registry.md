@@ -21342,3 +21342,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   contract/checker/V1-V3/raw records 1-18/all 29 IDs/order, full bounded gates,
   and a fresh concurrent Terra/xhigh review pair remain mandatory. Strict
   prefix remains 18; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-766 — Record-18 assurance correction approved
+
+- Recorded at: 2026-07-19T03:43:32Z
+- Preserved assurance candidate `b843ff25b116701319bcec6436e74419f63e377c`
+  retains forward-merge `41ae93ab`, claim-only causal RED `a64f22a0`, and
+  minimal GREEN `b843ff25` without rewriting either program or assurance
+  history. Cumulative correction scope is exactly the V4 assurance test and
+  V4 claim.
+- Fresh concurrent Terra/xhigh read-only architecture review task
+  `019f7871-9080-72d1-baa8-89f61c923fa6` and executability/adversarial review
+  task `019f7871-923d-7052-9c1c-5ee29bb7c463` both approve with no reproduced
+  P0/P1 finding.
+- Review evidence reproduces **19/19 assurance tests**, all four exact V4
+  markers, typecheck, factory readiness, diff hygiene, exact scope, clean
+  state, real non-symlinked dependencies, and repository prefix
+  `records=18 commands=18` followed by the expected incomplete-29 boundary.
+  Historical record-17 source-current ownership and record-18 finite transfer
+  activation remain fail-closed and fully verified.
+- Contract/checker bytes, V1-V3, raw records 1-18, all 29 card IDs/order, and
+  existing release evidence remain byte-identical. Status advances record-18
+  assurance `reviewing -> approved`; the coordinator will integrate the full
+  preserved history and refresh Task136-FC-Core onto that corrected base.
+  Strict prefix remains 18; no push, external effect, or `neo` action occurs.
