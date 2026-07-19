@@ -103,3 +103,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 ## RV-1-E-835 GREEN
 
 - GREEN retains RED test blob `ceb68bd9b257c96c2970ab258fed969ef25f6e7d` and derives accepted global approval classes from released `approvalClassForSideEffect` across the closed resident side-effect set, plus `human-review`.
+
+## RV-1-E-836 Compiler RED
+
+- From authority `d49f8fd515d2a6efccd76ea045518945a9bb70a3`, standalone typecheck exits `2` with exactly `packages/agent/src/resident-plan-candidate-provider.ts(278,105): error TS2345: Argument of type 'string' is not assignable to parameter of type 'AgentApprovalClass'.` Production is byte-identical; no runtime test is added because the committed RED already proves unsupported global approval rejection.
