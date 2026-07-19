@@ -1,6 +1,7 @@
 import { isIP } from "node:net";
 import { types } from "node:util";
 import { isAgentSecretSafeText } from "./secret-safety.js";
+import { approvalClassForSideEffect } from "./permission-policy.js";
 
 type NormalizedValue = string | number | boolean | null | NormalizedRecord | NormalizedArray;
 
@@ -47,6 +48,7 @@ const runModes = new Set([
   "timeline-builder", "contradiction-finder", "report-builder", "memory-curation"
 ]);
 const permittedAutomaticActionClasses = new Set(["read-only", "local-derivative", "ledger-proposal"]);
+const residentSideEffectClasses = new Set(["read-only", "local-derivative", "ledger-proposal", "external-byte-transfer", "external-message-send", "legal-escalation", "export-or-publication", "destructive-or-repair", "ledger-review"]);
 const outputClasses = new Set(["observation", "derivative", "proposal", "approval-request"]);
 const budgetFields = [
   "planRevisions", "observationRecords", "toolSteps", "providerInvocations", "providerRequestBytes",
@@ -255,8 +257,10 @@ function validateConstraints(constraints: NormalizedRecord): void {
     safe(toolId); safe(toolVersion); hash(string(record, "allowlistEntryHash"));
     if (!outputClasses.has(string(record, "expectedSafeOutputClass"))) throw unavailable();
     validatePrerequisites(requireArray(record, "prerequisiteStepOrdinals"), Number.MAX_SAFE_INTEGER);
-    safe(string(record, "sideEffectClass"));
-    safe(string(record, "requiredApprovalClass"));
+    const sideEffectClass = string(record, "sideEffectClass");
+    const requiredApprovalClass = string(record, "requiredApprovalClass");
+    const baselineApproval = approvalClassForSideEffect(sideEffectClass);
+    if (!residentSideEffectClasses.has(sideEffectClass) || (requiredApprovalClass !== baselineApproval && !(baselineApproval === "none" && requiredApprovalClass === "human-review"))) throw unavailable();
     signatures.push(`${toolId}\u0000${toolVersion}\u0000${string(record, "allowlistEntryHash")}`);
   }
   if (new Set(signatures).size !== signatures.length) throw unavailable();
@@ -535,8 +539,8 @@ function safe(candidate: string): void {
 }
 
 function hasDnsHostMaterial(value: string): boolean {
-  if (canonicalIsoTimestampPattern.test(value)) return false;
-  const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
+  const classificationText = value.normalize("NFKC").replace(idnaDotEquivalentPattern, ".");
+  if (canonicalIsoTimestampPattern.test(classificationText)) return false;
   for (const match of classificationText.matchAll(dnsHostTokenPattern)) {
     const token = match[1];
     if (token !== undefined && !releasedDottedVersionPattern.test(token)) return true;
@@ -545,7 +549,7 @@ function hasDnsHostMaterial(value: string): boolean {
 }
 
 function hasIpAddress(value: string): boolean {
-  const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
+  const classificationText = value.normalize("NFKC").replace(idnaDotEquivalentPattern, ".");
   if (canonicalIsoTimestampPattern.test(classificationText) || releasedDottedVersionPattern.test(classificationText)) return false;
   const tokens = classificationText.match(ipShapedTokenPattern);
   if (tokens !== null && tokens.some((token) => {
