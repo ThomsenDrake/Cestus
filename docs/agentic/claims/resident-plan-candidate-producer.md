@@ -91,3 +91,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 ## RV-1-E-833 Causal RED
 
 - Authority `e6be0398a9017ed256ea43569490ccd998359def` authorizes six frozen cases: stale/newer high-water binding, omitted global allowlist approval, two revision-zero budget facts, and second-initial state replacement. Production remains unchanged through this RED.
+
+## RV-1-E-833 GREEN
+
+- GREEN preserves RED test blob `5b805082725285eabf1492422c9ae45fb1ecb5e3`, binds source tail/high-water, closes allowlist approvals globally, enforces zero initial budget accounting, and prevents second initial state mutation.
