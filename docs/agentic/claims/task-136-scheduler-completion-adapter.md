@@ -165,3 +165,10 @@ result event context. It preserves the exact execution-claim causation,
 per-request correlation, payload, interleaving behavior, and assertions. It
 must not weaken RV-1-E-806's production actor boundary, alter any API/event
 type/descriptor/expectation, expand scope, or change Task9 bytes.
+
+GREEN adds the one explicit `fakeDomainServiceActor` with canonical `system`
+kind and uses it only as `appendFakeDomainResult`'s `evidence.ingested`
+context actor. The helper keeps the exact claim causation, request correlation,
+payload, read-model result, and concurrent-terminal interleaving behavior, so
+the fixture now models an independently appended domain result rather than a
+resident-authored result.
