@@ -2,6 +2,8 @@ import { isProxy } from "node:util/types";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { residentLoopStreamId } from "./plan-observation-contracts.js";
+import type { AgentApprovalClass } from "./permission-policy.js";
+import type { AgentToolSideEffectClass } from "./projection-types.js";
 import {
   createResidentLoopSchedulerCompletionAdapter,
   type ResidentLoopSchedulerCompletionEvidence
@@ -11,7 +13,6 @@ import type {
   AgentToolReadModelChange,
   AgentToolResult,
   AgentToolPreview,
-  AgentToolSideEffectClass,
   RequestAgentToolInput
 } from "./tool-gateway.js";
 
@@ -106,7 +107,7 @@ export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInpu
         toolId: command.toolId,
         toolVersion: command.toolVersion,
         sideEffectClass: command.sideEffectClass,
-        requiredApprovalClass: command.approvalClass as RequestAgentToolInput["requiredApprovalClass"],
+        requiredApprovalClass: command.approvalClass as AgentApprovalClass,
         preview,
         scope: command.preview.scope,
         estimatedEffect: command.preview.estimatedEffect,
