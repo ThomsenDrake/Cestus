@@ -24262,3 +24262,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   exact SHA `4cbc8824cc63c097d6269e863075167b8d84f636`; SDD/TDD is not relevant
   or authorized for reviewers. No integration, record 25, push, external
   effect, or `neo` action occurs before dual approval.
+
+## RV-1-E-847 — Task121 approved for integration
+
+- Recorded at: 2026-07-19T18:58:10Z
+- Fresh post-repair read-only Terra/xhigh architecture/invariants task
+  `019f7bb4-87d0-7df0-94ed-563edca5792c` returns `APPROVED` on exact
+  candidate `4cbc8824cc63c097d6269e863075167b8d84f636`. It confirms the repair
+  removes only approval-pending raw completion, preserves draft/request
+  provenance and the running projection, and leaves the ready-for-review V2
+  authority lifecycle unchanged.
+- Fresh post-repair read-only Terra/xhigh executability/adversarial task
+  `019f7bb4-924f-7a02-8c1d-e33608d78838` independently returns `APPROVED`.
+  It reproduces focused **15/15**, cross-boundary **105/105**, waiting
+  noncompletion/event-ID exclusion, ready lifecycle ordering/readback,
+  stale/swapped authority, restart, unreadable-store, and no-send cases, plus
+  typecheck, assurance, V4 markers, factory, scope, and clean state.
+- Coordinator isolated admission supplies the exact repository **24/24** then
+  incomplete-29/found-24 boundary and full/verify **12 files / 60 failures /
+  2,820 passes / 5 skips** differential. Neither reviewer reproduces another
+  P0/P1; P2, hypothetical, and style concerns remain non-blocking backlog.
+- Coordinator adjudication accepts both verdicts. Every original candidate,
+  first review, failed-oracle RED, oracle checkpoint, corrected RED, minimal
+  GREEN, and final review remains preserved. Status advances Task121
+  `reviewing -> approved`; the complete chain will now be integrated and
+  reverified before strict record 25. No push, external effect, or `neo`
+  action occurs.
