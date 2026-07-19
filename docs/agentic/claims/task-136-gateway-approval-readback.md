@@ -113,3 +113,11 @@ two diagnostics and changes no production behavior. One minimal forward GREEN
 will import the side-effect type from its owning module and cast the already
 validated non-`none` approval class to its required non-optional type. No
 other path, completion route, or authority changes.
+
+## RV-1-E-732 Compiler GREEN
+
+The forward GREEN makes exactly the two diagnosed type corrections in the
+owned bridge source: it imports `AgentToolSideEffectClass` from
+`projection-types.js`, and uses the required `AgentApprovalClass` after the
+bridge has rejected `none`. It changes no runtime flow, ledger write, preview,
+approval predicate, completion route, or test assertion.
