@@ -1,0 +1,520 @@
+import { isIP } from "node:net";
+import { types } from "node:util";
+import { isAgentSecretSafeText } from "./secret-safety.js";
+
+type NormalizedValue = string | number | boolean | null | NormalizedRecord | NormalizedArray;
+
+interface NormalizedRecord {
+  readonly [key: string]: NormalizedValue;
+}
+
+interface NormalizedArray extends ReadonlyArray<NormalizedValue> {}
+
+export interface ResidentInitialPlanCandidate {
+  readonly schemaVersion: "resident-initial-plan-candidate.v1";
+  readonly plan: NormalizedRecord;
+  readonly providerPosture: NormalizedRecord;
+  readonly policyConstraints: NormalizedRecord;
+}
+
+export interface ResidentReplanCandidate {
+  readonly schemaVersion: "resident-replan-candidate.v1";
+  readonly plan: NormalizedRecord;
+  readonly providerPosture: NormalizedRecord;
+  readonly policyConstraints: NormalizedRecord;
+}
+
+export interface ResidentPlanCandidateProvider {
+  createInitialCandidate(input: unknown): Promise<ResidentInitialPlanCandidate>;
+  createReplanCandidate(input: unknown): Promise<ResidentReplanCandidate>;
+}
+
+const hashPattern = /^sha256:[a-f0-9]{64}$/;
+const eventPattern = /^evt_[a-zA-Z0-9_-]+$/;
+const planPattern = /^plan_[a-zA-Z0-9_-]+$/;
+const urlSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
+const localhostPattern = /\blocalhost\b/i;
+const hostPattern = /(?:^|[^a-z0-9])(?:[a-z0-9-]+\.)+[a-z]{2,}(?=$|[^a-z0-9])/i;
+const rawCommandPattern = /(?:^|\s)(?:curl|wget|bash|sh|zsh|powershell|cmd)(?:\s|$)/i;
+const outputClasses = new Set(["observation", "derivative", "proposal", "approval-request"]);
+const budgetFields = [
+  "planRevisions", "observationRecords", "toolSteps", "providerInvocations", "providerRequestBytes",
+  "providerResponseBytes", "contextBytes", "derivativeArtifactBytes", "activeExecutionMs", "approvalSuspensionMs"
+] as const;
+const hardMaximums: Readonly<Record<typeof budgetFields[number], number>> = Object.freeze({
+  planRevisions: 3,
+  observationRecords: 16,
+  toolSteps: 12,
+  providerInvocations: 3,
+  providerRequestBytes: 1048576,
+  providerResponseBytes: 1048576,
+  contextBytes: 1048576,
+  derivativeArtifactBytes: 16777216,
+  activeExecutionMs: 900000,
+  approvalSuspensionMs: 86400000
+});
+
+/**
+ * Produces frozen, untrusted plan candidates only. It neither appends nor
+ * authorizes a plan; the later CF-1/Task136 boundary reparses this data.
+ */
+export function createResidentPlanCandidateProvider(): ResidentPlanCandidateProvider {
+  let latest: ResidentInitialPlanCandidate | ResidentReplanCandidate | undefined;
+
+  return Object.freeze({
+    async createInitialCandidate(input: unknown): Promise<ResidentInitialPlanCandidate> {
+      try {
+        const envelope = exactRecord(input, ["plan", "providerPosture", "policyConstraints"]);
+        const plan = requireRecord(envelope, "plan");
+        const providerPosture = requireRecord(envelope, "providerPosture");
+        const policyConstraints = requireRecord(envelope, "policyConstraints");
+        validatePlan(plan, providerPosture, policyConstraints);
+        if (number(plan, "planRevision") !== 0 || value(plan, "priorPlanReadback") !== null || value(plan, "replanObservationReadback") !== null) {
+          throw unavailable();
+        }
+        const candidate = freezeInitial(plan, providerPosture, policyConstraints);
+        latest = candidate;
+        return candidate;
+      } catch {
+        throw unavailable();
+      }
+    },
+
+    async createReplanCandidate(input: unknown): Promise<ResidentReplanCandidate> {
+      try {
+        const envelope = exactRecord(input, [
+          "plan", "providerPosture", "policyConstraints", "priorPlanReadback", "replanObservationReadback"
+        ]);
+        const plan = requireRecord(envelope, "plan");
+        const providerPosture = requireRecord(envelope, "providerPosture");
+        const policyConstraints = requireRecord(envelope, "policyConstraints");
+        const priorPlanReadback = requireRecord(envelope, "priorPlanReadback");
+        const observationReadback = requireRecord(envelope, "replanObservationReadback");
+        if (latest === undefined) throw unavailable();
+        validatePlan(plan, providerPosture, policyConstraints);
+        validateReplan(plan, providerPosture, policyConstraints, priorPlanReadback, observationReadback, latest);
+        const candidate = freezeReplan(plan, providerPosture, policyConstraints);
+        latest = candidate;
+        return candidate;
+      } catch {
+        throw unavailable();
+      }
+    }
+  });
+}
+
+function validatePlan(plan: NormalizedRecord, posture: NormalizedRecord, constraints: NormalizedRecord): void {
+  requireExactKeys(plan, [
+    "schemaVersion", "residentAgentId", "workspaceId", "taskId", "attemptId", "runId", "runMode", "workflowDescriptor",
+    "policy", "authority", "sourceEventIds", "contextPackRefs", "budget", "causationId", "correlationId", "planId",
+    "planRevision", "priorPlanReadback", "replanObservationReadback", "steps"
+  ]);
+  if (string(plan, "schemaVersion") !== "resident-plan-record.v2" || string(plan, "residentAgentId") !== "agent_default") throw unavailable();
+  requirePattern(string(plan, "workspaceId"), /^ws_[a-zA-Z0-9_-]+$/);
+  for (const key of ["taskId", "attemptId", "runId", "causationId"] as const) requirePattern(string(plan, key), eventOrIdentityPattern(key));
+  requirePattern(string(plan, "planId"), planPattern);
+  if (!Number.isInteger(number(plan, "planRevision")) || number(plan, "planRevision") < 0 || number(plan, "planRevision") > 3) throw unavailable();
+  validateWorkflow(requireRecord(plan, "workflowDescriptor"));
+  validatePolicy(requireRecord(plan, "policy"));
+  validateAuthority(requireRecord(plan, "authority"), plan);
+  validateSources(requireArray(plan, "sourceEventIds"), requireArray(plan, "contextPackRefs"));
+  validateBudget(requireRecord(plan, "budget"));
+  validateConstraints(constraints);
+  validateSteps(requireArray(plan, "steps"), constraints);
+  validatePosture(posture, plan, constraints);
+}
+
+function validateReplan(
+  plan: NormalizedRecord,
+  posture: NormalizedRecord,
+  constraints: NormalizedRecord,
+  priorPlanReadback: NormalizedRecord,
+  observationReadback: NormalizedRecord,
+  prior: ResidentInitialPlanCandidate | ResidentReplanCandidate
+): void {
+  const priorPlan = prior.plan;
+  if (number(plan, "planRevision") !== number(priorPlan, "planRevision") + 1 || string(plan, "planId") === string(priorPlan, "planId")) {
+    throw unavailable();
+  }
+  requireExactKeys(priorPlanReadback, [
+    "planRecordEventId", "workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"
+  ]);
+  requireExactKeys(observationReadback, [
+    "observationEventId", "workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"
+  ]);
+  if (!sameReadback(priorPlanReadback, priorPlan, "planRecordEventId") || !sameReadback(observationReadback, priorPlan, "observationEventId")) {
+    throw unavailable();
+  }
+  const embeddedPrior = requireRecord(plan, "priorPlanReadback");
+  const embeddedObservation = requireRecord(plan, "replanObservationReadback");
+  requireExactKeys(embeddedPrior, [
+    "planRecordEventId", "workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision", "priorPlanRecordEventId"
+  ]);
+  if (string(embeddedPrior, "priorPlanRecordEventId") !== string(priorPlanReadback, "planRecordEventId") || !sameRecordExcept(embeddedPrior, priorPlanReadback, "priorPlanRecordEventId")) {
+    throw unavailable();
+  }
+  if (!sameRecord(embeddedObservation, observationReadback)) throw unavailable();
+  for (const key of [
+    "residentAgentId", "workspaceId", "taskId", "attemptId", "runId", "runMode", "workflowDescriptor", "policy", "authority",
+    "sourceEventIds", "contextPackRefs", "causationId", "correlationId"
+  ] as const) {
+    if (!sameValue(value(plan, key), value(priorPlan, key))) throw unavailable();
+  }
+  if (!sameRecord(posture, prior.providerPosture) || !isConstraintSubset(constraints, prior.policyConstraints)) throw unavailable();
+  if (!isBudgetNarrower(requireRecord(plan, "budget"), requireRecord(priorPlan, "budget"))) throw unavailable();
+  const priorSteps = requireArray(priorPlan, "steps");
+  for (const step of requireArray(plan, "steps")) {
+    if (!(step instanceof Object) || Array.isArray(step)) throw unavailable();
+    const ordinal = number(step as NormalizedRecord, "ordinal");
+    const matching = priorSteps.find((candidate) => number(candidate as NormalizedRecord, "ordinal") === ordinal);
+    if (matching === undefined || !sameRecord(step as NormalizedRecord, matching as NormalizedRecord)) throw unavailable();
+  }
+}
+
+function validateWorkflow(workflow: NormalizedRecord): void {
+  requireExactKeys(workflow, ["workflowDescriptorId", "workflowDescriptorVersion", "workflowDescriptorHash"]);
+  requirePattern(string(workflow, "workflowDescriptorId"), /^workflow_[a-zA-Z0-9_-]+$/);
+  safe(string(workflow, "workflowDescriptorVersion"));
+  hash(string(workflow, "workflowDescriptorHash"));
+}
+
+function validatePolicy(policy: NormalizedRecord): void {
+  requireExactKeys(policy, ["policyId", "policyVersion", "policyHash"]);
+  requirePattern(string(policy, "policyId"), /^agent_policy_[a-zA-Z0-9_-]+$/);
+  safe(string(policy, "policyVersion"));
+  hash(string(policy, "policyHash"));
+}
+
+function validateAuthority(authority: NormalizedRecord, plan: NormalizedRecord): void {
+  requireExactKeys(authority, [
+    "workspaceIdentityHash", "mountGeneration", "ledgerStoreIdentity", "artifactStoreIdentity", "ledgerHighWaterEventId", "policyHash", "activeLocksHash"
+  ]);
+  for (const key of ["workspaceIdentityHash", "policyHash", "activeLocksHash"] as const) hash(string(authority, key));
+  for (const key of ["mountGeneration", "ledgerStoreIdentity", "artifactStoreIdentity"] as const) safe(string(authority, key));
+  requirePattern(string(authority, "ledgerHighWaterEventId"), eventPattern);
+  if (string(authority, "policyHash") !== string(requireRecord(plan, "policy"), "policyHash")) throw unavailable();
+}
+
+function validateSources(sourceIds: NormalizedArray, contextRefs: NormalizedArray): void {
+  if (sourceIds.length === 0 || contextRefs.length === 0) throw unavailable();
+  validateOrderedUniqueStrings(sourceIds, eventPattern);
+  const contextIds: string[] = [];
+  for (const reference of contextRefs) {
+    const record = requireNormalizedRecord(reference);
+    requireExactKeys(record, ["contextPackId", "contentHash"]);
+    const id = string(record, "contextPackId");
+    requirePattern(id, /^context_pack_[a-zA-Z0-9_-]+$/);
+    hash(string(record, "contentHash"));
+    contextIds.push(id);
+  }
+  validateOrderedUniqueStrings(contextIds);
+}
+
+function validateBudget(budget: NormalizedRecord): void {
+  requireExactKeys(budget, ["ceilings", "consumed", "remaining", "actionConsumption"]);
+  const ceilings = requireRecord(budget, "ceilings");
+  const consumed = requireRecord(budget, "consumed");
+  const remaining = requireRecord(budget, "remaining");
+  const actionConsumption = requireRecord(budget, "actionConsumption");
+  for (const record of [ceilings, consumed, remaining, actionConsumption]) requireExactKeys(record, budgetFields);
+  for (const field of budgetFields) {
+    const ceiling = number(ceilings, field);
+    const used = number(consumed, field);
+    const available = number(remaining, field);
+    if (!Number.isInteger(ceiling) || !Number.isInteger(used) || !Number.isInteger(available) || ceiling < 0 || used < 0 || available < 0 || ceiling > hardMaximums[field] || used + available !== ceiling) {
+      throw unavailable();
+    }
+    if (!Number.isInteger(number(actionConsumption, field)) || number(actionConsumption, field) < 0) throw unavailable();
+  }
+}
+
+function validateConstraints(constraints: NormalizedRecord): void {
+  requireExactKeys(constraints, ["toolAllowlist", "permittedAutomaticActionClasses", "requiredApprovalClasses"]);
+  const toolAllowlist = requireArray(constraints, "toolAllowlist");
+  if (toolAllowlist.length === 0) throw unavailable();
+  const signatures: string[] = [];
+  for (const entry of toolAllowlist) {
+    const record = requireNormalizedRecord(entry);
+    requireExactKeys(record, [
+      "toolId", "toolVersion", "allowlistEntryHash", "expectedSafeOutputClass", "prerequisiteStepOrdinals", "sideEffectClass", "requiredApprovalClass"
+    ]);
+    const toolId = string(record, "toolId");
+    const toolVersion = string(record, "toolVersion");
+    safe(toolId); safe(toolVersion); hash(string(record, "allowlistEntryHash"));
+    if (!outputClasses.has(string(record, "expectedSafeOutputClass"))) throw unavailable();
+    validatePrerequisites(requireArray(record, "prerequisiteStepOrdinals"), Number.MAX_SAFE_INTEGER);
+    safe(string(record, "sideEffectClass"));
+    safe(string(record, "requiredApprovalClass"));
+    signatures.push(`${toolId}\u0000${toolVersion}\u0000${string(record, "allowlistEntryHash")}`);
+  }
+  if (new Set(signatures).size !== signatures.length) throw unavailable();
+  validateUniqueStrings(requireArray(constraints, "permittedAutomaticActionClasses"));
+  validateUniqueStrings(requireArray(constraints, "requiredApprovalClasses"));
+}
+
+function validateSteps(steps: NormalizedArray, constraints: NormalizedRecord): void {
+  if (steps.length === 0) throw unavailable();
+  const allowed = requireArray(constraints, "toolAllowlist");
+  for (const [index, stepValue] of steps.entries()) {
+    const step = requireNormalizedRecord(stepValue);
+    requireExactKeys(step, ["ordinal", "purpose", "toolId", "toolVersion", "allowlistEntryHash", "expectedSafeOutputClass", "prerequisiteStepOrdinals"]);
+    if (number(step, "ordinal") !== index + 1) throw unavailable();
+    safe(string(step, "purpose"));
+    safe(string(step, "toolId")); safe(string(step, "toolVersion")); hash(string(step, "allowlistEntryHash"));
+    if (!outputClasses.has(string(step, "expectedSafeOutputClass"))) throw unavailable();
+    validatePrerequisites(requireArray(step, "prerequisiteStepOrdinals"), index + 1);
+    const allowlist = allowed.find((entry) => {
+      const record = requireNormalizedRecord(entry);
+      return string(record, "toolId") === string(step, "toolId") &&
+        string(record, "toolVersion") === string(step, "toolVersion") &&
+        string(record, "allowlistEntryHash") === string(step, "allowlistEntryHash") &&
+        string(record, "expectedSafeOutputClass") === string(step, "expectedSafeOutputClass") &&
+        sameValue(value(record, "prerequisiteStepOrdinals"), value(step, "prerequisiteStepOrdinals"));
+    });
+    if (allowlist === undefined) throw unavailable();
+  }
+}
+
+function validatePosture(posture: NormalizedRecord, plan: NormalizedRecord, constraints: NormalizedRecord): void {
+  requireExactKeys(posture, [
+    "schemaVersion", "residentAgentId", "workspace", "run", "selection", "capability", "credentialReference", "feasibility", "approval", "binding"
+  ]);
+  if (string(posture, "schemaVersion") !== "resident-loop-provider-posture.v1" || string(posture, "residentAgentId") !== string(plan, "residentAgentId")) throw unavailable();
+  const workspace = requireRecord(posture, "workspace");
+  requireExactKeys(workspace, ["workspaceId", "mountInstanceId", "admissionGenerationId", "policyVersion", "policyDigest", "lockStateDigest", "highWaterMark", "highWaterOrdinal"]);
+  const run = requireRecord(posture, "run");
+  requireExactKeys(run, ["taskId", "attemptId", "runId"]);
+  const policy = requireRecord(plan, "policy");
+  const authority = requireRecord(plan, "authority");
+  if (
+    string(workspace, "workspaceId") !== string(plan, "workspaceId") ||
+    string(workspace, "mountInstanceId") !== string(authority, "mountGeneration") ||
+    string(workspace, "policyVersion") !== string(policy, "policyVersion") ||
+    string(workspace, "policyDigest") !== string(policy, "policyHash") ||
+    string(workspace, "lockStateDigest") !== string(authority, "activeLocksHash") ||
+    string(workspace, "highWaterMark") !== string(authority, "ledgerHighWaterEventId") ||
+    number(workspace, "highWaterOrdinal") < 0 ||
+    ["taskId", "attemptId", "runId"].some((key) => string(run, key) !== string(plan, key))
+  ) throw unavailable();
+  const selection = requireRecord(posture, "selection");
+  requireExactKeys(selection, ["providerId", "modelId", "adapterVersion", "selectionPolicyVersion", "endpointPolicyId"]);
+  const capability = requireRecord(posture, "capability");
+  requireExactKeys(capability, ["capabilityId", "capabilityVersion", "capabilityHash", "capabilitySourceEventId", "capabilityRevision"]);
+  const credentialReference = requireRecord(posture, "credentialReference");
+  requireExactKeys(credentialReference, ["credentialRefId", "credentialKind", "sourceEventIds"]);
+  const feasibility = requireRecord(posture, "feasibility");
+  requireExactKeys(feasibility, ["feasibilityId", "lane", "assessedAt", "sourceEventIds"]);
+  const approval = requireRecord(posture, "approval");
+  requireExactKeys(approval, ["required", "approvalProfile", "requiredApprovalClass"]);
+  const binding = requireRecord(posture, "binding");
+  requireExactKeys(binding, ["promptArtifactHash", "approvalPreviewHash"]);
+  if (
+    string(selection, "providerId") !== string(capability, "capabilityId") ||
+    string(selection, "selectionPolicyVersion") !== string(policy, "policyVersion") ||
+    string(capability, "capabilityVersion") !== "agent-provider-capability.v2" ||
+    string(credentialReference, "credentialKind") !== "api-key-bearer" ||
+    string(feasibility, "lane") !== "byok" ||
+    boolean(approval, "required") !== true ||
+    string(approval, "approvalProfile") !== "remote-byte-transfer-gated" ||
+    !requireArray(constraints, "requiredApprovalClasses").includes(string(approval, "requiredApprovalClass"))
+  ) throw unavailable();
+  for (const record of [workspace, selection, capability, credentialReference, feasibility, approval, binding]) assertSafeRecordStrings(record);
+  hash(string(binding, "promptArtifactHash")); hash(string(binding, "approvalPreviewHash"));
+  validateOrderedUniqueStrings(requireArray(credentialReference, "sourceEventIds"), eventPattern);
+  validateOrderedUniqueStrings(requireArray(feasibility, "sourceEventIds"), eventPattern);
+}
+
+function sameReadback(readback: NormalizedRecord, plan: NormalizedRecord, idKey: "planRecordEventId" | "observationEventId"): boolean {
+  if (!eventPattern.test(string(readback, idKey))) return false;
+  for (const key of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+    if (!sameValue(value(readback, key), value(plan, key))) return false;
+  }
+  return true;
+}
+
+function isConstraintSubset(next: NormalizedRecord, prior: NormalizedRecord): boolean {
+  for (const key of ["permittedAutomaticActionClasses", "requiredApprovalClasses"] as const) {
+    const existing = requireArray(prior, key);
+    if (requireArray(next, key).some((entry) => !existing.includes(entry))) return false;
+  }
+  const previousTools = requireArray(prior, "toolAllowlist");
+  return requireArray(next, "toolAllowlist").every((entry) => previousTools.some((previous) => sameValue(entry, previous)));
+}
+
+function isBudgetNarrower(next: NormalizedRecord, prior: NormalizedRecord): boolean {
+  const nextCeilings = requireRecord(next, "ceilings");
+  const previousCeilings = requireRecord(prior, "ceilings");
+  const nextConsumed = requireRecord(next, "consumed");
+  const previousConsumed = requireRecord(prior, "consumed");
+  const action = requireRecord(next, "actionConsumption");
+  if (number(action, "planRevisions") !== 1) return false;
+  for (const field of budgetFields) {
+    if (number(nextCeilings, field) !== number(previousCeilings, field) || number(nextConsumed, field) < number(previousConsumed, field)) return false;
+    if (field !== "planRevisions" && number(action, field) !== 0) return false;
+  }
+  return true;
+}
+
+function freezeInitial(plan: NormalizedRecord, providerPosture: NormalizedRecord, policyConstraints: NormalizedRecord): ResidentInitialPlanCandidate {
+  return Object.freeze({ schemaVersion: "resident-initial-plan-candidate.v1", plan, providerPosture, policyConstraints });
+}
+
+function freezeReplan(plan: NormalizedRecord, providerPosture: NormalizedRecord, policyConstraints: NormalizedRecord): ResidentReplanCandidate {
+  return Object.freeze({ schemaVersion: "resident-replan-candidate.v1", plan, providerPosture, policyConstraints });
+}
+
+function exactRecord(input: unknown, keys: readonly string[]): NormalizedRecord {
+  const record = requireNormalizedRecord(normalizeImmutablePlainData(input));
+  requireExactKeys(record, keys);
+  return record;
+}
+
+function normalizeImmutablePlainData(input: unknown): NormalizedValue {
+  if (input === null || typeof input === "boolean") return input;
+  if (typeof input === "string") return input;
+  if (typeof input === "number") {
+    if (!Number.isFinite(input)) throw unavailable();
+    return input;
+  }
+  if (types.isProxy(input) || typeof input !== "object" || !Object.isFrozen(input)) throw unavailable();
+  if (Array.isArray(input)) {
+    if (Object.getPrototypeOf(input) !== Array.prototype || Object.getOwnPropertyNames(input).length !== input.length + 1 || Reflect.ownKeys(input).some((key) => typeof key !== "string")) throw unavailable();
+    const values: NormalizedValue[] = [];
+    for (let index = 0; index < input.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(input, String(index));
+      if (descriptor === undefined || !("value" in descriptor) || descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) throw unavailable();
+      values.push(normalizeImmutablePlainData(descriptor.value));
+    }
+    return Object.freeze(values);
+  }
+  if (Object.getPrototypeOf(input) !== Object.prototype || Reflect.ownKeys(input).some((key) => typeof key !== "string")) throw unavailable();
+  const output: Record<string, NormalizedValue> = {};
+  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(input))) {
+    if (!("value" in descriptor) || descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) throw unavailable();
+    output[key] = normalizeImmutablePlainData(descriptor.value);
+  }
+  return Object.freeze(output);
+}
+
+function requireNormalizedRecord(value: NormalizedValue): NormalizedRecord {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw unavailable();
+  return value;
+}
+
+function requireRecord(record: NormalizedRecord, key: string): NormalizedRecord {
+  return requireNormalizedRecord(value(record, key));
+}
+
+function requireArray(record: NormalizedRecord, key: string): NormalizedArray {
+  const candidate = value(record, key);
+  if (!Array.isArray(candidate)) throw unavailable();
+  return candidate;
+}
+
+function requireExactKeys(record: NormalizedRecord, expected: readonly string[]): void {
+  const keys = Object.keys(record);
+  if (keys.length !== expected.length || keys.some((key) => !expected.includes(key))) throw unavailable();
+}
+
+function value(record: NormalizedRecord, key: string): NormalizedValue {
+  const candidate = record[key];
+  if (candidate === undefined) throw unavailable();
+  return candidate;
+}
+
+function string(record: NormalizedRecord, key: string): string {
+  const candidate = value(record, key);
+  if (typeof candidate !== "string") throw unavailable();
+  return candidate;
+}
+
+function number(record: NormalizedRecord, key: string): number {
+  const candidate = value(record, key);
+  if (typeof candidate !== "number") throw unavailable();
+  return candidate;
+}
+
+function boolean(record: NormalizedRecord, key: string): boolean {
+  const candidate = value(record, key);
+  if (typeof candidate !== "boolean") throw unavailable();
+  return candidate;
+}
+
+function validatePrerequisites(prerequisites: NormalizedArray, ordinal: number): void {
+  const values: number[] = [];
+  for (const prerequisite of prerequisites) {
+    if (typeof prerequisite !== "number" || !Number.isInteger(prerequisite) || prerequisite < 1 || prerequisite >= ordinal) throw unavailable();
+    values.push(prerequisite);
+  }
+  if (new Set(values).size !== values.length || values.some((entry, index) => index > 0 && entry <= values[index - 1]!)) throw unavailable();
+}
+
+function validateOrderedUniqueStrings(values: readonly NormalizedValue[] | readonly string[], pattern?: RegExp): void {
+  const strings = values.map((value) => {
+    if (typeof value !== "string") throw unavailable();
+    if (pattern !== undefined) requirePattern(value, pattern);
+    safe(value);
+    return value;
+  });
+  if (new Set(strings).size !== strings.length || strings.some((entry, index) => index > 0 && entry.localeCompare(strings[index - 1]!) <= 0)) throw unavailable();
+}
+
+function validateUniqueStrings(values: readonly NormalizedValue[] | readonly string[]): void {
+  const strings = values.map((value) => {
+    if (typeof value !== "string") throw unavailable();
+    safe(value);
+    return value;
+  });
+  if (new Set(strings).size !== strings.length) throw unavailable();
+}
+
+function assertSafeRecordStrings(record: NormalizedRecord): void {
+  for (const [key, candidate] of Object.entries(record)) {
+    if (typeof candidate === "string") {
+      if (key === "credentialKind" && candidate === "api-key-bearer") continue;
+      safe(candidate);
+    }
+  }
+}
+
+function safe(candidate: string): void {
+  if (!isAgentSecretSafeText(candidate) || (!hashPattern.test(candidate) && urlSchemePattern.test(candidate)) || localhostPattern.test(candidate) || hostPattern.test(candidate) || rawCommandPattern.test(candidate) || isIP(candidate) !== 0) {
+    throw unavailable();
+  }
+}
+
+function hash(candidate: string): void {
+  if (!hashPattern.test(candidate)) throw unavailable();
+}
+
+function requirePattern(candidate: string, pattern: RegExp): void {
+  if (!pattern.test(candidate)) throw unavailable();
+  safe(candidate);
+}
+
+function eventOrIdentityPattern(key: "taskId" | "attemptId" | "runId" | "causationId"): RegExp {
+  if (key === "causationId") return eventPattern;
+  return new RegExp(`^${key.slice(0, -2)}_[a-zA-Z0-9_-]+$`);
+}
+
+function sameRecord(left: NormalizedRecord, right: NormalizedRecord): boolean {
+  return sameValue(left, right);
+}
+
+function sameRecordExcept(left: NormalizedRecord, right: NormalizedRecord, except: string): boolean {
+  const leftKeys = Object.keys(left).filter((key) => key !== except);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length && leftKeys.every((key) => sameValue(left[key], right[key]));
+}
+
+function sameValue(left: NormalizedValue | undefined, right: NormalizedValue | undefined): boolean {
+  if (left === right) return true;
+  if (left === undefined || right === undefined || left === null || right === null || typeof left !== "object" || typeof right !== "object" || Array.isArray(left) !== Array.isArray(right)) return false;
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length && leftKeys.every((key) => sameValue((left as NormalizedRecord)[key], (right as NormalizedRecord)[key]));
+}
+
+function unavailable(): Error {
+  return new Error("resident plan candidate unavailable");
+}
