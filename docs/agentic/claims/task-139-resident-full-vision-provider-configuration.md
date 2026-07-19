@@ -456,3 +456,17 @@ or fallback.
   consistent fixtures, as do ordinary `policy.v1` prose, canonical
   ISO-millisecond-Z assessment time, and non-host Unicode prose.
 - `npm run typecheck` exits `0` from the RED bytes without diagnostics.
+
+## RV-1-E-750 IDNA-Version-Lookalike Recovery GREEN
+
+- GREEN changes only production source and this claim; the focused test is
+  byte-identical to RED `a1b7dc184cc8992c60925626871af58473136adf`.
+- DNS classification retains local NFC normalization and U+3002/U+FF0E/U+FF61
+  mapping for host detection, but separately records whether an IDNA dot was
+  present in the original text. The exact released-version exemption applies
+  only when no such original separator occurred, so byte-different IDNA
+  lookalikes remain DNS host material. Combining-mark and IDNA host rejection,
+  exact ASCII released versions, and all prior data-only validation boundaries
+  remain unchanged.
+- `npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts`
+  passes: **1 file / 28 tests**. `npm run typecheck` exits `0`.
