@@ -1,6 +1,7 @@
 import { isIP } from "node:net";
 import { types } from "node:util";
 import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
+import { createAgentProviderConfiguration } from "./agent-provider-configuration.js";
 import { inspectMountedProviderAuthority } from "./mounted-provider-authority.js";
 
 const configurationVersion = "agent-provider-configuration.v1";
@@ -15,17 +16,19 @@ const admissionGenerationIdPattern = /^admission_generation_[0-9]+$/;
 const taskIdPattern = /^task_[a-zA-Z0-9_-]+$/;
 const attemptIdPattern = /^attempt_[a-zA-Z0-9_-]+$/;
 const runIdPattern = /^run_[a-zA-Z0-9_-]+$/;
-const providerIdPattern = /^provider_[a-zA-Z0-9_-]+$/;
-const credentialRefIdPattern = /^agent_credref_[a-zA-Z0-9_-]+$/;
-const endpointPolicyIdPattern = /^endpoint_policy_[a-zA-Z0-9_-]+$/;
-const feasibilityIdPattern = /^provider_feasibility_[a-zA-Z0-9_-]+$/;
 const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const hashPattern = /^sha256:[a-f0-9]{64}$/;
 const timestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-const endpointUriPattern = /\b(?:https?|wss?|file):\/\//i;
+const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
+const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
+const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9])((?:[0-9a-fx]+\.)+[0-9a-fx]+|0x[0-9a-f]+|\d{8,})(?=$|[^a-z0-9])/gi;
+const wholeNumericUrlHostPattern = /^(?:0x[0-9a-f]+|\d+)(?::\d+)?$/i;
 const localhostPattern = /\blocalhost\b/i;
-const dnsHostPattern = /\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|local|test)\b/i;
-const ipv4Pattern = /\b\d{1,3}(?:\.\d{1,3}){3}\b/;
+const dnsHostTokenPattern = /(?:^|[^\p{L}\p{N}\p{M}_-])((?:[\p{L}\p{N}\p{M}-]+\.)+[\p{L}\p{N}\p{M}-]+)(?=$|[^\p{L}\p{N}\p{M}_-])/gu;
+const idnaDotEquivalentPattern = /[\u3002\uFF0E\uFF61]/gu;
+const idnaDotEquivalentInOriginalPattern = /[\u3002\uFF0E\uFF61]/u;
+const releasedVersionPattern = /^(?:agent-provider-auth|policy|adapter)\.v1$/;
+const p2ReleasedVersionPattern = /^(?:agent-provider-configuration|mounted-provider-authority-readback)\.v1$/;
 
 type NormalizedValue = string | number | boolean | null | readonly NormalizedValue[] | Readonly<Record<string, NormalizedValue>>;
 
@@ -76,6 +79,10 @@ export interface ResidentLoopProviderPosture {
     readonly required: true;
     readonly approvalProfile: "remote-byte-transfer-gated";
     readonly requiredApprovalClass: "provider-byte-transfer";
+  };
+  readonly binding: {
+    readonly promptArtifactHash: `sha256:${string}`;
+    readonly approvalPreviewHash: `sha256:${string}`;
   };
 }
 
@@ -172,39 +179,44 @@ function normalizeConfiguration(value: unknown): ProviderConfigurationSnapshot {
     "version", "capabilities", "credentialReferences", "endpointPolicies", "feasibility"
   ]);
   if (requiredString(configuration, "version") !== configurationVersion) throw unavailable();
+  let released;
+  try {
+    released = createAgentProviderConfiguration(Object.freeze({
+      capabilities: requiredValue(configuration, "capabilities"),
+      credentialReferences: requiredValue(configuration, "credentialReferences"),
+      endpointPolicies: requiredValue(configuration, "endpointPolicies"),
+      feasibility: requiredValue(configuration, "feasibility")
+    }));
+  } catch {
+    throw unavailable();
+  }
 
-  const capabilityRecord = requireExactRecord(exactOne(requiredArray(configuration, "capabilities")), [
-    "capability", "capabilityHash", "capabilitySourceEventId", "capabilityRevision"
-  ]);
-  const capability = requireExactRecord(requiredValue(capabilityRecord, "capability"), [
-    "providerId", "label", "adapterVersion", "backendKind", "modelFamilies", "modalities", "toolSupport",
-    "structuredOutputSupport", "contextLimits", "credentialRequirements", "dataHandlingNotes", "costPolicy",
-    "workspaceScopes", "approvalProfile", "diagnosticContract", "fakeSupport"
-  ]);
-  const providerId = requiredPatternString(capability, "providerId", providerIdPattern);
-  const adapterVersion = requiredString(capability, "adapterVersion");
-  const modelId = exactOne(requiredStringArray(capability, "modelFamilies"));
+  const capabilityRecord = exactOne(released.capabilities);
+  const capability = capabilityRecord.capability;
+  const reference = exactOne(released.credentialReferences);
+  const endpointPolicy = exactOne(released.endpointPolicies);
+  const feasibility = exactOne(released.feasibility);
+  const providerId = capability.providerId;
+  const adapterVersion = capability.adapterVersion;
+  const modelId = exactOne(capability.modelFamilies);
   if (
     capability.backendKind !== "openai-compatible-api" ||
     capability.approvalProfile !== remoteApprovalProfile ||
     capability.costPolicy !== "metered-api" ||
     capability.fakeSupport !== false ||
-    !hasExactCredentialRequirement(capability)
+    capability.credentialRequirements.length !== 1 ||
+    capability.credentialRequirements[0]?.credentialKind !== apiKeyBearer ||
+    capability.credentialRequirements[0]?.required !== true
   ) {
     throw unavailable();
   }
 
-  const capabilityHash = requiredHash(capabilityRecord, "capabilityHash");
-  const capabilitySourceEventId = requiredPatternString(capabilityRecord, "capabilitySourceEventId", eventIdPattern);
-  const capabilityRevision = requiredString(capabilityRecord, "capabilityRevision");
-
-  const reference = requireAllowedRecord(exactOne(requiredArray(configuration, "credentialReferences")), [
-    "credentialRefId", "providerId", "credentialKind", "scopeKind", "capabilityScopes", "safeLabel", "authorizedBy",
-    "authorizedAt", "expiresAt", "rotationDueAt", "revokedAt", "status", "policyVersion", "sourceEventIds"
-  ], ["credentialRefId", "providerId", "credentialKind", "status", "policyVersion", "sourceEventIds"]);
-  const credentialRefId = requiredPatternString(reference, "credentialRefId", credentialRefIdPattern);
-  const credentialSourceEventIds = requiredEventIds(reference, "sourceEventIds");
-  const policyVersion = requiredString(reference, "policyVersion");
+  const capabilityHash = capabilityRecord.capabilityHash;
+  const capabilitySourceEventId = capabilityRecord.capabilitySourceEventId;
+  const capabilityRevision = capabilityRecord.capabilityRevision;
+  const credentialRefId = reference.credentialRefId;
+  const credentialSourceEventIds = reference.sourceEventIds;
+  const policyVersion = reference.policyVersion;
   if (
     reference.providerId !== providerId ||
     reference.credentialKind !== apiKeyBearer ||
@@ -213,11 +225,8 @@ function normalizeConfiguration(value: unknown): ProviderConfigurationSnapshot {
     throw unavailable();
   }
 
-  const endpointPolicy = requireExactRecord(exactOne(requiredArray(configuration, "endpointPolicies")), [
-    "endpointPolicyId", "providerId", "modelId", "adapterVersion", "policyVersion", "scope", "status", "sourceEventIds"
-  ]);
-  const endpointPolicyId = requiredPatternString(endpointPolicy, "endpointPolicyId", endpointPolicyIdPattern);
-  const endpointSourceEventIds = requiredEventIds(endpointPolicy, "sourceEventIds");
+  const endpointPolicyId = endpointPolicy.endpointPolicyId;
+  const endpointSourceEventIds = endpointPolicy.sourceEventIds;
   if (
     endpointPolicy.providerId !== providerId ||
     endpointPolicy.modelId !== modelId ||
@@ -229,14 +238,9 @@ function normalizeConfiguration(value: unknown): ProviderConfigurationSnapshot {
     throw unavailable();
   }
 
-  const feasibility = requireExactRecord(exactOne(requiredArray(configuration, "feasibility")), [
-    "feasibilityId", "state", "lane", "providerId", "modelId", "capabilityHash", "capabilitySourceEventId",
-    "capabilityRevision", "credentialRefId", "credentialKind", "endpointPolicyId", "policyVersion", "assessedAt",
-    "sourceEventIds"
-  ]);
-  const feasibilityId = requiredPatternString(feasibility, "feasibilityId", feasibilityIdPattern);
-  const assessedAt = requiredTimestamp(feasibility, "assessedAt");
-  const feasibilitySourceEventIds = requiredEventIds(feasibility, "sourceEventIds");
+  const feasibilityId = feasibility.feasibilityId;
+  const assessedAt = feasibility.assessedAt;
+  const feasibilitySourceEventIds = feasibility.sourceEventIds;
   const expectedFeasibilitySources = sortedUnique([
     capabilitySourceEventId,
     ...credentialSourceEventIds,
@@ -389,6 +393,10 @@ function buildPosture(
       required: true,
       approvalProfile: remoteApprovalProfile,
       requiredApprovalClass: providerByteTransfer
+    }),
+    binding: Object.freeze({
+      promptArtifactHash: requested.promptArtifactHash,
+      approvalPreviewHash: requested.approvalPreviewHash
     })
   });
 }
@@ -517,39 +525,67 @@ function normalizeImmutableArray(value: readonly unknown[]): readonly Normalized
 
 function isSafeText(value: string): boolean {
   return (isAgentSecretSafeText(value) || value === apiKeyBearer) &&
-    !endpointUriPattern.test(value) &&
-    !localhostPattern.test(value) &&
-    !dnsHostPattern.test(value) &&
-    !hasIpAddress(value);
+    !hasForbiddenTextMaterial(value);
+}
+
+function hasForbiddenTextMaterial(value: string): boolean {
+  if (isCanonicalIsoTimestamp(value) || p2ReleasedVersionPattern.test(value)) return false;
+  return (
+    (!hashPattern.test(value) && uriSchemePattern.test(value)) ||
+    hasIpAddress(value) ||
+    localhostPattern.test(value) ||
+    hasDnsHostMaterial(value)
+  );
+}
+
+function isCanonicalIsoTimestamp(value: string): boolean {
+  if (!timestampPattern.test(value)) return false;
+  const timestamp = Date.parse(value);
+  return !Number.isNaN(timestamp) && new Date(timestamp).toISOString() === value;
+}
+
+function hasDnsHostMaterial(value: string): boolean {
+  const containsIdnaDotEquivalent = idnaDotEquivalentInOriginalPattern.test(value);
+  const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
+  for (const match of classificationText.matchAll(dnsHostTokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && (containsIdnaDotEquivalent || !releasedVersionPattern.test(token))) return true;
+  }
+  return false;
 }
 
 function hasIpAddress(value: string): boolean {
-  for (const token of value.match(ipv4Pattern) ?? []) {
-    if (isIP(token) === 4) return true;
+  const tokens = value.match(ipShapedTokenPattern);
+  return (tokens !== null && tokens.some((token) => {
+    const bracketless = token.startsWith("[") && token.endsWith("]") ? token.slice(1, -1) : token;
+    const scopeIndex = bracketless.indexOf("%");
+    const address = scopeIndex === -1 ? bracketless : bracketless.slice(0, scopeIndex);
+    return isIP(address) !== 0;
+  })) || hasStandardUrlIpv4Host(value);
+}
+
+function hasStandardUrlIpv4Host(value: string): boolean {
+  if (isCanonicalIsoTimestamp(value)) return false;
+  if (wholeNumericUrlHostPattern.test(value) && isStandardUrlIpv4Host(value)) return true;
+  for (const match of value.matchAll(standardUrlIpv4TokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && isStandardUrlIpv4Host(token)) return true;
   }
-  return isIP(value) === 6;
+  return false;
+}
+
+function isStandardUrlIpv4Host(token: string): boolean {
+  try {
+    return isIP(new URL(`http://${token}`).hostname) === 4;
+  } catch {
+    return false;
+  }
 }
 
 function requireExactRecord(value: NormalizedValue, keys: readonly string[]): Readonly<Record<string, NormalizedValue>> {
   const record = requireRecord(value);
   const actualKeys = Object.keys(record);
   if (actualKeys.length !== keys.length || actualKeys.some((key) => !keys.includes(key))) throw unavailable();
-  return record;
-}
-
-function requireAllowedRecord(
-  value: NormalizedValue,
-  allowedKeys: readonly string[],
-  requiredKeys: readonly string[]
-): Readonly<Record<string, NormalizedValue>> {
-  const record = requireRecord(value);
-  const actualKeys = Object.keys(record);
-  if (
-    actualKeys.some((key) => !allowedKeys.includes(key)) ||
-    requiredKeys.some((key) => !actualKeys.includes(key))
-  ) {
-    throw unavailable();
-  }
   return record;
 }
 
@@ -586,36 +622,6 @@ function requiredHash(record: Readonly<Record<string, NormalizedValue>>, key: st
   return value;
 }
 
-function requiredTimestamp(record: Readonly<Record<string, NormalizedValue>>, key: string): string {
-  const value = requiredString(record, key);
-  if (!timestampPattern.test(value) || new Date(value).toISOString() !== value) throw unavailable();
-  return value;
-}
-
-function requiredArray(record: Readonly<Record<string, NormalizedValue>>, key: string): readonly NormalizedValue[] {
-  const value = requiredValue(record, key);
-  if (!Array.isArray(value)) throw unavailable();
-  return value;
-}
-
-function requiredStringArray(record: Readonly<Record<string, NormalizedValue>>, key: string): readonly string[] {
-  const values = requiredArray(record, key);
-  const strings: string[] = [];
-  for (const value of values) {
-    if (typeof value !== "string") throw unavailable();
-    strings.push(value);
-  }
-  return Object.freeze(strings);
-}
-
-function requiredEventIds(record: Readonly<Record<string, NormalizedValue>>, key: string): readonly string[] {
-  const values = requiredStringArray(record, key);
-  if (values.length === 0 || values.some((value) => !eventIdPattern.test(value))) throw unavailable();
-  const canonical = sortedUnique(values);
-  if (!sameStrings(values, canonical)) throw unavailable();
-  return canonical;
-}
-
 function exactOne<T>(values: readonly T[]): T {
   if (values.length !== 1) throw unavailable();
   const value = values[0];
@@ -635,12 +641,6 @@ function sameStrings(left: readonly string[], right: readonly string[]): boolean
 
 function compareStrings(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function hasExactCredentialRequirement(capability: Readonly<Record<string, NormalizedValue>>): boolean {
-  const requirements = requiredArray(capability, "credentialRequirements");
-  const requirement = requireExactRecord(exactOne(requirements), ["credentialKind", "required"]);
-  return requirement.credentialKind === apiKeyBearer && requirement.required === true;
 }
 
 function requiredUnknownValue(record: Readonly<Record<string, unknown>>, key: string): unknown {
