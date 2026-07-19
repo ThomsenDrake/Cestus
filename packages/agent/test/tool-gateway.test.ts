@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
-import { createAgentToolGateway } from "../src/tool-gateway.js";
+import {
+  createAgentToolGateway as createProductionAgentToolGateway,
+  type CompleteAgentToolInput,
+  type CreateAgentToolGatewayInput
+} from "../src/tool-gateway.js";
+import { createResidentLoopSchedulerCompletionAdapter } from "../src/resident-loop-scheduler-completion.js";
 
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+const gatewayDomainServiceActor = { id: "actor_gateway_domain_service", kind: "system" as const, label: "Gateway Domain Service" };
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const policyActor = { id: "actor_policy_guard", kind: "system" as const, label: "Policy Guard" };
 const schedulerActor = { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" };
@@ -11,6 +17,16 @@ const fixedNow = () => "2026-07-07T18:30:00.000Z";
 const stalePreviewHash = "sha256:9999999999999999999999999999999999999999999999999999999999999999";
 
 describe("agent tool gateway", () => {
+  it("does not expose caller-structural tool completion", () => {
+    const gateway = createProductionAgentToolGateway({
+      ledger: new InMemoryEventLedger(),
+      actor: agentActor,
+      now: fixedNow
+    });
+
+    expect(gateway).not.toHaveProperty("completeTool");
+  });
+
   it("records approval-required tool requests without executing them", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
@@ -336,7 +352,7 @@ describe("agent tool gateway", () => {
       toolRequestId: "toolreq_approved_complete",
       approvedPreviewHash: requested.payload.previewHash,
       result: {
-        eventIds: ["evt_prr_sent"],
+        eventIds: [],
         artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
         readModelChanges: [{ projectionName: "agent-tool-requests", change: "Recorded gated completion." }],
         resultSummary: "Approved gated tool completed."
@@ -347,6 +363,8 @@ describe("agent tool gateway", () => {
     expect((await ledger.readAll()).map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved",
+      "agent.tool.execution.claimed",
+      "evidence.ingested",
       "agent.tool.completed"
     ]);
   });
@@ -683,6 +701,8 @@ describe("agent tool gateway", () => {
     expect((await inner.readAll()).map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved",
+      "agent.tool.execution.claimed",
+      "evidence.ingested",
       "agent.tool.denied"
     ]);
   });
@@ -719,11 +739,13 @@ describe("agent tool gateway", () => {
     expect((await inner.readAll()).map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved",
+      "agent.tool.execution.claimed",
+      "evidence.ingested",
       "agent.tool.failed"
     ]);
   });
 
-  it("allows read-only tool completion without approval", async () => {
+  it("does not let a caller complete a read-only tool without an approval claim", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
 
@@ -736,19 +758,12 @@ describe("agent tool gateway", () => {
       sideEffectClass: "read-only",
       preview: { summary: "Read local projection status.", relatedEventIds: ["evt_projection_check"] }
     });
-    const completed = await gateway.completeTool({
-      toolRequestId: "toolreq_projection_read",
-      result: {
-        eventIds: [],
-        artifactHashes: [],
-        readModelChanges: [{ projectionName: "agent-tool-requests", change: "Recorded read-only completion." }],
-        resultSummary: "Read-only projection check completed."
-      }
-    });
-
     expect(requested.payload.requiredApprovalClass).toBe("none");
-    expect(completed.type).toBe("agent.tool.completed");
-    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.completed"]);
+    await expect(gateway.completeTool({
+      toolRequestId: "toolreq_projection_read",
+      result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
+    })).rejects.toThrow(/approved tool request/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
   });
 
   it("rejects forged approval causation on no-approval requests", async () => {
@@ -797,7 +812,7 @@ describe("agent tool gateway", () => {
           resultSummary: "Should not complete."
         }
       })
-    ).rejects.toThrow(/approval/i);
+    ).rejects.toThrow(/approved tool request/i);
 
     expect((await ledger.readAll()).map((event) => event.type)).toEqual([
       "agent.tool.requested",
@@ -833,7 +848,7 @@ describe("agent tool gateway", () => {
     );
 
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toMatch(/event id/i);
+    expect((error as Error).message).toMatch(/approved tool request/i);
     expect((error as Error).message).not.toContain(badEventId);
     expect((error as Error).message).not.toMatch(/sk[_-]live/i);
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
@@ -860,22 +875,7 @@ describe("agent tool gateway", () => {
       }
     });
 
-    const completed = await gateway.completeTool({
-      toolRequestId: "toolreq_preview_domain_fields",
-      result: {
-        eventIds: ["evt_projection_result"],
-        artifactHashes: ["sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"],
-        readModelChanges: [{
-          projectionName: "agent-tool-requests",
-          change: "Recorded projection read.",
-          relatedIds: ["projection-agent-tool-requests"]
-        }],
-        resultSummary: "Projection read completed."
-      }
-    });
-
-    expect(completed.type).toBe("agent.tool.completed");
-    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.completed"]);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
   });
 
   it.each([
@@ -1149,9 +1149,12 @@ describe("agent tool gateway", () => {
       sideEffectClass: "read-only",
       preview: { summary: "Read local projection status.", relatedEventIds: ["evt_projection_check"] }
     });
-    await gateway.completeTool({
-      toolRequestId: "toolreq_terminal_completed",
-      result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
+    await ledger.append({
+      type: "agent.tool.completed",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_terminal_completed",
+      context: { actor: agentActor, occurredAt: fixedNow(), correlationId: "corr_terminal_completed", coreVersion: "0.1.0", packVersions: { core: "0.1.0", agent: "0.1.0" } },
+      payload: { toolRequestId: "toolreq_terminal_completed", completedAt: fixedNow(), eventIds: ["evt_terminal_completed"], artifactHashes: [], readModelChanges: [], resultSummary: "Terminal completion fixture." }
     });
     await expect(
       gateway.denyTool({
@@ -1240,6 +1243,66 @@ describe("agent tool gateway", () => {
     expect(second.payload.previewHash).toBe(first.payload.previewHash);
   });
 });
+
+function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
+  const gateway = createProductionAgentToolGateway(input);
+  return {
+    ...gateway,
+    completeTool: async (command: CompleteAgentToolInput) => await completeThroughDurableEvidence(input, gateway, command)
+  };
+}
+
+async function completeThroughDurableEvidence(
+  input: CreateAgentToolGatewayInput,
+  gateway: ReturnType<typeof createProductionAgentToolGateway>,
+  command: CompleteAgentToolInput
+) {
+  const stream = await input.ledger.readStream(`agent_tool_request_${command.toolRequestId}`);
+  const request = stream.find((event) => event.type === "agent.tool.requested");
+  if (request === undefined || request.type !== "agent.tool.requested") {
+    throw new Error("Tool request is unavailable.");
+  }
+  const approvedPreviewHash = command.approvedPreviewHash ?? request.payload.previewHash;
+  const claim = await gateway.claimExecution({
+    toolRequestId: command.toolRequestId,
+    approvedPreviewHash,
+    leaseExpiresAt: "2026-07-07T18:35:00.000Z"
+  });
+  const resultEvent = await input.ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: `evidence_gateway_completion_${command.toolRequestId}`,
+    context: {
+      actor: gatewayDomainServiceActor,
+      occurredAt: fixedNow(),
+      causationId: claim.id,
+      correlationId: `corr_${command.toolRequestId}_result`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_gateway_completion",
+      source: { kind: "manual", label: "Gateway test domain result" },
+      contentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  });
+  const result = {
+    ...command.result,
+    eventIds: command.result.eventIds.length === 0 ? [resultEvent.id] : command.result.eventIds
+  };
+  const evidence = await createResidentLoopSchedulerCompletionAdapter({ ledger: input.ledger }).reread({
+    toolRequestId: command.toolRequestId,
+    runId: request.payload.runId,
+    toolId: request.payload.toolId,
+    toolVersion: request.payload.toolVersion,
+    approvedPreviewHash,
+    executionClaimEventId: claim.id,
+    result
+  });
+  return await gateway.completeToolFromSchedulerEvidence(evidence);
+}
 
 type AgentPreviewWithSymbol = {
   readonly summary: string;
