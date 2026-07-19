@@ -79,3 +79,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 - GREEN changes only source and this claim; the test blob remains `da5fa7d0e3c568e5d3ad73a17dcda7b83a6aac7f` from RED `001b009857c7f79eaa31ab84f9de863166399ed3`.
 - Automatic classes are exactly `read-only`, `local-derivative`, or `ledger-proposal`; uniqueness and prior replan narrowing remain enforced. Feasibility time must match the canonical UTC ISO grammar, be a real Date, and round-trip through `toISOString()`. IP classification now NFC-normalizes and maps U+3002/U+FF0E/U+FF61 before both IP and DNS checks, so `127。0。0。1` fails as normalized `127.0.0.1` while prior safe values remain unchanged.
 - The exact focused GREEN command passes: **1 file / 14 tests**.
+
+## RV-1-E-831 Changed-Tactic RED
+
+- Authority `0ed8116e490312ef0d7481f2a2aef1801c06aa80` authorizes two frozen counterfactuals: full-width `１２７。０。０。１` must normalize to `127.0.0.1` for classification and fail closed; `external-byte-transfer` with `none` approval must fail closed. Production remains unchanged until the RED is committed.

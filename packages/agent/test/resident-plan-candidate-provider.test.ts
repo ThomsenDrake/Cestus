@@ -394,6 +394,18 @@ describe("resident plan candidate provider", () => {
     const idnaDotIp = deepFreeze({ ...initialPlan, correlationId: "127。0。0。1" });
     await expect(provider.createInitialCandidate(deepFreeze({ plan: idnaDotIp, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
   });
+
+  it("rejects full-width IDNA-dot IP material in a correlationId after WHATWG-equivalent normalization", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const fullWidthIp = deepFreeze({ ...initialPlan, correlationId: "１２７。０。０。１" });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: fullWidthIp, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects an external-byte-transfer allowlist entry paired with none approval", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const weakExternalTransfer = deepFreeze({ ...constraints, toolAllowlist: [{ ...constraints.toolAllowlist[0], sideEffectClass: "external-byte-transfer", requiredApprovalClass: "none" }, constraints.toolAllowlist[1]] });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: posture, policyConstraints: weakExternalTransfer }))).rejects.toThrow(/plan candidate/i);
+  });
 });
 
 async function candidateApi(): Promise<ResidentPlanCandidateProviderApi> {
