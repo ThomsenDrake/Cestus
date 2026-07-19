@@ -95,3 +95,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 ## RV-1-E-833 GREEN
 
 - GREEN preserves RED test blob `5b805082725285eabf1492422c9ae45fb1ecb5e3`, binds source tail/high-water, closes allowlist approvals globally, enforces zero initial budget accounting, and prevents second initial state mutation.
+
+## RV-1-E-835 RED
+
+- Authority `cd2e518afdebeff34dd0829dbb40fc6416e59a01` authorizes the causal proof that an otherwise valid frozen initial candidate cannot add `unreleased-approval` globally. Production remains untouched through this RED.

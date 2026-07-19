@@ -445,6 +445,12 @@ describe("resident plan candidate provider", () => {
     await expect(provider.createInitialCandidate(deepFreeze({ plan: secondInitial, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
     await expect(provider.createReplanCandidate(deepFreeze({ plan: replan, providerPosture: posture, policyConstraints: constraints, priorPlanReadback, replanObservationReadback: observation }))).resolves.toMatchObject({ schemaVersion: "resident-replan-candidate.v1" });
   });
+
+  it("rejects an unreleased global approval class", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const unreleasedApproval = deepFreeze({ ...constraints, requiredApprovalClasses: [...constraints.requiredApprovalClasses, "unreleased-approval"] });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: posture, policyConstraints: unreleasedApproval }))).rejects.toThrow(/plan candidate/i);
+  });
 });
 
 async function candidateApi(): Promise<ResidentPlanCandidateProviderApi> {
