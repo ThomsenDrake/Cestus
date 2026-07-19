@@ -3,6 +3,7 @@ import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { buildAgentProjection } from "./projection.js";
 import type { ProjectedAgentToolRequest } from "./projection-types.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import { createResidentLoopSchedulerCompletionAdapter } from "./resident-loop-scheduler-completion.js";
 import {
   createAgentToolGateway,
   hashAgentToolPreview,
@@ -69,6 +70,7 @@ export function createAgentScheduler(input: CreateAgentSchedulerInput) {
     input.descriptors.map((descriptor) => [descriptorKey(descriptor.toolId, descriptor.toolVersion), descriptor])
   );
   const gateway = createAgentToolGateway({ ledger: input.ledger, actor: input.actor, now: input.now });
+  const completionAdapter = createResidentLoopSchedulerCompletionAdapter({ ledger: input.ledger });
 
   return Object.freeze({
     async wake(): Promise<AgentSchedulerWakeResultDto> {
@@ -82,7 +84,15 @@ export function createAgentScheduler(input: CreateAgentSchedulerInput) {
         const descriptor = descriptorRegistry.get(descriptorKey(request.toolId, request.toolVersion));
         const item = descriptor === undefined
           ? await handleDescriptorlessRequest(input.ledger, gateway, request)
-          : await consumeApprovedRequest(input.ledger, gateway, input.actor.id, input.now, descriptor, request);
+          : await consumeApprovedRequest(
+            input.ledger,
+            gateway,
+            completionAdapter,
+            input.actor.id,
+            input.now,
+            descriptor,
+            request
+          );
         items.push(item);
         eventIds.push(...item.eventIds);
       }
@@ -159,6 +169,7 @@ function isApprovedOpenRequest(request: ProjectedAgentToolRequest): boolean {
 async function consumeApprovedRequest(
   ledger: EventLedger,
   gateway: AgentToolGateway,
+  completionAdapter: ReturnType<typeof createResidentLoopSchedulerCompletionAdapter>,
   schedulerActorId: string,
   now: () => string,
   descriptor: AgentApprovedToolExecutorDescriptor,
@@ -402,11 +413,20 @@ async function consumeApprovedRequest(
     );
   }
 
-  return await completeRequest(gateway, request, approval.payload.approvedPreviewHash, executionResult, currentPreviewHash, claim.id);
+  return await completeRequest(
+    gateway,
+    completionAdapter,
+    request,
+    approval.payload.approvedPreviewHash,
+    executionResult,
+    currentPreviewHash,
+    claim.id
+  );
 }
 
 async function completeRequest(
   gateway: AgentToolGateway,
+  completionAdapter: ReturnType<typeof createResidentLoopSchedulerCompletionAdapter>,
   request: ProjectedAgentToolRequest,
   approvedPreviewHash: string,
   result: AgentToolResult,
@@ -414,11 +434,16 @@ async function completeRequest(
   claimEventId?: string
 ): Promise<AgentSchedulerItemSummaryDto> {
   try {
-    const completed = await gateway.completeTool({
+    const resultEvidence = await completionAdapter.reread({
       toolRequestId: request.toolRequestId,
-      approvedPreviewHash,
+      runId: request.runId,
+      toolId: request.toolId,
+      toolVersion: request.toolVersion,
+      approvedPreviewHash: request.previewHash,
+      executionClaimEventId: claimEventId ?? "",
       result
     });
+    const completed = await gateway.completeToolFromSchedulerEvidence(resultEvidence);
     return itemForRequest(request, {
       state: "completed",
       currentPreviewHash,
