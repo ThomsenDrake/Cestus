@@ -20693,3 +20693,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full admission and one fresh concurrent Terra/xhigh read-only pair remain
   mandatory after code. Strict prefix remains 16; no integration, release
   record, push, or `neo` action occurs.
+
+## RV-1-E-751 — Task139-P1 exact-IDNA candidate admitted to review
+
+- Recorded at: 2026-07-19T00:15:17Z
+- The same owner preserved causal RED
+  `a1b7dc184cc8992c60925626871af58473136adf` and minimal GREEN candidate
+  `0ca25161e07f2df22109a6cab8da9545d0d0b4a5`. RED changes only test and
+  claim and reproduces all eighteen released-version/IDNA-separator lookalike
+  admissions with unchanged production. GREEN keeps the RED test byte-
+  identical and changes only the exception-order condition plus claim.
+- GREEN retains local NFC and IDNA-dot canonical classification, but separately
+  detects IDNA dot equivalents in the original input. A released-version token
+  is exempt only when the original string contains no IDNA dot equivalent;
+  byte-different `agent-provider-auth`, `policy`, and `adapter` lookalikes
+  therefore reject while exact ASCII-dot versions remain admitted. There is no
+  TLD list, DNS/network/provider/credential/write/fallback, or external effect.
+- Owner and independent coordinator admission pass focused **1 file / 28
+  tests**, cross-boundary **2 files / 37 tests**, standalone typecheck, diff
+  hygiene, factory readiness, all four V4 markers, exact three-path cumulative
+  scope, clean tracked/untracked state, and real non-symlinked dependencies
+  with executable Vitest 4.1.9. Repository mode emits
+  `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before only the expected
+  incomplete-29 boundary.
+- Full `npm test` and `npm run verify` retain the exact inherited **12 failing
+  files / 69 failing tests / 5 skips**, unchanged identities, and **2,750
+  passes**, exactly twenty-eight above record 16.
+- Status advances Task139-P1 `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  authorized on exact `0ca25161`; SDD/TDD is not relevant or authorized for
+  reviewers. Only exact reproduced P0/P1 contract violations block; P2, style,
+  hypothetical hardening, and unreproduced concerns go to backlog.
+- No integration or release record occurs. Strict prefix remains 16; preserved
+  later candidates and `neo` remain untouched.
