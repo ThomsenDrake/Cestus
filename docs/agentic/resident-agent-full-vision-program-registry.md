@@ -22065,3 +22065,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   will integrate the complete preserved lineage and rerun all bounded gates
   from integrated bytes before refreshing active dependent candidates. No
   repair, push, external effect, or `neo` action occurs.
+
+## RV-1-E-788 — Record-20 assurance correction integrated
+
+- Recorded at: 2026-07-19T07:12:05Z
+- Coordinator merge `c5f0387bff9314f10404bfb4c663e272d2c85288`
+  integrates the complete approved record-20 assurance lineage through
+  candidate `1426a95cff179e6a010eec725328f95f8fc079ab` without rewriting either
+  parent history. The integrated correction remains limited exactly to the V4
+  assurance test and V4 authority-transfer claim.
+- Integrated-byte gates pass **19/19 assurance tests**, all four exact V4
+  markers, standalone typecheck, factory readiness, diff hygiene, clean state,
+  and real non-symlinked Vitest 4.1.9 dependencies. Repository mode emits
+  `TASK136_REPOSITORY_PREFIX_OK records=20 commands=20` followed only by
+  `repository release closure incomplete: expected 29 records, found 20`.
+- V1-V3, the V4 contract/checker, raw strict records 1-20, all 29 card IDs and
+  exact order, runtime behavior, released evidence, and historical fixtures
+  remain unchanged. Status advances record-20 assurance
+  `approved -> integrated`; this corrected current program base will be
+  forward-merged into each active eligible implementation lane only at a clean
+  preserved commit checkpoint. Strict prefix remains 20. No push, external
+  effect, or `neo` action occurs.
