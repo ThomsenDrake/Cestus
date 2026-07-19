@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildContextPackRef } from "../src/context-packs.js";
 import {
+  buildAuthorityBoundSpecialistHandoffManifest,
   buildSpecialistHandoffManifest,
   buildSpecialistHandoffMaterial,
   canonicalSpecialistHandoffJson,
@@ -10,6 +11,8 @@ import {
   hashSpecialistHandoffManifest,
   hashSpecialistHandoffMaterial,
   parseSpecialistHandoffMaterial,
+  specialistHandoffManifestV2SchemaVersion,
+  verifyAuthorityBoundSpecialistHandoffManifest,
   verifySpecialistHandoffManifest
 } from "../src/specialist-handoff-manifest.js";
 import { hashSpecialistWorkflowHandoff } from "../src/specialist-handoff-hash.js";
@@ -288,5 +291,34 @@ describe("specialist handoff manifest", () => {
       expect(() => canonicalSpecialistHandoffJson(value)).toThrow(/JSON DTO-safe/i);
       expect(() => hashCanonicalSpecialistHandoffJson(value)).toThrow(/JSON DTO-safe/i);
     }
+  });
+
+  it("builds and replays only an exact authority-bound V2 manifest without upgrading V1", () => {
+    const authorityBinding = {
+      workspaceIdentityHash: hash111,
+      mountGeneration: "mount_generation_001",
+      ledgerStoreIdentity: "ledger_store_001",
+      artifactStoreIdentity: "artifact_store_001",
+      ledgerHighWaterEventId: "evt_ledger_high_water_001",
+      policyHash: hash222,
+      activeLocksHash: hash333
+    } as const;
+    const manifest = buildAuthorityBoundSpecialistHandoffManifest({
+      ...manifestInput,
+      handoffId: computeSpecialistHandoffId(seed),
+      authorityBinding
+    });
+
+    expect(manifest.schemaVersion).toBe(specialistHandoffManifestV2SchemaVersion);
+    expect(manifest.authorityBinding).toEqual(authorityBinding);
+    expect(verifyAuthorityBoundSpecialistHandoffManifest({
+      manifest,
+      handoffManifestHash: hashSpecialistHandoffManifest(manifest)
+    })).toEqual(manifest.handoff);
+    const legacy = buildSpecialistHandoffManifest({ ...manifestInput, handoffId: computeSpecialistHandoffId(seed) });
+    expect(() => verifyAuthorityBoundSpecialistHandoffManifest({
+      manifest: legacy,
+      handoffManifestHash: hashSpecialistHandoffManifest(legacy)
+    })).toThrow(/v2|authority/i);
   });
 });

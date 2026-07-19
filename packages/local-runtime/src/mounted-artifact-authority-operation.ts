@@ -66,6 +66,19 @@ export interface MountedOfficialFlowFeasibilityOperationInspection {
   readonly ledger: LocalRuntimeHandle["ledger"];
 }
 
+export interface MountedProviderAuthorityLedgerRead {
+  readAll(): ReturnType<LocalRuntimeHandle["ledger"]["readAll"]>;
+}
+
+/**
+ * Source-specific PM seam. It deliberately reveals no runtime handle, mounted
+ * workspace, storage path, or writable ledger operation.
+ */
+export interface MountedProviderAuthorityOperationInspection {
+  readonly snapshot: MountedArtifactAuthoritySnapshot;
+  readonly ledger: MountedProviderAuthorityLedgerRead;
+}
+
 export interface FactoryAuthenticatedMountedWakeCapability {
   readonly schemaVersion: "factory-authenticated-mounted-wake-capability.v1";
 }
@@ -99,6 +112,7 @@ interface OperationState {
   readonly admission: WorkspaceAdmissionSnapshot;
   readonly facts: PortableWorkspaceMountedFacts;
   mountedRuntimeInspection?: FactoryAuthenticatedMountedWakeCapturedState;
+  mountedProviderLedgerRead?: MountedProviderAuthorityLedgerRead;
   burned: boolean;
 }
 
@@ -114,7 +128,7 @@ interface FactoryAuthenticatedMountedWakeCapabilityState {
 }
 
 const wakeRuntimeRegistrations = new WeakMap<object, WakeRuntimeRegistration>();
-const operationStates = new WeakMap<MountedArtifactAuthorityOperation, OperationState>();
+const operationStates = new WeakMap<object, OperationState>();
 const factoryAuthenticatedMountedWakeCapabilities = new WeakMap<
   FactoryAuthenticatedMountedWakeCapability,
   FactoryAuthenticatedMountedWakeCapabilityState
@@ -327,7 +341,38 @@ export function inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFe
   });
 }
 
-function currentOperationState(operation: MountedArtifactAuthorityOperation): OperationState {
+/**
+ * The sole PM source-specific operation inspection. Every call reruns the
+ * factory, mounted-runtime, and admission currentness checks before returning
+ * a read-only durable ledger capability.
+ */
+export function inspectMountedArtifactAuthorityOperationForMountedProviderAuthority(
+  operation: unknown
+): MountedProviderAuthorityOperationInspection {
+  const state = currentOperationState(operation);
+  const captured = inspectAndRememberMountedRuntime(state);
+  const ledger = state.mountedProviderLedgerRead ?? createMountedProviderLedgerRead(captured.ledger);
+  state.mountedProviderLedgerRead = ledger;
+  return Object.freeze({
+    snapshot: snapshotFor(state.facts, state.admission),
+    ledger
+  });
+}
+
+function createMountedProviderLedgerRead(
+  ledger: LocalRuntimeHandle["ledger"]
+): MountedProviderAuthorityLedgerRead {
+  return Object.freeze({
+    readAll() {
+      return ledger.readAll();
+    }
+  });
+}
+
+function currentOperationState(operation: unknown): OperationState {
+  if (operation === null || typeof operation !== "object") {
+    throw new Error("mounted artifact authority operation is burned");
+  }
   const state = operationStates.get(operation);
   if (state === undefined || state.burned) {
     throw new Error("mounted artifact authority operation is burned");
