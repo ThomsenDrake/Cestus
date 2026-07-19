@@ -243,7 +243,13 @@ describe("PRR negotiation workflow", () => {
     expect(events.filter((event) =>
       event.type === "agent.task.status.changed" && event.payload.status === "completed"
     )).toEqual([]);
-    expect(result.eventIds).not.toEqual(expect.arrayContaining(terminalEvents.map((event) => event.id)));
+    const forbiddenReturnedEventIds = new Set(events.filter((event) =>
+      event.type === "agent.specialist-run.completed" ||
+      event.type === "agent.specialist-run.failed" ||
+      event.type === "agent.task.orchestration.completed" ||
+      (event.type === "agent.task.status.changed" && event.payload.status === "completed")
+    ).map((event) => event.id));
+    expect(result.eventIds.every((eventId) => !forbiddenReturnedEventIds.has(eventId))).toBe(true);
     expect(buildAgentProjection(events).runs.get("run_prr_001")).toMatchObject({
       state: "running",
       toolRequestIds: [requested?.payload.toolRequestId]
