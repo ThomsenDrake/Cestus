@@ -22153,3 +22153,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh architecture/executability pair after code
   changes. Status advances Task136-FC-Ports `reviewing -> implementing-repair`;
   strict prefix remains 20. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-791 — C136-P becomes a preserved run-ahead candidate
+
+- Recorded at: 2026-07-19T07:41:15Z
+- The sole C136-P owner task
+  `019f7921-b595-7080-93e7-31daf67634f0` preserves exact ordered commits
+  `6eb485dd` claim, `346e00cf` causal RED, `06157253` initial GREEN,
+  `03e04dce` frozen-candidate test-oracle correction, `4f937c21` replan-
+  narrowing evidence, and `8b02245feba48ff897857b238a928dc45cfe578e`
+  compiler closure. No history is rewritten. Coordinator merge
+  `1bfda390` forwards the corrected record-20 base without changing the exact
+  three-path C136-P ownership diff.
+- The claim records both contract-determined recovery causes: the first test
+  oracle treated primitive immutable leaves as mutable, and the final compiler
+  gate could not narrow the recursive normalized record/array union through
+  `Array.isArray`. The preserved corrections make primitive leaves valid and
+  add an explicit fail-closed record predicate; they do not widen runtime
+  input, output, authority, effect, fallback, provider, credential, or
+  compatibility behavior.
+- Exact focused **1 file / 3 tests**, cross-boundary **4 files / 18 tests**,
+  standalone typecheck, diff hygiene, factory readiness, exact three-path
+  scope, clean state, and real non-symlinked Vitest 4.1.9 dependencies pass.
+  The last full differential before compiler-only predicate closure retained
+  the record-20 **69 failures / 5 skips** cohort with exactly three added
+  passes; final V4/repository/full differential and review remain deliberately
+  deferred until strict records 21-23 are integrated and the exact ordered
+  base can be forward-merged.
+- Status advances C136-P `implementing -> candidate`. This candidate is
+  preserved, not reviewing, approved, integrated, or released. Strict prefix
+  remains 20. No push, external effect, or `neo` action occurs.
