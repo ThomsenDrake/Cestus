@@ -331,3 +331,26 @@ Observed RED result: exit `1`; `19` tests ran, `18` passed, and exactly one
 failed: `requires the finite Task137B-W to Task139-PM transfer only at record
 18`. The direct cause is the missing appended `Task137B-W` prerequisite from
 the current Task139-PM contract card. No contract or checker bytes changed.
+
+## RV-1-E-756 complete future-pin audit RED
+
+- `RV-1-E-756` preserves both prior REDs and requires one complete test-pin
+  audit before the intended GREEN stash is applied. The audited future pins are
+  V4 SHA-256 `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`
+  and assurance fingerprint
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`.
+- The only V3 command-parity exception added is `Task139-PM`; its command is
+  the finite two-test projection required by RV-1-E-754. All existing
+  Task137B-W target/disposition, PM prerequisite/scope/command, historical
+  record-11 compatibility, raw-record-1-through-17, and record-count-17/18
+  assertions were audited and retained without weakening.
+- This forward RED changes only this claim and the assurance test. The named
+  intended-GREEN stash is read-only until this causal failure is recorded;
+  contract and checker remain byte-identical at RED HEAD.
+
+Observed RED result: exit `1`; `19` tests ran, `16` passed, and exactly three
+failed assertions. They are all future-pin deltas against unchanged production
+bytes: V4 file SHA (`063f11d…` versus `2a5cf62b…`), assurance fingerprint
+(`413eee…` versus `47cfd2…`), and the missing Task139-PM `Task137B-W`
+prerequisite. No syntax, fixture, dependency, raw-record, or contradictory
+expectation failure occurred.
