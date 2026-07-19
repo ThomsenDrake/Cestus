@@ -1109,8 +1109,8 @@ test("binds four historical source records and exact record-11 and record-14 cur
   const task137ARecord = parsedPrefix.find((record) => record.cardId === "Task137A");
   const task129MfaRecord = parsedPrefix.find((record) => record.cardId === "Task129-MFA");
 
-  assert.equal(parsedPrefix.length, 17);
-  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 17));
+  assert.equal(parsedPrefix.length, 18);
+  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 18));
   assert.equal(
     createHash("sha256").update(JSON.stringify(task137ARecord)).digest("hex"),
     historicalTask137ASha256
@@ -1273,10 +1273,10 @@ test("binds four historical source records and exact record-11 and record-14 cur
         successfulMessages.push(message);
       }
     }),
-    /repository release closure incomplete: expected 29 records, found 17/
+    /repository release closure incomplete: expected 29 records, found 18/
   );
-  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=17 commands=17"]);
-  assert.equal(successfulAdapter.commandCalls.length, 17);
+  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=18 commands=18"]);
+  assert.equal(successfulAdapter.commandCalls.length, 18);
 
   const task126 = parsedPrefix.find((record) => record.cardId === "Task126");
   const task137A = parsedPrefix.find((record) => record.cardId === "Task137A");
@@ -1425,8 +1425,8 @@ test("requires the finite Task137B-W to Task139-PM transfer only at record 18", 
     pathDispositions: [...task137bToCf1Paths, ...task137bToTask139PmPaths]
       .map((path) => ({ path, recordDisposition: "owned" }))
   });
-  assert.equal(releasedPrefix.length, 17);
-  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 17));
+  assert.equal(releasedPrefix.length, 18);
+  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 18));
   for (const [cardId, expectedHash] of rawPrefixPins) {
     assert.equal(createHash("sha256").update(rawRecordJson(cardId)).digest("hex"), expectedHash, cardId);
   }
@@ -1533,16 +1533,18 @@ test("requires the finite Task137B-W to Task139-PM transfer only at record 18", 
     assert.throws(() => verifyStaticGraph(mutant), undefined, testCase.id);
   }
 
+  const beforeActivationRecords = releasedPrefix.slice(0, 17);
+  const beforeActivationRegistry = releaseRecordMarkdown(beforeActivationRecords);
   const beforeActivation = assurance.verifyTask136ReleasePrefix(contract, {
-    registryText,
-    adapter: fakeRepositoryAdapter(releasedPrefix)
+    registryText: beforeActivationRegistry,
+    adapter: fakeRepositoryAdapter(beforeActivationRecords)
   });
   assert.equal(beforeActivation.records, 17);
   for (const path of task137bToTask139PmPaths) {
     assert.throws(
       () => assurance.verifyTask136ReleasePrefix(contract, {
-        registryText,
-        adapter: fakeRepositoryAdapter(releasedPrefix, { blobMismatch: { commitish: "HEAD", path } })
+        registryText: beforeActivationRegistry,
+        adapter: fakeRepositoryAdapter(beforeActivationRecords, { blobMismatch: { commitish: "HEAD", path } })
       }),
       new RegExp(`blob mismatch: Task137B-W:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
       `Task137B-W remains current before Task139-PM record 18: ${path}`
@@ -1551,11 +1553,11 @@ test("requires the finite Task137B-W to Task139-PM transfer only at record 18", 
 
   const task139PmRecord = clone(releaseRecordsFor(contract).find((record) => record.cardId === "Task139-PM"));
   for (const prerequisite of task139PmRecord.prerequisites) {
-    const releasedPrerequisite = releasedPrefix.find((record) => record.cardId === prerequisite.cardId);
+    const releasedPrerequisite = beforeActivationRecords.find((record) => record.cardId === prerequisite.cardId);
     prerequisite.integrationSha = releasedPrerequisite.integrationSha;
     prerequisite.releaseEventId = releasedPrerequisite.releaseEventId;
   }
-  const activatedRecords = [...releasedPrefix, task139PmRecord];
+  const activatedRecords = [...beforeActivationRecords, task139PmRecord];
   const activatedRegistry = releaseRecordMarkdown(activatedRecords);
   const afterActivation = assurance.verifyTask136ReleasePrefix(contract, {
     registryText: activatedRegistry,
