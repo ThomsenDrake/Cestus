@@ -8,6 +8,10 @@
 - Worker: Codex `gpt-5.6-terra` / `xhigh`.
 - Branch: `codex/task139-p2-resident-loop-provider-posture`.
 - Exact dispatch base: `4b92a56928761ef3e3e719a68b6d7d147cd56f6f`.
+- RV-1-E-775 recovery head before the causal-RED correction:
+  `b27c03aca71fe5306aa18a55a105b6a8e9dd3a58`.
+- Current corrected record-19 comparison base:
+  `56ac7af0921cce9d0498d6a545c715b8cbbbc51d`.
 - Released prerequisite evidence:
   - `T120-R`: `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`.
   - `Task139-P1`: `0ca25161e07f2df22109a6cab8da9545d0d0b4a5`.
@@ -27,15 +31,23 @@ in scope.
 ## Intended API And Gates
 
 The new module will expose one async, fail-closed P-owned posture derivation
-capability. It accepts only normalized P1 configuration data plus the exact
-opaque PM-issued mounted authority and an exact run/task/attempt/resident
+capability. It accepts only normalized immutable P1 configuration data plus the
+exact opaque PM-issued mounted authority and an exact run/task/attempt/resident
 binding; it rereads PM authority around each async boundary and returns only a
 frozen, credential-free provider-posture snapshot. The snapshot will bind the
 exact selected provider/model/capability/provenance/reference/feasibility/
-policy/approval facts to current workspace, mount, admission, policy, lock,
-and high-water readback facts. P1 or caller-copied currentness is data only,
-never authority; substitutes, stale/burned/swapped authority, hostile input,
-fallbacks, and secret/endpoint/host material fail closed.
+policy/approval facts to current canonical `ws_*` workspace, mount, admission,
+policy, lock, and high-water readback facts. P1 and all request currentness are
+data only, never authority; no P2 call independently authenticates request
+task, attempt, run, prompt, or approval values. Substitutes,
+stale/burned/swapped authority, hostile input, fallbacks, and
+secret/endpoint/host material fail closed.
+
+P2 is independent of Task126-R. It will neither import nor mint, alias, adapt,
+or call Task126's private `createByokProviderAuthorityReader`; the owned test
+pins that source separation. PM remains the sole mounted-authority issuer and
+inspector. FC-Core is regression evidence for the mounted fixture only, not a
+structural P2 readback capability.
 
 The causal RED precedes any production source and uses the card command:
 
@@ -71,3 +83,15 @@ From the RED bytes, the exact focused command exited `1` with **1 failed file
 `postureApi` (`expected false to be true`) because
 `resident-loop-provider-posture.ts` is absent; no fixture, dependency, or
 TypeScript failure occurred. The RED test has no production edit.
+
+## RV-1-E-775 Causal RED Correction
+
+The corrected RED keeps the first RED commit and changes only this claim and
+the owned test before production exists. Its real mounted fixtures and accepted
+request currentness use canonical `ws_*` IDs; a separate public-boundary case
+rejects provisional `workspace_*` IDs without translation. It adds exact
+request comparisons for mount, admission, policy, lock, and high-water facts,
+and adversarial copied/swapped authority, accessor, proxy, custom-prototype,
+symbol, sparse-array, and extra-index cases. The source-separation assertion
+runs only after the missing P2 API is present, so the correction's RED remains
+causal rather than failing on the intentionally absent module.
