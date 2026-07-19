@@ -151,7 +151,15 @@ describe("resident loop provider posture", () => {
     expect(Object.isFrozen(result.capability)).toBe(true);
     expect(Object.isFrozen(result.credentialReference.sourceEventIds)).toBe(true);
     expect(appendCalls).toBe(0);
-    expect(JSON.stringify(result)).not.toMatch(/authorization|bearer|api[ _-]?key|https?:\/\/|localhost|\b\d{1,3}(?:\.\d{1,3}){3}\b/i);
+    const serialized = JSON.stringify(result);
+    expect(serialized).toContain('"credentialKind":"api-key-bearer"');
+    expect(serialized).not.toMatch(/"(?:credentialValue|secret|token|authorization|endpoint|url|host)"\s*:/i);
+    expect(serialized).not.toMatch(/(?:api[ _-]?key|token|secret|password)\s*[:=]\s*[a-z0-9._~+\/=:-]{3,}/i);
+    expect(serialized).not.toMatch(/\b(?:authorization|proxy-authorization)"?\s*[:=]\s*(?:bearer|basic|token)\b/i);
+    expect(serialized).not.toMatch(/\b(?:bearer|basic)\s+[a-z0-9._~+\/=:-]{8,}\b/i);
+    expect(serialized).not.toMatch(/\b(?:https?|wss?|file):\/\//i);
+    expect(serialized).not.toMatch(/\b(?:localhost|(?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|local|test))\b/i);
+    expect(serialized).not.toMatch(/\b\d{1,3}(?:\.\d{1,3}){3}\b/);
   });
 
   it("rejects hostile, copied, provisional, swapped, or mismatched P1/currentness inputs without invoking getters or minting posture", async () => {

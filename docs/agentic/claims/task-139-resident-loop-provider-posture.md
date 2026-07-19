@@ -95,3 +95,15 @@ and adversarial copied/swapped authority, accessor, proxy, custom-prototype,
 symbol, sparse-array, and extra-index cases. The source-separation assertion
 runs only after the missing P2 API is present, so the correction's RED remains
 causal rather than failing on the intentionally absent module.
+
+## RV-1-E-776 Causal Secret-Safety Oracle Correction
+
+The output's released `credentialKind: "api-key-bearer"` enum is safe posture
+metadata, not credential material. The earlier broad word scanner could not
+both require that exact enum and reject its words after GREEN. This correction
+therefore preserves the enum and tests precise unsafe forms instead:
+secret-bearing output keys; credential-value and authorization-header syntax;
+bearer/basic values; URL/URI, localhost, DNS-host, and IP material. It neither
+weakens P1 secret safety nor permits a raw credential, endpoint, host, token,
+or authorization value. The missing-module RED remains the only failure before
+the P2 source exists.
