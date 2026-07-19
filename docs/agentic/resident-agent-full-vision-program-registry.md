@@ -20726,3 +20726,106 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   hypothetical hardening, and unreproduced concerns go to backlog.
 - No integration or release record occurs. Strict prefix remains 16; preserved
   later candidates and `neo` remain untouched.
+
+## RV-1-E-752 — Task139-P1 approved, integrated, and released
+
+- Recorded at: 2026-07-19T00:35:17Z
+- Architecture/invariants task `019f77ba-f19e-7e22-a7cc-93a3eeda6161`
+  and executability/adversarial task
+  `019f77ba-f3f2-7412-a644-ca8ebc2c3085` both return **APPROVE** on exact
+  candidate `0ca25161e07f2df22109a6cab8da9545d0d0b4a5` with no P0/P1 findings.
+  Reviews are read-only and mutate no candidate, registry, integration, or
+  external state.
+- The coordinator integrates the complete preserved Task139-P1 history without
+  rewrite as merge `3d2d365ea8ea2cc3b706309f8f584a5c4c117379`, whose parents are
+  current program review checkpoint `17f5a411226b30783b765fd86fcf6ce13cee3f17`
+  and approved candidate `0ca25161e07f2df22109a6cab8da9545d0d0b4a5`.
+  Every claim, causal RED, minimal GREEN, and recovery commit remains in
+  ancestry.
+- Integrated-byte admission reproduces focused **1 file / 28 tests**,
+  cross-boundary **2 files / 37 tests**, standalone typecheck, diff hygiene,
+  factory readiness, all four V4 markers, exact candidate blob identity, clean
+  tracked/untracked state, and real non-symlinked dependency/Vitest provenance.
+  Pre-record repository mode emits
+  `TASK136_REPOSITORY_PREFIX_OK records=16 commands=16` before only the expected
+  incomplete-29 boundary.
+- Integrated full `npm test` and `npm run verify` both retain the exact inherited
+  **12 failing files / 69 failing tests / 5 skips**, with unchanged identities
+  and **2,750 passes**. Typecheck completes before the verifier reaches that
+  inherited boundary.
+- Status advances Task139-P1 `reviewing -> approved -> integrated -> released`.
+  The strict prefix becomes 17; preserved later candidates remain held for
+  their exact ordered bases, and `neo` remains untouched.
+
+## Task136 dispatch release v4: Task139-P1
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task139-P1",
+  "candidateSha": "0ca25161e07f2df22109a6cab8da9545d0d0b4a5",
+  "reviews": [
+    {
+      "threadId": "019f77ba-f19e-7e22-a7cc-93a3eeda6161",
+      "candidateSha": "0ca25161e07f2df22109a6cab8da9545d0d0b4a5",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f77ba-f3f2-7412-a644-ca8ebc2c3085",
+      "candidateSha": "0ca25161e07f2df22109a6cab8da9545d0d0b4a5",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "3d2d365ea8ea2cc3b706309f8f584a5c4c117379",
+  "releaseEventId": "task136-release-v4-Task139-P1",
+  "prerequisites": [
+    {
+      "cardId": "Task126-R",
+      "integrationSha": "4877d7b2900a416cd417b73fc13a55b2e6b845d0",
+      "releaseEventId": "task136-release-v4-Task126-R"
+    },
+    {
+      "cardId": "Task127",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-Task127"
+    },
+    {
+      "cardId": "Task128",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-Task128"
+    },
+    {
+      "cardId": "Task129",
+      "integrationSha": "eb21d466a54ebdf2a8397c08d54167411bfddde2",
+      "releaseEventId": "task136-release-v4-Task129"
+    },
+    {
+      "cardId": "Task130",
+      "integrationSha": "95c13101d61c250fa0008a53caa2976053af46e8",
+      "releaseEventId": "task136-release-v4-Task130"
+    },
+    {
+      "cardId": "Task133",
+      "integrationSha": "0438e73859d75941953b25d75b2010315b5a8a55",
+      "releaseEventId": "task136-release-v4-Task133"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/agent-provider-configuration.ts",
+      "disposition": "owned",
+      "blobSha": "d2a50c194d129156a36ccfb670452c24b5170e87"
+    },
+    {
+      "path": "packages/local-runtime/test/agent-provider-configuration.test.ts",
+      "disposition": "owned",
+      "blobSha": "21ea8a4ae0b28ca592b64189996e789ef2434c4c"
+    },
+    {
+      "path": "docs/agentic/claims/task-139-resident-full-vision-provider-configuration.md",
+      "disposition": "owned",
+      "blobSha": "f5bc78dce4856f7375eee60c0be78750346498c6"
+    }
+  ]
+}
+```
