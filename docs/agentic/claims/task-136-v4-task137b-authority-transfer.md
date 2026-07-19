@@ -196,3 +196,46 @@ Implementation evidence:
   `0` with `19` passed and `0` failed. Final committed-byte admission will
   rerun the full required assurance, repository, typecheck, differential,
   factory, diff, scope, and clean/dependency gates.
+
+## Record-21 fixture checkpoint
+
+- The preserved record-20 candidate `1426a95cff179e6a010eec725328f95f8fc079ab`
+  was cleanly forward-merged with coordinator program authority
+  `34b75a53bf7715bf8e0ef89a42d677c2a72ddd2e` as merge
+  `cbd3a4e5d2568822f23a5094bb1b72e88b0ed346`. The merge preserves both
+  histories; this claim-only causal RED leaves the assurance test, contract,
+  checker, V1-V3, raw strict records 1-21, all 29 card IDs/order, runtime
+  bytes, and release evidence byte-identical.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `19` tests, `17` passed, and exactly two failed. The only
+  failures are current-prefix assertions at lines `1112` and `1428`, each
+  reporting `21 !== 20` after valid strict Task136-FC-Ports record 21. No
+  contract, checker, blob, command, dependency, or unrelated fixture failure
+  occurred.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  will advance only the two affected current prefix groups—parsed count/order
+  and repository count/marker/command count—from record 20 to record 21 while
+  preserving all historical prefix fixtures. Required committed-byte admission
+  includes assurance 19/19, V4 contract and record-21 repository markers,
+  typecheck, full `npm test` and `npm run verify` differential, factory/diff,
+  exact recovery scope, clean state, and real local Vitest 4.1.9 dependencies.
+  No registry, integration, review, push, network, credential, provider,
+  `neo`, or task creation is authorized.
+
+## Record-21 minimal GREEN evidence
+
+- The two affected current-prefix groups now assert a strict parsed prefix of
+  `21` records and `expectedIds.slice(0, 21)`. The repository-admission
+  closure, prefix marker, and command-call count advance together to `found
+  21` and `records=21 commands=21`.
+- Historical prefix coverage remains unchanged, including the Task139-PM
+  record-17 pre-activation source-currentness fixture and synthetic record-18
+  activation/target-currentness fixture; no generic current-count facility,
+  contract, checker, raw record, or runtime behavior was added or altered.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `19` passed and `0` failed. Final committed-byte admission will
+  rerun the required assurance, contract, repository, typecheck, full-suite
+  differential, factory, diff, scope, and clean/dependency gates.
