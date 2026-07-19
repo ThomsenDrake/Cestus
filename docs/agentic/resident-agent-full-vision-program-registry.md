@@ -22244,3 +22244,98 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances Task136-FC-Ports `reviewing -> approved`. The coordinator
   will integrate the complete preserved lineage and rerun all gates before
   strict record 21. No repair, push, external effect, or `neo` action occurs.
+
+## RV-1-E-794 — Task136-FC-Ports integrated and released
+
+- Recorded at: 2026-07-19T08:34:59Z
+- The coordinator integrates the complete preserved Task136-FC-Ports lineage
+  by merge `365279fdd4e772c389188d05376ba87afe9782df`, whose parents are
+  approval checkpoint `f73a44da7a2202b863fdf32483c68d15db6a6f09` and exact approved
+  candidate `a05a0c862a85b014002cdfa1a9227ba57983a4a1`. Every claim, causal
+  RED, minimal GREEN, first review, root-cause checkpoint, recovery RED/GREEN,
+  forward authority merge, and final-review evidence commit remains in
+  ancestry without rewrite.
+- Integrated-byte admission reproduces focused **3 files / 7 tests** and
+  serial cross-boundary **14 files / 92 tests**, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. Standalone
+  typecheck, assurance **19/19**, all four exact V4 markers, repository prefix
+  **20/20**, diff hygiene, factory readiness, exact five-path scope, clean
+  state, and real non-symlinked executable Vitest 4.1.9 dependencies are
+  green.
+- Integrated `npm test` and `npm run verify` each retain exactly the inherited
+  **12 failing files / 69 failing tests / 5 skips / 2,768 passes**, with no new
+  failure, removal, skip, or changed substantive assertion. Verify remains
+  differential evidence at this intermediate release position rather than a
+  green full-program claim.
+- Status advances Task136-FC-Ports `approved -> integrated -> released`.
+  Strict record 21 below makes `G136-SC` the next exact release card. No
+  provider, credential, network, external effect, push, or `neo` action
+  occurs.
+
+## Task136 dispatch release v4: Task136-FC-Ports
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task136-FC-Ports",
+  "candidateSha": "a05a0c862a85b014002cdfa1a9227ba57983a4a1",
+  "reviews": [
+    {
+      "threadId": "019f796a-ca84-7fd3-b3bd-09fc574ff23c",
+      "candidateSha": "a05a0c862a85b014002cdfa1a9227ba57983a4a1",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f796a-d686-7af1-994b-a2ba992fb1bf",
+      "candidateSha": "a05a0c862a85b014002cdfa1a9227ba57983a4a1",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "365279fdd4e772c389188d05376ba87afe9782df",
+  "releaseEventId": "task136-release-v4-Task136-FC-Ports",
+  "prerequisites": [
+    {
+      "cardId": "Task135D",
+      "integrationSha": "85e5c6cbc86f4d636702ce825baf21eb7d7ac89c",
+      "releaseEventId": "task136-release-v4-Task135D"
+    },
+    {
+      "cardId": "Task136-FC-Core",
+      "integrationSha": "7a7a650e7db97c1aad63447e3669e66ddf3dc7fe",
+      "releaseEventId": "task136-release-v4-Task136-FC-Core"
+    },
+    {
+      "cardId": "Task139-P2",
+      "integrationSha": "6472c92bce3b6cd23e3128666524e575d9f9d236",
+      "releaseEventId": "task136-release-v4-Task139-P2"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/resident-loop-factory-ports.ts",
+      "disposition": "owned",
+      "blobSha": "f60b07537d0efa98ca9934ac3bcf5e79af246a6e"
+    },
+    {
+      "path": "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
+      "disposition": "owned",
+      "blobSha": "e448dad8f57f9c87957ffb1b4a2d99cb24dffc51"
+    },
+    {
+      "path": "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "2dd1161d2a168d13d3fc8add6f7f82b201800538"
+    },
+    {
+      "path": "packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts",
+      "disposition": "owned",
+      "blobSha": "0d3bdc674ac08278453dcba67023da4a177cceb0"
+    },
+    {
+      "path": "docs/agentic/claims/task-136-factory-ports-composition.md",
+      "disposition": "owned",
+      "blobSha": "c570144b67c5a15536b54155ffc0e402602a0acd"
+    }
+  ]
+}
+```
