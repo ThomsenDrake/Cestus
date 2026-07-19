@@ -133,6 +133,45 @@ describe("resident-loop tool gateway", () => {
     )).toBe(false);
   });
 
+  it("rejects a newer plan racing the official completion append without leaving completion behind", async () => {
+    const fixture = await prepareFixture();
+    const command = requestInput(fixture);
+    const newerSource = await appendEvidence(fixture.ledger, { evidenceId: "ev_gateway_completion_race_source" });
+    const race = injectNewPlanAtCompletionBoundary(fixture, command.toolRequestId, newerSource.id);
+    const bridge = createBridge(race.ledger, fixture.agentGateway);
+    const request = await bridge.requestAndReadback(command);
+    await fixture.approvalGateway.approveTool({
+      toolRequestId: request.toolRequestId,
+      approvedPreviewHash: request.previewHash,
+      actor: humanActor,
+      rationale: "Human approval binds this exact durable preview."
+    });
+    const decision = await bridge.readDecision(request);
+    await fixture.agentGateway.claimExecution({
+      toolRequestId: request.toolRequestId,
+      approvedPreviewHash: request.previewHash,
+      leaseExpiresAt: "2026-07-19T12:05:00.000Z"
+    });
+
+    await expect(bridge.executeAndReadback(decision, async (execution) => {
+      const result = await appendEvidence(fixture.ledger, {
+        evidenceId: "ev_gateway_completion_race_result",
+        causationId: requiredExecutionClaimEventId(execution)
+      });
+      return {
+        eventIds: [result.id],
+        artifactHashes: [],
+        readModelChanges: [],
+        resultSummary: "A plan race must conflict before official completion."
+      };
+    })).rejects.toThrow(/current|conflict/i);
+
+    expect(race.wasInjected()).toBe(true);
+    expect((await fixture.ledger.readStream(`agent_tool_request_${request.toolRequestId}`)).some(
+      (event) => event.type === "agent.tool.completed"
+    )).toBe(false);
+  });
+
   it("rejects an old plan when a newer same resident/task/attempt/run plan changes every policy and provenance binding", async () => {
     const fixture = await prepareFixture();
     const newerSource = await appendEvidence(fixture.ledger, { evidenceId: "ev_gateway_newer_source" });
@@ -319,6 +358,51 @@ function createBridge(
   gateway: Pick<ReturnType<typeof createAgentToolGateway>, "requestTool" | "completeToolFromSchedulerEvidence">
 ) {
   return createResidentLoopToolGateway({ ledger, gateway, now: fixedNow } as unknown as Parameters<typeof createResidentLoopToolGateway>[0]);
+}
+
+type GatewayFixture = Awaited<ReturnType<typeof prepareFixture>>;
+
+function injectNewPlanAtCompletionBoundary(
+  fixture: GatewayFixture,
+  toolRequestId: string,
+  newerSourceEventId: string
+) {
+  let planReads = 0;
+  let injected = false;
+  const ledger: EventLedger = {
+    append: fixture.ledger.append.bind(fixture.ledger),
+    readAll: fixture.ledger.readAll.bind(fixture.ledger),
+    async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+      const events = await fixture.ledger.readStream(streamId);
+      if (streamId === fixture.plan.event.streamId) {
+        planReads += 1;
+      }
+      if (streamId === `agent_tool_request_${toolRequestId}` && planReads === 11 && !injected) {
+        injected = true;
+        await fixture.planStore.recordPlan({
+          identity: {
+            residentAgentId: "agent_default",
+            taskId: fixture.plan.event.payload.taskId,
+            attemptId: fixture.plan.event.payload.attemptId,
+            runId: fixture.plan.event.payload.runId,
+            policyId: "agent_policy_gateway_completion_race",
+            policyVersion: "2.0.0",
+            policyHash: "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            authorityHash: "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+            sourceEventIds: [newerSourceEventId],
+            contextArtifactHashes: ["sha256:8888888888888888888888888888888888888888888888888888888888888888"],
+            budget: { maxSteps: 2, remainingSteps: 2, contextBytes: 1 },
+            causationEventId: newerSourceEventId,
+            correlationId: "corr_gateway_completion_race"
+          },
+          planRevision: 2,
+          descriptorHash: "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+        });
+      }
+      return events;
+    }
+  };
+  return Object.freeze({ ledger, wasInjected: () => injected });
 }
 
 function requiredExecutionClaimEventId(readback: ResidentLoopToolGatewayReadback): string {
