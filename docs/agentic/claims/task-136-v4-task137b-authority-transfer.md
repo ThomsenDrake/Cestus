@@ -279,3 +279,26 @@ Implementation evidence:
   `0` with `19` passed and `0` failed. Final committed-byte admission reruns
   the required assurance, V4 contract/repository, typecheck, full
   differential, factory, diff, scope, and clean/dependency gates.
+
+## RV-1-E-823 record-23 fixture checkpoint
+
+- Resumed at preserved record-22 candidate
+  `61a257639786f49424da3f8309f73b570a487c5b` and forward-merged exact program
+  authority `b86be8d2f72d5f09ac61771df5162257a5637191` as normal merge
+  `cf18c8e62789118792d74426a029d57484046cf3`. This claim-only causal RED
+  preserves every inherited assurance RED/GREEN, V1-V3, raw strict records
+  1-23, V4 contract/checker, all 29 card IDs/order, historical/pre-activation
+  fixtures, finite direct-source mappings, runtime bytes, and all evidence.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited
+  `1`: `19` tests, `17` passed, and exactly `2` failed. Only lines `1112` and
+  `1428` report `23 !== 22` after valid strict record 23. No contract,
+  checker, blob, command, dependency, or unrelated fixture failure occurred.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  will advance only the two current-prefix groups from `22` to `23`, preserving
+  all historical facts and immutable assurance evidence. Required
+  committed-byte admission reruns focused assurance, contract/repository,
+  typecheck, factory, diff, scope, clean-state, and dependency gates. No
+  registry, integration, review, push, network, credential, provider, `neo`,
+  or task creation is authorized.
