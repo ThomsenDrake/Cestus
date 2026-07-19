@@ -22902,3 +22902,120 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   gate from integrated bytes, and appends strict V4 release record 22. Strict
   prefix remains 21 until that record exists. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-810 — Task9 maintenance and G136-SC integrated and released
+
+- Recorded at: 2026-07-19T11:50:34Z
+- Coordinator merge `af7324650ec4d644931b56c4a08225234de1e92b`
+  first integrates the complete historical Task9 maintenance lineage, then
+  merge `253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5` integrates the complete
+  reviewed G136-SC lineage. Reviewed candidate
+  `70814c1259871c5458a3578fae8a5c8281540377` and Task9 GREEN
+  `3be15212776ab3c96e66bf0bade4630960c362eb` are ancestors; every claim,
+  RED, GREEN, registry-authority merge, failed review, and final approval is
+  preserved without rewrite.
+- Integrated-byte admission passes focused **6 files / 86 tests**,
+  cross-boundary **9 files / 136 tests**, and the four released domain
+  adapters **4 files / 56 tests**. Standalone typecheck, bounded assurance
+  **19/19**, all four exact V4 markers, factory readiness, diff hygiene, exact
+  Task9 two-path and G136 eleven-path scopes, clean state, unset
+  `core.worktree`, and real non-symlinked executable Vitest 4.1.9 dependencies
+  are green. Repository mode emits exact prefix **21/21** followed only by
+  the expected incomplete-29 boundary before this record is appended.
+- Integrated `npm test` reports **13 failing files / 70 failing tests / 2,778
+  passes / 5 skips**. `npm run verify` passes standalone typecheck and then
+  reproduces the same exact inherited intermediate cohort. The five P1
+  counterfactuals remain passing and the three stale fake-loop failures remain
+  removed; no G136 or Task9 focused failure or skip is introduced.
+- Status advances Task9 maintenance `approved -> integrated` and G136-SC
+  `approved -> integrated -> released`. Strict V4 release record 22 below
+  makes `G136-R` the next exact release card. No provider, credential,
+  network, external effect, push, or `neo` action occurs.
+
+## Task136 dispatch release v4: G136-SC
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "G136-SC",
+  "candidateSha": "70814c1259871c5458a3578fae8a5c8281540377",
+  "reviews": [
+    {
+      "threadId": "019f7a1e-ec22-75c2-9660-c50899f81a79",
+      "candidateSha": "70814c1259871c5458a3578fae8a5c8281540377",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f7a1e-f92a-7830-acb9-702245806f00",
+      "candidateSha": "70814c1259871c5458a3578fae8a5c8281540377",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
+  "releaseEventId": "task136-release-v4-G136-SC",
+  "prerequisites": [
+    {
+      "cardId": "T120-R",
+      "integrationSha": "0b5185f0d0dd276164ec70d5db150f5f6ccb3a79",
+      "releaseEventId": "task136-release-v4-T120-R"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/tool-gateway.ts",
+      "disposition": "owned",
+      "blobSha": "32e07f5f6df3d1a50bbc41f69c9a458ccf3a3c27"
+    },
+    {
+      "path": "packages/agent/src/scheduler.ts",
+      "disposition": "owned",
+      "blobSha": "da8fb393ee840930e2de9cf14d0a85f3a46f6dbf"
+    },
+    {
+      "path": "packages/agent/src/resident-loop-scheduler-completion.ts",
+      "disposition": "owned",
+      "blobSha": "868994c7581ad80fe31223306c1ce23870f75c6a"
+    },
+    {
+      "path": "packages/agent/src/execution-loop.ts",
+      "disposition": "owned",
+      "blobSha": "046186d9ee481218f9037a7899ec2db4cb1ceb01"
+    },
+    {
+      "path": "packages/agent/test/tool-gateway.test.ts",
+      "disposition": "owned",
+      "blobSha": "a721a44b8754f52860293927fedc375c868355ff"
+    },
+    {
+      "path": "packages/agent/test/scheduler.test.ts",
+      "disposition": "owned",
+      "blobSha": "a48984ecc03818207561d804c6cfc18fbf71404e"
+    },
+    {
+      "path": "packages/agent/test/resident-loop-scheduler-completion.test.ts",
+      "disposition": "owned",
+      "blobSha": "d0e1460d3c7c993db6e4fe6fc19593020ab4230e"
+    },
+    {
+      "path": "packages/agent/test/execution-loop.test.ts",
+      "disposition": "owned",
+      "blobSha": "27fde6d884397d6fa05bf8aa65e3cdee12c90c69"
+    },
+    {
+      "path": "packages/agent/test/domain-execution-dispatcher.test.ts",
+      "disposition": "owned",
+      "blobSha": "bd9df733d7ab8f915269624168524ac48bc64621"
+    },
+    {
+      "path": "docs/agentic/claims/task-136-scheduler-completion-adapter.md",
+      "disposition": "owned",
+      "blobSha": "84bba44e7755c4b6d1bff6eeeb60f32247159956"
+    },
+    {
+      "path": "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
+      "disposition": "transferred",
+      "blobSha": "2749cab9f4808cc6b9bba89ed6b41a0bbefdd741"
+    }
+  ]
+}
+```
