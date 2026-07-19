@@ -138,13 +138,14 @@ describe("agent domain execution dispatcher", () => {
       adapters: [adapterFor(preview, {
         async executeApproved(input) {
           executionInput = input;
+          const domainResult = await appendDomainResult(ledger, input.toolRequestId);
           return {
-            eventIds: ["evt_domain_assertion_accepted"],
+            eventIds: [domainResult.id],
             artifactHashes: [resultArtifactHash],
             readModelChanges: [{
               projectionName: "accepted-graph",
               change: "accepted reviewed assertion",
-              relatedIds: ["assertion_accepted_001"]
+              relatedIds: [domainResult.id]
             }],
             resultSummary: "Accepted graph review completed through domain service."
           };
@@ -182,13 +183,13 @@ describe("agent domain execution dispatcher", () => {
     expect(events.filter((event) => event.type === "agent.tool.execution.claimed")).toHaveLength(1);
     expect(completed.payload).toMatchObject({
       toolRequestId,
-      eventIds: ["evt_domain_assertion_accepted"],
+      eventIds: [expect.stringMatching(/^evt_/)],
       artifactHashes: [resultArtifactHash],
       resultSummary: "Accepted graph review completed through domain service.",
       readModelChanges: [{
         projectionName: "accepted-graph",
         change: "accepted reviewed assertion",
-        relatedIds: ["assertion_accepted_001"]
+        relatedIds: [expect.stringMatching(/^evt_/)]
       }]
     });
   });
@@ -404,4 +405,31 @@ function eventOfType<Type extends KnowledgeEvent["type"]>(
     throw new Error(`Expected ${type} event`);
   }
   return event;
+}
+
+async function appendDomainResult(ledger: InMemoryEventLedger, toolRequestId: string) {
+  const claim = (await ledger.readStream(`agent_tool_request_${toolRequestId}`)).find(
+    (event) => event.type === "agent.tool.execution.claimed"
+  );
+  if (claim === undefined) throw new Error("domain result requires execution claim");
+  return await ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: "evidence_result_domain",
+    context: {
+      actor: schedulerActor,
+      occurredAt: fixedNow(),
+      causationId: claim.id,
+      correlationId: `corr_${toolRequestId}_domain_result`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_domain_result",
+      source: { kind: "manual", label: "Domain execution result" },
+      contentHash: resultArtifactHash,
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  });
 }

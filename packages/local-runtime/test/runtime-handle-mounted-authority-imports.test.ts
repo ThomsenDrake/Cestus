@@ -1151,3 +1151,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
     );
   });
 });
+
+describe("factory ports runtime-handle boundary", () => {
+  it("does not become a second consumer of Task135D's protected runtime-handle seam", () => {
+    const sourcePath = join(workspaceRoot, "packages/local-runtime/src/resident-loop-factory-ports.ts");
+    if (!existsSync(sourcePath)) return;
+
+    const source = readFileSync(sourcePath, "utf8");
+    expect(source).not.toMatch(/runtime-factory\.js|captureFactoryIssuedMountedRuntime|inspectFactoryIssuedMountedRuntimeCapture/);
+    expect(source).not.toMatch(/mounted-artifact-authority-operation\.js|issueMountedArtifactAuthorityOperationForFactory/);
+  });
+});
