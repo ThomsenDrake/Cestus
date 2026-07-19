@@ -78,3 +78,18 @@ failure. Recover contract-determined failures under `RV-1-E-732`; do not reset,
 rebase, amend, squash, drop, reorder, cherry-pick-over, stash, discard,
 rewrite, self-integrate, merge, push, use credentials, contact external
 systems, or touch `neo`.
+
+## GREEN Implementation Record
+
+The minimal bridge is `createResidentLoopToolGateway` in the owned source path.
+It snapshots only plain own-data requests, reads the exact current Task120 plan
+before and after gateway work, embeds that plan event plus its frozen source
+and artifact bindings in the requested preview, and returns only issued
+readback capabilities. Decision, claim, execution, and result transitions
+reread the same durable request/plan state and reject any mismatch or terminal
+substitution. Completion consumes only the opaque evidence returned by the
+released private G136-SC adapter.
+
+The GREEN adjusts only invalid test fixture literals to their existing canonical
+Task120 schema forms; it retains every RED behavior assertion and adds no
+compatibility or alternate completion authority.

@@ -12,7 +12,7 @@ describe("resident-loop tool gateway", () => {
 
     expect(request).toMatchObject({
       taskId: "task_gateway",
-      attemptId: "attempt_gateway",
+      attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       runId: "run_gateway",
       toolId: "agent.test.effect",
       toolVersion: "1.0.0",
@@ -71,7 +71,7 @@ describe("resident-loop tool gateway", () => {
       version: 1,
       streamId: `agent_tool_request_${request.toolRequestId}`,
       context: {
-        actor: agentActor,
+        actor: { id: agentActor.id, kind: "human", label: "Forged self-approval" },
         occurredAt: fixedNow(),
         causationId: request.requestEventId,
         correlationId: `corr_${request.toolRequestId}`,
@@ -142,19 +142,19 @@ async function prepareFixture() {
     identity: {
       residentAgentId: "agent_default",
       taskId: "task_gateway",
-      attemptId: "attempt_gateway",
+      attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       runId: "run_gateway",
-      policyId: "policy_gateway",
+      policyId: "agent_policy_gateway",
       policyVersion: "1.0.0",
       policyHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       authorityHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       sourceEventIds: [source.id],
-      contextArtifactHashes: [],
+      contextArtifactHashes: ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"],
       budget: { maxSteps: 1, remainingSteps: 1, contextBytes: 0 },
       causationEventId: source.id,
       correlationId: "corr_gateway_plan"
     },
-    planRevision: 0,
+    planRevision: 1,
     descriptorHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
   });
   const agentGateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
@@ -163,7 +163,7 @@ async function prepareFixture() {
     plan,
     agentGateway,
     approvalGateway: createAgentToolGateway({ ledger, actor: schedulerActor, now: fixedNow }),
-    bridge: createResidentLoopToolGateway({ ledger, gateway: agentGateway })
+    bridge: createResidentLoopToolGateway({ ledger, gateway: agentGateway, now: fixedNow })
   };
 }
 
