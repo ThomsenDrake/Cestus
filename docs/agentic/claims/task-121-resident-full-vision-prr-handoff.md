@@ -67,3 +67,15 @@ The task consumes CF-1's frozen handoff contract and produces only a provenance-
   effects. The causal RED will provide the released prompt authority and
   mounted handoff inputs so it can prove the still-legacy V1 completion path
   is rejected by the required V2 lifecycle assertions.
+
+## V4 Approval-Pending Suspension Repair
+
+- Forward-merged program authority `e1542136c628eab4f33fee01432e2ba15be84d18`
+  containing RV-1-E-844 onto clean Task121 candidate
+  `efee7660fccf2609bf7e8d38f944fef0f37f98e2` as merge
+  `92ff9e557a17125120231e13553725bc0dc31120`; both histories are preserved.
+- Causal RED requires the approval-requested `waiting-for-approval` branch to
+  retain its local draft and exact requested-tool provenance while appending no
+  specialist terminal event, orchestration completion, or completed task
+  status. The run must remain resumable and no send/external execution event
+  may appear.
