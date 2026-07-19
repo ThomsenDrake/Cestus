@@ -22183,3 +22183,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances C136-P `implementing -> candidate`. This candidate is
   preserved, not reviewing, approved, integrated, or released. Strict prefix
   remains 20. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-792 — Repaired Task136-FC-Ports candidate enters fresh review
+
+- Recorded at: 2026-07-19T08:08:25Z
+- Exact clean candidate `a05a0c862a85b014002cdfa1a9227ba57983a4a1`
+  preserves all original implementation and first-review history, root-cause
+  authority merge `c75b1ec5720058572f93c2c7a7c9c1cf06ce2a07`, causal
+  hostile-posture RED `a283121a78be8e879c082d24c3e3978328ad70ea`,
+  minimal GREEN `b250ff94aa629a4293c76ce09b4bf860bc09038f`,
+  and current program merge parent
+  `00ecb0f21180b6c0f67827fcf6ab186e96877efb`. Cumulative scope is
+  exactly the five V4-owned paths; recovery edits are confined to the owned
+  source, focused/import tests, and claim.
+- Committed-byte admission passes focused **3 files / 7 tests**, serial
+  cross-boundary **14 files / 92 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, repository **20/20** followed only by the
+  expected incomplete-29 boundary, diff hygiene, factory readiness, exact
+  scope, clean state, and real non-symlinked Vitest 4.1.9 dependencies.
+  Verify-to-verify differential retains exactly **12 failing files / 69
+  failures / 5 skips** and adds four passes: the original three card tests plus
+  the named hostile-posture recovery test. A raw base run resolved only the
+  two known prerequisite timeout assertions; no new or changed substantive
+  failure is present.
+- Fresh concurrent read-only Terra/xhigh architecture/invariants review task
+  `019f796a-ca84-7fd3-b3bd-09fc574ff23c` and
+  executability/adversarial review task
+  `019f796a-d686-7af1-994b-a2ba992fb1bf` are bound to the immutable SHA.
+  Reviews are read-only; SDD/TDD is not relevant or authorized for reviewers.
+  They must verify the exact original trace now rejects, full P2 nested-shape
+  and hostile-text parity, preserved exact bindings, minimized immutable
+  output, and absence of authority/effect/import widening.
+- Status advances Task136-FC-Ports `implementing-repair -> candidate ->
+  reviewing`. Strict prefix remains 20. No push, external effect, or `neo`
+  action occurs.
