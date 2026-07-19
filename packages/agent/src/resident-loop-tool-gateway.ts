@@ -183,7 +183,7 @@ interface CurrentGatewayState {
 }
 
 function createCompletionGuardedLedger(ledger: EventLedger, expectedGlobalEventCount: number): EventLedger {
-  return Object.freeze({
+  const guarded: EventLedger = {
     async append(event, options) {
       if (options?.expectedGlobalEventCount !== undefined) {
         throw new Error("Resident-loop completion guard does not accept a second global ledger precondition.");
@@ -196,7 +196,8 @@ function createCompletionGuardedLedger(ledger: EventLedger, expectedGlobalEventC
     async readAll() {
       return await ledger.readAll();
     }
-  });
+  };
+  return Object.freeze(guarded);
 }
 
 async function readCurrentGatewayState(
