@@ -33,3 +33,23 @@ remounted, swapped, forged, copied, proxied, or conflicting state. It has no
 provider invocation, network/DNS/socket access, credential or secret access,
 OAuth, ledger/config mutation, fallback, default-factory edit, process-global
 registration, or other external effect.
+
+## Causal RED
+
+- The RED adds only the focused PM suite and this claim; no production module
+  exists in the RED commit.
+- It exercises the released Task135D/Task137A factory-issued mounted operation,
+  not scalar stand-ins. It requires an opaque locator, authoritative mounted
+  ledger readback, deterministic immutable output, and revalidation after the
+  asynchronous ledger read.
+- It also rejects copied/proxied/structural operations and locators, a runtime
+  handle in place of the operation, cross-workspace-shaped input, accessor
+  input without getter invocation, stale/closed state, and P1-shaped provider
+  facts. The latter proves P1 remains data only and cannot mint authority.
+- The focused command must fail as a test assertion because the PM module is
+  absent, then remain byte-identical for the minimal GREEN implementation.
+- `npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts`
+  exited `1` with **1 failed file / 4 failed tests**. Each failure is the
+  intentional API-presence assertion (`expected false to be true`) after the
+  released factory-issued operation successfully admitted; it is not a fixture,
+  syntax, dependency, or environment failure.
