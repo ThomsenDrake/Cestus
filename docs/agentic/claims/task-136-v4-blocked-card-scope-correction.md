@@ -377,3 +377,44 @@ expectation failure occurred.
   scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited
   `0`: `19` passed, `0` failed. The forward RED test blob is byte-identical;
   the named stash remains preserved as required.
+
+## RV-1-E-849 record-25 fixture causal RED
+
+- Status: `claimed -> implementing` after normal forward merge
+  `c4c67c00872b66dad07507e605dc3801f278f983` of coordinator authority
+  `8357a9fe68217319dfdbceeba6b7a85b9e617d1e` into
+  `codex/task136-v4-task139-pm-direct-source-ownership`.
+- The merged assurance-test blob is
+  `261bfb8fcf81937ddf7ed4c23db9464d7df70852`; this causal checkpoint changes
+  no assurance-test, contract, checker, V1-V3, raw-record, or runtime byte.
+- Command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Observed result: exit `1`; `19` tests ran, `17` passed, `2` failed, and
+  no test was skipped. The only failures are current-prefix assertions at
+  lines `1112` and `1428`, each observing strict record prefix `25` against
+  the stale expected value `24` (`25 !== 24`).
+- RV-1-E-849 establishes the direct cause: strict record-25 repository mode
+  emits `TASK136_REPOSITORY_PREFIX_OK records=25 commands=25`, followed only
+  by `repository release closure incomplete: expected 29 records, found 25`.
+  The finite GREEN may therefore update only the two current strict-prefix
+  fixture groups and their coupled repository expectations from `24` to `25`.
+  Historical/pre-activation fixtures and all immutable assurance inputs remain
+  unchanged. Stop for any scope, raw-record, V1-V4, dependency, or verifier
+  conflict; no registry, review, integration, push, external, or `neo` action
+  is authorized here.
+
+## RV-1-E-849 record-25 minimal GREEN evidence
+
+- The two current-prefix fixture groups now require a parsed/released prefix
+  length of `25` and `expectedIds.slice(0, 25)`. Their coupled repository
+  admission assertions now require the sole closure boundary `expected 29
+  records, found 25`, the marker `records=25 commands=25`, and exactly `25`
+  adapter command calls.
+- No historical, pre-activation, raw-record, transfer, ownership, contract,
+  checker, V1-V3, command-card, or runtime assertion changed. The only test
+  edits are the six current record-count-derived expectations described above.
+- Focused proof command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`; the
+  committed-byte admission additionally requires contract and repository
+  markers, standalone typecheck, factory readiness, diff/scope audit, and
+  clean real local dependencies with executable Vitest.
