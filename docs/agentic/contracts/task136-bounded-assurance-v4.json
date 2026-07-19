@@ -72,6 +72,18 @@
           {
             "path": "packages/ontology/src/contracts.ts",
             "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts",
+            "recordDisposition": "owned"
           }
         ]
       }
@@ -380,7 +392,7 @@
             "path": "packages/local-runtime/test/portable-workspace-lifecycle.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/mounted-artifact-authority-operation.ts"
           },
           {
@@ -408,11 +420,11 @@
             "path": "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts"
           },
           {
@@ -429,7 +441,8 @@
           }
         ],
         "transferToIds": [
-          "CF1-HR"
+          "CF1-HR",
+          "Task139-PM"
         ],
         "command": "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/ontology/test/resident-wake-contracts.test.ts"
       },
@@ -638,7 +651,8 @@
           "Task139-P1",
           "Task135D",
           "Task137A",
-          "T120-R"
+          "T120-R",
+          "Task137B-W"
         ],
         "ownedPaths": [
           {
@@ -652,10 +666,22 @@
           {
             "disposition": "owned",
             "path": "docs/agentic/claims/task-139-mounted-provider-authority.md"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/mounted-artifact-authority-operation.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/support/task137-authority-boundary-policy.ts"
           }
         ],
         "transferToIds": [],
-        "command": "npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts"
+        "command": "npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts"
       },
       {
         "id": "Task136-FC-Core",

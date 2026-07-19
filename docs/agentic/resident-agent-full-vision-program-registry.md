@@ -20829,3 +20829,202 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-753 — Record-18 eligible Task139-PM owner dispatched
+
+- Recorded at: 2026-07-19T00:42:31Z
+- Exact strict record-17 program base
+  `c160f5ad5b1841a9e7b2ae23d410327592445143` releases every Task139-PM
+  prerequisite: Task126-R, Task139-P1, Task135D, Task137A, and T120-R. Contract
+  computation also reports G136-SC, Task121, and Task122 eligible, but their
+  already-preserved candidates remain held without stale review or integration
+  until their exact release-order bases at positions 22, 25, and 26.
+- Sole Task139-PM implementation owner is Terra/xhigh task
+  `019f77d2-c59e-79b3-a4a4-9393117304c2`, worktree
+  `/home/drake/.codex/worktrees/fab0/Cestus`, on required task branch
+  `codex/task139-pm-mounted-provider-authority`. It owns exactly the V4 mounted
+  provider authority source, focused test, and claim.
+- The finite implementation sequence is one claim commit, one causal RED
+  commit, and one minimal GREEN commit. It must derive opaque provider authority
+  only from released mounted/factory and current durable sources; preserve
+  Task139-P1 as data-only and RV-1-C-134's trusted Task126 injection seam; obey
+  the released production-import boundary; and reject caller-scalar, structural,
+  copied, stale, remounted, swapped, revoked, expired, noncurrent, secret-bearing,
+  fallback, or alternate-store authority without provider/network/credential/
+  write effects.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The owner cannot review, self-integrate,
+  edit this registry, push, use credentials, contact providers, or touch `neo`.
+- Status advances Task139-PM `not started -> claimed -> implementing`. Strict
+  prefix remains 17; no candidate, integration, or release record exists yet.
+
+## RV-1-E-754 — Task139-PM released-interface ownership root-cause checkpoint
+
+- Recorded at: 2026-07-19T00:57:56Z
+- The same Task139-PM owner preserves claim
+  `b47db7bffbe7022177793f61fa0042a03416bc3b` and causal RED
+  `8479f8ece61417a49e880e7cf76687342a6230f7`. RED uses the released
+  mounted runtime and `MountedArtifactAuthorityOperation` path, then proves the
+  required opaque issue/readback API is absent while rejecting structural,
+  copied, proxied, cross-workspace, stale, closed-runtime, and caller-shaped
+  authority. The owner stopped before production GREEN and left its worktree
+  clean.
+- Root cause is a released-interface ownership conflict. Task137B-W's import
+  policy permits protected mounted-operation inspection only through finite
+  source-specific seams, but Task139-PM owns neither the mounted-operation
+  source nor the policy/import test that may authorize its consumer. Task126's
+  private reader factory is likewise not an authorized Task139-PM production
+  import, and Task139-P1 remains immutable data-only rather than unforgeable
+  authority. Implementing around either boundary would contradict released
+  predecessor APIs and frozen exact-binding safety.
+- Standing recovery therefore authorizes one bounded V4 direct-source
+  correction before PM GREEN. Add `Task137B-W` to Task139-PM's exact
+  prerequisites and transfer only these Task137B-W paths directly to
+  Task139-PM: `packages/local-runtime/src/mounted-artifact-authority-operation.ts`,
+  `packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`,
+  and `packages/local-runtime/test/support/task137-authority-boundary-policy.ts`.
+  Task139-PM's exact command must also execute its focused test and the
+  transferred import-policy test. Historical compatibility for unchanged raw
+  Task137B-W record 11 uses canonical hash
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`.
+- The correction is finite and source-specific: no V5, new card, bridge,
+  generic or transitive transfer facility, compatibility fallback, alternate
+  authority producer, raw-record mutation, or history rewrite is authorized.
+  V1-V3, all 29 card IDs/order, raw strict records 1-17, every existing
+  candidate/integration/review/registry commit, and `neo` remain byte-identical.
+  Task137B-W current-HEAD ownership stays authoritative until strict Task139-PM
+  record 18 exists.
+- A bounded assurance owner must commit one claim/test-only causal RED and one
+  minimal GREEN in the existing four-path assurance boundary, run V4 contract
+  and exact repository-prefix-17 admission, and receive one fresh concurrent
+  Terra/xhigh read-only architecture/executability pair. After dual approval,
+  the coordinator will integrate the assurance chain, forward-merge the
+  corrected program head into the same Task139-PM branch, and resume its same
+  owner from preserved RED for one minimal GREEN using the PM-specific static
+  inspection seam. Task-scoped subagent-driven development and test-driven
+  development are explicitly approved for this task.
+- Strict prefix remains 17. No Task139-PM production edit, release record,
+  provider/network/credential effect, push, or `neo` action occurs at this
+  checkpoint.
+
+## RV-1-E-755 — Task139-PM assurance RED counterfactual corrected
+
+- Recorded at: 2026-07-19T01:07:10Z
+- The bounded assurance owner committed preserved RED
+  `f1524c3a780576e851d537d13f95fb7f9e1a5c28` with only the assurance test
+  and claim changed. Its execution isolates the intended missing-transfer
+  failure at **19 tests / 18 pass / 1 fail** after also updating the inherited
+  test fixture from the obsolete 13-record prefix to the released 17-record
+  prefix. Contract and production checker bytes remain unchanged in RED.
+- Before GREEN, the owner found two older assertions in that same committed
+  test still require Task137B-W's former exact `['CF1-HR']` target set. Those
+  expectations contradict the new exact `['CF1-HR', 'Task139-PM']` RED and
+  would make any valid GREEN fail. The owner stopped cleanly without production
+  edit, amendment, rewrite, or uncommitted state.
+- This is a test-design counterfactual failure, not a product, scope, safety,
+  credential, hardware, or external-behavior decision. Standing recovery starts
+  a changed-counterfactual cycle on the same owner and preserved branch: one
+  forward claim/test-only causal RED must replace only the two contradictory
+  old target/disposition expectations with the exact finite mapping, rerun to
+  the same sole missing contract/checker failure, and then permit one minimal
+  GREEN. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task.
+- All RV-1-E-754 transfer limits and preservation requirements remain exact.
+  Strict prefix stays 17; no PM production, integration, release, external,
+  push, or `neo` action occurs.
+
+## RV-1-E-756 — Task139-PM assurance changes pin-audit tactic
+
+- Recorded at: 2026-07-19T01:15:22Z
+- The same assurance owner preserved forward causal RED
+  `0205463be76859cb25756cce2c768e45e0a63e07`. It corrects the two
+  contradictory transfer assertions from RV-1-E-755, retains the first RED,
+  and again produces **19 tests / 18 pass / 1 fail** solely because the
+  inherited contract lacks Task139-PM's Task137B-W prerequisite.
+- GREEN assembly then exposed three remaining immutable-test assumptions: the
+  old V4 file SHA, old assurance fingerprint, and V3 parity set that still
+  treats Task139-PM's command as unchanged. Required corrected values from the
+  finite intended contract are V4 SHA
+  `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`
+  and assurance fingerprint
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`;
+  Task139-PM must join only the explicit V3-parity exemption set. The owner
+  stopped before GREEN commit.
+- This is the second unsuccessful incremental assertion correction with the
+  same tactic. Standing recovery therefore changes tactic: comprehensively
+  audit and update every V4-derived test pin in one forward claim/test-only RED,
+  accept the exact contract-derived failure set on unchanged contract/checker
+  bytes, and only then apply one minimal GREEN. The uncommitted two-path intended
+  GREEN patch is preserved without discard in named stash
+  `task139-pm-assurance-intended-green-after-0205463b` on the same branch.
+  Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task.
+- RV-1-E-754's exact finite transfer, historical/source-currentness semantics,
+  four-path boundary, and all preservation limits remain unchanged. Strict
+  prefix remains 17; no PM production, integration, release, external, push,
+  or `neo` action occurs.
+
+## RV-1-E-757 — Task139-PM direct-source assurance candidate admitted to review
+
+- Recorded at: 2026-07-19T01:34:13Z
+- The changed pin-audit tactic commits causal RED
+  `c96ba5ccecc533c50e5ca5a73dfa7440847a2dd0` and minimal GREEN
+  candidate `23e4299530e0946f5974a5089563608ed1013978`, preserving earlier
+  stopped REDs `f1524c3a780576e851d537d13f95fb7f9e1a5c28` and
+  `0205463be76859cb25756cce2c768e45e0a63e07`. The final RED produces
+  the exact three contract-derived failures for the future V4 SHA, assurance
+  fingerprint, and absent PM prerequisite; GREEN retains its test blob
+  byte-identically and changes only contract, checker, and claim.
+- Exact committed-byte admission passes **19/19** assurance tests, standalone
+  typecheck, diff hygiene, factory readiness, all four markers
+  (`records=29`, composition `green=1 red=20`, command cards `29`, ABI
+  `green=1 red=15`), exact four-path implementation scope, immutable V1-V3 and
+  raw records 1-17, exact 29-card order, clean tracked/untracked state, and real
+  non-symlinked dependencies with Vitest 4.1.9.
+- Persistent coordinator execution of exact repository mode completes all
+  released commands and emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=17 commands=17` followed only by
+  `repository release closure incomplete: expected 29 records, found 17`.
+- Status advances the bounded assurance correction `implementing -> candidate
+  -> reviewing`. One fresh concurrent Terra/xhigh read-only pair reviews exact
+  `23e42995`: architecture/invariants task
+  `019f7801-f10e-7300-8f04-14d5b7beb2dc` and
+  executability/adversarial task
+  `019f7801-f128-7a41-a78e-0cb96e5023eb`. SDD/TDD is not relevant or
+  authorized for reviewers. Only exact reproduced P0/P1 violations block;
+  P2, style, terminology, hypothetical hardening, and unreproduced concerns
+  are backlog.
+- Strict prefix remains 17. PM production, integration, release, provider/
+  network/credential effects, push, and `neo` remain untouched.
+
+## RV-1-E-758 — Task139-PM direct-source assurance approved and integrated
+
+- Recorded at: 2026-07-19T01:43:25Z
+- Architecture/invariants task
+  `019f7801-f10e-7300-8f04-14d5b7beb2dc` and
+  executability/adversarial task
+  `019f7801-f128-7a41-a78e-0cb96e5023eb` both return **APPROVE** on exact
+  assurance candidate `23e4299530e0946f5974a5089563608ed1013978` with no
+  reproduced P0/P1 finding. Both reviews are read-only and change no file.
+  The executability reviewer independently reproduces all 17 targeted commands,
+  the exact repository prefix marker and incomplete-29 boundary, raw record-11
+  binding, pre-record-18 source currentness, record-18 target currentness, and
+  non-blob/blob-mismatch rejection.
+- The coordinator integrates the complete assurance history without rewrite as
+  merge `e0e635e427e9e4719db4b186240c674ef117ddf1`, preserving every stopped
+  RED, corrected RED, pin-audit RED, registry-only forward merge, and GREEN.
+  V1-V3, raw records 1-17, all 29 IDs/order, existing transfers, and prior
+  evidence remain byte-identical.
+- Status advances the bounded correction `reviewing -> approved -> integrated`.
+  Task139-PM now has the exact V4 prerequisite and six-path ownership boundary;
+  Task137B-W remains current-HEAD owner of the three direct-source paths until
+  strict record 18 exists.
+- The coordinator will forward-merge this current program head into the same
+  Task139-PM branch, preserving claim `b47db7b...` and causal RED `8479f8ec...`,
+  then resume the same Terra/xhigh owner for one minimal GREEN. GREEN may add
+  only the PM-specific static inspection seam, exact import-policy permission,
+  PM source, and claim evidence within the corrected six paths. The focused
+  test stays byte-identical. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task.
+- Strict prefix remains 17. No release record, provider/network/credential
+  effect, push, or `neo` action occurs at this transition.
