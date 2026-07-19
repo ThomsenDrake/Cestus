@@ -129,3 +129,37 @@ registration, or other external effect.
   `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The recurring
   TypeScript source-map warning is an inherited dependency condition, not a
   test or environment failure.
+
+## RV-1-E-760 Proxy-Envelope Recovery GREEN
+
+- The only production change imports the local `node:util` platform predicate
+  and calls `types.isProxy(input)` before any null/prototype/key/descriptor
+  inspection in the envelope boundary. That runtime identity check rejects a
+  transparent or trap-bearing proxy without triggering its handler; the valid
+  own-data plain `{ operation }` flow and all pre-existing operation/capability
+  identity checks remain unchanged.
+- Focused GREEN command:
+  `npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+  passed **2 files / 10 tests**, with exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker.
+- Cross-boundary GREEN command passed **8 files / 124 tests**, with exactly
+  one policy marker: `mounted-provider-authority`,
+  `mounted-artifact-authority-operation`,
+  `mounted-artifact-authority-operation-imports`,
+  `portable-workspace-lifecycle`, `portable-mounted-agent-artifact-stores`,
+  `mounted-official-flow-feasibility`, `agent-provider-configuration`, and
+  `packages/agent/test/byok-provider`.
+- `npm run typecheck` passed. Full `npm test` and `npm run verify` retain the
+  inherited non-green differential (**12 failed files / 69 failed tests / 5
+  skips / 2,756 passes**), with no changed failure or skip and the two proxy
+  REDs as the positive delta over the prior candidate. They are not reported
+  as full-green gates.
+- Assurance passed **19/19**. V4 contract mode emitted all four markers:
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`. `git diff --check` and
+  `npm run factory:check` passed.
+- The recovery RED test blob remains byte-identical between its RED and GREEN
+  commits. The recovery diff is exactly the PM test, PM source, and this
+  claim; cumulative Task139-PM ownership remains the original exact six paths.

@@ -1,3 +1,4 @@
+import { types } from "node:util";
 import {
   inspectMountedArtifactAuthorityOperationForMountedProviderAuthority,
   type MountedProviderAuthorityOperationInspection
@@ -83,7 +84,13 @@ export async function inspectMountedProviderAuthority(authority: unknown): Promi
 }
 
 function operationFromInput(input: unknown): object {
-  if (input === null || typeof input !== "object" || Array.isArray(input) || Object.getPrototypeOf(input) !== Object.prototype) {
+  if (
+    types.isProxy(input) ||
+    input === null ||
+    typeof input !== "object" ||
+    Array.isArray(input) ||
+    Object.getPrototypeOf(input) !== Object.prototype
+  ) {
     throw unavailable();
   }
   if (Reflect.ownKeys(input).length !== 1 || !Object.prototype.hasOwnProperty.call(input, "operation")) {
