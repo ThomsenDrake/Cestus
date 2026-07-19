@@ -34,8 +34,18 @@ const eventPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const planPattern = /^plan_[a-zA-Z0-9_-]+$/;
 const urlSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
 const localhostPattern = /\blocalhost\b/i;
-const hostPattern = /(?:^|[^a-z0-9])(?:[a-z0-9-]+\.)+[a-z]{2,}(?=$|[^a-z0-9])/i;
+const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
+const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9])((?:[0-9a-fx]+\.)+[0-9a-fx]+|0x[0-9a-f]+|\d{8,})(?=$|[^a-z0-9])/gi;
+const wholeNumericUrlHostPattern = /^(?:0x[0-9a-f]+|\d+)(?::\d+)?$/i;
+const dnsHostTokenPattern = /(?:^|[^\p{L}\p{N}\p{M}_-])((?:[\p{L}\p{N}\p{M}-]+\.)+[\p{L}\p{N}\p{M}-]*[\p{L}\p{M}][\p{L}\p{N}\p{M}-]*)(?=$|[^\p{L}\p{N}\p{M}_-])/gu;
+const idnaDotEquivalentPattern = /[\u3002\uFF0E\uFF61]/gu;
+const releasedDottedVersionPattern = /^(?:resident-plan-record|resident-loop-provider-posture|agent-provider-capability|agent-provider-auth|policy|adapter)\.v[12]$|^1\.0\.0$/;
+const canonicalIsoTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const rawCommandPattern = /(?:^|\s)(?:curl|wget|bash|sh|zsh|powershell|cmd)(?:\s|$)/i;
+const runModes = new Set([
+  "evidence-triage", "ontology-bootstrap", "investigation-planner", "prr-negotiation",
+  "timeline-builder", "contradiction-finder", "report-builder", "memory-curation"
+]);
 const outputClasses = new Set(["observation", "derivative", "proposal", "approval-request"]);
 const budgetFields = [
   "planRevisions", "observationRecords", "toolSteps", "providerInvocations", "providerRequestBytes",
@@ -112,6 +122,7 @@ function validatePlan(plan: NormalizedRecord, posture: NormalizedRecord, constra
   if (string(plan, "schemaVersion") !== "resident-plan-record.v2" || string(plan, "residentAgentId") !== "agent_default") throw unavailable();
   requirePattern(string(plan, "workspaceId"), /^ws_[a-zA-Z0-9_-]+$/);
   for (const key of ["taskId", "attemptId", "runId", "causationId"] as const) requirePattern(string(plan, key), eventOrIdentityPattern(key));
+  if (!runModes.has(string(plan, "runMode")) || string(plan, "correlationId").length < 3) throw unavailable();
   requirePattern(string(plan, "planId"), planPattern);
   if (!Number.isInteger(number(plan, "planRevision")) || number(plan, "planRevision") < 0 || number(plan, "planRevision") > 3) throw unavailable();
   validateWorkflow(requireRecord(plan, "workflowDescriptor"));
@@ -286,14 +297,21 @@ function validatePosture(posture: NormalizedRecord, plan: NormalizedRecord, cons
   requireExactKeys(run, ["taskId", "attemptId", "runId"]);
   const policy = requireRecord(plan, "policy");
   const authority = requireRecord(plan, "authority");
+  const workspaceId = string(workspace, "workspaceId");
+  const mountInstanceId = string(workspace, "mountInstanceId");
+  string(workspace, "admissionGenerationId");
+  const policyVersion = string(workspace, "policyVersion");
+  const policyDigest = string(workspace, "policyDigest");
+  const lockStateDigest = string(workspace, "lockStateDigest");
+  const highWaterMark = string(workspace, "highWaterMark");
   if (
-    string(workspace, "workspaceId") !== string(plan, "workspaceId") ||
-    string(workspace, "mountInstanceId") !== string(authority, "mountGeneration") ||
-    string(workspace, "policyVersion") !== string(policy, "policyVersion") ||
-    string(workspace, "policyDigest") !== string(policy, "policyHash") ||
-    string(workspace, "lockStateDigest") !== string(authority, "activeLocksHash") ||
-    string(workspace, "highWaterMark") !== string(authority, "ledgerHighWaterEventId") ||
-    number(workspace, "highWaterOrdinal") < 0 ||
+    workspaceId !== string(plan, "workspaceId") ||
+    mountInstanceId !== string(authority, "mountGeneration") ||
+    policyVersion !== string(policy, "policyVersion") ||
+    policyDigest !== string(policy, "policyHash") ||
+    lockStateDigest !== string(authority, "activeLocksHash") ||
+    highWaterMark !== string(authority, "ledgerHighWaterEventId") ||
+    !Number.isSafeInteger(number(workspace, "highWaterOrdinal")) || number(workspace, "highWaterOrdinal") < 0 ||
     ["taskId", "attemptId", "runId"].some((key) => string(run, key) !== string(plan, key))
   ) throw unavailable();
   const selection = requireRecord(posture, "selection");
@@ -308,18 +326,37 @@ function validatePosture(posture: NormalizedRecord, plan: NormalizedRecord, cons
   requireExactKeys(approval, ["required", "approvalProfile", "requiredApprovalClass"]);
   const binding = requireRecord(posture, "binding");
   requireExactKeys(binding, ["promptArtifactHash", "approvalPreviewHash"]);
+  const providerId = string(selection, "providerId");
+  string(selection, "modelId");
+  string(selection, "adapterVersion");
+  const selectionPolicyVersion = string(selection, "selectionPolicyVersion");
+  string(selection, "endpointPolicyId");
+  const capabilityId = string(capability, "capabilityId");
+  const capabilityVersion = string(capability, "capabilityVersion");
+  hash(string(capability, "capabilityHash"));
+  requirePattern(string(capability, "capabilitySourceEventId"), eventPattern);
+  string(capability, "capabilityRevision");
+  string(credentialReference, "credentialRefId");
+  const credentialKind = string(credentialReference, "credentialKind");
+  string(feasibility, "feasibilityId");
+  const feasibilityLane = string(feasibility, "lane");
+  string(feasibility, "assessedAt");
+  const approvalRequired = boolean(approval, "required");
+  const approvalProfile = string(approval, "approvalProfile");
+  const requiredApprovalClass = string(approval, "requiredApprovalClass");
+  hash(string(binding, "promptArtifactHash"));
+  hash(string(binding, "approvalPreviewHash"));
   if (
-    string(selection, "providerId") !== string(capability, "capabilityId") ||
-    string(selection, "selectionPolicyVersion") !== string(policy, "policyVersion") ||
-    string(capability, "capabilityVersion") !== "agent-provider-capability.v2" ||
-    string(credentialReference, "credentialKind") !== "api-key-bearer" ||
-    string(feasibility, "lane") !== "byok" ||
-    boolean(approval, "required") !== true ||
-    string(approval, "approvalProfile") !== "remote-byte-transfer-gated" ||
-    !requireArray(constraints, "requiredApprovalClasses").includes(string(approval, "requiredApprovalClass"))
+    providerId !== capabilityId ||
+    selectionPolicyVersion !== string(policy, "policyVersion") ||
+    capabilityVersion !== "agent-provider-capability.v2" ||
+    credentialKind !== "api-key-bearer" ||
+    feasibilityLane !== "byok" ||
+    approvalRequired !== true ||
+    approvalProfile !== "remote-byte-transfer-gated" ||
+    requiredApprovalClass !== "provider-byte-transfer" ||
+    !requireArray(constraints, "requiredApprovalClasses").includes("provider-byte-transfer")
   ) throw unavailable();
-  for (const record of [workspace, selection, capability, credentialReference, feasibility, approval, binding]) assertSafeRecordStrings(record);
-  hash(string(binding, "promptArtifactHash")); hash(string(binding, "approvalPreviewHash"));
   validateOrderedUniqueStrings(requireArray(credentialReference, "sourceEventIds"), eventPattern);
   validateOrderedUniqueStrings(requireArray(feasibility, "sourceEventIds"), eventPattern);
 }
@@ -333,10 +370,10 @@ function sameReadback(readback: NormalizedRecord, plan: NormalizedRecord, idKey:
 }
 
 function isConstraintSubset(next: NormalizedRecord, prior: NormalizedRecord): boolean {
-  for (const key of ["permittedAutomaticActionClasses", "requiredApprovalClasses"] as const) {
-    const existing = requireArray(prior, key);
-    if (requireArray(next, key).some((entry) => !existing.includes(entry))) return false;
-  }
+  const priorAutomatic = requireArray(prior, "permittedAutomaticActionClasses");
+  if (requireArray(next, "permittedAutomaticActionClasses").some((entry) => !priorAutomatic.includes(entry))) return false;
+  const nextRequired = requireArray(next, "requiredApprovalClasses");
+  if (requireArray(prior, "requiredApprovalClasses").some((entry) => !nextRequired.includes(entry))) return false;
   const previousTools = requireArray(prior, "toolAllowlist");
   return requireArray(next, "toolAllowlist").every((entry) => previousTools.some((previous) => sameValue(entry, previous)));
 }
@@ -346,11 +383,18 @@ function isBudgetNarrower(next: NormalizedRecord, prior: NormalizedRecord): bool
   const previousCeilings = requireRecord(prior, "ceilings");
   const nextConsumed = requireRecord(next, "consumed");
   const previousConsumed = requireRecord(prior, "consumed");
+  const nextRemaining = requireRecord(next, "remaining");
+  const previousRemaining = requireRecord(prior, "remaining");
   const action = requireRecord(next, "actionConsumption");
   if (number(action, "planRevisions") !== 1) return false;
   for (const field of budgetFields) {
-    if (number(nextCeilings, field) !== number(previousCeilings, field) || number(nextConsumed, field) < number(previousConsumed, field)) return false;
-    if (field !== "planRevisions" && number(action, field) !== 0) return false;
+    const actionConsumption = number(action, field);
+    if (
+      number(nextCeilings, field) !== number(previousCeilings, field) ||
+      (field !== "planRevisions" && actionConsumption !== 0) ||
+      number(nextConsumed, field) !== number(previousConsumed, field) + actionConsumption ||
+      number(nextRemaining, field) !== number(previousRemaining, field) - actionConsumption
+    ) return false;
   }
   return true;
 }
@@ -429,6 +473,7 @@ function value(record: NormalizedRecord, key: string): NormalizedValue {
 function string(record: NormalizedRecord, key: string): string {
   const candidate = value(record, key);
   if (typeof candidate !== "string") throw unavailable();
+  safe(candidate);
   return candidate;
 }
 
@@ -472,18 +517,51 @@ function validateUniqueStrings(values: readonly NormalizedValue[] | readonly str
   if (new Set(strings).size !== strings.length) throw unavailable();
 }
 
-function assertSafeRecordStrings(record: NormalizedRecord): void {
-  for (const [key, candidate] of Object.entries(record)) {
-    if (typeof candidate === "string") {
-      if (key === "credentialKind" && candidate === "api-key-bearer") continue;
-      safe(candidate);
-    }
+function safe(candidate: string): void {
+  if (candidate === "api-key-bearer") return;
+  if (
+    !isAgentSecretSafeText(candidate) ||
+    (!hashPattern.test(candidate) && urlSchemePattern.test(candidate)) ||
+    localhostPattern.test(candidate) ||
+    rawCommandPattern.test(candidate) ||
+    hasIpAddress(candidate) ||
+    hasDnsHostMaterial(candidate)
+  ) {
+    throw unavailable();
   }
 }
 
-function safe(candidate: string): void {
-  if (!isAgentSecretSafeText(candidate) || (!hashPattern.test(candidate) && urlSchemePattern.test(candidate)) || localhostPattern.test(candidate) || hostPattern.test(candidate) || rawCommandPattern.test(candidate) || isIP(candidate) !== 0) {
-    throw unavailable();
+function hasDnsHostMaterial(value: string): boolean {
+  if (canonicalIsoTimestampPattern.test(value)) return false;
+  const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
+  for (const match of classificationText.matchAll(dnsHostTokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && !releasedDottedVersionPattern.test(token)) return true;
+  }
+  return false;
+}
+
+function hasIpAddress(value: string): boolean {
+  if (canonicalIsoTimestampPattern.test(value) || releasedDottedVersionPattern.test(value)) return false;
+  const tokens = value.match(ipShapedTokenPattern);
+  if (tokens !== null && tokens.some((token) => {
+    const bracketless = token.startsWith("[") && token.endsWith("]") ? token.slice(1, -1) : token;
+    const scopeIndex = bracketless.indexOf("%");
+    return isIP(scopeIndex === -1 ? bracketless : bracketless.slice(0, scopeIndex)) !== 0;
+  })) return true;
+  if (wholeNumericUrlHostPattern.test(value) && isStandardUrlIpv4Host(value)) return true;
+  for (const match of value.matchAll(standardUrlIpv4TokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && isStandardUrlIpv4Host(token)) return true;
+  }
+  return false;
+}
+
+function isStandardUrlIpv4Host(token: string): boolean {
+  try {
+    return isIP(new URL(`http://${token}`).hostname) === 4;
+  } catch {
+    return false;
   }
 }
 
