@@ -1,6 +1,31 @@
+import { isIP } from "node:net";
 import { types } from "node:util";
+import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
 import type { ResidentLoopFactoryAuthorityReadback } from "./resident-loop-factory-composition.js";
 import type { ResidentLoopProviderPosture } from "./resident-loop-provider-posture.js";
+
+const workspaceIdPattern = /^ws_[a-zA-Z0-9_-]+$/;
+const mountInstanceIdPattern = /^mount_[a-zA-Z0-9_-]+$/;
+const admissionGenerationIdPattern = /^admission_generation_[0-9]+$/;
+const taskIdPattern = /^task_[a-zA-Z0-9_-]+$/;
+const attemptIdPattern = /^attempt_[a-zA-Z0-9_-]+$/;
+const runIdPattern = /^run_[a-zA-Z0-9_-]+$/;
+const providerIdPattern = /^provider_[a-zA-Z0-9_-]+$/;
+const credentialRefIdPattern = /^agent_credref_[a-zA-Z0-9_-]+$/;
+const endpointPolicyIdPattern = /^endpoint_policy_[a-zA-Z0-9_-]+$/;
+const feasibilityIdPattern = /^provider_feasibility_[a-zA-Z0-9_-]+$/;
+const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
+const hashPattern = /^sha256:[a-f0-9]{64}$/;
+const timestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const uriSchemePattern = /(?:^|[^a-z0-9])[a-z][a-z0-9+.-]*:/i;
+const ipShapedTokenPattern = /\[[^\]\s]+\]|(?:::|[0-9a-f]{1,4}:)[0-9a-f:.]*(?:%[a-z0-9_.-]+)?|(?:\d{1,3}\.){3}\d{1,3}/gi;
+const standardUrlIpv4TokenPattern = /(?:^|[^a-z0-9])((?:[0-9a-fx]+\.)+[0-9a-fx]+|0x[0-9a-f]+|\d{8,})(?=$|[^a-z0-9])/gi;
+const wholeNumericUrlHostPattern = /^(?:0x[0-9a-f]+|\d+)(?::\d+)?$/i;
+const localhostPattern = /\blocalhost\b/i;
+const dnsHostTokenPattern = /(?:^|[^\p{L}\p{N}\p{M}_-])((?:[\p{L}\p{N}\p{M}-]+\.)+[\p{L}\p{N}\p{M}-]+)(?=$|[^\p{L}\p{N}\p{M}_-])/gu;
+const idnaDotEquivalentPattern = /[\u3002\uFF0E\uFF61]/gu;
+const idnaDotEquivalentInOriginalPattern = /[\u3002\uFF0E\uFF61]/u;
+const releasedVersionPattern = /^(?:resident-loop-provider-posture|agent-provider-capability|agent-provider-auth|policy|adapter)\.v[12]$/;
 
 export interface ResidentLoopFactoryPortsInput {
   readonly authorityReadback: ResidentLoopFactoryAuthorityReadback;
@@ -88,7 +113,19 @@ interface ProviderPosture extends WorkspaceBinding, RunBinding {
     readonly capabilityId: string;
     readonly capabilityVersion: "agent-provider-capability.v2";
     readonly capabilityHash: `sha256:${string}`;
+    readonly capabilitySourceEventId: string;
     readonly capabilityRevision: string;
+  };
+  readonly credentialReference: {
+    readonly credentialRefId: string;
+    readonly credentialKind: "api-key-bearer";
+    readonly sourceEventIds: readonly string[];
+  };
+  readonly feasibility: {
+    readonly feasibilityId: string;
+    readonly lane: "byok";
+    readonly assessedAt: string;
+    readonly sourceEventIds: readonly string[];
   };
   readonly approval: {
     readonly required: true;
@@ -132,7 +169,12 @@ export function createResidentLoopFactoryPorts(input: unknown): ResidentLoopFact
     }),
     providerPosture: Object.freeze({
       selection: Object.freeze({ ...posture.selection }),
-      capability: Object.freeze({ ...posture.capability }),
+      capability: Object.freeze({
+        capabilityId: posture.capability.capabilityId,
+        capabilityVersion: posture.capability.capabilityVersion,
+        capabilityHash: posture.capability.capabilityHash,
+        capabilityRevision: posture.capability.capabilityRevision
+      }),
       approval: Object.freeze({ ...posture.approval }),
       binding: Object.freeze({ ...posture.binding })
     })
@@ -186,7 +228,10 @@ function normalizeProviderPosture(value: unknown): ProviderPosture {
     "schemaVersion", "residentAgentId", "workspace", "run", "selection", "capability", "credentialReference", "feasibility",
     "approval", "binding"
   ]);
-  if (requiredText(posture, "schemaVersion") !== "resident-loop-provider-posture.v1" || requiredText(posture, "residentAgentId") !== "agent_default") {
+  if (
+    requiredSafeText(posture, "schemaVersion") !== "resident-loop-provider-posture.v1" ||
+    requiredSafeText(posture, "residentAgentId") !== "agent_default"
+  ) {
     throw unavailable();
   }
   const workspace = normalizeWorkspaceBinding(exactFrozenRecord(posture.workspace, [
@@ -195,37 +240,64 @@ function normalizeProviderPosture(value: unknown): ProviderPosture {
   const run = exactFrozenRecord(posture.run, ["taskId", "attemptId", "runId"]);
   const selection = exactFrozenRecord(posture.selection, ["providerId", "modelId", "adapterVersion", "selectionPolicyVersion", "endpointPolicyId"]);
   const capability = exactFrozenRecord(posture.capability, ["capabilityId", "capabilityVersion", "capabilityHash", "capabilitySourceEventId", "capabilityRevision"]);
+  const credentialReference = exactFrozenRecord(posture.credentialReference, ["credentialRefId", "credentialKind", "sourceEventIds"]);
+  const feasibility = exactFrozenRecord(posture.feasibility, ["feasibilityId", "lane", "assessedAt", "sourceEventIds"]);
   const approval = exactFrozenRecord(posture.approval, ["required", "approvalProfile", "requiredApprovalClass"]);
   const binding = exactFrozenRecord(posture.binding, ["promptArtifactHash", "approvalPreviewHash"]);
 
+  const providerId = requiredPattern(selection, "providerId", providerIdPattern);
+  const modelId = requiredSafeText(selection, "modelId");
+  const adapterVersion = requiredSafeText(selection, "adapterVersion");
+  const selectionPolicyVersion = requiredSafeText(selection, "selectionPolicyVersion");
+  requiredPattern(selection, "endpointPolicyId", endpointPolicyIdPattern);
+  const capabilityId = requiredPattern(capability, "capabilityId", providerIdPattern);
+  const capabilitySourceEventId = requiredPattern(capability, "capabilitySourceEventId", eventIdPattern);
+  const credentialSourceEventIds = exactFrozenEventIds(credentialReference, "sourceEventIds");
+  const feasibilitySourceEventIds = exactFrozenEventIds(feasibility, "sourceEventIds");
+
   if (
-    requiredText(selection, "selectionPolicyVersion") !== workspace.policyVersion ||
-    !safeIdentifier(requiredText(selection, "providerId")) ||
-    !safeIdentifier(requiredText(selection, "modelId")) ||
-    !safeIdentifier(requiredText(selection, "adapterVersion")) ||
-    !safeIdentifier(requiredText(capability, "capabilityId")) ||
-    requiredText(capability, "capabilityVersion") !== "agent-provider-capability.v2" ||
-    !safeIdentifier(requiredText(capability, "capabilityRevision")) ||
+    selectionPolicyVersion !== workspace.policyVersion ||
+    capabilityId !== providerId ||
+    requiredSafeText(capability, "capabilityVersion") !== "agent-provider-capability.v2" ||
+    requiredSafeText(capability, "capabilityRevision").length === 0 ||
+    requiredPattern(credentialReference, "credentialRefId", credentialRefIdPattern).length === 0 ||
+    requiredSafeText(credentialReference, "credentialKind") !== "api-key-bearer" ||
+    requiredPattern(feasibility, "feasibilityId", feasibilityIdPattern).length === 0 ||
+    requiredSafeText(feasibility, "lane") !== "byok" ||
+    !isCanonicalIsoTimestamp(requiredSafeText(feasibility, "assessedAt")) ||
+    !hasRequiredFeasibilityProvenance(capabilitySourceEventId, credentialSourceEventIds, feasibilitySourceEventIds) ||
     requiredBoolean(approval, "required") !== true ||
-    requiredText(approval, "approvalProfile") !== "remote-byte-transfer-gated" ||
-    requiredText(approval, "requiredApprovalClass") !== "provider-byte-transfer"
+    requiredSafeText(approval, "approvalProfile") !== "remote-byte-transfer-gated" ||
+    requiredSafeText(approval, "requiredApprovalClass") !== "provider-byte-transfer"
   ) throw unavailable();
 
   return Object.freeze({
     ...workspace,
-    taskId: requiredText(run, "taskId"),
-    attemptId: requiredText(run, "attemptId"),
-    runId: requiredText(run, "runId"),
+    taskId: requiredPattern(run, "taskId", taskIdPattern),
+    attemptId: requiredPattern(run, "attemptId", attemptIdPattern),
+    runId: requiredPattern(run, "runId", runIdPattern),
     selection: Object.freeze({
-      providerId: requiredText(selection, "providerId"),
-      modelId: requiredText(selection, "modelId"),
-      adapterVersion: requiredText(selection, "adapterVersion")
+      providerId,
+      modelId,
+      adapterVersion
     }),
     capability: Object.freeze({
-      capabilityId: requiredText(capability, "capabilityId"),
+      capabilityId,
       capabilityVersion: "agent-provider-capability.v2" as const,
       capabilityHash: requiredHash(capability, "capabilityHash"),
-      capabilityRevision: requiredText(capability, "capabilityRevision")
+      capabilitySourceEventId,
+      capabilityRevision: requiredSafeText(capability, "capabilityRevision")
+    }),
+    credentialReference: Object.freeze({
+      credentialRefId: requiredPattern(credentialReference, "credentialRefId", credentialRefIdPattern),
+      credentialKind: "api-key-bearer" as const,
+      sourceEventIds: credentialSourceEventIds
+    }),
+    feasibility: Object.freeze({
+      feasibilityId: requiredPattern(feasibility, "feasibilityId", feasibilityIdPattern),
+      lane: "byok" as const,
+      assessedAt: requiredSafeText(feasibility, "assessedAt"),
+      sourceEventIds: feasibilitySourceEventIds
     }),
     approval: Object.freeze({
       required: true as const,
@@ -241,13 +313,13 @@ function normalizeProviderPosture(value: unknown): ProviderPosture {
 
 function normalizeWorkspaceBinding(record: Readonly<Record<string, unknown>>): WorkspaceBinding {
   return Object.freeze({
-    workspaceId: requiredPattern(record, "workspaceId", /^ws_[a-zA-Z0-9_-]+$/),
-    mountInstanceId: requiredPattern(record, "mountInstanceId", /^mount_[a-zA-Z0-9_-]+$/),
-    admissionGenerationId: requiredPattern(record, "admissionGenerationId", /^admission_generation_[0-9]+$/),
-    policyVersion: requiredText(record, "policyVersion"),
+    workspaceId: requiredPattern(record, "workspaceId", workspaceIdPattern),
+    mountInstanceId: requiredPattern(record, "mountInstanceId", mountInstanceIdPattern),
+    admissionGenerationId: requiredPattern(record, "admissionGenerationId", admissionGenerationIdPattern),
+    policyVersion: requiredSafeText(record, "policyVersion"),
     policyDigest: requiredHash(record, "policyDigest"),
     lockStateDigest: requiredHash(record, "lockStateDigest"),
-    highWaterMark: requiredPattern(record, "highWaterMark", /^evt_[a-zA-Z0-9_-]+$/),
+    highWaterMark: requiredPattern(record, "highWaterMark", eventIdPattern),
     highWaterOrdinal: requiredNonnegativeInteger(record, "highWaterOrdinal")
   });
 }
@@ -306,16 +378,22 @@ function requiredText(record: Readonly<Record<string, unknown>>, key: string): s
   return value;
 }
 
-function requiredPattern(record: Readonly<Record<string, unknown>>, key: string, pattern: RegExp): string {
+function requiredSafeText(record: Readonly<Record<string, unknown>>, key: string): string {
   const value = requiredText(record, key);
+  if (!isSafePostureText(value)) throw unavailable();
+  return value;
+}
+
+function requiredPattern(record: Readonly<Record<string, unknown>>, key: string, pattern: RegExp): string {
+  const value = requiredSafeText(record, key);
   if (!pattern.test(value)) throw unavailable();
   return value;
 }
 
 function requiredHash(record: Readonly<Record<string, unknown>>, key: string): `sha256:${string}` {
-  const value = requiredText(record, key);
-  if (!/^sha256:[a-f0-9]{64}$/.test(value)) throw unavailable();
-  return value as `sha256:${string}`;
+  const value = requiredSafeText(record, key);
+  if (!isHash(value)) throw unavailable();
+  return value;
 }
 
 function requiredNonnegativeInteger(record: Readonly<Record<string, unknown>>, key: string): number {
@@ -330,8 +408,121 @@ function requiredBoolean(record: Readonly<Record<string, unknown>>, key: string)
   return value;
 }
 
-function safeIdentifier(value: string): boolean {
-  return /^[a-zA-Z0-9_-]+$/.test(value);
+function exactFrozenEventIds(record: Readonly<Record<string, unknown>>, key: string): readonly string[] {
+  const value = record[key];
+  if (
+    types.isProxy(value) ||
+    !Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Array.prototype ||
+    !Object.isFrozen(value) ||
+    Object.getOwnPropertySymbols(value).length !== 0
+  ) throw unavailable();
+
+  const length = Object.getOwnPropertyDescriptor(value, "length");
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (
+    length === undefined ||
+    !("value" in length) ||
+    !Number.isSafeInteger(length.value) ||
+    length.value <= 0 ||
+    Object.getOwnPropertyNames(value).length !== length.value + 1
+  ) throw unavailable();
+
+  const eventIds: string[] = [];
+  for (let index = 0; index < length.value; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (
+      descriptor === undefined ||
+      !("value" in descriptor) ||
+      descriptor.get !== undefined ||
+      descriptor.set !== undefined ||
+      !descriptor.enumerable ||
+      typeof descriptor.value !== "string" ||
+      !eventIdPattern.test(descriptor.value) ||
+      !isSafePostureText(descriptor.value)
+    ) throw unavailable();
+    eventIds.push(descriptor.value);
+  }
+  if (
+    new Set(eventIds).size !== eventIds.length ||
+    eventIds.some((eventId, index) => {
+      const previous = eventIds[index - 1];
+      return index > 0 && previous !== undefined && previous >= eventId;
+    })
+  ) throw unavailable();
+  return Object.freeze(eventIds);
+}
+
+function hasRequiredFeasibilityProvenance(
+  capabilitySourceEventId: string,
+  credentialSourceEventIds: readonly string[],
+  feasibilitySourceEventIds: readonly string[]
+): boolean {
+  return feasibilitySourceEventIds.length > credentialSourceEventIds.length + 1 &&
+    feasibilitySourceEventIds.includes(capabilitySourceEventId) &&
+    credentialSourceEventIds.every((eventId) => feasibilitySourceEventIds.includes(eventId));
+}
+
+function isHash(value: string): value is `sha256:${string}` {
+  return hashPattern.test(value);
+}
+
+function isSafePostureText(value: string): boolean {
+  return (isAgentSecretSafeText(value) || value === "api-key-bearer") && !hasForbiddenTextMaterial(value);
+}
+
+function hasForbiddenTextMaterial(value: string): boolean {
+  if (isCanonicalIsoTimestamp(value) || releasedVersionPattern.test(value)) return false;
+  return (
+    (!hashPattern.test(value) && uriSchemePattern.test(value)) ||
+    hasIpAddress(value) ||
+    localhostPattern.test(value) ||
+    hasDnsHostMaterial(value)
+  );
+}
+
+function isCanonicalIsoTimestamp(value: string): boolean {
+  if (!timestampPattern.test(value)) return false;
+  const timestamp = Date.parse(value);
+  return !Number.isNaN(timestamp) && new Date(timestamp).toISOString() === value;
+}
+
+function hasDnsHostMaterial(value: string): boolean {
+  const containsIdnaDotEquivalent = idnaDotEquivalentInOriginalPattern.test(value);
+  const classificationText = value.normalize("NFC").replace(idnaDotEquivalentPattern, ".");
+  for (const match of classificationText.matchAll(dnsHostTokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && (containsIdnaDotEquivalent || !releasedVersionPattern.test(token))) return true;
+  }
+  return false;
+}
+
+function hasIpAddress(value: string): boolean {
+  const tokens = value.match(ipShapedTokenPattern);
+  return (tokens !== null && tokens.some((token) => {
+    const bracketless = token.startsWith("[") && token.endsWith("]") ? token.slice(1, -1) : token;
+    const scopeIndex = bracketless.indexOf("%");
+    const address = scopeIndex === -1 ? bracketless : bracketless.slice(0, scopeIndex);
+    return isIP(address) !== 0;
+  })) || hasStandardUrlIpv4Host(value);
+}
+
+function hasStandardUrlIpv4Host(value: string): boolean {
+  if (isCanonicalIsoTimestamp(value)) return false;
+  if (wholeNumericUrlHostPattern.test(value) && isStandardUrlIpv4Host(value)) return true;
+  for (const match of value.matchAll(standardUrlIpv4TokenPattern)) {
+    const token = match[1];
+    if (token !== undefined && isStandardUrlIpv4Host(token)) return true;
+  }
+  return false;
+}
+
+function isStandardUrlIpv4Host(token: string): boolean {
+  try {
+    return isIP(new URL(`http://${token}`).hostname) === 4;
+  } catch {
+    return false;
+  }
 }
 
 function admissionGeneration(value: string): string {

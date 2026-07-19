@@ -130,3 +130,33 @@ The normal real workspace/Core/PM/P2 fixture and API import complete first;
 the import-boundary tests pass. The production blob is exactly
 `9c529b81e4df9dc4dbd620aa29884cfdf6c23027` both before and after this RED.
 The inherited local TypeScript source-map warning is not a test failure.
+
+## RV-1-E-790 Green
+
+GREEN changes only the owned FC-Ports source plus this claim. It continues to
+return the same small frozen data-only port, but it now independently consumes
+and validates every released P2 posture member before projection. Every nested
+record and source-event array must be frozen, plain, exact-keyed, own-data,
+symbol-free, non-proxy, accessor-free, and non-sparse. No credential,
+reference, feasibility, endpoint, host, or source-event value is returned.
+
+The source applies the released pure secret-safety predicate and P2-equivalent
+URI, DNS/IDNA, localhost, IP/IPv6, and numeric-host classification to every
+posture text boundary, preserving only the exact released schema/version,
+hash, timestamp, enum, ID, and event-list forms. It validates the exact
+selection/workspace policy relationship, provider/capability identity,
+BYOK credential and feasibility enums, canonical timestamp, hashes and IDs,
+and all available provenance facts: feasibility provenance must include the
+capability source and each credential-reference source plus its unprojected
+endpoint provenance. It cannot invent a missing opaque endpoint source.
+
+The static module remains cycle-free and data-only. Its only new runtime
+imports are Node IP classification and the released pure secret-safety
+predicate; Core and P2 remain type-only imports. It does not acquire a handle,
+authority, provider configuration reader, credential resolver, store, issuer,
+network path, fallback, or external effect.
+
+From the Green working bytes, the exact card command exits `0` with **3 files
+/ 7 tests passed**, and `npm run typecheck` exits `0`. The committed RED test
+blobs remain byte-identical; final committed-byte admission evidence follows
+this Green commit.
