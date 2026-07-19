@@ -24106,3 +24106,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   evidence item remain byte-identical. Status advances the fixture update
   `approved -> integrated`; Task121 may now receive this exact record-24 base.
   No push, external effect, or `neo` action occurs.
+
+## RV-1-E-842 — Task121 exact record-24 base promotion
+
+- Recorded at: 2026-07-19T18:09:51Z
+- Strict V4 release record 24 and its approved assurance fixtures are clean
+  and integrated at current program head `f6e97109765ec1d7ba8a81e0b129f9364fb70a09`.
+  The next exact release card is Task121 with sole prerequisite CF1-HR already
+  released at record 14.
+- Preserved Task121 candidate
+  `280cfff90621334e3769c93279fb59f0f141960f` remains clean on branch
+  `codex/task121-cf1-handoff-adoption` and changes exactly its three V4-owned
+  source, test, and claim paths over immutable base `986c2a43`. Claim
+  `fcb0d104`, causal RED `d1f8848b`, and minimal GREEN `280cfff9` remain in
+  order. The current program lineage has not changed any of those three paths
+  since that base.
+- Coordinator authority permits only a forward merge of this registry-bearing
+  exact record-24 program head into the preserved Task121 branch. No rebase,
+  reset, amend, squash, drop, reorder, cherry-pick-over, conflict resolution,
+  code/test repair, self-integration, or history rewrite is authorized by this
+  transition. The candidate must be admitted and freshly reviewed from the
+  merged bytes before integration.
+- Status advances Task121 `candidate-waiting-base -> candidate`. No push,
+  provider, credential, network, external effect, or `neo` action occurs.
