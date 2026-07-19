@@ -178,3 +178,21 @@ added to the production API. The focused card is GREEN at **2 files / 9
 tests**. This correction creates no provider, credential, network, external
 effect, generic result event, public completion method, or storage write
 outside the ledger.
+
+## RV-1-E-732 Post-GREEN Compiler RED
+
+The final `npm run verify` typecheck reproduces two scoped diagnostics in the
+owned adversarial test file after `751831b7`, with no runtime assertion or
+production path implicated. First, the structural-completion callback passes
+an optional `executionClaimEventId` to an exact-optional `causationId` field.
+Second, its hostile ledger wrapper broadens a discriminated `KnowledgeEvent`
+union while replacing only the selected plan descriptor bytes. The runtime
+card remains GREEN at 2 files / 9 tests, so this claim-only checkpoint is the
+causal compiler RED under `RV-1-E-732`; status advances **green ->
+compiler-recovery-red** before any correction.
+
+The sole follow-on GREEN will retain every runtime assertion and make no
+production change: it will require the callback's already-validated claim ID
+before building its evidence DTO, and preserve the ledger union discriminator
+while constructing the hostile selected-plan mutation. It remains strictly
+within the four owned paths and creates no new authority or external behavior.
