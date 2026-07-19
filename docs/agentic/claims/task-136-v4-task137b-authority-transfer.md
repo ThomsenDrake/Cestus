@@ -178,3 +178,21 @@ Implementation evidence:
   tests / 2,764 passing tests / 5 skips, factory/diff/scope/clean, and real
   local Vitest 4.1.9 dependencies. No registry, integration, review, push,
   network, credential, provider, `neo`, or task creation is authorized.
+
+## RV-1-E-783 minimal GREEN evidence
+
+- The two affected current-prefix blocks now assert the parsed strict prefix
+  has `20` records and exactly `expectedIds.slice(0, 20)`. In the repository
+  admission block, the closure expectation and success marker advance to
+  `found 20` and `records=20 commands=20`, and the command-call count advances
+  to `20`.
+- The audit retained all non-current historical fixtures, including the
+  Task139-PM test title, record-17 pre-activation source-currentness fixture,
+  synthetic Task139-PM record-18 activation and target-currentness assertion,
+  and raw/historical record fixtures. No contract, checker, Task139-P2, release
+  record, or release-authority behavior changed.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `19` passed and `0` failed. Final committed-byte admission will
+  rerun the full required assurance, repository, typecheck, differential,
+  factory, diff, scope, and clean/dependency gates.
