@@ -21248,3 +21248,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-763 — Record-18 closure proof and Task136-FC-Core dispatch
+
+- Recorded at: 2026-07-19T02:57:36Z
+- From clean record-18 program commit
+  `ac5c3500681c8c2d485618a13635d3f68bd6ae73`, repository mode executes
+  all eighteen exact release commands and emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=18 commands=18` followed only by
+  `repository release closure incomplete: expected 29 records, found 18`.
+  This activates Task139-PM current ownership of its three direct-source
+  transfers and confirms `Task136-FC-Core` as exact release position 19.
+- Contract computation confirms every Task136-FC-Core prerequisite is released:
+  Task137B-W, CF1-HR, Task139-PM, and Task135D. Preserved G136-SC, Task121,
+  and Task122 candidates remain held without stale review or integration until
+  their exact ordered bases at positions 22, 25, and 26.
+- Sole Terra/xhigh implementation owner is task
+  `019f784e-8e24-74c2-a0a4-a5636cbec576`, worktree
+  `/home/drake/.codex/worktrees/18af/Cestus`, authorized branch
+  `codex/task136-fc-core-factory-composition`. Its exact four-path boundary is
+  the V4 core factory composition source, focused test, import-policy test, and
+  claim.
+- The owner must commit one claim transition, one causal test-only RED, and one
+  minimal GREEN. It composes only released factory-held wake, handoff/readback,
+  mounted-provider, and mounted-runtime authority through static named,
+  cycle-free interfaces; caller data, copied/structural/proxied values,
+  provider configuration, compatibility paths, and fallback writes gain no
+  authority or effect.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused/cross-boundary,
+  typecheck/full-differential, assurance/repository, factory/scope/clean/deps
+  admission and one fresh concurrent Terra/xhigh read-only review pair are
+  mandatory before integration. Status advances Task136-FC-Core
+  `blocked -> claimed -> implementing`; strict prefix remains 18. No push,
+  external effect, or `neo` action occurs.
