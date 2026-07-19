@@ -79,6 +79,77 @@ describe("mounted provider authority", () => {
     expect(appendCalls).toBe(0);
   });
 
+  it("rejects a transparent Proxy around the valid operation envelope", async () => {
+    const fixture = authorityFixture("transparent-envelope-proxy");
+    const operation = await issueOperation(fixture);
+    const api = await authorityApi();
+    const envelope = new Proxy({ operation }, {});
+
+    expect(() => api.issueMountedProviderAuthority(envelope)).toThrow(/mounted provider authority/i);
+  });
+
+  it("rejects a trap-bearing Proxy envelope before any handler trap executes", async () => {
+    const fixture = authorityFixture("trap-envelope-proxy");
+    const operation = await issueOperation(fixture);
+    const api = await authorityApi();
+    let trapCalls = 0;
+    const handler: ProxyHandler<object> = {
+      getPrototypeOf(target) {
+        trapCalls += 1;
+        return Reflect.getPrototypeOf(target);
+      },
+      setPrototypeOf(target, prototype) {
+        trapCalls += 1;
+        return Reflect.setPrototypeOf(target, prototype);
+      },
+      isExtensible(target) {
+        trapCalls += 1;
+        return Reflect.isExtensible(target);
+      },
+      preventExtensions(target) {
+        trapCalls += 1;
+        return Reflect.preventExtensions(target);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        trapCalls += 1;
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+      defineProperty(target, property, descriptor) {
+        trapCalls += 1;
+        return Reflect.defineProperty(target, property, descriptor);
+      },
+      has(target, property) {
+        trapCalls += 1;
+        return Reflect.has(target, property);
+      },
+      get(target, property, receiver) {
+        trapCalls += 1;
+        return Reflect.get(target, property, receiver);
+      },
+      set(target, property, value, receiver) {
+        trapCalls += 1;
+        return Reflect.set(target, property, value, receiver);
+      },
+      deleteProperty(target, property) {
+        trapCalls += 1;
+        return Reflect.deleteProperty(target, property);
+      },
+      ownKeys(target) {
+        trapCalls += 1;
+        return Reflect.ownKeys(target);
+      }
+    };
+    const envelope = new Proxy({ operation }, handler);
+    let rejected = false;
+    try {
+      api.issueMountedProviderAuthority(envelope);
+    } catch {
+      rejected = true;
+    }
+
+    expect({ rejected, trapCalls }).toEqual({ rejected: true, trapCalls: 0 });
+  });
+
   it("rejects structural, copied, proxied, non-mounted, cross-workspace-shaped, and P1-shaped mint attempts", async () => {
     const first = authorityFixture("first");
     const second = authorityFixture("second");
