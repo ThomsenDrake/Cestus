@@ -21681,3 +21681,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   edit, provider/network/credential effect, push, or `neo` action is
   authorized. Status remains Task139-P2 `implementing`; strict prefix remains
   19.
+
+## RV-1-E-776 — Task139-P2 secret-safety RED oracle corrected internally
+
+- Recorded at: 2026-07-19T05:06:38Z
+- Corrected causal RED `ac6e8c9b961311166a9364c3eb2ab89c93420fd0`
+  cleanly proves canonical `ws_` fixture execution and three intentional
+  missing-P2-API failures, but the first positive oracle simultaneously
+  requires credential-kind enum `api-key-bearer` and rejects any serialized
+  occurrence of the word `bearer`. No production file exists or was edited.
+- This is a contradictory test predicate, not leaked credential material, an
+  API/safety-invariant choice, or a card implementation defect. Released P1,
+  Task126, credential-reference, and provider contracts all treat the exact
+  credential-kind enum as secret-safe metadata while prohibiting credential
+  values, authorization headers, locators, URLs/hosts, and secret-shaped
+  material.
+- Standing RV-1-E-732 recovery supersedes the owner's obsolete numeric stop.
+  The changed counterfactual/tactic is one precise test-only causal correction
+  using an explicit secret/authorization/host-material corpus instead of a
+  broad word match, while retaining the exact expected safe enum. The same
+  owner then proceeds to the minimal GREEN and every admission gate.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Scope remains exactly the three P2 paths;
+  all earlier claim/RED/merge history is preserved. No private Task126 reader,
+  compatibility alias, provider/network/credential action, registry edit by
+  the child, push, or `neo` action is authorized. Status remains Task139-P2
+  `implementing`; strict prefix remains 19.
