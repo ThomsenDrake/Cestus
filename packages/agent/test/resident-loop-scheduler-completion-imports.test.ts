@@ -20,8 +20,11 @@ describe("resident-loop scheduler completion import boundary", () => {
 
     expect(existsSync(residentLoopGatewayPath)).toBe(true);
     const residentLoopGateway = readFileSync(residentLoopGatewayPath, "utf8");
+    expect(residentLoopGateway).toContain("createAgentToolGateway");
     expect(residentLoopGateway).toContain("completeToolFromSchedulerEvidence");
     expect(residentLoopGateway).not.toMatch(/\.completeTool\s*\(/);
     expect(residentLoopGateway).not.toContain("completeTool:");
+    expect(residentLoopGateway).not.toContain("readonly gateway:");
+    expect(residentLoopGateway).not.toContain("input.gateway");
   });
 });
