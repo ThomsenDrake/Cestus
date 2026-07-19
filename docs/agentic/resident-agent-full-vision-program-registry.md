@@ -21537,3 +21537,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   byte-identically. Fresh Terra/xhigh read-only architecture/executability
   review follows full admission. Strict prefix is 19; no push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-771 — Task139-P2 claimed from the exact released authority chain
+
+- Recorded at: 2026-07-19T04:30:21Z
+- Strict record 19 makes `Task139-P2` the next exact V4 release card. Its
+  released prerequisites are `T120-R`, `Task139-PM`, and
+  `Task136-FC-Core`; its exclusive ownership is exactly
+  `packages/local-runtime/src/resident-loop-provider-posture.ts`,
+  `packages/local-runtime/test/resident-loop-provider-posture.test.ts`, and
+  `docs/agentic/claims/task-139-resident-loop-provider-posture.md`.
+- The implementation must consume P1's immutable, credential-free
+  configuration facts through PM/Core's opaque mounted-authority readback and
+  produce P-owned verified provider-posture data for Lane L. It may not mint
+  mounted authority, trust caller-copied currentness, resolve a credential,
+  invoke a provider, perform network or storage effects, change the default
+  factory, select a fallback, or create compatibility authority.
+- Exact posture must bind provider/model/capabilities, selection policy,
+  credential reference posture, approval requirement, run identity, and the
+  current workspace/mount/policy/lock/high-water facts already authenticated
+  by released predecessors. Hostile, stale, swapped, cross-run, cross-mount,
+  malformed, duplicate, accessor, proxy, or secret-bearing input fails closed
+  before any posture is returned.
+- The owner must preserve one claim commit, one causal RED, and one minimal
+  GREEN, run the exact focused command plus cross-boundary, typecheck,
+  full/verify differential, V4, repository-prefix, factory, scope, clean, and
+  dependency gates, and return a committed candidate for one fresh concurrent
+  Terra/xhigh architecture/executability review pair. The child never edits
+  this registry, self-merges, pushes, or touches `neo`.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Status advances Task139-P2
+  `not started -> claimed`; strict prefix remains 19 until coordinator
+  integration and strict record 20.
