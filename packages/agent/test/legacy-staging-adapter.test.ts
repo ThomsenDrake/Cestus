@@ -17,8 +17,6 @@ import {
   type LegacyStagingAdapterContext
 } from "../src/adapters/legacy-staging.js";
 import {
-  createAgentToolGateway,
-  hashAgentToolPreview,
   type AgentApprovedToolExecutionInput
 } from "../src/index.js";
 
@@ -302,7 +300,7 @@ describe("legacy staging domain execution adapter", () => {
     });
   });
 
-  it("maps assertion.proposed event IDs into agent.tool.completed without old ontology import", async () => {
+  it("returns exact assertion.proposed event IDs without structural completion or old ontology import", async () => {
     const prepared = await prepareLegacyStagingContext();
     const selectedCandidateIds = prepared.preview.candidates.map((candidate) => candidate.candidateId);
     await prepared.runtime.approveStaging({
@@ -317,49 +315,17 @@ describe("legacy staging domain execution adapter", () => {
       ...prepared.context,
       selectedCandidateIds
     });
-    const gateway = createAgentToolGateway({
-      ledger: prepared.workspace.ledger,
-      actor: agentActor,
-      now
-    });
-    const preview = buildLegacyStagingApprovalPreview(legacyPreviewInput(prepared, {
-      toolRequestId: "toolreq_legacy_staging_execute",
-      toolId: legacyStagingExecuteDescriptor.toolId,
-      toolVersion: legacyStagingExecuteDescriptor.toolVersion,
-      runId: "run_legacy_staging",
-      taskId: "task_legacy_staging",
-      residentAgentId: "agent_default",
-      selectedCandidateIds
-    }));
-    const requested = await gateway.requestTool({
-      toolRequestId: "toolreq_legacy_staging_execute",
-      residentAgentId: "agent_default",
-      taskId: "task_legacy_staging",
-      runId: "run_legacy_staging",
-      toolId: legacyStagingExecuteDescriptor.toolId,
-      toolVersion: legacyStagingExecuteDescriptor.toolVersion,
-      sideEffectClass: legacyStagingExecuteDescriptor.sideEffectClass,
-      requiredApprovalClass: "none",
-      preview
-    });
-    expect(requested.payload.previewHash).toBe(hashAgentToolPreview(preview));
-
-    const result = await adapter.executeApproved(executionInputFor(prepared.context, requested.payload.previewHash));
-    await gateway.completeTool({
-      toolRequestId: "toolreq_legacy_staging_execute",
-      result
-    });
+    const result = await adapter.executeApproved(executionInputFor(prepared.context));
     const events = await prepared.workspace.ledger.readAll();
-    const completed = eventOfType(events, "agent.tool.completed");
 
     expect(result.eventIds).toHaveLength(1);
-    expect(completed.payload.eventIds).toEqual(result.eventIds);
-    expect(completed.payload.readModelChanges).toContainEqual({
+    expect(result.readModelChanges).toContainEqual({
       projectionName: "legacy-staging",
       change: "staged 1 legacy assertion proposal",
       relatedIds: selectedCandidateIds
     });
     expect(events.map((event) => event.type)).toContain("assertion.proposed");
+    expect(events.map((event) => event.type)).not.toContain("agent.tool.completed");
     expect(events.map((event) => event.type)).not.toContain("legacy.old-ontology.imported");
     expect(events.map((event) => event.type)).not.toContain("assertion.accepted");
     expect(events.map((event) => event.type)).not.toContain("entity.resolved");

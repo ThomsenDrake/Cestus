@@ -22581,3 +22581,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   mandatory. Status advances G136-SC `candidate -> implementing-repair`;
   strict prefix remains 21. No compatibility route, contract/version change,
   unowned-file edit, push, external effect, or `neo` action occurs.
+
+## RV-1-E-802 — Historical Task9 completion-fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T10:11:30Z
+- Exact G136-SC GREEN `44f2dcd2075805106786ece7a77633395b8a87fc`
+  passes its focused **6 files / 81 tests**, exact cross-boundary **9 files /
+  131 tests**, **19/19** bounded-assurance suite, all four V4 markers, factory
+  readiness, diff hygiene, exact recovery scope, clean state, real
+  non-symlinked executable Vitest dependencies, and repository prefix
+  **21/21** followed only by the expected incomplete-29 boundary. The three
+  released domain verticals now pass their exact adapter differential.
+- Admission independently reproduces one remaining compiler and runtime
+  failure in historical Task9-owned
+  `packages/agent/test/legacy-staging-adapter.test.ts:348`. The fixture calls
+  removed public `gateway.completeTool`; standalone typecheck emits only
+  `TS2339`, and the exact four-adapter differential is **3 files / 55 tests
+  passing** plus that sole `TypeError`. A raw full suite reports **14 failing
+  files / 71 failing tests / 2,772 passes / 5 skips**, with the extra file and
+  assertion attributable to this stale call and the remaining count variance
+  confined to the known prerequisite timeout cohort.
+- Restoring or typing a public structural completion method would violate the
+  frozen G136 private-evidence safety invariant and the causal RED that removed
+  that bypass. Changing the fixture inside G136 would instead violate its exact
+  eleven-path V4 ownership. The contract-determined resolution is therefore a
+  separate forward-only maintenance correction in Task9's existing historical
+  ownership, leaving G136, V4, all strict records, and the 29-card order
+  unchanged.
+- Standing RV-1-E-732 authorizes one task-scoped historical Task9 maintenance
+  owner on a branch from this program head. One claim-only causal RED must
+  record the exact compiler/runtime failure; one minimal GREEN may change only
+  `packages/agent/test/legacy-staging-adapter.test.ts` and its existing
+  `docs/agentic/claims/task-9-resident-agent-domain-adapter-registry.md` claim.
+  GREEN must drive the legacy domain adapter through the released private
+  scheduler/execution completion path and preserve exact request/run/preview/
+  claim/result provenance. It must not expose, cast, type-launder, or restore
+  `completeTool`, change production, add compatibility authority, or weaken
+  fail-closed behavior.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused/cross, standalone
+  typecheck, full-test/verify differential, diff/factory/scope/clean/dependency,
+  V4, and repository **21/21** gates precede one fresh concurrent read-only
+  Terra/xhigh review pair. Dual approval integrates this maintenance forward,
+  then the current program head is forward-merged into preserved G136-SC and
+  its full admission/review resumes. Strict prefix remains 21. No new release
+  card, contract/version change, raw-record mutation, push, external effect,
+  or `neo` action occurs.
+
+## RV-1-E-803 — Task9 no-approval fixture tactic correction
+
+- Recorded at: 2026-07-19T10:25:21Z
+- The Task9 owner reproduced exact causal RED evidence without changing test or
+  production bytes: G136 candidate `44f2dcd2075805106786ece7a77633395b8a87fc`
+  reports **13/14** legacy-staging tests with the sole line-348 `TypeError`, and
+  standalone TypeScript exits 2 with only the same `TS2339`. Claim-only RED
+  `a2165f97` records that immutable evidence on the independent Task9 branch.
+- Pre-GREEN interface inspection disproves RV-1-E-802's proposed scheduler-
+  execution tactic. Canonical `legacyStagingExecuteDescriptor` is a released
+  no-approval descriptor (`requiredApprovalClass: "none"`), while the frozen
+  private G136 completion path requires one independently approved request and
+  exact execution claim before domain-result reread. Reclassifying the
+  descriptor, wrapping it as an approval lookalike, directly appending a claim,
+  or manufacturing approval evidence would weaken exact binding and is
+  forbidden.
+- The contract-determined minimal GREEN remains inside the same two historical
+  Task9 paths but changes tactic: the fixture must stop calling public
+  structural completion and stop asserting an `agent.tool.completed` record for
+  this no-approval direct domain execution. It must continue verifying the
+  exact returned `assertion.proposed` event IDs, read-model change, and absence
+  of old ontology import, accepted assertion, entity resolution, and accepted
+  relationship events; it must positively assert that no structural agent-tool
+  completion was appended. G136's owned focused and adversarial tests remain
+  the authority for the independently approved private completion path.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The same owner must forward-merge this
+  registry-only authority before the single minimal GREEN, preserve RED and all
+  prior history, run the complete RV-1-E-802 gate set, and dispatch no review.
+  After owner admission, one fresh concurrent read-only Terra/xhigh pair is
+  mandatory. Strict prefix remains 21; no production, descriptor, compatibility,
+  V4, raw-record, release-order, external, push, or `neo` change is authorized.
