@@ -22217,3 +22217,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances Task136-FC-Ports `implementing-repair -> candidate ->
   reviewing`. Strict prefix remains 20. No push, external effect, or `neo`
   action occurs.
+
+## RV-1-E-793 — Repaired Task136-FC-Ports candidate approved
+
+- Recorded at: 2026-07-19T08:22:49Z
+- Fresh concurrent Terra/xhigh architecture/invariants review task
+  `019f796a-ca84-7fd3-b3bd-09fc574ff23c` and
+  executability/adversarial review task
+  `019f796a-d686-7af1-994b-a2ba992fb1bf` each return unqualified
+  `APPROVED` for exact candidate
+  `a05a0c862a85b014002cdfa1a9227ba57983a4a1`; neither reproduces a
+  remaining P0/P1.
+- Both verify complete forward-only ancestry, exact five-path cumulative and
+  four-path recovery scope, the original secret-plus-proxy trace now rejecting
+  without proxy/accessor traps, valid immutable structural input acceptance,
+  full P2 nested-shape/hostile-text/cross-field validation, exact Core/P2
+  bindings, minimized frozen output, and absence of credential, endpoint,
+  feasibility, callable, authority, fallback, provider, network, storage, or
+  external-effect escape. Executability also reproduces representative nested
+  proxy, accessor, sparse-array, host, secret, and cross-field rejection.
+- Focused **3 files / 7 tests**, typecheck, factory readiness, assurance
+  **19/19**, all four V4 markers, repository **20/20** plus expected
+  incomplete-29, diff and clean-state gates remain green. Full-suite timing
+  noise affects only already-known prerequisite/repository-policy timeouts and
+  adds no FC-Ports or substantive failure.
+- Status advances Task136-FC-Ports `reviewing -> approved`. The coordinator
+  will integrate the complete preserved lineage and rerun all gates before
+  strict record 21. No repair, push, external effect, or `neo` action occurs.
