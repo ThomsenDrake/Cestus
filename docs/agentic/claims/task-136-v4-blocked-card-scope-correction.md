@@ -308,3 +308,26 @@ the V4 contract, its checker, its focused assurance test, and this claim.
   observed; stop for an immutable raw-record, V1-V3, scope, dependency, or
   repeated-verifier conflict. No registry, PM, provider, credential, network,
   `neo`, integration, merge, push, or review action is authorized.
+
+## RV-1-E-755 changed-counterfactual RED correction
+
+- `RV-1-E-755` preserves first RED `f1524c3a780576e851d537d13f95fb7f9e1a5c28`
+  and authorizes this forward claim/test-only counterfactual after registry-only
+  merge `7bee7ea13768fcbf3da55588f7b889faf933444a`.
+- The correction replaces only the two obsolete single-target Task137B-W
+  transfer/disposition assertions with the finite ordered
+  `["CF1-HR", "Task139-PM"]` mapping: `contracts.ts` remains the CF1-HR
+  path, and exactly the mounted-operation source, import-policy test, and
+  authority-boundary policy test are transferred to Task139-PM. The record-11
+  historical compatibility assertion expands to those same four historically
+  owned paths. The first RED's exact mutations, current-head simulation, and
+  raw-17 compatibility coverage remain intact.
+- Contract and checker bytes remain unchanged for this forward RED. The
+  required command is `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`; only
+  the absent finite contract/checker mapping may cause its observed failure.
+
+Observed RED result: exit `1`; `19` tests ran, `18` passed, and exactly one
+failed: `requires the finite Task137B-W to Task139-PM transfer only at record
+18`. The direct cause is the missing appended `Task137B-W` prerequisite from
+the current Task139-PM contract card. No contract or checker bytes changed.
