@@ -2,7 +2,7 @@
 
 ## Claim
 
-- Status: claimed.
+- Status: candidate admission pending final-commit verification.
 - Card: `Task139-P2`, the strict V4 card immediately following released
   Task136-FC-Core record 19.
 - Worker: Codex `gpt-5.6-terra` / `xhigh`.
@@ -11,7 +11,7 @@
 - RV-1-E-775 recovery head before the causal-RED correction:
   `b27c03aca71fe5306aa18a55a105b6a8e9dd3a58`.
 - Current corrected record-19 comparison base:
-  `56ac7af0921cce9d0498d6a545c715b8cbbbc51d`.
+  `f7d7711d6f286e6cc322fa2994de005c223d7fe4`.
 - Released prerequisite evidence:
   - `T120-R`: `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`.
   - `Task139-P1`: `0ca25161e07f2df22109a6cab8da9545d0d0b4a5`.
@@ -143,3 +143,30 @@ frozen structural P1-shaped URI/DNS input is accepted; and the independent
 healthy-plus-revoked reference is accepted. Fixture construction, PM
 currentness, P1 configuration construction, and the prior adversarial cases
 all execute successfully.
+
+## RV-1-E-778 GREEN
+
+GREEN is `50f5975e5398d95aa70d032d466f97cc814f9203` and changes only
+`resident-loop-provider-posture.ts`. It retains P2's frozen/plain-data input
+envelope, then sends the version-stripped capabilities, credential references,
+endpoint policies, and feasibility arrays through the released
+`createAgentProviderConfiguration` validator before selecting its exact BYOK
+posture. This preserves P1's complete capability, reference, temporal, scope,
+endpoint, and feasibility rules for structural copies without treating the
+copy as authority. P2's source-local finite hostile-text classifier also
+rejects P1's URI, DNS, Unicode-dot, IPv6, and numeric-host classes across each
+configuration text boundary while preserving P1's canonical timestamps and
+released dotted versions. The frozen, safe snapshot now carries a frozen
+`binding` member with exact `promptArtifactHash` and `approvalPreviewHash` as
+data only.
+
+From the GREEN parent commit, the focused command passed **1 file / 6 tests**;
+the recorded six-file cross-boundary command passed **6 files / 53 tests**;
+and typecheck, factory readiness, and all four V4 contract markers passed.
+Relative to the clean record-19 base, P2 adds one focused file and six tests:
+the named positive cases are `derives immutable secret-safe BYOK posture from
+one P1 configuration, binding data, and current PM authority` and `retains
+exact prompt and approval hashes as immutable binding data`. The remaining
+four cases are adversarial rejection/currentness coverage. Final admission is
+rerun from the claim-only candidate commit, against detached `f7d7711d`, before
+this claim is handed off.
