@@ -23849,3 +23849,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   reviews exact SHA `f921a72151230a9d5a7a6727c04a2f9919c082fb`; SDD/TDD is not relevant or
   authorized for reviewers. No integration, release record, push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-835 — C136-P global approval enum checkpoint
+
+- Recorded at: 2026-07-19T16:58:28Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b49-5f3c-7822-930b-8cd1c0a05883` and executability/adversarial task
+  `019f7b49-6a7e-73f0-a0ec-b6ebaa677963` independently return `BLOCKED` for
+  exact candidate `f921a72151230a9d5a7a6727c04a2f9919c082fb` on the same
+  reproduced P1. Each appends only `unreleased-approval` to the otherwise
+  valid frozen global `requiredApprovalClasses` and observes an accepted
+  `resident-initial-plan-candidate.v1`.
+- Both reviewers confirm all latest state/binding and prior hostile cases
+  reject, the valid path passes, exact three-path scope and clean before/after
+  HEAD remain unchanged, and no other P0/P1 is reproduced. The sole gap is
+  that the global approval array enforces unique safe strings but not the
+  released closed approval enum.
+- Coordinator adjudication accepts one exact contract-determined correction:
+  derive the runtime closed approval set from released
+  `approvalClassForSideEffect` across the already closed resident side-effect
+  set plus the strictly stronger `human-review`, then require every global
+  member to belong to that set. This reuses released permission authority and
+  adds no divergent approval mapping.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0`, preserving all history. It
+  forward-merges this authority, commits one causal RED for the exact unknown-
+  global-class case, then one minimal GREEN within the same three owned paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All exact admission gates and one fresh
+  concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
+  remains C136-P `reviewing -> implementing-repair`; no push, external effect,
+  or `neo` action occurs.
