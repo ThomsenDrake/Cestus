@@ -22530,3 +22530,54 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   integrated`; this corrected base may now be forward-merged into preserved
   G136-SC for exact release position 22. No push, external effect, or `neo`
   action occurs.
+
+## RV-1-E-801 — G136-SC released-domain-lineage root-cause checkpoint
+
+- Recorded at: 2026-07-19T09:42:03Z
+- Preserved G136-SC candidate `d74ff4a3` was forward-merged with exact current
+  record-21 program authority as clean merge
+  `003ba4d3c878a69a34d1999d1839e8d640cc4bea`. Focused **6 files / 79 tests**
+  and the exact historical cross-boundary **9 files / 129 tests** pass, as do
+  typecheck and all four V4 contract markers. Two coordinator filename
+  substitutions produced diagnostic **9/121** and **8/117** runs before the
+  exact plural `domain-execution-descriptors.test.ts` command was restored;
+  these command-transcription diagnostics do not change candidate bytes.
+- Full admission reproduces four new cross-boundary failures. Exact isolated
+  comparison proves the clean record-21 base passes all **4 files / 56 tests**,
+  while the candidate has **4 failures / 52 passes**: accepted-graph review,
+  PRR correspondence, and export report each append an existing authoritative
+  domain event yet fail scheduler completion; the legacy-staging fixture calls
+  removed public `gateway.completeTool` and throws before completion.
+- The three scheduler failures are a contract-determined P1. Candidate
+  `resident-loop-scheduler-completion.ts` requires every result event's direct
+  `context.causationId` to equal the agent execution-claim ID. The frozen V4
+  design instead says existing domain events remain authoritative and requires
+  their durable locator plus causal/request/run relationship to be bound to the
+  exact request, approved preview, execution claim, ordering, event/artifact
+  IDs, read-model changes, and summary. Released domain services correctly
+  preserve their own append-only domain causation chains; direct recausation to
+  an agent claim was never part of their released interfaces.
+- The legacy-staging failure is the opposite: its test directly invokes the
+  caller-structural completion method that the frozen G136 safety correction
+  explicitly removes. Restoring that public method, adding a compatibility
+  path, or weakening opaque scheduler evidence would recreate RV-1-E-691's
+  accepted P1 and is forbidden. The unowned stale fixture is recorded as
+  safety-aligned test debt for its later owning vertical; it is not authority
+  for an unsafe production change and must remain the sole known new full-suite
+  differential at this release position.
+- Standing RV-1-E-732 resumes the same G136-SC owner task
+  `019f717a-3a5c-7df1-9216-592473d3244f` on the same branch/worktree and
+  preserved history. After forward-merging this checkpoint, one causal RED and
+  one minimal GREEN may change only existing G136-SC-owned paths. RED must pin
+  acceptance of released post-claim domain ancestry and rejection of unrelated,
+  swapped, cross-request/run, self-minted gateway/resident, pre-claim,
+  unreadable, and terminal evidence. GREEN must validate the durable domain
+  causation chain and exact agent request/run/claim ordering without modifying
+  domain adapters or inventing a generic result event.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After GREEN, all focused/cross,
+  assurance/repository, typecheck, verify differential, factory/scope/clean/
+  dependency gates and one fresh concurrent read-only Terra/xhigh pair are
+  mandatory. Status advances G136-SC `candidate -> implementing-repair`;
+  strict prefix remains 21. No compatibility route, contract/version change,
+  unowned-file edit, push, external effect, or `neo` action occurs.
