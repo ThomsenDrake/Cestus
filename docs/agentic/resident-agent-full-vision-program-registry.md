@@ -21387,3 +21387,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   fresh review pair. Status advances record-18 assurance
   `approved -> integrated`; strict prefix remains 18. No push, external
   effect, or `neo` action occurs.
+
+## RV-1-E-768 — Task136-FC-Core approved
+
+- Recorded at: 2026-07-19T04:15:42Z
+- Preserved exact candidate
+  `c6efd58a3e385d0097b4df9f73703a75b145e660` retains claim `f631062b`,
+  causal RED `5e5f27c9`, minimal GREEN `6adba773`, original evidence
+  `a04fe8a6`, corrected-base forward merge `b0fb7650`, and final claim-only
+  re-admission. Task-owned cumulative scope is exactly four V4 paths; the
+  external merge is exactly registry, V4 claim, and assurance-test bytes.
+- Fresh concurrent Terra/xhigh read-only architecture review task
+  `019f7885-bb17-7b51-a88c-453445442a37` and executability/adversarial review
+  task `019f7885-bb16-70f2-a12f-5a5a32d8db86` both approve with no reproduced
+  P0/P1 finding.
+- Exact review/admission reproduction passes focused **2 files / 2 tests**,
+  cross-boundary **8 files / 108 tests** with one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker, typecheck,
+  assurance **19/19**, all four V4 markers, factory/diff/scope/clean/dependency
+  gates, and repository prefix `records=18 commands=18` followed by the
+  expected incomplete-29 boundary. The RED/GREEN/final test blob remains
+  `f9c194670473278eaa94fa5ad65bec06ab12bf91`.
+- Concurrent reviewer load initially added unrelated import-scanner timeouts.
+  Coordinator adjudication serialized one clean `npm run verify`, which
+  reproduced exactly the inherited **12 failing files / 69 failing tests / 5
+  skips / 2,758 passes** and no Task136-FC-Core failure. The transient timeout
+  cohort is environment evidence, not a card defect.
+- Status advances Task136-FC-Core `candidate -> reviewing -> approved`. The
+  coordinator will integrate the complete lineage, rerun all gates from
+  integrated bytes, and append strict record 19. Strict prefix remains 18
+  until that record exists; no push, external effect, or `neo` action occurs.
