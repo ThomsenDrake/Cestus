@@ -106,3 +106,47 @@ Implementation evidence:
   `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`
   and `7199f315245cb986975ec3a8801526075e39cb27eed01f3cc816e9311b63715e`
   respectively; V1-V3 and raw release evidence are unchanged.
+
+## RV-1-E-770 record-19 fixture checkpoint
+
+- Resumed on `codex/task136-v4-task139-pm-direct-source-ownership` at the
+  clean forward-merged record-19 authority
+  `eb2889773d24a9c9e865ff65f43a4ba24f4ab155`. This claim-only checkpoint
+  preserves the inherited claim/RED/GREEN history and leaves the assurance
+  test, contract, checker, V1-V3, raw strict records 1-19, all 29 card IDs and
+  order, FC-Core bytes, and release evidence byte-identical.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `19` tests, `17` passed, and exactly two failed. The only
+  failures are the direct current-prefix assertions at lines `1112` and
+  `1428`, each reporting `19 !== 18` after valid strict Task136-FC-Core
+  record 19. Contract mode remains exact; no contract, checker, blob, command,
+  dependency, FC-Core, or unrelated fixture failure occurred.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  will audit only record-18-derived current count/order/repository/current
+  prefix pins in those two test blocks, advance current assertions to record
+  19, and preserve intentional historical/pre-activation/raw 18-record
+  fixtures. Required committed-byte admission includes assurance 19/19, V4
+  contract and record-19 repository markers, typecheck, full `npm test` and
+  `npm run verify` inherited-baseline differential, factory/diff/scope/clean,
+  and real local Vitest 4.1.9 dependencies. No registry, integration, review,
+  push, network, credential, provider, `neo`, or task creation is authorized.
+
+## RV-1-E-770 minimal GREEN evidence
+
+- The two affected current-prefix blocks now assert the parsed strict prefix
+  has `19` records and exactly `expectedIds.slice(0, 19)`. In the repository
+  admission block, the closure expectation and success marker advance to
+  `found 19` and `records=19 commands=19`, and the command-call count advances
+  to `19`.
+- The audit retained all non-current record-18 facts: the Task139-PM test title,
+  its record-17 pre-activation source-currentness fixture, its synthetic
+  Task139-PM record-18 activation and target-currentness assertion, and raw
+  historical record fixtures. No contract, checker, FC-Core, release record,
+  or release authority behavior changed.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `19` passed and `0` failed. Final committed-byte admission will
+  rerun the full required assurance, repository, typecheck, differential,
+  factory, diff, scope, and clean/dependency gates.

@@ -21569,3 +21569,115 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   explicitly approved for this task. Status advances Task139-P2
   `not started -> claimed`; strict prefix remains 19 until coordinator
   integration and strict record 20.
+
+## RV-1-E-772 — Record-19 assurance correction admitted to final review
+
+- Recorded at: 2026-07-19T04:35:24Z
+- Exact clean GREEN candidate
+  `6f9ad49b2123756b04d591379951a56749ea7fe6` preserves the record-19
+  forward merge `eb288977`, claim-only causal RED `4c0d92c1`, and every
+  earlier assurance/release-history commit. Its correction scope is exactly
+  the V4 assurance test and V4 authority-transfer claim; contract, checker,
+  registry, V1-V3, raw records 1-19, FC-Core, and release evidence bytes are
+  unchanged.
+- Committed-byte admission passes **19/19 assurance tests**, all four exact V4
+  contract markers, standalone typecheck, factory readiness, diff hygiene,
+  exact two-path scope, clean state, and real non-symlinked Vitest 4.1.9
+  dependencies. Repository mode emits
+  `TASK136_REPOSITORY_PREFIX_OK records=19 commands=19` followed only by
+  `repository release closure incomplete: expected 29 records, found 19`.
+- Full `npm test` and `npm run verify` retain the exact inherited **12 failing
+  files / 69 failing tests / 5 skips / 2,758 passes** differential with no
+  assurance failure. The RED independently pinned the two stale current-prefix
+  assertions at **17 pass / 2 fail** before the minimal GREEN advanced only
+  record-19-derived fixtures.
+- One fresh concurrent read-only Terra/xhigh architecture/executability pair
+  now reviews the exact candidate. Reviews may block only on a reproduced
+  P0/P1 contract, evidence, history, or executability defect; SDD/TDD is not
+  relevant or authorized for reviewers. Status advances record-19 assurance
+  `candidate -> reviewing`; strict prefix remains 19 and no `neo` action
+  occurs.
+
+## RV-1-E-773 — Record-19 assurance correction approved
+
+- Recorded at: 2026-07-19T04:48:49Z
+- Fresh concurrent Terra/xhigh read-only architecture/invariants review task
+  `019f78a9-15c6-7063-a583-19bd0098c94d` and
+  executability/adversarial review task
+  `019f78a9-172d-7463-a166-a6567185144d` both return **APPROVED** for exact
+  candidate `6f9ad49b2123756b04d591379951a56749ea7fe6`, with no reproduced
+  P0/P1 defect.
+- The pair independently verifies the exact two-path correction, preserved
+  RED/GREEN history, record-19 current-prefix semantics, intentional
+  historical record-18/17 fixtures, unchanged V1-V4 contract/checker/raw
+  record/release evidence, and clean candidate state. The executability
+  reviewer also reproduces repository prefix
+  `records=19 commands=19` followed only by the expected incomplete-29
+  boundary from the original clean candidate worktree with real dependencies.
+- Missing dependencies in fresh ephemeral review worktrees were adjudicated as
+  environment-only and were neither installed nor treated as a candidate
+  defect. Coordinator/owner admission remains the exact full differential and
+  gate evidence recorded in RV-1-E-772.
+- Status advances record-19 assurance `reviewing -> approved`; the coordinator
+  will integrate the complete preserved candidate history immediately and
+  rerun the bounded gates from integrated bytes. Strict prefix remains 19; no
+  push, external effect, or `neo` action occurs.
+
+## RV-1-E-774 — Record-19 assurance correction integrated
+
+- Recorded at: 2026-07-19T04:52:01Z
+- The coordinator integrates the complete preserved assurance lineage through
+  candidate `6f9ad49b` by merge
+  `9eab6d38c004771c352801d2dfa5dcd33cfd64a0`. Its parents are approval
+  checkpoint `f98a33e2` and the exact approved candidate; no commit is reset,
+  rebased, amended, squashed, dropped, reordered, or rewritten.
+- Integrated-byte reproduction passes **19/19 assurance tests**, all four
+  exact V4 contract markers, standalone typecheck, factory readiness, diff
+  hygiene, exact two-path correction scope, clean tracked/untracked state,
+  and real non-symlinked Vitest 4.1.9 dependencies.
+- Repository mode emits exactly
+  `TASK136_REPOSITORY_PREFIX_OK records=19 commands=19` followed only by
+  `repository release closure incomplete: expected 29 records, found 19`.
+  V1-V3, V4 contract/checker, raw strict records 1-19, all 29 IDs/order,
+  current ownership, FC-Core release evidence, and runtime behavior remain
+  unchanged.
+- Status advances record-19 assurance `approved -> integrated`. This corrected
+  current program base will be forward-merged into Task139-P2 after its next
+  committed checkpoint and before admission/review; the merge is external to
+  the card's three-path ownership and will not replace its claim/RED/GREEN
+  history. Strict prefix remains 19; no push, external effect, or `neo` action
+  occurs.
+
+## RV-1-E-775 — Task139-P2 first-RED root-cause adjudication and changed tactic
+
+- Recorded at: 2026-07-19T04:56:21Z
+- The same Task139-P2 owner preserves claim `ee80a5f2` and causal RED
+  `1141686a`, with no production commit. The RED's three API-absence failures
+  are valid test-first evidence, but its not-yet-reached mounted fixture uses
+  the provisional `workspace_` prefix and an attempted production sketch
+  assumed P2 must mint Task126's private reader. The owner removed that
+  uncommitted sketch and returned a clean branch.
+- Coordinator adjudication finds no product or safety choice. The approved
+  mounted-feasibility design, workspace manifest schema, ontology contract,
+  PM/Core runtime, and released official-flow interfaces all require canonical
+  `ws_` workspace IDs and explicitly reject provisional `workspace_` IDs.
+  Separately, released Task126-R's import boundary makes its reader mint
+  test-only/private and permits no production importer; P2's exact V4
+  prerequisites intentionally exclude Task126-R.
+- Therefore P2 must not retrofit, import, export, mint, alias, or adapt the
+  private `ByokProviderAuthorityReader`. Its current V4 responsibility is the
+  independent P-owned verified-posture capability consumed by FC-Ports,
+  C136-P, and Lane L, derived only from P1 data plus PM/Core mounted readback.
+  Task126 remains a cross-boundary regression suite, not P2 authority.
+- Changed recovery tactic is exact and remains inside the existing three-path
+  card ownership: forward-merge the corrected record-19 program head, append
+  one causal RED correction that uses real `ws_` mounted identity and rejects
+  `workspace_` input/private-reader coupling, then implement one minimal GREEN
+  for the P2 posture capability. Preserve both earlier commits and every
+  inherited history byte.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The same Terra/xhigh owner resumes; no
+  replacement, V5, ownership transfer, compatibility alias, released-source
+  edit, provider/network/credential effect, push, or `neo` action is
+  authorized. Status remains Task139-P2 `implementing`; strict prefix remains
+  19.
