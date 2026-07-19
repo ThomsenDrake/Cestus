@@ -20906,3 +20906,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Strict prefix remains 17. No Task139-PM production edit, release record,
   provider/network/credential effect, push, or `neo` action occurs at this
   checkpoint.
+
+## RV-1-E-755 — Task139-PM assurance RED counterfactual corrected
+
+- Recorded at: 2026-07-19T01:07:10Z
+- The bounded assurance owner committed preserved RED
+  `f1524c3a780576e851d537d13f95fb7f9e1a5c28` with only the assurance test
+  and claim changed. Its execution isolates the intended missing-transfer
+  failure at **19 tests / 18 pass / 1 fail** after also updating the inherited
+  test fixture from the obsolete 13-record prefix to the released 17-record
+  prefix. Contract and production checker bytes remain unchanged in RED.
+- Before GREEN, the owner found two older assertions in that same committed
+  test still require Task137B-W's former exact `['CF1-HR']` target set. Those
+  expectations contradict the new exact `['CF1-HR', 'Task139-PM']` RED and
+  would make any valid GREEN fail. The owner stopped cleanly without production
+  edit, amendment, rewrite, or uncommitted state.
+- This is a test-design counterfactual failure, not a product, scope, safety,
+  credential, hardware, or external-behavior decision. Standing recovery starts
+  a changed-counterfactual cycle on the same owner and preserved branch: one
+  forward claim/test-only causal RED must replace only the two contradictory
+  old target/disposition expectations with the exact finite mapping, rerun to
+  the same sole missing contract/checker failure, and then permit one minimal
+  GREEN. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task.
+- All RV-1-E-754 transfer limits and preservation requirements remain exact.
+  Strict prefix stays 17; no PM production, integration, release, external,
+  push, or `neo` action occurs.
