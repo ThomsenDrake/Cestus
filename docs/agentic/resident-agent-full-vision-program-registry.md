@@ -22503,3 +22503,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   approved`; the coordinator will integrate the complete preserved lineage and
   rerun bounded gates from program bytes. Strict prefix remains 21. No push,
   external effect, or `neo` action occurs.
+
+## RV-1-E-800 — Record-21 assurance correction integrated
+
+- Recorded at: 2026-07-19T09:27:29Z
+- Coordinator merge `5bc6b821e5d02079d04740624d0acb9f59a2e614`
+  integrates exact approved candidate
+  `17954a2d0d9442059ce39c0a09c349ced689b026` after adjudication checkpoint
+  `632b35bd`. The merge preserves the original record-21 correction, failed
+  review execution, accidental RED, exact-blob GREEN restoration, both review
+  pairs, and every registry authority commit without rewrite.
+- Integrated-byte gates pass **19/19** assurance, all four exact V4 markers,
+  standalone typecheck, factory readiness, diff hygiene, clean state, and real
+  non-symlinked executable Vitest 4.1.9 dependencies. Isolated repository mode
+  executes every released command and emits
+  `TASK136_REPOSITORY_PREFIX_OK records=21 commands=21` followed only by
+  `repository release closure incomplete: expected 29 records, found 21`.
+- Integrated `npm run verify` retains exactly the inherited **12 failing files /
+  69 failing tests / 5 skips / 2,768 passes**. A preceding raw `npm test` run
+  resolved one of the known prerequisite timeout assertions and reported **68
+  failures / 2,769 passes / 5 skips**; no substantive assertion, file cohort,
+  skip, assurance, or candidate behavior changed.
+- V1-V3, V4 contract/checker, raw records 1-21, all 29 card IDs/order,
+  historical compatibility fixtures, production/runtime bytes, and strict
+  prefix 21 remain unchanged. Status advances record-21 assurance `approved ->
+  integrated`; this corrected base may now be forward-merged into preserved
+  G136-SC for exact release position 22. No push, external effect, or `neo`
+  action occurs.
