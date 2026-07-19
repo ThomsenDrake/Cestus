@@ -24200,3 +24200,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   clean, and dependency gates plus one fresh concurrent read-only Terra/xhigh
   pair remain mandatory after GREEN. No push, external effect, or `neo`
   action occurs.
+
+## RV-1-E-845 — Task121 approval-suspension test-oracle checkpoint
+
+- Recorded at: 2026-07-19T18:30:06Z
+- The same owner preserves authority merge `92ff9e55` and causal RED
+  `b6df504aace9ba16a0195fdc0f6d7ac413a180e9`. RED correctly fails **1**
+  approval-pending case against the inherited raw completion while the other
+  **14/15** tests pass; test blob is
+  `4f6248d1ad9171733816e6d2d2052ab9c3e5e36d`.
+- The intended minimal source GREEN removes only raw
+  `appendSpecialistCompletion` and its returned ID, yielding zero terminal
+  events. That exposes one unsatisfiable RED matcher:
+  `not.toEqual(arrayContaining(terminalEvents.map(...)))`. Once
+  `terminalEvents` is correctly empty, `arrayContaining([])` matches every
+  array, so the negation necessarily fails despite the frozen behavior being
+  satisfied. No source, contract, product, scope, or safety conflict exists.
+- Coordinator adjudication requires a changed test-oracle tactic: preserve the
+  original RED commit, restore the uncommitted intended GREEN bytes to the RED
+  checkpoint using an exact patch, then commit one test/claim-only corrected
+  RED that maps returned event IDs through the durable event set and asserts
+  no terminal/orchestration/completed-task type. Production remains unchanged
+  through that corrected RED. Reapply the same minimal source/claim GREEN and
+  preserve the corrected RED test blob byte-identically.
+- Standing RV-1-E-732 resumes the same Terra/xhigh Task121 owner task
+  `019f7544-bc61-7201-ae4f-c1742b4f4a8a` in the same branch/worktree. This is
+  a contract-determined test-oracle recovery, not a new card, bridge,
+  compatibility lane, or behavior expansion.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All exact admission gates and one fresh
+  concurrent read-only Terra/xhigh pair remain mandatory after GREEN. No
+  push, external effect, or `neo` action occurs.
