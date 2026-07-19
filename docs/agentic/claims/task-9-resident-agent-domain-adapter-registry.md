@@ -130,7 +130,33 @@ current-preview path rather than the projection-rebuild path.
   (**1 file / 14 tests passing**), which is why the causal reproduction is
   read-only against the released G136 candidate. No test or production bytes
   changed before this claim-only RED. The only authorized GREEN changes this
-  fixture and this claim: it must execute the legacy adapter through the
-  released scheduler path, preserving request, run, preview, execution-claim,
-  and durable result provenance without restoring, exposing, casting, or
+  fixture and this claim without restoring, exposing, casting, or
   type-laundering `completeTool`.
+
+## RV-1-E-803 historical completion-fixture maintenance minimal GREEN
+
+- The branch forward-merged coordinator authority
+  `28f5105527587d5db764974d09f0af1906c29c93` as merge
+  `5b538d765a9196b94f2eb5f3be3dabebad8511eb`, preserving both the Task9 RED
+  and program histories. The authority confirms that
+  `legacyStagingExecuteDescriptor` is canonically `approvalClass: "none"`.
+  Manufacturing an independent approval and execution claim through a
+  scheduler or execution-loop lookalike would misrepresent that authority and
+  is forbidden.
+- The fixture keeps the released direct legacy adapter invocation and now
+  asserts its authoritative `assertion.proposed` result IDs and
+  `legacy-staging` read-model change directly. It removes only the stale
+  structural `gateway.completeTool` exercise and its completed-event
+  assertions, retitles the case to describe the returned domain result, and
+  positively proves that the no-approval execution appends no
+  `agent.tool.completed` event.
+- The retained domain evidence still proves one exact proposed assertion, no
+  old-ontology import, and no accepted assertion, resolved entity, or accepted
+  relationship. It neither manufactures completion authority nor alters the
+  private G136 completion adapter, its request/run/preview/claim provenance,
+  or any production contract.
+- GREEN target from the corrected fixture: `npm test --
+  packages/agent/test/legacy-staging-adapter.test.ts` exited `0` with **1 file
+  / 14 tests passing**. Committed-byte cross-boundary, typecheck, full-suite,
+  assurance, V4, repository, factory, scope, and dependency gates remain
+  required before handoff.
