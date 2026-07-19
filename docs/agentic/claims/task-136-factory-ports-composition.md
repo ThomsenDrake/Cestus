@@ -66,3 +66,17 @@ contract.
 No review, integration, registry edit, merge, rebase, reset, amend, squash,
 reorder, rewrite, push, self-merge, provider/network/credential action, or
 `neo` action is authorized.
+
+## Causal RED
+
+Before any production source existed, the exact card command exited `1` with
+**3 files / 6 tests: 1 failed, 5 passed**. The new positive/adversarial test
+first created a real portable workspace, started released Core, consumed the
+real W/H/PM bind chain, and derived the released P2 posture. It then failed
+only at the absent-module API assertion: `isFactoryPortsApi(imported)` received
+`false` where `true` was required at
+`resident-loop-factory-ports.test.ts:131`. The two import-boundary files and
+their five tests passed. The production path
+`packages/local-runtime/src/resident-loop-factory-ports.ts` remained absent.
+The Vite TypeScript source-map warning is inherited local dependency noise, not
+a test failure.
