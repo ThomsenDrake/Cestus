@@ -121,3 +121,41 @@ confirm the intended state above. Repairing the assertion would require an
 unowned assurance/registry contract change, so no in-scope RED/GREEN tactic
 can truthfully change this result; the four-path boundary and release-prefix
 authority are preserved.
+
+## Corrected Record-18 Base Re-admission
+
+The coordinator forward-merged the corrected record-18 program and assurance
+base as `b0fb76501c94a435cc0bdc822ea90d1968f7fdc2`. That merge is outside this
+card's scope (registry, V4 authority claim, and assurance-test bytes only); it
+preserves this card's claim/RED/GREEN ancestry through
+`a04fe8a614d1074d8d62a82e1d4739e1bd7ead4b`. The previously recorded
+17/19 bounded-assurance result is superseded by the following re-admission
+from the exact corrected-base bytes.
+
+- Exact focused command: **2 files / 2 tests passed**.
+- Justified W/H/PM/Task135D cross-boundary command: **8 files / 108 tests
+  passed**, with exactly `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`.
+- Standalone `npm run typecheck`: exit `0` (`typecheck passed`).
+- `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`:
+  **19 passed / 0 failed**.
+- Contract mode emitted `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.
+- Repository mode emitted `TASK136_REPOSITORY_PREFIX_OK records=18 commands=18`,
+  then `repository release closure incomplete: expected 29 records, found 18`.
+- `npm test` and `npm run verify` both retained the inherited record-18
+  differential: **12 failing files / 69 failing tests / 5 skipped / 2,758
+  passed**; verify also reported `typecheck passed`.
+- `git diff --check` and `npm run factory:check` passed. The RED and GREEN
+  blobs remain identical at
+  `f9c194670473278eaa94fa5ad65bec06ab12bf91`.
+
+The task-owned cumulative diff from
+`ac5c3500681c8c2d485618a13635d3f68bd6ae73` through the preserved Task136
+candidate is exactly the four listed owned paths. The forward merge adds only
+the coordinator-owned registry, V4 authority-claim, and assurance-test paths.
+The worktree is clean, `node_modules` and its top-level dependencies are real
+non-symlinked directories, and local Vitest is `4.1.9`. This is a clean
+candidate for coordinator review; no self-review, merge, push, registry edit,
+or production/test change was performed by this card owner.
