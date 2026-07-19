@@ -21028,3 +21028,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   test-driven development are explicitly approved for this task.
 - Strict prefix remains 17. No release record, provider/network/credential
   effect, push, or `neo` action occurs at this transition.
+
+## RV-1-E-759 — Task139-PM candidate admitted to review
+
+- Recorded at: 2026-07-19T02:04:58Z
+- The same Task139-PM owner preserves claim
+  `b47db7bffbe7022177793f61fa0042a03416bc3b`, causal RED
+  `8479f8ece61417a49e880e7cf76687342a6230f7`, assurance-forward merge
+  `8b55872a27ad3e97a0a5666c7404ff6c8ba073fb`, and one minimal GREEN
+  candidate `28072e576f7fb9f3937d4596d975c4fe80aeef3e`. The focused RED test
+  blob remains byte-identical; GREEN changes five paths inside the exact
+  corrected six-path boundary.
+- The candidate adds only the PM-specific static mounted-operation inspection,
+  opaque locator, exact import-policy projection, and claim evidence. It binds
+  current operation/workspace/mount/admission/policy/lock/high-water/ledger
+  identity, revalidates before and after the asynchronous durable read, burns
+  stale authority, rejects caller-shaped and P1-shaped inputs, and exposes no
+  runtime handle, writer, Task126 reader mint, provider/credential/network/
+  fallback/external effect.
+- Owner and independent coordinator admission pass focused **2 files / 8
+  tests**, cross-boundary **8 files / 122 tests**, exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker per suite,
+  standalone typecheck, assurance **19/19**, all four V4 markers, diff hygiene,
+  factory readiness, exact scope/RED blob, clean tracked/untracked state, and
+  real non-symlinked dependencies with Vitest 4.1.9.
+- Full `npm test` and `npm run verify` retain exactly the inherited **12 failing
+  files / 69 failing tests / 5 skips**, unchanged identities, with **2,754
+  passes**. Typecheck completes before verifier reaches that inherited boundary;
+  the four PM RED tests are the exact positive delta.
+- Status advances Task139-PM `implementing -> candidate -> reviewing`. One
+  fresh concurrent Terra/xhigh read-only architecture/executability pair is
+  architecture task `019f781e-3a31-72a2-8b11-dc33c26def7b` and executability
+  task `019f781e-3a3c-7e70-bd40-a87fc4a86897`. SDD/TDD is not relevant or
+  authorized for reviewers. Only exact reproduced P0/P1 contract violations
+  block; P2, style, hypothetical hardening, and unreproduced concerns are
+  backlog.
+- Strict prefix remains 17. Repository current-head admission intentionally
+  remains at the released program bytes until record 18 activates the three
+  source transfers. No integration, release record, external effect, push, or
+  `neo` action occurs.
