@@ -93,3 +93,23 @@ released private G136-SC adapter.
 The GREEN adjusts only invalid test fixture literals to their existing canonical
 Task120 schema forms; it retains every RED behavior assertion and adds no
 compatibility or alternate completion authority.
+
+## RV-1-E-732 Compiler Recovery Checkpoint
+
+The initial committed GREEN `2ce618e5` is preserved. Root typecheck reproduced
+two scoped diagnostics in the owned bridge source before any runtime behavior
+changed:
+
+1. `TS2459`: `AgentToolSideEffectClass` was imported from `tool-gateway.js`,
+   where it is declared locally but not exported.
+2. `TS2379`: casting `approvalClass` through the optional
+   `RequestAgentToolInput["requiredApprovalClass"]` widened the value to
+   include `undefined` under `exactOptionalPropertyTypes`.
+
+This is a compiler-only, contract-determined recovery. The existing four-test
+card remains the causal runtime proof, so no new runtime test is needed. This
+claim/evidence-only commit is the causal compiler RED: it preserves the exact
+two diagnostics and changes no production behavior. One minimal forward GREEN
+will import the side-effect type from its owning module and cast the already
+validated non-`none` approval class to its required non-optional type. No
+other path, completion route, or authority changes.
