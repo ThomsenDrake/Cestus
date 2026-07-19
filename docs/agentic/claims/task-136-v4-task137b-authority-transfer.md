@@ -239,3 +239,43 @@ Implementation evidence:
   `0` with `19` passed and `0` failed. Final committed-byte admission will
   rerun the required assurance, contract, repository, typecheck, full-suite
   differential, factory, diff, scope, and clean/dependency gates.
+
+## RV-1-E-811 record-22 fixture checkpoint
+
+- Resumed at preserved clean record-21 candidate
+  `17954a2d0d9442059ce39c0a09c349ced689b026` and forward-merged exact program
+  authority `0c0b56f08bf066223b348568059eaf438dadaf93` as normal merge
+  `7c3dfd18ac7fb8eaddc2b0b75d6faa5cd0a81c69`. This claim-only causal RED
+  preserves every inherited assurance RED/GREEN, V1-V3, raw strict records
+  1-22, V4 contract/checker, all 29 card IDs/order, compatibility and transfer
+  fixtures, runtime bytes, and candidate/integration/review/release evidence.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited
+  `1`: `19` tests, `17` passed, and exactly `2` failed. Only the direct
+  current-prefix assertions at lines `1112` and `1428` report `22 !== 21`
+  after valid strict G136-SC record 22. No contract, checker, blob, command,
+  dependency, or unrelated fixture failure occurred.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  will advance only the two current-registry-length expectations from `21` to
+  `22`, preserving historical fixtures and all immutable evidence. Required
+  committed-byte admission reruns assurance, V4 contract/repository markers,
+  typecheck, full differential, factory, diff, scope, clean-state, and
+  dependency gates. No registry, integration, review, push, network,
+  credential, provider, `neo`, or task creation is authorized.
+
+## RV-1-E-811 minimal GREEN evidence
+
+- The two authorized current-prefix groups now require `22` records and
+  `expectedIds.slice(0, 22)`. The first group's repository closure, success
+  marker, and released-command count advance together to `found 22` and
+  `records=22 commands=22`.
+- Historical raw-prefix, pre-activation, compatibility, Task137B-W transfer,
+  source-currentness, V1-V3, V4 contract/checker, runtime, candidate,
+  integration, review, and release evidence remain unchanged. No generic
+  current-count facility or authority behavior is introduced.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `19` passed and `0` failed. Final committed-byte admission reruns
+  the required assurance, V4 contract/repository, typecheck, full
+  differential, factory, diff, scope, and clean/dependency gates.
