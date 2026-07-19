@@ -107,3 +107,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 ## RV-1-E-836 Compiler RED
 
 - From authority `d49f8fd515d2a6efccd76ea045518945a9bb70a3`, standalone typecheck exits `2` with exactly `packages/agent/src/resident-plan-candidate-provider.ts(278,105): error TS2345: Argument of type 'string' is not assignable to parameter of type 'AgentApprovalClass'.` Production is byte-identical; no runtime test is added because the committed RED already proves unsupported global approval rejection.
+
+## RV-1-E-836 Compiler GREEN
+
+- GREEN preserves the canonical derived approval member set and runtime behavior, replacing only the generic Set membership call with equality comparison against its released members; no cast or assertion is introduced.

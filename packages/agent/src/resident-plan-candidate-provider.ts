@@ -275,7 +275,7 @@ function validateConstraints(constraints: NormalizedRecord): void {
   if (automaticActionClasses.some((entry) => typeof entry !== "string" || !permittedAutomaticActionClasses.has(entry))) throw unavailable();
   const requiredApprovalClasses = requireArray(constraints, "requiredApprovalClasses");
   validateUniqueStrings(requiredApprovalClasses);
-  if (requiredApprovalClasses.some((entry) => typeof entry !== "string" || !releasedApprovalClasses.has(entry))) throw unavailable();
+  if (requiredApprovalClasses.some((entry) => typeof entry !== "string" || ![...releasedApprovalClasses].some((released) => released === entry))) throw unavailable();
 }
 
 function validateSteps(steps: NormalizedArray, constraints: NormalizedRecord): void {
