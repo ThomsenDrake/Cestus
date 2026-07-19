@@ -170,3 +170,26 @@ exact prompt and approval hashes as immutable binding data`. The remaining
 four cases are adversarial rejection/currentness coverage. Final admission is
 rerun from the claim-only candidate commit, against detached `f7d7711d`, before
 this claim is handed off.
+
+## RV-1-E-779 Causal Compiler RED
+
+The coordinator forwarded this branch at
+`a2483dea13770ffc2b3a6e1fe8df64c31b205940` with RV-1-E-779 authorization.
+This RED changes this claim only. The production blob is still
+`f5b0c16f960aa33b49f81b682882661e01310392` and the focused-test blob is still
+`dd799c19c46d391ce9bb78c94de9eb65f83c71b6`; neither runtime nor test behavior
+is changed.
+
+Before this claim commit, `npm run typecheck` exited `2` with exactly these
+three diagnostics:
+
+```text
+packages/local-runtime/src/resident-loop-provider-posture.ts(33,6): error TS2456: Type alias 'NormalizedValue' circularly references itself.
+packages/local-runtime/src/resident-loop-provider-posture.ts(622,3): error TS2322: Type 'string' is not assignable to type '`sha256:${string}`'.
+packages/local-runtime/src/resident-loop-provider-posture.ts(667,3): error TS2322: Type 'string' is not assignable to type '`sha256:${string}`'.
+```
+
+The causal compiler GREEN will make the type representation explicit through
+readonly recursive interfaces and use a real hash predicate at both return
+sites. It will not alter P2 runtime normalization, selection, authority,
+binding, output, or test behavior.
