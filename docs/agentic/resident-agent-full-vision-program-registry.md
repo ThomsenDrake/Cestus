@@ -23467,3 +23467,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-823 — Record-23 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T14:46:12Z
+- Clean strict record-23 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=23 commands=23`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 23`.
+- The standalone assurance corpus then reproduces exactly two failures at
+  lines 1112 and 1428: both current-registry-length fixtures still pin strict
+  prefix **22**, observe **23**, and leave the other **17/19** tests green.
+  No contract, checker, blob, command, dependency, transfer, ownership, or
+  historical fixture failure is reproduced.
+- This is the same contract-determined count-fixture transition corrected at
+  earlier strict-prefix releases. V1-V3, raw strict records 1-23, the V4
+  contract/checker, all 29 card IDs/order, finite direct-source mappings, and
+  all candidate/integration/review/release evidence remain immutable.
+- Standing RV-1-E-732 resumes the same Terra/xhigh assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, branch
+  `codex/task136-v4-task139-pm-direct-source-ownership`, and worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`.
+  It must preserve every inherited commit, forward-merge the current program
+  authority, commit one claim/evidence-only causal RED, then one minimal GREEN
+  changing only the two current-prefix assertions from 22 to 23 while
+  preserving every intentional historical fixture.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Committed-byte assurance **19/19**, all
+  four V4 markers, repository **23/23** plus the expected incomplete-29
+  boundary, typecheck, factory, diff/scope/clean/dependency gates, and one
+  fresh concurrent read-only Terra/xhigh architecture/executability pair are
+  required before integration. No push, external effect, or `neo` action
+  occurs.
