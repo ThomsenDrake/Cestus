@@ -67,6 +67,10 @@ type ResidentLoopProviderPosture = {
     readonly approvalProfile: "remote-byte-transfer-gated";
     readonly requiredApprovalClass: "provider-byte-transfer";
   };
+  readonly binding: {
+    readonly promptArtifactHash: Hash;
+    readonly approvalPreviewHash: Hash;
+  };
 };
 
 const directories: string[] = [];
@@ -144,6 +148,10 @@ describe("resident loop provider posture", () => {
         required: true,
         approvalProfile: "remote-byte-transfer-gated",
         requiredApprovalClass: "provider-byte-transfer"
+      },
+      binding: {
+        promptArtifactHash: hash("a"),
+        approvalPreviewHash: hash("b")
       }
     });
     expect(Object.isFrozen(result)).toBe(true);
@@ -160,6 +168,50 @@ describe("resident loop provider posture", () => {
     expect(serialized).not.toMatch(/\b(?:https?|wss?|file):\/\//i);
     expect(serialized).not.toMatch(/\b(?:localhost|(?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|local|test))\b/i);
     expect(serialized).not.toMatch(/\b\d{1,3}(?:\.\d{1,3}){3}\b/);
+  });
+
+  it("rejects every released P1 hostile text class in frozen structural configuration data", async () => {
+    const api = await postureApi();
+    const fixture = await mountedFixture("hostile-text");
+    const configuration = createAgentProviderConfiguration(configurationInput());
+    for (const [placement, hostileText] of [
+      ["capability-label", "mailto:api.example.xyz"],
+      ["capability-notes", "api.example.xyz"],
+      ["reference-label", "api\u3002example\uFF0Exyz"],
+      ["reference-actor", "operator [fe80::1%eth0]"],
+      ["capability-label", "git://2130706433"]
+    ] as const) {
+      expect(() => api.createResidentLoopProviderPosture({
+        configuration: frozenP1ShapeWith(configuration, placement, hostileText),
+        authority: fixture.authority
+      })).toThrow(/provider posture/i);
+    }
+  });
+
+  it("rejects frozen P1-shaped healthy references that retain revoked temporal posture", async () => {
+    const api = await postureApi();
+    const fixture = await mountedFixture("structural-reference");
+    const configuration = createAgentProviderConfiguration(configurationInput());
+    expect(() => api.createResidentLoopProviderPosture({
+      configuration: frozenP1ShapeWithRevokedHealthyReference(configuration),
+      authority: fixture.authority
+    })).toThrow(/provider posture/i);
+  });
+
+  it("retains exact prompt and approval hashes as immutable binding data", async () => {
+    const api = await postureApi();
+    const fixture = await mountedFixture("binding-hashes");
+    const configuration = createAgentProviderConfiguration(configurationInput());
+    const first = await api.createResidentLoopProviderPosture({ configuration, authority: fixture.authority })
+      .read(requestedUse(fixture));
+    const second = await api.createResidentLoopProviderPosture({ configuration, authority: fixture.authority })
+      .read({ ...requestedUse(fixture), promptArtifactHash: hash("d"), approvalPreviewHash: hash("e") });
+
+    expect(first.binding).toEqual({ promptArtifactHash: hash("a"), approvalPreviewHash: hash("b") });
+    expect(second.binding).toEqual({ promptArtifactHash: hash("d"), approvalPreviewHash: hash("e") });
+    expect(Object.isFrozen(first.binding)).toBe(true);
+    expect(Object.isFrozen(second.binding)).toBe(true);
+    expect(JSON.stringify(first)).not.toBe(JSON.stringify(second));
   });
 
   it("rejects hostile, copied, provisional, swapped, or mismatched P1/currentness inputs without invoking getters or minting posture", async () => {
@@ -360,6 +412,52 @@ function requestedUse(fixture: Awaited<ReturnType<typeof mountedFixture>>) {
     highWaterMark: fixture.readback.highWaterMark,
     highWaterOrdinal: fixture.readback.highWaterOrdinal
   };
+}
+
+function frozenP1ShapeWith(
+  configuration: ReturnType<typeof createAgentProviderConfiguration>,
+  placement: "capability-label" | "capability-notes" | "reference-label" | "reference-actor",
+  hostileText: string
+): object {
+  const capabilityEntry = configuration.capabilities[0];
+  const reference = configuration.credentialReferences[0];
+  if (capabilityEntry === undefined || reference === undefined) throw new Error("P1 fixture requires one configuration binding");
+
+  const capability = Object.freeze({
+    ...capabilityEntry.capability,
+    ...(placement === "capability-label" ? { label: hostileText } : {}),
+    ...(placement === "capability-notes" ? { dataHandlingNotes: hostileText } : {})
+  });
+  const replacedReference = Object.freeze({
+    ...reference,
+    ...(placement === "reference-label" ? { safeLabel: hostileText } : {}),
+    ...(placement === "reference-actor" ? { authorizedBy: hostileText } : {})
+  });
+
+  return Object.freeze({
+    ...configuration,
+    capabilities: Object.freeze([Object.freeze({ ...capabilityEntry, capability })]),
+    credentialReferences: Object.freeze([replacedReference]),
+    endpointPolicies: configuration.endpointPolicies,
+    feasibility: configuration.feasibility
+  });
+}
+
+function frozenP1ShapeWithRevokedHealthyReference(
+  configuration: ReturnType<typeof createAgentProviderConfiguration>
+): object {
+  const reference = configuration.credentialReferences[0];
+  if (reference === undefined) throw new Error("P1 fixture requires one credential reference");
+  return Object.freeze({
+    ...configuration,
+    credentialReferences: Object.freeze([Object.freeze({
+      ...reference,
+      revokedAt: "2026-07-19T00:00:00.000Z"
+    })]),
+    capabilities: configuration.capabilities,
+    endpointPolicies: configuration.endpointPolicies,
+    feasibility: configuration.feasibility
+  });
 }
 
 function configurationInput() {

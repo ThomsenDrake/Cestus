@@ -116,3 +116,30 @@ uses neutral resident bootstrap actor data while retaining its canonical
 `ws_provider_posture_*` workspace identity and all P2 provider facts. This is
 fixture construction only: it neither changes the workspace ID nor grants a
 provider identity or any additional authority.
+
+## RV-1-E-778 Causal P1-Parity And Exact-Binding RED
+
+P2 accepts immutable structural P1-shaped data as data, never authority, and
+therefore must independently enforce the released P1 hostile-text classifier at
+every normalized configuration string. This RED passes frozen structural copies
+with arbitrary URI schemes, arbitrary DNS suffixes, IDNA-dot lookalikes,
+bracketed/scoped IPv6, and standard numeric URL-host forms in multiple
+configuration text locations; none may be accepted because P1 originally
+created the surrounding shape. It also requires a frozen output `binding`
+member containing exact `promptArtifactHash` and `approvalPreviewHash`. Those
+are caller binding data only—neither prompt/approval proof nor new authority—
+but readers with different values must not emit byte-identical posture data.
+The same RED pins non-text structural parity: a frozen P1-shaped reference that
+claims `healthy` while carrying `revokedAt` must fail before posture creation.
+P2 will retain its strict immutable envelope but reuse the released P1 creator
+on version-stripped arrays, so it does not silently omit P1 temporal,
+credential-reference, scope, capability, endpoint, or feasibility invariants.
+
+From the source-byte-identical RED, the focused command exited `1` with **1
+failed file / 4 failed and 2 passed tests (6 total)**. The existing positive
+snapshot and the new exact-binding case fail only because `buildPosture` omits
+the required binding member; the hostile-text case fails because the first
+frozen structural P1-shaped URI/DNS input is accepted; and the independent
+healthy-plus-revoked reference is accepted. Fixture construction, PM
+currentness, P1 configuration construction, and the prior adversarial cases
+all execute successfully.
