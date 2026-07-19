@@ -354,3 +354,26 @@ bytes: V4 file SHA (`063f11d…` versus `2a5cf62b…`), assurance fingerprint
 (`413eee…` versus `47cfd2…`), and the missing Task139-PM `Task137B-W`
 prerequisite. No syntax, fixture, dependency, raw-record, or contradictory
 expectation failure occurred.
+
+## RV-1-E-754 / RV-1-E-756 minimal GREEN
+
+- Applied (without dropping) the named intended-GREEN stash after the complete
+  pin-audit RED. Its sole correction was the audited checker fingerprint
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`;
+  the V4 pretty-JSON SHA-256 is
+  `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`.
+- GREEN makes only the finite direct Task137B-W mappings: `contracts.ts` stays
+  transferred to CF1-HR; the mounted-operation source, import-policy test, and
+  authority-boundary policy test transfer to Task139-PM. Task139-PM appends
+  Task137B-W after T120-R, owns exactly those three transferred paths, and has
+  the exact two-test command. No generic or transitive transfer rule exists.
+- The checker pins raw records 1-17, preserves V1-V3 and the 29-card order,
+  keeps Task137B-W source HEAD authoritative before record 18, and changes
+  current ownership only for those three paths when Task139-PM record 18
+  exists. Record 11 compatibility retains canonical SHA-256
+  `833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29`
+  with all four historical paths disposition `owned`.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exited
+  `0`: `19` passed, `0` failed. The forward RED test blob is byte-identical;
+  the named stash remains preserved as required.
