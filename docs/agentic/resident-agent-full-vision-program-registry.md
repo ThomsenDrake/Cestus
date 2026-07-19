@@ -23176,3 +23176,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   V4/repository, diff/factory/scope/clean/dependency gates. Children never
   edit the registry, self-integrate, push, contact external systems, or touch
   `neo`. Status advances G136-R `not started -> claimed -> implementing`.
+
+## RV-1-E-816 — G136-R compiler-admission root-cause checkpoint
+
+- Recorded at: 2026-07-19T12:49:59Z
+- The preserved claim -> causal runtime RED -> initial GREEN lineage ends at
+  exact candidate `2ce618e5`. Its exact two-file card command is green at
+  **2 files / 4 tests**, the required G136/Task120 cross-boundary command is
+  green, contract mode emits all four frozen V4 markers, and repository mode
+  retains strict prefix **22/22** followed only by the expected incomplete-29
+  boundary.
+- Root `npm run typecheck` then reproduces exactly two owned-source compiler
+  diagnostics: `AgentToolSideEffectClass` is imported from a module that does
+  not export it, and indexing the optional
+  `RequestAgentToolInput["requiredApprovalClass"]` widens an already validated
+  non-`none` approval class to include `undefined` under
+  `exactOptionalPropertyTypes`. The exact card command remains green; no
+  released interface, runtime behavior, safety invariant, product choice, or
+  external effect is in dispute.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7a56-6b88-7220-9925-39a52d083da6`, branch
+  `codex/g136-r-gateway-approval-readback`, and worktree
+  `/home/drake/.codex/worktrees/9c75/Cestus`. It must preserve `2ce618e5`,
+  commit one claim/evidence-only causal compiler RED, then one minimal GREEN
+  that imports the side-effect type from its released owning module and uses
+  the required closed approval-class type without widening. No amend, rebase,
+  squash, reset, history rewrite, or scope expansion is authorized.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After GREEN, all exact G136-R admission
+  gates must rerun from committed bytes before one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair. Status remains G136-R
+  `implementing -> implementing-repair`; no push, external effect, or `neo`
+  action occurs.
+
+## RV-1-E-817 — G136-R final-review P1 root-cause checkpoint
+
+- Recorded at: 2026-07-19T13:14:36Z
+- Exact clean candidate `598ab0a7d6bf3f9ebe569a234e81e22f67bdcaf2`
+  passes coordinator admission at focused **2 files / 4 tests**,
+  cross-boundary **7 files / 71 tests**, standalone typecheck, assurance
+  **19/19**, factory readiness, diff/scope/clean/dependency gates, all four
+  frozen V4 markers, and repository strict prefix **22/22** followed only by
+  the expected incomplete-29 boundary. `npm run verify` passes typecheck and
+  retains the inherited **13 files / 70 failures / 2,781 passes / 5 skips**;
+  the three-pass increase is the new G136-R test file.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7a7a-dbdc-72d1-b3e9-3e04623a62cf` returns `BLOCKED`. It reproduces
+  P1 structural completion-authority substitution through the unbranded
+  injected gateway callable and incomplete current-plan equality across a
+  reread. No P0 is reproduced.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7a7a-db75-7831-9047-5f8f055e6956` independently returns `BLOCKED`.
+  Its ephemeral probes reproduce: a newer policy/authority/source plan does
+  not supersede the old request plan; a foreign agent's validly shaped claim
+  can terminalize the resident request; and a structural gateway can swap the
+  durable side-effect class while the bridge still issues readback. No P0 is
+  reproduced. The reviewer worktree lacked executable dependencies, but each
+  P1 is a deterministic candidate path and coordinator admission already
+  reproduces the bounded suites from real dependencies.
+- Coordinator adjudication accepts the four findings as one contract-
+  determined packet. Frozen authority already requires one `agent_default`
+  resident identity, exact complete-plan currentness with policy changes
+  failing closed, exact tool/side-effect/approval binding, and the released
+  G136-SC opaque-evidence completion route as the sole completion authority.
+  No product, scope, safety-invariant, credential, hardware, data-loss, or
+  externally observable behavior choice exists.
+- Standing RV-1-E-732 resumes the same implementation owner task
+  `019f7a56-6b88-7220-9925-39a52d083da6`, branch
+  `codex/g136-r-gateway-approval-readback`, and worktree
+  `/home/drake/.codex/worktrees/9c75/Cestus`. It must preserve every commit
+  through `598ab0a7`, forward-merge this registry-only authority, commit one
+  causal RED covering all four reproduced P1s, then one minimal GREEN within
+  the existing four-path G136-R boundary. The GREEN must reject any newer
+  same resident/task/attempt/run plan revision even when policy/provenance
+  changes; compare the complete selected plan across awaits; require the
+  execution claim's actor and `claimedBy` to be exact `agent_default`; bind
+  the durable request side-effect class to the parsed command; and eliminate
+  all unauthenticated structural request/completion gateway substitution so
+  only the released opaque scheduler-evidence route can append completion.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All exact admission gates must rerun
+  from the new committed candidate before one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair. Status advances G136-R
+  `reviewing -> implementing-repair`; no integration, release record, push,
+  external effect, or `neo` action occurs.
