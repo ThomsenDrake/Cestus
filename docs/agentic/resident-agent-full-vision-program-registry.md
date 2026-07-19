@@ -23754,3 +23754,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
   remains C136-P `reviewing -> implementing-repair`; no push, external effect,
   or `neo` action occurs.
+
+## RV-1-E-832 — Changed-tactic C136-P candidate enters final review
+
+- Recorded at: 2026-07-19T16:26:57Z
+- The same owner preserves registry merge `a5c1c377`, causal RED
+  `0f87df4c251c8789b9e6c0509265e212916b5e39`, and minimal GREEN exact
+  candidate `0051e682f43d1823e069a55b060d3e6a4d29e369`. RED fails exactly the
+  full-width compatibility-IP and mismatched external-transfer approval
+  counterfactuals; test blob `f736412a` is byte-identical in GREEN.
+- The changed-tactic GREEN applies NFKC before IDNA-dot/host classification,
+  imports released `approvalClassForSideEffect`, closes resident side-effect
+  classes, and accepts only the released baseline approval or strictly stronger
+  `human-review` where baseline is `none`. It adds no divergent permission
+  table or authority/effect route.
+- Exact committed-byte admission passes focused **1 file / 16 tests**,
+  cross-boundary **4 files / 31 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, repository **23/23** plus only the expected
+  incomplete-29 boundary, factory, diff, exact three-path scope, clean and
+  dependency gates. Full/verify retain **13 files / 70 failures / 5 skips**
+  with **2,803 passes**, an exact +2-pass-only delta.
+- Status remains C136-P `implementing-repair -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair now
+  reviews exact SHA `0051e682f43d1823e069a55b060d3e6a4d29e369`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, release record, push, external
+  effect, or `neo` action occurs.
+
+## RV-1-E-833 — C136-P state-machine and complete-binding checkpoint
+
+- Recorded at: 2026-07-19T16:40:14Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b34-6244-7522-bfd9-b850c048b4ab` returns `BLOCKED` for exact candidate
+  `0051e682f43d1823e069a55b060d3e6a4d29e369`. Its frozen-input probe keeps
+  ordered sources `[evt_source_001, evt_source_002]`, changes authority and
+  posture high-water to `evt_source_001`, and observes an accepted candidate.
+  Released T120-R requires ledger high-water to equal the final ordered source;
+  posture-to-authority equality alone is insufficient.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b34-6c06-7b71-a9d9-8603755103e3` returns `BLOCKED` and reproduces the
+  same high-water family plus three distinct P1 families: a correctly paired
+  `external-message-send` allowlist entry is admitted while its approval class
+  is absent from global `requiredApprovalClasses`; revision-zero plans admit
+  nonzero prior consumption or nonzero plan-revision action consumption; and
+  the same provider accepts a second initial plan, replaces its state, then
+  accepts a replan bound to that replacement.
+- Both reviewers confirm every prior/latest hostile case now rejects, valid
+  initial/replan paths pass, focused **1/16**, cross **4/31**, typecheck,
+  factory, full/verify differential, exact clean scope, and unchanged before/
+  after HEAD. No P0 or unresolved product choice is reproduced.
+- Coordinator adjudication accepts one contract-determined state/binding
+  packet. Required behavior is fixed: authority high-water equals the last
+  ordered source; every allowlist entry's approval class is present in the
+  global required set; a revision-zero candidate starts with all consumption
+  and action consumption zero and remaining equal to ceiling; and a provider
+  instance permits exactly one initial candidate before only contiguous
+  replans. Rejected repeated initials cannot replace state.
+- Standing RV-1-E-732 resumes the same Terra/xhigh owner task
+  `019f7921-b595-7080-93e7-31daf67634f0`, preserving all history and the
+  changed normalization/permission-policy tactic. It forward-merges this
+  authority, commits one causal RED for the exact cases, then one minimal
+  GREEN within the same three owned paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All exact admission gates and one fresh
+  concurrent read-only Terra/xhigh pair remain mandatory after GREEN. Status
+  remains C136-P `reviewing -> implementing-repair`; no push, external effect,
+  or `neo` action occurs.
