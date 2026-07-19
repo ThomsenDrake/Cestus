@@ -105,3 +105,32 @@ current-preview path rather than the projection-rebuild path.
   after two focused repair attempts.
 - Leave the complete Task 9 diff uncommitted for coordinator verification
   because Git metadata is read-only here.
+
+## RV-1-E-802 historical completion-fixture maintenance causal RED
+
+- Authorization: `RV-1-E-802` authorizes this forward-only maintenance in
+  Task9's existing historical ownership only. The task branch
+  `codex/task9-completion-fixture-maintenance` starts clean from exact program
+  commit `d30084254d7a1bd9393912ae60982dc08bf4f01a`; it does not merge or carry
+  the separate G136 implementation lineage.
+- The exact causal failure is reproduced read-only at released G136 candidate
+  `44f2dcd2075805106786ece7a77633395b8a87fc` in
+  `/home/drake/.codex/worktrees/7837/Cestus`, whose private scheduler
+  completion adapter has removed public `gateway.completeTool`.
+- `npm test -- packages/agent/test/legacy-staging-adapter.test.ts` exits `1`:
+  **1 failed / 13 passed (14)**. Its sole failure is
+  `TypeError: gateway.completeTool is not a function` at
+  `packages/agent/test/legacy-staging-adapter.test.ts:348:19` in
+  `maps assertion.proposed event IDs into agent.tool.completed without old
+  ontology import`.
+- `./node_modules/.bin/tsc --noEmit --pretty false` exits `2` with the sole
+  compiler failure `TS2339`: property `completeTool` does not exist on the
+  public gateway return type at the same line.
+- The program-base fixture remains intentionally pre-integration compatible
+  (**1 file / 14 tests passing**), which is why the causal reproduction is
+  read-only against the released G136 candidate. No test or production bytes
+  changed before this claim-only RED. The only authorized GREEN changes this
+  fixture and this claim: it must execute the legacy adapter through the
+  released scheduler path, preserving request, run, preview, execution-claim,
+  and durable result provenance without restoring, exposing, casting, or
+  type-laundering `completeTool`.
