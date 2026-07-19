@@ -22339,3 +22339,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-795 — Record-21 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-19T08:39:30Z
+- Clean strict record-21 repository mode succeeds through all released command
+  cards and emits, in order,
+  `TASK136_REPOSITORY_PREFIX_OK records=21 commands=21` followed only by
+  `repository release closure incomplete: expected 29 records, found 21`.
+  The separate V4 assurance suite then reproduces exactly two failures: the
+  current-registry-length assertions at lines 1112 and 1428 still pin the
+  prior strict prefix **20**, observe **21**, and leave the other **17/19**
+  tests green.
+- This is the same release-count fixture cause already corrected at earlier
+  strict-prefix transitions. It is contract-determined by the newly accepted
+  immutable record 21 and requires no product, scope, safety-invariant,
+  credential, hardware, data-loss, or external-behavior choice. V1-V3, raw
+  records 1-21, the V4 contract/checker, all 29 IDs/order, historical
+  compatibility fixtures, and runtime behavior remain immutable.
+- Standing RV-1-E-732 resumes the same assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b`, worktree
+  `/home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus`,
+  and branch `codex/task136-v4-task139-pm-direct-source-ownership`. The owner
+  must first forward-merge this exact record-21 program authority, then append
+  one claim-only causal RED and one minimal GREEN limited to the existing V4
+  assurance test and authority-transfer claim. The GREEN changes only the two
+  current-prefix expectations from 20 to 21 and preserves every historical
+  fixture.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact focused assurance, V4 markers,
+  repository 21/21, typecheck/full differential, factory/scope/clean/dependency
+  admission and one fresh concurrent read-only Terra/xhigh
+  architecture/executability review pair are required after code changes.
+  Status advances record-21 assurance `integrated -> implementing-repair`;
+  G136-SC remains preserved and unreviewed until this corrected authority is
+  integrated. No push, external effect, or `neo` action occurs.
