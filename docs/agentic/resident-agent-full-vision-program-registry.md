@@ -22437,3 +22437,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   mandatory. Status advances record-21 assurance `reviewing ->
   implementing-repair`; strict prefix remains 21. No push, external effect,
   or `neo` action occurs.
+
+## RV-1-E-798 — Recovered record-21 assurance candidate enters fresh review
+
+- Recorded at: 2026-07-19T09:03:11Z
+- Exact clean candidate `17954a2d0d9442059ce39c0a09c349ced689b026`
+  preserves invalidating accidental RED
+  `3ba16f7cc336e56a710467350e4b9828918b1acd`, minimal exact-blob restoration
+  GREEN `03ad775e2df729c0e9ac88ab8233aa5f4b63b6cf`, and normal forward merge of
+  RV-1-E-797 authority. No commit, branch, index, registry, candidate, or
+  review history is dropped or rewritten.
+- The accidental RED removes only the sixteen-line current record-21 claim
+  evidence. GREEN restores exact candidate claim blob
+  `595cffa3627c94e92c34cb176d0c8324a2eacbc0`; assurance test, V1-V4
+  contracts/checker, raw strict records 1-21, all 29 IDs/order, historical
+  fixtures, production, and runtime bytes remain unchanged. Cumulative
+  recovery implementation scope is exactly the owned claim; the forward merge
+  adds only coordinator-owned registry history.
+- Committed-byte admission passes **19/19** assurance, all four exact V4
+  markers, standalone typecheck, factory readiness, diff hygiene, exact scope
+  and blob identity, clean state, real non-symlinked executable Vitest 4.1.9
+  dependencies, and repository `TASK136_REPOSITORY_PREFIX_OK records=21
+  commands=21` followed only by the expected incomplete-29 boundary. Full test
+  and verify retain exactly **12 failing files / 69 failing tests / 5 skips /
+  2,768 passes**.
+- One new fresh concurrent read-only Terra/xhigh architecture/invariants and
+  executability/adversarial pair now reviews that immutable SHA. Reviewers may
+  inspect historical diffs but must not replay historical commits with shared
+  `GIT_DIR`, `GIT_WORK_TREE`, config, index, checkout, commit, or branch
+  mutations. Reviews are read-only; SDD/TDD is not relevant or authorized for
+  reviewers. Status advances record-21 assurance `implementing-repair ->
+  candidate -> reviewing`; strict prefix remains 21. No integration, push,
+  external effect, or `neo` action occurs during review.
