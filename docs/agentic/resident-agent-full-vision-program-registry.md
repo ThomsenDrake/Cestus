@@ -21764,3 +21764,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task126 reader, proof minting, provider/network/credential action, registry
   edit by the child, push, or `neo` action is authorized. Status remains
   Task139-P2 `implementing`; strict prefix remains 19.
+
+## RV-1-E-779 — Task139-P2 final-SHA compiler root-cause checkpoint
+
+- Recorded at: 2026-07-19T05:50:44Z
+- Exact preserved candidate `0444444ec138e21318a90b797beae3d8b8f34605`
+  passes focused **1 file / 6 tests** and cross-boundary **6 files / 53
+  tests**. Serial full-suite comparison against clean record-19 head
+  `f7d7711d` reproduces the same inherited **69 failures / 5 skips** with
+  byte-identical normalized failure blocks and exactly six new passing P2
+  tests. Three earlier extra baseline failures were non-reproducible Vitest
+  five-second timeouts in repository-scan fixtures and disappeared when the
+  two checkouts ran serially.
+- The exact final candidate nevertheless fails standalone typecheck before
+  review with `TS2456` at `resident-loop-provider-posture.ts:33` because the
+  recursive normalized-value alias passes through `Readonly<Record<...>>`,
+  plus `TS2322` at lines 622 and 667 because regex checks do not narrow plain
+  strings to the declared `sha256:${string}` template-literal return type. The
+  prior typecheck wrapper returned before terminal output and was invalid
+  evidence; `npm run verify` and a coordinator rerun independently reproduce
+  the same three diagnostics.
+- This is a contract-determined compile-closure defect inside the existing P2
+  source, not a product, safety, API, or external-behavior choice. Standing
+  RV-1-E-732 authorizes the same owner to preserve all history, commit one
+  claim-only causal compiler RED recording the exact diagnostics, then one
+  minimal source GREEN. The changed tactic is an interface-broken recursive
+  normalized array/record type and a real hash type predicate used by both
+  return sites; casts, assertions, `any`, `unknown` laundering, API widening,
+  and behavior changes remain forbidden.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All final-SHA admission gates and the
+  authoritative differential must rerun after GREEN before any review. Scope
+  remains exactly the three P2 paths; no P1, PM, Core, Task126, registry edit
+  by the child, provider/network/credential action, push, or `neo` action is
+  authorized. Status remains Task139-P2 `implementing`; strict prefix remains
+  19.
