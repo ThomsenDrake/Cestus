@@ -24394,3 +24394,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   contract/repository, typecheck, factory, diff, scope, clean, and dependency
   gates plus one fresh concurrent read-only Terra/xhigh review pair remain
   mandatory. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-850 — Record-25 assurance fixture approved
+
+- Recorded at: 2026-07-19T19:27:18Z
+- The same assurance owner preserves authority merge
+  `c4c67c00872b66dad07507e605dc3801f278f983`, claim-only RED
+  `a8628bfafaced80b1abb4ef1caad6dbc6695fa30`, and minimal GREEN exact
+  candidate `8434ce0ad819e14d914aaf7b013ea2be10280d82`. The RED test blob remains
+  byte-identical to authority at `261bfb8fcf81937ddf7ed4c23db9464d7df70852`;
+  GREEN test blob `9490ecb253267647155f8025340320ea20de4997`
+  changes only the two current-prefix groups and their coupled repository
+  expectations from 24 to 25.
+- Exact candidate admission passes assurance **19/19**, all four V4 markers,
+  repository prefix **25/25** followed only by incomplete-29/found-25,
+  typecheck, factory, diff, exact two-path scope, clean, and dependency gates.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7bcf-ef78-7153-bd78-13f91dbb9605` returns `APPROVED`. It verifies
+  ancestry, exact scope, frozen V1-V4/checker bytes, RED identity, graph/order,
+  mappings, and final clean state.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7bcf-fadb-7c33-a150-bb5a3e5d0c25` independently returns `APPROVED`.
+  It reproduces the exact two-failure RED, 19/19 GREEN, all 25 released
+  commands, the exact repository boundary, and finite truncation, duplicate,
+  and order-mutation rejection. Its non-blocking P2 wording observation that
+  the claim summarizes six count-derived changes while the diff contains
+  seven individual assertion expressions is recorded to backlog without code
+  change.
+- Coordinator adjudication accepts both verdicts. Status advances the
+  record-25 fixture update `reviewing -> approved`; its complete preserved
+  history will now be integrated before Task122 receives the exact current
+  record-25 base. No push, external effect, or `neo` action occurs.
