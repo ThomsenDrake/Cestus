@@ -23113,3 +23113,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   now integrates the complete preserved lineage and reruns bounded gates from
   program bytes before dispatching `G136-R`. No push, external effect, or
   `neo` action occurs.
+
+## RV-1-E-814 — Record-22 assurance correction integrated
+
+- Recorded at: 2026-07-19T12:23:02Z
+- Coordinator merge `5d3ae521621166b30e553dc00cf0d02ab8a09c1b`
+  integrates exact approved candidate
+  `61a257639786f49424da3f8309f73b570a487c5b`. Every authority merge,
+  claim-only RED, minimal GREEN, review-admission, transient-state
+  adjudication, and dual-review evidence commit remains in ancestry without
+  rewrite.
+- Integrated-byte gates pass assurance **19/19**, all four exact V4 markers,
+  standalone typecheck, factory readiness, diff hygiene, clean tracked and
+  untracked state, unset `core.worktree`, and real non-symlinked executable
+  Vitest 4.1.9 dependencies. Repository mode executes all released commands
+  and emits `TASK136_REPOSITORY_PREFIX_OK records=22 commands=22` followed
+  only by `repository release closure incomplete: expected 29 records, found
+  22`.
+- Integrated `npm run verify` passes standalone typecheck and retains exact
+  record-22 intermediate evidence at **13 failing files / 70 failing tests /
+  2,778 passes / 5 skips**. No new failure, removal, skip, or changed
+  substantive assertion appears.
+- V1-V3, raw strict records 1-22, V4 contract/checker, all 29 card IDs/order,
+  historical compatibility/source-transfer fixtures, production/runtime
+  bytes, reviewed candidates, and integration evidence remain unchanged.
+  Status advances record-22 assurance `approved -> integrated`; `G136-R` is
+  now the next exact executable release card. No push, external effect, or
+  `neo` action occurs.
