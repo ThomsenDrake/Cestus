@@ -24425,3 +24425,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record-25 fixture update `reviewing -> approved`; its complete preserved
   history will now be integrated before Task122 receives the exact current
   record-25 base. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-851 — Record-25 assurance fixture integrated
+
+- Recorded at: 2026-07-19T19:30:39Z
+- Coordinator merge `d0b45badb5bbee1a11fd5e65a1ac656aaf6f6660`
+  integrates exact approved candidate
+  `8434ce0ad819e14d914aaf7b013ea2be10280d82` with its authority merge,
+  causal RED, minimal GREEN, admission evidence, and dual reviews preserved.
+- Integrated assurance passes **19/19**; contract mode emits all four exact
+  V4 markers; standalone typecheck and factory readiness pass. Repository
+  mode executes all 25 released commands and emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=25 commands=25` followed only by
+  `repository release closure incomplete: expected 29 records, found 25`.
+  Diff, exact two-path scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9 remain green.
+- V1-V3, raw strict records 1-25, the V4 contract/checker, all 29 card
+  IDs/order/commands, direct-source mappings, and every candidate,
+  integration, review, and release evidence item remain byte-identical.
+  Status advances the fixture update `approved -> integrated`; Task122 may
+  now receive this exact record-25 base. The P2 wording observation from
+  RV-1-E-850 remains backlog. No push, external effect, or `neo` action
+  occurs.
