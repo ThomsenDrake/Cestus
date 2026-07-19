@@ -23525,3 +23525,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   coordinator now integrates the complete preserved lineage before moving
   C136-P onto the exact record-23 base. No push, external effect, or `neo`
   action occurs.
+
+## RV-1-E-825 — Record-23 assurance correction integrated
+
+- Recorded at: 2026-07-19T15:08:04Z
+- Coordinator merge `800f455b4f0e5995983607915501f3fedb9edc0b`
+  integrates exact reviewed assurance candidate
+  `9290bb01c2b00b24b41c8e7c5caf590e95d5f14f` while preserving its authority
+  merge, claim-only RED, minimal GREEN, dual review, and all inherited history.
+- Integrated bytes pass bounded assurance **19/19**, all four exact V4
+  markers, standalone typecheck, and factory readiness. Repository mode
+  executes every released command and emits
+  `TASK136_REPOSITORY_PREFIX_OK records=23 commands=23` followed only by
+  `repository release closure incomplete: expected 29 records, found 23`.
+  Diff hygiene, clean tracked/untracked state, unset `core.worktree`, and real
+  non-symlinked executable Vitest 4.1.9 dependencies remain green.
+- Status advances record-23 assurance `approved -> integrated`. C136-P at
+  exact release position 24 may now forward-merge this current program base;
+  its preserved candidate remains neither reviewed nor integrated until all
+  exact gates rerun from that non-stale merge. No push, external effect, or
+  `neo` action occurs.
