@@ -73,3 +73,9 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 - This RED changes only the owned test and claim. It separately proves the reviewed candidate admits `provider-byte-transfer` as an initial automatic action, accepts non-canonical `July 19, 2026 00:00 UTC` as feasibility assessment time, and accepts IDNA-dot `127。0。0。1` correlation material even though WHATWG-equivalent normalization yields `127.0.0.1`.
 - Production remains byte-identical through this RED. GREEN may change only the owned source and claim and must retain this exact test blob.
 - Exact focused RED result: **1 failed file / 3 failed and 11 passed tests (14)**, with no fixture, import, provider, credential, network, or unrelated failure.
+
+## RV-1-E-829 Changed-Counterfactual GREEN
+
+- GREEN changes only source and this claim; the test blob remains `da5fa7d0e3c568e5d3ad73a17dcda7b83a6aac7f` from RED `001b009857c7f79eaa31ab84f9de863166399ed3`.
+- Automatic classes are exactly `read-only`, `local-derivative`, or `ledger-proposal`; uniqueness and prior replan narrowing remain enforced. Feasibility time must match the canonical UTC ISO grammar, be a real Date, and round-trip through `toISOString()`. IP classification now NFC-normalizes and maps U+3002/U+FF0E/U+FF61 before both IP and DNS checks, so `127。0。0。1` fails as normalized `127.0.0.1` while prior safe values remain unchanged.
+- The exact focused GREEN command passes: **1 file / 14 tests**.
