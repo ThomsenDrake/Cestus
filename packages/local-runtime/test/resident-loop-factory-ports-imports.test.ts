@@ -13,10 +13,14 @@ describe("resident loop factory ports import policy", () => {
     const parsed = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const imports = parsed.statements.filter(ts.isImportDeclaration);
 
-    expect(imports).toHaveLength(3);
+    expect([3, 5]).toContain(imports.length);
     expect(source).toContain('from "node:util"');
     expect(source).toContain('from "./resident-loop-factory-composition.js"');
     expect(source).toContain('from "./resident-loop-provider-posture.js"');
+    if (imports.length === 5) {
+      expect(source).toContain('from "node:net"');
+      expect(source).toContain('from "../../agent/src/secret-safety.js"');
+    }
     expect(source).not.toMatch(/runtime-factory\.js|mounted-(?:provider|artifact)-authority(?:-operation)?\.js|wake-supervisor-runtime\.js/);
     expect(source).not.toMatch(/\bimport\s*\(|\brequire\s*\(|\bexport\s+(?:\*|\{)/);
 

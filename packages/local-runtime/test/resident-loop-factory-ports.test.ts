@@ -123,6 +123,77 @@ describe("resident loop factory ports", () => {
     expect(getterCalls).toBe(0);
     expect(proxyCalls).toBe(0);
   });
+
+  it("rejects hostile P2 posture text, nested proxies, exact-shape drift, and cross-field substitutions", async () => {
+    const fixture = await mountedFixture("hostile-posture");
+    const api = await factoryPortsApi();
+    let credentialProxyCalls = 0;
+    const credentialReference = new Proxy(fixture.providerPosture.credentialReference, {
+      get(target, property, receiver) {
+        credentialProxyCalls += 1;
+        return Reflect.get(target, property, receiver);
+      }
+    });
+
+    const hostilePostures = [
+      Object.freeze({
+        ...fixture.providerPosture,
+        selection: Object.freeze({ ...fixture.providerPosture.selection, providerId: "sk_live_abcdefghijklmnopqrst" })
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        credentialReference
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        credentialReference: Object.freeze({
+          ...fixture.providerPosture.credentialReference,
+          credentialRefId: "sk_live_abcdefghijklmnopqrst"
+        })
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        credentialReference: Object.freeze({
+          ...fixture.providerPosture.credentialReference,
+          credentialKind: "subscription-oauth"
+        })
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        feasibility: Object.freeze({ ...fixture.providerPosture.feasibility, lane: "local-engine" })
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        feasibility: Object.freeze({ ...fixture.providerPosture.feasibility, extra: "ignored" })
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        feasibility: Object.freeze({ ...fixture.providerPosture.feasibility, feasibilityId: "https://api.example.xyz" })
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        capability: Object.freeze({
+          ...fixture.providerPosture.capability,
+          capabilityId: "provider_other"
+        })
+      }),
+      Object.freeze({
+        ...fixture.providerPosture,
+        feasibility: Object.freeze({
+          ...fixture.providerPosture.feasibility,
+          sourceEventIds: Object.freeze(["evt_binding_factory_ports"])
+        })
+      })
+    ];
+
+    for (const providerPosture of hostilePostures) {
+      expect(() => api.createResidentLoopFactoryPorts(Object.freeze({
+        authorityReadback: fixture.authorityReadback,
+        providerPosture
+      }))).toThrow(/factory ports/i);
+    }
+    expect(credentialProxyCalls).toBe(0);
+  });
 });
 
 async function factoryPortsApi(): Promise<FactoryPortsApi> {
