@@ -23083,3 +23083,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   executability. Reviews are read-only; SDD/TDD is not relevant or authorized
   for reviewers. Status advances record-22 assurance `implementing-repair ->
   candidate -> reviewing`; no push, external effect, or `neo` action occurs.
+
+## RV-1-E-813 — Record-22 assurance correction receives dual approval
+
+- Recorded at: 2026-07-19T12:16:08Z
+- Fresh read-only architecture/invariants review task
+  `019f7a42-841e-7eb0-91da-e143830ed00f` returns `APPROVED` for exact
+  candidate `61a257639786f49424da3f8309f73b570a487c5b` with no reproduced
+  P0/P1. It verifies the exact authority-merge -> claim-only RED -> GREEN
+  topology, two-path scope, present-prefix-only correction, immutable V1-V3,
+  V4 contract/checker, raw records, historical transfers, compatibility
+  fixtures, and runtime bytes; assurance **19/19**, four V4 markers,
+  typecheck, factory, diff, dependency, and clean-state gates pass.
+- Fresh read-only executability/adversarial review task
+  `019f7a42-8f1e-7d80-9cb2-205904834df2` independently returns `APPROVED`
+  for the same exact candidate with no reproduced P0/P1. It passes assurance
+  **19/19**, all adversarial malformed/extra/immutable/migration/transfer
+  fixtures, all four V4 markers, standalone typecheck, factory readiness, and
+  repository `TASK136_REPOSITORY_PREFIX_OK records=22 commands=22` followed
+  only by the expected incomplete-29 boundary.
+- During concurrent repository-admission invocations, executability observed
+  one transient unstaged two-file state after an initially clean snapshot.
+  Coordinator and reviewer immediate rereads both found exact HEAD, empty
+  diff, and clean status; it remained absent before typecheck and in both final
+  snapshots. No byte, branch, index, config, dependency, or history change
+  persists, and no contract or candidate behavior failure is reproducible.
+  The coordinator adjudicates it as concurrent harness activity, not P0/P1.
+- Status advances record-22 assurance `reviewing -> approved`. The coordinator
+  now integrates the complete preserved lineage and reruns bounded gates from
+  program bytes before dispatching `G136-R`. No push, external effect, or
+  `neo` action occurs.
