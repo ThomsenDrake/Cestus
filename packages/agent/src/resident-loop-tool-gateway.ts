@@ -148,10 +148,16 @@ export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInpu
         executionClaimEventId: requiredClaimEventId(afterExecution.readback),
         result
       });
+      const completionGlobalEventCount = (await input.ledger.readAll()).length;
       const beforeCompletion = await readCurrentGatewayState(
         input, afterExecution.readback, afterExecution.readback.requestEventId, "claim", undefined, afterExecution.planBytes
       );
-      const completed = await gateway.completeToolFromSchedulerEvidence(evidence);
+      const completionGateway = createAgentToolGateway({
+        ledger: createCompletionGuardedLedger(input.ledger, completionGlobalEventCount),
+        actor: residentGatewayActor,
+        now: input.now
+      });
+      const completed = await completionGateway.completeToolFromSchedulerEvidence(evidence);
       return issue(await readCurrentGatewayState(
         input, beforeCompletion.readback, beforeCompletion.readback.requestEventId, "result", completed.id, beforeCompletion.planBytes
       ));
@@ -174,6 +180,23 @@ type RequestSnapshot = Readonly<ResidentLoopToolRequestInput>;
 interface CurrentGatewayState {
   readonly readback: ResidentLoopToolGatewayReadback;
   readonly planBytes: string;
+}
+
+function createCompletionGuardedLedger(ledger: EventLedger, expectedGlobalEventCount: number): EventLedger {
+  return Object.freeze({
+    async append(event, options) {
+      if (options?.expectedGlobalEventCount !== undefined) {
+        throw new Error("Resident-loop completion guard does not accept a second global ledger precondition.");
+      }
+      return await ledger.append(event, { ...options, expectedGlobalEventCount });
+    },
+    async readStream(streamId) {
+      return await ledger.readStream(streamId);
+    },
+    async readAll() {
+      return await ledger.readAll();
+    }
+  });
 }
 
 async function readCurrentGatewayState(

@@ -235,3 +235,24 @@ the captured `expectedGlobalEventCount` to its append options, forcing any
 competing plan or global append to conflict before completion. It will add no
 direct completion append, alternate route, widened released API, provider,
 credential, network, external behavior, or non-ledger storage.
+
+## RV-1-E-819 Completion-Boundary Race GREEN
+
+The minimal forward correction advances **completion-race-red -> green**. In
+`executeAndReadback`, the bridge captures `readAll().length` immediately before
+its final exact current-plan reread. It then creates a request-local released
+`createAgentToolGateway` over a card-local guarded ledger only for the official
+`completeToolFromSchedulerEvidence` call. The adapter-issued evidence remains
+unchanged.
+
+The guarded view delegates every read and preserves the official gateway's
+`expectedNextSequence`; it rejects a second global precondition and adds the
+captured `expectedGlobalEventCount` to the one completion append. Thus a plan
+or any other global append after the snapshot causes the released ledger's
+atomic concurrency conflict before `agent.tool.completed`, while a changed
+plan during the final reread is rejected by existing exact currentness checks.
+The guard is closure-local to one execution and carries no shared mutable
+state. The focused card is GREEN at **2 files / 10 tests**; all earlier hostile
+assertions are retained. No released source/API changes, direct completion,
+alternate authority, provider/credential/network/external behavior, or
+non-ledger storage is introduced.
