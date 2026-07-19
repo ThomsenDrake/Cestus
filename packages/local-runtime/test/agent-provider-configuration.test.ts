@@ -606,6 +606,48 @@ describe("agent provider configuration", () => {
     }).toEqual({ accepted: [], controlsAccepted: [true, true, true] });
   });
 
+  it("rejects IDNA lookalikes of exact released version tokens", () => {
+    const versions = ["agent-provider-auth.v1", "policy.v1", "adapter.v1"];
+    const separators = ["。", "．", "｡"];
+    const accepted: string[] = [];
+
+    for (const version of versions) {
+      for (const separator of separators) {
+        const lookalike = version.replace(".", separator);
+        const capability = byokConfiguration();
+        only(capability.capabilities).capability.dataHandlingNotes = lookalike;
+        if (accepts(capability)) accepted.push(`capability:${lookalike}`);
+
+        const credential = byokConfiguration();
+        only(credential.credentialReferences).safeLabel = lookalike;
+        if (accepts(credential)) accepted.push(`credential:${lookalike}`);
+      }
+    }
+
+    const agentProviderAuth = byokConfiguration();
+    only(agentProviderAuth.capabilities).capability.adapterVersion = "agent-provider-auth.v1";
+    only(agentProviderAuth.endpointPolicies).adapterVersion = "agent-provider-auth.v1";
+
+    const policy = byokConfiguration();
+    only(policy.credentialReferences).policyVersion = "policy.v1";
+    only(policy.endpointPolicies).policyVersion = "policy.v1";
+    only(policy.feasibility).policyVersion = "policy.v1";
+
+    const adapter = byokConfiguration();
+    only(adapter.capabilities).capability.adapterVersion = "adapter.v1";
+    only(adapter.endpointPolicies).adapterVersion = "adapter.v1";
+
+    const prose = byokConfiguration();
+    only(prose.capabilities).capability.dataHandlingNotes = "ordinary policy.v1 prose";
+    only(prose.credentialReferences).safeLabel = "résumé data handling";
+    only(prose.feasibility).assessedAt = "2026-07-18T12:00:00.000Z";
+
+    expect({
+      accepted,
+      controlsAccepted: [accepts(agentProviderAuth), accepts(policy), accepts(adapter), accepts(prose)]
+    }).toEqual({ accepted: [], controlsAccepted: [true, true, true, true] });
+  });
+
   it("requires canonical ISO-millisecond-Z assessment timestamps", () => {
     const prose = byokConfiguration();
     only(prose.feasibility).assessedAt = "July 18, 2026 12:00:00 UTC";
