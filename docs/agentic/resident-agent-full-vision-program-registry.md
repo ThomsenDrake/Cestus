@@ -24164,3 +24164,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `efee7660fccf2609bf7e8d38f944fef0f37f98e2`; SDD/TDD is not relevant or
   authorized for reviewers. No integration, strict record 25, push, external
   effect, or `neo` action occurs before dual approval.
+
+## RV-1-E-844 — Task121 approval-suspension root-cause checkpoint
+
+- Recorded at: 2026-07-19T18:25:29Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7b99-34e0-7a40-a8c0-058e65b10ee7` returns `BLOCKED` with one exact
+  P1 on clean candidate `efee7660fccf2609bf7e8d38f944fef0f37f98e2`.
+  The approval-requested branch returns `waiting-for-approval` while calling
+  raw `appendSpecialistCompletion`, appending
+  `agent.specialist-run.completed`, and projecting the run `completed`.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7b99-41b1-70a2-9913-b3b0d8c0e4ee` independently reproduces the same
+  P1. The focused test at lines 239-247 currently passes while asserting that
+  contradictory terminal event/projection after the opaque V2 witness is
+  injected. Both reviewers retain clean before/after HEAD and reproduce all
+  candidate-local gates; no second P0/P1 is found.
+- Coordinator adjudication confirms the frozen Task119/CF1-HR approval-
+  suspension invariant: pending approval is resumable and non-completing.
+  This branch may retain its advisory `waiting-for-approval` handoff and
+  durable draft/request evidence, but must append no specialist terminal,
+  orchestration-completed, or completed task-status event; V1/raw helpers
+  cannot complete or upgrade the injected V2 lifecycle.
+- Standing RV-1-E-732 resumes the same Terra/xhigh Task121 owner task
+  `019f7544-bc61-7201-ae4f-c1742b4f4a8a`, branch
+  `codex/task121-cf1-handoff-adoption`, and worktree
+  `/home/drake/.codex/worktrees/57e7/Cestus`, preserving exact merged
+  candidate history. It forward-merges this registry authority, commits one
+  causal test/claim RED that requires the waiting branch to remain
+  nonterminal, then one minimal source/claim GREEN removing only the raw
+  completion from that branch.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All focused, cross-boundary, typecheck,
+  full/verify differential, assurance/V4/repository, factory, diff, scope,
+  clean, and dependency gates plus one fresh concurrent read-only Terra/xhigh
+  pair remain mandatory after GREEN. No push, external effect, or `neo`
+  action occurs.
