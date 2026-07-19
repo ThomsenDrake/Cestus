@@ -21647,3 +21647,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   the card's three-path ownership and will not replace its claim/RED/GREEN
   history. Strict prefix remains 19; no push, external effect, or `neo` action
   occurs.
+
+## RV-1-E-775 — Task139-P2 first-RED root-cause adjudication and changed tactic
+
+- Recorded at: 2026-07-19T04:56:21Z
+- The same Task139-P2 owner preserves claim `ee80a5f2` and causal RED
+  `1141686a`, with no production commit. The RED's three API-absence failures
+  are valid test-first evidence, but its not-yet-reached mounted fixture uses
+  the provisional `workspace_` prefix and an attempted production sketch
+  assumed P2 must mint Task126's private reader. The owner removed that
+  uncommitted sketch and returned a clean branch.
+- Coordinator adjudication finds no product or safety choice. The approved
+  mounted-feasibility design, workspace manifest schema, ontology contract,
+  PM/Core runtime, and released official-flow interfaces all require canonical
+  `ws_` workspace IDs and explicitly reject provisional `workspace_` IDs.
+  Separately, released Task126-R's import boundary makes its reader mint
+  test-only/private and permits no production importer; P2's exact V4
+  prerequisites intentionally exclude Task126-R.
+- Therefore P2 must not retrofit, import, export, mint, alias, or adapt the
+  private `ByokProviderAuthorityReader`. Its current V4 responsibility is the
+  independent P-owned verified-posture capability consumed by FC-Ports,
+  C136-P, and Lane L, derived only from P1 data plus PM/Core mounted readback.
+  Task126 remains a cross-boundary regression suite, not P2 authority.
+- Changed recovery tactic is exact and remains inside the existing three-path
+  card ownership: forward-merge the corrected record-19 program head, append
+  one causal RED correction that uses real `ws_` mounted identity and rejects
+  `workspace_` input/private-reader coupling, then implement one minimal GREEN
+  for the P2 posture capability. Preserve both earlier commits and every
+  inherited history byte.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. The same Terra/xhigh owner resumes; no
+  replacement, V5, ownership transfer, compatibility alias, released-source
+  edit, provider/network/credential effect, push, or `neo` action is
+  authorized. Status remains Task139-P2 `implementing`; strict prefix remains
+  19.
