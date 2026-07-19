@@ -87,3 +87,7 @@ The final standalone compiler gate exposed one TS2322 at `requireNormalizedRecor
 ## RV-1-E-831 Changed-Tactic GREEN
 
 - GREEN preserves RED test blob `f736412ab51a5102ef8436bab86219c4969cd2a7`. It uses released `approvalClassForSideEffect`, closes resident side effects, folds NFKC then IDNA dots for host classification, and rejects weak or mismatched allowlist approvals.
+
+## RV-1-E-833 Causal RED
+
+- Authority `e6be0398a9017ed256ea43569490ccd998359def` authorizes six frozen cases: stale/newer high-water binding, omitted global allowlist approval, two revision-zero budget facts, and second-initial state replacement. Production remains unchanged through this RED.

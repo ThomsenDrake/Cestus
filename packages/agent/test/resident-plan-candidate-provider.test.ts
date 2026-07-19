@@ -406,6 +406,45 @@ describe("resident plan candidate provider", () => {
     const weakExternalTransfer = deepFreeze({ ...constraints, toolAllowlist: [{ ...constraints.toolAllowlist[0], sideEffectClass: "external-byte-transfer", requiredApprovalClass: "none" }, constraints.toolAllowlist[1]] });
     await expect(provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: posture, policyConstraints: weakExternalTransfer }))).rejects.toThrow(/plan candidate/i);
   });
+
+  it("rejects a stale authority and posture high-water behind ordered sources", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const stalePlan = deepFreeze({ ...initialPlan, authority: { ...initialPlan.authority, ledgerHighWaterEventId: "evt_source_001" } });
+    const stalePosture = deepFreeze({ ...posture, workspace: { ...posture.workspace, highWaterMark: "evt_source_001" } });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: stalePlan, providerPosture: stalePosture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects ordered sources newer than bound authority high-water", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const newerSources = deepFreeze({ ...initialPlan, sourceEventIds: ["evt_source_001", "evt_source_002", "evt_source_003"] });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: newerSources, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("requires every allowlist approval class globally", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const external = deepFreeze({ ...constraints, toolAllowlist: [{ ...constraints.toolAllowlist[0], sideEffectClass: "external-message-send", requiredApprovalClass: "external-message-send" }, constraints.toolAllowlist[1]] });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: posture, policyConstraints: external }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects revision-zero budget consumption", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const consumedInitial = deepFreeze({ ...initialPlan, budget: budget(1, 0, 0) });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: consumedInitial, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects revision-zero budget action consumption", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const actionInitial = deepFreeze({ ...initialPlan, budget: budget(0, 0, 1) });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: actionInitial, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+  });
+
+  it("rejects a second initial without replacing the original replan continuation", async () => {
+    const provider = (await candidateApi()).createResidentPlanCandidateProvider();
+    await provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: posture, policyConstraints: constraints }));
+    const secondInitial = deepFreeze({ ...initialPlan, planId: "plan_c136_p_second" });
+    await expect(provider.createInitialCandidate(deepFreeze({ plan: secondInitial, providerPosture: posture, policyConstraints: constraints }))).rejects.toThrow(/plan candidate/i);
+    await expect(provider.createReplanCandidate(deepFreeze({ plan: replan, providerPosture: posture, policyConstraints: constraints, priorPlanReadback, replanObservationReadback: observation }))).resolves.toMatchObject({ schemaVersion: "resident-replan-candidate.v1" });
+  });
 });
 
 async function candidateApi(): Promise<ResidentPlanCandidateProviderApi> {
