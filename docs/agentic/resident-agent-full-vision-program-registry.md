@@ -23260,3 +23260,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Terra/xhigh architecture/executability pair. Status advances G136-R
   `reviewing -> implementing-repair`; no integration, release record, push,
   external effect, or `neo` action occurs.
+
+## RV-1-E-818 — G136-R review-recovery compiler checkpoint
+
+- Recorded at: 2026-07-19T13:35:25Z
+- Registry authority merge `34e37c51` preserves both histories; causal
+  adversarial RED `30b5c6dd` reproduces the four accepted review P1 families,
+  and minimal runtime GREEN `751831b7` passes the exact card at **2 files / 9
+  tests**. Cross-boundary, assurance, V4 contract, and repository **22/22**
+  gates also pass without a production or safety regression.
+- Final `npm run verify` typecheck then reproduces exactly two test-only
+  diagnostics: an optional `executionClaimEventId` is passed to an exact-
+  optional causation field, and a hostile selected-plan wrapper broadens the
+  discriminated `KnowledgeEvent` union while replacing descriptor bytes.
+  Runtime assertions remain green; no product, interface, ownership, safety,
+  credential, hardware, data-loss, or external-behavior choice exists.
+- The same owner preserves claim-only compiler RED
+  `be86331efa70b407ccc60f90697bfee28810b8c3` and is authorized for one
+  test-only minimal GREEN: narrow the already required claim ID before DTO
+  construction and preserve the selected plan event discriminator in the
+  mutation wrapper. Production bytes and every hostile assertion must remain
+  unchanged.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All admission gates and one fresh
+  concurrent read-only Terra/xhigh review pair remain required after the
+  compiler GREEN. Status remains G136-R `implementing-repair`; no integration,
+  release record, push, external effect, or `neo` action occurs.
