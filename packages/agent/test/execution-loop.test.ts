@@ -9,6 +9,7 @@ import {
 } from "../src/execution-loop.js";
 
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+const fakeDomainServiceActor = { id: "actor_fake_domain_service", kind: "system" as const, label: "Fake Domain Service" };
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 
 describe("resident agent fake execution loop", () => {
@@ -953,7 +954,7 @@ async function appendFakeDomainResult(ledger: InMemoryEventLedger, toolRequestId
     version: 1,
     streamId: `evidence_fake_result_${toolRequestId}`,
     context: {
-      actor: agentActor,
+      actor: fakeDomainServiceActor,
       occurredAt: "2026-07-07T23:00:00.000Z",
       causationId: claim.id,
       correlationId: `corr_${toolRequestId}_fake_result`,
