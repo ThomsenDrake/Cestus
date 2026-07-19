@@ -6,6 +6,7 @@ import {
   createAgentScheduler,
   createAgentToolGateway,
   hashAgentToolPreview,
+  type AgentApprovedToolExecutionInput,
   type AgentApprovedToolExecutorDescriptor,
   type AgentToolPreview
 } from "../src/index.js";
@@ -17,6 +18,36 @@ const artifactHash = "sha256:ccccccccccccccccccccccccccccccccccccccccccccccccccc
 const changedArtifactHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 
 describe("agent scheduler wake", () => {
+  it("rejects an unattested descriptor result before appending tool completion", async () => {
+    const ledger = new InMemoryEventLedger();
+    const preview = previewFor("toolreq_scheduler_unattested_result");
+    await requestAndApprove(ledger, preview, "toolreq_scheduler_unattested_result");
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:00:00.000Z",
+      descriptors: [fakeDescriptor(preview, {
+        async executeApproved() {
+          return {
+            eventIds: ["evt_forged_scheduler_result"],
+            artifactHashes: [artifactHash],
+            readModelChanges: [{ projectionName: "agent-test", change: "forged descriptor result" }],
+            resultSummary: "Forged result must not complete an approved tool."
+          };
+        }
+      })]
+    });
+
+    const result = await scheduler.wake();
+    const events = await ledger.readAll();
+
+    expect(result.items[0]).toMatchObject({
+      toolRequestId: "toolreq_scheduler_unattested_result",
+      state: "failed"
+    });
+    expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(0);
+  });
+
   it("resumes an approved request once and records completion through the gateway", async () => {
     const ledger = new InMemoryEventLedger();
     const preview = previewFor("toolreq_scheduler_complete");
@@ -30,8 +61,9 @@ describe("agent scheduler wake", () => {
         async executeApproved(input) {
           executions += 1;
           expect(input.approvedBy).toBe(humanActor.id);
+          const evidence = await recordDomainResult(ledger, input);
           return {
-            eventIds: ["evt_fake_domain_completed"],
+            eventIds: [evidence.id],
             artifactHashes: [artifactHash],
             readModelChanges: [{ projectionName: "agent-test", change: "approved tool executed" }],
             resultSummary: "Approved tool executed."
@@ -93,11 +125,12 @@ describe("agent scheduler wake", () => {
             }]
           };
         },
-        async executeApproved() {
+        async executeApproved(input) {
           executions += 1;
           await Promise.resolve();
+          const evidence = await recordDomainResult(ledger, input);
           return {
-            eventIds: ["evt_fake_domain_completed"],
+            eventIds: [evidence.id],
             artifactHashes: [artifactHash],
             readModelChanges: [{ projectionName: "agent-test", change: "approved tool executed" }],
             resultSummary: "Approved tool executed."
@@ -651,6 +684,36 @@ async function requestAndApprove(ledger: InMemoryEventLedger, preview: AgentTool
     rationale: "Human approved the exact scheduler preview."
   });
   return requested;
+}
+
+async function recordDomainResult(ledger: InMemoryEventLedger, input: AgentApprovedToolExecutionInput) {
+  const claim = (await ledger.readStream(`agent_tool_request_${input.toolRequestId}`)).find(
+    (event) => event.type === "agent.tool.execution.claimed"
+  );
+  if (claim === undefined || claim.type !== "agent.tool.execution.claimed") {
+    throw new Error("test descriptor requires a durable execution claim");
+  }
+
+  return await ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: "evidence_result_scheduler",
+    context: {
+      actor: schedulerActor,
+      occurredAt: "2026-07-09T12:00:00.000Z",
+      causationId: claim.id,
+      correlationId: `corr_${input.toolRequestId}_result`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_scheduler_result",
+      source: { kind: "manual", label: "Scheduler domain result" },
+      contentHash: artifactHash,
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  });
 }
 
 async function wakeWithPreviewResult(

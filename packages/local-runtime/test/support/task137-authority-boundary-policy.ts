@@ -136,6 +136,18 @@ const allowedAuthorityImports = new Map<string, Map<string, Map<string, ImportPo
         })
       ]
     ])
+  ],
+  [
+    "packages/local-runtime/src/mounted-provider-authority.ts",
+    new Map([
+      [
+        "packages/local-runtime/src/mounted-artifact-authority-operation.ts",
+        allowedNames({
+          value: ["inspectMountedArtifactAuthorityOperationForMountedProviderAuthority"],
+          type: ["MountedProviderAuthorityOperationInspection"]
+        })
+      ]
+    ])
   ]
 ]);
 
