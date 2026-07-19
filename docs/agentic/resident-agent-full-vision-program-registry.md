@@ -22043,3 +22043,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances record-20 assurance `candidate -> reviewing`; strict prefix
   remains 20. No integration, push, external effect, or `neo` action occurs
   during review.
+
+## RV-1-E-787 — Record-20 assurance correction approved
+
+- Recorded at: 2026-07-19T07:08:00Z
+- Fresh concurrent Terra/xhigh architecture/invariants review task
+  `019f7923-7089-7eb2-82e0-bca6fd920e23` and
+  executability/adversarial review task
+  `019f7923-c080-7ac3-a141-369c714b00e0` each return unqualified `APPROVED`
+  for exact candidate `1426a95cff179e6a010eec725328f95f8fc079ab`;
+  neither reproduces a P0/P1.
+- Both verify exact base/RED/GREEN ancestry, two-path scope, **19/19** focused
+  assurance, all four V4 markers, strict twenty-record order and Git evidence,
+  repository **20/20** closure boundary, standalone typecheck, factory
+  readiness, immutable V1-V4/checker/registry/Task139-P2 bytes, and preserved
+  historical 17/18/19 fixtures. The architecture review's first concurrent
+  full run showed three extra timing failures while other eligible-card
+  Vitest runs were active; its final isolated run reproduced exactly the
+  admitted **12 files / 69 tests / 2,764 passes / 5 skips** cohort.
+- Status advances record-20 assurance `reviewing -> approved`. The coordinator
+  will integrate the complete preserved lineage and rerun all bounded gates
+  from integrated bytes before refreshing active dependent candidates. No
+  repair, push, external effect, or `neo` action occurs.
