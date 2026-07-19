@@ -22374,3 +22374,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Status advances record-21 assurance `integrated -> implementing-repair`;
   G136-SC remains preserved and unreviewed until this corrected authority is
   integrated. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-796 — Record-21 assurance correction admitted to review
+
+- Recorded at: 2026-07-19T08:47:56Z
+- Exact clean candidate `e7bd5f28fade91f4fe03efc1008aeed8150225cf`
+  preserves forward authority merge
+  `cbd3a4e5d2568822f23a5094bb1b72e88b0ed346`, claim-only causal RED
+  `ef48e59fb25c8b3ed98addb1acef5e261578034a`, and every prior assurance,
+  release, and registry commit. The recovery diff is exactly the V4 assurance
+  test and V4 authority-transfer claim.
+- Committed RED reproduces exactly **17/19** assurance tests, with only the two
+  current-prefix assertions observing `21 !== 20`. Committed GREEN passes
+  **19/19**, all four exact V4 markers, standalone typecheck, factory
+  readiness, diff hygiene, exact two-path scope, clean state, real
+  non-symlinked executable Vitest 4.1.9 dependencies, and repository
+  `TASK136_REPOSITORY_PREFIX_OK records=21 commands=21` followed only by the
+  expected incomplete-29 boundary.
+- Full `npm test` and `npm run verify` retain exactly the inherited **12 failing
+  files / 69 failing tests / 5 skips / 2,768 passes**, with no new failure,
+  removal, skip, or changed assertion. V1-V3, V4 contract/checker, raw records
+  1-21, historical prefix fixtures, all 29 IDs/order, and runtime bytes remain
+  unchanged.
+- One fresh concurrent read-only Terra/xhigh architecture/invariants and
+  executability/adversarial review pair now examines that immutable SHA.
+  Reviews are read-only; SDD/TDD is not relevant or authorized for reviewers.
+  Status advances record-21 assurance `implementing-repair -> candidate ->
+  reviewing`; strict prefix remains 21. No integration, push, external effect,
+  or `neo` action occurs during review.
