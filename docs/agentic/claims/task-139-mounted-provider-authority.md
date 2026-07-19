@@ -2,7 +2,7 @@
 
 ## Claim
 
-- Status: in-progress.
+- Status: in-progress (RV-1-E-760 proxy-envelope recovery).
 - Card: `Task139-PM`.
 - Exact base: `c160f5ad5b1841a9e7b2ae23d410327592445143` (`docs: release Task139-P1 as record 17`).
 - Branch: `codex/task139-pm-mounted-provider-authority`.
@@ -106,3 +106,26 @@ registration, or other external effect.
   scope is exactly the six paths above. Preflight and post-verification use a
   real non-symlinked `node_modules`; `node_modules/.bin/vitest` is executable
   and reports `4.1.9`.
+
+## RV-1-E-760 Proxy-Envelope Recovery RED
+
+- The registry-only forward merge
+  `362bb1222b4d7a028e7a91bd5b1230ee96c42222` records the accepted P1:
+  `issueMountedProviderAuthority(new Proxy({ operation }, {}))` minted a
+  locator from a real factory-issued operation. This recovery owns exactly the
+  PM test, PM source, and this claim; the prior source remains byte-identical
+  to `28072e576f7fb9f3937d4596d975c4fe80aeef3e` in this RED.
+- The two new named real-fixture cases require rejection of a transparent
+  proxy envelope and rejection of a trap-bearing proxy envelope before any
+  object-handler trap runs. The latter records both `rejected` and the exact
+  handler-trap count in one assertion.
+- Focused RED command:
+  `npm test -- packages/local-runtime/test/mounted-provider-authority.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts`
+  exited `1` with **1 failed file / 2 failed tests / 8 passed tests** across
+  **2 files / 10 tests**. The transparent envelope failed because it did not
+  throw; the trap-bearing envelope observed `{ rejected: false, trapCalls: 4
+  }` rather than `{ rejected: true, trapCalls: 0 }`. The existing import-policy
+  fixture passed and emitted exactly one
+  `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20` marker. The recurring
+  TypeScript source-map warning is an inherited dependency condition, not a
+  test or environment failure.
