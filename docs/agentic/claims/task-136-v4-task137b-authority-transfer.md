@@ -223,3 +223,19 @@ Implementation evidence:
   exact recovery scope, clean state, and real local Vitest 4.1.9 dependencies.
   No registry, integration, review, push, network, credential, provider,
   `neo`, or task creation is authorized.
+
+## Record-21 minimal GREEN evidence
+
+- The two affected current-prefix groups now assert a strict parsed prefix of
+  `21` records and `expectedIds.slice(0, 21)`. The repository-admission
+  closure, prefix marker, and command-call count advance together to `found
+  21` and `records=21 commands=21`.
+- Historical prefix coverage remains unchanged, including the Task139-PM
+  record-17 pre-activation source-currentness fixture and synthetic record-18
+  activation/target-currentness fixture; no generic current-count facility,
+  contract, checker, raw record, or runtime behavior was added or altered.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `19` passed and `0` failed. Final committed-byte admission will
+  rerun the required assurance, contract, repository, typecheck, full-suite
+  differential, factory, diff, scope, and clean/dependency gates.
