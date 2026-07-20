@@ -24782,3 +24782,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   into Task122 RED `358a683a`. V1-V3, raw records 1-25, all 29 IDs/order,
   finite mappings/evidence, and `neo` remain immutable. No push or external
   effect occurs.
+
+## RV-1-E-861 — Task122 transfer assurance correction integrated
+
+- Recorded at: 2026-07-20T15:55:47Z
+- Coordinator merge `27683b8ac29b73ff5f829eaabd1732ff82f87695`
+  integrates exact approved candidate
+  `06e84742637ee715e03cf84e9b79dc6673bd0569` with preserved authority
+  merge, causal RED, sole GREEN, claim evidence, and dual-review history.
+- Integrated bytes pass assurance **20/20**, all four exact V4 contract
+  markers, standalone typecheck, factory readiness, diff hygiene, clean
+  tracked/untracked state, and real non-symlinked dependencies with executable
+  Vitest 4.1.9. Repository mode executes every released command and emits
+  exact `TASK136_REPOSITORY_PREFIX_OK records=25 commands=25`, followed only
+  by `repository release closure incomplete: expected 29 records, found 25`.
+- The exact finite CF1-HR -> Task122 ownership and record-26 currentness route
+  is now program authority. V1-V3, raw strict records 1-25, all 29 IDs/order,
+  prior finite mappings/evidence, and `neo` remain immutable. Status advances
+  the assurance correction `approved -> integrated`; this exact program head
+  may now be forward-merged into preserved Task122 causal RED `358a683a` for
+  its sole minimal five-path GREEN. No push or external effect occurs.
