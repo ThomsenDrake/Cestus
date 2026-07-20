@@ -482,3 +482,21 @@ Implementation evidence:
   factory, diff, two-path scope, immutable-input, clean-state, and dependency
   gates. No registry, integration, review, push, network, credential,
   provider, `neo`, or task creation is authorized.
+
+## RV-1-E-870 record-26 minimal GREEN evidence
+
+- The three current-prefix groups now assert `26` records and exact
+  `expectedIds.slice(0, 26)`. The repository-admission closure, prefix marker,
+  and command-call count advance together to `found 26` and
+  `records=26 commands=26`.
+- The CF1-HR-to-Task122 test now constructs its intentionally pre-activation
+  fixture from `releasedPrefix.slice(0, 25)`. This preserves the historical
+  record-25 source-currentness check after the real current prefix includes
+  Task122 at record 26, and prevents the synthetic record-26 activation from
+  duplicating the released Task122 record. It does not alter any historical
+  record count, contract, checker, mapping, or release evidence.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `20` passed and `0` failed. Final committed-byte admission will run
+  the required contract/repository, typecheck, full differential, factory,
+  diff, immutable-input, scope, clean-state, and dependency gates.
