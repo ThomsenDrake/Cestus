@@ -403,3 +403,54 @@ Implementation evidence:
   derived fingerprint pin; no generic or transitive transfer facility is
   justified. This packet must stop at the committed RED unless a coordinator
   expands that exact production-path authority.
+
+## RV-1-E-859 coupled legacy-pin correction and minimal GREEN evidence
+
+- RV-1-E-859 preserves causal RED `e05eaddea5aa39da0cc4baac406fa4c6a9a5902c`
+  and authorizes one checker-inclusive GREEN after normal authority merge
+  `cbe9a89bf98bba4cad6bc4d64f7e2c297f52cff7`. The RED test blob remains in
+  ancestry; the GREEN test changes only three independently reproduced stale
+  assertions coupled to the now-authorized finite mapping.
+- The reproduced prospective GREEN ran `20` assurance tests: `17` passed and
+  only `3` failed. CF1-HR's exact two portable-store paths are now
+  `transferred` rather than legacy `owned`; Task122's exact command is the
+  authorized two-test command rather than its V3 one-test command; and the
+  computed fingerprint is exact
+  `d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071`
+  rather than legacy `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`.
+- The finite GREEN updates only those coupled assertions: the CF1-HR legacy
+  projection expects `transferred` only for the two Task122 paths and `owned`
+  for every other CF1-HR path; Task122 alone joins the explicit V3-command
+  parity exemptions while its record-26 test pins the authorized command; and
+  the fingerprint assertion advances to the derived exact value. No other
+  test assertion changes.
+- The contract/checker GREEN adds no generic facility: it fixes the sole
+  CF1-HR -> Task122 source/target paths, historical record-14 compatibility,
+  exact source and target scopes, historical target group, record-26 current
+  migration, and derived fingerprint. V1-V3, raw records 1-25, 29-card order,
+  every other transfer, and repository prefix remain immutable.
+
+## RV-1-E-859 V4 contract-hash causal correction
+
+- After the three coupled legacy-pin corrections, the focused corpus was
+  `19/20`: its only remaining failure was the V4 file-hash assertion. The
+  exact authorized finite contract bytes SHA-256 to
+  `1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5`,
+  while the legacy assertion pinned
+  `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`.
+  Keeping the old SHA while changing the contract would require a hash
+  collision, so RV-1-E-859 authorizes exactly this fourth, causal assertion
+  pin update and no other test change.
+- The resulting GREEN retains the preserved RED test in ancestry and changes
+  only the four authorized packet paths: V4 contract, finite checker, focused
+  assurance test, and this claim. The admission proof is 20/20 assurance,
+  exact V4 contract/repository markers at prefix 25, typecheck, factory,
+  diff/scope/immutability/clean/dependency checks, plus full test and verify
+  differential evidence without claiming inherited failures are green.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `20` passed and `0` failed; contract mode emits exactly
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.

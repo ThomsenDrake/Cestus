@@ -27,8 +27,8 @@ const task136V4ClaimPath = "docs/agentic/claims/task-136-v4-blocked-card-scope-c
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
-const v4ContractSha256 = "2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b";
-const v4AssuranceFingerprint = "47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0";
+const v4ContractSha256 = "1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5";
+const v4AssuranceFingerprint = "d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
 const historicalTask135bSha256 = "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409";
@@ -210,7 +210,10 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
     "Task135B",
     "Task129-MFA"
   ]);
-  assert.deepEqual(cf1Hr.ownedPaths, correctedCf1HrPaths.map((path) => ({ disposition: "owned", path })));
+  assert.deepEqual(cf1Hr.ownedPaths, correctedCf1HrPaths.map((path) => ({
+    disposition: cf1HrToTask122Paths.includes(path) ? "transferred" : "owned",
+    path
+  })));
   assert.equal(cf1Hr.command, correctedCf1HrCommand);
   assert.deepEqual(g136Sc.ownedPaths, correctedG136ScPaths.map((path, index) => ({
     disposition: index === correctedG136ScPaths.length - 1 ? "transferred" : "owned",
@@ -392,7 +395,7 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
   assert.deepEqual(contract.compositionCorpus, v3.compositionCorpus);
   for (const v3Card of v3.releaseGraph.cards) {
     const v4Card = contract.releaseGraph.cards.find((card) => card.id === v3Card.id);
-    if (!new Set(["Task137B-W", "CF1-HR", "Task139-PM", "G136-SC"]).has(v3Card.id)) {
+    if (!new Set(["Task137B-W", "CF1-HR", "Task139-PM", "G136-SC", "Task122"]).has(v3Card.id)) {
       assert.equal(v4Card.command, v3Card.command, `unchanged command: ${v3Card.id}`);
     }
   }
