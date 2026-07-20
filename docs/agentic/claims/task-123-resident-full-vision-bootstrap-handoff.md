@@ -177,3 +177,21 @@ Status: `ready-for-review`
   seam; the route neither issues nor inspects a factory operation. The
   test-only runtime factory may provide that released binding before Task140;
   production default composition remains deliberately unavailable.
+
+### V4 Recovery GREEN — Runtime Consumer Seam
+
+- The route no longer imports or calls
+  `issueMountedArtifactAuthorityOperationForFactory`. It consumes an opaque,
+  exact task/run binding only from its existing runtime object and stops that
+  binding after use. It cannot create, inspect, mint, or substitute a mounted
+  operation, store, controller, or witness.
+- The route test's injected resident runtime creates the same released
+  portable binding under test authority; a separate injected runtime without
+  that binding now returns bounded HTTP `503` before any bootstrap dossier,
+  approval request, final-output, handoff, or terminal effect. This remains a
+  test-only predecessor bridge and does not make default factory composition
+  ready.
+- Recovery focused GREEN:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exits `0`: **2 files / 20 tests passed** (+2 from the inherited 18-test
+  baseline).
