@@ -24,6 +24,7 @@ import {
   beforeMountedHandoffAuthorityEffect,
   consumeMountedHandoffAuthorityController,
   createPortableMountedAgentArtifactStoreProducer,
+  type BindPortableMountedAgentHandoffInput,
   type FactoryPortableMountedAgentHandoffProducerResultV1,
   type MountedHandoffAuthorityController
 } from "../src/portable-mounted-agent-artifact-stores.js";
@@ -41,6 +42,11 @@ const dispatch = Object.freeze({
   approvedRunId: "run_portable_handoff",
   runType: "evidence-triage",
   retryGeneration: 0
+});
+const investigationDispatch = Object.freeze({
+  ...dispatch,
+  runType: "investigation-planner" as const,
+  investigationId: "inv_portable_handoff_exact"
 });
 
 afterEach(() => {
@@ -237,6 +243,34 @@ describe("portable mounted agent artifact stores", () => {
       await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).rejects.toThrow(/authority/i);
       await expect(result.binding.materialStore.put(Buffer.from("must-not-write", "utf8"))).rejects.toThrow(/authority/i);
     }
+  });
+
+  it("rejects investigation final output when the bound start has no provider transcript", async () => {
+    const fixture = authorityFixture();
+    const events = [investigationStartedEvent()];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+    const { result } = await issuedBinding(fixture, investigationDispatch);
+
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).rejects.toThrow(/authority/i);
+  });
+
+  it.each([
+    ["duplicate", () => investigationPreludeHistory("duplicate")],
+    ["reordered", () => investigationPreludeHistory("reordered")],
+    ["post-start", () => investigationPreludeHistory("post-start")]
+  ] as const)("rejects %s orchestration prelude material before final output", async (_kind, buildHistory) => {
+    const fixture = authorityFixture();
+    const events = buildHistory();
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+    const { result } = await issuedBinding(fixture, investigationDispatch);
+
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).rejects.toThrow(/authority/i);
   });
 
   it.each([undefined, "inv_portable_handoff_swapped"])("rejects %s investigation binding before witness issuance", async (investigationId) => {
@@ -575,7 +609,10 @@ describe("portable mounted agent artifact stores", () => {
   });
 });
 
-async function issuedBinding(fixture: ReturnType<typeof authorityFixture>): Promise<{
+async function issuedBinding(
+  fixture: ReturnType<typeof authorityFixture>,
+  binding: BindPortableMountedAgentHandoffInput = dispatch
+): Promise<{
   readonly operation: MountedArtifactAuthorityOperation;
   readonly result: FactoryPortableMountedAgentHandoffProducerResultV1;
 }> {
@@ -587,7 +624,7 @@ async function issuedBinding(fixture: ReturnType<typeof authorityFixture>): Prom
   });
   await admit(fixture, "wake");
   const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
-  const result = await createPortableMountedAgentArtifactStoreProducer(operation).bind(dispatch);
+  const result = await createPortableMountedAgentArtifactStoreProducer(operation).bind(binding);
   return { operation, result };
 }
 
@@ -926,6 +963,153 @@ function modelInvocationFailedEvent(patch: Record<string, unknown> = {}): Knowle
     },
     ...patch
   } as KnowledgeEvent;
+}
+
+function investigationStartedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  const started = startedEvent();
+  return {
+    ...started,
+    streamId: `agent_run_${investigationDispatch.approvedRunId}`,
+    payload: {
+      ...started.payload,
+      taskId: investigationDispatch.taskId,
+      runId: investigationDispatch.approvedRunId,
+      runType: investigationDispatch.runType,
+      investigationId: investigationDispatch.investigationId
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function investigationModelInvocationRequestedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  const requested = modelInvocationRequestedEvent();
+  return {
+    ...requested,
+    context: eventContext({
+      causationId: "evt_started_portable_handoff",
+      correlationId: "corr_inv_portable_handoff"
+    }),
+    payload: {
+      ...requested.payload,
+      runId: investigationDispatch.approvedRunId,
+      runType: investigationDispatch.runType
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function investigationModelInvocationCompletedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  const completed = modelInvocationCompletedEvent();
+  return {
+    ...completed,
+    context: eventContext({
+      causationId: "evt_requested_portable_handoff",
+      correlationId: "corr_inv_portable_handoff"
+    }),
+    payload: {
+      ...completed.payload,
+      runId: investigationDispatch.approvedRunId
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function exactDispatchClaimEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_claimed_portable_handoff",
+    type: "agent.task.orchestration.claimed",
+    streamId: `agent_task_orchestration_${investigationDispatch.taskId}_${investigationDispatch.runType}`,
+    sequence: 1,
+    context: eventContext({
+      causationId: "evt_task_queued_portable_handoff",
+      correlationId: `corr_${investigationDispatch.taskId}`
+    }),
+    payload: {
+      taskId: investigationDispatch.taskId,
+      runType: investigationDispatch.runType,
+      attemptId: investigationDispatch.attemptId,
+      retryGeneration: investigationDispatch.retryGeneration,
+      leaseClaimGeneration: 1,
+      workerId: "agent_default",
+      claimedAt: "2026-07-16T00:00:00.000Z",
+      leaseExpiresAt: "2026-07-16T01:00:00.000Z",
+      idempotencyKey: "task-orchestrator:portable-handoff:claim",
+      selectedOrderingPosition: {
+        priorityRank: 0,
+        queuedAt: "2026-07-16T00:00:00.000Z",
+        taskId: investigationDispatch.taskId,
+        runType: investigationDispatch.runType,
+        retryGeneration: investigationDispatch.retryGeneration
+      },
+      activeBudgetSnapshot: {
+        maxProviderInvocations: 1,
+        remainingProviderInvocations: 1,
+        contextByteBudget: 65_536,
+        promptByteBudget: 65_536,
+        derivativeArtifactByteBudget: 65_536,
+        wallClockBudgetMs: 120_000
+      },
+      causationEventId: "evt_task_queued_portable_handoff"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function exactDispatchCheckpointEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_checkpointed_portable_handoff",
+    type: "agent.task.orchestration.checkpointed",
+    streamId: `agent_task_orchestration_${investigationDispatch.taskId}_${investigationDispatch.runType}`,
+    sequence: 2,
+    context: eventContext({
+      causationId: "evt_claimed_portable_handoff",
+      correlationId: `corr_${investigationDispatch.taskId}`
+    }),
+    payload: {
+      taskId: investigationDispatch.taskId,
+      runType: investigationDispatch.runType,
+      attemptId: investigationDispatch.attemptId,
+      retryGeneration: investigationDispatch.retryGeneration,
+      leaseClaimGeneration: 1,
+      checkpointKind: "runner-dispatching",
+      checkpointedAt: "2026-07-16T00:00:00.000Z",
+      runId: investigationDispatch.approvedRunId,
+      resumeIdempotencyKey: "task-orchestrator:portable-handoff:runner-dispatching",
+      contextBindings: [],
+      safeNextActions: ["wait for durable specialist handoff readback"]
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function investigationPreludeHistory(kind: "duplicate" | "reordered" | "post-start"): KnowledgeEvent[] {
+  const prefix = [taskCreatedEvent(), queuedTaskStatusEvent()];
+  const claim = exactDispatchClaimEvent();
+  const checkpoint = exactDispatchCheckpointEvent();
+  const transcript = [
+    investigationStartedEvent(),
+    investigationModelInvocationRequestedEvent(),
+    investigationModelInvocationCompletedEvent()
+  ];
+  if (kind === "duplicate") {
+    return [
+      ...prefix,
+      claim,
+      exactDispatchClaimEvent({ id: "evt_claimed_portable_handoff_duplicate", sequence: 2 }),
+      exactDispatchCheckpointEvent({ sequence: 3 }),
+      ...transcript
+    ];
+  }
+  if (kind === "reordered") return [...prefix, checkpoint, claim, ...transcript];
+  return [
+    ...prefix,
+    claim,
+    checkpoint,
+    ...transcript,
+    exactDispatchCheckpointEvent({ id: "evt_checkpointed_portable_handoff_post_start", sequence: 3 })
+  ];
 }
 
 function finalOutputEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
