@@ -25115,3 +25115,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-870 — Record-26 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-20T19:34:17Z
+- Clean strict record-26 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=26 commands=26`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 26`.
+- The standalone assurance corpus then reproduces exactly three failures at
+  lines 1125, 1441, and 1621: current-registry-length fixtures still pin
+  strict prefix **25**, observe **26**, and leave the other **17/20** tests
+  green. No contract, checker, blob, command, dependency, transfer,
+  ownership, historical fixture, or released Task122 failure is reproduced.
+- This is the contract-determined append-only count-fixture transition. The
+  same assurance owner will preserve its complete history, forward-merge this
+  clean program authority, commit one causal RED checkpoint and one minimal
+  GREEN within the existing assurance test/claim ownership, run exact gates,
+  and obtain one fresh Terra/xhigh architecture/executability pair. No V5,
+  product behavior, raw release-record mutation, external effect, push, or
+  `neo` action is authorized.
