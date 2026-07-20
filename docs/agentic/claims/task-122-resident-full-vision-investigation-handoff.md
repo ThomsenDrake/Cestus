@@ -575,3 +575,22 @@ credential, network, live-service, integration, or `neo` action is authorized.
   asserting zero final-output events, no readable material hash, and unchanged
   ledger. No registry, contract, checker, spec, plan, raw record, network,
   provider, credential, external, fallback, or ownership change occurs.
+
+## RV-1-E-867 Pre-Effect Final-Material GREEN
+
+- The mounted material-store capability now receives the final-output
+  prerequisite check immediately after its current cursor inspection and before
+  its real `FileBlobStore.put`. For a durable planner in `started` or
+  `started-running`, a missing or incomplete required provider transcript, or
+  an incomplete dispatch prelude, burns opaque authority before final handoff
+  material persistence or `agent.specialist-run.step.recorded` append.
+- The guard is local to the mounted final-material store. It retains the
+  released legacy-run transcript behavior, preserves the approved exact
+  request-to-terminal and pre-start bindings, and leaves final-output and all
+  later V2 transitions unchanged after a valid material write.
+- The causal RED now passes through the released
+  `appendSpecialistFinalOutputStep` boundary with zero final-output events,
+  zero material persistence, and an unchanged ledger. Verification evidence
+  for the committed GREEN follows in the bounded packet; no registry,
+  contract, checker, provider, credential, network, external, fallback, or
+  `neo` action is part of this change.

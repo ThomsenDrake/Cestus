@@ -4,7 +4,8 @@ import { validateKnowledgeEvent } from "../../ontology/src/contracts.js";
 import { mountPortableWorkspace } from "../../workspace/src/index.js";
 import type { SpecialistHandoffManifestStore } from "../../agent/src/specialist-runner-kernel.js";
 import {
-  hashCanonicalSpecialistHandoffJson
+  hashCanonicalSpecialistHandoffJson,
+  parseSpecialistHandoffMaterial
 } from "../../agent/src/specialist-handoff-manifest.js";
 import {
   issueMountedSpecialistHandoffAuthorityWitness,
@@ -259,7 +260,8 @@ export function createPortableMountedAgentArtifactStoreProducer(
         const remounted = remountCurrent(cursor.origin);
         const materialStore = createCursorBoundStore(
           cursor,
-          new FileBlobStore(join(remounted.paths.derivativeRoot, "specialist-handoff-material"))
+          new FileBlobStore(join(remounted.paths.derivativeRoot, "specialist-handoff-material")),
+          true
         );
         const manifestStore = createCursorBoundStore(
           cursor,
@@ -484,10 +486,18 @@ function remountCurrent(origin: CapturedOrigin) {
   return remounted.workspace;
 }
 
-function createCursorBoundStore(cursor: CursorState, store: FileBlobStore): SpecialistHandoffManifestStore {
+function createCursorBoundStore(
+  cursor: CursorState,
+  store: FileBlobStore,
+  requiresFinalOutputAuthority = false
+): SpecialistHandoffManifestStore {
   return Object.freeze({
     async put(content: Buffer) {
-      const stored = await inspectAround(cursor, async () => await store.put(content));
+      const stored = await inspectAround(
+        cursor,
+        async () => await store.put(content),
+        requiresFinalOutputAuthority ? () => assertFinalOutputMaterialWriteAuthority(cursor, content) : undefined
+      );
       return Object.freeze({ contentHash: stored.contentHash, sizeBytes: stored.sizeBytes });
     },
     async get(contentHash: `sha256:${string}`) {
@@ -496,9 +506,14 @@ function createCursorBoundStore(cursor: CursorState, store: FileBlobStore): Spec
   });
 }
 
-async function inspectAround<T>(cursor: CursorState, operation: () => Promise<T>): Promise<T> {
+async function inspectAround<T>(
+  cursor: CursorState,
+  operation: () => Promise<T>,
+  beforeOperation?: () => void
+): Promise<T> {
   await inspectCursor(cursor);
   try {
+    beforeOperation?.();
     const result = await operation();
     await inspectCursor(cursor);
     return result;
@@ -509,6 +524,26 @@ async function inspectAround<T>(cursor: CursorState, operation: () => Promise<T>
       throw authorityError();
     }
     throw artifactStoreOperationError();
+  }
+}
+
+function assertFinalOutputMaterialWriteAuthority(cursor: CursorState, content: Buffer): void {
+  if (
+    isCanonicalFinalOutputMaterial(content) &&
+    (cursor.phase === "started" || cursor.phase === "started-running") &&
+    (!hasRequiredModelInvocationTranscript(cursor.binding, cursor.modelInvocation) || !hasCompleteDispatchPrelude(cursor.prelude))
+  ) {
+    cursor.burned = true;
+    throw authorityError();
+  }
+}
+
+function isCanonicalFinalOutputMaterial(content: Buffer): boolean {
+  try {
+    parseSpecialistHandoffMaterial(JSON.parse(content.toString("utf8")));
+    return true;
+  } catch {
+    return false;
   }
 }
 
