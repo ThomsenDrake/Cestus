@@ -25164,3 +25164,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   test-driven development are explicitly approved for this task. Status is
   `claimed -> implementing`; no later card, external effect, push, or `neo`
   action begins.
+
+## RV-1-E-872 — Bootstrap handoff factory-authority root-cause checkpoint
+
+- Recorded at: 2026-07-20T20:33:25Z
+- The same W1-123-BOOTSTRAP-HANDOFF owner preserves claim
+  `a7a012bd5076663f1d8a1301be39d9bc0f6d8445`, causal RED
+  `7d6e0f31`, and first GREEN candidate
+  `763e3b943786ab69d157afccef50fed06b4c96cb`. Candidate admission passes
+  focused **19/19**, cross-boundary **89/89**, assurance **20/20**, and all
+  four exact V4 markers while preserving pending-approval suspension.
+- Repository command execution independently reproduces one P1 before prefix
+  acceptance: the route imports the factory-only
+  `issueMountedArtifactAuthorityOperationForFactory` issuer, violating the
+  released Task137 authority-import boundary. This is not a product choice;
+  the frozen contract requires the route to consume only released runtime/
+  handle capability seams and forbids route-local authority issuance.
+- Status remains `implementing`. The same owner will forward-merge this
+  registry-only authority, preserve the first GREEN, commit one changed-tactic
+  causal recovery RED and minimal GREEN within the same five paths, then rerun
+  admission before fresh review. No default-factory, shared authority,
+  portable-store, strict-record, external-effect, push, or `neo` change is
+  authorized.
