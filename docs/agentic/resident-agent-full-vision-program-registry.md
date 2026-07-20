@@ -25209,3 +25209,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   five paths, rerun every admission gate, and obtain a fresh concurrent review
   pair. No shared authority/store/default-factory change, strict release record,
   external effect, push, or `neo` action is authorized.
+
+## RV-1-E-874 — Bootstrap handoff blocked on released preflight ownership
+
+- Recorded at: 2026-07-20T21:11:18Z
+- The same owner preserves authority merge
+  `59b37de640a34e8ef6f1672932976d1d010f5d8c` and causal RED
+  `7a7509aa984e2d59ad212fa801c1dcaa2e996451` with **2 files / 22
+  tests, 2 failed / 20 passed**. No production byte changed. Both failures are
+  the exact review findings: invalid authority reaches final-output work, and
+  non-current authority reaches the suspended approval effects.
+- Two independent read-only interface audits confirm that the sole released
+  witness validator consumes the one-shot witness required later by the V2
+  recorder. The separate portable controller and preparation binder cannot
+  prove that they are paired with that witness and both exact stores. No legal
+  sequence inside Task123's five owned paths can validate membership,
+  currentness, lifecycle, and store pairing before effects while preserving the
+  witness for terminal recording.
+- Status is `implementing -> blocked` on one genuine scope/ownership decision.
+  The minimum safety-preserving correction requires a non-consuming opaque
+  witness preflight in the CF1-HR authority source/test plus issued store-pair
+  binding in the Task122 portable source/test, followed by the existing
+  Task123 RED/GREEN. V4 direct-source ownership and historical compatibility
+  must be amended before those released paths can change. No workaround,
+  alternate authority, API widening, integration, release record, push, or
+  `neo` action is permitted meanwhile.
