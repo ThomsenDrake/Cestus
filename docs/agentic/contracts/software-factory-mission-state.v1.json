@@ -2,8 +2,8 @@
   "schemaVersion": "software-factory-mission-state.v1",
   "mission": {
     "missionId": "software-factory-calibration",
-    "status": "candidate",
-    "acceptedIntegrationSha": null,
+    "status": "integrated",
+    "acceptedIntegrationSha": "9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c",
     "frozenAuthority": {
       "path": "docs/agentic/contracts/task136-bounded-assurance-v4.json",
       "sha256": "1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5",
@@ -165,7 +165,7 @@
           "scripts/check-software-factory-mission-state.test.mjs"
         ]
       },
-      "status": "candidate",
+      "status": "integrated",
       "validationAssertions": [
         {
           "assertionId": "SFC-001-A1",
@@ -186,7 +186,7 @@
       "targetedCommands": [
         "node --test scripts/check-software-factory-mission-state.test.mjs"
       ],
-      "acceptedIntegrationSha": null,
+      "acceptedIntegrationSha": "9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c",
       "releaseEvidenceRefs": [
         "docs/superpowers/specs/2026-07-20-cestus-software-factory-calibration-design.md",
         "docs/superpowers/plans/2026-07-20-cestus-software-factory-calibration-implementation.md"
@@ -209,7 +209,7 @@
           "docs/agentic/software-factory.md"
         ]
       },
-      "status": "candidate",
+      "status": "integrated",
       "validationAssertions": [
         {
           "assertionId": "SFC-002-A1",
@@ -225,7 +225,7 @@
       "targetedCommands": [
         "npm run factory:check"
       ],
-      "acceptedIntegrationSha": null,
+      "acceptedIntegrationSha": "9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c",
       "releaseEvidenceRefs": [
         "docs/agentic/contracts/software-factory-mission-state.v1.json"
       ]
@@ -246,7 +246,7 @@
           "scripts/check-agent-readiness.mjs"
         ]
       },
-      "status": "candidate",
+      "status": "integrated",
       "validationAssertions": [
         {
           "assertionId": "SFC-003-A1",
@@ -268,7 +268,7 @@
         "npm run factory:check",
         "npm run verify"
       ],
-      "acceptedIntegrationSha": null,
+      "acceptedIntegrationSha": "9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c",
       "releaseEvidenceRefs": [
         "docs/agentic/contracts/software-factory-mission-state.v1.json"
       ]

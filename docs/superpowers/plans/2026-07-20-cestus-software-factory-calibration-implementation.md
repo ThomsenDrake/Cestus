@@ -62,7 +62,7 @@ The committed `f90f5698ee5018788e44447c051e854acdef286e` checker accepted a synt
 - [x] Resolve integration SHAs as Git commit objects and require the exact calibrated policy schema.
 - [x] Enforce SFC-M1's Level 2 architecture/executability pair and bidirectional membership.
 - [x] Pin frozen V4 precedence for unfinished cards and remove unqualified legacy Level 1 mandates from current instructions.
-- [ ] Run the required committed-byte gates and record the inherited record-25 verification differential.
+- [x] Run the required committed-byte gates and record the inherited record-25 verification differential.
 
 ## Recovery Checkpoint: Immutable Calibration Envelope
 
@@ -77,4 +77,4 @@ The committed `7dd0b00d7ca7438c1f9b6d4155cec15b42cab349` checker validates selec
 ### Recovery GREEN
 
 - [x] Compare the source-derived immutable normalized-envelope fingerprint in the checker without duplicating calibration facts.
-- [ ] Run the required committed-byte gates and record the inherited record-25 verification differential.
+- [x] Run the required committed-byte gates and record the inherited record-25 verification differential.

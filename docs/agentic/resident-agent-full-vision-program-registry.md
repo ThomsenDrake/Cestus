@@ -25009,3 +25009,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict product release record is authorized. Status is `factory calibration
   claimed`; product execution remains paused until calibration integration and
   integrated-byte validation complete.
+
+## RV-1-E-868 — Software-factory calibration integrated
+
+- Recorded at: 2026-07-20T19:02:11Z
+- The complete preserved calibration history through candidate
+  `d5b6815fe7f439ab66977aa8794cba6c368d089c` is integrated without history
+  rewrite at merge `9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c` on the sole program branch.
+  Fresh final architecture and executability reviewers
+  `019f80e1-f689-72e0-a1c2-c853185c651b` and
+  `019f80e1-f9e9-7a10-b003-6f0d09067528` both approve the sealed immutable
+  calibration envelope with no reproduced P0/P1.
+- Integrated bytes pass the mission-state suite **20/20**, both source and
+  immutable-envelope fingerprints, skill validation, factory readiness,
+  whitespace/scope/clean-state checks, and real dependency/Vitest checks.
+  `npm run verify` passes typecheck and reproduces only the inherited
+  record-25 cohort: **12 failed files / 60 failed tests / 225 passed files /
+  2,820 passed tests / 3 skipped files / 5 skipped tests**.
+- Canonical calibration mission state advances `candidate -> integrated` and
+  records the accepted integration SHA above. No strict product release record
+  is created. V1-V4, all 25 strict records, all 29 card IDs/order, paused
+  product candidates, product behavior, and `neo` remain unchanged. The next
+  product action is to revalidate preserved Task122 against this program head
+  before resuming its exact paused checkpoint.
