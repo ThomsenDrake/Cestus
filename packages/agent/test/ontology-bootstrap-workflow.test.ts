@@ -30,6 +30,7 @@ import {
 import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { buildAgentProjection } from "../src/projection.js";
 import { createAgentRuntime } from "../src/runtime.js";
+import { buildTaskAttemptId } from "../src/task-orchestrator-events.js";
 
 const now = () => "2026-07-08T14:00:00.000Z";
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
@@ -360,7 +361,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       },
       taskLifecycle: {
         taskId: "task_ontology_bootstrap_001",
-        attemptId: `attempt_${createHash("sha256").update("task_ontology_bootstrap_001:run_ontology_bootstrap_001:ontology-bootstrap").digest("hex")}`,
+        attemptId: buildTaskAttemptId({
+          taskId: "task_ontology_bootstrap_001",
+          runType: "ontology-bootstrap",
+          retryGeneration: 0
+        }),
         runId: "run_ontology_bootstrap_001",
         runType: "ontology-bootstrap",
         retryGeneration: 0
@@ -1044,7 +1049,11 @@ async function mountedBootstrapHandoffAuthorityWitness(
     },
     taskLifecycle: {
       taskId: input.taskId,
-      attemptId: `attempt_${createHash("sha256").update(`${input.taskId}:${input.runId}:ontology-bootstrap`).digest("hex")}`,
+      attemptId: buildTaskAttemptId({
+        taskId: input.taskId,
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      }),
       runId: input.runId,
       runType: "ontology-bootstrap",
       retryGeneration: 0

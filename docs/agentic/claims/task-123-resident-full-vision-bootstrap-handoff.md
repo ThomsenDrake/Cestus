@@ -231,3 +231,35 @@ Status: `ready-for-review`
   RED until a released authority interface supplies a non-consuming preflight
   readback or an explicitly paired successor witness while preserving the V2
   terminal consumer.
+
+### V4 Recovery GREEN — Exact Non-consuming Authority Preflight
+
+- Released authority `RV-1-E-878` transfers the authority source/test and
+  portable mounted-store source/test to this card, expanding its finite scope
+  to exactly nine V4 paths while preserving causal RED
+  `7a7509aa984e2d59ad212fa801c1dcaa2e996451`.
+- The authority module now preflights only an exact factory-issued WeakMap
+  witness in `available` state: it verifies the exact task, deterministic
+  attempt, run, type, retry, and normalized authority binding, invokes mounted
+  currentness, and burns rejected available members without exposing binding
+  bytes or consuming a successful witness. The later V2 recorder remains the
+  sole one-shot witness consumer.
+- The portable layer proves the exact issued binding object, its witness and
+  distinct material/manifest stores, the paired opaque controller/cursor, the
+  complete task/run/attempt/type/retry tuple, and current mounted lineage. It
+  performs only readback/currentness checks and burns its cursor on a forged,
+  swapped, stale, or conflicting preflight.
+- The ontology-bootstrap workflow invokes authority preflight before dossier,
+  approval, waiting-status, final-output, or material effects; the route
+  invokes portable preflight before entering that workflow. Approval suspension
+  remains `waiting-for-approval`, and an approval-free run still passes the
+  same preserved witness to the V2 final-output -> prepared -> recorded ->
+  terminal lifecycle.
+- GREEN focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts
+  packages/agent/test/specialist-handoff-authority.test.ts
+  packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts
+  packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `0`: **4 files / 58 tests passed**. The added authority and portable
+  counterfactuals prove no-effect preflight plus later one-shot V2 consumption;
+  the retained two workflow RED cases are now green.
