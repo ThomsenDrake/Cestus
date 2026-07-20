@@ -13,7 +13,7 @@
 - The branch starts at `ff62dc7e4524da25606ed9bdbea5efb0b5c778a5` and retains inherited history.
 - Only the nine paths authorized for this calibration may change.
 - `task136-bounded-assurance-v4.json` is frozen referenced authority and its 29-card graph is never duplicated.
-- The contract records `candidate` state after GREEN; no registry event, integration, release, merge, or self-review occurs here.
+- The contract records `candidate` state and a null accepted-integration SHA after GREEN; no registry event, integration, release, merge, or self-review occurs here.
 - Production/checker files remain absent in RED, then appear only in GREEN.
 
 ### Task 1: Causal Mission-Contract RED
