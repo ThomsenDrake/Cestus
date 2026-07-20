@@ -25263,3 +25263,49 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   boundary. No V5, generic/transitive transfer facility, fallback,
   compatibility lane, new card, raw-record mutation, external effect, push,
   or `neo` action is authorized.
+
+## RV-1-E-876 — Preflight assurance blocked on calibration authority pin
+
+- Recorded at: 2026-07-20T21:46:15Z
+- The same assurance owner preserves authority merge
+  `c88b47b457c5f34652fd2187d50d7695d9c3a2e6`, causal RED
+  `9335db04b3eb65dfe2c73af7ec38ef133ab3e297`, and four-path GREEN
+  `6ce65cc393b167e09656e8b06e4f86bbd265c7a2`. Exact committed bytes pass
+  assurance **20/20**, all four V4 markers, repository **26 records / 26
+  commands** followed only by incomplete-29/found-26, typecheck, diff/scope,
+  dependency, clean-state, and the unchanged **11 files / 49 tests / 2,847
+  passes / 5 skips** full differential.
+- `npm run factory:check` alone fails because the calibrated mission-state
+  source still pins the authorized pre-amendment V4 SHA
+  `1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5`.
+  The authorized V4 candidate SHA is
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`;
+  substituting it changes the immutable calibration-envelope fingerprint to
+  `sha256:0d6e437990b0320436e349d595ceb3445e71bc9c04c7f208b558d0c8f5bf91b3`.
+- Status is `candidate -> blocked` on an exact scope contradiction: RV-1-E-875
+  requires both a changed V4 contract and factory readiness while limiting the
+  packet to four paths, excluding the mission-state JSON and its immutable-pin
+  checker. No fifth/sixth path, review, integration, Task123 product edit,
+  release record, push, or `neo` action proceeds without a scope decision.
+
+## RV-1-E-877 — Calibration authority pin synchronization authorized
+
+- Recorded at: 2026-07-20T22:14:41Z
+- Human authority resolves RV-1-E-876 by adding exactly the canonical
+  software-factory mission-state JSON and its checker to the preserved
+  four-path W1-123 assurance candidate, producing an exact six-path packet.
+  The existing committed factory failure is the causal RED; no new RED,
+  owner, generation, V5 contract, card, compatibility lane, or transfer is
+  created. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task.
+- One forward commit may change only the frozen V4 digest from
+  `1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5`
+  to `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`
+  and the immutable calibration-envelope fingerprint to
+  `sha256:0d6e437990b0320436e349d595ceb3445e71bc9c04c7f208b558d0c8f5bf91b3`.
+  Every other calibration byte and semantic remains frozen.
+- This synchronization changes no product behavior, graph, ownership,
+  invariant, or raw record. After exact gates and fresh dual review, the
+  complete assurance history may integrate and advance the preserved Task123
+  RED. No push, external effect, release record, or `neo` action is authorized
+  by this event.
