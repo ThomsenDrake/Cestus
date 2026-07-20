@@ -258,6 +258,70 @@ describe("investigation planner workflow", () => {
       .resolves.toMatchObject({ contentHash: expect.stringMatching(/^sha256:/) });
   });
 
+  it("rejects missing provider provenance before mounted investigation final-output material or ledger effects", async () => {
+    const fixture = await portablePlannerModelInvocationFixture();
+    const before = await fixture.input.ledger.readAll();
+    const material = buildSpecialistHandoffMaterial({
+      status: "ready-for-review",
+      safeSummary: "Investigation output is available for human review.",
+      contextPackRefs: [],
+      outputArtifacts: [],
+      toolRequestIds: [],
+      approvalRequirements: [],
+      nextSafeActions: [{
+        actionId: "action_review_missing_provider_provenance",
+        label: "Review the blocked investigation handoff.",
+        kind: "review",
+        effect: "none"
+      }],
+      sourceEventIds: [],
+      relatedEventIds: []
+    });
+    const persistedHashes: string[] = [];
+    const originalPut = FileBlobStore.prototype.put;
+    Object.defineProperty(FileBlobStore.prototype, "put", {
+      configurable: true,
+      value: async function(this: FileBlobStore, content: Buffer) {
+        const stored = await originalPut.call(this, content);
+        persistedHashes.push(stored.contentHash);
+        return stored;
+      }
+    });
+    let attempted: { readonly event: KnowledgeEventOf<"agent.specialist-run.step.recorded"> } | { readonly error: unknown };
+    try {
+      attempted = await appendSpecialistFinalOutputStep({
+        ledger: fixture.input.ledger,
+        materialStore: fixture.handoff.binding.materialStore,
+        actor: fixture.input.actor,
+        now,
+        runId: fixture.input.runId,
+        taskId: fixture.input.taskId,
+        handoffMaterial: material
+      }).then(
+        (event) => Object.freeze({ event }),
+        (error: unknown) => Object.freeze({ error })
+      );
+    } finally {
+      Object.defineProperty(FileBlobStore.prototype, "put", { configurable: true, value: originalPut });
+    }
+
+    const after = await fixture.input.ledger.readAll();
+    const finalOutputs = after.filter((event): event is KnowledgeEventOf<"agent.specialist-run.step.recorded"> =>
+      event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
+    );
+    expect({
+      rejected: "error" in attempted,
+      finalOutputCount: finalOutputs.length,
+      materialPersisted: "event" in attempted && persistedHashes.includes(attempted.event.payload.handoffMaterialArtifactHash!),
+      ledgerUnchanged: JSON.stringify(after) === JSON.stringify(before)
+    }).toEqual({
+      rejected: true,
+      finalOutputCount: 0,
+      materialPersisted: false,
+      ledgerUnchanged: true
+    });
+  });
+
   it("completes the planner V2 lifecycle through a real portable mounted witness and verified readback", async () => {
     const fixture = await portablePlannerModelInvocationFixture();
 

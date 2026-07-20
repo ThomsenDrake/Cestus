@@ -557,3 +557,21 @@ credential, network, live-service, integration, or `neo` action is authorized.
   named causal cases. No registry, contract, checker, spec, plan, raw record,
   provider, network, credential, external, fallback, or `neo` behavior is
   changed.
+
+## RV-1-E-866 Pre-Effect Final-Material Causal RED
+
+- Recovery begins from clean registry-only authority merge
+  `0a24f610f1ba109b9fb7e2a3856f5328b8bf3bd0`, preserving candidate
+  `799de1e9f0fc65383f60c55d344f93be126a7efa` and program authority
+  `eefd8ef5`. This RED changes only the append-only Task122 claim and planner
+  test; production remains byte-identical to the merge.
+- The causal case uses `appendSpecialistFinalOutputStep` with the real mounted
+  portable investigation planner fixture, opaque controller, and bound
+  material store. Its exact queued/claim/checkpoint/started history contains
+  no provider transcript. Current bytes still persist canonical final handoff
+  material, append `agent.specialist-run.step.recorded`, and leave that hash
+  readable before the later controller path rejects.
+- RED requires rejection before the final-material write and ledger append,
+  asserting zero final-output events, no readable material hash, and unchanged
+  ledger. No registry, contract, checker, spec, plan, raw record, network,
+  provider, credential, external, fallback, or ownership change occurs.
