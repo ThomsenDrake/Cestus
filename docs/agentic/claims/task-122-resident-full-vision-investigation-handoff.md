@@ -505,3 +505,24 @@ credential, network, live-service, integration, or `neo` action is authorized.
   differential and repository gates are recorded by the final bounded packet; no integration,
   registry, `neo`, provider, credential, network, external, or fallback action
   is authorized.
+
+## RV-1-E-864 Provider Transcript and Prelude Causal RED
+
+- Recovery starts from the clean registry-only authority merge
+  `99c16639d6e38551ec7a022787db37f02c699325`, which preserves reviewed
+  candidate `911747851a25c56510b00cba8787af9cb309c0b3` and exact program
+  authority `2f69e097`. This RED changes only this append-only claim and the
+  portable mounted-store test; both production files remain byte-identical to
+  the merge.
+- The causal test uses the actual portable workspace, SQLite ledger, mounted
+  issuer, opaque controller, and bound stores. An investigation-planner
+  durable history containing only its exact started event still permits
+  `final-output`: provider request/completed-or-failed provenance is absent.
+- It also reproduces three usable malformed histories: a duplicate claim, a
+  checkpoint before its claim, and a matching checkpoint appended after the
+  started/provider transcript. The current cursor skips each apparently
+  matching prelude unconditionally and permits final output, rather than
+  burning its opaque authority before material I/O.
+- The focused RED command is the required two-file command. It must fail only
+  at the new absent-provider and duplicate/reordered/post-start prelude cases;
+  no production, registry, contract, checker, or ownership expansion occurs.
