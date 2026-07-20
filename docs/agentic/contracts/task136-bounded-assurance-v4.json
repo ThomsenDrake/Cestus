@@ -98,6 +98,28 @@
           {
             "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
             "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/src/specialist-handoff-authority.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/agent/test/specialist-handoff-authority.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
+      },
+      {
+        "cardId": "Task122",
+        "canonicalJsonSha256": "729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c",
+        "pathDispositions": [
+          {
+            "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+            "recordDisposition": "owned"
           }
         ]
       }
@@ -539,11 +561,11 @@
             "path": "packages/agent/test/specialist-handoff-manifest.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/src/specialist-handoff-authority.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/agent/test/specialist-handoff-authority.test.ts"
           },
           {
@@ -572,7 +594,8 @@
           }
         ],
         "transferToIds": [
-          "Task122"
+          "Task122",
+          "W1-123-BOOTSTRAP-HANDOFF"
         ],
         "command": "npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts"
       },
@@ -931,15 +954,17 @@
             "path": "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "W1-123-BOOTSTRAP-HANDOFF"
+        ],
         "command": "npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
       },
       {
@@ -960,6 +985,14 @@
           },
           {
             "disposition": "owned",
+            "path": "packages/agent/src/specialist-handoff-authority.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/agent/test/specialist-handoff-authority.test.ts"
+          },
+          {
+            "disposition": "owned",
             "path": "packages/local-runtime/src/agent-ontology-bootstrap-routes.ts"
           },
           {
@@ -969,10 +1002,18 @@
           {
             "disposition": "owned",
             "path": "docs/agentic/claims/task-123-resident-full-vision-bootstrap-handoff.md"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
           }
         ],
         "transferToIds": [],
-        "command": "npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts"
+        "command": "npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
       },
       {
         "id": "Task138-H",
