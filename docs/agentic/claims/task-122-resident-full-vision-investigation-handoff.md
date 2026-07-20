@@ -526,3 +526,34 @@ credential, network, live-service, integration, or `neo` action is authorized.
 - The focused RED command is the required two-file command. It must fail only
   at the new absent-provider and duplicate/reordered/post-start prelude cases;
   no production, registry, contract, checker, or ownership expansion occurs.
+
+## RV-1-E-865 Provider Transcript and Prelude GREEN
+
+- The portable cursor now treats a final output as authority-bound only when
+  an investigation-planner durable start has exactly one already-validated
+  same-run `agent.model-invocation.requested` and exactly one matching
+  completed-or-failed terminal. The transcript remains optional for released
+  legacy run types. Missing and pending investigation transcripts burn the
+  opaque authority before final-output material can be written.
+- Dispatch history is now an optional but finite pre-start state machine. If
+  present, it accepts one schema-valid resident claim and one immediately
+  subsequent runner-dispatching checkpoint, each on the exact orchestration
+  stream and task/run/type/attempt/retry/lease tuple. The claim binds its
+  released task causation and worker; the checkpoint binds the claim causation,
+  resident actor, and approved run. Duplicate, reordered, post-start,
+  mutated, unknown-bound, and cross-run material fail closed. Final-output and
+  all later V2 transitions retain their existing durable order.
+- The real portable planner fixture now emits that released pre-start
+  claim/checkpoint order with the resident actor and `corr_<taskId>`
+  correlation; it continues to prove mounted prompt/readback, opaque witness,
+  verified V2 readback, and recovery without a second model invocation.
+- GREEN focused command:
+
+  ```bash
+  npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts
+  ```
+
+  exits `0` with 2 files and 53 tests passed: the prior 49 plus the four
+  named causal cases. No registry, contract, checker, spec, plan, raw record,
+  provider, network, credential, external, fallback, or `neo` behavior is
+  changed.

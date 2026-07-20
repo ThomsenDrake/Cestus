@@ -145,6 +145,13 @@ interface ModelInvocationCursor {
   readonly terminalEventId?: string;
 }
 
+interface DispatchPreludeCursor {
+  readonly claimEventId?: string;
+  readonly claimSequence?: number;
+  readonly leaseClaimGeneration?: number;
+  readonly checkpointEventId?: string;
+}
+
 type NormalizedJson =
   | null
   | boolean
@@ -209,6 +216,7 @@ interface CursorState {
   phase: CursorPhase;
   canonical: CanonicalHandoffBinding | undefined;
   modelInvocation: ModelInvocationCursor | undefined;
+  prelude: DispatchPreludeCursor;
   lastRelevantEventId: string | undefined;
   readonly handoffEventIds: string[];
   burned: boolean;
@@ -241,6 +249,7 @@ export function createPortableMountedAgentArtifactStoreProducer(
           phase: "initial",
           canonical: undefined,
           modelInvocation: undefined,
+          prelude: Object.freeze({}),
           lastRelevantEventId: undefined,
           handoffEventIds: [],
           burned: false
@@ -322,7 +331,10 @@ export async function beforeMountedHandoffAuthorityEffect(
   const cursor = cursorFor(controller);
   try {
     await inspectCursor(cursor);
-    if (kind === "final-output" && hasPendingModelInvocation(cursor.modelInvocation)) throw authorityError();
+    if (
+      kind === "final-output" &&
+      (!hasRequiredModelInvocationTranscript(cursor.binding, cursor.modelInvocation) || !hasCompleteDispatchPrelude(cursor.prelude))
+    ) throw authorityError();
     if (!isExpectedPredecessor(cursor.phase, kind)) throw authorityError();
   } catch {
     cursor.burned = true;
@@ -398,6 +410,7 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
       cursor.phase = initial.phase;
       cursor.canonical = initial.canonical;
       cursor.modelInvocation = initial.modelInvocation;
+      cursor.prelude = initial.prelude;
       cursor.lastRelevantEventId = initial.lastRelevantEventId;
       cursor.handoffEventIds.push(...initial.handoffEventIds);
       cursor.accepted = encoded;
@@ -410,11 +423,16 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
     let phase = cursor.phase;
     let canonical = cursor.canonical;
     let modelInvocation = cursor.modelInvocation;
+    let prelude = cursor.prelude;
     let lastRelevantEventId = cursor.lastRelevantEventId;
     const newEventIds: string[] = [];
     for (const event of events.slice(cursor.accepted.length)) {
-      if (isExactDispatchPrelude(event, cursor.binding)) continue;
-      const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical, modelInvocation);
+      const nextPrelude = advanceDispatchPrelude(phase, prelude, event, cursor.binding, lastRelevantEventId);
+      if (nextPrelude !== undefined) {
+        prelude = nextPrelude;
+        continue;
+      }
+      const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical, prelude, modelInvocation);
       phase = advanced.phase;
       canonical = advanced.canonical;
       modelInvocation = advanced.modelInvocation;
@@ -426,6 +444,7 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
     cursor.phase = phase;
     cursor.canonical = canonical;
     cursor.modelInvocation = modelInvocation;
+    cursor.prelude = prelude;
     cursor.lastRelevantEventId = lastRelevantEventId;
     cursor.handoffEventIds.push(...newEventIds);
     cursor.accepted = encoded;
@@ -501,18 +520,24 @@ function deriveInitialState(events: readonly NormalizedJson[], binding: RunBindi
   readonly phase: CursorPhase;
   readonly canonical: CanonicalHandoffBinding | undefined;
   readonly modelInvocation: ModelInvocationCursor | undefined;
+  readonly prelude: DispatchPreludeCursor;
   readonly lastRelevantEventId: string | undefined;
   readonly handoffEventIds: readonly string[];
 } {
   let phase: CursorPhase = "initial";
   let canonical: CanonicalHandoffBinding | undefined;
   let modelInvocation: ModelInvocationCursor | undefined;
+  let prelude: DispatchPreludeCursor = Object.freeze({});
   let lastRelevantEventId: string | undefined;
   const handoffEventIds: string[] = [];
   for (const event of events) {
-    if (isExactDispatchPrelude(event, binding)) continue;
+    const nextPrelude = advanceDispatchPrelude(phase, prelude, event, binding, lastRelevantEventId);
+    if (nextPrelude !== undefined) {
+      prelude = nextPrelude;
+      continue;
+    }
     if (!isBoundEvent(event, binding) && !isModelInvocationTranscriptEvent(event, modelInvocation)) continue;
-    const advanced = advancePhase(phase, event, binding, lastRelevantEventId, canonical, modelInvocation);
+    const advanced = advancePhase(phase, event, binding, lastRelevantEventId, canonical, prelude, modelInvocation);
     phase = advanced.phase;
     canonical = advanced.canonical;
     modelInvocation = advanced.modelInvocation;
@@ -525,6 +550,7 @@ function deriveInitialState(events: readonly NormalizedJson[], binding: RunBindi
     phase,
     canonical,
     modelInvocation,
+    prelude,
     lastRelevantEventId,
     handoffEventIds: Object.freeze(handoffEventIds)
   });
@@ -536,6 +562,7 @@ function advancePhase(
   binding: RunBinding,
   predecessor: string | undefined,
   canonical: CanonicalHandoffBinding | undefined,
+  prelude: DispatchPreludeCursor,
   modelInvocation: ModelInvocationCursor | undefined
 ): {
   readonly phase: CursorPhase;
@@ -670,7 +697,8 @@ function advancePhase(
   if (type === "agent.specialist-run.step.recorded") {
     if (
       (phase !== "started" && phase !== "started-running")
-      || (modelInvocation?.requestedEventId !== undefined && modelInvocation.terminalEventId === undefined)
+      || !hasRequiredModelInvocationTranscript(binding, modelInvocation)
+      || !hasCompleteDispatchPrelude(prelude)
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.stepKind !== "final-output"
@@ -849,26 +877,82 @@ function isBoundEvent(event: NormalizedJson, binding: RunBinding): boolean {
   return payload.runId === binding.approvedRunId || payload.taskId === binding.taskId;
 }
 
-function isExactDispatchPrelude(event: NormalizedJson, binding: RunBinding): boolean {
+function advanceDispatchPrelude(
+  phase: CursorPhase,
+  prior: DispatchPreludeCursor,
+  event: NormalizedJson,
+  binding: RunBinding,
+  predecessor: string | undefined
+): DispatchPreludeCursor | undefined {
   const record = normalizedOwnDataRecord(event);
   const payload = normalizedOwnDataRecord(record.payload);
   if (
-    record.streamId !== taskOrchestrationStreamId(binding.taskId, binding.runType)
+    record.type !== "agent.task.orchestration.claimed" &&
+    record.type !== "agent.task.orchestration.checkpointed"
+  ) {
+    return undefined;
+  }
+  const expectedStreamId = taskOrchestrationStreamId(binding.taskId, binding.runType);
+  const isCandidate =
+    record.streamId === expectedStreamId ||
+    payload.taskId === binding.taskId ||
+    payload.runId === binding.approvedRunId ||
+    payload.attemptId === binding.attemptId;
+  if (!isCandidate) return undefined;
+  const context = normalizedOwnDataRecord(record.context);
+  const actor = normalizedOwnDataRecord(context.actor);
+  if (
+    !isPreStartDispatchPhase(phase)
+    || !validateKnowledgeEvent(record).success
+    || record.version !== 1
+    || typeof record.id !== "string"
+    || !/^evt_[a-zA-Z0-9_-]+$/.test(record.id)
+    || typeof record.sequence !== "number"
+    || !Number.isSafeInteger(record.sequence)
+    || record.sequence < 1
+    || record.streamId !== expectedStreamId
+    || actor.kind !== "agent"
+    || actor.id !== "agent_default"
+    || context.correlationId !== `corr_${binding.taskId}`
     || payload.taskId !== binding.taskId
     || payload.runType !== binding.runType
     || payload.attemptId !== binding.attemptId
     || payload.retryGeneration !== binding.retryGeneration
   ) {
-    return false;
+    throw authorityError();
   }
   if (record.type === "agent.task.orchestration.claimed") {
-    return typeof payload.leaseClaimGeneration === "number" && payload.leaseClaimGeneration > 0;
+    if (
+      prior.claimEventId !== undefined
+      || prior.checkpointEventId !== undefined
+      || predecessor === undefined
+      || context.causationId !== predecessor
+      || payload.causationEventId !== predecessor
+      || payload.workerId !== "agent_default"
+      || typeof payload.leaseClaimGeneration !== "number"
+      || !Number.isSafeInteger(payload.leaseClaimGeneration)
+      || payload.leaseClaimGeneration < 1
+    ) {
+      throw authorityError();
+    }
+    return Object.freeze({
+      claimEventId: record.id,
+      claimSequence: record.sequence,
+      leaseClaimGeneration: payload.leaseClaimGeneration
+    });
   }
-  return record.type === "agent.task.orchestration.checkpointed" &&
-    payload.runId === binding.approvedRunId &&
-    payload.checkpointKind === "runner-dispatching" &&
-    typeof payload.leaseClaimGeneration === "number" &&
-    payload.leaseClaimGeneration > 0;
+  if (
+    prior.claimEventId === undefined
+    || prior.checkpointEventId !== undefined
+    || record.sequence !== prior.claimSequence! + 1
+    || payload.runId !== binding.approvedRunId
+    || payload.checkpointKind !== "runner-dispatching"
+    || payload.leaseClaimGeneration !== prior.leaseClaimGeneration
+    || context.causationId !== prior.claimEventId
+  ) {
+    throw authorityError();
+  }
+  return Object.freeze({ ...prior, checkpointEventId: record.id });
 }
 
 function isModelInvocationTranscriptEvent(
@@ -882,8 +966,21 @@ function isModelInvocationTranscriptEvent(
     record.type === "agent.model-invocation.failed";
 }
 
-function hasPendingModelInvocation(value: ModelInvocationCursor | undefined): boolean {
-  return value?.requestedEventId !== undefined && value.terminalEventId === undefined;
+function isPreStartDispatchPhase(phase: CursorPhase): boolean {
+  return phase === "task-queued" || phase === "task-running";
+}
+
+function hasCompleteDispatchPrelude(value: DispatchPreludeCursor): boolean {
+  return value.claimEventId === undefined || value.checkpointEventId !== undefined;
+}
+
+function hasRequiredModelInvocationTranscript(
+  binding: RunBinding,
+  value: ModelInvocationCursor | undefined
+): boolean {
+  if (value?.requestedEventId !== undefined && value.terminalEventId === undefined) return false;
+  if (binding.runType !== "investigation-planner") return true;
+  return value?.requestedEventId !== undefined && value.terminalEventId !== undefined;
 }
 
 function isHandoffEffectPhase(phase: CursorPhase): boolean {
