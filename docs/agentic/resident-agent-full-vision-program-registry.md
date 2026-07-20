@@ -25032,3 +25032,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidates, product behavior, and `neo` remain unchanged. The next
   product action is to revalidate preserved Task122 against this program head
   before resuming its exact paused checkpoint.
+
+## RV-1-E-869 — Task122 integrated and released
+
+- Recorded at: 2026-07-20T19:31:07Z
+- The complete preserved Task122 history through calibrated candidate
+  `a29276d46b161fa5e2ed9a0c82d7168de944dd3e` is integrated without history
+  rewrite at merge `0d736e98100250df1a16a53dbfdc630536ca29d1`.
+  Fresh final architecture and executability reviewers
+  `019f80f0-2bbf-7792-b842-8de00ec6ff07` and
+  `019f80f0-2ff9-7c41-b657-128ffd7d171e` both approve with no reproduced
+  P0/P1.
+- Integrated bytes pass the exact focused **2 files / 54 tests** and
+  cross-boundary **4 files / 144 tests**, standalone typecheck, bounded
+  assurance **20/20**, all four exact V4 markers, factory readiness, diff
+  hygiene, exact five-path scope, clean tracked/untracked state, and real
+  non-symlinked top-level dependencies with executable local Vitest 4.1.9.
+  Full `npm test` and `npm run verify` reproduce the identical intermediate
+  differential of **11 failing files / 49 failing tests / 2,847 passes / 5
+  skips**, removing exactly the 11 Task122 failures with no new failure,
+  removal, or skip.
+- Status advances Task122 `approved -> integrated -> released`. Strict V4
+  release record 26 below activates the finite CF1-HR -> Task122 current-HEAD
+  ownership transfer while preserving every historical record-14 blob and
+  disposition. No provider, credential, network, external effect, push, or
+  `neo` action occurs.
+
+## Task136 dispatch release v4: Task122
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task122",
+  "candidateSha": "a29276d46b161fa5e2ed9a0c82d7168de944dd3e",
+  "reviews": [
+    {
+      "threadId": "019f80f0-2bbf-7792-b842-8de00ec6ff07",
+      "candidateSha": "a29276d46b161fa5e2ed9a0c82d7168de944dd3e",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f80f0-2ff9-7c41-b657-128ffd7d171e",
+      "candidateSha": "a29276d46b161fa5e2ed9a0c82d7168de944dd3e",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0d736e98100250df1a16a53dbfdc630536ca29d1",
+  "releaseEventId": "task136-release-v4-Task122",
+  "prerequisites": [
+    {
+      "cardId": "CF1-HR",
+      "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+      "releaseEventId": "task136-release-v4-CF1-HR"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md",
+      "disposition": "owned",
+      "blobSha": "42ad8ea6caa1f4978fdfe29d2ffe2020d35e2d15"
+    },
+    {
+      "path": "packages/agent/src/investigation-planner-workflow.ts",
+      "disposition": "owned",
+      "blobSha": "d10a21683ba00801df508492aa7fdeb0a53b0491"
+    },
+    {
+      "path": "packages/agent/test/investigation-planner-workflow.test.ts",
+      "disposition": "owned",
+      "blobSha": "8b74ce5208c6100f54c3e56a23c45ea5befd2dc0"
+    },
+    {
+      "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+      "disposition": "owned",
+      "blobSha": "aa5859e0d2c8146812673777436e9e284f1c3373"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+      "disposition": "owned",
+      "blobSha": "148c7a4c5af83371f579b808a2970f6a8609394e"
+    }
+  ]
+}
+```
