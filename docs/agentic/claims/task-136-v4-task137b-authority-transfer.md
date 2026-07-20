@@ -454,3 +454,49 @@ Implementation evidence:
   `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
   `TASK136_COMMAND_CARDS_OK cards=29`, and
   `TASK136_ABI_CORPUS_OK green=1 red=15`.
+
+## RV-1-E-869 record-26 current-prefix causal RED checkpoint
+
+- Preserved candidate `06e84742637ee715e03cf84e9b79dc6673bd0569` was
+  normal-forward-merged with exact clean program authority
+  `d99fafa7b798aa2beb6b0f90d863a4907d6976d5` as
+  `add6c0b50994c67d3074370e3f751356391c2d28`. The merge preserves both
+  histories and introduces strict release record 26; this checkpoint changes
+  only this claim, leaving the assurance test, V1-V4 contracts, checker,
+  raw records 1-26, finite mappings, product bytes, and prior evidence
+  unchanged.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `20` tests, `17` passed, and exactly `3` failed. The only
+  failures are current-prefix cardinality assertions at lines `1125`, `1441`,
+  and `1621`, each reporting `26 !== 25`. They respectively cover the
+  historical-source/current-migration, Task137B-W-to-Task139-PM, and
+  CF1-HR-to-Task122 current-prefix blocks. No contract, checker, command,
+  blob, dependency, or unrelated fixture failure occurred.
+- The sole authorized GREEN scope is this claim plus
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`. It
+  will advance only these exact current-record count/order/repository closure
+  expectations from record 25 to record 26, preserving all historical and
+  pre-activation fixtures. Required committed-byte admission reruns focused
+  assurance, V4 contract/repository markers, typecheck, full differential,
+  factory, diff, two-path scope, immutable-input, clean-state, and dependency
+  gates. No registry, integration, review, push, network, credential,
+  provider, `neo`, or task creation is authorized.
+
+## RV-1-E-870 record-26 minimal GREEN evidence
+
+- The three current-prefix groups now assert `26` records and exact
+  `expectedIds.slice(0, 26)`. The repository-admission closure, prefix marker,
+  and command-call count advance together to `found 26` and
+  `records=26 commands=26`.
+- The CF1-HR-to-Task122 test now constructs its intentionally pre-activation
+  fixture from `releasedPrefix.slice(0, 25)`. This preserves the historical
+  record-25 source-currentness check after the real current prefix includes
+  Task122 at record 26, and prevents the synthetic record-26 activation from
+  duplicating the released Task122 record. It does not alter any historical
+  record count, contract, checker, mapping, or release evidence.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `20` passed and `0` failed. Final committed-byte admission will run
+  the required contract/repository, typecheck, full differential, factory,
+  diff, immutable-input, scope, clean-state, and dependency gates.
