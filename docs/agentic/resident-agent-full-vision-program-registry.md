@@ -25234,3 +25234,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   must be amended before those released paths can change. No workaround,
   alternate authority, API widening, integration, release record, push, or
   `neo` action is permitted meanwhile.
+
+## RV-1-E-875 — Bootstrap handoff preflight ownership correction authorized
+
+- Recorded at: 2026-07-20T21:22:26Z
+- Human authority resolves RV-1-E-874 with an exact finite V4 direct-source
+  correction. W1-123 prerequisites and all **29** card IDs/order remain
+  unchanged. CF1-HR additionally transfers only its specialist-handoff
+  authority source/test to W1-123; Task122 transfers only its portable mounted
+  store source/test to W1-123. W1-123 therefore expands from five to exactly
+  nine owned paths and its command adds both transferred test files.
+- Raw strict records **1–26** remain byte-identical. Historical CF1-HR record
+  14 remains bound to canonical hash `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`
+  and authority blobs `81d2df45b2c74f118bea22fdce23a5fd698ddbd0` /
+  `309d26e487e200f7a430b261910e4f6ef11b19a1`; historical Task122 record
+  26 remains bound to canonical hash
+  `729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c`
+  and portable blobs `aa5859e0d2c8146812673777436e9e284f1c3373` /
+  `148c7a4c5af83371f579b808a2970f6a8609394e`, all with record disposition
+  `owned`. Released-source current-HEAD ownership remains authoritative until
+  strict record 27.
+- The same V4 assurance owner is authorized for one causal RED and minimal
+  GREEN in exactly the contract, checker, assurance test, and V4 transfer
+  claim. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task. After fresh dual review and
+  integration, the same Task123 owner resumes preserved RED `7a7509aa` for the
+  minimum non-consuming witness/binding preflight within the exact nine-path
+  boundary. No V5, generic/transitive transfer facility, fallback,
+  compatibility lane, new card, raw-record mutation, external effect, push,
+  or `neo` action is authorized.
