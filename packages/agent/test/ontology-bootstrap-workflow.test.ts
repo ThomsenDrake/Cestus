@@ -295,11 +295,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     const canonical = await startCanonicalWorkflowRun(ledger, runtime);
     let materialWrites = 0;
     const noEffectStore: RunOntologyBootstrapResidentWorkflowInput["derivativeStore"] = Object.freeze({
-      put: async (bytes) => {
+      put: async (bytes: Buffer) => {
         materialWrites += 1;
         return await canonical.derivativeStore.put(bytes);
       },
-      get: async (contentHash) => await canonical.derivativeStore.get(contentHash)
+      get: async (contentHash: `sha256:${string}`) => await canonical.derivativeStore.get(contentHash)
     });
     const input = {
       ledger,
