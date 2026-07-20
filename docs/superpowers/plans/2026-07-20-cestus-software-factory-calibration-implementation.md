@@ -46,3 +46,20 @@
 ## Handoff
 
 Run one fresh automated review after GREEN. Report the two commit IDs, exact nine-path scope, all command evidence, any inherited before/after verification differential, and the next lifecycle action: a fresh reviewer may advance candidate work through the canonical process.
+
+## Recovery Checkpoint: Executability Admission
+
+The committed `f90f5698ee5018788e44447c051e854acdef286e` checker accepted a syntactically valid but nonexistent integration SHA, tolerated weakened risk and milestone rules, and did not prove milestone membership in both directions. These are fail-open authority defects in the calibration contract, not product decisions. The recovery preserves the original base, RED, and GREEN commits and uses one additional RED/GREEN pair.
+
+### Recovery RED
+
+- [x] Add counterfactual tests for unresolved integration commits, exact risk-level policy, SFC-M1 validation, bidirectional milestone membership, and frozen V4 unfinished-card precedence.
+- [x] Confirm the original four tests pass while the added counterfactuals fail against `f90f5698`.
+- [x] Commit the tests and this checkpoint before changing the checker, source, or operating instructions.
+
+### Recovery GREEN
+
+- [ ] Resolve integration SHAs as Git commit objects and require the exact calibrated policy schema.
+- [ ] Enforce SFC-M1's Level 2 architecture/executability pair and bidirectional membership.
+- [ ] Pin frozen V4 precedence for unfinished cards and remove unqualified legacy Level 1 mandates from current instructions.
+- [ ] Run the required committed-byte gates and record the inherited record-25 verification differential.

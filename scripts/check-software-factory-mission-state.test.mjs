@@ -85,3 +85,110 @@ test("rejects a calibration milestone that removes its executability validator",
     }
   );
 });
+
+test("rejects a mission integration SHA that does not resolve to a Git commit", () => {
+  withFixture(
+    (source) => {
+      source.mission.status = "integrated";
+      source.mission.acceptedIntegrationSha = "f".repeat(40);
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /mission\.acceptedIntegrationSha must resolve to a Git commit/);
+    }
+  );
+});
+
+test("rejects a feature release SHA that does not resolve to a Git commit", () => {
+  withFixture(
+    (source) => {
+      source.features[0].status = "released";
+      source.features[0].acceptedIntegrationSha = "e".repeat(40);
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /SFC-001\.acceptedIntegrationSha must resolve to a Git commit/);
+    }
+  );
+});
+
+test("rejects risk-level keys outside the calibrated three-level schema", () => {
+  withFixture(
+    (source) => {
+      source.riskLevels.level4 = {};
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /riskLevels must contain exactly level1, level2, and level3/);
+    }
+  );
+});
+
+test("rejects weakened Level 3 full, live, and release gates", () => {
+  withFixture(
+    (source) => {
+      source.riskLevels.level3.milestoneValidation.requiredGates = ["full", "release"];
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /Level 3 required gates must match the approved sequence/);
+    }
+  );
+});
+
+test("rejects an SFC-M1 risk-level downgrade", () => {
+  withFixture(
+    (source) => {
+      source.milestones[0].riskLevel = "level1";
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /SFC-M1 must remain a Level 2 milestone/);
+    }
+  );
+});
+
+test("rejects a changed SFC-M1 architecture validator", () => {
+  withFixture(
+    (source) => {
+      source.milestones[0].validation.architectureValidator = 2;
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /SFC-M1 must retain exactly one architecture validator/);
+    }
+  );
+});
+
+test("rejects feature-to-milestone membership disagreement", () => {
+  withFixture(
+    (source) => {
+      source.milestones[0].featureIds = source.milestones[0].featureIds.filter(
+        (featureId) => featureId !== "SFC-001"
+      );
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /bidirectional milestone membership/);
+    }
+  );
+});
+
+test("rejects milestone-to-feature membership disagreement", () => {
+  withFixture(
+    (source) => {
+      const secondMilestone = structuredClone(source.milestones[0]);
+      secondMilestone.milestoneId = "SFC-M2";
+      secondMilestone.featureIds = ["SFC-001"];
+      source.milestones.push(secondMilestone);
+      source.features[0].milestoneIds = ["SFC-M2"];
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /bidirectional milestone membership/);
+    }
+  );
+});
+
+test("rejects frozen V4 authority when unfinished-card precedence is not authoritative", () => {
+  withFixture(
+    (source) => {
+      source.mission.frozenAuthority.unfinishedCardPrecedence = "advisory";
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /unfinished V4 card precedence must be authoritative/);
+    }
+  );
+});
