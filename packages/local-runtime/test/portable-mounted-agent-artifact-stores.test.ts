@@ -24,6 +24,7 @@ import {
   beforeMountedHandoffAuthorityEffect,
   consumeMountedHandoffAuthorityController,
   createPortableMountedAgentArtifactStoreProducer,
+  preflightPortableMountedAgentHandoffBinding,
   type BindPortableMountedAgentHandoffInput,
   type FactoryPortableMountedAgentHandoffProducerResultV1,
   type MountedHandoffAuthorityController
@@ -103,6 +104,49 @@ describe("portable mounted agent artifact stores", () => {
     expect(safeError.message).not.toContain(join(fixture.workspaceRoot, "derivatives"));
     expect(String(safeError)).not.toContain(fixture.workspaceRoot);
     expect(String(safeError)).not.toContain(join(fixture.workspaceRoot, "derivatives"));
+  });
+
+  it("preflights the exact issued binding without consuming its later V2 witness", async () => {
+    const fixture = authorityFixture();
+    const { result } = await issuedBinding(fixture);
+    const before = await fixture.handle.ledger.readAll();
+
+    await expect(preflightPortableMountedAgentHandoffBinding({
+      binding: result.binding,
+      controller: result.controller,
+      taskId: dispatch.taskId,
+      attemptId: dispatch.attemptId,
+      runId: dispatch.approvedRunId,
+      runType: dispatch.runType,
+      retryGeneration: dispatch.retryGeneration
+    })).resolves.toBeUndefined();
+    expect(await fixture.handle.ledger.readAll()).toEqual(before);
+    await expect(consumeMountedSpecialistHandoffAuthorityWitness(result.binding.authorityWitness)).resolves.toMatchObject({
+      taskLifecycle: {
+        taskId: dispatch.taskId,
+        attemptId: dispatch.attemptId,
+        runId: dispatch.approvedRunId,
+        runType: dispatch.runType,
+        retryGeneration: dispatch.retryGeneration
+      }
+    });
+
+    const swappedFixture = authorityFixture();
+    const { result: swapped } = await issuedBinding(swappedFixture);
+    const copiedBinding = Object.freeze({ ...swapped.binding });
+    const swappedBefore = await swappedFixture.handle.ledger.readAll();
+
+    await expect(preflightPortableMountedAgentHandoffBinding({
+      binding: copiedBinding,
+      controller: swapped.controller,
+      taskId: dispatch.taskId,
+      attemptId: dispatch.attemptId,
+      runId: dispatch.approvedRunId,
+      runType: dispatch.runType,
+      retryGeneration: dispatch.retryGeneration
+    })).rejects.toThrow(/authority/i);
+    expect(await swappedFixture.handle.ledger.readAll()).toEqual(swappedBefore);
+    await expect(beforeMountedHandoffAuthorityEffect(swapped.controller, "final-output")).rejects.toThrow(/authority/i);
   });
 
   it("rejects an unsupported runType before portable witness issuance", async () => {

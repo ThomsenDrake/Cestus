@@ -103,6 +103,42 @@ export async function consumeMountedSpecialistHandoffAuthorityWitness(
   }
 }
 
+/**
+ * Verifies one factory-issued witness for an exact lifecycle binding without
+ * consuming it. The later V2 recorder remains the sole one-shot consumer.
+ */
+export async function preflightMountedSpecialistHandoffAuthorityWitness(input: unknown): Promise<void> {
+  let state: WitnessState | undefined;
+  try {
+    const values = exactOwnDataRecord(input, [
+      "witness",
+      "taskId",
+      "attemptId",
+      "runId",
+      "runType",
+      "retryGeneration"
+    ]);
+    if (typeof values.witness !== "object" || values.witness === null) throw authorityError();
+    state = witnessStates.get(values.witness);
+    if (state === undefined || state.state !== "available") throw authorityError();
+    const expected = normalizeTaskLifecycle({
+      taskId: values.taskId,
+      attemptId: values.attemptId,
+      runId: values.runId,
+      runType: values.runType,
+      retryGeneration: values.retryGeneration
+    });
+    if (!sameTaskLifecycle(state.taskLifecycle, expected) || !sameBinding(state.binding, normalizeBinding(state.binding))) {
+      throw authorityError();
+    }
+    await state.revalidate();
+    if (state.state !== "available") throw authorityError();
+  } catch {
+    if (state?.state === "available") state.state = "consumed";
+    throw authorityError();
+  }
+}
+
 function normalizeTaskLifecycle(value: unknown): MountedSpecialistHandoffTaskLifecycle {
   const record = exactOwnDataRecord(value, ["taskId", "attemptId", "runId", "runType", "retryGeneration"]);
   const retryGeneration = record.retryGeneration;
@@ -153,6 +189,27 @@ function normalizeBinding(value: unknown): HandoffAuthorityBinding {
     policyHash,
     activeLocksHash
   });
+}
+
+function sameTaskLifecycle(
+  left: MountedSpecialistHandoffTaskLifecycle,
+  right: MountedSpecialistHandoffTaskLifecycle
+): boolean {
+  return left.taskId === right.taskId &&
+    left.attemptId === right.attemptId &&
+    left.runId === right.runId &&
+    left.runType === right.runType &&
+    left.retryGeneration === right.retryGeneration;
+}
+
+function sameBinding(left: HandoffAuthorityBinding, right: HandoffAuthorityBinding): boolean {
+  return left.workspaceIdentityHash === right.workspaceIdentityHash &&
+    left.mountGeneration === right.mountGeneration &&
+    left.ledgerStoreIdentity === right.ledgerStoreIdentity &&
+    left.artifactStoreIdentity === right.artifactStoreIdentity &&
+    left.ledgerHighWaterEventId === right.ledgerHighWaterEventId &&
+    left.policyHash === right.policyHash &&
+    left.activeLocksHash === right.activeLocksHash;
 }
 
 function exactOwnDataRecord(value: unknown, fields: readonly string[]): Record<string, unknown> {

@@ -9,6 +9,7 @@ import {
 } from "../../agent/src/specialist-handoff-manifest.js";
 import {
   issueMountedSpecialistHandoffAuthorityWitness,
+  preflightMountedSpecialistHandoffAuthorityWitness,
   type HandoffAuthorityBinding,
   type MountedSpecialistHandoffAuthorityWitness
 } from "../../agent/src/specialist-handoff-authority.js";
@@ -223,8 +224,18 @@ interface CursorState {
   burned: boolean;
 }
 
+interface IssuedPortableMountedHandoffBinding {
+  readonly cursor: CursorState;
+  readonly controller: MountedHandoffAuthorityController;
+  readonly binding: PortableMountedAgentHandoffBinding;
+  readonly materialStore: SpecialistHandoffManifestStore;
+  readonly manifestStore: SpecialistHandoffManifestStore;
+  readonly authorityWitness: MountedSpecialistHandoffAuthorityWitness;
+}
+
 const producerStates = new WeakMap<object, ProducerState>();
-const controllerStates = new WeakMap<MountedHandoffAuthorityController, CursorState>();
+const controllerStates = new WeakMap<object, CursorState>();
+const issuedPortableMountedHandoffBindings = new WeakMap<object, IssuedPortableMountedHandoffBinding>();
 
 export function createPortableMountedAgentArtifactStoreProducer(
   authorityOperation: MountedArtifactAuthorityOperation
@@ -310,6 +321,14 @@ export function createPortableMountedAgentArtifactStoreProducer(
         });
         const controller = Object.freeze({}) as MountedHandoffAuthorityController;
         controllerStates.set(controller, cursor);
+        issuedPortableMountedHandoffBindings.set(handoffBinding, Object.freeze({
+          cursor,
+          controller,
+          binding: handoffBinding,
+          materialStore,
+          manifestStore,
+          authorityWitness
+        }));
         await inspectCursor(cursor);
         return Object.freeze({
           schemaVersion: "factory-portable-mounted-agent-handoff-result.v1" as const,
@@ -382,6 +401,69 @@ export async function consumeMountedHandoffAuthorityController(
     });
   } catch {
     cursor.burned = true;
+    throw authorityError();
+  }
+}
+
+/**
+ * Verifies the exact factory-issued portable binding before workflow effects.
+ * It does not expose or consume the witness needed by the V2 recorder.
+ */
+export async function preflightPortableMountedAgentHandoffBinding(input: unknown): Promise<void> {
+  let cursor: CursorState | undefined;
+  try {
+    const values = exactOwnDataRecord(input, [
+      "binding",
+      "controller",
+      "taskId",
+      "attemptId",
+      "runId",
+      "runType",
+      "retryGeneration"
+    ]);
+    if (typeof values.controller !== "object" || values.controller === null) throw authorityError();
+    cursor = controllerStates.get(values.controller);
+    if (cursor === undefined) throw authorityError();
+    if (typeof values.binding !== "object" || values.binding === null) throw authorityError();
+    const issued = issuedPortableMountedHandoffBindings.get(values.binding);
+    if (
+      issued === undefined ||
+      issued.cursor !== cursor ||
+      issued.controller !== values.controller ||
+      issued.binding !== values.binding ||
+      issued.binding.materialStore !== issued.materialStore ||
+      issued.binding.manifestStore !== issued.manifestStore ||
+      issued.binding.authorityWitness !== issued.authorityWitness ||
+      issued.materialStore === issued.manifestStore
+    ) {
+      throw authorityError();
+    }
+    const taskId = requiredText(values.taskId);
+    const attemptId = requiredText(values.attemptId);
+    const runId = requiredText(values.runId);
+    const runType = requiredAgentSpecialistRunType(values.runType);
+    const retryGeneration = requiredNonNegativeInteger(values.retryGeneration);
+    if (
+      cursor.binding.taskId !== taskId ||
+      cursor.binding.attemptId !== attemptId ||
+      cursor.binding.approvedRunId !== runId ||
+      cursor.binding.runType !== runType ||
+      cursor.binding.retryGeneration !== retryGeneration
+    ) {
+      throw authorityError();
+    }
+    await inspectCursor(cursor);
+    await preflightMountedSpecialistHandoffAuthorityWitness({
+      witness: issued.authorityWitness,
+      taskId,
+      attemptId,
+      runId,
+      runType,
+      retryGeneration
+    });
+    await inspectCursor(cursor);
+  } catch {
+    if (cursor !== undefined) cursor.burned = true;
     throw authorityError();
   }
 }

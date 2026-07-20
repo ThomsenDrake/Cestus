@@ -35,8 +35,12 @@ import {
   recordAuthorityBoundSpecialistHandoff,
   type SpecialistHandoffManifestStore
 } from "./specialist-runner-kernel.js";
-import type { MountedSpecialistHandoffAuthorityWitness } from "./specialist-handoff-authority.js";
+import {
+  preflightMountedSpecialistHandoffAuthorityWitness,
+  type MountedSpecialistHandoffAuthorityWitness
+} from "./specialist-handoff-authority.js";
 import { buildSpecialistHandoffProjection } from "./specialist-handoff-projection.js";
+import { buildTaskAttemptId } from "./task-orchestrator-events.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 import type { AgentToolPreview } from "./tool-gateway.js";
 
@@ -437,6 +441,37 @@ export async function runOntologyBootstrapResidentWorkflow(
       retryable: true,
       allowedActions: ["restore the current mounted ontology bootstrap handoff capability and retry"]
     });
+  }
+
+  if (taskId === undefined) {
+    return {
+      ok: false,
+      category: "provenance-missing",
+      message: "Ontology bootstrap requires an exact task-bound mounted authority before workflow effects.",
+      eventIds: []
+    };
+  }
+
+  try {
+    await preflightMountedSpecialistHandoffAuthorityWitness({
+      witness: input.handoffAuthorityWitness,
+      taskId,
+      attemptId: buildTaskAttemptId({
+        taskId,
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      }),
+      runId: input.runId,
+      runType: "ontology-bootstrap",
+      retryGeneration: 0
+    });
+  } catch {
+    return {
+      ok: false,
+      category: "provenance-missing",
+      message: "Ontology bootstrap mounted authority is unavailable or no longer current before workflow effects.",
+      eventIds: []
+    };
   }
 
   const bootstrap = safeRunBootstrapSpecialist({

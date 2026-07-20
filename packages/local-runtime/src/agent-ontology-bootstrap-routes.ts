@@ -21,6 +21,7 @@ import type { LocalAgentRuntimeFactory } from "./agent-runtime-factory.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 import {
   consumeMountedHandoffAuthorityController,
+  preflightPortableMountedAgentHandoffBinding,
   type FactoryPortableMountedAgentHandoffProducerResultV1
 } from "./portable-mounted-agent-artifact-stores.js";
 
@@ -162,6 +163,19 @@ async function launchOntologyBootstrapRun(
 
   let result: Awaited<ReturnType<typeof runOntologyBootstrapResidentWorkflow>>;
   try {
+    await preflightPortableMountedAgentHandoffBinding({
+      binding: mountedHandoff.binding,
+      controller: mountedHandoff.controller,
+      taskId: launchInput.taskId,
+      attemptId: buildTaskAttemptId({
+        taskId: launchInput.taskId,
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      }),
+      runId: launchInput.runId,
+      runType: "ontology-bootstrap",
+      retryGeneration: 0
+    });
     const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
     const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
     result = await runOntologyBootstrapResidentWorkflow({
