@@ -24870,3 +24870,72 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   V1-V3, raw records 1-25, all 29 IDs/order, finite mappings/evidence, and
   `neo` remain immutable. No reset, rebase, amend, squash, drop, rewrite, push,
   or external effect occurs.
+
+## RV-1-E-864 — Task122 cursor recovery candidate admitted for final review
+
+- Recorded at: 2026-07-20T17:16:20Z
+- The same Task122 owner preserves registry-authority merge
+  `99c16639d6e38551ec7a022787db37f02c699325`, causal RED
+  `cf669f74e1cb93a99e07340b33a15555cc8ee674`, and sole minimal GREEN exact
+  candidate `799de1e9f0fc65383f60c55d344f93be126a7efa`. RED changes only the
+  append-only Task122 claim and portable-store test; its portable-store
+  production blob remains byte-identical to the parent and reproduces exactly
+  four failures over 49 retained passes.
+- GREEN requires a completed exact provider transcript before an
+  investigation-planner authority may advance to final output while retaining
+  released transcript-optional behavior for unrelated run types. It models an
+  optional pre-start orchestration prelude as one exact claimed ->
+  runner-dispatching checkpoint pair and burns duplicated, reordered,
+  post-start, mutated, unknown-bound, or cross-run material. Later V2 lifecycle
+  transitions and exact investigation/currentness bindings remain unchanged.
+- Exact committed bytes pass focused **2 files / 53 tests**, cross-boundary
+  **4 files / 143 tests**, standalone typecheck, factory readiness, diff
+  hygiene, assurance **20/20**, all four V4 markers, exact five-path cumulative
+  scope, clean state, and real dependencies with executable Vitest 4.1.9.
+  Full `npm test` and `npm run verify` differentials retain every remaining
+  failure identity and all five skips: record-25 base **60 failed / 2,820
+  passed / 5 skipped**, candidate **49 failed / 2,846 passed / 5 skipped**.
+  The exact 11 Task122 failures are removed and 15 Task122 tests pass.
+- Repository mode continues to fail only at the required pre-record-26 CF1-HR
+  portable-source current-HEAD blob lock. No checker bypass or ownership
+  movement occurs. Status advances Task122 `recovering -> candidate ->
+  reviewing`; one fresh concurrent read-only Terra/xhigh
+  architecture/executability pair now reviews exact candidate `799de1e9`.
+  V1-V3, raw records 1-25, all 29 IDs/order, finite mappings/evidence, and
+  `neo` remain immutable. No push or external effect occurs.
+
+## RV-1-E-865 — Task122 pre-effect provider authority root-cause checkpoint
+
+- Recorded at: 2026-07-20T17:27:02Z
+- Fresh Terra/xhigh executability/adversarial reviewer
+  `019f8088-0a96-7ef3-a96a-b3860cca50f4` approves exact candidate
+  `799de1e9f0fc65383f60c55d344f93be126a7efa` after reproducing focused
+  **53/53**, cross-boundary **143/143**, typecheck, factory, assurance
+  **20/20**, V4 markers, exact scope/history, and only the required record-25
+  ownership lock.
+- Fresh Terra/xhigh architecture/invariants reviewer
+  `019f8088-0b7b-71d2-bd92-7c3b8ac9f0b9` reproduces one distinct P1 in the
+  real mounted production path: with zero provider-transcript events,
+  `appendSpecialistFinalOutputStep` writes canonical handoff material and
+  appends `agent.specialist-run.step.recorded` before the later controller or
+  witness revalidation rejects. The prior GREEN closes direct controller
+  advancement but places its transcript guard after those final-output effects.
+- This violates the frozen requirement that missing or incomplete provider
+  provenance fail closed before any investigation final-output material or
+  ledger effect. It is contract-determined, not a product or scope decision.
+  Status advances Task122 `reviewing -> recovering`; the same owner and
+  complete preserved branch history resume with a changed tactic at the actual
+  mounted final-material write boundary, not another controller-only guard.
+- One causal RED must exercise the released `appendSpecialistFinalOutputStep`
+  path with the real opaque mounted store and prove that missing provider
+  transcript currently leaves material and a final-output event. One minimal
+  GREEN must reject and burn before either effect while preserving exact valid
+  transcript/prelude handling, legacy run behavior, later V2 ordering, exact
+  investigation/currentness binding, no fallback write, and the record-25
+  lock. Cumulative scope remains Task122's exact five paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact committed-byte admission and one
+  fresh concurrent read-only Terra/xhigh architecture/executability pair are
+  required after GREEN. V1-V3, raw records 1-25, all 29 IDs/order, finite
+  mappings/evidence, and `neo` remain immutable. No reset, rebase, amend,
+  squash, drop, rewrite, push, or external effect occurs.
