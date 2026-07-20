@@ -3,6 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAgentRuntime } from "../../agent/src/index.js";
+import { createWakeSupervisorRuntime } from "../src/wake-supervisor-runtime.js";
+import { issueMountedArtifactAuthorityOperationForFactory } from "../src/mounted-artifact-authority-operation.js";
+import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-cestus-fixtures.js";
@@ -17,7 +20,7 @@ let workspaceRoot: string;
 let handler: LocalRuntimeHttpHandler | undefined;
 let config: ResolvedLocalRuntimeConfig;
 
-const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) =>
+const baseOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) =>
   createAgentRuntime({
     ledger: handle.ledger,
     actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
@@ -25,6 +28,58 @@ const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle
     identityLifecycle: () => handle.residentIdentity.lifecycle(),
     identityLifecycleReady: () => handle.residentIdentity.ready()
   });
+
+const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) => {
+  const runtime = baseOntologyBootstrapRouteRuntimeFactory({
+    handle,
+    actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
+    now
+  });
+  return Object.freeze({
+    ...runtime,
+    async acquireMountedOntologyBootstrapHandoff(input: {
+      readonly taskId: string;
+      readonly runId: string;
+      readonly attemptId: `attempt_${string}`;
+      readonly runType: "ontology-bootstrap";
+      readonly retryGeneration: 0;
+    }) {
+      let nextId = 0;
+      const wakeRuntime = createWakeSupervisorRuntime({
+        runtimeHandle: handle,
+        actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
+        supervisorEpoch: `epoch_${input.runId}`,
+        policy: {
+          policyVersion: "ontology-bootstrap-handoff.v1",
+          policyDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          lockStateDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        now,
+        createSafeId: (kind) => `${kind}_${input.runId}_${++nextId}`
+      });
+      try {
+        const started = await wakeRuntime.supervision.start();
+        if (started.outcome !== "accepted") throw new Error("test runtime mounted authority was not accepted");
+        const prepared = await createPortableMountedAgentArtifactStoreProducer(
+          issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+        ).bind({
+          taskId: input.taskId,
+          attemptId: input.attemptId,
+          approvedRunId: input.runId,
+          runType: input.runType,
+          retryGeneration: input.retryGeneration
+        });
+        return Object.freeze({
+          ...prepared,
+          stop: async () => await wakeRuntime.stop()
+        });
+      } catch (error) {
+        await wakeRuntime.stop().catch(() => undefined);
+        throw error;
+      }
+    }
+  });
+};
 
 beforeEach(() => {
   cwd = mkdtempSync(join(tmpdir(), "cestus-bootstrap-route-"));
@@ -114,6 +169,46 @@ describe("ontology-bootstrap agent routes", () => {
       "assertion.proposed",
       "assertion.accepted"
     ]));
+  });
+
+  it("fails closed before bootstrap material effects without a runtime-mounted handoff binding", async () => {
+    handler = createLocalRuntimeHttpHandler({
+      config,
+      actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" },
+      now: () => "2026-07-08T16:00:00.000Z",
+      agentRuntimeFactory: baseOntologyBootstrapRouteRuntimeFactory
+    });
+
+    const launch = await handler({
+      method: "POST",
+      url: "/api/agent/specialists/ontology-bootstrap/runs",
+      body: JSON.stringify({
+        taskId: "task_ontology_bootstrap_unavailable",
+        runId: "run_ontology_bootstrap_unavailable",
+        sourceCollectionId: "src_old_cestus",
+        sourceRoot,
+        scanBatchId: "scan_old_cestus_001",
+        importBatchId: "imp_old_cestus_001",
+        selectedCandidateIds: ["legacy_candidate_001"],
+        maxCandidatesPerBundle: 50
+      })
+    });
+
+    expect(launch.status).toBe(503);
+    expect(JSON.parse(launch.body)).toMatchObject({
+      ok: false,
+      diagnostic: { message: expect.stringMatching(/mounted authority/i) }
+    });
+    const types = await eventTypes(config);
+    for (const type of [
+      "agent.specialist-run.step.recorded",
+      "agent.tool.requested",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ]) {
+      expect(types).not.toContain(type);
+    }
   });
 
   it("requires exact canonical provenance before reusing a run", () => {

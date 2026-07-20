@@ -21,15 +21,12 @@ import type { LocalAgentRuntimeFactory } from "./agent-runtime-factory.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 import {
   consumeMountedHandoffAuthorityController,
-  createPortableMountedAgentArtifactStoreProducer
+  type FactoryPortableMountedAgentHandoffProducerResultV1
 } from "./portable-mounted-agent-artifact-stores.js";
-import { issueMountedArtifactAuthorityOperationForFactory } from "./mounted-artifact-authority-operation.js";
-import { createWakeSupervisorRuntime } from "./wake-supervisor-runtime.js";
 
 const routeSchemaVersion = "agent-ontology-bootstrap-route.v1" as const;
 const residentAgentId = "agent_default";
 const residentAgentActor = { id: residentAgentId, kind: "agent" as const, label: "Cestus Agent" };
-const mountedAuthorityHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
 
 export interface HandleAgentOntologyBootstrapRouteInput {
   readonly request: LocalRuntimeRequest;
@@ -81,6 +78,22 @@ interface LaunchInput {
   readonly stagingBatchId?: string;
   readonly selectedCandidateIds: readonly string[];
   readonly maxCandidatesPerBundle?: number;
+}
+
+interface RuntimeMountedOntologyBootstrapHandoff {
+  readonly binding: FactoryPortableMountedAgentHandoffProducerResultV1["binding"];
+  readonly controller: FactoryPortableMountedAgentHandoffProducerResultV1["controller"];
+  stop(): Promise<void>;
+}
+
+interface RuntimeMountedOntologyBootstrapHandoffProvider {
+  acquireMountedOntologyBootstrapHandoff(input: {
+    readonly taskId: string;
+    readonly runId: string;
+    readonly attemptId: `attempt_${string}`;
+    readonly runType: "ontology-bootstrap";
+    readonly retryGeneration: 0;
+  }): Promise<RuntimeMountedOntologyBootstrapHandoff>;
 }
 
 async function launchOntologyBootstrapRun(
@@ -191,7 +204,7 @@ async function launchOntologyBootstrapRun(
       "restore the mounted workspace and retry the ontology bootstrap launch"
     ]));
   } finally {
-    await mountedHandoff.wakeRuntime.stop().catch(() => undefined);
+    await mountedHandoff.stop().catch(() => undefined);
   }
 
   if (!result.ok) {
@@ -216,47 +229,32 @@ async function mountedOntologyBootstrapHandoff(
   input: HandleAgentOntologyBootstrapRouteInput,
   launchInput: LaunchInput
 ): Promise<
-  | {
-      readonly ok: true;
-      readonly binding: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>["binding"];
-      readonly controller: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>["controller"];
-      readonly wakeRuntime: ReturnType<typeof createWakeSupervisorRuntime>;
-    }
+  | ({ readonly ok: true } & RuntimeMountedOntologyBootstrapHandoff)
   | { readonly ok: false; readonly body: unknown }
 > {
-  let nextId = 0;
-  let wakeRuntime: ReturnType<typeof createWakeSupervisorRuntime> | undefined;
+  const runtime = input.runtime as typeof input.runtime & Partial<RuntimeMountedOntologyBootstrapHandoffProvider>;
+  if (runtime.acquireMountedOntologyBootstrapHandoff === undefined) {
+    return {
+      ok: false,
+      body: diagnostic("Ontology bootstrap requires a current mounted authority lifecycle from runtime composition.", [
+        "restore the mounted workspace and retry the ontology bootstrap launch"
+      ])
+    };
+  }
   try {
-    wakeRuntime = createWakeSupervisorRuntime({
-      runtimeHandle: input.handle,
-      actor: residentAgentActor,
-      supervisorEpoch: `epoch_${launchInput.runId}`,
-      policy: {
-        policyVersion: "ontology-bootstrap-handoff.v1",
-        policyDigest: mountedAuthorityHash,
-        lockStateDigest: mountedAuthorityHash
-      },
-      now: input.now,
-      createSafeId: (kind) => `${kind}_${launchInput.runId}_${++nextId}`
-    });
-    const started = await wakeRuntime.supervision.start();
-    if (started.outcome !== "accepted") throw new Error("mounted authority admission was not accepted");
-    const binding = await createPortableMountedAgentArtifactStoreProducer(
-      issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
-    ).bind({
+    const handoff = await runtime.acquireMountedOntologyBootstrapHandoff({
       taskId: launchInput.taskId,
+      runId: launchInput.runId,
       attemptId: buildTaskAttemptId({
         taskId: launchInput.taskId,
         runType: "ontology-bootstrap",
         retryGeneration: 0
       }),
-      approvedRunId: launchInput.runId,
       runType: "ontology-bootstrap",
       retryGeneration: 0
     });
-    return Object.freeze({ ok: true as const, ...binding, wakeRuntime });
+    return Object.freeze({ ok: true as const, ...handoff });
   } catch {
-    await wakeRuntime?.stop().catch(() => undefined);
     return {
       ok: false,
       body: diagnostic("Ontology bootstrap requires a current mounted authority lifecycle.", [
