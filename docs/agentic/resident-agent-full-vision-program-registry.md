@@ -24973,3 +24973,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   wind-down directive. V1-V3, raw records 1-25, all 29 IDs/order, finite
   mappings/evidence, every branch/worktree/history item, and `neo` remain
   untouched.
+
+## RV-1-E-867 — Bounded software-factory calibration authorized
+
+- Recorded at: 2026-07-20T17:57:40Z
+- Human authority resumes the sole coordinator only for one isolated,
+  behavior-neutral software-factory calibration. The verified clean program
+  authority is `224f3e8f67c8bcd564d841979b872e74c8358b55` with exactly **25**
+  accepted strict V4 records and Task122 next. Preserved Task122 GREEN
+  `edb1b6c893c290b025796a8faf6c43a7a2d5582a`, both prior review generations,
+  and every paused product worktree remain stationary and unmodified; no owned
+  process is active. `neo` remains untouched at
+  `f88ced73be1e64660d95874394a324bd317fc20a`.
+- The sole implementation owner receives exactly these nine factory-mechanics
+  paths: `AGENTS.md`, `.agents/skills/cestus-software-factory/SKILL.md`,
+  `docs/agentic/software-factory.md`,
+  `docs/superpowers/specs/2026-07-20-cestus-software-factory-calibration-design.md`,
+  `docs/superpowers/plans/2026-07-20-cestus-software-factory-calibration-implementation.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`,
+  `scripts/check-software-factory-mission-state.mjs`,
+  `scripts/check-software-factory-mission-state.test.mjs`, and
+  `scripts/check-agent-readiness.mjs`. Task-scoped subagent-driven development
+  and test-driven development are explicitly approved for this task.
+- The calibration establishes the approved three-level risk model, one
+  canonical machine-readable mission-state contract/source for new work,
+  transition-only registry discipline, risk-proportional validation, and
+  milestone scrutiny plus black-box validation. It gets one causal validation
+  RED, one minimal GREEN, exact factory/skill/verify/diff/clean gates, and one
+  fresh concurrent read-only architecture/executability review pair.
+- Product packages, runtime behavior, ontology contracts, portable storage,
+  providers, user-facing behavior, V1-V4 assurance, strict release records,
+  frozen card IDs/order, compatibility mappings, paused candidates, and `neo`
+  are outside scope. No V5, release graph, bridge card, compatibility lane,
+  registry migration, generic transfer facility, replacement coordinator, or
+  strict product release record is authorized. Status is `factory calibration
+  claimed`; product execution remains paused until calibration integration and
+  integrated-byte validation complete.
