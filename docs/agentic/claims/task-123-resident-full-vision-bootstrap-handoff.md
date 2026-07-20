@@ -160,3 +160,20 @@ Status: `ready-for-review`
   from the inherited 18-test baseline, retaining the missing-authority
   counterfactual and the route's approval-suspended `waiting-for-approval`
   behavior without a terminal V2 handoff.
+
+### V4 Recovery RED — Factory-Only Issuer Boundary
+
+- Candidate `763e3b943786ab69d157afccef50fed06b4c96cb` failed the required
+  repository mode during the Task137A command with one policy failure:
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts may not import
+  packages/local-runtime/src/mounted-artifact-authority-operation.ts`.
+  Repository mode consequently stopped at `release command failed: Task137A`,
+  before the expected record-26 closure diagnostic.
+- Cause: the first GREEN made the route call the factory-only
+  `issueMountedArtifactAuthorityOperationForFactory`. The released Task137
+  authority grammar and Task140 ownership make that an invalid route-side
+  composition tactic. The corrective tactic is to have the route consume only
+  a factory-provided opaque mounted handoff binding from its existing runtime
+  seam; the route neither issues nor inspects a factory operation. The
+  test-only runtime factory may provide that released binding before Task140;
+  production default composition remains deliberately unavailable.
