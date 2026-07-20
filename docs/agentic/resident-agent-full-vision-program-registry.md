@@ -25135,3 +25135,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   and obtain one fresh Terra/xhigh architecture/executability pair. No V5,
   product behavior, raw release-record mutation, external effect, push, or
   `neo` action is authorized.
+
+## RV-1-E-871 — Record-26 assurance closed; bootstrap handoff claimed
+
+- Recorded at: 2026-07-20T20:03:03Z
+- The same assurance owner preserves authority merge
+  `add6c0b50994c67d3074370e3f751356391c2d28`, claim-only causal RED
+  `59edf2c8b9c38f2b77571b063490cc61b286978f`, and minimal GREEN
+  `789d7ca8abbd7a0fafed323d157490e24ffc7242`. Fresh Terra/xhigh
+  architecture and executability reviewers
+  `019f8112-4e72-7552-80d8-4bbef8f27265` and
+  `019f8112-4d69-7801-8bf1-cb9cbdda882f` both approve exact candidate
+  `789d7ca8` with no reproduced P0/P1. The complete lineage is integrated
+  without rewrite at merge `ff5851592a3cdbba3b02efd92c9d2ac9b5a67861`.
+- Integrated bytes pass assurance **20/20**, all four exact V4 markers,
+  repository prefix **26 records / 26 commands** followed only by the expected
+  incomplete-29/found-26 boundary, standalone typecheck, factory readiness,
+  diff/clean/dependency gates, and identical `npm test` / `npm run verify`
+  differential: **11 failing files / 49 failing tests / 2,847 passes / 5
+  skips**. Raw records 1–26, V1–V4 operational authority, finite mappings,
+  frozen graph order, product bytes, and historical record-25 preactivation
+  evidence remain unchanged.
+- Strict record 26 makes `W1-123-BOOTSTRAP-HANDOFF` the sole next release card;
+  all prerequisites `CF1-HR`, `Task121`, and `Task122` are released. One
+  bounded implementation owner is claimed for exactly its five V4 paths:
+  ontology-bootstrap workflow source/test, ontology-bootstrap route
+  source/test, and its claim. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task. Status is
+  `claimed -> implementing`; no later card, external effect, push, or `neo`
+  action begins.
