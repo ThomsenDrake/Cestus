@@ -192,3 +192,88 @@ test("rejects frozen V4 authority when unfinished-card precedence is not authori
     }
   );
 });
+
+test("rejects removal of the no-fallback-writes calibration invariant", () => {
+  withFixture(
+    (source) => {
+      source.invariants = source.invariants.filter((invariant) => invariant !== "no-fallback-writes");
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /immutable calibration envelope fingerprint/);
+    }
+  );
+});
+
+test("rejects a registry policy weakened to permit routine events", () => {
+  withFixture(
+    (source) => {
+      source.stateModel.registryEventPolicy = "Allow lifecycle transitions, routine commands, and reviewer heartbeats.";
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /immutable calibration envelope fingerprint/);
+    }
+  );
+});
+
+test("rejects a topology weakened to unbounded work without isolation", () => {
+  withFixture(
+    (source) => {
+      source.executionTopology.parallelism = "unbounded";
+      source.executionTopology.worktrees = "never use worktrees";
+      source.executionTopology.models = "minimum capability for every task";
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /immutable calibration envelope fingerprint/);
+    }
+  );
+});
+
+test("rejects expansion of calibration ownership into a product path", () => {
+  withFixture(
+    (source) => {
+      const productPath = "packages/domain/src/ledger.ts";
+      source.ownedPathScope.push(productPath);
+      source.features[0].ownership.allowedPaths.push(productPath);
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /immutable calibration envelope fingerprint/);
+    }
+  );
+});
+
+test("rejects an SFC-001 risk-level downgrade", () => {
+  withFixture(
+    (source) => {
+      source.features[0].riskLevel = "level1";
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /immutable calibration envelope fingerprint/);
+    }
+  );
+});
+
+test("rejects weakening the SFC-003 prerequisite set", () => {
+  withFixture(
+    (source) => {
+      source.features[2].prerequisiteIds = ["SFC-001"];
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /immutable calibration envelope fingerprint/);
+    }
+  );
+});
+
+test("accepts lifecycle status and reachable integration SHA updates", () => {
+  const reachableCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  withFixture(
+    (source) => {
+      source.mission.status = "integrated";
+      source.mission.acceptedIntegrationSha = reachableCommit;
+      source.features[0].status = "integrated";
+      source.features[0].acceptedIntegrationSha = reachableCommit;
+    },
+    (fixturePath) => {
+      assert.doesNotThrow(() => runChecker(fixturePath));
+    }
+  );
+});

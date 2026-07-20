@@ -63,3 +63,18 @@ The committed `f90f5698ee5018788e44447c051e854acdef286e` checker accepted a synt
 - [x] Enforce SFC-M1's Level 2 architecture/executability pair and bidirectional membership.
 - [x] Pin frozen V4 precedence for unfinished cards and remove unqualified legacy Level 1 mandates from current instructions.
 - [ ] Run the required committed-byte gates and record the inherited record-25 verification differential.
+
+## Recovery Checkpoint: Immutable Calibration Envelope
+
+The committed `7dd0b00d7ca7438c1f9b6d4155cec15b42cab349` checker validates selected schema rules but does not seal the remaining approved calibration interface. Counterfactual fixtures can therefore weaken invariants, registry policy, topology, scope, feature risk, or prerequisites while still satisfying the local structural checks. The recovery adds one source-derived immutable-envelope fingerprint after normalizing only lifecycle status and accepted-integration SHA fields, so normal lifecycle transitions remain valid while the frozen calibration facts fail closed.
+
+### Recovery RED
+
+- [x] Add bounded counterfactuals for invariant, registry-policy, topology, scope, risk, and prerequisite weakening, plus a reachable-commit lifecycle-positive case.
+- [x] Confirm the original thirteen tests pass, the lifecycle-positive case passes, and the six new weakening counterfactuals fail before checker changes.
+- [x] Commit this test-only checkpoint before changing the checker.
+
+### Recovery GREEN
+
+- [ ] Compare the source-derived immutable normalized-envelope fingerprint in the checker without duplicating calibration facts.
+- [ ] Run the required committed-byte gates and record the inherited record-25 verification differential.
