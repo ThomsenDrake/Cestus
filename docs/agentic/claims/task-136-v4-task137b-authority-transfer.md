@@ -356,3 +356,101 @@ Implementation evidence:
   `0` with `19` passed and `0` failed. Final committed-byte admission reruns
   the required assurance, contract/repository, typecheck, factory, diff,
   scope/blob, clean-state, and dependency gates.
+
+## RV-1-E-857 Task122 finite-transfer causal RED and scope checkpoint
+
+- Resumed at clean preserved candidate
+  `8434ce0ad819e14d914aaf7b013ea2be10280d82` and normal-forward-merged exact
+  coordinator authority `3588f437eca3162742b6e1329fff42d9bc7e4bd4` as
+  `d55dabcf570e37eac85bb064cf0bdb5ffc12b9f2`. Only the registry changed in
+  that authority merge; no task implementation byte changed before this RED.
+- RV-1-E-857 authorizes precisely the two portable mounted-artifact-store
+  paths from CF1-HR to Task122, with Task122 prerequisite `["CF1-HR"]`, exact
+  command `npm test -- packages/agent/test/investigation-planner-workflow.test.ts
+  packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`,
+  and the record-14 CF1-HR compatibility entry/hash
+  `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`.
+  Its historical owned source/test blobs are respectively
+  `c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091` and
+  `a1f1b04fa75d573bd3c8851a5fb4f15610109d40`.
+- Causal test blob: `95eecc067e08ec6ca5f28144b6036e6cef6d1c56`. Command:
+  `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Observed result: exit `1`; `20` tests, `19` pass, `1` fail. The sole failure
+  is the new record-26 test at line `1634`: inherited
+  `CF1-HR.transferToIds` is `[]`, not exact `["Task122"]`. Existing nineteen
+  assurance tests remain green.
+- The RED test also pins the exact source and target dispositions, command,
+  raw CF1-HR record hash/blob evidence, 29-card order, V1-V3 hashes and
+  25-record prefix, missing/extra/generic/wrong-disposition/target-scope/
+  command/historical mutation rejection, CF1-HR currentness before record 26,
+  Task122 currentness at record 26, and CF1-HR candidate/integration evidence
+  after transfer activation.
+- Read-only in-memory future-contract diagnosis proves no compliant GREEN is
+  possible in the three authorized paths. With exactly the authorized mapping,
+  the computed assurance fingerprint is
+  `d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071`,
+  while the frozen checker pins
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`.
+  `verifyStaticGraph` first rejects that future contract with `release
+  compatibility records`. The unmodified checker fixes the four-entry
+  compatibility list, requires every CF1-HR path to stay `owned`, has no
+  CF1-HR -> Task122 historical target group, has no CF1-HR -> Task122
+  current-head migration target, and then enforces the obsolete fingerprint.
+- Minimal excluded production path required for any GREEN is
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`. It would
+  need only the explicit finite CF1-HR -> Task122 constants/compatibility,
+  exact CF1-HR and Task122 scope checks, record-26 migration branch, and the
+  derived fingerprint pin; no generic or transitive transfer facility is
+  justified. This packet must stop at the committed RED unless a coordinator
+  expands that exact production-path authority.
+
+## RV-1-E-859 coupled legacy-pin correction and minimal GREEN evidence
+
+- RV-1-E-859 preserves causal RED `e05eaddea5aa39da0cc4baac406fa4c6a9a5902c`
+  and authorizes one checker-inclusive GREEN after normal authority merge
+  `cbe9a89bf98bba4cad6bc4d64f7e2c297f52cff7`. The RED test blob remains in
+  ancestry; the GREEN test changes only three independently reproduced stale
+  assertions coupled to the now-authorized finite mapping.
+- The reproduced prospective GREEN ran `20` assurance tests: `17` passed and
+  only `3` failed. CF1-HR's exact two portable-store paths are now
+  `transferred` rather than legacy `owned`; Task122's exact command is the
+  authorized two-test command rather than its V3 one-test command; and the
+  computed fingerprint is exact
+  `d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071`
+  rather than legacy `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`.
+- The finite GREEN updates only those coupled assertions: the CF1-HR legacy
+  projection expects `transferred` only for the two Task122 paths and `owned`
+  for every other CF1-HR path; Task122 alone joins the explicit V3-command
+  parity exemptions while its record-26 test pins the authorized command; and
+  the fingerprint assertion advances to the derived exact value. No other
+  test assertion changes.
+- The contract/checker GREEN adds no generic facility: it fixes the sole
+  CF1-HR -> Task122 source/target paths, historical record-14 compatibility,
+  exact source and target scopes, historical target group, record-26 current
+  migration, and derived fingerprint. V1-V3, raw records 1-25, 29-card order,
+  every other transfer, and repository prefix remain immutable.
+
+## RV-1-E-859 V4 contract-hash causal correction
+
+- After the three coupled legacy-pin corrections, the focused corpus was
+  `19/20`: its only remaining failure was the V4 file-hash assertion. The
+  exact authorized finite contract bytes SHA-256 to
+  `1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5`,
+  while the legacy assertion pinned
+  `2a5cf62b1fb02d47aa01329b485c76f399585802f26669cce977b66e5bd7f86b`.
+  Keeping the old SHA while changing the contract would require a hash
+  collision, so RV-1-E-859 authorizes exactly this fourth, causal assertion
+  pin update and no other test change.
+- The resulting GREEN retains the preserved RED test in ancestry and changes
+  only the four authorized packet paths: V4 contract, finite checker, focused
+  assurance test, and this claim. The admission proof is 20/20 assurance,
+  exact V4 contract/repository markers at prefix 25, typecheck, factory,
+  diff/scope/immutability/clean/dependency checks, plus full test and verify
+  differential evidence without claiming inherited failures are green.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with `20` passed and `0` failed; contract mode emits exactly
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.
