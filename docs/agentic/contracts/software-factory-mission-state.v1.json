@@ -7,7 +7,8 @@
     "frozenAuthority": {
       "path": "docs/agentic/contracts/task136-bounded-assurance-v4.json",
       "sha256": "1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5",
-      "cardCount": 29
+      "cardCount": 29,
+      "unfinishedCardPrecedence": "authoritative"
     }
   },
   "ownedPathScope": [

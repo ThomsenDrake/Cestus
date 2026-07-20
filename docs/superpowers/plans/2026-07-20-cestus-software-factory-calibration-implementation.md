@@ -37,11 +37,11 @@
 - Modify: `docs/agentic/software-factory.md`
 - Modify: `scripts/check-agent-readiness.mjs`
 
-- [ ] Add the single source with feature IDs, prerequisites, milestones, ownership, exact allowed paths, candidate status, assertions, commands, baseline SHA, release-evidence references, and calibrated risk rules.
-- [ ] Add a deterministic checker and make factory readiness run it.
-- [ ] Align the compact instructions with the source without restating active mission facts.
-- [ ] Confirm the targeted test passes, then run the skill validator, factory check, full verification, whitespace check, and dependency checks.
-- [ ] Commit the minimal GREEN change with `feat(factory): calibrate mission-state authority`.
+- [x] Add the single source with feature IDs, prerequisites, milestones, ownership, exact allowed paths, candidate status, assertions, commands, integration state, release-evidence references, and calibrated risk rules.
+- [x] Add a deterministic checker and make factory readiness run it.
+- [x] Align the compact instructions with the source without restating active mission facts.
+- [x] Confirm the targeted test passes, then run the skill validator, factory check, full verification, whitespace check, and dependency checks.
+- [x] Commit the minimal GREEN change with `feat(factory): calibrate mission-state authority`.
 
 ## Handoff
 
@@ -59,7 +59,7 @@ The committed `f90f5698ee5018788e44447c051e854acdef286e` checker accepted a synt
 
 ### Recovery GREEN
 
-- [ ] Resolve integration SHAs as Git commit objects and require the exact calibrated policy schema.
-- [ ] Enforce SFC-M1's Level 2 architecture/executability pair and bidirectional membership.
-- [ ] Pin frozen V4 precedence for unfinished cards and remove unqualified legacy Level 1 mandates from current instructions.
+- [x] Resolve integration SHAs as Git commit objects and require the exact calibrated policy schema.
+- [x] Enforce SFC-M1's Level 2 architecture/executability pair and bidirectional membership.
+- [x] Pin frozen V4 precedence for unfinished cards and remove unqualified legacy Level 1 mandates from current instructions.
 - [ ] Run the required committed-byte gates and record the inherited record-25 verification differential.
