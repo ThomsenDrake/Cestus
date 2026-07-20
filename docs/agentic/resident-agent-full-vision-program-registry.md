@@ -24635,3 +24635,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   prerequisite/order change, raw-record mutation, compatibility fallback,
   provenance suppression, or weakened authority. No implementation is started
   without that decision; `neo` remains untouched.
+
+## RV-1-E-857 — Task122 portable-cursor direct-source correction authorized
+
+- Recorded at: 2026-07-20T01:03:40Z
+- Human authority accepts the finite route audited in RV-1-E-856. Task122
+  keeps sole prerequisite `CF1-HR`. Exactly
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` and
+  `packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  transfer from CF1-HR to Task122; CF1-HR declares only target Task122, and
+  Task122's exact command adds the portable-store test after the investigation
+  workflow test. No other card, prerequisite, path, target, or release order
+  changes.
+- Raw CF1-HR record 14 remains immutable under canonical compatibility SHA-256
+  `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`.
+  Its source/test historical owned blobs remain respectively
+  `c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091` and
+  `a1f1b04fa75d573bd3c8851a5fb4f15610109d40`. Current-HEAD ownership stays
+  with CF1-HR before strict record 26 and moves to Task122 only at record 26,
+  preserving all historical evidence.
+- The bounded cursor change accepts, only while `started` or
+  `started-running`, the released provider runtime's exact same-run requested
+  model invocation followed by exactly one matching completed or failed
+  terminal event without advancing lifecycle phase. It binds exact actor,
+  stream, run, invocation, provider, artifacts, causation, terminal pairing,
+  and the durable investigation identity. Every mutation, duplicate,
+  reordering, unknown bound event, cross-run value, incomplete/conflicting
+  invocation, or swapped investigation fails closed and burns authority;
+  final-output and later V2 transitions remain unchanged.
+- The same V4 assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b` will preserve its branch/worktree
+  history, forward-merge this authority, and produce one causal assurance RED
+  then one minimal GREEN confined to the authorized contract, assurance-test,
+  and claim paths. After exact gates and one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair, the coordinator will integrate
+  approval and resume the existing Task122 owner from causal RED `358a683a`.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. V1-V3, raw strict records 1-25, all 29
+  card IDs/order, every existing finite mapping and evidence history, and
+  `neo` remain immutable. This authorizes no V5, bridge, generic/transitive
+  transfer, fallback, alternate authority, raw-record mutation, external
+  effect, push, or history rewrite.
