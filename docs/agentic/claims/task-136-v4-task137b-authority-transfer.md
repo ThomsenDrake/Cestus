@@ -500,3 +500,28 @@ Implementation evidence:
   `0` with `20` passed and `0` failed. Final committed-byte admission will run
   the required contract/repository, typecheck, full differential, factory,
   diff, immutable-input, scope, clean-state, and dependency gates.
+
+## RV-1-E-875 W1-123 preflight ownership causal RED checkpoint
+
+- Preserved candidate `789d7ca8abbd7a0fafed323d157490e24ffc7242` was
+  normal-forward-merged with exact clean program authority
+  `3661bf07d103d6602395e1440d75e29e663fa03b` as
+  `c88b47b457c5f34652fd2187d50d7695d9c3a2e6`. The authority merge changes
+  only the registry; this RED changes only this claim and the assurance test.
+  V1-V4 contracts, the checker, raw strict records 1-26, the 29-card order,
+  product bytes, and historical evidence remain byte-identical.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `21` tests, `20` passed, and exactly `1` failed. The new
+  finite direct-source test reports that CF1-HR has only `["Task122"]` rather
+  than exact `["Task122", "W1-123-BOOTSTRAP-HANDOFF"]`. No unrelated
+  contract, checker, command, blob, dependency, or fixture failure occurred.
+- The committed test pins the exact CF1-HR and Task122 source/target
+  dispositions, W1-123's three prerequisites, nine-path scope and four-test
+  command, record-14/record-26 historical owned dispositions and blobs,
+  exact target ordering, mutation rejection, source currentness before strict
+  record 27, W1-123 currentness at record 27, and source candidate/integration
+  evidence. The sole authorized GREEN is the exact four-path packet: V4
+  contract, finite checker, retained RED test, and this claim. It may not add
+  generic, transitive, inferred, fallback, V5, raw-record, registry, or
+  product behavior authority.
