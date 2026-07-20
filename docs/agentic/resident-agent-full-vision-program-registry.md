@@ -24870,3 +24870,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   V1-V3, raw records 1-25, all 29 IDs/order, finite mappings/evidence, and
   `neo` remain immutable. No reset, rebase, amend, squash, drop, rewrite, push,
   or external effect occurs.
+
+## RV-1-E-864 — Task122 cursor recovery candidate admitted for final review
+
+- Recorded at: 2026-07-20T17:16:20Z
+- The same Task122 owner preserves registry-authority merge
+  `99c16639d6e38551ec7a022787db37f02c699325`, causal RED
+  `cf669f74e1cb93a99e07340b33a15555cc8ee674`, and sole minimal GREEN exact
+  candidate `799de1e9f0fc65383f60c55d344f93be126a7efa`. RED changes only the
+  append-only Task122 claim and portable-store test; its portable-store
+  production blob remains byte-identical to the parent and reproduces exactly
+  four failures over 49 retained passes.
+- GREEN requires a completed exact provider transcript before an
+  investigation-planner authority may advance to final output while retaining
+  released transcript-optional behavior for unrelated run types. It models an
+  optional pre-start orchestration prelude as one exact claimed ->
+  runner-dispatching checkpoint pair and burns duplicated, reordered,
+  post-start, mutated, unknown-bound, or cross-run material. Later V2 lifecycle
+  transitions and exact investigation/currentness bindings remain unchanged.
+- Exact committed bytes pass focused **2 files / 53 tests**, cross-boundary
+  **4 files / 143 tests**, standalone typecheck, factory readiness, diff
+  hygiene, assurance **20/20**, all four V4 markers, exact five-path cumulative
+  scope, clean state, and real dependencies with executable Vitest 4.1.9.
+  Full `npm test` and `npm run verify` differentials retain every remaining
+  failure identity and all five skips: record-25 base **60 failed / 2,820
+  passed / 5 skipped**, candidate **49 failed / 2,846 passed / 5 skipped**.
+  The exact 11 Task122 failures are removed and 15 Task122 tests pass.
+- Repository mode continues to fail only at the required pre-record-26 CF1-HR
+  portable-source current-HEAD blob lock. No checker bypass or ownership
+  movement occurs. Status advances Task122 `recovering -> candidate ->
+  reviewing`; one fresh concurrent read-only Terra/xhigh
+  architecture/executability pair now reviews exact candidate `799de1e9`.
+  V1-V3, raw records 1-25, all 29 IDs/order, finite mappings/evidence, and
+  `neo` remain immutable. No push or external effect occurs.
