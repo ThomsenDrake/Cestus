@@ -24743,3 +24743,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   the preserved Task122 RED branch. V1-V3, raw records 1-25, all 29 IDs/order,
   all existing evidence and finite mappings, and `neo` remain immutable. No
   push or external effect is authorized.
+
+## RV-1-E-860 — Task122 transfer assurance correction approved
+
+- Recorded at: 2026-07-20T15:52:36Z
+- The same assurance owner preserves authority merge
+  `cbe9a89bf98bba4cad6bc4d64f7e2c297f52cff7`, causal RED
+  `e05eaddea5aa39da0cc4baac406fa4c6a9a5902c`, and the sole minimal GREEN
+  exact candidate `06e84742637ee715e03cf84e9b79dc6673bd0569`. The cumulative
+  packet changes exactly the V4 contract, checker, assurance test, and V4
+  claim. RED test blob `95eecc067e08ec6ca5f28144b6036e6cef6d1c56`
+  remains preserved in ancestry.
+- During GREEN, four stale assurance pins independently reproduced after the
+  authorized contract/checker change: the two CF1-HR path dispositions,
+  Task122's exact two-test command, derived fingerprint, and V4 contract
+  SHA-256. Their minimum coupled corrections produce test blob
+  `befeaf9546a90ef41e6f7a3cb9fd1401ab184e3d`, assurance **20/20**, and do
+  not weaken other card commands, ownership, immutable inputs, or mutation
+  coverage.
+- Exact candidate admission emits all four V4 markers, executes repository
+  prefix **25/25** then only incomplete-29/found-25, passes standalone
+  typecheck, factory, diff, immutable-input, exact four-path, clean, and real
+  dependency/Vitest 4.1.9 gates. Both `npm test` and `npm run verify` retain
+  the record-25 differential: **12 failing files / 60 failing tests / 2,820
+  passes / 5 skips** with no candidate-owned failure or new skip.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f8025-8a7a-7582-acbc-7295c88d002f` and executability/adversarial task
+  `019f8025-8a7b-7f51-a323-52de670756fa` both return `APPROVED` for exact
+  candidate `06e84742` with no reproduced candidate P0/P1. Their initial
+  isolated-worktree dependency blocks were environment-only; the same pair
+  resumed read-only in the exact clean candidate worktree and verified real
+  dependencies, focused/contract/repository/typecheck gates, and inherited
+  differential. Timeout-sensitive unrelated retries varied, while serial
+  candidate and verifier runs reproduced the exact required baseline.
+- Coordinator adjudication accepts both final verdicts. Status advances the
+  assurance correction `reviewing -> approved`; complete preserved history
+  will now be integrated before the current program base is forward-merged
+  into Task122 RED `358a683a`. V1-V3, raw records 1-25, all 29 IDs/order,
+  finite mappings/evidence, and `neo` remain immutable. No push or external
+  effect occurs.
