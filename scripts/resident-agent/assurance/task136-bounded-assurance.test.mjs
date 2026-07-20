@@ -27,8 +27,8 @@ const task136V4ClaimPath = "docs/agentic/claims/task-136-v4-blocked-card-scope-c
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
-const v4ContractSha256 = "1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5";
-const v4AssuranceFingerprint = "d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071";
+const v4ContractSha256 = "ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354";
+const v4AssuranceFingerprint = "3af58aba85ea68137462d2054072e4e3ce3a2a8146ad3be8ee400b103375feb7";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
 const historicalTask135bSha256 = "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409";
@@ -92,6 +92,37 @@ const historicalCf1HrSha256 = "d55028e1bd036051f5ec2c9d496267623ff2748e54713d388
 const historicalCf1HrBlobs = [
   "c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091",
   "a1f1b04fa75d573bd3c8851a5fb4f15610109d40"
+];
+const cf1HrToW1BootstrapPaths = [
+  "packages/agent/src/specialist-handoff-authority.ts",
+  "packages/agent/test/specialist-handoff-authority.test.ts"
+];
+const task122ToW1BootstrapPaths = [...cf1HrToTask122Paths];
+const w1BootstrapExistingPaths = [
+  "packages/agent/src/ontology-bootstrap-workflow.ts",
+  "packages/agent/test/ontology-bootstrap-workflow.test.ts",
+  "packages/local-runtime/src/agent-ontology-bootstrap-routes.ts",
+  "packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts",
+  "docs/agentic/claims/task-123-resident-full-vision-bootstrap-handoff.md"
+];
+const w1BootstrapOwnedPaths = [
+  "packages/agent/src/ontology-bootstrap-workflow.ts",
+  "packages/agent/test/ontology-bootstrap-workflow.test.ts",
+  ...cf1HrToW1BootstrapPaths,
+  "packages/local-runtime/src/agent-ontology-bootstrap-routes.ts",
+  "packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts",
+  "docs/agentic/claims/task-123-resident-full-vision-bootstrap-handoff.md",
+  ...task122ToW1BootstrapPaths
+];
+const w1BootstrapCommand = "npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts";
+const historicalTask122Sha256 = "729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c";
+const historicalCf1HrAuthorityBlobs = [
+  "81d2df45b2c74f118bea22fdce23a5fd698ddbd0",
+  "309d26e487e200f7a430b261910e4f6ef11b19a1"
+];
+const historicalTask122PortableBlobs = [
+  "aa5859e0d2c8146812673777436e9e284f1c3373",
+  "148c7a4c5af83371f579b808a2970f6a8609394e"
 ];
 const task129MfaToCf1Paths = ["packages/ontology/test/agent-contracts.test.ts"];
 const correctedCf1HrPaths = [
@@ -211,7 +242,7 @@ test("requires the corrected CF1-HR and G136-SC ownership and command projection
     "Task129-MFA"
   ]);
   assert.deepEqual(cf1Hr.ownedPaths, correctedCf1HrPaths.map((path) => ({
-    disposition: cf1HrToTask122Paths.includes(path) ? "transferred" : "owned",
+    disposition: [...cf1HrToTask122Paths, ...cf1HrToW1BootstrapPaths].includes(path) ? "transferred" : "owned",
     path
   })));
   assert.equal(cf1Hr.command, correctedCf1HrCommand);
@@ -395,7 +426,7 @@ test("requires the frozen v4 compatibility branches and Task137B-W fourteen-path
   assert.deepEqual(contract.compositionCorpus, v3.compositionCorpus);
   for (const v3Card of v3.releaseGraph.cards) {
     const v4Card = contract.releaseGraph.cards.find((card) => card.id === v3Card.id);
-    if (!new Set(["Task137B-W", "CF1-HR", "Task139-PM", "G136-SC", "Task122"]).has(v3Card.id)) {
+    if (!new Set(["Task137B-W", "CF1-HR", "Task139-PM", "G136-SC", "Task122", "W1-123-BOOTSTRAP-HANDOFF"]).has(v3Card.id)) {
       assert.equal(v4Card.command, v3Card.command, `unchanged command: ${v3Card.id}`);
     }
   }
@@ -528,7 +559,10 @@ function registryPrefixRecords() {
 
 function releaseRecordsFor(contract) {
   const records = [];
-  const historicalRecords = new Map(registryPrefixRecords().map((record) => [record.cardId, record]));
+  const historicalRecords = new Map([
+    ...registryPrefixRecords(),
+    recordFromRegistry("Task122")
+  ].map((record) => [record.cardId, record]));
   for (const [index, card] of contract.releaseGraph.cards.entries()) {
     const historicalRecord = historicalRecords.get(card.id);
     if (historicalRecord) {
@@ -1601,7 +1635,7 @@ test("requires the finite Task137B-W to Task139-PM transfer only at record 18", 
   }
 });
 
-test("requires the finite CF1-HR to Task122 portable-store transfer only at record 26", () => {
+test("requires the finite CF1-HR and Task122 direct-source transfers at records 26 and 27 only", () => {
   const contract = loadV4Contract();
   const source = contract.releaseGraph.cards.find((card) => card.id === "CF1-HR");
   const target = contract.releaseGraph.cards.find((card) => card.id === "Task122");
@@ -1634,23 +1668,29 @@ test("requires the finite CF1-HR to Task122 portable-store transfer only at reco
   );
 
   assert.deepEqual(target.prerequisiteIds, ["CF1-HR"]);
-  assert.deepEqual(source.transferToIds, ["Task122"]);
+  assert.deepEqual(source.transferToIds, ["Task122", "W1-123-BOOTSTRAP-HANDOFF"]);
   assert.deepEqual(
     source.ownedPaths,
     correctedCf1HrPaths.map((path) => ({
-      disposition: cf1HrToTask122Paths.includes(path) ? "transferred" : "owned",
+      disposition: [...cf1HrToTask122Paths, ...cf1HrToW1BootstrapPaths].includes(path) ? "transferred" : "owned",
       path
     }))
   );
   assert.deepEqual(
     target.ownedPaths,
-    [...task122ExistingPaths, ...cf1HrToTask122Paths].map((path) => ({ disposition: "owned", path }))
+    [...task122ExistingPaths, ...cf1HrToTask122Paths].map((path) => ({
+      disposition: cf1HrToTask122Paths.includes(path) ? "transferred" : "owned",
+      path
+    }))
   );
   assert.equal(target.command, task122PortableStoreCommand);
   assert.deepEqual(contract.releaseCompatibility.historicalRecords[4], {
     cardId: "CF1-HR",
     canonicalJsonSha256: historicalCf1HrSha256,
-    pathDispositions: cf1HrToTask122Paths.map((path) => ({ path, recordDisposition: "owned" }))
+    pathDispositions: [
+      ...cf1HrToTask122Paths.map((path) => ({ path, recordDisposition: "owned" })),
+      ...cf1HrToW1BootstrapPaths.map((path) => ({ path, recordDisposition: "owned" }))
+    ]
   });
 
   const mutations = [
@@ -1770,6 +1810,242 @@ test("requires the finite CF1-HR to Task122 portable-store transfer only at reco
       }),
       new RegExp(`blob mismatch: CF1-HR:${cf1HrToTask122Paths[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
     );
+  }
+  {
+  const contract = loadV4Contract();
+  const cf1Hr = contract.releaseGraph.cards.find((card) => card.id === "CF1-HR");
+  const task122 = contract.releaseGraph.cards.find((card) => card.id === "Task122");
+  const w1Bootstrap = contract.releaseGraph.cards.find((card) => card.id === "W1-123-BOOTSTRAP-HANDOFF");
+  const registryText = readFileSync(registryPath, "utf8");
+  const releasedPrefix = assurance.parseTask136ReleasePrefix(registryText, contract);
+  const rawCf1HrRecord = JSON.parse(rawRecordJson("CF1-HR"));
+  const rawTask122Record = JSON.parse(rawRecordJson("Task122"));
+
+  assert.equal(createHash("sha256").update(readFileSync(v1ContractPath)).digest("hex"), v1ContractSha256);
+  assert.equal(createHash("sha256").update(readFileSync(v2ContractPath)).digest("hex"), v2ContractSha256);
+  assert.equal(createHash("sha256").update(readFileSync(v3ContractPath)).digest("hex"), v3ContractSha256);
+  assert.deepEqual(contract.releaseGraph.cards.map((card) => card.id), expectedIds);
+  assert.equal(releasedPrefix.length, 26);
+  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 26));
+
+  assert.deepEqual(w1Bootstrap.prerequisiteIds, ["CF1-HR", "Task121", "Task122"]);
+  assert.deepEqual(cf1Hr.transferToIds, ["Task122", "W1-123-BOOTSTRAP-HANDOFF"]);
+  assert.deepEqual(
+    cf1Hr.ownedPaths,
+    correctedCf1HrPaths.map((path) => ({
+      disposition: [...cf1HrToTask122Paths, ...cf1HrToW1BootstrapPaths].includes(path) ? "transferred" : "owned",
+      path
+    }))
+  );
+  assert.deepEqual(task122.transferToIds, ["W1-123-BOOTSTRAP-HANDOFF"]);
+  assert.deepEqual(
+    task122.ownedPaths,
+    [
+      "packages/agent/src/investigation-planner-workflow.ts",
+      "packages/agent/test/investigation-planner-workflow.test.ts",
+      "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md",
+      ...task122ToW1BootstrapPaths
+    ].map((path) => ({
+      disposition: task122ToW1BootstrapPaths.includes(path) ? "transferred" : "owned",
+      path
+    }))
+  );
+  assert.deepEqual(w1Bootstrap.ownedPaths, w1BootstrapOwnedPaths.map((path) => ({ disposition: "owned", path })));
+  assert.equal(w1Bootstrap.command, w1BootstrapCommand);
+
+  assert.equal(createHash("sha256").update(JSON.stringify(rawCf1HrRecord)).digest("hex"), historicalCf1HrSha256);
+  assert.deepEqual(
+    rawCf1HrRecord.ownedPathBlobs
+      .filter((entry) => [...cf1HrToTask122Paths, ...cf1HrToW1BootstrapPaths].includes(entry.path))
+      .map(({ disposition, path, blobSha }) => ({ disposition, path, blobSha })),
+    [
+      ...cf1HrToW1BootstrapPaths.map((path, index) => ({
+        disposition: "owned",
+        path,
+        blobSha: historicalCf1HrAuthorityBlobs[index]
+      })),
+      ...cf1HrToTask122Paths.map((path, index) => ({
+        disposition: "owned",
+        path,
+        blobSha: historicalCf1HrBlobs[index]
+      }))
+    ]
+  );
+  assert.equal(createHash("sha256").update(JSON.stringify(rawTask122Record)).digest("hex"), historicalTask122Sha256);
+  assert.deepEqual(
+    rawTask122Record.ownedPathBlobs
+      .filter((entry) => task122ToW1BootstrapPaths.includes(entry.path))
+      .map(({ disposition, path, blobSha }) => ({ disposition, path, blobSha })),
+    task122ToW1BootstrapPaths.map((path, index) => ({
+      disposition: "owned",
+      path,
+      blobSha: historicalTask122PortableBlobs[index]
+    }))
+  );
+  assert.deepEqual(contract.releaseCompatibility.historicalRecords[4], {
+    cardId: "CF1-HR",
+    canonicalJsonSha256: historicalCf1HrSha256,
+    pathDispositions: [
+      ...cf1HrToTask122Paths.map((path) => ({ path, recordDisposition: "owned" })),
+      ...cf1HrToW1BootstrapPaths.map((path) => ({ path, recordDisposition: "owned" }))
+    ]
+  });
+  assert.deepEqual(contract.releaseCompatibility.historicalRecords[5], {
+    cardId: "Task122",
+    canonicalJsonSha256: historicalTask122Sha256,
+    pathDispositions: task122ToW1BootstrapPaths.map((path) => ({ path, recordDisposition: "owned" }))
+  });
+
+  const mutations = [
+    {
+      id: "CF1-HR omits W1-123 target",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "CF1-HR").transferToIds = ["Task122"];
+      }
+    },
+    {
+      id: "CF1-HR reorders direct targets",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "CF1-HR").transferToIds.reverse();
+      }
+    },
+    {
+      id: "CF1-HR adds generic target",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "CF1-HR").transferToIds.push("Task136-FC-Core");
+      }
+    },
+    {
+      id: "CF1-HR authority path remains owned",
+      mutate(mutant) {
+        mutant.releaseGraph.cards
+          .find((card) => card.id === "CF1-HR")
+          .ownedPaths.find((ownedPath) => ownedPath.path === cf1HrToW1BootstrapPaths[0]).disposition = "owned";
+      }
+    },
+    {
+      id: "Task122 wrong target",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task122").transferToIds = ["CF1-HR"];
+      }
+    },
+    {
+      id: "Task122 portable path remains owned",
+      mutate(mutant) {
+        mutant.releaseGraph.cards
+          .find((card) => card.id === "Task122")
+          .ownedPaths.find((ownedPath) => ownedPath.path === task122ToW1BootstrapPaths[0]).disposition = "owned";
+      }
+    },
+    {
+      id: "W1-123 omits authority path",
+      mutate(mutant) {
+        const card = mutant.releaseGraph.cards.find((entry) => entry.id === "W1-123-BOOTSTRAP-HANDOFF");
+        card.ownedPaths = card.ownedPaths.filter((ownedPath) => ownedPath.path !== cf1HrToW1BootstrapPaths[0]);
+      }
+    },
+    {
+      id: "W1-123 adds unrelated path",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "W1-123-BOOTSTRAP-HANDOFF").ownedPaths.push({
+          disposition: "owned",
+          path: "packages/agent/test/byok-provider.test.ts"
+        });
+      }
+    },
+    {
+      id: "W1-123 command omits transferred test",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "W1-123-BOOTSTRAP-HANDOFF").command =
+          "npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts";
+      }
+    },
+    {
+      id: "CF1-HR authority historical disposition drifts",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords[4].pathDispositions[2].recordDisposition = "transferred";
+      }
+    },
+    {
+      id: "Task122 compatibility is absent",
+      mutate(mutant) {
+        mutant.releaseCompatibility.historicalRecords.pop();
+      }
+    },
+    {
+      id: "Task122 historical portable order drifts",
+      mutate(mutant) {
+        const paths = mutant.releaseCompatibility.historicalRecords[5].pathDispositions;
+        [paths[0], paths[1]] = [paths[1], paths[0]];
+      }
+    }
+  ];
+  for (const testCase of mutations) {
+    const mutant = clone(contract);
+    testCase.mutate(mutant);
+    assert.throws(() => verifyStaticGraph(mutant), undefined, testCase.id);
+  }
+
+  const beforeActivationRegistry = releaseRecordMarkdown(releasedPrefix);
+  for (const path of cf1HrToW1BootstrapPaths) {
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: beforeActivationRegistry,
+        adapter: fakeRepositoryAdapter(releasedPrefix, { blobMismatch: { commitish: "HEAD", path } })
+      }),
+      new RegExp(`blob mismatch: CF1-HR:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `CF1-HR remains current before W1-123 record 27: ${path}`
+    );
+  }
+  for (const path of task122ToW1BootstrapPaths) {
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: beforeActivationRegistry,
+        adapter: fakeRepositoryAdapter(releasedPrefix, { blobMismatch: { commitish: "HEAD", path } })
+      }),
+      new RegExp(`blob mismatch: Task122:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `Task122 remains current before W1-123 record 27: ${path}`
+    );
+  }
+
+  const w1BootstrapRecord = clone(releaseRecordsFor(contract).find((record) => record.cardId === "W1-123-BOOTSTRAP-HANDOFF"));
+  for (const prerequisite of w1BootstrapRecord.prerequisites) {
+    const releasedPrerequisite = releasedPrefix.find((record) => record.cardId === prerequisite.cardId);
+    prerequisite.integrationSha = releasedPrerequisite.integrationSha;
+    prerequisite.releaseEventId = releasedPrerequisite.releaseEventId;
+  }
+  const activatedRecords = [...releasedPrefix, w1BootstrapRecord];
+  const activatedRegistry = releaseRecordMarkdown(activatedRecords);
+  const afterActivation = assurance.verifyTask136ReleasePrefix(contract, {
+    registryText: activatedRegistry,
+    adapter: fakeRepositoryAdapter(activatedRecords)
+  });
+  assert.equal(afterActivation.records, 27);
+  for (const path of [...cf1HrToW1BootstrapPaths, ...task122ToW1BootstrapPaths]) {
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: activatedRegistry,
+        adapter: fakeRepositoryAdapter(activatedRecords, { blobMismatch: { commitish: "HEAD", path } })
+      }),
+      new RegExp(`blob mismatch: W1-123-BOOTSTRAP-HANDOFF:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `W1-123 becomes current at record 27: ${path}`
+    );
+  }
+  for (const [sourceId, path] of [
+    ["CF1-HR", cf1HrToW1BootstrapPaths[0]],
+    ["Task122", task122ToW1BootstrapPaths[0]]
+  ]) {
+    const sourceRecord = releasedPrefix.find((record) => record.cardId === sourceId);
+    for (const commitish of [sourceRecord.candidateSha, sourceRecord.integrationSha]) {
+      assert.throws(
+        () => assurance.verifyTask136ReleasePrefix(contract, {
+          registryText: activatedRegistry,
+          adapter: fakeRepositoryAdapter(activatedRecords, { blobMismatch: { commitish, path } })
+        }),
+        new RegExp(`blob mismatch: ${sourceId}:${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
+      );
+    }
+  }
   }
 });
 
