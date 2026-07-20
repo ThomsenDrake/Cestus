@@ -86,3 +86,26 @@ Status: `ready-for-review`
   `npm run factory:check` exited `0`. No candidate full verifier,
   self-integration, integration, or `neo` change is authorized; this sealed
   follow-up requires a fresh independent defects-first review.
+
+## V4 Card 27 — W1-123-BOOTSTRAP-HANDOFF Ownership And Status
+
+- Status transition: `claimed -> implementing` under strict record 26
+  (`RV-1-E-871`); base authority is clean program HEAD
+  `3fd03d675f58f69cc974396aa23257f060cbfcf3`.
+- Sole bounded implementation owner: Codex `gpt-5.6-terra` / `xhigh`, on
+  `codex/w1-123-bootstrap-handoff-v4`. Released prerequisites are exactly
+  `CF1-HR`, `Task121`, and `Task122`.
+- This V4 packet owns only `packages/agent/src/ontology-bootstrap-workflow.ts`,
+  `packages/agent/test/ontology-bootstrap-workflow.test.ts`,
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts`,
+  `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`, and
+  this claim. It consumes the mounted V2 authority/readback lifecycle and
+  Task122 cursor semantics without changing shared contracts, stores,
+  authority producers, providers, registry, assurance, or accepted ontology
+  truth.
+- Required sequence: preserve a claim-only commit, then a causal RED commit
+  that proves the missing production authority composition plus a fail-closed
+  mounted-authority counterfactual, followed by the minimum scoped GREEN and
+  exact V4 gates. No subagent, self-review, integration, release record, push,
+  provider, credential, network, external, PRR, legal, or `neo` action is
+  authorized.
