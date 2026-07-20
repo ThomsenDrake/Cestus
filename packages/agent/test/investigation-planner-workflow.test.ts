@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
   buildAgentProjection,
@@ -35,7 +35,10 @@ import {
   issueMountedArtifactAuthorityOperationForFactory,
   registerMountedArtifactAuthorityIssuerForWakeRuntime
 } from "../../local-runtime/src/mounted-artifact-authority-operation.js";
-import { createPortableMountedAgentArtifactStoreProducer } from "../../local-runtime/src/portable-mounted-agent-artifact-stores.js";
+import {
+  consumeMountedHandoffAuthorityController,
+  createPortableMountedAgentArtifactStoreProducer
+} from "../../local-runtime/src/portable-mounted-agent-artifact-stores.js";
 import { createPortableWorkspaceLifecyclePorts } from "../../local-runtime/src/portable-workspace-lifecycle.js";
 
 const now = () => "2026-07-10T01:00:00.000Z";
@@ -253,6 +256,133 @@ describe("investigation planner workflow", () => {
 
     await expect(fixture.handoff.binding.materialStore.put(Buffer.from("planner final-output material", "utf8")))
       .resolves.toMatchObject({ contentHash: expect.stringMatching(/^sha256:/) });
+  });
+
+  it("completes the planner V2 lifecycle through a real portable mounted witness and verified readback", async () => {
+    const fixture = await portablePlannerModelInvocationFixture();
+
+    const result = await runInvestigationPlannerWorkflowKernel({
+      ...fixture.input,
+      derivativeStore: fixture.handoff.binding.materialStore,
+      handoffStore: fixture.handoff.binding.materialStore,
+      handoffAuthorityWitness: fixture.handoff.binding.authorityWitness,
+      investigationId: "inv_scope_001"
+    });
+
+    expect(result.handoff).toMatchObject({ status: "ready-for-review", lifecycle: "handoff-recorded" });
+    expect(result.readback).toMatchObject({
+      outcome: "verified",
+      taskId: "task_portable_investigation",
+      runId: "run_portable_investigation"
+    });
+    const events = await fixture.input.ledger.readAll();
+    const orderedEffects = events.filter((event) => [
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed"
+    ].includes(event.type));
+    expect(orderedEffects.map((event) => event.type)).toEqual([
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed"
+    ]);
+    const taskStatus = events.findLast((event) => event.type === "agent.task.status.changed");
+    expect(taskStatus?.payload).toMatchObject({ taskId: "task_portable_investigation", status: "completed" });
+    await expect(consumeMountedHandoffAuthorityController(fixture.handoff.controller, [
+      ...orderedEffects.map((event) => event.id),
+      taskStatus!.id
+    ])).resolves.toMatchObject({ schemaVersion: "mounted-handoff-authority-consumed-receipt.v1" });
+    expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.tool.requested", "prr.request.sent", "prr.followup.sent", "assertion.accepted"
+    ]));
+  });
+
+  it("resumes a durable final output through a fresh real portable mounted witness without a second model invocation", async () => {
+    const fixture = await portablePlannerModelInvocationFixture();
+    const materialStore = fixture.handoff.binding.materialStore;
+    const unavailableManifestStore = Object.freeze({
+      async put(content: Buffer) {
+        if (content.toString("utf8").includes("agent-specialist-handoff-manifest.v2")) {
+          throw new Error("manifest storage is unavailable");
+        }
+        return await materialStore.put(content);
+      },
+      get: materialStore.get
+    });
+    const interrupted = await runInvestigationPlannerWorkflowKernel({
+      ...fixture.input,
+      derivativeStore: materialStore,
+      handoffStore: unavailableManifestStore,
+      handoffAuthorityWitness: fixture.handoff.binding.authorityWitness,
+      investigationId: "inv_scope_001"
+    });
+    expect(interrupted.handoff).toMatchObject({ status: "blocked", lifecycle: "output-persisted" });
+    const modelEventIds = (await fixture.input.ledger.readAll())
+      .filter((event) => event.type === "agent.model-invocation.requested" || event.type === "agent.model-invocation.completed")
+      .map((event) => event.id);
+    const recoveryGrant = await fixture.ports.authority.revalidate({
+      operation: "recovery",
+      expectedWorkspaceId: fixture.workspaceId,
+      requiredCapabilities: ["wake", "lifecycle"]
+    });
+    if (!recoveryGrant.ok) throw new Error("portable investigation fixture requires a recovery admission");
+    const recoveryLease = await fixture.ports.supervisorLease.readOrAcquire({
+      admission: recoveryGrant.admission,
+      residentId: "agent_default",
+      supervisorEpoch: "epoch_portable_investigation",
+      policyVersion: "policy_portable_investigation.v1",
+      policyDigest: plannerAuthorityHash,
+      lockStateDigest: plannerAuthorityHash,
+      causationId: "cause_portable_investigation_recovery",
+      correlationId: "correlation_portable_investigation_recovery"
+    });
+    if (recoveryLease.outcome !== "acquired-and-read-back") {
+      throw new Error("portable investigation fixture requires a recovery lease");
+    }
+
+    const retryBinding = await createPortableMountedAgentArtifactStoreProducer(
+      issueMountedArtifactAuthorityOperationForFactory(fixture.wakeRuntime)
+    ).bind({
+      taskId: "task_portable_investigation",
+      attemptId: buildTaskAttemptId({
+        taskId: "task_portable_investigation",
+        runType: "investigation-planner",
+        retryGeneration: 0
+      }),
+      approvedRunId: "run_portable_investigation",
+      runType: "investigation-planner",
+      retryGeneration: 0,
+      investigationId: "inv_scope_001"
+    });
+    const recovered = await runInvestigationPlannerWorkflowKernel({
+      ...fixture.input,
+      derivativeStore: retryBinding.binding.materialStore,
+      handoffStore: retryBinding.binding.materialStore,
+      handoffAuthorityWitness: retryBinding.binding.authorityWitness,
+      investigationId: "inv_scope_001"
+    });
+
+    expect(recovered.handoff).toMatchObject({ status: "ready-for-review", lifecycle: "handoff-recorded" });
+    expect(recovered.readback).toMatchObject({ outcome: "verified", runId: "run_portable_investigation" });
+    expect((await fixture.input.ledger.readAll())
+      .filter((event) => event.type === "agent.model-invocation.requested" || event.type === "agent.model-invocation.completed")
+      .map((event) => event.id)).toEqual(modelEventIds);
+    const effects = (await fixture.input.ledger.readAll()).filter((event) =>
+      [
+        "agent.specialist-run.step.recorded",
+        "agent.specialist-handoff.prepared",
+        "agent.specialist-handoff.recorded",
+        "agent.specialist-run.completed",
+        "agent.task.orchestration.completed"
+      ].includes(event.type) ||
+      (event.type === "agent.task.status.changed" && event.payload.status === "completed")
+    );
+    await expect(consumeMountedHandoffAuthorityController(retryBinding.controller, effects.map((event) => event.id)))
+      .resolves.toMatchObject({ schemaVersion: "mounted-handoff-authority-consumed-receipt.v1" });
   });
 
   it("permits bounded instructional narrative while producing only local task and PRR draft candidates", async () => {
@@ -1079,7 +1209,19 @@ async function portablePlannerModelInvocationFixture() {
   const provider = new FakeModelProvider({
     providerId: "provider_fake_local",
     modelFamilies: ["fake-local"],
-    responseText: JSON.stringify({ planSummary: "Review the evidence." })
+    responseText: JSON.stringify({
+      planSummary: "Review the evidence before creating local drafts.",
+      objectiveRefs: ["objective_portable_investigation"],
+      gapIds: ["gap_portable_investigation"],
+      taskCandidates: [{
+        taskId: "task_portable_candidate",
+        summary: "Review the portable investigation evidence.",
+        priorityRationale: "Preserve the advisory investigation boundary.",
+        linkedRefs: ["objective_portable_investigation", "gap_portable_investigation"],
+        approvalRequirements: ["human-review"]
+      }],
+      prrDraftCandidates: ["Draft a review request without sending it."]
+    })
   });
   const runtime = createAgentRuntime({ ledger: handle.ledger, actor: portableActor, now, providers: [provider] });
   await runtime.initializeDefaultIdentity({ workspaceId });
@@ -1201,12 +1343,24 @@ async function portablePlannerModelInvocationFixture() {
   });
   if (lease.outcome !== "acquired-and-read-back") throw new Error("portable investigation fixture requires a lease");
   const operation = issueMountedArtifactAuthorityOperationForFactory(wakeRuntime);
-  const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+  const attemptId = buildTaskAttemptId({
     taskId: "task_portable_investigation",
-    attemptId: "attempt_portable_investigation",
-    approvedRunId: "run_portable_investigation",
     runType: "investigation-planner",
     retryGeneration: 0
+  });
+  await appendAttemptBinding(handle.ledger, {
+    taskId: "task_portable_investigation",
+    attemptId,
+    runId: "run_portable_investigation",
+    actor: portableActor
+  });
+  const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+    taskId: "task_portable_investigation",
+    attemptId,
+    approvedRunId: "run_portable_investigation",
+    runType: "investigation-planner",
+    retryGeneration: 0,
+    investigationId: "inv_scope_001"
   });
   const contextPacks = createPlannerContextPacks(false, false, (await handle.ledger.readAll()).map((event) => event.id));
   const input = {
@@ -1245,7 +1399,7 @@ async function portablePlannerModelInvocationFixture() {
       }
     })
   };
-  return { handoff, input };
+  return { handoff, input, wakeRuntime, ports, workspaceId };
 }
 
 async function preparedRuntime(
@@ -1323,28 +1477,23 @@ function plannerWorkflowInput(input: {
   };
 }
 
-async function appendAttemptBinding(
-  ledger: InMemoryEventLedger,
-  input: {
-    readonly runType?: "investigation-planner" | "evidence-triage";
-    readonly attemptId?: `attempt_${string}`;
-    readonly runId: string;
-  }
-) {
+interface AttemptBindingInput {
+  readonly taskId?: string;
+  readonly runType?: "investigation-planner" | "evidence-triage";
+  readonly attemptId?: `attempt_${string}`;
+  readonly runId: string;
+  readonly actor?: typeof actor;
+}
+
+async function appendAttemptBinding(ledger: EventLedger, input: AttemptBindingInput) {
   const claim = await appendAttemptClaim(ledger, input);
   const checkpoint = await appendRunnerDispatchingCheckpoint(ledger, claim, input.runId);
   return { claim, checkpoint };
 }
 
-async function appendAttemptClaim(
-  ledger: InMemoryEventLedger,
-  input: {
-    readonly runType?: "investigation-planner" | "evidence-triage";
-    readonly attemptId?: `attempt_${string}`;
-    readonly runId: string;
-  }
-) {
-  const taskId = "task_investigation_001";
+async function appendAttemptClaim(ledger: EventLedger, input: AttemptBindingInput) {
+  const taskId = input.taskId ?? "task_investigation_001";
+  const eventActor = input.actor ?? actor;
   const runType = input.runType ?? "investigation-planner";
   const retryGeneration = 0;
   const leaseClaimGeneration = 1;
@@ -1357,7 +1506,7 @@ async function appendAttemptClaim(
     version: 1,
     streamId,
     context: {
-      actor,
+      actor: eventActor,
       occurredAt: now(),
       correlationId: `corr_${taskId}_${runType}`,
       coreVersion: "0.1.0",
@@ -1370,7 +1519,7 @@ async function appendAttemptClaim(
       attemptId,
       retryGeneration,
       leaseClaimGeneration,
-      workerId: actor.id,
+      workerId: eventActor.id,
       claimedAt: now(),
       leaseExpiresAt: "2026-07-10T02:00:00.000Z",
       idempotencyKey: `task-orchestrator:${taskId}:${runType}:${retryGeneration}:${attemptId}:claim`,
@@ -1390,7 +1539,7 @@ async function appendAttemptClaim(
 }
 
 async function appendRunnerDispatchingCheckpoint(
-  ledger: InMemoryEventLedger,
+  ledger: EventLedger,
   claim: KnowledgeEventOf<"agent.task.orchestration.claimed">,
   runId: string
 ) {
@@ -1427,7 +1576,7 @@ async function appendRunnerDispatchingCheckpoint(
 }
 
 async function appendAttemptRelease(
-  ledger: InMemoryEventLedger,
+  ledger: EventLedger,
   binding: {
     readonly claim: KnowledgeEventOf<"agent.task.orchestration.claimed">;
     readonly checkpoint?: KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
