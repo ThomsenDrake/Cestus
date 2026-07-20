@@ -24394,3 +24394,285 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   contract/repository, typecheck, factory, diff, scope, clean, and dependency
   gates plus one fresh concurrent read-only Terra/xhigh review pair remain
   mandatory. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-850 — Record-25 assurance fixture approved
+
+- Recorded at: 2026-07-19T19:27:18Z
+- The same assurance owner preserves authority merge
+  `c4c67c00872b66dad07507e605dc3801f278f983`, claim-only RED
+  `a8628bfafaced80b1abb4ef1caad6dbc6695fa30`, and minimal GREEN exact
+  candidate `8434ce0ad819e14d914aaf7b013ea2be10280d82`. The RED test blob remains
+  byte-identical to authority at `261bfb8fcf81937ddf7ed4c23db9464d7df70852`;
+  GREEN test blob `9490ecb253267647155f8025340320ea20de4997`
+  changes only the two current-prefix groups and their coupled repository
+  expectations from 24 to 25.
+- Exact candidate admission passes assurance **19/19**, all four V4 markers,
+  repository prefix **25/25** followed only by incomplete-29/found-25,
+  typecheck, factory, diff, exact two-path scope, clean, and dependency gates.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7bcf-ef78-7153-bd78-13f91dbb9605` returns `APPROVED`. It verifies
+  ancestry, exact scope, frozen V1-V4/checker bytes, RED identity, graph/order,
+  mappings, and final clean state.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7bcf-fadb-7c33-a150-bb5a3e5d0c25` independently returns `APPROVED`.
+  It reproduces the exact two-failure RED, 19/19 GREEN, all 25 released
+  commands, the exact repository boundary, and finite truncation, duplicate,
+  and order-mutation rejection. Its non-blocking P2 wording observation that
+  the claim summarizes six count-derived changes while the diff contains
+  seven individual assertion expressions is recorded to backlog without code
+  change.
+- Coordinator adjudication accepts both verdicts. Status advances the
+  record-25 fixture update `reviewing -> approved`; its complete preserved
+  history will now be integrated before Task122 receives the exact current
+  record-25 base. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-851 — Record-25 assurance fixture integrated
+
+- Recorded at: 2026-07-19T19:30:39Z
+- Coordinator merge `d0b45badb5bbee1a11fd5e65a1ac656aaf6f6660`
+  integrates exact approved candidate
+  `8434ce0ad819e14d914aaf7b013ea2be10280d82` with its authority merge,
+  causal RED, minimal GREEN, admission evidence, and dual reviews preserved.
+- Integrated assurance passes **19/19**; contract mode emits all four exact
+  V4 markers; standalone typecheck and factory readiness pass. Repository
+  mode executes all 25 released commands and emits exact
+  `TASK136_REPOSITORY_PREFIX_OK records=25 commands=25` followed only by
+  `repository release closure incomplete: expected 29 records, found 25`.
+  Diff, exact two-path scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9 remain green.
+- V1-V3, raw strict records 1-25, the V4 contract/checker, all 29 card
+  IDs/order/commands, direct-source mappings, and every candidate,
+  integration, review, and release evidence item remain byte-identical.
+  Status advances the fixture update `approved -> integrated`; Task122 may
+  now receive this exact record-25 base. The P2 wording observation from
+  RV-1-E-850 remains backlog. No push, external effect, or `neo` action
+  occurs.
+
+## RV-1-E-852 — Task122 exact record-25 base promotion
+
+- Recorded at: 2026-07-19T19:30:59Z
+- Strict V4 release record 25 and its approved assurance fixtures are clean
+  and integrated at current program head
+  `fb582c402c8ba17eff760cf60e276b83a0e3058f`. The next exact release card is
+  Task122 with sole prerequisite CF1-HR already released at record 14.
+- Preserved Task122 candidate
+  `5a49258f3a4ab56920ee23511731d520fb7bd61f` remains clean on branch
+  `codex/task122-cf1-handoff-adoption` and changes exactly its three V4-owned
+  source, test, and claim paths over immutable base `986c2a43`. Claim
+  `15703c08`, causal RED `89c5c6d2`, and minimal GREEN `5a49258f` remain in
+  order. The current program lineage has not changed any of those three paths
+  since that base.
+- Coordinator authority permits only a forward merge of this registry-bearing
+  exact record-25 program head into the preserved Task122 branch. No rebase,
+  reset, amend, squash, drop, reorder, cherry-pick-over, conflict resolution,
+  code/test repair, self-integration, or history rewrite is authorized by this
+  transition. The candidate must be admitted and freshly reviewed from the
+  merged bytes before integration.
+- Status advances Task122 `candidate-waiting-base -> candidate`. No push,
+  provider, credential, network, external effect, or `neo` action occurs.
+
+## RV-1-E-853 — Task122 exact-base candidate enters review
+
+- Recorded at: 2026-07-19T19:37:44Z
+- Coordinator forward merge
+  `1eedf290cc7fa0b37692042b79744a53a518464b` combines current record-25
+  authority `19181678` with preserved Task122 candidate
+  `5a49258f3a4ab56920ee23511731d520fb7bd61f` without conflict or owned-path
+  change. Claim `15703c08`, causal RED `89c5c6d2`, and minimal GREEN
+  `5a49258f` remain ordered and unmodified.
+- Exact merged-byte admission passes focused **1 file / 16 tests** and
+  cross-boundary **3 files / 106 tests**, standalone typecheck, assurance
+  **19/19**, all four V4 markers, factory readiness, diff hygiene, exact
+  three-path cumulative/original scope, clean tracked/untracked state, unset
+  `core.worktree`, and real non-symlinked top-level dependencies with
+  executable local Vitest 4.1.9. Repository mode executes all 25 released
+  commands and emits exact prefix **25/25** followed only by the expected
+  incomplete-29 boundary.
+- Machine-readable full and `npm run verify` differentials are identical:
+  **11 failing files / 49 failing tests / 2,832 passes / 5 skips**. Relative
+  to clean record-25 program bytes, exactly the eleven Task122 investigation-
+  workflow failures become passes and the new opaque-authority refusal case
+  passes; no unrelated failure is added, removed, changed, or skipped.
+- The candidate consumes only injected opaque/current mounted CF1-HR V2
+  authority and mounted stores, preserves terminal -> orchestration-completed
+  -> task-status order and verified projection readback, and remains advisory
+  only. It adds no task creation, crawl, PRR send, provider transfer,
+  credential authority, fallback write, or other external effect.
+- Status advances Task122 `candidate -> reviewing`. One fresh concurrent
+  read-only Terra/xhigh architecture/executability pair now reviews exact SHA
+  `1eedf290cc7fa0b37692042b79744a53a518464b`; SDD/TDD is not relevant or
+  authorized for reviewers. No integration, strict record 26, push, external
+  effect, or `neo` action occurs before dual approval.
+
+## RV-1-E-854 — Task122 mounted-lifecycle and investigation-binding root-cause checkpoint
+
+- Recorded at: 2026-07-19T19:58:02Z
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f7be3-0b74-71e2-a8b0-dcae7ef61f7a` returns `BLOCKED` with one exact
+  P1 on clean candidate `1eedf290cc7fa0b37692042b79744a53a518464b`.
+  Normal and recovery guards bind task, run, specialist type, attempt, retry,
+  lease, and currentness but never require the durable specialist-started
+  event's `investigationId` to equal the caller's exact investigation. A
+  swapped investigation can therefore reuse the same task/run lifecycle and
+  complete V2 handoff recording.
+- Fresh read-only Terra/xhigh executability/adversarial task
+  `019f7be3-16ae-7c63-94b0-90b83c1ad5d9` independently returns `BLOCKED`
+  with a second exact P1. The focused test helper issues a no-op witness and
+  ordinary store. A real portable mounted binding instead observes the
+  post-bind `agent.model-invocation.*` events through its cursor before the
+  final-output transition, burns authority, and makes the workflow return only
+  `output-persisted`; the required mounted V2 lifecycle cannot complete.
+- Coordinator adjudication accepts both findings. They are fixed by the
+  frozen exact investigation/provenance binding, real mounted-store,
+  fail-closed, and complete V2 lifecycle requirements, not a product choice.
+  All admission evidence remains valid: focused **16/16**, cross-boundary
+  **106/106**, typecheck, assurance **19/19**, four V4 markers, repository
+  **25/25** then incomplete-29/found-25, factory/scope/clean/dependency gates,
+  and exact full/verify **11 files / 49 failures / 2,832 passes / 5 skips**.
+  Those green tests are insufficient because they do not exercise the real
+  mounted cursor or swapped-investigation counterfactual.
+- Standing RV-1-E-732 resumes the same Terra/xhigh Task122 owner task
+  `019f7544-bd1a-7800-ace4-dfa12be1064b`, branch
+  `codex/task122-cf1-handoff-adoption`, and worktree
+  `/home/drake/.codex/worktrees/da35/Cestus`, preserving exact candidate and
+  review history. It forward-merges this registry authority, commits one
+  causal test/claim RED reproducing both P1s with the actual portable mounted
+  producer/controller and exact investigation swap, then one minimal
+  source/claim GREEN within Task122's existing three-path ownership.
+- GREEN must make the ordinary and restored/recovery paths complete through
+  the real mounted V2 stores/witness with exact terminal -> orchestration-
+  completed -> task-status ordering/readback; bind exact investigation before
+  any recovery or completing effect; reject missing, stale, consumed,
+  cross-run, conflicting, or swapped-investigation authority; and retain all
+  attempt/release, provenance, no-fallback, no-send, and advisory-only
+  counterfactuals. Fake/no-op authority may not satisfy the positive path, and
+  no predecessor, contract, registry, or non-owned source change is authorized.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. All focused, cross-boundary, typecheck,
+  full/verify differential, assurance/V4/repository, factory, diff, exact
+  three-path scope, clean, and dependency gates plus one fresh concurrent
+  read-only Terra/xhigh review pair remain mandatory after GREEN. If the
+  released predecessor APIs make a compliant three-path GREEN impossible, the
+  owner must stop with exact counterexample evidence rather than weaken or
+  simulate authority. No push, external effect, or `neo` action occurs.
+
+## RV-1-E-855 — Task122 durably blocked on released portable-cursor ownership
+
+- Recorded at: 2026-07-19T20:13:31Z
+- The same owner forward-merges authority as
+  `84861d1a975d9ec9688a1fa6e74165ddd017e947` and commits causal RED
+  `358a683aaacf3e4ffb18de5ef1f4efefdbb71fce`. RED retains all **16** prior
+  focused passes and adds three exact failures: swapped investigation completes
+  the normal V2 path; swapped investigation does not fail closed in recovery;
+  and the actual portable mounted producer/controller rejects the genuine
+  planner model-invocation history with
+  `portable-mounted-handoff-authority-invalid` instead of completing V2.
+- RED changes only the Task122 test and append-only claim. Production blob
+  `7e195eb539685f8fcf200c59f429311fd28e40af` is byte-identical to the
+  authority merge, and the branch is clean with real non-symlinked dependencies
+  and executable Vitest 4.1.9. No GREEN is created.
+- The exact ownership blocker is reproduced. Task122's three owned paths can
+  bind the durable started-run `investigationId`, but they cannot make the
+  released portable cursor accept the mandatory same-run
+  `agent.model-invocation.*` provenance. The cursor processes every subsequent
+  event as a lifecycle transition and burns because model invocation is not a
+  permitted predecessor/successor. Deferred binding also fails because initial
+  cursor derivation processes the same task/run-bound historical invocation
+  events. Task122 owns neither the cursor implementation/test nor an existing
+  released deferred producer/controller/two-store adapter.
+- A Task122-only workaround would require suppressing or redirecting model
+  provenance, minting/shadowing authority, weakening the cursor, widening the
+  released input boundary, or simulating the positive path; each violates the
+  frozen safety or ownership contract. A compliant correction therefore
+  requires an explicit V4 scope/ownership decision for the current CF1-HR
+  portable-store source and test. Raw strict record 14 cannot simply be
+  mutated, and current-owner verification prevents an unrecorded post-release
+  CF1 edit.
+- Status advances Task122 `reviewing -> implementing-repair -> blocked-scope`.
+  Exact release order makes record 26 the active frontier. Card
+  `W1-123-BOOTSTRAP-HANDOFF` requires released Task122; Task138-H requires
+  both; final Task136 requires Task138-H. No later V4 card is independently
+  eligible. All earlier commits, raw records 1-25, candidates, reviews, REDs,
+  and integration evidence remain preserved. No reset, rebase, amend, squash,
+  drop, rewrite, push, external effect, or `neo` action occurs.
+
+## RV-1-E-856 — Task122 finite direct-source transfer decision audit
+
+- Recorded at: 2026-07-19T20:18:28Z
+- Coordinator re-audit of the V4 checker confirms one finite append-only route
+  can preserve the exact 29-card order and raw records 1-25: transfer only
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` and
+  `packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  from current owner CF1-HR to prerequisite-bound target Task122 at strict
+  record 26.
+- Raw CF1-HR record 14 remains byte-identical. Its canonical compatibility hash
+  is `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`;
+  its two historical owned blobs are respectively
+  `c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091` and
+  `a1f1b04fa75d573bd3c8851a5fb4f15610109d40`, which still equal current
+  record-25 HEAD.
+- A finite V4 mapping would mark only those two CF1-HR paths transferred,
+  declare only target Task122, add the two paths to Task122's current ownership,
+  and extend Task122's exact command with the portable-store test. Before
+  record 26, current-HEAD verification continues to bind the record-14 blobs.
+  Once record 26 exists, current ownership and new blobs bind Task122 while
+  record-14 candidate, integration, review, release, and historical blobs
+  remain verified.
+- The corresponding cursor correction is also finite: while phase is
+  `started` or `started-running`, accept only the released provider runtime's
+  exact same-run `agent.model-invocation.requested` followed by one matching
+  `agent.model-invocation.completed` or `agent.model-invocation.failed`
+  provenance chain without advancing the handoff phase. It must bind actor,
+  stream, run, invocation, provider, input/output artifact, causation, and
+  terminal pairing; mutation, duplication, reordering, unknown bound events,
+  cross-run material, or an incomplete/conflicting invocation still burns
+  authority. Final-output and all later V2 transitions remain unchanged.
+- This route requires an explicit product/scope authorization because it
+  changes the frozen V4 ownership mapping, CF1-HR cursor acceptance semantics,
+  Task122 cumulative scope, and Task122 exact command. It does not require a
+  V5 contract, new card, bridge, generic or transitive transfer facility,
+  prerequisite/order change, raw-record mutation, compatibility fallback,
+  provenance suppression, or weakened authority. No implementation is started
+  without that decision; `neo` remains untouched.
+
+## RV-1-E-857 — Task122 portable-cursor direct-source correction authorized
+
+- Recorded at: 2026-07-20T01:03:40Z
+- Human authority accepts the finite route audited in RV-1-E-856. Task122
+  keeps sole prerequisite `CF1-HR`. Exactly
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts` and
+  `packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  transfer from CF1-HR to Task122; CF1-HR declares only target Task122, and
+  Task122's exact command adds the portable-store test after the investigation
+  workflow test. No other card, prerequisite, path, target, or release order
+  changes.
+- Raw CF1-HR record 14 remains immutable under canonical compatibility SHA-256
+  `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`.
+  Its source/test historical owned blobs remain respectively
+  `c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091` and
+  `a1f1b04fa75d573bd3c8851a5fb4f15610109d40`. Current-HEAD ownership stays
+  with CF1-HR before strict record 26 and moves to Task122 only at record 26,
+  preserving all historical evidence.
+- The bounded cursor change accepts, only while `started` or
+  `started-running`, the released provider runtime's exact same-run requested
+  model invocation followed by exactly one matching completed or failed
+  terminal event without advancing lifecycle phase. It binds exact actor,
+  stream, run, invocation, provider, artifacts, causation, terminal pairing,
+  and the durable investigation identity. Every mutation, duplicate,
+  reordering, unknown bound event, cross-run value, incomplete/conflicting
+  invocation, or swapped investigation fails closed and burns authority;
+  final-output and later V2 transitions remain unchanged.
+- The same V4 assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b` will preserve its branch/worktree
+  history, forward-merge this authority, and produce one causal assurance RED
+  then one minimal GREEN confined to the authorized contract, assurance-test,
+  and claim paths. After exact gates and one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair, the coordinator will integrate
+  approval and resume the existing Task122 owner from causal RED `358a683a`.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. V1-V3, raw strict records 1-25, all 29
+  card IDs/order, every existing finite mapping and evidence history, and
+  `neo` remain immutable. This authorizes no V5, bridge, generic/transitive
+  transfer, fallback, alternate authority, raw-record mutation, external
+  effect, push, or history rewrite.
