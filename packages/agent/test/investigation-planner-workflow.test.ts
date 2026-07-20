@@ -1231,12 +1231,6 @@ async function portablePlannerModelInvocationFixture() {
     requestedBy: "actor_investigator",
     priority: "normal"
   });
-  await runtime.startRun({
-    runId: "run_portable_investigation",
-    taskId: "task_portable_investigation",
-    runType: "investigation-planner",
-    scope: { kind: "investigation", refs: ["inv_scope_001"] }
-  });
   const ports = createPortableWorkspaceLifecyclePorts({
     workspaceId,
     residentId: "agent_default",
@@ -1353,6 +1347,12 @@ async function portablePlannerModelInvocationFixture() {
     attemptId,
     runId: "run_portable_investigation",
     actor: portableActor
+  });
+  await runtime.startRun({
+    runId: "run_portable_investigation",
+    taskId: "task_portable_investigation",
+    runType: "investigation-planner",
+    scope: { kind: "investigation", refs: ["inv_scope_001"] }
   });
   const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
     taskId: "task_portable_investigation",
@@ -1508,7 +1508,7 @@ async function appendAttemptClaim(ledger: EventLedger, input: AttemptBindingInpu
     context: {
       actor: eventActor,
       occurredAt: now(),
-      correlationId: `corr_${taskId}_${runType}`,
+      correlationId: `corr_${taskId}`,
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0", agent: "0.1.0" },
       causationId: taskStream.at(-1)!.id
@@ -1551,10 +1551,10 @@ async function appendRunnerDispatchingCheckpoint(
     version: 1,
     streamId,
     context: {
-      actor,
+      actor: claim.context.actor,
       occurredAt: now(),
       causationId: claim.id,
-      correlationId: `corr_${taskId}_${runType}`,
+      correlationId: `corr_${taskId}`,
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0", agent: "0.1.0" }
     },

@@ -198,16 +198,16 @@ describe("portable mounted agent artifact stores", () => {
   });
 
   it.each([
-    ["completed", modelInvocationCompletedEvent()],
-    ["failed", modelInvocationFailedEvent()]
+    ["completed", investigationModelInvocationCompletedEvent()],
+    ["failed", investigationModelInvocationFailedEvent()]
   ] as const)("keeps the cursor at started across one exact provider %s transcript", async (_terminal, terminal) => {
     const fixture = authorityFixture();
-    const events = [startedEvent(), modelInvocationRequestedEvent(), terminal];
+    const events = [investigationStartedEvent(), investigationModelInvocationRequestedEvent(), terminal];
     Object.defineProperty(fixture.handle.ledger, "readAll", {
       configurable: true,
       value: async () => events.map((event) => structuredClone(event))
     });
-    const { result } = await issuedBinding(fixture);
+    const { result } = await issuedBinding(fixture, investigationDispatch);
 
     await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).resolves.toBeUndefined();
   });
@@ -252,9 +252,9 @@ describe("portable mounted agent artifact stores", () => {
       configurable: true,
       value: async () => events.map((event) => structuredClone(event))
     });
-    const { result } = await issuedBinding(fixture, investigationDispatch);
-
-    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).rejects.toThrow(/authority/i);
+    await expect(issuedBinding(fixture, investigationDispatch).then(async ({ result }) => {
+      await beforeMountedHandoffAuthorityEffect(result.controller, "final-output");
+    })).rejects.toThrow(/authority/i);
   });
 
   it.each([
@@ -268,9 +268,9 @@ describe("portable mounted agent artifact stores", () => {
       configurable: true,
       value: async () => events.map((event) => structuredClone(event))
     });
-    const { result } = await issuedBinding(fixture, investigationDispatch);
-
-    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).rejects.toThrow(/authority/i);
+    await expect(issuedBinding(fixture, investigationDispatch).then(async ({ result }) => {
+      await beforeMountedHandoffAuthorityEffect(result.controller, "final-output");
+    })).rejects.toThrow(/authority/i);
   });
 
   it.each([undefined, "inv_portable_handoff_swapped"])("rejects %s investigation binding before witness issuance", async (investigationId) => {
@@ -1008,6 +1008,22 @@ function investigationModelInvocationCompletedEvent(patch: Record<string, unknow
     }),
     payload: {
       ...completed.payload,
+      runId: investigationDispatch.approvedRunId
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function investigationModelInvocationFailedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  const failed = modelInvocationFailedEvent();
+  return {
+    ...failed,
+    context: eventContext({
+      causationId: "evt_requested_portable_handoff",
+      correlationId: "corr_inv_portable_handoff"
+    }),
+    payload: {
+      ...failed.payload,
       runId: investigationDispatch.approvedRunId
     },
     ...patch
