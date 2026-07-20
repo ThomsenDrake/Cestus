@@ -24676,3 +24676,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo` remain immutable. This authorizes no V5, bridge, generic/transitive
   transfer, fallback, alternate authority, raw-record mutation, external
   effect, push, or history rewrite.
+
+## RV-1-E-858 — Task122 transfer assurance stops on excluded checker path
+
+- Recorded at: 2026-07-20T01:11:34Z
+- The same assurance owner preserves normal authority merge
+  `d55dabcf570e37eac85bb064cf0bdb5ffc12b9f2` and causal RED
+  `e05eaddea5aa39da0cc4baac406fa4c6a9a5902c`. The RED changes only the
+  authorized assurance test and claim, leaves contract/checker/registry bytes
+  unchanged after the merge, and is clean. Its exact command runs **20**
+  tests: the inherited nineteen pass and the new finite record-26 transfer
+  proof fails only because `CF1-HR.transferToIds` is `[]` rather than exact
+  `["Task122"]`. No GREEN is created.
+- A read-only future-contract probe reproduces the hard scope conflict. The
+  exact authorized mapping computes V4 fingerprint
+  `d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071`,
+  while the executable checker pins
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`
+  and first rejects with `release compatibility records`. The checker also
+  hard-codes the four-entry compatibility list, requires every CF1-HR path to
+  remain owned, lacks the CF1-HR -> Task122 historical target group, and lacks
+  the record-26 current-head migration branch.
+- Therefore the authorized three-path packet cannot produce an honest GREEN.
+  The sole minimal excluded production path is
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`, which must
+  receive only the finite CF1-HR -> Task122 compatibility, exact source/target
+  scope, record-26 migration, and derived fingerprint pins. Adding that path
+  is a genuine expansion of the user's exact path scope; standing recovery
+  authority does not override the explicit boundary.
+- Status advances the assurance packet `implementing -> blocked-scope` while
+  preserving its RED for forward completion. Task122 stays blocked at strict
+  record 26 and no later release card is independently eligible. V1-V3, raw
+  records 1-25, all 29 IDs/order, every historical mapping/evidence item, and
+  `neo` remain unchanged. No reset, rebase, amend, squash, drop, rewrite,
+  integration, review, push, external effect, or false GREEN occurs.
