@@ -455,3 +455,53 @@ credential, network, live-service, integration, or `neo` action is authorized.
   `npm test -- packages/agent/test/investigation-planner-workflow.test.ts`
   exited `1` with 3 expected failures and 16 retained passes (19 total): the
   normal swap, recovery swap, and real mounted post-model cursor assertion.
+
+## RV-1-E-861 Direct Portable Cursor GREEN
+
+- Authority merge retained: `dba925a1e056c9db0804bfefbd89450e6576a054`
+  forward-merges the exact clean program authority
+  `de2a5518d5db6180a216a3c889ee39af641ed2c4` into the preserved causal RED
+  `358a683aaacf3e4ffb18de5ef1f4efefdbb71fce`; no history was rewritten.
+- The planner now requires the durable `agent.specialist-run.started`
+  investigation ID to equal the supplied ID both before normal preparation and
+  before recovery readback or completion. A same task/run/type with a swapped
+  investigation therefore returns the safe blocked result before model,
+  storage, terminal, projection, provider, or external work.
+- The transferred portable cursor records exactly one same-run provider
+  transcript while its handoff phase remains `started` or `started-running`:
+  a schema-valid `agent.model-invocation.requested` with the exact resident
+  actor, invocation stream, run, provider, model family, input hash, run type,
+  correlation, and durable-start causation; then exactly one matching
+  `completed` or `failed` terminal at stream sequence two and request
+  causation. A completed terminal additionally binds its output hash and model
+  family. The released failed-event schema has no output artifact, so that
+  terminal binds its exact no-output payload instead. Pending, duplicate,
+  reordered, malformed, cross-run, or unknown transcript material burns the
+  opaque authority without advancing the handoff lifecycle.
+- The real positive coverage uses a portable workspace and SQLite ledger, a
+  current portable producer, its separate bound material/manifest capability
+  pair, opaque witness/controller, mounted production-prompt readback, and the
+  released runtime model invocation. It proves normal verified V2 readback and
+  fresh-admission recovery after a manifest interruption without a second model
+  invocation. No no-op witness, ordinary store, raw V2 completion, fallback
+  write, task creation, crawl, provider transfer, graph mutation, tool, or PRR
+  send satisfies the positive path.
+- GREEN focused command:
+
+  ```bash
+  npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts
+  ```
+
+  exited `0` with 2 files and 49 tests passed. The governing cross-boundary
+  command
+
+  ```bash
+  npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-runner-kernel.test.ts
+  ```
+
+  exited `0` with 4 files and 139 tests passed. The V4 bounded assurance gate
+  exited `0` with exactly 20/20 tests, and V4 contract mode emitted all four
+  required markers. `npm run factory:check` exited `0`. Remaining committed-byte
+  differential and repository gates are recorded by the final bounded packet; no integration,
+  registry, `neo`, provider, credential, network, external, or fallback action
+  is authorized.

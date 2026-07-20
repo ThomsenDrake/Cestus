@@ -191,6 +191,85 @@ describe("portable mounted agent artifact stores", () => {
     await expect(issuedBinding(conflicting)).rejects.toThrow(/authority/i);
   });
 
+  it.each([
+    ["completed", modelInvocationCompletedEvent()],
+    ["failed", modelInvocationFailedEvent()]
+  ] as const)("keeps the cursor at started across one exact provider %s transcript", async (_terminal, terminal) => {
+    const fixture = authorityFixture();
+    const events = [startedEvent(), modelInvocationRequestedEvent(), terminal];
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => events.map((event) => structuredClone(event))
+    });
+    const { result } = await issuedBinding(fixture);
+
+    await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).resolves.toBeUndefined();
+  });
+
+  it("burns the cursor for malformed, duplicated, reordered, or cross-run provider transcript material", async () => {
+    const mutations: readonly (readonly KnowledgeEvent[])[] = [
+      [modelInvocationCompletedEvent()],
+      [modelInvocationRequestedEvent()],
+      [modelInvocationRequestedEvent(), modelInvocationRequestedEvent({ id: "evt_requested_portable_handoff_duplicate" })],
+      [modelInvocationRequestedEvent(), modelInvocationCompletedEvent(), modelInvocationCompletedEvent({ id: "evt_completed_portable_handoff_duplicate" })],
+      [modelInvocationRequestedEvent(), modelInvocationCompletedEvent({
+        payload: { ...modelInvocationCompletedEvent().payload, providerId: "provider_portable_handoff_foreign" }
+      })],
+      [modelInvocationRequestedEvent({
+        payload: { ...modelInvocationRequestedEvent().payload, runId: "run_portable_handoff_foreign" }
+      })],
+      [{
+        ...modelInvocationRequestedEvent(),
+        id: "evt_unknown_model_portable_handoff",
+        type: "agent.model-invocation.unknown"
+      } as unknown as KnowledgeEvent]
+    ];
+    for (const suffix of mutations) {
+      const fixture = authorityFixture();
+      const events: KnowledgeEvent[] = [startedEvent()];
+      Object.defineProperty(fixture.handle.ledger, "readAll", {
+        configurable: true,
+        value: async () => events.map((event) => structuredClone(event))
+      });
+      const { result } = await issuedBinding(fixture);
+      events.push(...suffix);
+
+      await expect(beforeMountedHandoffAuthorityEffect(result.controller, "final-output")).rejects.toThrow(/authority/i);
+      await expect(result.binding.materialStore.put(Buffer.from("must-not-write", "utf8"))).rejects.toThrow(/authority/i);
+    }
+  });
+
+  it.each([undefined, "inv_portable_handoff_swapped"])("rejects %s investigation binding before witness issuance", async (investigationId) => {
+    const fixture = authorityFixture();
+    const investigationStart = startedEvent({
+      payload: {
+        ...startedEvent().payload,
+        runType: "investigation-planner",
+        investigationId: "inv_portable_handoff_exact"
+      }
+    });
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => [structuredClone(investigationStart)]
+    });
+    const wakeRuntime = {};
+    registerMountedArtifactAuthorityIssuerForWakeRuntime({
+      wakeRuntime,
+      lifecyclePorts: fixture.ports,
+      runtimeHandle: fixture.handle
+    });
+    await admit(fixture, "wake");
+    const producer = createPortableMountedAgentArtifactStoreProducer(
+      issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+    );
+
+    await expect(Reflect.apply(producer.bind, producer, [{
+      ...dispatch,
+      runType: "investigation-planner",
+      ...(investigationId === undefined ? {} : { investigationId })
+    }])).rejects.toThrow(/authority/i);
+  });
+
   it("advances an exact controller only across the canonical final-output suffix", async () => {
     const fixture = authorityFixture();
     const events = [startedEvent()];
@@ -787,6 +866,68 @@ function startedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
   } as KnowledgeEvent;
 }
 
+function modelInvocationRequestedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...startedEvent(),
+    id: "evt_requested_portable_handoff",
+    type: "agent.model-invocation.requested",
+    streamId: "agent_model_invocation_inv_portable_handoff",
+    sequence: 1,
+    context: eventContext({ causationId: "evt_started_portable_handoff", correlationId: "corr_inv_portable_handoff" }),
+    payload: {
+      invocationId: "inv_portable_handoff",
+      runId: dispatch.approvedRunId,
+      providerId: "provider_portable_handoff",
+      modelFamily: "portable-local",
+      inputArtifactHash: hash("1"),
+      safetyClass: "workspace-safe",
+      credentialRefId: "agent_credref_portable_handoff",
+      credentialKind: "local-no-secret",
+      runType: dispatch.runType
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function modelInvocationCompletedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...modelInvocationRequestedEvent(),
+    id: "evt_completed_portable_handoff",
+    type: "agent.model-invocation.completed",
+    sequence: 2,
+    context: eventContext({ causationId: "evt_requested_portable_handoff", correlationId: "corr_inv_portable_handoff" }),
+    payload: {
+      invocationId: "inv_portable_handoff",
+      runId: dispatch.approvedRunId,
+      providerId: "provider_portable_handoff",
+      outputArtifactHash: hash("2"),
+      completedAt: "2026-07-16T00:00:00.000Z",
+      modelFamily: "portable-local"
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
+function modelInvocationFailedEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
+  return {
+    ...modelInvocationRequestedEvent(),
+    id: "evt_failed_portable_handoff",
+    type: "agent.model-invocation.failed",
+    sequence: 2,
+    context: eventContext({ causationId: "evt_requested_portable_handoff", correlationId: "corr_inv_portable_handoff" }),
+    payload: {
+      invocationId: "inv_portable_handoff",
+      runId: dispatch.approvedRunId,
+      providerId: "provider_portable_handoff",
+      category: "provider-unavailable",
+      message: "Portable provider is unavailable.",
+      retryable: false,
+      allowedActions: ["choose a configured provider"]
+    },
+    ...patch
+  } as KnowledgeEvent;
+}
+
 function finalOutputEvent(patch: Record<string, unknown> = {}): KnowledgeEvent {
   return {
     ...startedEvent(),
@@ -1003,11 +1144,11 @@ function unrelatedEvent(): KnowledgeEvent {
   } as unknown as KnowledgeEvent;
 }
 
-function eventContext(patch: { readonly actorId?: string; readonly causationId?: string } = {}) {
+function eventContext(patch: { readonly actorId?: string; readonly causationId?: string; readonly correlationId?: string } = {}) {
   return {
     actor: { id: patch.actorId ?? "agent_default", kind: "agent" as const, label: "Cestus resident" },
     occurredAt: "2026-07-16T00:00:00.000Z",
-    correlationId: "corr_portable_handoff",
+    correlationId: patch.correlationId ?? "corr_portable_handoff",
     coreVersion: "0.1.0",
     packVersions: { core: "0.1.0", agent: "0.1.0" },
     ...(patch.causationId === undefined ? {} : { causationId: patch.causationId })

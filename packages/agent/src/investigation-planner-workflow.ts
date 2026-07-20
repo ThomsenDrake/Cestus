@@ -236,7 +236,8 @@ async function hasAuthoritativeInvestigationPlannerAttempt(
   if (
     started.length !== 1 ||
     started[0]!.payload.runType !== "investigation-planner" ||
-    started[0]!.payload.taskId !== input.taskId
+    started[0]!.payload.taskId !== input.taskId ||
+    started[0]!.payload.investigationId !== input.investigationId
   ) {
     return false;
   }
@@ -353,7 +354,8 @@ function isExactInvestigationPlannerRecovery(
   );
   return started.length === 1 &&
     started[0]!.payload.runType === "investigation-planner" &&
-    started[0]!.payload.taskId === input.taskId;
+    started[0]!.payload.taskId === input.taskId &&
+    started[0]!.payload.investigationId === input.investigationId;
 }
 
 async function readOutputPersistedRecovery(
