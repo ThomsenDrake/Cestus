@@ -25135,3 +25135,131 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   and obtain one fresh Terra/xhigh architecture/executability pair. No V5,
   product behavior, raw release-record mutation, external effect, push, or
   `neo` action is authorized.
+
+## RV-1-E-871 — Record-26 assurance closed; bootstrap handoff claimed
+
+- Recorded at: 2026-07-20T20:03:03Z
+- The same assurance owner preserves authority merge
+  `add6c0b50994c67d3074370e3f751356391c2d28`, claim-only causal RED
+  `59edf2c8b9c38f2b77571b063490cc61b286978f`, and minimal GREEN
+  `789d7ca8abbd7a0fafed323d157490e24ffc7242`. Fresh Terra/xhigh
+  architecture and executability reviewers
+  `019f8112-4e72-7552-80d8-4bbef8f27265` and
+  `019f8112-4d69-7801-8bf1-cb9cbdda882f` both approve exact candidate
+  `789d7ca8` with no reproduced P0/P1. The complete lineage is integrated
+  without rewrite at merge `ff5851592a3cdbba3b02efd92c9d2ac9b5a67861`.
+- Integrated bytes pass assurance **20/20**, all four exact V4 markers,
+  repository prefix **26 records / 26 commands** followed only by the expected
+  incomplete-29/found-26 boundary, standalone typecheck, factory readiness,
+  diff/clean/dependency gates, and identical `npm test` / `npm run verify`
+  differential: **11 failing files / 49 failing tests / 2,847 passes / 5
+  skips**. Raw records 1–26, V1–V4 operational authority, finite mappings,
+  frozen graph order, product bytes, and historical record-25 preactivation
+  evidence remain unchanged.
+- Strict record 26 makes `W1-123-BOOTSTRAP-HANDOFF` the sole next release card;
+  all prerequisites `CF1-HR`, `Task121`, and `Task122` are released. One
+  bounded implementation owner is claimed for exactly its five V4 paths:
+  ontology-bootstrap workflow source/test, ontology-bootstrap route
+  source/test, and its claim. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task. Status is
+  `claimed -> implementing`; no later card, external effect, push, or `neo`
+  action begins.
+
+## RV-1-E-872 — Bootstrap handoff factory-authority root-cause checkpoint
+
+- Recorded at: 2026-07-20T20:33:25Z
+- The same W1-123-BOOTSTRAP-HANDOFF owner preserves claim
+  `a7a012bd5076663f1d8a1301be39d9bc0f6d8445`, causal RED
+  `7d6e0f31`, and first GREEN candidate
+  `763e3b943786ab69d157afccef50fed06b4c96cb`. Candidate admission passes
+  focused **19/19**, cross-boundary **89/89**, assurance **20/20**, and all
+  four exact V4 markers while preserving pending-approval suspension.
+- Repository command execution independently reproduces one P1 before prefix
+  acceptance: the route imports the factory-only
+  `issueMountedArtifactAuthorityOperationForFactory` issuer, violating the
+  released Task137 authority-import boundary. This is not a product choice;
+  the frozen contract requires the route to consume only released runtime/
+  handle capability seams and forbids route-local authority issuance.
+- Status remains `implementing`. The same owner will forward-merge this
+  registry-only authority, preserve the first GREEN, commit one changed-tactic
+  causal recovery RED and minimal GREEN within the same five paths, then rerun
+  admission before fresh review. No default-factory, shared authority,
+  portable-store, strict-record, external-effect, push, or `neo` change is
+  authorized.
+
+## RV-1-E-873 — Bootstrap handoff currentness root-cause checkpoint
+
+- Recorded at: 2026-07-20T20:56:41Z
+- Exact recovery candidate `72e39d0eedab1904be2d217fbc6029e374dab474`
+  passes its admitted focused, cross-boundary, typecheck, assurance, repository,
+  factory, scope, differential, clean-state, and dependency gates. Fresh
+  read-only architecture and executability reviewers
+  `/root/task123_arch_review` and `/root/task123_exec_review` nevertheless both
+  reproduce P1 fail-closed violations before approval suspension.
+- A structurally invalid mounted witness reaches durable bootstrap and
+  final-output events before authority validation, while a previously issued
+  but non-current witness reaches the pending-approval dossier, tool request,
+  and waiting status without invoking currentness revalidation. Both violate
+  the frozen requirement that missing, stale, swapped, cross-run, conflicting,
+  unavailable, or unverified mounted authority fail before bootstrap/material
+  effects.
+- Status returns `reviewing -> implementing`. The same owner will preserve all
+  history, forward-merge this registry-only authority, commit one causal RED
+  covering both reproduced paths and one minimal GREEN within the same exact
+  five paths, rerun every admission gate, and obtain a fresh concurrent review
+  pair. No shared authority/store/default-factory change, strict release record,
+  external effect, push, or `neo` action is authorized.
+
+## RV-1-E-874 — Bootstrap handoff blocked on released preflight ownership
+
+- Recorded at: 2026-07-20T21:11:18Z
+- The same owner preserves authority merge
+  `59b37de640a34e8ef6f1672932976d1d010f5d8c` and causal RED
+  `7a7509aa984e2d59ad212fa801c1dcaa2e996451` with **2 files / 22
+  tests, 2 failed / 20 passed**. No production byte changed. Both failures are
+  the exact review findings: invalid authority reaches final-output work, and
+  non-current authority reaches the suspended approval effects.
+- Two independent read-only interface audits confirm that the sole released
+  witness validator consumes the one-shot witness required later by the V2
+  recorder. The separate portable controller and preparation binder cannot
+  prove that they are paired with that witness and both exact stores. No legal
+  sequence inside Task123's five owned paths can validate membership,
+  currentness, lifecycle, and store pairing before effects while preserving the
+  witness for terminal recording.
+- Status is `implementing -> blocked` on one genuine scope/ownership decision.
+  The minimum safety-preserving correction requires a non-consuming opaque
+  witness preflight in the CF1-HR authority source/test plus issued store-pair
+  binding in the Task122 portable source/test, followed by the existing
+  Task123 RED/GREEN. V4 direct-source ownership and historical compatibility
+  must be amended before those released paths can change. No workaround,
+  alternate authority, API widening, integration, release record, push, or
+  `neo` action is permitted meanwhile.
+
+## RV-1-E-875 — Bootstrap handoff preflight ownership correction authorized
+
+- Recorded at: 2026-07-20T21:22:26Z
+- Human authority resolves RV-1-E-874 with an exact finite V4 direct-source
+  correction. W1-123 prerequisites and all **29** card IDs/order remain
+  unchanged. CF1-HR additionally transfers only its specialist-handoff
+  authority source/test to W1-123; Task122 transfers only its portable mounted
+  store source/test to W1-123. W1-123 therefore expands from five to exactly
+  nine owned paths and its command adds both transferred test files.
+- Raw strict records **1–26** remain byte-identical. Historical CF1-HR record
+  14 remains bound to canonical hash `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`
+  and authority blobs `81d2df45b2c74f118bea22fdce23a5fd698ddbd0` /
+  `309d26e487e200f7a430b261910e4f6ef11b19a1`; historical Task122 record
+  26 remains bound to canonical hash
+  `729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c`
+  and portable blobs `aa5859e0d2c8146812673777436e9e284f1c3373` /
+  `148c7a4c5af83371f579b808a2970f6a8609394e`, all with record disposition
+  `owned`. Released-source current-HEAD ownership remains authoritative until
+  strict record 27.
+- The same V4 assurance owner is authorized for one causal RED and minimal
+  GREEN in exactly the contract, checker, assurance test, and V4 transfer
+  claim. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task. After fresh dual review and
+  integration, the same Task123 owner resumes preserved RED `7a7509aa` for the
+  minimum non-consuming witness/binding preflight within the exact nine-path
+  boundary. No V5, generic/transitive transfer facility, fallback,
+  compatibility lane, new card, raw-record mutation, external effect, push,
+  or `neo` action is authorized.
