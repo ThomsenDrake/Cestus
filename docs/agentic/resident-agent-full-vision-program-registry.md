@@ -25309,3 +25309,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   complete assurance history may integrate and advance the preserved Task123
   RED. No push, external effect, release record, or `neo` action is authorized
   by this event.
+
+## RV-1-E-878 — Preflight assurance integrated; Task123 unblocked
+
+- Recorded at: 2026-07-20T23:37:16Z
+- Durable Git, registry, V4 contract, claim, and calibrated mission-state
+  reconstruction confirms clean program authority `f923812c`, clean assurance
+  candidate `2820387f978bf47d8fd42b1e7fada2a0084f3f4f`, and preserved Task123
+  causal RED `7a7509aa984e2d59ad212fa801c1dcaa2e996451`. Fresh architecture and
+  executability validation both approve the exact assurance candidate with no
+  reproduced P0/P1.
+- The complete preserved assurance lineage integrates without rewrite at merge
+  `ba5f06150deb745ec328ae4bf199c0efa8a25fc3`. Candidate and integrated
+  bytes pass mission-state **20/20**, factory readiness, V4 assurance **20/20**,
+  all four exact markers, repository prefix **26 records / 26 commands** then
+  only incomplete-29/found-26, typecheck, diff/scope/clean/dependency checks,
+  and identical `npm test` / `npm run verify` differential: **11 failing files
+  / 49 failing tests / 2,847 passes / 5 skips**.
+- The finite CF1-HR/Task122 to W1-123 ownership mapping, historical record-14
+  and record-26 evidence, V1–V3 pins, raw records 1–26, all 29 IDs/order, and
+  calibrated immutable envelope remain exact. Status advances assurance
+  `approved -> integrated` and W1-123 `blocked -> implementing`. The same
+  Task123 owner may now forward-merge this authority and produce only the
+  already authorized minimal GREEN after preserved RED `7a7509aa` within the
+  exact nine-path card boundary. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task. No strict
+  release record, push, external effect, or `neo` change occurs here.
