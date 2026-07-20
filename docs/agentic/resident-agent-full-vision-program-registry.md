@@ -25088,11 +25088,6 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ],
   "ownedPathBlobs": [
     {
-      "path": "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md",
-      "disposition": "owned",
-      "blobSha": "42ad8ea6caa1f4978fdfe29d2ffe2020d35e2d15"
-    },
-    {
       "path": "packages/agent/src/investigation-planner-workflow.ts",
       "disposition": "owned",
       "blobSha": "d10a21683ba00801df508492aa7fdeb0a53b0491"
@@ -25101,6 +25096,11 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
       "path": "packages/agent/test/investigation-planner-workflow.test.ts",
       "disposition": "owned",
       "blobSha": "8b74ce5208c6100f54c3e56a23c45ea5befd2dc0"
+    },
+    {
+      "path": "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md",
+      "disposition": "owned",
+      "blobSha": "42ad8ea6caa1f4978fdfe29d2ffe2020d35e2d15"
     },
     {
       "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
