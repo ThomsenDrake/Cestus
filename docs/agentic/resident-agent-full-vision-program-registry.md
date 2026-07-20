@@ -25335,3 +25335,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   exact nine-path card boundary. Task-scoped subagent-driven development and
   test-driven development are explicitly approved for this task. No strict
   release record, push, external effect, or `neo` change occurs here.
+
+## RV-1-E-879 — W1-123 preflight candidate admitted for review
+
+- Recorded at: 2026-07-20T23:58:51Z
+- The same Task123 owner preserves causal RED
+  `7a7509aa984e2d59ad212fa801c1dcaa2e996451`, authority forward merge
+  `65f9fc9b9818dbefa7eceda0ebf9c1587b326065`, minimal GREEN
+  `74357184b5c91c90a2f09717beeeb220f0eec4f6`, and exact committed candidate
+  `68d09db346833d38286204e319c20352e6b6c539`. Cumulative scope is exactly the
+  nine V4-owned paths. The follow-up commit changes only a test annotation to
+  close strict TypeScript inference; it changes no production behavior.
+- Exact candidate bytes pass the focused **4 files / 58 tests** and relevant
+  cross-boundary **6 files / 148 tests**, standalone typecheck, mission-state
+  **20/20**, Task136 assurance **20/20**, all four V4 markers, factory
+  readiness, diff/scope/clean/dependency gates, and retain the required full
+  differential: **10 failing files / 48 failing tests / 2,854 passes / 5
+  skips**. This removes exactly one inherited Task123 failure and adds seven
+  passes without a new failure or skip.
+- Repository mode deliberately fails closed before the prefix marker at
+  `blob mismatch: CF1-HR:packages/agent/src/specialist-handoff-authority.ts`.
+  This is the same frozen preactivation ownership lock accepted for Task122:
+  CF1-HR and Task122 current ownership remains authoritative before strict
+  record 27 while this candidate necessarily changes the four transferred
+  paths. No checker bypass or premature migration is authorized. After
+  integration plus strict record 27, W1-123 becomes the current owner and the
+  exact **27 records / 27 commands** prefix must pass.
+- Status advances W1-123 `implementing -> candidate -> reviewing`. One fresh
+  concurrent read-only architecture/executability pair will review exact
+  candidate `68d09db3`, including non-consuming preflight, no-effect rejection,
+  exact witness/store/controller binding, later one-shot V2 consumption, and
+  the preactivation ownership lock. V1-V4, raw records 1-26, all 29 IDs/order,
+  historical evidence, calibrated mission state, and `neo` remain immutable.
+  No release record, push, or external effect occurs here.
