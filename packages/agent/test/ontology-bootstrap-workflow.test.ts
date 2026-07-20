@@ -235,6 +235,42 @@ describe("ontology bootstrap resident-agent review bundle", () => {
 });
 
 describe("runOntologyBootstrapResidentWorkflow", () => {
+  it("fails closed before bootstrap material effects when mounted handoff authority is unavailable", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
+    const before = (await ledger.readAll()).length;
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      handoffAuthorityWitness: undefined,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    } as never);
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing" });
+    expect((await ledger.readAll()).slice(before).map((event) => event.type)).toEqual([
+      "agent.specialist-run.failed"
+    ]);
+  });
+
   it("fails closed before effects when the canonical reader identity is omitted", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
