@@ -69,6 +69,10 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-10-resident-task-orchestrator-design.md",
   "docs/superpowers/plans/2026-07-10-resident-task-orchestrator-implementation.md"
 ];
+const missionStateCheck = [
+  process.execPath,
+  "scripts/check-software-factory-mission-state.mjs"
+];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
   ".codex/skills/cestus-software-factory/SKILL.md"
@@ -132,6 +136,13 @@ for (const file of forbiddenSkillLocations) {
   if (existsSync(file)) {
     failures.push(`move ${file} to .agents/skills/cestus-software-factory/SKILL.md`);
   }
+}
+
+try {
+  execFileSync(missionStateCheck[0], missionStateCheck.slice(1), { stdio: "pipe" });
+} catch (error) {
+  const stderr = error && typeof error === "object" && "stderr" in error ? error.stderr : "";
+  failures.push(`software factory mission state failed${stderr ? `: ${String(stderr).trim()}` : ""}`);
 }
 
 for (const file of trackedTextFiles()) {
