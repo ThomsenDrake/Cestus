@@ -24710,3 +24710,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   records 1-25, all 29 IDs/order, every historical mapping/evidence item, and
   `neo` remain unchanged. No reset, rebase, amend, squash, drop, rewrite,
   integration, review, push, external effect, or false GREEN occurs.
+
+## RV-1-E-859 — Task122 transfer assurance checker scope completed
+
+- Recorded at: 2026-07-20T15:08:07Z
+- Human authority resolves RV-1-E-858 by adding exactly
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs` to the
+  existing assurance packet. The cumulative packet remains exactly the V4
+  contract, checker, assurance test, and Task136 V4 claim. Preserved causal
+  RED `e05eaddea5aa39da0cc4baac406fa4c6a9a5902c` remains authoritative; no
+  replacement owner, duplicate RED, recovery generation, V5, bridge,
+  compatibility lane, or generic transfer facility is authorized.
+- The sole minimal GREEN may add only the exact two-path CF1-HR -> Task122
+  mapping already approved in RV-1-E-857, the exact owned record-14 CF1-HR
+  historical compatibility entry, exact CF1-HR/Task122 scope and command
+  validation, the finite CF1-HR historical target group, the record-26
+  current-HEAD migration, and derived assurance fingerprint
+  `d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071`.
+  No generic, multi-target, transitive, inferred, fallback, or compatibility
+  authority may be added.
+- The same Terra/xhigh assurance owner task
+  `019f717a-3a5c-7df1-9216-59464d5c206b` will preserve branch/worktree and
+  RED history, forward-merge this registry-only authority, create exactly one
+  minimal GREEN, and run exact assurance **20/20**, V4 contract, repository
+  **25/25** then incomplete-29/found-25, typecheck, full differential,
+  factory, diff, immutable-input, four-path scope, clean, and dependency
+  gates before one fresh concurrent read-only architecture/executability
+  review pair.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Dual approval authorizes coordinator
+  integration followed by forward promotion of the exact program base into
+  the preserved Task122 RED branch. V1-V3, raw records 1-25, all 29 IDs/order,
+  all existing evidence and finite mappings, and `neo` remain immutable. No
+  push or external effect is authorized.
