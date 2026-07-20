@@ -1,9 +1,11 @@
 import { join } from "node:path";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import { validateKnowledgeEvent } from "../../ontology/src/contracts.js";
 import { mountPortableWorkspace } from "../../workspace/src/index.js";
 import type { SpecialistHandoffManifestStore } from "../../agent/src/specialist-runner-kernel.js";
 import {
-  hashCanonicalSpecialistHandoffJson
+  hashCanonicalSpecialistHandoffJson,
+  parseSpecialistHandoffMaterial
 } from "../../agent/src/specialist-handoff-manifest.js";
 import {
   issueMountedSpecialistHandoffAuthorityWitness,
@@ -27,6 +29,8 @@ export interface BindPortableMountedAgentHandoffInput {
   readonly approvedRunId: string;
   readonly runType: AgentSpecialistRunType;
   readonly retryGeneration: number;
+  /** Required for the investigation-planner durable-start binding. */
+  readonly investigationId?: string;
 }
 
 export interface PortableMountedAgentHandoffBinding {
@@ -128,7 +132,25 @@ interface RunBinding {
   readonly approvedRunId: string;
   readonly runType: AgentSpecialistRunType;
   readonly retryGeneration: number;
+  readonly investigationId?: string;
   readonly authorityBinding?: HandoffAuthorityBinding;
+}
+
+interface ModelInvocationCursor {
+  readonly startedEventId: string;
+  readonly requestedEventId?: string;
+  readonly invocationId?: string;
+  readonly providerId?: string;
+  readonly modelFamily?: string;
+  readonly inputArtifactHash?: string;
+  readonly terminalEventId?: string;
+}
+
+interface DispatchPreludeCursor {
+  readonly claimEventId?: string;
+  readonly claimSequence?: number;
+  readonly leaseClaimGeneration?: number;
+  readonly checkpointEventId?: string;
 }
 
 type NormalizedJson =
@@ -194,6 +216,8 @@ interface CursorState {
   accepted: readonly Uint8Array[] | undefined;
   phase: CursorPhase;
   canonical: CanonicalHandoffBinding | undefined;
+  modelInvocation: ModelInvocationCursor | undefined;
+  prelude: DispatchPreludeCursor;
   lastRelevantEventId: string | undefined;
   readonly handoffEventIds: string[];
   burned: boolean;
@@ -225,6 +249,8 @@ export function createPortableMountedAgentArtifactStoreProducer(
           accepted: undefined,
           phase: "initial",
           canonical: undefined,
+          modelInvocation: undefined,
+          prelude: Object.freeze({}),
           lastRelevantEventId: undefined,
           handoffEventIds: [],
           burned: false
@@ -234,7 +260,8 @@ export function createPortableMountedAgentArtifactStoreProducer(
         const remounted = remountCurrent(cursor.origin);
         const materialStore = createCursorBoundStore(
           cursor,
-          new FileBlobStore(join(remounted.paths.derivativeRoot, "specialist-handoff-material"))
+          new FileBlobStore(join(remounted.paths.derivativeRoot, "specialist-handoff-material")),
+          true
         );
         const manifestStore = createCursorBoundStore(
           cursor,
@@ -306,6 +333,10 @@ export async function beforeMountedHandoffAuthorityEffect(
   const cursor = cursorFor(controller);
   try {
     await inspectCursor(cursor);
+    if (
+      kind === "final-output" &&
+      (!hasRequiredModelInvocationTranscript(cursor.binding, cursor.modelInvocation) || !hasCompleteDispatchPrelude(cursor.prelude))
+    ) throw authorityError();
     if (!isExpectedPredecessor(cursor.phase, kind)) throw authorityError();
   } catch {
     cursor.burned = true;
@@ -380,6 +411,8 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
       const initial = deriveInitialState(events, cursor.binding);
       cursor.phase = initial.phase;
       cursor.canonical = initial.canonical;
+      cursor.modelInvocation = initial.modelInvocation;
+      cursor.prelude = initial.prelude;
       cursor.lastRelevantEventId = initial.lastRelevantEventId;
       cursor.handoffEventIds.push(...initial.handoffEventIds);
       cursor.accepted = encoded;
@@ -391,12 +424,20 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
     }
     let phase = cursor.phase;
     let canonical = cursor.canonical;
+    let modelInvocation = cursor.modelInvocation;
+    let prelude = cursor.prelude;
     let lastRelevantEventId = cursor.lastRelevantEventId;
     const newEventIds: string[] = [];
     for (const event of events.slice(cursor.accepted.length)) {
-      const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical);
+      const nextPrelude = advanceDispatchPrelude(phase, prelude, event, cursor.binding, lastRelevantEventId);
+      if (nextPrelude !== undefined) {
+        prelude = nextPrelude;
+        continue;
+      }
+      const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical, prelude, modelInvocation);
       phase = advanced.phase;
       canonical = advanced.canonical;
+      modelInvocation = advanced.modelInvocation;
       lastRelevantEventId = advanced.eventId;
       if (isHandoffEffectPhase(advanced.phase)) {
         newEventIds.push(advanced.eventId);
@@ -404,6 +445,8 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
     }
     cursor.phase = phase;
     cursor.canonical = canonical;
+    cursor.modelInvocation = modelInvocation;
+    cursor.prelude = prelude;
     cursor.lastRelevantEventId = lastRelevantEventId;
     cursor.handoffEventIds.push(...newEventIds);
     cursor.accepted = encoded;
@@ -443,10 +486,18 @@ function remountCurrent(origin: CapturedOrigin) {
   return remounted.workspace;
 }
 
-function createCursorBoundStore(cursor: CursorState, store: FileBlobStore): SpecialistHandoffManifestStore {
+function createCursorBoundStore(
+  cursor: CursorState,
+  store: FileBlobStore,
+  requiresFinalOutputAuthority = false
+): SpecialistHandoffManifestStore {
   return Object.freeze({
     async put(content: Buffer) {
-      const stored = await inspectAround(cursor, async () => await store.put(content));
+      const stored = await inspectAround(
+        cursor,
+        async () => await store.put(content),
+        requiresFinalOutputAuthority ? () => assertFinalOutputMaterialWriteAuthority(cursor, content) : undefined
+      );
       return Object.freeze({ contentHash: stored.contentHash, sizeBytes: stored.sizeBytes });
     },
     async get(contentHash: `sha256:${string}`) {
@@ -455,9 +506,14 @@ function createCursorBoundStore(cursor: CursorState, store: FileBlobStore): Spec
   });
 }
 
-async function inspectAround<T>(cursor: CursorState, operation: () => Promise<T>): Promise<T> {
+async function inspectAround<T>(
+  cursor: CursorState,
+  operation: () => Promise<T>,
+  beforeOperation?: () => void
+): Promise<T> {
   await inspectCursor(cursor);
   try {
+    beforeOperation?.();
     const result = await operation();
     await inspectCursor(cursor);
     return result;
@@ -471,6 +527,26 @@ async function inspectAround<T>(cursor: CursorState, operation: () => Promise<T>
   }
 }
 
+function assertFinalOutputMaterialWriteAuthority(cursor: CursorState, content: Buffer): void {
+  if (
+    isCanonicalFinalOutputMaterial(content) &&
+    (cursor.phase === "started" || cursor.phase === "started-running") &&
+    (!hasRequiredModelInvocationTranscript(cursor.binding, cursor.modelInvocation) || !hasCompleteDispatchPrelude(cursor.prelude))
+  ) {
+    cursor.burned = true;
+    throw authorityError();
+  }
+}
+
+function isCanonicalFinalOutputMaterial(content: Buffer): boolean {
+  try {
+    parseSpecialistHandoffMaterial(JSON.parse(content.toString("utf8")));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function artifactStoreOperationError(): Error {
   return new Error("Mounted handoff artifact store operation failed.");
 }
@@ -478,18 +554,28 @@ function artifactStoreOperationError(): Error {
 function deriveInitialState(events: readonly NormalizedJson[], binding: RunBinding): {
   readonly phase: CursorPhase;
   readonly canonical: CanonicalHandoffBinding | undefined;
+  readonly modelInvocation: ModelInvocationCursor | undefined;
+  readonly prelude: DispatchPreludeCursor;
   readonly lastRelevantEventId: string | undefined;
   readonly handoffEventIds: readonly string[];
 } {
   let phase: CursorPhase = "initial";
   let canonical: CanonicalHandoffBinding | undefined;
+  let modelInvocation: ModelInvocationCursor | undefined;
+  let prelude: DispatchPreludeCursor = Object.freeze({});
   let lastRelevantEventId: string | undefined;
   const handoffEventIds: string[] = [];
   for (const event of events) {
-    if (!isBoundEvent(event, binding)) continue;
-    const advanced = advancePhase(phase, event, binding, lastRelevantEventId, canonical);
+    const nextPrelude = advanceDispatchPrelude(phase, prelude, event, binding, lastRelevantEventId);
+    if (nextPrelude !== undefined) {
+      prelude = nextPrelude;
+      continue;
+    }
+    if (!isBoundEvent(event, binding) && !isModelInvocationTranscriptEvent(event, modelInvocation)) continue;
+    const advanced = advancePhase(phase, event, binding, lastRelevantEventId, canonical, prelude, modelInvocation);
     phase = advanced.phase;
     canonical = advanced.canonical;
+    modelInvocation = advanced.modelInvocation;
     lastRelevantEventId = advanced.eventId;
     if (isHandoffEffectPhase(advanced.phase)) {
       handoffEventIds.push(advanced.eventId);
@@ -498,6 +584,8 @@ function deriveInitialState(events: readonly NormalizedJson[], binding: RunBindi
   return Object.freeze({
     phase,
     canonical,
+    modelInvocation,
+    prelude,
     lastRelevantEventId,
     handoffEventIds: Object.freeze(handoffEventIds)
   });
@@ -508,8 +596,15 @@ function advancePhase(
   event: NormalizedJson,
   binding: RunBinding,
   predecessor: string | undefined,
-  canonical: CanonicalHandoffBinding | undefined
-): { readonly phase: CursorPhase; readonly eventId: string; readonly canonical: CanonicalHandoffBinding | undefined } {
+  canonical: CanonicalHandoffBinding | undefined,
+  prelude: DispatchPreludeCursor,
+  modelInvocation: ModelInvocationCursor | undefined
+): {
+  readonly phase: CursorPhase;
+  readonly eventId: string;
+  readonly canonical: CanonicalHandoffBinding | undefined;
+  readonly modelInvocation: ModelInvocationCursor | undefined;
+} {
   const record = normalizedOwnDataRecord(event);
   const payload = normalizedOwnDataRecord(record.payload);
   const context = normalizedOwnDataRecord(record.context);
@@ -534,7 +629,7 @@ function advancePhase(
     ) {
       throw authorityError();
     }
-    return { phase: "task-created", eventId: record.id, canonical: undefined };
+    return { phase: "task-created", eventId: record.id, canonical: undefined, modelInvocation: undefined };
   }
   if (
     type === "agent.task.status.changed" &&
@@ -549,12 +644,12 @@ function advancePhase(
     }
     if (payload.status === "queued") {
       if (phase !== "task-created" || payload.runId !== undefined) throw authorityError();
-      return { phase: "task-queued", eventId: record.id, canonical: undefined };
+      return { phase: "task-queued", eventId: record.id, canonical: undefined, modelInvocation: undefined };
     }
     if (payload.status === "running") {
       if (payload.runId !== binding.approvedRunId) throw authorityError();
-      if (phase === "task-queued") return { phase: "task-running", eventId: record.id, canonical: undefined };
-      if (phase === "started") return { phase: "started-running", eventId: record.id, canonical };
+      if (phase === "task-queued") return { phase: "task-running", eventId: record.id, canonical: undefined, modelInvocation: undefined };
+      if (phase === "started") return { phase: "started-running", eventId: record.id, canonical, modelInvocation };
     }
     throw authorityError();
   }
@@ -567,18 +662,78 @@ function advancePhase(
       || payload.runType !== binding.runType
       || payload.residentAgentId !== "agent_default"
       || payload.startedBy !== "agent_default"
+      || (binding.investigationId !== undefined && payload.investigationId !== binding.investigationId)
     ) {
       throw authorityError();
     }
     return {
       phase: phase === "task-running" ? "started-running" : "started",
       eventId: record.id,
-      canonical: undefined
+      canonical: undefined,
+      modelInvocation: Object.freeze({ startedEventId: record.id })
+    };
+  }
+  if (type === "agent.model-invocation.requested") {
+    if (
+      (phase !== "started" && phase !== "started-running")
+      || modelInvocation === undefined
+      || modelInvocation.requestedEventId !== undefined
+      || !validateKnowledgeEvent(record).success
+      || record.streamId !== `agent_model_invocation_${requiredText(payload.invocationId)}`
+      || record.sequence !== 1
+      || payload.runId !== binding.approvedRunId
+      || payload.runType !== binding.runType
+      || context.correlationId !== `corr_${payload.invocationId}`
+      || context.causationId !== modelInvocation.startedEventId
+      || !isHash(payload.inputArtifactHash)
+    ) {
+      throw authorityError();
+    }
+    return {
+      phase,
+      eventId: record.id,
+      canonical,
+      modelInvocation: Object.freeze({
+        startedEventId: modelInvocation.startedEventId,
+        requestedEventId: record.id,
+        invocationId: requiredText(payload.invocationId),
+        providerId: requiredText(payload.providerId),
+        modelFamily: requiredText(payload.modelFamily),
+        inputArtifactHash: requiredHash(payload.inputArtifactHash)
+      })
+    };
+  }
+  if (type === "agent.model-invocation.completed" || type === "agent.model-invocation.failed") {
+    if (
+      (phase !== "started" && phase !== "started-running")
+      || modelInvocation?.requestedEventId === undefined
+      || modelInvocation.terminalEventId !== undefined
+      || !validateKnowledgeEvent(record).success
+      || record.streamId !== `agent_model_invocation_${modelInvocation.invocationId}`
+      || record.sequence !== 2
+      || payload.runId !== binding.approvedRunId
+      || payload.invocationId !== modelInvocation.invocationId
+      || payload.providerId !== modelInvocation.providerId
+      || context.correlationId !== `corr_${modelInvocation.invocationId}`
+      || context.causationId !== modelInvocation.requestedEventId
+      || (type === "agent.model-invocation.completed" && (
+        payload.modelFamily !== modelInvocation.modelFamily || !isHash(payload.outputArtifactHash)
+      ))
+    ) {
+      throw authorityError();
+    }
+    return {
+      phase,
+      eventId: record.id,
+      canonical,
+      modelInvocation: Object.freeze({ ...modelInvocation, terminalEventId: record.id })
     };
   }
   if (type === "agent.specialist-run.step.recorded") {
     if (
       (phase !== "started" && phase !== "started-running")
+      || !hasRequiredModelInvocationTranscript(binding, modelInvocation)
+      || !hasCompleteDispatchPrelude(prelude)
       || record.streamId !== `agent_run_${binding.approvedRunId}`
       || payload.runId !== binding.approvedRunId
       || payload.stepKind !== "final-output"
@@ -600,7 +755,8 @@ function advancePhase(
         handoffMaterialArtifactHash: payload.handoffMaterialArtifactHash,
         inputArtifactHashes: normalizedHashArray(payload.inputArtifactHashes),
         outputArtifactHashes: normalizedHashArray(payload.outputArtifactHashes)
-      })
+      }),
+      modelInvocation
     };
   }
   if (type === "agent.specialist-handoff.prepared") {
@@ -640,7 +796,8 @@ function advancePhase(
         relatedEventIds: normalizedStringArray(payload.relatedEventIds),
         ...(authorityBinding === undefined ? {} : { authorityBinding }),
         preparedEventId: record.id
-      })
+      }),
+      modelInvocation
     };
   }
   if (type === "agent.specialist-handoff.recorded") {
@@ -665,7 +822,8 @@ function advancePhase(
         ...prepared,
         recordedEventId: record.id,
         verifiedAt: requiredText(payload.verifiedAt)
-      })
+      }),
+      modelInvocation
     };
   }
   if (type === "agent.specialist-run.completed") {
@@ -682,7 +840,8 @@ function advancePhase(
     return {
       phase: "run-terminal",
       eventId: record.id,
-      canonical: Object.freeze({ ...recorded, terminalEventId: record.id, terminalStatus: "completed" })
+      canonical: Object.freeze({ ...recorded, terminalEventId: record.id, terminalStatus: "completed" }),
+      modelInvocation
     };
   }
   if (type === "agent.specialist-run.failed") {
@@ -700,7 +859,8 @@ function advancePhase(
     return {
       phase: "run-terminal",
       eventId: record.id,
-      canonical: Object.freeze({ ...recorded, terminalEventId: record.id, terminalStatus: "failed" })
+      canonical: Object.freeze({ ...recorded, terminalEventId: record.id, terminalStatus: "failed" }),
+      modelInvocation
     };
   }
   if (type === "agent.task.orchestration.completed") {
@@ -726,7 +886,7 @@ function advancePhase(
     ) {
       throw authorityError();
     }
-    return { phase: "orchestration-completed", eventId: record.id, canonical: terminal };
+    return { phase: "orchestration-completed", eventId: record.id, canonical: terminal, modelInvocation };
   }
   if (type === "agent.task.status.changed") {
     const terminal = requireTerminalCanonical(canonical);
@@ -741,7 +901,7 @@ function advancePhase(
     ) {
       throw authorityError();
     }
-    return { phase: "task-status", eventId: record.id, canonical: terminal };
+    return { phase: "task-status", eventId: record.id, canonical: terminal, modelInvocation };
   }
   throw authorityError();
 }
@@ -750,6 +910,112 @@ function isBoundEvent(event: NormalizedJson, binding: RunBinding): boolean {
   const record = normalizedOwnDataRecord(event);
   const payload = normalizedOwnDataRecord(record.payload);
   return payload.runId === binding.approvedRunId || payload.taskId === binding.taskId;
+}
+
+function advanceDispatchPrelude(
+  phase: CursorPhase,
+  prior: DispatchPreludeCursor,
+  event: NormalizedJson,
+  binding: RunBinding,
+  predecessor: string | undefined
+): DispatchPreludeCursor | undefined {
+  const record = normalizedOwnDataRecord(event);
+  const payload = normalizedOwnDataRecord(record.payload);
+  if (
+    record.type !== "agent.task.orchestration.claimed" &&
+    record.type !== "agent.task.orchestration.checkpointed"
+  ) {
+    return undefined;
+  }
+  const expectedStreamId = taskOrchestrationStreamId(binding.taskId, binding.runType);
+  const isCandidate =
+    record.streamId === expectedStreamId ||
+    payload.taskId === binding.taskId ||
+    payload.runId === binding.approvedRunId ||
+    payload.attemptId === binding.attemptId;
+  if (!isCandidate) return undefined;
+  const context = normalizedOwnDataRecord(record.context);
+  const actor = normalizedOwnDataRecord(context.actor);
+  if (
+    !isPreStartDispatchPhase(phase)
+    || !validateKnowledgeEvent(record).success
+    || record.version !== 1
+    || typeof record.id !== "string"
+    || !/^evt_[a-zA-Z0-9_-]+$/.test(record.id)
+    || typeof record.sequence !== "number"
+    || !Number.isSafeInteger(record.sequence)
+    || record.sequence < 1
+    || record.streamId !== expectedStreamId
+    || actor.kind !== "agent"
+    || actor.id !== "agent_default"
+    || context.correlationId !== `corr_${binding.taskId}`
+    || payload.taskId !== binding.taskId
+    || payload.runType !== binding.runType
+    || payload.attemptId !== binding.attemptId
+    || payload.retryGeneration !== binding.retryGeneration
+  ) {
+    throw authorityError();
+  }
+  if (record.type === "agent.task.orchestration.claimed") {
+    if (
+      prior.claimEventId !== undefined
+      || prior.checkpointEventId !== undefined
+      || predecessor === undefined
+      || context.causationId !== predecessor
+      || payload.causationEventId !== predecessor
+      || payload.workerId !== "agent_default"
+      || typeof payload.leaseClaimGeneration !== "number"
+      || !Number.isSafeInteger(payload.leaseClaimGeneration)
+      || payload.leaseClaimGeneration < 1
+    ) {
+      throw authorityError();
+    }
+    return Object.freeze({
+      claimEventId: record.id,
+      claimSequence: record.sequence,
+      leaseClaimGeneration: payload.leaseClaimGeneration
+    });
+  }
+  if (
+    prior.claimEventId === undefined
+    || prior.checkpointEventId !== undefined
+    || record.sequence !== prior.claimSequence! + 1
+    || payload.runId !== binding.approvedRunId
+    || payload.checkpointKind !== "runner-dispatching"
+    || payload.leaseClaimGeneration !== prior.leaseClaimGeneration
+    || context.causationId !== prior.claimEventId
+  ) {
+    throw authorityError();
+  }
+  return Object.freeze({ ...prior, checkpointEventId: record.id });
+}
+
+function isModelInvocationTranscriptEvent(
+  event: NormalizedJson,
+  modelInvocation: ModelInvocationCursor | undefined
+): boolean {
+  if (modelInvocation === undefined) return false;
+  const record = normalizedOwnDataRecord(event);
+  return record.type === "agent.model-invocation.requested" ||
+    record.type === "agent.model-invocation.completed" ||
+    record.type === "agent.model-invocation.failed";
+}
+
+function isPreStartDispatchPhase(phase: CursorPhase): boolean {
+  return phase === "task-queued" || phase === "task-running";
+}
+
+function hasCompleteDispatchPrelude(value: DispatchPreludeCursor): boolean {
+  return value.claimEventId === undefined || value.checkpointEventId !== undefined;
+}
+
+function hasRequiredModelInvocationTranscript(
+  binding: RunBinding,
+  value: ModelInvocationCursor | undefined
+): boolean {
+  if (value?.requestedEventId !== undefined && value.terminalEventId === undefined) return false;
+  if (binding.runType !== "investigation-planner") return true;
+  return value?.requestedEventId !== undefined && value.terminalEventId !== undefined;
 }
 
 function isHandoffEffectPhase(phase: CursorPhase): boolean {
@@ -931,13 +1197,25 @@ function cursorFor(controller: MountedHandoffAuthorityController): CursorState {
 }
 
 function normalizeBinding(value: BindPortableMountedAgentHandoffInput): RunBinding {
-  const record = exactOwnDataRecord(value, ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration"]);
+  const preliminary = ownDataRecord(value);
+  const preliminaryRunType = requiredAgentSpecialistRunType(preliminary.runType);
+  const record = exactOwnDataRecord(value, preliminaryRunType === "investigation-planner"
+    ? ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration", "investigationId"]
+    : ["taskId", "attemptId", "approvedRunId", "runType", "retryGeneration"]);
   const taskId = requiredText(record.taskId);
   const attemptId = requiredText(record.attemptId);
   const approvedRunId = requiredText(record.approvedRunId);
   const runType = requiredAgentSpecialistRunType(record.runType);
   const retryGeneration = requiredNonNegativeInteger(record.retryGeneration);
-  return Object.freeze({ taskId, attemptId, approvedRunId, runType, retryGeneration });
+  const investigationId = runType === "investigation-planner" ? requiredText(record.investigationId) : undefined;
+  return Object.freeze({
+    taskId,
+    attemptId,
+    approvedRunId,
+    runType,
+    retryGeneration,
+    ...(investigationId === undefined ? {} : { investigationId })
+  });
 }
 
 function requiredAgentSpecialistRunType(value: unknown): AgentSpecialistRunType {
