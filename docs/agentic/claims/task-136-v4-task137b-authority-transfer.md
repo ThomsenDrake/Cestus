@@ -356,3 +356,50 @@ Implementation evidence:
   `0` with `19` passed and `0` failed. Final committed-byte admission reruns
   the required assurance, contract/repository, typecheck, factory, diff,
   scope/blob, clean-state, and dependency gates.
+
+## RV-1-E-857 Task122 finite-transfer causal RED and scope checkpoint
+
+- Resumed at clean preserved candidate
+  `8434ce0ad819e14d914aaf7b013ea2be10280d82` and normal-forward-merged exact
+  coordinator authority `3588f437eca3162742b6e1329fff42d9bc7e4bd4` as
+  `d55dabcf570e37eac85bb064cf0bdb5ffc12b9f2`. Only the registry changed in
+  that authority merge; no task implementation byte changed before this RED.
+- RV-1-E-857 authorizes precisely the two portable mounted-artifact-store
+  paths from CF1-HR to Task122, with Task122 prerequisite `["CF1-HR"]`, exact
+  command `npm test -- packages/agent/test/investigation-planner-workflow.test.ts
+  packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`,
+  and the record-14 CF1-HR compatibility entry/hash
+  `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`.
+  Its historical owned source/test blobs are respectively
+  `c835bc2cfc9ce3b4751a3f298c2e5d453b2b2091` and
+  `a1f1b04fa75d573bd3c8851a5fb4f15610109d40`.
+- Causal test blob: `95eecc067e08ec6ca5f28144b6036e6cef6d1c56`. Command:
+  `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Observed result: exit `1`; `20` tests, `19` pass, `1` fail. The sole failure
+  is the new record-26 test at line `1634`: inherited
+  `CF1-HR.transferToIds` is `[]`, not exact `["Task122"]`. Existing nineteen
+  assurance tests remain green.
+- The RED test also pins the exact source and target dispositions, command,
+  raw CF1-HR record hash/blob evidence, 29-card order, V1-V3 hashes and
+  25-record prefix, missing/extra/generic/wrong-disposition/target-scope/
+  command/historical mutation rejection, CF1-HR currentness before record 26,
+  Task122 currentness at record 26, and CF1-HR candidate/integration evidence
+  after transfer activation.
+- Read-only in-memory future-contract diagnosis proves no compliant GREEN is
+  possible in the three authorized paths. With exactly the authorized mapping,
+  the computed assurance fingerprint is
+  `d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071`,
+  while the frozen checker pins
+  `47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0`.
+  `verifyStaticGraph` first rejects that future contract with `release
+  compatibility records`. The unmodified checker fixes the four-entry
+  compatibility list, requires every CF1-HR path to stay `owned`, has no
+  CF1-HR -> Task122 historical target group, has no CF1-HR -> Task122
+  current-head migration target, and then enforces the obsolete fingerprint.
+- Minimal excluded production path required for any GREEN is
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`. It would
+  need only the explicit finite CF1-HR -> Task122 constants/compatibility,
+  exact CF1-HR and Task122 scope checks, record-26 migration branch, and the
+  derived fingerprint pin; no generic or transitive transfer facility is
+  justified. This packet must stop at the committed RED unless a coordinator
+  expands that exact production-path authority.
