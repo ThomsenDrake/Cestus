@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 const canonicalSourcePath = "docs/agentic/contracts/software-factory-mission-state.v1.json";
 const canonicalFrozenAuthorityPath = "docs/agentic/contracts/task136-bounded-assurance-v4.json";
 const expectedSchemaVersion = "software-factory-mission-state.v1";
+const expectedImmutableEnvelopeFingerprint = "sha256:5c5f005cf5c97839d54e2a65156006190010559345d739749862801afaa53d7c";
 const acceptedStatuses = [
   "claimed",
   "implementing",
@@ -88,6 +89,7 @@ function validateMissionState(source) {
   const features = validateFeatures(source.features, scope);
   const orderedFeatures = orderFeatures(features);
   validateMilestones(source.milestones, features);
+  const immutableEnvelopeFingerprint = validateImmutableCalibrationEnvelope(source);
 
   const statusSummary = Object.fromEntries(
     acceptedStatuses
@@ -110,6 +112,7 @@ function validateMissionState(source) {
     schemaVersion: source.schemaVersion,
     missionId: source.mission.missionId,
     fingerprint: `sha256:${hash(stableJson(source))}`,
+    immutableEnvelopeFingerprint,
     orderedFeatureIds: orderedFeatures.map((feature) => feature.featureId),
     eligibleFeatureIds,
     blockedFeatureIds,
@@ -121,6 +124,21 @@ function validateMissionState(source) {
       validationAssertions: validationAssertions.length
     }
   };
+}
+
+function validateImmutableCalibrationEnvelope(source) {
+  const normalized = JSON.parse(JSON.stringify(source));
+  normalized.mission.status = "__lifecycle-status__";
+  normalized.mission.acceptedIntegrationSha = "__lifecycle-accepted-integration-sha__";
+  for (const feature of normalized.features) {
+    feature.status = "__lifecycle-status__";
+    feature.acceptedIntegrationSha = "__lifecycle-accepted-integration-sha__";
+  }
+  const fingerprint = `sha256:${hash(stableJson(normalized))}`;
+  if (fingerprint !== expectedImmutableEnvelopeFingerprint) {
+    fail("immutable calibration envelope fingerprint mismatch");
+  }
+  return fingerprint;
 }
 
 function validateFrozenAuthority(authority) {
