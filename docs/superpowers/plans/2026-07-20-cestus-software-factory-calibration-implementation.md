@@ -76,5 +76,5 @@ The committed `7dd0b00d7ca7438c1f9b6d4155cec15b42cab349` checker validates selec
 
 ### Recovery GREEN
 
-- [ ] Compare the source-derived immutable normalized-envelope fingerprint in the checker without duplicating calibration facts.
+- [x] Compare the source-derived immutable normalized-envelope fingerprint in the checker without duplicating calibration facts.
 - [ ] Run the required committed-byte gates and record the inherited record-25 verification differential.
