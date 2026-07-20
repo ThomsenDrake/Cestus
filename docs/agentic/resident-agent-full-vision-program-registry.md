@@ -24743,3 +24743,395 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   the preserved Task122 RED branch. V1-V3, raw records 1-25, all 29 IDs/order,
   all existing evidence and finite mappings, and `neo` remain immutable. No
   push or external effect is authorized.
+
+## RV-1-E-860 — Task122 transfer assurance correction approved
+
+- Recorded at: 2026-07-20T15:52:36Z
+- The same assurance owner preserves authority merge
+  `cbe9a89bf98bba4cad6bc4d64f7e2c297f52cff7`, causal RED
+  `e05eaddea5aa39da0cc4baac406fa4c6a9a5902c`, and the sole minimal GREEN
+  exact candidate `06e84742637ee715e03cf84e9b79dc6673bd0569`. The cumulative
+  packet changes exactly the V4 contract, checker, assurance test, and V4
+  claim. RED test blob `95eecc067e08ec6ca5f28144b6036e6cef6d1c56`
+  remains preserved in ancestry.
+- During GREEN, four stale assurance pins independently reproduced after the
+  authorized contract/checker change: the two CF1-HR path dispositions,
+  Task122's exact two-test command, derived fingerprint, and V4 contract
+  SHA-256. Their minimum coupled corrections produce test blob
+  `befeaf9546a90ef41e6f7a3cb9fd1401ab184e3d`, assurance **20/20**, and do
+  not weaken other card commands, ownership, immutable inputs, or mutation
+  coverage.
+- Exact candidate admission emits all four V4 markers, executes repository
+  prefix **25/25** then only incomplete-29/found-25, passes standalone
+  typecheck, factory, diff, immutable-input, exact four-path, clean, and real
+  dependency/Vitest 4.1.9 gates. Both `npm test` and `npm run verify` retain
+  the record-25 differential: **12 failing files / 60 failing tests / 2,820
+  passes / 5 skips** with no candidate-owned failure or new skip.
+- Fresh read-only Terra/xhigh architecture/invariants task
+  `019f8025-8a7a-7582-acbc-7295c88d002f` and executability/adversarial task
+  `019f8025-8a7b-7f51-a323-52de670756fa` both return `APPROVED` for exact
+  candidate `06e84742` with no reproduced candidate P0/P1. Their initial
+  isolated-worktree dependency blocks were environment-only; the same pair
+  resumed read-only in the exact clean candidate worktree and verified real
+  dependencies, focused/contract/repository/typecheck gates, and inherited
+  differential. Timeout-sensitive unrelated retries varied, while serial
+  candidate and verifier runs reproduced the exact required baseline.
+- Coordinator adjudication accepts both final verdicts. Status advances the
+  assurance correction `reviewing -> approved`; complete preserved history
+  will now be integrated before the current program base is forward-merged
+  into Task122 RED `358a683a`. V1-V3, raw records 1-25, all 29 IDs/order,
+  finite mappings/evidence, and `neo` remain immutable. No push or external
+  effect occurs.
+
+## RV-1-E-861 — Task122 transfer assurance correction integrated
+
+- Recorded at: 2026-07-20T15:55:47Z
+- Coordinator merge `27683b8ac29b73ff5f829eaabd1732ff82f87695`
+  integrates exact approved candidate
+  `06e84742637ee715e03cf84e9b79dc6673bd0569` with preserved authority
+  merge, causal RED, sole GREEN, claim evidence, and dual-review history.
+- Integrated bytes pass assurance **20/20**, all four exact V4 contract
+  markers, standalone typecheck, factory readiness, diff hygiene, clean
+  tracked/untracked state, and real non-symlinked dependencies with executable
+  Vitest 4.1.9. Repository mode executes every released command and emits
+  exact `TASK136_REPOSITORY_PREFIX_OK records=25 commands=25`, followed only
+  by `repository release closure incomplete: expected 29 records, found 25`.
+- The exact finite CF1-HR -> Task122 ownership and record-26 currentness route
+  is now program authority. V1-V3, raw strict records 1-25, all 29 IDs/order,
+  prior finite mappings/evidence, and `neo` remain immutable. Status advances
+  the assurance correction `approved -> integrated`; this exact program head
+  may now be forward-merged into preserved Task122 causal RED `358a683a` for
+  its sole minimal five-path GREEN. No push or external effect occurs.
+
+## RV-1-E-862 — Task122 portable cursor candidate admitted for review
+
+- Recorded at: 2026-07-20T16:42:36Z
+- The same Task122 owner preserves causal RED
+  `358a683aaacf3e4ffb18de5ef1f4efefdbb71fce`, authority forward merge
+  `dba925a1e056c9db0804bfefbd89450e6576a054`, and sole minimal GREEN exact
+  candidate `911747851a25c56510b00cba8787af9cb309c0b3`. The cumulative candidate
+  changes exactly Task122's claim, investigation planner source/test, and the
+  transferred portable mounted artifact-store source/test: the authorized
+  five-path ownership boundary.
+- Exact committed bytes pass the focused **2 files / 49 tests** and
+  cross-boundary **4 files / 139 tests** gates, standalone typecheck, factory
+  readiness, diff hygiene, assurance **20/20**, all four V4 contract markers,
+  clean tracked/untracked state, and real non-symlinked dependencies with
+  executable Vitest 4.1.9. Full-test and `npm run verify` differential removes
+  the exact 11 Task122 RED failures and adds 11 passing tests while retaining
+  all remaining record-25 failure identities and all five skips.
+- At candidate stage, repository mode deliberately fails closed on
+  `blob mismatch: CF1-HR:packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`.
+  This is the frozen transfer invariant: CF1-HR current-HEAD ownership remains
+  authoritative before strict record 26, while Task122 necessarily changes the
+  transferred path in its candidate. No checker bypass or premature ownership
+  migration is authorized; integration and strict record 26 are one release
+  transition, after which Task122 current ownership becomes authoritative and
+  all CF1-HR historical evidence remains verified.
+- Status advances Task122 `implementing -> candidate -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair will review
+  exact candidate `91174785`, including the preactivation ownership lock. V1-V3,
+  raw strict records 1-25, all 29 IDs/order, finite mappings/evidence, and `neo`
+  remain immutable. No push or external effect occurs.
+
+## RV-1-E-863 — Task122 provider-transcript and prelude root-cause checkpoint
+
+- Recorded at: 2026-07-20T16:53:06Z
+- Fresh read-only Terra/xhigh executability/adversarial reviewer
+  `019f8069-75bf-7531-a064-84a5bbf433fd` reproduces a P1 on exact candidate
+  `911747851a25c56510b00cba8787af9cb309c0b3`: an investigation-planner
+  authority whose durable history contains only the bound started event can
+  still authorize final output. The cursor rejects only a pending request, so
+  wholly absent provider provenance bypasses the frozen requirement for one
+  exact same-run request followed by exactly one matching completed or failed
+  terminal.
+- Fresh read-only Terra/xhigh architecture/invariants reviewer
+  `019f8069-753b-7070-8ed8-2928a9a808e1` independently reproduces a second P1:
+  exact-looking orchestration claimed/checkpointed preludes appended after the
+  bound start, or duplicated/reordered in history, are unconditionally skipped
+  instead of burning authority. This violates the frozen mutation,
+  duplication, reordering, and unknown-bound-event fail-closed rule.
+- Both reviewers confirm focused **49/49**, cross-boundary **139/139**,
+  typecheck, factory, assurance **20/20**, and all V4 markers are otherwise
+  green. Both independently adjudicate the record-25 CF1-HR blob mismatch as
+  the required preactivation ownership lock, not a defect; no checker bypass
+  or early ownership movement is authorized.
+- Standing software-factory recovery authority makes both corrections
+  contract-determined. Status advances Task122 `reviewing -> recovering`; the
+  same Task122 owner, branch, worktree, candidate ancestry, and five-path
+  ownership resume for one causal RED and one minimal GREEN. The RED must pin
+  mandatory provider pairing for the investigation-planner authority and
+  duplicate/reordered/post-start prelude rejection. GREEN must preserve valid
+  released pre-start claim/checkpoint history, exact phase/currentness and
+  investigation bindings, later V2 transitions, and the record-25 lock.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After committed-byte admission, one fresh
+  concurrent read-only Terra/xhigh architecture/executability pair is required.
+  V1-V3, raw records 1-25, all 29 IDs/order, finite mappings/evidence, and
+  `neo` remain immutable. No reset, rebase, amend, squash, drop, rewrite, push,
+  or external effect occurs.
+
+## RV-1-E-864 — Task122 cursor recovery candidate admitted for final review
+
+- Recorded at: 2026-07-20T17:16:20Z
+- The same Task122 owner preserves registry-authority merge
+  `99c16639d6e38551ec7a022787db37f02c699325`, causal RED
+  `cf669f74e1cb93a99e07340b33a15555cc8ee674`, and sole minimal GREEN exact
+  candidate `799de1e9f0fc65383f60c55d344f93be126a7efa`. RED changes only the
+  append-only Task122 claim and portable-store test; its portable-store
+  production blob remains byte-identical to the parent and reproduces exactly
+  four failures over 49 retained passes.
+- GREEN requires a completed exact provider transcript before an
+  investigation-planner authority may advance to final output while retaining
+  released transcript-optional behavior for unrelated run types. It models an
+  optional pre-start orchestration prelude as one exact claimed ->
+  runner-dispatching checkpoint pair and burns duplicated, reordered,
+  post-start, mutated, unknown-bound, or cross-run material. Later V2 lifecycle
+  transitions and exact investigation/currentness bindings remain unchanged.
+- Exact committed bytes pass focused **2 files / 53 tests**, cross-boundary
+  **4 files / 143 tests**, standalone typecheck, factory readiness, diff
+  hygiene, assurance **20/20**, all four V4 markers, exact five-path cumulative
+  scope, clean state, and real dependencies with executable Vitest 4.1.9.
+  Full `npm test` and `npm run verify` differentials retain every remaining
+  failure identity and all five skips: record-25 base **60 failed / 2,820
+  passed / 5 skipped**, candidate **49 failed / 2,846 passed / 5 skipped**.
+  The exact 11 Task122 failures are removed and 15 Task122 tests pass.
+- Repository mode continues to fail only at the required pre-record-26 CF1-HR
+  portable-source current-HEAD blob lock. No checker bypass or ownership
+  movement occurs. Status advances Task122 `recovering -> candidate ->
+  reviewing`; one fresh concurrent read-only Terra/xhigh
+  architecture/executability pair now reviews exact candidate `799de1e9`.
+  V1-V3, raw records 1-25, all 29 IDs/order, finite mappings/evidence, and
+  `neo` remain immutable. No push or external effect occurs.
+
+## RV-1-E-865 — Task122 pre-effect provider authority root-cause checkpoint
+
+- Recorded at: 2026-07-20T17:27:02Z
+- Fresh Terra/xhigh executability/adversarial reviewer
+  `019f8088-0a96-7ef3-a96a-b3860cca50f4` approves exact candidate
+  `799de1e9f0fc65383f60c55d344f93be126a7efa` after reproducing focused
+  **53/53**, cross-boundary **143/143**, typecheck, factory, assurance
+  **20/20**, V4 markers, exact scope/history, and only the required record-25
+  ownership lock.
+- Fresh Terra/xhigh architecture/invariants reviewer
+  `019f8088-0b7b-71d2-bd92-7c3b8ac9f0b9` reproduces one distinct P1 in the
+  real mounted production path: with zero provider-transcript events,
+  `appendSpecialistFinalOutputStep` writes canonical handoff material and
+  appends `agent.specialist-run.step.recorded` before the later controller or
+  witness revalidation rejects. The prior GREEN closes direct controller
+  advancement but places its transcript guard after those final-output effects.
+- This violates the frozen requirement that missing or incomplete provider
+  provenance fail closed before any investigation final-output material or
+  ledger effect. It is contract-determined, not a product or scope decision.
+  Status advances Task122 `reviewing -> recovering`; the same owner and
+  complete preserved branch history resume with a changed tactic at the actual
+  mounted final-material write boundary, not another controller-only guard.
+- One causal RED must exercise the released `appendSpecialistFinalOutputStep`
+  path with the real opaque mounted store and prove that missing provider
+  transcript currently leaves material and a final-output event. One minimal
+  GREEN must reject and burn before either effect while preserving exact valid
+  transcript/prelude handling, legacy run behavior, later V2 ordering, exact
+  investigation/currentness binding, no fallback write, and the record-25
+  lock. Cumulative scope remains Task122's exact five paths.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Exact committed-byte admission and one
+  fresh concurrent read-only Terra/xhigh architecture/executability pair are
+  required after GREEN. V1-V3, raw records 1-25, all 29 IDs/order, finite
+  mappings/evidence, and `neo` remain immutable. No reset, rebase, amend,
+  squash, drop, rewrite, push, or external effect occurs.
+
+## RV-1-E-866 — Coordinator graceful pause at Task122 committed GREEN
+
+- Recorded at: 2026-07-20T17:49:00Z
+- Human wind-down authority pauses the Resident Agent Full-Vision Program at
+  the next safe atomic checkpoint. The program branch is clean at
+  `eefd8ef5faa19617104060abe534793fa2625c24` with exactly **25** accepted
+  strict V4 release records; Task122 remains the next release card.
+- The same Task122 owner is idle on clean branch
+  `codex/task122-cf1-handoff-adoption` at committed GREEN
+  `edb1b6c893c290b025796a8faf6c43a7a2d5582a`, preserving authority merge
+  `0a24f610f1ba109b9fb7e2a3856f5328b8bf3bd0` and causal RED
+  `193143c6b149b914a8ff2ad760c7ad11d27dae35`. This recovery changes the
+  Task122 claim, planner workflow test, and portable mounted-store source;
+  cumulative scope remains the exact authorized five paths.
+- Committed GREEN bytes pass focused **2 files / 54 tests**, cross-boundary
+  **4 files / 144 tests**, standalone typecheck, assurance **20/20**, and all
+  four V4 markers. Full `npm test` and `npm run verify` differentials retain
+  every remaining failure/skip identity: record-25 base **60 failed / 2,820
+  passed / 5 skipped**, candidate **49 failed / 2,847 passed / 5 skipped**.
+  The exact 11 Task122 failures are removed. Final factory/repository-mode,
+  diff/status/dependency rechecks and a fresh review pair were not started
+  after the wind-down directive.
+- Prior final-pair verdicts on `799de1e9` are preserved but invalidated for
+  release by the later RED/GREEN code change. Exact `edb1b6c8` has no review
+  verdict and is not integrated. No Task122 or coordinator-owned command
+  remains active. Smallest resume action is to run the remaining committed-byte
+  admission checks on `edb1b6c8`, then dispatch one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair if admission passes.
+- Status is `program paused`; this is not abandonment, reset, release,
+  integration, or coordinator handoff. No new work was dispatched after the
+  wind-down directive. V1-V3, raw records 1-25, all 29 IDs/order, finite
+  mappings/evidence, every branch/worktree/history item, and `neo` remain
+  untouched.
+
+## RV-1-E-867 — Bounded software-factory calibration authorized
+
+- Recorded at: 2026-07-20T17:57:40Z
+- Human authority resumes the sole coordinator only for one isolated,
+  behavior-neutral software-factory calibration. The verified clean program
+  authority is `224f3e8f67c8bcd564d841979b872e74c8358b55` with exactly **25**
+  accepted strict V4 records and Task122 next. Preserved Task122 GREEN
+  `edb1b6c893c290b025796a8faf6c43a7a2d5582a`, both prior review generations,
+  and every paused product worktree remain stationary and unmodified; no owned
+  process is active. `neo` remains untouched at
+  `f88ced73be1e64660d95874394a324bd317fc20a`.
+- The sole implementation owner receives exactly these nine factory-mechanics
+  paths: `AGENTS.md`, `.agents/skills/cestus-software-factory/SKILL.md`,
+  `docs/agentic/software-factory.md`,
+  `docs/superpowers/specs/2026-07-20-cestus-software-factory-calibration-design.md`,
+  `docs/superpowers/plans/2026-07-20-cestus-software-factory-calibration-implementation.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`,
+  `scripts/check-software-factory-mission-state.mjs`,
+  `scripts/check-software-factory-mission-state.test.mjs`, and
+  `scripts/check-agent-readiness.mjs`. Task-scoped subagent-driven development
+  and test-driven development are explicitly approved for this task.
+- The calibration establishes the approved three-level risk model, one
+  canonical machine-readable mission-state contract/source for new work,
+  transition-only registry discipline, risk-proportional validation, and
+  milestone scrutiny plus black-box validation. It gets one causal validation
+  RED, one minimal GREEN, exact factory/skill/verify/diff/clean gates, and one
+  fresh concurrent read-only architecture/executability review pair.
+- Product packages, runtime behavior, ontology contracts, portable storage,
+  providers, user-facing behavior, V1-V4 assurance, strict release records,
+  frozen card IDs/order, compatibility mappings, paused candidates, and `neo`
+  are outside scope. No V5, release graph, bridge card, compatibility lane,
+  registry migration, generic transfer facility, replacement coordinator, or
+  strict product release record is authorized. Status is `factory calibration
+  claimed`; product execution remains paused until calibration integration and
+  integrated-byte validation complete.
+
+## RV-1-E-868 — Software-factory calibration integrated
+
+- Recorded at: 2026-07-20T19:02:11Z
+- The complete preserved calibration history through candidate
+  `d5b6815fe7f439ab66977aa8794cba6c368d089c` is integrated without history
+  rewrite at merge `9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c` on the sole program branch.
+  Fresh final architecture and executability reviewers
+  `019f80e1-f689-72e0-a1c2-c853185c651b` and
+  `019f80e1-f9e9-7a10-b003-6f0d09067528` both approve the sealed immutable
+  calibration envelope with no reproduced P0/P1.
+- Integrated bytes pass the mission-state suite **20/20**, both source and
+  immutable-envelope fingerprints, skill validation, factory readiness,
+  whitespace/scope/clean-state checks, and real dependency/Vitest checks.
+  `npm run verify` passes typecheck and reproduces only the inherited
+  record-25 cohort: **12 failed files / 60 failed tests / 225 passed files /
+  2,820 passed tests / 3 skipped files / 5 skipped tests**.
+- Canonical calibration mission state advances `candidate -> integrated` and
+  records the accepted integration SHA above. No strict product release record
+  is created. V1-V4, all 25 strict records, all 29 card IDs/order, paused
+  product candidates, product behavior, and `neo` remain unchanged. The next
+  product action is to revalidate preserved Task122 against this program head
+  before resuming its exact paused checkpoint.
+
+## RV-1-E-869 — Task122 integrated and released
+
+- Recorded at: 2026-07-20T19:31:07Z
+- The complete preserved Task122 history through calibrated candidate
+  `a29276d46b161fa5e2ed9a0c82d7168de944dd3e` is integrated without history
+  rewrite at merge `0d736e98100250df1a16a53dbfdc630536ca29d1`.
+  Fresh final architecture and executability reviewers
+  `019f80f0-2bbf-7792-b842-8de00ec6ff07` and
+  `019f80f0-2ff9-7c41-b657-128ffd7d171e` both approve with no reproduced
+  P0/P1.
+- Integrated bytes pass the exact focused **2 files / 54 tests** and
+  cross-boundary **4 files / 144 tests**, standalone typecheck, bounded
+  assurance **20/20**, all four exact V4 markers, factory readiness, diff
+  hygiene, exact five-path scope, clean tracked/untracked state, and real
+  non-symlinked top-level dependencies with executable local Vitest 4.1.9.
+  Full `npm test` and `npm run verify` reproduce the identical intermediate
+  differential of **11 failing files / 49 failing tests / 2,847 passes / 5
+  skips**, removing exactly the 11 Task122 failures with no new failure,
+  removal, or skip.
+- Status advances Task122 `approved -> integrated -> released`. Strict V4
+  release record 26 below activates the finite CF1-HR -> Task122 current-HEAD
+  ownership transfer while preserving every historical record-14 blob and
+  disposition. No provider, credential, network, external effect, push, or
+  `neo` action occurs.
+
+## Task136 dispatch release v4: Task122
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task122",
+  "candidateSha": "a29276d46b161fa5e2ed9a0c82d7168de944dd3e",
+  "reviews": [
+    {
+      "threadId": "019f80f0-2bbf-7792-b842-8de00ec6ff07",
+      "candidateSha": "a29276d46b161fa5e2ed9a0c82d7168de944dd3e",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f80f0-2ff9-7c41-b657-128ffd7d171e",
+      "candidateSha": "a29276d46b161fa5e2ed9a0c82d7168de944dd3e",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "0d736e98100250df1a16a53dbfdc630536ca29d1",
+  "releaseEventId": "task136-release-v4-Task122",
+  "prerequisites": [
+    {
+      "cardId": "CF1-HR",
+      "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+      "releaseEventId": "task136-release-v4-CF1-HR"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/investigation-planner-workflow.ts",
+      "disposition": "owned",
+      "blobSha": "d10a21683ba00801df508492aa7fdeb0a53b0491"
+    },
+    {
+      "path": "packages/agent/test/investigation-planner-workflow.test.ts",
+      "disposition": "owned",
+      "blobSha": "8b74ce5208c6100f54c3e56a23c45ea5befd2dc0"
+    },
+    {
+      "path": "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md",
+      "disposition": "owned",
+      "blobSha": "42ad8ea6caa1f4978fdfe29d2ffe2020d35e2d15"
+    },
+    {
+      "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+      "disposition": "owned",
+      "blobSha": "aa5859e0d2c8146812673777436e9e284f1c3373"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+      "disposition": "owned",
+      "blobSha": "148c7a4c5af83371f579b808a2970f6a8609394e"
+    }
+  ]
+}
+```
+
+## RV-1-E-870 — Record-26 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-20T19:34:17Z
+- Clean strict record-26 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=26 commands=26`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 26`.
+- The standalone assurance corpus then reproduces exactly three failures at
+  lines 1125, 1441, and 1621: current-registry-length fixtures still pin
+  strict prefix **25**, observe **26**, and leave the other **17/20** tests
+  green. No contract, checker, blob, command, dependency, transfer,
+  ownership, historical fixture, or released Task122 failure is reproduced.
+- This is the contract-determined append-only count-fixture transition. The
+  same assurance owner will preserve its complete history, forward-merge this
+  clean program authority, commit one causal RED checkpoint and one minimal
+  GREEN within the existing assurance test/claim ownership, run exact gates,
+  and obtain one fresh Terra/xhigh architecture/executability pair. No V5,
+  product behavior, raw release-record mutation, external effect, push, or
+  `neo` action is authorized.
