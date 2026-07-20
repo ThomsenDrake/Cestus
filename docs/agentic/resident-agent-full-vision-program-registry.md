@@ -25209,3 +25209,129 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   five paths, rerun every admission gate, and obtain a fresh concurrent review
   pair. No shared authority/store/default-factory change, strict release record,
   external effect, push, or `neo` action is authorized.
+
+## RV-1-E-874 — Bootstrap handoff blocked on released preflight ownership
+
+- Recorded at: 2026-07-20T21:11:18Z
+- The same owner preserves authority merge
+  `59b37de640a34e8ef6f1672932976d1d010f5d8c` and causal RED
+  `7a7509aa984e2d59ad212fa801c1dcaa2e996451` with **2 files / 22
+  tests, 2 failed / 20 passed**. No production byte changed. Both failures are
+  the exact review findings: invalid authority reaches final-output work, and
+  non-current authority reaches the suspended approval effects.
+- Two independent read-only interface audits confirm that the sole released
+  witness validator consumes the one-shot witness required later by the V2
+  recorder. The separate portable controller and preparation binder cannot
+  prove that they are paired with that witness and both exact stores. No legal
+  sequence inside Task123's five owned paths can validate membership,
+  currentness, lifecycle, and store pairing before effects while preserving the
+  witness for terminal recording.
+- Status is `implementing -> blocked` on one genuine scope/ownership decision.
+  The minimum safety-preserving correction requires a non-consuming opaque
+  witness preflight in the CF1-HR authority source/test plus issued store-pair
+  binding in the Task122 portable source/test, followed by the existing
+  Task123 RED/GREEN. V4 direct-source ownership and historical compatibility
+  must be amended before those released paths can change. No workaround,
+  alternate authority, API widening, integration, release record, push, or
+  `neo` action is permitted meanwhile.
+
+## RV-1-E-875 — Bootstrap handoff preflight ownership correction authorized
+
+- Recorded at: 2026-07-20T21:22:26Z
+- Human authority resolves RV-1-E-874 with an exact finite V4 direct-source
+  correction. W1-123 prerequisites and all **29** card IDs/order remain
+  unchanged. CF1-HR additionally transfers only its specialist-handoff
+  authority source/test to W1-123; Task122 transfers only its portable mounted
+  store source/test to W1-123. W1-123 therefore expands from five to exactly
+  nine owned paths and its command adds both transferred test files.
+- Raw strict records **1–26** remain byte-identical. Historical CF1-HR record
+  14 remains bound to canonical hash `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`
+  and authority blobs `81d2df45b2c74f118bea22fdce23a5fd698ddbd0` /
+  `309d26e487e200f7a430b261910e4f6ef11b19a1`; historical Task122 record
+  26 remains bound to canonical hash
+  `729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c`
+  and portable blobs `aa5859e0d2c8146812673777436e9e284f1c3373` /
+  `148c7a4c5af83371f579b808a2970f6a8609394e`, all with record disposition
+  `owned`. Released-source current-HEAD ownership remains authoritative until
+  strict record 27.
+- The same V4 assurance owner is authorized for one causal RED and minimal
+  GREEN in exactly the contract, checker, assurance test, and V4 transfer
+  claim. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task. After fresh dual review and
+  integration, the same Task123 owner resumes preserved RED `7a7509aa` for the
+  minimum non-consuming witness/binding preflight within the exact nine-path
+  boundary. No V5, generic/transitive transfer facility, fallback,
+  compatibility lane, new card, raw-record mutation, external effect, push,
+  or `neo` action is authorized.
+
+## RV-1-E-876 — Preflight assurance blocked on calibration authority pin
+
+- Recorded at: 2026-07-20T21:46:15Z
+- The same assurance owner preserves authority merge
+  `c88b47b457c5f34652fd2187d50d7695d9c3a2e6`, causal RED
+  `9335db04b3eb65dfe2c73af7ec38ef133ab3e297`, and four-path GREEN
+  `6ce65cc393b167e09656e8b06e4f86bbd265c7a2`. Exact committed bytes pass
+  assurance **20/20**, all four V4 markers, repository **26 records / 26
+  commands** followed only by incomplete-29/found-26, typecheck, diff/scope,
+  dependency, clean-state, and the unchanged **11 files / 49 tests / 2,847
+  passes / 5 skips** full differential.
+- `npm run factory:check` alone fails because the calibrated mission-state
+  source still pins the authorized pre-amendment V4 SHA
+  `1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5`.
+  The authorized V4 candidate SHA is
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`;
+  substituting it changes the immutable calibration-envelope fingerprint to
+  `sha256:0d6e437990b0320436e349d595ceb3445e71bc9c04c7f208b558d0c8f5bf91b3`.
+- Status is `candidate -> blocked` on an exact scope contradiction: RV-1-E-875
+  requires both a changed V4 contract and factory readiness while limiting the
+  packet to four paths, excluding the mission-state JSON and its immutable-pin
+  checker. No fifth/sixth path, review, integration, Task123 product edit,
+  release record, push, or `neo` action proceeds without a scope decision.
+
+## RV-1-E-877 — Calibration authority pin synchronization authorized
+
+- Recorded at: 2026-07-20T22:14:41Z
+- Human authority resolves RV-1-E-876 by adding exactly the canonical
+  software-factory mission-state JSON and its checker to the preserved
+  four-path W1-123 assurance candidate, producing an exact six-path packet.
+  The existing committed factory failure is the causal RED; no new RED,
+  owner, generation, V5 contract, card, compatibility lane, or transfer is
+  created. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task.
+- One forward commit may change only the frozen V4 digest from
+  `1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5`
+  to `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`
+  and the immutable calibration-envelope fingerprint to
+  `sha256:0d6e437990b0320436e349d595ceb3445e71bc9c04c7f208b558d0c8f5bf91b3`.
+  Every other calibration byte and semantic remains frozen.
+- This synchronization changes no product behavior, graph, ownership,
+  invariant, or raw record. After exact gates and fresh dual review, the
+  complete assurance history may integrate and advance the preserved Task123
+  RED. No push, external effect, release record, or `neo` action is authorized
+  by this event.
+
+## RV-1-E-878 — Preflight assurance integrated; Task123 unblocked
+
+- Recorded at: 2026-07-20T23:37:16Z
+- Durable Git, registry, V4 contract, claim, and calibrated mission-state
+  reconstruction confirms clean program authority `f923812c`, clean assurance
+  candidate `2820387f978bf47d8fd42b1e7fada2a0084f3f4f`, and preserved Task123
+  causal RED `7a7509aa984e2d59ad212fa801c1dcaa2e996451`. Fresh architecture and
+  executability validation both approve the exact assurance candidate with no
+  reproduced P0/P1.
+- The complete preserved assurance lineage integrates without rewrite at merge
+  `ba5f06150deb745ec328ae4bf199c0efa8a25fc3`. Candidate and integrated
+  bytes pass mission-state **20/20**, factory readiness, V4 assurance **20/20**,
+  all four exact markers, repository prefix **26 records / 26 commands** then
+  only incomplete-29/found-26, typecheck, diff/scope/clean/dependency checks,
+  and identical `npm test` / `npm run verify` differential: **11 failing files
+  / 49 failing tests / 2,847 passes / 5 skips**.
+- The finite CF1-HR/Task122 to W1-123 ownership mapping, historical record-14
+  and record-26 evidence, V1–V3 pins, raw records 1–26, all 29 IDs/order, and
+  calibrated immutable envelope remain exact. Status advances assurance
+  `approved -> integrated` and W1-123 `blocked -> implementing`. The same
+  Task123 owner may now forward-merge this authority and produce only the
+  already authorized minimal GREEN after preserved RED `7a7509aa` within the
+  exact nine-path card boundary. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task. No strict
+  release record, push, external effect, or `neo` change occurs here.

@@ -39,7 +39,7 @@ const expectedCardIds = Object.freeze([
   "Task136"
 ]);
 
-const expectedAssuranceFingerprint = "d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071";
+const expectedAssuranceFingerprint = "3af58aba85ea68137462d2054072e4e3ce3a2a8146ad3be8ee400b103375feb7";
 const immutableContractPins = Object.freeze([
   Object.freeze({ label: "v1", path: "docs/agentic/contracts/task136-bounded-assurance-v1.json", sha256: "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed" }),
   Object.freeze({ label: "v2", path: "docs/agentic/contracts/task136-bounded-assurance-v2.json", sha256: "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4" }),
@@ -106,6 +106,16 @@ const expectedHistoricalCompatibility = Object.freeze([
   Object.freeze({
     cardId: "CF1-HR",
     canonicalJsonSha256: "d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12",
+    pathDispositions: Object.freeze([
+      Object.freeze({ path: "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts", recordDisposition: "owned" }),
+      Object.freeze({ path: "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts", recordDisposition: "owned" }),
+      Object.freeze({ path: "packages/agent/src/specialist-handoff-authority.ts", recordDisposition: "owned" }),
+      Object.freeze({ path: "packages/agent/test/specialist-handoff-authority.test.ts", recordDisposition: "owned" })
+    ])
+  }),
+  Object.freeze({
+    cardId: "Task122",
+    canonicalJsonSha256: "729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c",
     pathDispositions: Object.freeze([
       Object.freeze({ path: "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts", recordDisposition: "owned" }),
       Object.freeze({ path: "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts", recordDisposition: "owned" })
@@ -189,6 +199,11 @@ const cf1HrToTask122Paths = Object.freeze([
   "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
   "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
 ]);
+const cf1HrToW1BootstrapPaths = Object.freeze([
+  "packages/agent/src/specialist-handoff-authority.ts",
+  "packages/agent/test/specialist-handoff-authority.test.ts"
+]);
+const task122ToW1BootstrapPaths = cf1HrToTask122Paths;
 const task122OwnedPaths = Object.freeze([
   "packages/agent/src/investigation-planner-workflow.ts",
   "packages/agent/test/investigation-planner-workflow.test.ts",
@@ -196,6 +211,16 @@ const task122OwnedPaths = Object.freeze([
   ...cf1HrToTask122Paths
 ]);
 const task122Command = "npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts";
+const w1BootstrapOwnedPaths = Object.freeze([
+  "packages/agent/src/ontology-bootstrap-workflow.ts",
+  "packages/agent/test/ontology-bootstrap-workflow.test.ts",
+  ...cf1HrToW1BootstrapPaths,
+  "packages/local-runtime/src/agent-ontology-bootstrap-routes.ts",
+  "packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts",
+  "docs/agentic/claims/task-123-resident-full-vision-bootstrap-handoff.md",
+  ...task122ToW1BootstrapPaths
+]);
+const w1BootstrapCommand = "npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts";
 const g136ScOwnedPaths = Object.freeze([
   "packages/agent/src/tool-gateway.ts",
   "packages/agent/src/scheduler.ts",
@@ -593,8 +618,9 @@ function validateTask139PmScope(graph) {
 function validateCorrectedCardScopes(graph) {
   const cf1Hr = graph.get("CF1-HR");
   const task122 = graph.get("Task122");
+  const w1Bootstrap = graph.get("W1-123-BOOTSTRAP-HANDOFF");
   const g136Sc = graph.get("G136-SC");
-  if (!cf1Hr || !task122 || !g136Sc) throw new Error("corrected card missing");
+  if (!cf1Hr || !task122 || !w1Bootstrap || !g136Sc) throw new Error("corrected card missing");
   assertExactStrings(cf1Hr.prerequisiteIds, [
     "W1-123-H-SHARED-SCHEMA",
     "W1-133.5-PREAPPROVAL-PROMPT-STORE",
@@ -604,21 +630,35 @@ function validateCorrectedCardScopes(graph) {
   ], "CF1-HR prerequisites");
   if (
     cf1Hr.ownedPaths.some((ownedPath) =>
-      ownedPath.disposition !== (cf1HrToTask122Paths.includes(ownedPath.path) ? "transferred" : "owned")
+      ownedPath.disposition !== ([...cf1HrToTask122Paths, ...cf1HrToW1BootstrapPaths].includes(ownedPath.path) ? "transferred" : "owned")
     ) ||
     JSON.stringify(cf1Hr.ownedPaths.map((ownedPath) => ownedPath.path)) !== JSON.stringify(cf1HrOwnedPaths) ||
     cf1Hr.command !== cf1HrCommand
   ) {
     throw new Error("CF1-HR scope");
   }
-  assertExactStrings(cf1Hr.transferToIds, ["Task122"], "CF1-HR transfer targets");
+  assertExactStrings(cf1Hr.transferToIds, ["Task122", "W1-123-BOOTSTRAP-HANDOFF"], "CF1-HR transfer targets");
   validateTransferredPathGroup(cf1Hr, task122, cf1HrToTask122Paths, "CF1-HR:Task122");
+  validateTransferredPathGroup(cf1Hr, w1Bootstrap, cf1HrToW1BootstrapPaths, "CF1-HR:W1-123-BOOTSTRAP-HANDOFF");
   if (
-    task122.ownedPaths.some((ownedPath) => ownedPath.disposition !== "owned") ||
+    task122.ownedPaths.some((ownedPath) =>
+      ownedPath.disposition !== (task122ToW1BootstrapPaths.includes(ownedPath.path) ? "transferred" : "owned")
+    ) ||
     JSON.stringify(task122.ownedPaths.map((ownedPath) => ownedPath.path)) !== JSON.stringify(task122OwnedPaths) ||
     task122.command !== task122Command
   ) {
     throw new Error("Task122 scope");
+  }
+  assertExactStrings(task122.transferToIds, ["W1-123-BOOTSTRAP-HANDOFF"], "Task122 transfer targets");
+  validateTransferredPathGroup(task122, w1Bootstrap, task122ToW1BootstrapPaths, "Task122:W1-123-BOOTSTRAP-HANDOFF");
+  if (
+    JSON.stringify(w1Bootstrap.prerequisiteIds) !== JSON.stringify(["CF1-HR", "Task121", "Task122"]) ||
+    w1Bootstrap.ownedPaths.some((ownedPath) => ownedPath.disposition !== "owned") ||
+    JSON.stringify(w1Bootstrap.ownedPaths.map((ownedPath) => ownedPath.path)) !== JSON.stringify(w1BootstrapOwnedPaths) ||
+    w1Bootstrap.transferToIds.length !== 0 ||
+    w1Bootstrap.command !== w1BootstrapCommand
+  ) {
+    throw new Error("W1-123-BOOTSTRAP-HANDOFF scope");
   }
   if (
     g136Sc.ownedPaths.some((ownedPath, index) => ownedPath.disposition !== (index === g136ScOwnedPaths.length - 1 ? "transferred" : "owned")) ||
@@ -640,7 +680,11 @@ function historicalTargetGroups(cardId) {
     { targetId: "CF1-HR", paths: task137bToCf1Paths },
     { targetId: "Task139-PM", paths: task137bToTask139PmPaths }
   ];
-  if (cardId === "CF1-HR") return [{ targetId: "Task122", paths: cf1HrToTask122Paths }];
+  if (cardId === "CF1-HR") return [
+    { targetId: "Task122", paths: cf1HrToTask122Paths },
+    { targetId: "W1-123-BOOTSTRAP-HANDOFF", paths: cf1HrToW1BootstrapPaths }
+  ];
+  if (cardId === "Task122") return [{ targetId: "W1-123-BOOTSTRAP-HANDOFF", paths: task122ToW1BootstrapPaths }];
   throw new Error(`invalid historical transfer source: ${cardId}`);
 }
 
@@ -757,7 +801,7 @@ export function verifyStaticGraph(contract = loadContract()) {
         throw new Error(`non-topological prerequisite: ${card.id}:${prerequisiteId}`);
       }
     }
-    if (card.id !== "Task137A" && card.id !== "Task129-MFA" && card.id !== "Task137B-W") {
+    if (card.id !== "Task137A" && card.id !== "Task129-MFA" && card.id !== "Task137B-W" && card.id !== "CF1-HR") {
       const transferred = card.ownedPaths.filter((ownedPath) => ownedPath.disposition === "transferred");
       if (transferred.length > 0 && card.transferToIds.length !== 1) {
         throw new Error(`undeclared transfer: ${card.id}`);
@@ -1412,6 +1456,8 @@ function currentHeadMigrationTarget(cardId, path) {
   if (cardId === "Task137B-W" && task137bToCf1Paths.includes(path)) return "CF1-HR";
   if (cardId === "Task137B-W" && task137bToTask139PmPaths.includes(path)) return "Task139-PM";
   if (cardId === "CF1-HR" && cf1HrToTask122Paths.includes(path)) return "Task122";
+  if (cardId === "CF1-HR" && cf1HrToW1BootstrapPaths.includes(path)) return "W1-123-BOOTSTRAP-HANDOFF";
+  if (cardId === "Task122" && task122ToW1BootstrapPaths.includes(path)) return "W1-123-BOOTSTRAP-HANDOFF";
   return undefined;
 }
 

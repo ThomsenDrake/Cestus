@@ -500,3 +500,63 @@ Implementation evidence:
   `0` with `20` passed and `0` failed. Final committed-byte admission will run
   the required contract/repository, typecheck, full differential, factory,
   diff, immutable-input, scope, clean-state, and dependency gates.
+
+## RV-1-E-875 W1-123 preflight ownership causal RED checkpoint
+
+- Preserved candidate `789d7ca8abbd7a0fafed323d157490e24ffc7242` was
+  normal-forward-merged with exact clean program authority
+  `3661bf07d103d6602395e1440d75e29e663fa03b` as
+  `c88b47b457c5f34652fd2187d50d7695d9c3a2e6`. The authority merge changes
+  only the registry; this RED changes only this claim and the assurance test.
+  V1-V4 contracts, the checker, raw strict records 1-26, the 29-card order,
+  product bytes, and historical evidence remain byte-identical.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `21` tests, `20` passed, and exactly `1` failed. The new
+  finite direct-source test reports that CF1-HR has only `["Task122"]` rather
+  than exact `["Task122", "W1-123-BOOTSTRAP-HANDOFF"]`. No unrelated
+  contract, checker, command, blob, dependency, or fixture failure occurred.
+- The committed test pins the exact CF1-HR and Task122 source/target
+  dispositions, W1-123's three prerequisites, nine-path scope and four-test
+  command, record-14/record-26 historical owned dispositions and blobs,
+  exact target ordering, mutation rejection, source currentness before strict
+  record 27, W1-123 currentness at record 27, and source candidate/integration
+  evidence. The sole authorized GREEN is the exact four-path packet: V4
+  contract, finite checker, retained RED test, and this claim. It may not add
+  generic, transitive, inferred, fallback, V5, raw-record, registry, or
+  product behavior authority.
+
+## RV-1-E-875 W1-123 preflight ownership minimal GREEN evidence
+
+- The finite V4 correction keeps W1-123 prerequisiteIds exactly
+  `["CF1-HR", "Task121", "Task122"]` and all 29 release-card IDs/order.
+  CF1-HR transfers only the specialist-handoff authority source/test to
+  W1-123 in addition to its two retained Task122 portable transfers; Task122
+  transfers only those two portable paths to W1-123. W1-123 owns exactly the
+  existing five paths plus these exact four, and its command is exactly
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`.
+- The checker retains exact targeted-command equality and uses only finite
+  source-specific CF1-HR/Task122 -> W1-123 validation, historical target
+  groups, and record-27 current-HEAD migration branches. It adds no generic,
+  inferred, transitive, fallback, or alternate compatibility authority. The
+  contract’s exact owned-path order keeps its existing five relative order
+  while placing the incoming authority pair before the existing runtime pair,
+  thereby matching the mandatory command order.
+- Historical compatibility retains raw CF1-HR record 14 hash
+  `d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12`
+  and its portable blobs, adds the owned authority blobs
+  `81d2df45b2c74f118bea22fdce23a5fd698ddbd0` /
+  `309d26e487e200f7a430b261910e4f6ef11b19a1`, and binds raw Task122 record
+  26 to `729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c`
+  with owned portable blobs `aa5859e0d2c8146812673777436e9e284f1c3373` /
+  `148c7a4c5af83371f579b808a2970f6a8609394e`.
+- The V4 contract SHA-256 is
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354` and
+  the derived assurance fingerprint is
+  `3af58aba85ea68137462d2054072e4e3ce3a2a8146ad3be8ee400b103375feb7`.
+  Command: `node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result from intended GREEN bytes: exit `0`; exactly `20` tests, `20` pass,
+  and `0` fail. The test retains the committed RED in ancestry and combines
+  the record-26 and record-27 direct-source assertions in one 20-test
+  focused corpus while preserving its positive, mutation, historical, and
+  current-head coverage.
