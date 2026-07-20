@@ -195,3 +195,39 @@ Status: `ready-for-review`
   `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
   exits `0`: **2 files / 20 tests passed** (+2 from the inherited 18-test
   baseline).
+
+### V4 Recovery RED — Pre-effect Opaque-Authority Validation
+
+- Fresh independent architecture and execution reviews rejected candidate
+  `72e39d0eedab1904be2d217fbc6029e374dab474`: a plain object carrying the
+  public witness schema string reaches final-output/material writes before the
+  V2 recorder rejects it, and a factory-issued witness whose currentness
+  callback rejects reaches the approval-suspended dossier, tool-request, and
+  waiting task-status events without any revalidation.
+- The causal RED added both counterfactuals before source edits. Exact focused
+  command `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts
+  packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts` exited
+  `1`: **2 files / 22 tests**, **2 failed / 20 passed**. The forged witness
+  returned `external-effect-failed` with a newly appended failure event after
+  material work; the stale factory witness returned `ok: true` with three new
+  workflow events on the pending-approval path. Both tests require an empty
+  event delta and zero material writes.
+- The released-interface obstruction is exact and precedes any production
+  edit. `consumeMountedSpecialistHandoffAuthorityWitness` is the only exposed
+  opaque-witness validation path; it invokes `revalidate` and irrevocably marks
+  the witness `consumed` (`packages/agent/src/specialist-handoff-authority.ts`
+  lines 84-103). The required V2 recorder accepts only that original opaque
+  witness and consumes it itself (`packages/agent/src/specialist-runner-kernel.ts`
+  lines 952-960), after workflow material/final-output work
+  (`packages/agent/src/ontology-bootstrap-workflow.ts` lines 752-823). The
+  released portable binding exposes precisely one witness
+  (`packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`
+  lines 293-310), with no non-consuming currentness readback or successor
+  witness capability. Consuming it in Task123 preflight would make the later
+  mandatory V2 recorder reject it as already consumed; creating/accepting a
+  replacement, widening the workflow/runtime contract for a second witness,
+  or revising the shared authority/recorder would violate this card's scope.
+- Per the frozen ownership rule, no production GREEN is attempted from this
+  RED until a released authority interface supplies a non-consuming preflight
+  readback or an explicitly paired successor witness while preserving the V2
+  terminal consumer.
