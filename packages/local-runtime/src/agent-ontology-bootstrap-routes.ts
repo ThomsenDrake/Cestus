@@ -15,13 +15,21 @@ import {
   type MountedWorkspace
 } from "../../ingestion/src/mount-contract.js";
 import type { OntologyBootstrapEvidenceLink } from "../../ontology-bootstrap/src/dossier-builder.js";
+import { buildTaskAttemptId } from "../../agent/src/task-orchestrator-events.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import type { LocalAgentRuntimeFactory } from "./agent-runtime-factory.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import {
+  consumeMountedHandoffAuthorityController,
+  createPortableMountedAgentArtifactStoreProducer
+} from "./portable-mounted-agent-artifact-stores.js";
+import { issueMountedArtifactAuthorityOperationForFactory } from "./mounted-artifact-authority-operation.js";
+import { createWakeSupervisorRuntime } from "./wake-supervisor-runtime.js";
 
 const routeSchemaVersion = "agent-ontology-bootstrap-route.v1" as const;
 const residentAgentId = "agent_default";
-const residentAgentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+const residentAgentActor = { id: residentAgentId, kind: "agent" as const, label: "Cestus Agent" };
+const mountedAuthorityHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
 
 export interface HandleAgentOntologyBootstrapRouteInput {
   readonly request: LocalRuntimeRequest;
@@ -136,37 +144,61 @@ async function launchOntologyBootstrapRun(
     return json(500, runReady.body);
   }
 
-  const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
-  const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
-  const result = await runOntologyBootstrapResidentWorkflow({
-    ledger: input.handle.ledger,
-    actor: residentAgentActor,
-    residentAgentId,
-    runId: launchInput.runId,
-    taskId: launchInput.taskId,
-    sourceCollectionId: launchInput.sourceCollectionId,
-    stagedReport: {
-      sourceCollectionId: report.report.sourceCollectionId,
-      scanBatchId: report.report.scanBatchId,
-      legacyReportId: report.report.legacyReportId,
-      reportHash: report.report.reportHash
-    },
-    reportEventId,
-    derivativeStore: mountedWorkspace.derivativeStore,
-    review: report.review,
-    evidenceLinks,
-    selectedCandidateIds,
-    importBatchId: launchInput.importBatchId,
-    ...(launchInput.stagingBatchId === undefined ? {} : { stagingBatchId: launchInput.stagingBatchId }),
-    ...(launchInput.maxCandidatesPerBundle === undefined ? {} : {
-      maxCandidatesPerBundle: launchInput.maxCandidatesPerBundle
-    }),
-    now: input.now
-  });
+  const mountedHandoff = await mountedOntologyBootstrapHandoff(input, launchInput);
+  if (!mountedHandoff.ok) return json(503, mountedHandoff.body);
+
+  let result: Awaited<ReturnType<typeof runOntologyBootstrapResidentWorkflow>>;
+  try {
+    const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
+    const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
+    result = await runOntologyBootstrapResidentWorkflow({
+      ledger: input.handle.ledger,
+      actor: residentAgentActor,
+      residentAgentId,
+      runId: launchInput.runId,
+      taskId: launchInput.taskId,
+      sourceCollectionId: launchInput.sourceCollectionId,
+      stagedReport: {
+        sourceCollectionId: report.report.sourceCollectionId,
+        scanBatchId: report.report.scanBatchId,
+        legacyReportId: report.report.legacyReportId,
+        reportHash: report.report.reportHash
+      },
+      reportEventId,
+      derivativeStore: mountedWorkspace.derivativeStore,
+      handoffMaterialStore: mountedHandoff.binding.materialStore,
+      handoffManifestStore: mountedHandoff.binding.manifestStore,
+      handoffAuthorityWitness: mountedHandoff.binding.authorityWitness,
+      review: report.review,
+      evidenceLinks,
+      selectedCandidateIds,
+      importBatchId: launchInput.importBatchId,
+      ...(launchInput.stagingBatchId === undefined ? {} : { stagingBatchId: launchInput.stagingBatchId }),
+      ...(launchInput.maxCandidatesPerBundle === undefined ? {} : {
+        maxCandidatesPerBundle: launchInput.maxCandidatesPerBundle
+      }),
+      now: input.now
+    });
+
+    if (!result.ok) {
+      return json(500, diagnostic(result.message, ["inspect ontology bootstrap agent diagnostics"]));
+    }
+    if (result.handoffEventIds.length > 0) {
+      await consumeMountedHandoffAuthorityController(mountedHandoff.controller, result.handoffEventIds);
+    }
+  } catch {
+    return json(503, diagnostic("Ontology bootstrap mounted authority is unavailable or no longer current.", [
+      "restore the mounted workspace and retry the ontology bootstrap launch"
+    ]));
+  } finally {
+    await mountedHandoff.wakeRuntime.stop().catch(() => undefined);
+  }
 
   if (!result.ok) {
-    return json(500, diagnostic(result.message, ["inspect ontology bootstrap agent diagnostics"]));
+    return json(500, diagnostic("Ontology bootstrap handoff did not complete safely.", ["inspect ontology bootstrap agent diagnostics"]));
   }
+  const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
+  const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
 
   return json(200, routeDto({
     generatedAt: input.now(),
@@ -178,6 +210,60 @@ async function launchOntologyBootstrapRun(
     requestedCandidateIds: launchInput.selectedCandidateIds,
     selectedCandidateIds
   }));
+}
+
+async function mountedOntologyBootstrapHandoff(
+  input: HandleAgentOntologyBootstrapRouteInput,
+  launchInput: LaunchInput
+): Promise<
+  | {
+      readonly ok: true;
+      readonly binding: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>["binding"];
+      readonly controller: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>["controller"];
+      readonly wakeRuntime: ReturnType<typeof createWakeSupervisorRuntime>;
+    }
+  | { readonly ok: false; readonly body: unknown }
+> {
+  let nextId = 0;
+  let wakeRuntime: ReturnType<typeof createWakeSupervisorRuntime> | undefined;
+  try {
+    wakeRuntime = createWakeSupervisorRuntime({
+      runtimeHandle: input.handle,
+      actor: residentAgentActor,
+      supervisorEpoch: `epoch_${launchInput.runId}`,
+      policy: {
+        policyVersion: "ontology-bootstrap-handoff.v1",
+        policyDigest: mountedAuthorityHash,
+        lockStateDigest: mountedAuthorityHash
+      },
+      now: input.now,
+      createSafeId: (kind) => `${kind}_${launchInput.runId}_${++nextId}`
+    });
+    const started = await wakeRuntime.supervision.start();
+    if (started.outcome !== "accepted") throw new Error("mounted authority admission was not accepted");
+    const binding = await createPortableMountedAgentArtifactStoreProducer(
+      issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+    ).bind({
+      taskId: launchInput.taskId,
+      attemptId: buildTaskAttemptId({
+        taskId: launchInput.taskId,
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      }),
+      approvedRunId: launchInput.runId,
+      runType: "ontology-bootstrap",
+      retryGeneration: 0
+    });
+    return Object.freeze({ ok: true as const, ...binding, wakeRuntime });
+  } catch {
+    await wakeRuntime?.stop().catch(() => undefined);
+    return {
+      ok: false,
+      body: diagnostic("Ontology bootstrap requires a current mounted authority lifecycle.", [
+        "restore the mounted workspace and retry the ontology bootstrap launch"
+      ])
+    };
+  }
 }
 
 async function canonicalReportEventId(

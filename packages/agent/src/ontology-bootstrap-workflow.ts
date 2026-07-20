@@ -32,10 +32,11 @@ import type { AgentFailureCategory, AgentToolSideEffectClass } from "./projectio
 import { buildSpecialistHandoffMaterial } from "./specialist-handoff-manifest.js";
 import {
   appendSpecialistFinalOutputStep,
-  finalizeSpecialistRunAfterHandoff,
-  recordSpecialistHandoff,
+  recordAuthorityBoundSpecialistHandoff,
   type SpecialistHandoffManifestStore
 } from "./specialist-runner-kernel.js";
+import type { MountedSpecialistHandoffAuthorityWitness } from "./specialist-handoff-authority.js";
+import { buildSpecialistHandoffProjection } from "./specialist-handoff-projection.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 import type { AgentToolPreview } from "./tool-gateway.js";
 
@@ -163,7 +164,14 @@ export interface RunOntologyBootstrapResidentWorkflowInput {
   /** Canonical staged-report identity; the workflow never consumes caller-supplied report bytes. */
   readonly stagedReport: CanonicalStagedReportIdentity;
   readonly reportEventId: string;
+  /** Ingestion-owned canonical report reader capability; it is not a handoff store. */
   readonly derivativeStore: SpecialistHandoffManifestStore;
+  /** Factory-injected mounted material capability for the exact V2 handoff lifecycle. */
+  readonly handoffMaterialStore?: SpecialistHandoffManifestStore;
+  /** Factory-injected mounted manifest capability for the exact V2 handoff lifecycle. */
+  readonly handoffManifestStore?: SpecialistHandoffManifestStore;
+  /** Factory-injected opaque witness; structural authority is never accepted. */
+  readonly handoffAuthorityWitness?: MountedSpecialistHandoffAuthorityWitness | undefined;
   readonly review: LegacyMigrationReviewDto;
   readonly evidenceLinks: readonly OntologyBootstrapEvidenceLink[];
   readonly selectedCandidateIds: readonly string[];
@@ -201,6 +209,8 @@ export type RunOntologyBootstrapResidentWorkflowResult =
       readonly nousMemoHash?: `sha256:${string}`;
       readonly pendingApprovalToolRequestIds: readonly string[];
       readonly eventIds: readonly string[];
+      /** Exact V2 lifecycle IDs; empty while the human-approval branch is suspended. */
+      readonly handoffEventIds: readonly string[];
     }
   | {
       readonly ok: false;
@@ -416,6 +426,19 @@ export async function runOntologyBootstrapResidentWorkflow(
     });
   }
 
+  if (
+    input.handoffMaterialStore === undefined ||
+    input.handoffManifestStore === undefined ||
+    input.handoffAuthorityWitness === undefined
+  ) {
+    return await appendRunFailure(input, {
+      category: "provenance-missing",
+      message: "Ontology bootstrap requires a current mounted handoff authority and readback capability before material effects.",
+      retryable: true,
+      allowedActions: ["restore the current mounted ontology bootstrap handoff capability and retry"]
+    });
+  }
+
   const bootstrap = safeRunBootstrapSpecialist({
     ...canonicalInput,
     now: () => run.startedAt
@@ -537,8 +560,20 @@ export async function runOntologyBootstrapResidentWorkflow(
     if (statusEvent !== undefined) {
       eventIds.push(statusEvent.id);
     }
+    return {
+      ok: true,
+      reviewBundle,
+      reviewBundleHash,
+      contextPack,
+      candidateBundleHashes,
+      ...(input.nousMemo === undefined ? {} : { nousMemoHash: input.nousMemo.memo.memoHash as `sha256:${string}` }),
+      pendingApprovalToolRequestIds,
+      eventIds: Object.freeze(eventIds),
+      handoffEventIds: Object.freeze([])
+    };
   }
 
+  let handoffEventIds: readonly string[];
   try {
     const terminal = await persistCanonicalOntologyBootstrapHandoff({
       input: canonicalInput,
@@ -549,6 +584,12 @@ export async function runOntologyBootstrapResidentWorkflow(
       relatedEventIds: await canonicalBootstrapHandoffRelatedEventIds(canonicalInput.ledger, canonicalInput.runId, taskId)
     });
     eventIds.push(...terminal);
+    handoffEventIds = await canonicalOntologyBootstrapHandoffEventIds({
+      ledger: canonicalInput.ledger,
+      runId: canonicalInput.runId,
+      taskId,
+      lifecycleEventIds: terminal
+    });
   } catch {
     return await appendRunFailure(canonicalInput, {
       category: "external-effect-failed",
@@ -566,8 +607,47 @@ export async function runOntologyBootstrapResidentWorkflow(
     candidateBundleHashes,
     ...(input.nousMemo === undefined ? {} : { nousMemoHash: input.nousMemo.memo.memoHash as `sha256:${string}` }),
     pendingApprovalToolRequestIds,
-    eventIds: Object.freeze(eventIds)
+    eventIds: Object.freeze(eventIds),
+    handoffEventIds
   };
+}
+
+async function canonicalOntologyBootstrapHandoffEventIds(input: {
+  readonly ledger: EventLedger;
+  readonly runId: string;
+  readonly taskId: string | undefined;
+  readonly lifecycleEventIds: readonly string[];
+}): Promise<readonly string[]> {
+  const [finalOutputEventId, preparedEventId, recordedEventId, terminalEventId, taskStatusEventId] = input.lifecycleEventIds;
+  if (
+    finalOutputEventId === undefined ||
+    preparedEventId === undefined ||
+    recordedEventId === undefined ||
+    terminalEventId === undefined ||
+    taskStatusEventId === undefined ||
+    input.taskId === undefined
+  ) {
+    throw new Error("Canonical ontology bootstrap handoff lifecycle is incomplete.");
+  }
+  const orchestration = (await input.ledger.readAll()).find((event) =>
+    event.type === "agent.task.orchestration.completed" &&
+    event.payload.taskId === input.taskId &&
+    event.payload.runId === input.runId &&
+    event.payload.handoffPreparedEventId === preparedEventId &&
+    event.payload.handoffRecordedEventId === recordedEventId &&
+    event.payload.specialistRunCompletedEventId === terminalEventId
+  );
+  if (orchestration === undefined) {
+    throw new Error("Canonical ontology bootstrap task orchestration readback is incomplete.");
+  }
+  return Object.freeze([
+    finalOutputEventId,
+    preparedEventId,
+    recordedEventId,
+    terminalEventId,
+    orchestration.id,
+    taskStatusEventId
+  ]);
 }
 
 async function canonicalizeOntologyBootstrapInput(
@@ -673,20 +753,31 @@ async function persistCanonicalOntologyBootstrapHandoff(input: {
   readonly pendingApprovalToolRequestIds: readonly string[];
   readonly relatedEventIds: readonly string[];
 }): Promise<readonly string[]> {
-  const store = input.input.derivativeStore;
-  if (store === undefined) throw new Error("Canonical ontology bootstrap handoff requires a derivative read/write capability.");
+  const materialStore = input.input.handoffMaterialStore;
+  const manifestStore = input.input.handoffManifestStore;
+  const handoffAuthorityWitness = input.input.handoffAuthorityWitness;
+  if (materialStore === undefined || manifestStore === undefined || handoffAuthorityWitness === undefined) {
+    throw new Error("Canonical ontology bootstrap handoff requires current mounted material, manifest, and authority capabilities.");
+  }
+  const recovered = await readCanonicalOntologyBootstrapHandoffRecovery({
+    ledger: input.input.ledger,
+    manifestStore,
+    runId: input.input.runId,
+    ...(input.taskId === undefined ? {} : { taskId: input.taskId })
+  });
+  if (recovered !== undefined) return recovered;
   const reviewBytes = Buffer.from(stableJson(input.reviewBundle), "utf8");
-  const reviewStored = await store.put(reviewBytes);
+  const reviewStored = await materialStore.put(reviewBytes);
   if (reviewStored.contentHash !== input.reviewBundleHash || reviewStored.sizeBytes !== reviewBytes.byteLength) {
     throw new Error("Canonical ontology bootstrap review artifact hash mismatch.");
   }
-  const reviewReadback = await store.get(input.reviewBundleHash);
+  const reviewReadback = await materialStore.get(input.reviewBundleHash);
   if (!Buffer.isBuffer(reviewReadback) || !reviewReadback.equals(reviewBytes)) {
     throw new Error("Canonical ontology bootstrap review artifact readback mismatch.");
   }
   const artifactId = `artifact_${input.input.runId}_ontology_bootstrap_review_bundle`;
   const handoffMaterial = buildSpecialistHandoffMaterial({
-    status: input.pendingApprovalToolRequestIds.length === 0 ? "ready-for-review" : "waiting-for-approval",
+    status: "ready-for-review",
     safeSummary: "Canonical ontology bootstrap review material is durable and remains proposal-only.",
     contextPackRefs: [],
     outputArtifacts: [{
@@ -714,26 +805,21 @@ async function persistCanonicalOntologyBootstrapHandoff(input: {
   });
   const finalOutput = await appendSpecialistFinalOutputStep({
     ledger: input.input.ledger,
-    materialStore: store,
+    materialStore,
     actor: input.input.actor,
     now: input.input.now,
     runId: input.input.runId,
     ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
     handoffMaterial
   });
-  const recorded = await recordSpecialistHandoff({
+  const recorded = await recordAuthorityBoundSpecialistHandoff({
     ledger: input.input.ledger,
-    manifestStore: store,
+    manifestStore,
     actor: input.input.actor,
     now: input.input.now,
     runId: input.input.runId,
-    ...(input.taskId === undefined ? {} : { taskId: input.taskId })
-  });
-  const finalized = await finalizeSpecialistRunAfterHandoff({
-    ledger: input.input.ledger,
-    actor: input.input.actor,
-    now: input.input.now,
-    recorded
+    ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
+    handoffAuthorityWitness
   });
   await assertCanonicalOntologyBootstrapTerminalReadback({
     ledger: input.input.ledger,
@@ -742,9 +828,47 @@ async function persistCanonicalOntologyBootstrapHandoff(input: {
     finalOutput,
     prepared: recorded.prepared,
     recorded: recorded.recorded,
-    terminal: finalized.terminal
+    terminal: recorded.terminal
   });
-  return Object.freeze([finalOutput.id, recorded.prepared.id, recorded.recorded.id, finalized.terminal.id]);
+  return Object.freeze([
+    finalOutput.id,
+    recorded.prepared.id,
+    recorded.recorded.id,
+    recorded.terminal.id,
+    recorded.taskStatus.id
+  ]);
+}
+
+async function readCanonicalOntologyBootstrapHandoffRecovery(input: {
+  readonly ledger: EventLedger;
+  readonly manifestStore: SpecialistHandoffManifestStore;
+  readonly runId: string;
+  readonly taskId?: string;
+}): Promise<readonly string[] | undefined> {
+  if (input.taskId === undefined) return undefined;
+  const projection = await buildSpecialistHandoffProjection({
+    events: await input.ledger.readAll(),
+    manifestReader: input.manifestStore,
+    runId: input.runId,
+    taskId: input.taskId
+  });
+  const readback = projection.selectedReadback;
+  if (
+    projection.state !== "task-completed" ||
+    readback === undefined ||
+    readback.runId !== input.runId ||
+    readback.taskId !== input.taskId ||
+    readback.diagnostics.length !== 0
+  ) {
+    return undefined;
+  }
+  return Object.freeze([
+    readback.finalOutputEventId,
+    readback.preparedEventId,
+    readback.recordedEventId,
+    readback.terminalRunEventId,
+    readback.taskStatusEventId
+  ]);
 }
 
 async function assertCanonicalOntologyBootstrapTerminalReadback(input: {

@@ -2,11 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createAgentRuntime } from "../../agent/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-cestus-fixtures.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
 import { isExactOntologyBootstrapRunProvenance } from "../src/agent-ontology-bootstrap-routes.js";
+import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
 let cwd: string;
@@ -14,6 +16,15 @@ let sourceRoot: string;
 let workspaceRoot: string;
 let handler: LocalRuntimeHttpHandler | undefined;
 let config: ResolvedLocalRuntimeConfig;
+
+const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) =>
+  createAgentRuntime({
+    ledger: handle.ledger,
+    actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
+    now,
+    identityLifecycle: () => handle.residentIdentity.lifecycle(),
+    identityLifecycleReady: () => handle.residentIdentity.ready()
+  });
 
 beforeEach(() => {
   cwd = mkdtempSync(join(tmpdir(), "cestus-bootstrap-route-"));
@@ -48,7 +59,8 @@ describe("ontology-bootstrap agent routes", () => {
     handler = createLocalRuntimeHttpHandler({
       config,
       actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" },
-      now: () => "2026-07-08T16:00:00.000Z"
+      now: () => "2026-07-08T16:00:00.000Z",
+      agentRuntimeFactory: ontologyBootstrapRouteRuntimeFactory
     });
 
     const launch = await handler({

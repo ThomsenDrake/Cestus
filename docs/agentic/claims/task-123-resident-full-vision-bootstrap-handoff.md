@@ -127,3 +127,36 @@ Status: `ready-for-review`
   GREEN must consume only the released opaque mounted binding, retain exact
   cursor/prelude semantics, and map unavailable, stale, or swapped capability
   state to bounded no-material diagnostics.
+
+### V4 Green Boundary — Approval Suspension And Factory Entry
+
+- The released Task121 precedent resolves the approval branch without changing
+  a V2 terminal result back to waiting: mounted authority is required before
+  work; an outstanding approval request returns the existing
+  `waiting-for-approval` handoff with no final-output, prepared, recorded,
+  terminal, orchestration-completed, or completed-task effect; only an
+  approval-free path may consume the V2 terminal lifecycle.
+- The upstream default-factory
+  `blocked.factory-context-attestation-required` occurs before this card's
+  route boundary: `handleAgentHttpRoute` constructs
+  `defaultLocalAgentRuntimeFactory` before it invokes
+  `handleAgentOntologyBootstrapRoute`. It is the intended later Task140
+  predecessor boundary, not a Task123 defect.
+- The route's existing `agentRuntimeFactory` HTTP seam therefore injects a
+  released-interface-conformant resident runtime only in this card's route
+  test. That test injection neither changes nor bypasses the default factory,
+  and this card makes no claim that default composition is ready.
+- The bounded diagnostic that established the predecessor was:
+  `defaultLocalAgentRuntimeFactory` calls
+  `createFactoryHeldContextBindingVerifier(createContextPackRegistry())`, which
+  fails because its new registry has no registered descriptors. No fallback
+  runtime, store, controller, authority, or write was introduced.
+
+### V4 Intended GREEN
+
+- Exact focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exits `0`: **2 files / 19 tests passed**. This is a **+1 passing-test delta**
+  from the inherited 18-test baseline, retaining the missing-authority
+  counterfactual and the route's approval-suspended `waiting-for-approval`
+  behavior without a terminal V2 handoff.
