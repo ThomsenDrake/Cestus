@@ -6,7 +6,7 @@
     "acceptedIntegrationSha": "9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c",
     "frozenAuthority": {
       "path": "docs/agentic/contracts/task136-bounded-assurance-v4.json",
-      "sha256": "1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5",
+      "sha256": "ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354",
       "cardCount": 29,
       "unfinishedCardPrecedence": "authoritative"
     }
