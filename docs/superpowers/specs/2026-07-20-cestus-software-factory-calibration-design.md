@@ -26,4 +26,4 @@ The source also defines the sole registry lifecycle, proportional validation, on
 
 ## Acceptance
 
-The targeted Node test proves the contract, summary, ordering, eligibility, ownership rejection, and Level 3 validator requirements. The factory and full verification gates remain required before handoff. The machine state remains `candidate` after the GREEN commit so a fresh reviewer and the assigned coordinator retain the next lifecycle action.
+The targeted Node test proves the contract, summary, ordering, eligibility, ownership rejection, the Level 3 policy, and the calibration milestone's architecture/executability pair. The factory and full verification gates remain required before handoff. The machine state remains `candidate` with a null accepted-integration SHA after the GREEN commit so a fresh reviewer and the assigned coordinator retain the next lifecycle action.

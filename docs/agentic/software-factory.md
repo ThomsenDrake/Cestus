@@ -18,6 +18,14 @@ uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scri
 npm run factory:check
 ```
 
+## Calibrated Operating Authority
+
+`docs/agentic/contracts/software-factory-mission-state.v1.json` is the sole machine-readable authority for active factory mission mechanics. Its checker derives order, eligibility, ownership conflicts, counts, fingerprint, and compact status. It references the frozen V4 release authority without copying its graph.
+
+Use the source-defined Level 1 workflow for low-risk interactive documentation, mechanical cleanup, and bounded behavior-neutral refactors; Level 2 for bounded features and fixes; and Level 3 for mission/assurance work. Validation is proportional to level. Level 3 milestones require one fresh concurrent scrutiny validator and one black-box validator; source-only reviews cannot replace running-flow validation. The source defines review exceptions, worktree/model calibration, exact lifecycle events, and the single coordinator layer.
+
+All levels preserve append-only ledger semantics, provenance, projection rebuildability, human PRR-send and legal gates, fail-closed authority, secret safety, and no fallback writes. Registry events record only `claimed`, `implementing`, `candidate`, `reviewing`, `approved`, `integrated`, and `released` transitions.
+
 ## Operating Basis
 
 Cestus follows a hybrid of Steipete-style tight agent feedback loops and Factory-inspired mission execution, implemented through OpenAI Codex conventions rather than Factory's harness.

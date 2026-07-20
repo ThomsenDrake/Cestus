@@ -94,27 +94,19 @@ Detailed evidence and remaining gaps from the first resident-agent MVP integrati
 
 - Brainstorming or new product behavior: explore context, ask clarifying questions, propose approaches, present a design, and wait for approval before writing files.
 - Implementation planning: write a plan with measurable tasks, owned files, exact targeted commands, acceptance criteria, rollback/escalation conditions, and review gates.
-- Implementation: run one task at a time through claim, failing test, targeted failure, production change, targeted pass, full verify, commit, and review.
+- Implementation: select the calibrated level from `docs/agentic/contracts/software-factory-mission-state.v1.json`, then use its proportionate validation, review, worktree, model, and commit rules.
 - Review: lead with defects, missing tests, spec drift, invariant violations, and verification gaps. Summaries come after findings.
 - Child thread dispatch: include only the current slice, this skill path, active branch, required docs, owned files, exact commands, and stop conditions.
 
-## Task Execution Contract
+## Calibrated Task Execution Contract
 
-For each implementation task:
+The mission-state source is the only authority for active feature facts, ownership, status, prerequisites, milestones, and release evidence. It defines the three levels:
 
-1. Use a task-scoped branch or isolated worktree.
-2. Claim one task in `docs/agentic/claims/task-<number>-<short-slug>.md` and commit the claim.
-3. Change status to `in-progress` before editing task files.
-4. Read every file named by the task.
-5. Write the failing test or failing contract first.
-6. Run the exact targeted command and record the expected failure.
-7. Implement the smallest scoped change.
-8. Run the targeted passing command.
-9. Run `npm run verify`.
-10. Commit only the files in scope plus any recorded claim/readiness evidence.
-11. Hand off to spec review, then code-quality review, before starting the next dependent task.
+- Level 1: concise scope, relevant inspection, focused validation, and atomic commits. A fresh automated review is required only when production code changes.
+- Level 2: one owner, compact durable state, test or exact reproduction before behavior edits, minimal implementation, focused cross-boundary gates, atomic commits, one fresh review, and milestone integration. Use dual review only for the source-defined high-impact boundaries. Keep behavior changes test-first.
+- Level 3: collaborative plan, finite behavioral contract, meaningful milestones, fresh bounded workers, externalized shared state, fresh scrutiny, black-box running-flow validation, targeted fixes, and milestone/release gates.
 
-If a task is documentation-only, replace red/green code tests with the relevant validation command, usually `npm run factory:check`, `git diff --check`, and skill validation when a skill changes.
+Registry events record only lifecycle transitions. Do not emit routine command, polling, waiting, unchanged-state, or reviewer-heartbeat events. Keep one coordinator layer. Preserve append-only ledger/provenance/rebuildability, human PRR-send and legal gates, fail-closed authority, secret safety, and no fallback writes at every level.
 
 ## Standard Commands
 

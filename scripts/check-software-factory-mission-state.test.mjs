@@ -10,11 +10,16 @@ const checkerPath = join(root, "scripts/check-software-factory-mission-state.mjs
 const sourcePath = join(root, "docs/agentic/contracts/software-factory-mission-state.v1.json");
 
 function runChecker(contractPath = sourcePath) {
-  return execFileSync(process.execPath, [checkerPath, contractPath, "--json"], {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  });
+  try {
+    return execFileSync(process.execPath, [checkerPath, contractPath, "--json"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+  } catch (error) {
+    const stderr = error && typeof error === "object" && "stderr" in error ? error.stderr : "";
+    throw new Error(String(stderr).trim());
+  }
 }
 
 function withFixture(mutate, assertion) {
@@ -66,6 +71,17 @@ test("rejects a Level 3 milestone that removes its black-box validator", () => {
     },
     (fixturePath) => {
       assert.throws(() => runChecker(fixturePath), /Level 3 milestone validation/);
+    }
+  );
+});
+
+test("rejects a calibration milestone that removes its executability validator", () => {
+  withFixture(
+    (source) => {
+      delete source.milestones[0].validation.executabilityValidator;
+    },
+    (fixturePath) => {
+      assert.throws(() => runChecker(fixturePath), /Level 2 milestone executability validation/);
     }
   );
 });

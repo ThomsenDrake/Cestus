@@ -1,0 +1,276 @@
+{
+  "schemaVersion": "software-factory-mission-state.v1",
+  "mission": {
+    "missionId": "software-factory-calibration",
+    "status": "candidate",
+    "acceptedIntegrationSha": null,
+    "frozenAuthority": {
+      "path": "docs/agentic/contracts/task136-bounded-assurance-v4.json",
+      "sha256": "1d98c77a6255b3e68d0ad62f71e0023240ad8913659d70d715fb6bc0974b06f5",
+      "cardCount": 29
+    }
+  },
+  "ownedPathScope": [
+    "AGENTS.md",
+    ".agents/skills/cestus-software-factory/SKILL.md",
+    "docs/agentic/software-factory.md",
+    "docs/superpowers/specs/2026-07-20-cestus-software-factory-calibration-design.md",
+    "docs/superpowers/plans/2026-07-20-cestus-software-factory-calibration-implementation.md",
+    "docs/agentic/contracts/software-factory-mission-state.v1.json",
+    "scripts/check-software-factory-mission-state.mjs",
+    "scripts/check-software-factory-mission-state.test.mjs",
+    "scripts/check-agent-readiness.mjs"
+  ],
+  "stateModel": {
+    "registryEventStatuses": [
+      "claimed",
+      "implementing",
+      "candidate",
+      "reviewing",
+      "approved",
+      "integrated",
+      "released"
+    ],
+    "registryEventPolicy": "Record only lifecycle transitions; omit polling, waiting, unchanged state, routine commands, and reviewer heartbeats."
+  },
+  "riskLevels": {
+    "level1": {
+      "name": "low-risk-interactive",
+      "appliesTo": [
+        "documentation",
+        "mechanical-cleanup",
+        "bounded-behavior-neutral-refactor"
+      ],
+      "workflow": {
+        "scope": "concise",
+        "inspection": "relevant",
+        "validation": "focused",
+        "commits": "atomic",
+        "defaultSeparateClaimRedGreenCommits": false,
+        "defaultDualReviews": false,
+        "defaultFullVerification": false,
+        "dedicatedWorktreeWhenCheckoutSafetyClear": false
+      },
+      "reviewRules": {
+        "freshAutomatedReview": "required-only-when-production-code-changes"
+      }
+    },
+    "level2": {
+      "name": "bounded-feature",
+      "appliesTo": [
+        "normal-feature",
+        "bug-fix"
+      ],
+      "workflow": {
+        "owners": 1,
+        "durableStatus": "compact",
+        "behaviorEditPrecondition": "test-or-exact-reproduction",
+        "implementation": "minimal",
+        "validation": "focused-relevant-cross-boundary",
+        "commits": "atomic",
+        "freshReviews": 1,
+        "integration": "milestone"
+      },
+      "reviewRules": {
+        "dualReviewRequiredFor": [
+          "public-or-cross-package-interface",
+          "durable-or-portable-state",
+          "provenance-or-projection",
+          "security-auth-or-secrets",
+          "human-gate",
+          "irreversible-or-external-effect",
+          "mission-critical-orchestration"
+        ],
+        "permanentRedCommitAllowedFor": [
+          "safety",
+          "frozen-p0-p1",
+          "reproduced-p0-p1",
+          "difficult-recovery"
+        ],
+        "behaviorChanges": "test-first"
+      }
+    },
+    "level3": {
+      "name": "mission-assurance",
+      "requiredPractices": [
+        "collaborative-plan",
+        "finite-behavioral-contract-before-implementation",
+        "meaningful-milestones",
+        "fresh-bounded-workers",
+        "externalized-shared-state",
+        "fresh-scrutiny",
+        "black-box-running-user-flow-validation",
+        "targeted-defect-fixes",
+        "full-live-release-gates-at-milestones-and-releases"
+      ],
+      "milestoneValidation": {
+        "freshConcurrentScrutinyValidator": 1,
+        "blackBoxValidator": 1,
+        "sourceOnlyReviewsCanSubstitute": false,
+        "requiredGates": [
+          "full",
+          "live",
+          "release"
+        ]
+      }
+    }
+  },
+  "executionTopology": {
+    "coordinatorLayers": 1,
+    "parallelism": "use only independent bounded work with externalized ownership",
+    "worktrees": "use isolation when checkout safety is not clear",
+    "models": "match model capability to task risk and review judgment"
+  },
+  "invariants": [
+    "append-only-ledger",
+    "provenance-required",
+    "projection-rebuildability",
+    "human-prr-send-gate",
+    "legal-gate",
+    "fail-closed-authority",
+    "secret-safety",
+    "no-fallback-writes"
+  ],
+  "milestones": [
+    {
+      "milestoneId": "SFC-M1",
+      "riskLevel": "level2",
+      "featureIds": [
+        "SFC-001",
+        "SFC-002",
+        "SFC-003"
+      ],
+      "validation": {
+        "architectureValidator": 1,
+        "executabilityValidator": 1
+      }
+    }
+  ],
+  "features": [
+    {
+      "featureId": "SFC-001",
+      "prerequisiteIds": [],
+      "milestoneIds": [
+        "SFC-M1"
+      ],
+      "riskLevel": "level2",
+      "ownership": {
+        "ownerId": "software-factory-calibration",
+        "allowedPaths": [
+          "docs/superpowers/specs/2026-07-20-cestus-software-factory-calibration-design.md",
+          "docs/superpowers/plans/2026-07-20-cestus-software-factory-calibration-implementation.md",
+          "docs/agentic/contracts/software-factory-mission-state.v1.json",
+          "scripts/check-software-factory-mission-state.mjs",
+          "scripts/check-software-factory-mission-state.test.mjs"
+        ]
+      },
+      "status": "candidate",
+      "validationAssertions": [
+        {
+          "assertionId": "SFC-001-A1",
+          "description": "The source references frozen V4 authority without copying its release graph.",
+          "command": "node --test scripts/check-software-factory-mission-state.test.mjs"
+        },
+        {
+          "assertionId": "SFC-001-A2",
+          "description": "Feature order, prerequisite eligibility, path ownership, counts, and fingerprint derive from the source.",
+          "command": "node scripts/check-software-factory-mission-state.mjs --json"
+        },
+        {
+          "assertionId": "SFC-001-A3",
+          "description": "The Level 3 milestone requires independent fresh scrutiny and black-box validation.",
+          "command": "node --test scripts/check-software-factory-mission-state.test.mjs"
+        }
+      ],
+      "targetedCommands": [
+        "node --test scripts/check-software-factory-mission-state.test.mjs"
+      ],
+      "acceptedIntegrationSha": null,
+      "releaseEvidenceRefs": [
+        "docs/superpowers/specs/2026-07-20-cestus-software-factory-calibration-design.md",
+        "docs/superpowers/plans/2026-07-20-cestus-software-factory-calibration-implementation.md"
+      ]
+    },
+    {
+      "featureId": "SFC-002",
+      "prerequisiteIds": [
+        "SFC-001"
+      ],
+      "milestoneIds": [
+        "SFC-M1"
+      ],
+      "riskLevel": "level1",
+      "ownership": {
+        "ownerId": "software-factory-calibration",
+        "allowedPaths": [
+          "AGENTS.md",
+          ".agents/skills/cestus-software-factory/SKILL.md",
+          "docs/agentic/software-factory.md"
+        ]
+      },
+      "status": "candidate",
+      "validationAssertions": [
+        {
+          "assertionId": "SFC-002-A1",
+          "description": "Agent instructions select calibrated validation and review from the canonical source.",
+          "command": "npm run factory:check"
+        },
+        {
+          "assertionId": "SFC-002-A2",
+          "description": "The project skill remains valid after its compact calibration update.",
+          "command": "uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/cestus-software-factory"
+        }
+      ],
+      "targetedCommands": [
+        "npm run factory:check"
+      ],
+      "acceptedIntegrationSha": null,
+      "releaseEvidenceRefs": [
+        "docs/agentic/contracts/software-factory-mission-state.v1.json"
+      ]
+    },
+    {
+      "featureId": "SFC-003",
+      "prerequisiteIds": [
+        "SFC-001",
+        "SFC-002"
+      ],
+      "milestoneIds": [
+        "SFC-M1"
+      ],
+      "riskLevel": "level2",
+      "ownership": {
+        "ownerId": "software-factory-calibration",
+        "allowedPaths": [
+          "scripts/check-agent-readiness.mjs"
+        ]
+      },
+      "status": "candidate",
+      "validationAssertions": [
+        {
+          "assertionId": "SFC-003-A1",
+          "description": "Factory readiness fails closed when the calibrated mission source is absent or invalid.",
+          "command": "npm run factory:check"
+        },
+        {
+          "assertionId": "SFC-003-A2",
+          "description": "Full verification includes the calibrated mission-state authority check.",
+          "command": "npm run verify"
+        },
+        {
+          "assertionId": "SFC-003-A3",
+          "description": "The change scope has no whitespace errors.",
+          "command": "git diff --check"
+        }
+      ],
+      "targetedCommands": [
+        "npm run factory:check",
+        "npm run verify"
+      ],
+      "acceptedIntegrationSha": null,
+      "releaseEvidenceRefs": [
+        "docs/agentic/contracts/software-factory-mission-state.v1.json"
+      ]
+    }
+  ]
+}
