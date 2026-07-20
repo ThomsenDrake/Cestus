@@ -109,3 +109,21 @@ Status: `ready-for-review`
   exact V4 gates. No subagent, self-review, integration, release record, push,
   provider, credential, network, external, PRR, legal, or `neo` action is
   authorized.
+
+### Causal RED — Missing Mounted V2 Composition
+
+- Before production edits, the exact V4 command
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exited `1`: **2 files / 19 tests**, **2 failed / 17 passed**.
+- New causal counterfactual: an otherwise exact canonical report/run with
+  `handoffAuthorityWitness: undefined` returned `ok: true` and wrote bootstrap
+  material instead of failing before effects. The retained mounted production
+  launch independently returned HTTP `500` where its public contract requires
+  `200`.
+- Root cause: the workflow still calls the legacy
+  `recordSpecialistHandoff`/`finalizeSpecialistRunAfterHandoff` path and has no
+  V2 witness input. The production route supplies an ordinary derivative store
+  but no current factory-issued mounted authority/readback lifecycle. The
+  GREEN must consume only the released opaque mounted binding, retain exact
+  cursor/prelude semantics, and map unavailable, stale, or swapped capability
+  state to bounded no-material diagnostics.
