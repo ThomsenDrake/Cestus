@@ -24802,3 +24802,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   the assurance correction `approved -> integrated`; this exact program head
   may now be forward-merged into preserved Task122 causal RED `358a683a` for
   its sole minimal five-path GREEN. No push or external effect occurs.
+
+## RV-1-E-862 — Task122 portable cursor candidate admitted for review
+
+- Recorded at: 2026-07-20T16:42:36Z
+- The same Task122 owner preserves causal RED
+  `358a683aaacf3e4ffb18de5ef1f4efefdbb71fce`, authority forward merge
+  `dba925a1e056c9db0804bfefbd89450e6576a054`, and sole minimal GREEN exact
+  candidate `911747851a25c56510b00cba8787af9cb309c0b3`. The cumulative candidate
+  changes exactly Task122's claim, investigation planner source/test, and the
+  transferred portable mounted artifact-store source/test: the authorized
+  five-path ownership boundary.
+- Exact committed bytes pass the focused **2 files / 49 tests** and
+  cross-boundary **4 files / 139 tests** gates, standalone typecheck, factory
+  readiness, diff hygiene, assurance **20/20**, all four V4 contract markers,
+  clean tracked/untracked state, and real non-symlinked dependencies with
+  executable Vitest 4.1.9. Full-test and `npm run verify` differential removes
+  the exact 11 Task122 RED failures and adds 11 passing tests while retaining
+  all remaining record-25 failure identities and all five skips.
+- At candidate stage, repository mode deliberately fails closed on
+  `blob mismatch: CF1-HR:packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`.
+  This is the frozen transfer invariant: CF1-HR current-HEAD ownership remains
+  authoritative before strict record 26, while Task122 necessarily changes the
+  transferred path in its candidate. No checker bypass or premature ownership
+  migration is authorized; integration and strict record 26 are one release
+  transition, after which Task122 current ownership becomes authoritative and
+  all CF1-HR historical evidence remains verified.
+- Status advances Task122 `implementing -> candidate -> reviewing`. One fresh
+  concurrent read-only Terra/xhigh architecture/executability pair will review
+  exact candidate `91174785`, including the preactivation ownership lock. V1-V3,
+  raw strict records 1-25, all 29 IDs/order, finite mappings/evidence, and `neo`
+  remain immutable. No push or external effect occurs.
+
+## RV-1-E-863 — Task122 provider-transcript and prelude root-cause checkpoint
+
+- Recorded at: 2026-07-20T16:53:06Z
+- Fresh read-only Terra/xhigh executability/adversarial reviewer
+  `019f8069-75bf-7531-a064-84a5bbf433fd` reproduces a P1 on exact candidate
+  `911747851a25c56510b00cba8787af9cb309c0b3`: an investigation-planner
+  authority whose durable history contains only the bound started event can
+  still authorize final output. The cursor rejects only a pending request, so
+  wholly absent provider provenance bypasses the frozen requirement for one
+  exact same-run request followed by exactly one matching completed or failed
+  terminal.
+- Fresh read-only Terra/xhigh architecture/invariants reviewer
+  `019f8069-753b-7070-8ed8-2928a9a808e1` independently reproduces a second P1:
+  exact-looking orchestration claimed/checkpointed preludes appended after the
+  bound start, or duplicated/reordered in history, are unconditionally skipped
+  instead of burning authority. This violates the frozen mutation,
+  duplication, reordering, and unknown-bound-event fail-closed rule.
+- Both reviewers confirm focused **49/49**, cross-boundary **139/139**,
+  typecheck, factory, assurance **20/20**, and all V4 markers are otherwise
+  green. Both independently adjudicate the record-25 CF1-HR blob mismatch as
+  the required preactivation ownership lock, not a defect; no checker bypass
+  or early ownership movement is authorized.
+- Standing software-factory recovery authority makes both corrections
+  contract-determined. Status advances Task122 `reviewing -> recovering`; the
+  same Task122 owner, branch, worktree, candidate ancestry, and five-path
+  ownership resume for one causal RED and one minimal GREEN. The RED must pin
+  mandatory provider pairing for the investigation-planner authority and
+  duplicate/reordered/post-start prelude rejection. GREEN must preserve valid
+  released pre-start claim/checkpoint history, exact phase/currentness and
+  investigation bindings, later V2 transitions, and the record-25 lock.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. After committed-byte admission, one fresh
+  concurrent read-only Terra/xhigh architecture/executability pair is required.
+  V1-V3, raw records 1-25, all 29 IDs/order, finite mappings/evidence, and
+  `neo` remain immutable. No reset, rebase, amend, squash, drop, rewrite, push,
+  or external effect occurs.
