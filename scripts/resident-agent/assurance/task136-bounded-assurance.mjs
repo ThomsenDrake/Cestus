@@ -39,7 +39,7 @@ const expectedCardIds = Object.freeze([
   "Task136"
 ]);
 
-const expectedAssuranceFingerprint = "47cfd213bae941aef69673c7afd633a4fea84d176fbbbdaf5dcefdf716fc19a0";
+const expectedAssuranceFingerprint = "d7bc75dc684e4d2be850aa2b5f6af9268754ed525f472375784d63f3b45f8071";
 const immutableContractPins = Object.freeze([
   Object.freeze({ label: "v1", path: "docs/agentic/contracts/task136-bounded-assurance-v1.json", sha256: "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed" }),
   Object.freeze({ label: "v2", path: "docs/agentic/contracts/task136-bounded-assurance-v2.json", sha256: "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4" }),
@@ -101,6 +101,14 @@ const expectedHistoricalCompatibility = Object.freeze([
       Object.freeze({ path: "packages/local-runtime/src/mounted-artifact-authority-operation.ts", recordDisposition: "owned" }),
       Object.freeze({ path: "packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts", recordDisposition: "owned" }),
       Object.freeze({ path: "packages/local-runtime/test/support/task137-authority-boundary-policy.ts", recordDisposition: "owned" })
+    ])
+  }),
+  Object.freeze({
+    cardId: "CF1-HR",
+    canonicalJsonSha256: "d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12",
+    pathDispositions: Object.freeze([
+      Object.freeze({ path: "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts", recordDisposition: "owned" }),
+      Object.freeze({ path: "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts", recordDisposition: "owned" })
     ])
   })
 ]);
@@ -177,6 +185,17 @@ const cf1HrOwnedPaths = Object.freeze([
   "docs/agentic/claims/cf1-h-task136-complete-handoff-readback-projection.md"
 ]);
 const cf1HrCommand = "npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts";
+const cf1HrToTask122Paths = Object.freeze([
+  "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+  "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
+]);
+const task122OwnedPaths = Object.freeze([
+  "packages/agent/src/investigation-planner-workflow.ts",
+  "packages/agent/test/investigation-planner-workflow.test.ts",
+  "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md",
+  ...cf1HrToTask122Paths
+]);
+const task122Command = "npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts";
 const g136ScOwnedPaths = Object.freeze([
   "packages/agent/src/tool-gateway.ts",
   "packages/agent/src/scheduler.ts",
@@ -573,8 +592,9 @@ function validateTask139PmScope(graph) {
 
 function validateCorrectedCardScopes(graph) {
   const cf1Hr = graph.get("CF1-HR");
+  const task122 = graph.get("Task122");
   const g136Sc = graph.get("G136-SC");
-  if (!cf1Hr || !g136Sc) throw new Error("corrected card missing");
+  if (!cf1Hr || !task122 || !g136Sc) throw new Error("corrected card missing");
   assertExactStrings(cf1Hr.prerequisiteIds, [
     "W1-123-H-SHARED-SCHEMA",
     "W1-133.5-PREAPPROVAL-PROMPT-STORE",
@@ -583,11 +603,22 @@ function validateCorrectedCardScopes(graph) {
     "Task129-MFA"
   ], "CF1-HR prerequisites");
   if (
-    cf1Hr.ownedPaths.some((ownedPath) => ownedPath.disposition !== "owned") ||
+    cf1Hr.ownedPaths.some((ownedPath) =>
+      ownedPath.disposition !== (cf1HrToTask122Paths.includes(ownedPath.path) ? "transferred" : "owned")
+    ) ||
     JSON.stringify(cf1Hr.ownedPaths.map((ownedPath) => ownedPath.path)) !== JSON.stringify(cf1HrOwnedPaths) ||
     cf1Hr.command !== cf1HrCommand
   ) {
     throw new Error("CF1-HR scope");
+  }
+  assertExactStrings(cf1Hr.transferToIds, ["Task122"], "CF1-HR transfer targets");
+  validateTransferredPathGroup(cf1Hr, task122, cf1HrToTask122Paths, "CF1-HR:Task122");
+  if (
+    task122.ownedPaths.some((ownedPath) => ownedPath.disposition !== "owned") ||
+    JSON.stringify(task122.ownedPaths.map((ownedPath) => ownedPath.path)) !== JSON.stringify(task122OwnedPaths) ||
+    task122.command !== task122Command
+  ) {
+    throw new Error("Task122 scope");
   }
   if (
     g136Sc.ownedPaths.some((ownedPath, index) => ownedPath.disposition !== (index === g136ScOwnedPaths.length - 1 ? "transferred" : "owned")) ||
@@ -609,6 +640,7 @@ function historicalTargetGroups(cardId) {
     { targetId: "CF1-HR", paths: task137bToCf1Paths },
     { targetId: "Task139-PM", paths: task137bToTask139PmPaths }
   ];
+  if (cardId === "CF1-HR") return [{ targetId: "Task122", paths: cf1HrToTask122Paths }];
   throw new Error(`invalid historical transfer source: ${cardId}`);
 }
 
@@ -1379,6 +1411,7 @@ function currentHeadMigrationTarget(cardId, path) {
   if (cardId === "Task135B" && task135bToCf1Paths.includes(path)) return "CF1-HR";
   if (cardId === "Task137B-W" && task137bToCf1Paths.includes(path)) return "CF1-HR";
   if (cardId === "Task137B-W" && task137bToTask139PmPaths.includes(path)) return "Task139-PM";
+  if (cardId === "CF1-HR" && cf1HrToTask122Paths.includes(path)) return "Task122";
   return undefined;
 }
 
