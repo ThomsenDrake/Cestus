@@ -24939,3 +24939,96 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   required after GREEN. V1-V3, raw records 1-25, all 29 IDs/order, finite
   mappings/evidence, and `neo` remain immutable. No reset, rebase, amend,
   squash, drop, rewrite, push, or external effect occurs.
+
+## RV-1-E-866 — Coordinator graceful pause at Task122 committed GREEN
+
+- Recorded at: 2026-07-20T17:49:00Z
+- Human wind-down authority pauses the Resident Agent Full-Vision Program at
+  the next safe atomic checkpoint. The program branch is clean at
+  `eefd8ef5faa19617104060abe534793fa2625c24` with exactly **25** accepted
+  strict V4 release records; Task122 remains the next release card.
+- The same Task122 owner is idle on clean branch
+  `codex/task122-cf1-handoff-adoption` at committed GREEN
+  `edb1b6c893c290b025796a8faf6c43a7a2d5582a`, preserving authority merge
+  `0a24f610f1ba109b9fb7e2a3856f5328b8bf3bd0` and causal RED
+  `193143c6b149b914a8ff2ad760c7ad11d27dae35`. This recovery changes the
+  Task122 claim, planner workflow test, and portable mounted-store source;
+  cumulative scope remains the exact authorized five paths.
+- Committed GREEN bytes pass focused **2 files / 54 tests**, cross-boundary
+  **4 files / 144 tests**, standalone typecheck, assurance **20/20**, and all
+  four V4 markers. Full `npm test` and `npm run verify` differentials retain
+  every remaining failure/skip identity: record-25 base **60 failed / 2,820
+  passed / 5 skipped**, candidate **49 failed / 2,847 passed / 5 skipped**.
+  The exact 11 Task122 failures are removed. Final factory/repository-mode,
+  diff/status/dependency rechecks and a fresh review pair were not started
+  after the wind-down directive.
+- Prior final-pair verdicts on `799de1e9` are preserved but invalidated for
+  release by the later RED/GREEN code change. Exact `edb1b6c8` has no review
+  verdict and is not integrated. No Task122 or coordinator-owned command
+  remains active. Smallest resume action is to run the remaining committed-byte
+  admission checks on `edb1b6c8`, then dispatch one fresh concurrent read-only
+  Terra/xhigh architecture/executability pair if admission passes.
+- Status is `program paused`; this is not abandonment, reset, release,
+  integration, or coordinator handoff. No new work was dispatched after the
+  wind-down directive. V1-V3, raw records 1-25, all 29 IDs/order, finite
+  mappings/evidence, every branch/worktree/history item, and `neo` remain
+  untouched.
+
+## RV-1-E-867 — Bounded software-factory calibration authorized
+
+- Recorded at: 2026-07-20T17:57:40Z
+- Human authority resumes the sole coordinator only for one isolated,
+  behavior-neutral software-factory calibration. The verified clean program
+  authority is `224f3e8f67c8bcd564d841979b872e74c8358b55` with exactly **25**
+  accepted strict V4 records and Task122 next. Preserved Task122 GREEN
+  `edb1b6c893c290b025796a8faf6c43a7a2d5582a`, both prior review generations,
+  and every paused product worktree remain stationary and unmodified; no owned
+  process is active. `neo` remains untouched at
+  `f88ced73be1e64660d95874394a324bd317fc20a`.
+- The sole implementation owner receives exactly these nine factory-mechanics
+  paths: `AGENTS.md`, `.agents/skills/cestus-software-factory/SKILL.md`,
+  `docs/agentic/software-factory.md`,
+  `docs/superpowers/specs/2026-07-20-cestus-software-factory-calibration-design.md`,
+  `docs/superpowers/plans/2026-07-20-cestus-software-factory-calibration-implementation.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`,
+  `scripts/check-software-factory-mission-state.mjs`,
+  `scripts/check-software-factory-mission-state.test.mjs`, and
+  `scripts/check-agent-readiness.mjs`. Task-scoped subagent-driven development
+  and test-driven development are explicitly approved for this task.
+- The calibration establishes the approved three-level risk model, one
+  canonical machine-readable mission-state contract/source for new work,
+  transition-only registry discipline, risk-proportional validation, and
+  milestone scrutiny plus black-box validation. It gets one causal validation
+  RED, one minimal GREEN, exact factory/skill/verify/diff/clean gates, and one
+  fresh concurrent read-only architecture/executability review pair.
+- Product packages, runtime behavior, ontology contracts, portable storage,
+  providers, user-facing behavior, V1-V4 assurance, strict release records,
+  frozen card IDs/order, compatibility mappings, paused candidates, and `neo`
+  are outside scope. No V5, release graph, bridge card, compatibility lane,
+  registry migration, generic transfer facility, replacement coordinator, or
+  strict product release record is authorized. Status is `factory calibration
+  claimed`; product execution remains paused until calibration integration and
+  integrated-byte validation complete.
+
+## RV-1-E-868 — Software-factory calibration integrated
+
+- Recorded at: 2026-07-20T19:02:11Z
+- The complete preserved calibration history through candidate
+  `d5b6815fe7f439ab66977aa8794cba6c368d089c` is integrated without history
+  rewrite at merge `9bb902a5e201a4ab6a0e71339d1ff28a3dfaf95c` on the sole program branch.
+  Fresh final architecture and executability reviewers
+  `019f80e1-f689-72e0-a1c2-c853185c651b` and
+  `019f80e1-f9e9-7a10-b003-6f0d09067528` both approve the sealed immutable
+  calibration envelope with no reproduced P0/P1.
+- Integrated bytes pass the mission-state suite **20/20**, both source and
+  immutable-envelope fingerprints, skill validation, factory readiness,
+  whitespace/scope/clean-state checks, and real dependency/Vitest checks.
+  `npm run verify` passes typecheck and reproduces only the inherited
+  record-25 cohort: **12 failed files / 60 failed tests / 225 passed files /
+  2,820 passed tests / 3 skipped files / 5 skipped tests**.
+- Canonical calibration mission state advances `candidate -> integrated` and
+  records the accepted integration SHA above. No strict product release record
+  is created. V1-V4, all 25 strict records, all 29 card IDs/order, paused
+  product candidates, product behavior, and `neo` remain unchanged. The next
+  product action is to revalidate preserved Task122 against this program head
+  before resuming its exact paused checkpoint.
