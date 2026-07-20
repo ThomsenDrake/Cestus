@@ -86,6 +86,20 @@
             "recordDisposition": "owned"
           }
         ]
+      },
+      {
+        "cardId": "CF1-HR",
+        "canonicalJsonSha256": "d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12",
+        "pathDispositions": [
+          {
+            "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+            "recordDisposition": "owned"
+          },
+          {
+            "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+            "recordDisposition": "owned"
+          }
+        ]
       }
     ]
   },
@@ -533,11 +547,11 @@
             "path": "packages/agent/test/specialist-handoff-authority.test.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts"
           },
           {
-            "disposition": "owned",
+            "disposition": "transferred",
             "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
           },
           {
@@ -557,7 +571,9 @@
             "path": "docs/agentic/claims/cf1-h-task136-complete-handoff-readback-projection.md"
           }
         ],
-        "transferToIds": [],
+        "transferToIds": [
+          "Task122"
+        ],
         "command": "npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/ontology/test/agent-contracts.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts"
       },
       {
@@ -913,10 +929,18 @@
           {
             "disposition": "owned",
             "path": "docs/agentic/claims/task-122-resident-full-vision-investigation-handoff.md"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts"
+          },
+          {
+            "disposition": "owned",
+            "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
           }
         ],
         "transferToIds": [],
-        "command": "npm test -- packages/agent/test/investigation-planner-workflow.test.ts"
+        "command": "npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts"
       },
       {
         "id": "W1-123-BOOTSTRAP-HANDOFF",
