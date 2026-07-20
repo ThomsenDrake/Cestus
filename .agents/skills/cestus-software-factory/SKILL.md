@@ -110,7 +110,7 @@ Registry events record only lifecycle transitions. Do not emit routine command, 
 
 ## Standard Commands
 
-Use task-specific commands from the active plan first. Common gates:
+Use only the commands required by the selected source-defined level and task. These commands are available gates, not default requirements for every task:
 
 ```bash
 npm run factory:check
@@ -129,11 +129,11 @@ Reviewers inspect the diff against the active spec, plan, tests, and Cestus inva
 
 - Does the change stay within the allowed files and task scope?
 - Did a failing test or equivalent validation exist before the fix?
-- Do targeted verification and `npm run verify` pass?
+- Do the source-defined targeted and risk-proportionate gates pass?
 - Are append-only, provenance, replayability, send-gate, and escalation-lock semantics preserved?
 - Would a fresh generic coding agent understand the resulting contracts, files, and handoff?
 
-Only approve when defects, missing tests, spec drift, and verification gaps are absent or explicitly non-blocking.
+Level 1 requires a fresh automated review only when production code changes. Level 2 and Level 3 use the source-defined fresh, dual, milestone, and release scrutiny. Only approve when required defects, missing tests, spec drift, and verification gaps are absent or explicitly non-blocking.
 
 ## Child Thread Prompt Skeleton
 
@@ -155,7 +155,7 @@ Required context:
 Operating style:
 - Spec first if the design is not approved.
 - Plan first if implementation tasks are not approved.
-- During implementation, use a task-scoped branch/worktree, durable claims, failing tests first, exact targeted commands, `npm run verify`, commits per task, and review gates.
+- During implementation, select the source-defined level first. Use compact claims only when that level requires them, test or exact reproduction before behavior edits, focused commands, atomic commits, and only the required review/gate sequence. Do not default Level 1 work to permanent RED commits, full verification, or review.
 - Preserve append-only ledger semantics, provenance, projection rebuildability, human-approved send gates, legal escalation locks, and AI-legible contracts.
 - Stop this child and return structured evidence to the coordinator on
   data-loss risk, schema conflict, unavailable dependency, credential need,

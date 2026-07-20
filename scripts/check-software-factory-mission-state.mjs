@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -14,6 +15,31 @@ const acceptedStatuses = [
   "integrated",
   "released"
 ];
+const riskLevelIds = ["level1", "level2", "level3"];
+const level1AppliesTo = ["documentation", "mechanical-cleanup", "bounded-behavior-neutral-refactor"];
+const level2AppliesTo = ["normal-feature", "bug-fix"];
+const level2DualReviewBoundaries = [
+  "public-or-cross-package-interface",
+  "durable-or-portable-state",
+  "provenance-or-projection",
+  "security-auth-or-secrets",
+  "human-gate",
+  "irreversible-or-external-effect",
+  "mission-critical-orchestration"
+];
+const level2PermanentRedCases = ["safety", "frozen-p0-p1", "reproduced-p0-p1", "difficult-recovery"];
+const level3RequiredPractices = [
+  "collaborative-plan",
+  "finite-behavioral-contract-before-implementation",
+  "meaningful-milestones",
+  "fresh-bounded-workers",
+  "externalized-shared-state",
+  "fresh-scrutiny",
+  "black-box-running-user-flow-validation",
+  "targeted-defect-fixes",
+  "full-live-release-gates-at-milestones-and-releases"
+];
+const level3RequiredGates = ["full", "live", "release"];
 
 const argumentsWithoutFlags = process.argv.slice(2).filter((argument) => argument !== "--json");
 const sourcePath = argumentsWithoutFlags[0] ?? canonicalSourcePath;
@@ -101,6 +127,11 @@ function validateFrozenAuthority(authority) {
   requireObject(authority, "mission.frozenAuthority");
   requireEqual(authority.path, canonicalFrozenAuthorityPath, "mission.frozenAuthority.path");
   requireSha(authority.sha256, "mission.frozenAuthority.sha256");
+  requireEqual(
+    authority.unfinishedCardPrecedence,
+    "authoritative",
+    "unfinished V4 card precedence must be authoritative"
+  );
   if (!Number.isInteger(authority.cardCount) || authority.cardCount <= 0) {
     fail("mission.frozenAuthority.cardCount must be a positive integer");
   }
@@ -119,23 +150,82 @@ function validateFrozenAuthority(authority) {
 
 function validateRiskLevels(riskLevels) {
   requireObject(riskLevels, "riskLevels");
-  for (const level of ["level1", "level2", "level3"]) {
-    requireObject(riskLevels[level], `riskLevels.${level}`);
-  }
+  requireExactObjectKeys(riskLevels, riskLevelIds, "riskLevels must contain exactly level1, level2, and level3");
+
+  const level1 = riskLevels.level1;
+  requireExactObjectKeys(level1, ["name", "appliesTo", "workflow", "reviewRules"], "Level 1 schema");
+  requireEqual(level1.name, "low-risk-interactive", "Level 1 name");
+  requireArrayEqual(level1.appliesTo, level1AppliesTo, "Level 1 applies-to sequence");
+  requireExactObjectKeys(
+    level1.workflow,
+    [
+      "scope",
+      "inspection",
+      "validation",
+      "commits",
+      "defaultSeparateClaimRedGreenCommits",
+      "defaultDualReviews",
+      "defaultFullVerification",
+      "dedicatedWorktreeWhenCheckoutSafetyClear"
+    ],
+    "Level 1 workflow schema"
+  );
+  requireEqual(level1.workflow.scope, "concise", "Level 1 scope rule");
+  requireEqual(level1.workflow.inspection, "relevant", "Level 1 inspection rule");
+  requireEqual(level1.workflow.validation, "focused", "Level 1 validation rule");
+  requireEqual(level1.workflow.commits, "atomic", "Level 1 commit rule");
+  requireExactObjectKeys(level1.reviewRules, ["freshAutomatedReview"], "Level 1 review schema");
+  requireEqual(
+    level1.reviewRules.freshAutomatedReview,
+    "required-only-when-production-code-changes",
+    "Level 1 review rule"
+  );
   requireEqual(riskLevels.level1.workflow.defaultSeparateClaimRedGreenCommits, false, "Level 1 separate commit rule");
   requireEqual(riskLevels.level1.workflow.defaultDualReviews, false, "Level 1 dual review rule");
   requireEqual(riskLevels.level1.workflow.defaultFullVerification, false, "Level 1 full verification rule");
   requireEqual(riskLevels.level1.workflow.dedicatedWorktreeWhenCheckoutSafetyClear, false, "Level 1 worktree rule");
-  requireEqual(riskLevels.level2.workflow.owners, 1, "Level 2 owner rule");
-  requireEqual(riskLevels.level2.reviewRules.behaviorChanges, "test-first", "Level 2 test rule");
-  requireArrayIncludes(riskLevels.level2.reviewRules.dualReviewRequiredFor, "public-or-cross-package-interface", "Level 2 dual review rule");
-  requireArrayIncludes(riskLevels.level2.reviewRules.permanentRedCommitAllowedFor, "safety", "Level 2 RED rule");
-  requireArrayIncludes(riskLevels.level3.requiredPractices, "black-box-running-user-flow-validation", "Level 3 practice rule");
-  const validation = riskLevels.level3.milestoneValidation;
+
+  const level2 = riskLevels.level2;
+  requireExactObjectKeys(level2, ["name", "appliesTo", "workflow", "reviewRules"], "Level 2 schema");
+  requireEqual(level2.name, "bounded-feature", "Level 2 name");
+  requireArrayEqual(level2.appliesTo, level2AppliesTo, "Level 2 applies-to sequence");
+  requireExactObjectKeys(
+    level2.workflow,
+    ["owners", "durableStatus", "behaviorEditPrecondition", "implementation", "validation", "commits", "freshReviews", "integration"],
+    "Level 2 workflow schema"
+  );
+  requireEqual(level2.workflow.owners, 1, "Level 2 owner rule");
+  requireEqual(level2.workflow.durableStatus, "compact", "Level 2 durable status rule");
+  requireEqual(level2.workflow.behaviorEditPrecondition, "test-or-exact-reproduction", "Level 2 behavior precondition");
+  requireEqual(level2.workflow.implementation, "minimal", "Level 2 implementation rule");
+  requireEqual(level2.workflow.validation, "focused-relevant-cross-boundary", "Level 2 validation rule");
+  requireEqual(level2.workflow.commits, "atomic", "Level 2 commit rule");
+  requireEqual(level2.workflow.freshReviews, 1, "Level 2 fresh review rule");
+  requireEqual(level2.workflow.integration, "milestone", "Level 2 integration rule");
+  requireExactObjectKeys(
+    level2.reviewRules,
+    ["dualReviewRequiredFor", "permanentRedCommitAllowedFor", "behaviorChanges"],
+    "Level 2 review schema"
+  );
+  requireArrayEqual(level2.reviewRules.dualReviewRequiredFor, level2DualReviewBoundaries, "Level 2 dual review sequence");
+  requireArrayEqual(level2.reviewRules.permanentRedCommitAllowedFor, level2PermanentRedCases, "Level 2 RED sequence");
+  requireEqual(level2.reviewRules.behaviorChanges, "test-first", "Level 2 test rule");
+
+  const level3 = riskLevels.level3;
+  requireExactObjectKeys(level3, ["name", "requiredPractices", "milestoneValidation"], "Level 3 schema");
+  requireEqual(level3.name, "mission-assurance", "Level 3 name");
+  requireArrayEqual(level3.requiredPractices, level3RequiredPractices, "Level 3 required practice sequence");
+  const validation = level3.milestoneValidation;
   requireObject(validation, "Level 3 milestone validation");
+  requireExactObjectKeys(
+    validation,
+    ["freshConcurrentScrutinyValidator", "blackBoxValidator", "sourceOnlyReviewsCanSubstitute", "requiredGates"],
+    "Level 3 milestone validation schema"
+  );
   requireEqual(validation.freshConcurrentScrutinyValidator, 1, "Level 3 milestone validation");
   requireEqual(validation.blackBoxValidator, 1, "Level 3 milestone validation");
   requireEqual(validation.sourceOnlyReviewsCanSubstitute, false, "Level 3 milestone validation");
+  requireArrayEqual(validation.requiredGates, level3RequiredGates, "Level 3 required gates must match the approved sequence");
 }
 
 function validateExecutionTopology(topology) {
@@ -219,38 +309,66 @@ function validateMilestones(rawMilestones, features) {
   if (!Array.isArray(rawMilestones) || rawMilestones.length === 0) {
     fail("milestones must be a non-empty array");
   }
-  const milestoneIds = new Set();
-  const membership = new Map();
+  const milestones = new Map();
   for (const milestone of rawMilestones) {
     requireObject(milestone, "milestone");
     requireString(milestone.milestoneId, "milestone.milestoneId");
-    if (milestoneIds.has(milestone.milestoneId)) {
+    if (milestones.has(milestone.milestoneId)) {
       fail(`duplicate milestone ID ${milestone.milestoneId}`);
     }
-    milestoneIds.add(milestone.milestoneId);
+    milestones.set(milestone.milestoneId, milestone);
     requireUniqueStrings(milestone.featureIds, `${milestone.milestoneId}.featureIds`);
+    if (!riskLevelIds.includes(milestone.riskLevel)) {
+      fail(`${milestone.milestoneId}.riskLevel is invalid`);
+    }
     if (milestone.riskLevel === "level3") {
       requireObject(milestone.validation, `${milestone.milestoneId}.validation`);
       requireEqual(milestone.validation.freshConcurrentScrutinyValidator, 1, "Level 3 milestone validation");
       requireEqual(milestone.validation.blackBoxValidator, 1, "Level 3 milestone validation");
       requireEqual(milestone.validation.sourceOnlyReviewsCanSubstitute, false, "Level 3 milestone validation");
     }
-    if (milestone.riskLevel === "level2") {
+    if (milestone.riskLevel === "level2" && milestone.milestoneId !== "SFC-M1") {
       requireObject(milestone.validation, `${milestone.milestoneId}.validation`);
       requireEqual(milestone.validation.architectureValidator, 1, "Level 2 milestone architecture validation");
       requireEqual(milestone.validation.executabilityValidator, 1, "Level 2 milestone executability validation");
     }
-    for (const featureId of milestone.featureIds) {
-      if (!features.has(featureId)) {
-        fail(`${milestone.milestoneId} references missing feature ${featureId}`);
-      }
-      membership.set(`${featureId}:${milestone.milestoneId}`, true);
-    }
   }
+  const calibrationMilestone = milestones.get("SFC-M1");
+  if (!calibrationMilestone) {
+    fail("SFC-M1 must remain a Level 2 milestone");
+  }
+  requireEqual(calibrationMilestone.riskLevel, "level2", "SFC-M1 must remain a Level 2 milestone");
+  if (!Object.hasOwn(calibrationMilestone.validation, "executabilityValidator")) {
+    fail("Level 2 milestone executability validation");
+  }
+  requireExactObjectKeys(
+    calibrationMilestone.validation,
+    ["architectureValidator", "executabilityValidator"],
+    "SFC-M1 validation schema"
+  );
+  requireEqual(
+    calibrationMilestone.validation.architectureValidator,
+    1,
+    "SFC-M1 must retain exactly one architecture validator"
+  );
+  requireEqual(
+    calibrationMilestone.validation.executabilityValidator,
+    1,
+    "SFC-M1 must retain exactly one executability validator"
+  );
   for (const feature of features.values()) {
     for (const milestoneId of feature.milestoneIds) {
-      if (!milestoneIds.has(milestoneId) || !membership.has(`${feature.featureId}:${milestoneId}`)) {
-        fail(`${feature.featureId} has inconsistent milestone membership`);
+      const milestone = milestones.get(milestoneId);
+      if (!milestone || !milestone.featureIds.includes(feature.featureId)) {
+        fail(`bidirectional milestone membership disagreement for ${feature.featureId} and ${milestoneId}`);
+      }
+    }
+  }
+  for (const milestone of milestones.values()) {
+    for (const featureId of milestone.featureIds) {
+      const feature = features.get(featureId);
+      if (!feature || !feature.milestoneIds.includes(milestone.milestoneId)) {
+        fail(`bidirectional milestone membership disagreement for ${featureId} and ${milestone.milestoneId}`);
       }
     }
   }
@@ -338,11 +456,27 @@ function requireStatus(value, label) {
 
 function requireAcceptedIntegrationSha(value, status, label) {
   if (["integrated", "released"].includes(status)) {
-    requireGitSha(value, label);
+    requireGitCommitSha(value, label);
     return;
   }
   if (value !== null) {
     fail(`${label} must be null before integration`);
+  }
+}
+
+function requireGitCommitSha(value, label) {
+  requireGitSha(value, label);
+  let objectType;
+  try {
+    objectType = execFileSync("git", ["cat-file", "-t", value], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    fail(`${label} must resolve to a Git commit`);
+  }
+  if (objectType !== "commit") {
+    fail(`${label} must resolve to a Git commit`);
   }
 }
 
@@ -365,6 +499,15 @@ function requireArrayEqual(value, expected, label) {
 function requireArrayIncludes(value, expected, label) {
   if (!Array.isArray(value) || !value.includes(expected)) {
     fail(`${label} must include ${expected}`);
+  }
+}
+
+function requireExactObjectKeys(value, expectedKeys, label) {
+  requireObject(value, label);
+  const actualKeys = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  if (actualKeys.length !== expected.length || actualKeys.some((key, index) => key !== expected[index])) {
+    fail(label);
   }
 }
 
