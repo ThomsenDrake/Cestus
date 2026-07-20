@@ -25186,3 +25186,26 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   admission before fresh review. No default-factory, shared authority,
   portable-store, strict-record, external-effect, push, or `neo` change is
   authorized.
+
+## RV-1-E-873 — Bootstrap handoff currentness root-cause checkpoint
+
+- Recorded at: 2026-07-20T20:56:41Z
+- Exact recovery candidate `72e39d0eedab1904be2d217fbc6029e374dab474`
+  passes its admitted focused, cross-boundary, typecheck, assurance, repository,
+  factory, scope, differential, clean-state, and dependency gates. Fresh
+  read-only architecture and executability reviewers
+  `/root/task123_arch_review` and `/root/task123_exec_review` nevertheless both
+  reproduce P1 fail-closed violations before approval suspension.
+- A structurally invalid mounted witness reaches durable bootstrap and
+  final-output events before authority validation, while a previously issued
+  but non-current witness reaches the pending-approval dossier, tool request,
+  and waiting status without invoking currentness revalidation. Both violate
+  the frozen requirement that missing, stale, swapped, cross-run, conflicting,
+  unavailable, or unverified mounted authority fail before bootstrap/material
+  effects.
+- Status returns `reviewing -> implementing`. The same owner will preserve all
+  history, forward-merge this registry-only authority, commit one causal RED
+  covering both reproduced paths and one minimal GREEN within the same exact
+  five paths, rerun every admission gate, and obtain a fresh concurrent review
+  pair. No shared authority/store/default-factory change, strict release record,
+  external effect, push, or `neo` action is authorized.
