@@ -22,6 +22,17 @@ let workspaceRoot: string;
 let handler: LocalRuntimeHttpHandler | undefined;
 let config: ResolvedLocalRuntimeConfig;
 let hostileBindingAccessorRead = false;
+let hostileExtraAccessorReads = 0;
+
+interface TestMountedOntologyBootstrapHandoff {
+  readonly binding: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>["binding"];
+  readonly controller: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>["controller"];
+  stop(): Promise<void>;
+}
+
+type TestMountedOntologyBootstrapHandoffTransform = (
+  handoff: TestMountedOntologyBootstrapHandoff
+) => unknown;
 
 const baseOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) =>
   createAgentRuntime({
@@ -32,7 +43,10 @@ const baseOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ ha
     identityLifecycleReady: () => handle.residentIdentity.ready()
   });
 
-const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) => {
+function runtimeFactoryWithMountedOntologyBootstrapHandoff(
+  transform: TestMountedOntologyBootstrapHandoffTransform
+): LocalAgentRuntimeFactory {
+  return ({ handle, now }) => {
   const runtime = baseOntologyBootstrapRouteRuntimeFactory({
     handle,
     actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
@@ -72,17 +86,41 @@ const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle
           runType: input.runType,
           retryGeneration: input.retryGeneration
         });
-        return Object.freeze({
-          ...prepared,
+        return transform(Object.freeze({
+          binding: prepared.binding,
+          controller: prepared.controller,
           stop: async () => await wakeRuntime.stop()
-        });
+        }));
       } catch (error) {
         await wakeRuntime.stop().catch(() => undefined);
         throw error;
       }
     }
   });
-};
+  };
+}
+
+const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = runtimeFactoryWithMountedOntologyBootstrapHandoff(
+  (handoff) => handoff
+);
+
+const hostileExtraAccessorOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory =
+  runtimeFactoryWithMountedOntologyBootstrapHandoff((handoff) => {
+    const hostile: object = Object.create(Object.prototype);
+    Object.defineProperties(hostile, {
+      binding: { enumerable: true, value: handoff.binding },
+      controller: { enumerable: true, value: handoff.controller },
+      stop: { enumerable: true, value: handoff.stop },
+      extra: {
+        enumerable: true,
+        get() {
+          hostileExtraAccessorReads += 1;
+          throw new Error("hostile extra accessor must not be read");
+        }
+      }
+    });
+    return Object.freeze(hostile);
+  });
 
 const hostileOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) => {
   const runtime = baseOntologyBootstrapRouteRuntimeFactory({
@@ -122,6 +160,7 @@ const hostileOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({
 
 beforeEach(() => {
   hostileBindingAccessorRead = false;
+  hostileExtraAccessorReads = 0;
   cwd = mkdtempSync(join(tmpdir(), "cestus-bootstrap-route-"));
   sourceRoot = mkdtempSync(join(tmpdir(), "cestus-bootstrap-source-"));
   workspaceRoot = join(cwd, "workspace");
@@ -294,6 +333,30 @@ describe("ontology-bootstrap agent routes", () => {
 
       expect(launch?.status).toBe(503);
       expect(hostileBindingAccessorRead).toBe(false);
+      expect(await directHandle.ledger.readAll()).toEqual(eventsBefore);
+    } finally {
+      directHandle.close();
+    }
+  });
+
+  it("rejects an unread extra enumerable getter before direct Task123 effects", async () => {
+    const actor = { id: "actor_route_owner", kind: "human" as const, label: "Route Owner" };
+    const now = () => "2026-07-08T16:00:00.000Z";
+    const directHandle = createSqlitePrrRuntime({ config, actor, now });
+    try {
+      const runtime = hostileExtraAccessorOntologyBootstrapRouteRuntimeFactory({ handle: directHandle, actor, now });
+      await initializeResidentIdentityForDirectRoute(directHandle, runtime, actor.id);
+      const eventsBefore = await directHandle.ledger.readAll();
+      const launch = await handleAgentOntologyBootstrapRoute({
+        request: ontologyBootstrapLaunchRequest("task_ontology_bootstrap_extra_accessor", "run_ontology_bootstrap_extra_accessor"),
+        handle: directHandle,
+        actor,
+        now,
+        runtime
+      });
+
+      expect(launch?.status).toBe(503);
+      expect(hostileExtraAccessorReads).toBe(0);
       expect(await directHandle.ledger.readAll()).toEqual(eventsBefore);
     } finally {
       directHandle.close();

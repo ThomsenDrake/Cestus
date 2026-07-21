@@ -372,3 +372,19 @@ Status: `ready-for-review`
   a method and the other as a readonly function property. GREEN is restricted
   to deleting the accidental duplicate declaration while retaining the
   existing strictly typed internal interface and every route behavior.
+
+### V4 Recovery RED — Hostile Extra Enumerable Handoff Accessor
+
+- At authority-merge head `925351d71008fcf7cd03481168148b3786940d6b`, the
+  direct real-route counterfactual acquires a factory-issued portable binding,
+  exact controller, and callable stop, then adds one otherwise unrelated
+  enumerable own accessor to the outer runtime handoff.
+- `npm test -- packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exits `1`: **1 file / 7 tests**, **1 failed / 6 passed**. The new
+  `rejects an unread extra enumerable getter before direct Task123 effects`
+  test receives `503` and preserves exact direct-ledger equality, but its
+  required `getterReads === 0` assertion observes `1`.
+- This isolates the route return spread: after its three-field structural
+  check, `{ ...handoff }` evaluates the hostile extra enumerable getter before
+  portable preflight. GREEN must reject the outer shape by descriptors alone,
+  before any getter evaluation or Task123 durable effect.
