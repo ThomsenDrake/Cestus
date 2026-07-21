@@ -25526,3 +25526,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   IDs/order, finite compatibility mappings, prior evidence/history, and `neo`
   remain immutable. No integration, release record, push, or external effect
   occurs here.
+
+## RV-1-E-885 — W1-123 hostile-fixture compile-admission checkpoint
+
+- Recorded at: 2026-07-21T01:51:05Z
+- The same owner preserves authority merge `925351d7`, causal hostile-accessor
+  RED `4adb053e`, and descriptor-normalization candidate
+  `a1ec71a7efc505dbfd01e8e94aa26285f3f4fcfa`. Focused **4/64**,
+  cross-boundary **6/154**, mission-state **20/20**, Task136 assurance
+  **20/20**, all four markers, factory, diff, scope, clean, dependency, and
+  inherited full-test differential gates are otherwise green; repository mode
+  stops only at the required pre-record-27 ownership lock.
+- Independent exact-candidate typecheck reproduces one compiler diagnostic:
+  `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts(365,60):
+  TS18048: 'wakeRuntime' is possibly 'undefined'.` The final explicit cleanup
+  fixture assigned an optional outer variable, then captured that optional
+  variable inside its `stop` closure. This is a test-fixture typing defect, not
+  a product, contract, safety, ownership, or behavior decision.
+- Standing recovery authority resumes the same owner after a registry-only
+  merge. One claim-only causal RED will record this exact committed compiler
+  output, followed by one minimal GREEN that captures the already-created wake
+  runtime through a non-optional local reference for both authority issuance
+  and `stop`. No assertion, cast, non-null operator, production edit, test
+  weakening, API widening, or other path change is allowed. Task-scoped
+  subagent-driven development and test-driven development are explicitly
+  approved for this task.
+- Exact admission and one fresh concurrent read-only
+  architecture/executability pair remain required after the correction.
+  Status remains W1-123 `candidate -> recovering`. All history, the nine-path
+  boundary, V1-V4, raw records 1-26, all 29 IDs/order, prior evidence, and
+  `neo` remain immutable. No integration, release record, push, or external
+  effect occurs here.
