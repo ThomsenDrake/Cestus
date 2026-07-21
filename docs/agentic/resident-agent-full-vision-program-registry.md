@@ -25870,3 +25870,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances Task138-H `implementing -> candidate -> reviewing`. This is
   not approval, product integration, strict record 28, or release. The strict
   frontier remains **27 of 29**; Task136 and Waves 3-5 remain unstarted.
+
+## RV-1-E-893 — Task138-H fresh review defects; bounded repair authorized
+
+- Recorded at: 2026-07-21T18:07:26Z
+- Fresh architecture review instance
+  `6ec28864-14a7-44a0-9463-94ef8f53945b` and fresh executable review instance
+  `6cc549fd-3724-44be-985e-390ea2b5cf38` both return `NEEDS_CHANGES` for exact
+  candidate `c6e508b10fad9f949e616687e7159b2fbd8a9c64`. The candidate is not
+  approved, integrated, released, or eligible for strict record 28.
+- The architecture reviewer identifies three P1 gaps: hostile top-level
+  identity text can be copied into the browser DTO before normalization;
+  compatible terminal-only ready/failed chains remain `handoff-recorded`
+  instead of `terminal-consistent`; and safe upstream diagnostic event/hash
+  evidence is discarded into empty arrays. The executable reviewer separately
+  reproduces a fourth manifestation of the same hostile pre-normalization
+  boundary: Proxy descriptor/prototype traps escape as raw attacker-controlled
+  exceptions instead of a bounded secret-safe DTO.
+- A fresh repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for hostile top-level identity and
+  Proxy traps, exact compatible terminal-only completed/failed mapping, and
+  preservation of safe diagnostic event/hash evidence; then it may implement
+  the minimal fail-closed GREEN without weakening any existing assertion.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The repaired candidate must rerun the focused and cross-boundary suites,
+  standalone typecheck, factory, V4 assurance/contract/repository frontier,
+  full differential, diff/scope/ancestry/dependency/clean checks, then receive a
+  new fresh architecture/executable review pair. No reviewer may repair its own
+  finding and no prior verdict can approve new bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw release
+  records 1-27, all 29 IDs/order, prior product releases, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
