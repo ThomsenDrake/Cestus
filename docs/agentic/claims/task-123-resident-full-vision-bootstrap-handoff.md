@@ -320,3 +320,20 @@ Status: `ready-for-review`
   exited `0`: **4 files / 61 tests passed**. This is a **+3 passing-test
   delta** from the prior 58-test Task123 candidate and retains the causal RED
   without alteration.
+
+### V4 Recovery RED — Post-Issuance Unrelated Cursor Suffix
+
+- After normal forward merge `92d548fcf85a444b84bf0828ccaf40d55b87299d`
+  of clean program authority `8b59f90fc690a734e70399f96beca6d454c7049d`,
+  this recovery restores the original unrelated-suffix counterfactual without
+  changing production bytes.
+- Exact V4 command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `1`: **4 files / 61 tests**, **1 failed / 60 passed**.
+- The restored `rejects unrelated suffixes rollbacks replacements and reorder
+  before store io without fallback` case appends an unbound post-issuance
+  event, but `materialStore.put` resolves with a content hash instead of
+  rejecting. This proves the candidate's incremental `inspectCursor` filter
+  silently ignores the exact suffix that the cursor must reject; GREEN must
+  restore generic incremental rejection and keep route-only early authority
+  admission finite and non-locking.
