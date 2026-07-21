@@ -25368,3 +25368,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   the preactivation ownership lock. V1-V4, raw records 1-26, all 29 IDs/order,
   historical evidence, calibrated mission state, and `neo` remain immutable.
   No release record, push, or external effect occurs here.
+
+## RV-1-E-880 — W1-123 pre-effect authority root-cause checkpoint
+
+- Recorded at: 2026-07-21T00:15:36Z
+- Fresh read-only architecture reviewer
+  `019f81ff-d81c-7fc1-bb3b-39a8819472b2` approves exact clean candidate
+  `68d09db346833d38286204e319c20352e6b6c539` with no reproduced P0/P1.
+  Fresh executability/adversarial reviewer
+  `019f81ff-d822-7880-90b2-71c30f09885c` reproduces one P1: an unavailable
+  mounted handoff provider returns HTTP 503 only after **13** durable events,
+  including identity/task initialization, task-status changes, ingestion scan
+  and report generation, and specialist-run start.
+- Root cause is exact route ordering. Mounted handoff acquisition and portable
+  authority preflight currently begin only after those effects. The route also
+  reaches the optional provider through a hidden `Partial` intersection cast,
+  contrary to the frozen no-cast/no-widening boundary. The focused **58/58**
+  and assurance **20/20** gates remain green because they do not pin the full
+  pre-authority ledger delta. The pre-record-27 CF1-HR blob mismatch remains
+  the required ownership lock and is not a defect.
+- Standing recovery authority makes the correction contract-determined. The
+  same Task123 owner and preserved nine-path history will forward-merge this
+  registry authority, commit one causal RED proving zero durable event delta
+  for unavailable and invalid mounted authority, then one minimal GREEN.
+  GREEN must acquire and authenticate the exact portable binding before every
+  identity, task, ingestion, run, dossier, approval, tool, status, material,
+  manifest, or terminal effect; retain a later currentness preflight before
+  handoff effects; remove the runtime-provider cast without widening the
+  released runtime API; preserve later one-shot V2 consumption and every
+  previously approved invariant. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task.
+- Any code change invalidates the prior pair. After exact committed-byte gates,
+  one fresh concurrent architecture/executability pair is required. Status
+  advances W1-123 `reviewing -> recovering`. V1-V4, raw records 1-26, all 29
+  IDs/order, finite mappings/evidence, and `neo` remain immutable. No release,
+  push, or external effect occurs.
