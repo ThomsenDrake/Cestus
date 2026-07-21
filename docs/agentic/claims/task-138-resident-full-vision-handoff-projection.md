@@ -372,3 +372,26 @@ and fallback writes are prohibited.
 - This admission adds no provider, credential, network, external system,
   fallback write, destructive history action, registry mutation, integration,
   approval, strict record 28, or release. The frontier remains **27 of 29**.
+
+## Provenance Event-ID Causal RED
+
+- `RV-1-E-899` returns Task138-H to `implementing` from exact clean
+  forward-merged base `7283b79952790f1d0507c1490150d5b122a29dbe` and
+  authorizes a fourth bounded repair without changing production source first.
+- One table now covers all five browser provenance event-ID fields:
+  `finalOutputEventId`, `preparedEventId`, `recordedEventId`,
+  `terminalRunEventId`, and `taskStatusEventId`. Every row builds a complete
+  seven-event V2 ready-for-review chain, propagates its syntax-valid but
+  `isAgentSecretSafeText`-unsafe event ID through every manifest, payload, and
+  causation binding, and proves all seven events pass `validateKnowledgeEvent`.
+  The required result closes the whole DTO with no provenance, artifacts,
+  source/related IDs, approvals, unsafe ID retention, writes, or executable
+  actions; mounted reads remain permitted.
+- Exact causal command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 5 failed / 35 passed**. All five rows return
+  `task-completed` instead of `inconsistent`, proving each unsafe event ID is
+  copied into otherwise valid browser provenance. Every prior focused test
+  remains green, production source is unchanged, and no registry,
+  ontology/schema/parser, provider, credential, external system, fallback
+  write, or unrelated verifier participates.

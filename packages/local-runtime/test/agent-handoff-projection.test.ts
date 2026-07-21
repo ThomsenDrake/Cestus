@@ -105,6 +105,36 @@ describe("buildResidentHandoffDto", () => {
     expect(JSON.stringify(restarted)).not.toMatch(/manifestBytes|rawArtifact|storeKind|registry|stack|\/home\/|credential|providerPayload/i);
   });
 
+  it.each([
+    ["finalOutputEventId", "evt_sk_live_task138_final_output"],
+    ["preparedEventId", "evt_sk_live_task138_prepared"],
+    ["recordedEventId", "evt_sk_live_task138_recorded"],
+    ["terminalRunEventId", "evt_sk_live_task138_terminal"],
+    ["taskStatusEventId", "evt_sk_live_task138_task_status"]
+  ] as const)("closes the whole DTO for a secret-unsafe %s in canonical provenance", async (field, unsafeEventId) => {
+    const fixture = handoffFixture({
+      provenanceEventIds: { [field]: unsafeEventId }
+    });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(/^evt_[a-zA-Z0-9_-]+$/.test(unsafeEventId)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeEventId)).toBe(false);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "mount-authority-stale");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(dto.provenance).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toContain(unsafeEventId);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
   it("projects recorded-only V2 lifecycle after restart without synthesizing terminal provenance", async () => {
     const fixture = handoffFixture();
     const events = fixture.recordedEvents;
@@ -703,6 +733,13 @@ interface ProjectionFixture {
   readonly completeEvents: readonly KnowledgeEvent[];
 }
 
+type ProvenanceEventIdField =
+  | "finalOutputEventId"
+  | "preparedEventId"
+  | "recordedEventId"
+  | "terminalRunEventId"
+  | "taskStatusEventId";
+
 class ReadStore {
   readonly get = vi.fn(async (hash: ContentHash): Promise<Buffer> => {
     if (this.failure !== undefined) throw this.failure;
@@ -781,6 +818,7 @@ function expectClosed(
 
 function handoffFixture(options: {
   readonly legacy?: boolean;
+  readonly provenanceEventIds?: Partial<Record<ProvenanceEventIdField, string>>;
   readonly runId?: string;
   readonly taskId?: string;
   readonly sourceEventId?: string;
@@ -790,7 +828,13 @@ function handoffFixture(options: {
   const taskId = options.taskId ?? "task_task138_projection_001";
   const status = options.status ?? "ready-for-review";
   const sourceEventId = options.sourceEventId ?? `evt_started_${runId}`;
-  const finalOutputEventId = `evt_final_output_${runId}`;
+  const finalOutputEventId = options.provenanceEventIds?.finalOutputEventId ?? `evt_final_output_${runId}`;
+  const preparedEventId = options.provenanceEventIds?.preparedEventId ?? `evt_handoff_prepared_${runId}`;
+  const recordedEventId = options.provenanceEventIds?.recordedEventId ?? `evt_handoff_recorded_${runId}`;
+  const terminalRunEventId = options.provenanceEventIds?.terminalRunEventId ?? (status === "failed"
+    ? `evt_run_failed_${runId}`
+    : `evt_run_completed_${runId}`);
+  const taskStatusEventId = options.provenanceEventIds?.taskStatusEventId ?? `evt_task_completed_${runId}`;
   const finalOutputStepId = `step_final_output_${runId}`;
   const outputArtifact = {
     artifactId: "artifact_ontology_proposal_bundle",
@@ -926,17 +970,17 @@ function handoffFixture(options: {
     : compact;
   const prepared = agentEvent(
     "agent.specialist-handoff.prepared",
-    `evt_handoff_prepared_${runId}`,
+    preparedEventId,
     preparedPayload,
     { causationId: finalOutput.id }
   );
-  const recorded = agentEvent("agent.specialist-handoff.recorded", `evt_handoff_recorded_${runId}`, {
+  const recorded = agentEvent("agent.specialist-handoff.recorded", recordedEventId, {
     ...preparedPayload,
     preparedEventId: prepared.id,
     verifiedAt: "2026-07-21T14:02:00.000Z"
   }, { causationId: prepared.id });
   const terminal = status === "failed"
-    ? agentEvent("agent.specialist-run.failed", `evt_run_failed_${runId}`, {
+    ? agentEvent("agent.specialist-run.failed", terminalRunEventId, {
       runId,
       failedAt: "2026-07-21T14:03:00.000Z",
       category: "model-output-invalid",
@@ -945,7 +989,7 @@ function handoffFixture(options: {
       allowedActions: ["inspect-retry"],
       relatedEventIds: [recorded.id]
     }, { causationId: recorded.id })
-    : agentEvent("agent.specialist-run.completed", `evt_run_completed_${runId}`, {
+    : agentEvent("agent.specialist-run.completed", terminalRunEventId, {
       runId,
       completedAt: "2026-07-21T14:03:00.000Z",
       outputArtifactHashes: [hash222],
@@ -973,7 +1017,7 @@ function handoffFixture(options: {
     }, { causationId: terminal.id }),
     streamId: `agent_task_orchestration_${taskId}_ontology-bootstrap`
   };
-  const taskStatus = agentEvent("agent.task.status.changed", `evt_task_completed_${runId}`, {
+  const taskStatus = agentEvent("agent.task.status.changed", taskStatusEventId, {
     taskId,
     status: status === "failed" ? "failed" : "completed",
     changedBy: "actor_cestus_agent",
