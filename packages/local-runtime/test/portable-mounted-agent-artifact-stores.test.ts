@@ -507,9 +507,12 @@ describe("portable mounted agent artifact stores", () => {
     });
   });
 
-  it("rejects unrelated suffixes rollbacks replacements and reorder before store io without fallback", async () => {
+  it("rejects unknown bound suffixes rollbacks replacements and reorder before store io without fallback", async () => {
     for (const mutate of [
-      (events: KnowledgeEvent[]) => events.push(unrelatedEvent()),
+      (events: KnowledgeEvent[]) => events.push({
+        ...unrelatedEvent(),
+        payload: { ...unrelatedEvent().payload, taskId: dispatch.taskId }
+      }),
       (events: KnowledgeEvent[]) => events.splice(0, events.length),
       (events: KnowledgeEvent[]) => events.splice(0, 1, { ...events[0]!, id: "evt_replaced" }),
       (events: KnowledgeEvent[]) => events.reverse()

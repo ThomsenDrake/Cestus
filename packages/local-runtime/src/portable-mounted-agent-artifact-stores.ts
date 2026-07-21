@@ -516,6 +516,7 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
         prelude = nextPrelude;
         continue;
       }
+      if (!isBoundEvent(event, cursor.binding) && !isModelInvocationTranscriptEvent(event, modelInvocation)) continue;
       const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical, prelude, modelInvocation);
       phase = advanced.phase;
       canonical = advanced.canonical;
