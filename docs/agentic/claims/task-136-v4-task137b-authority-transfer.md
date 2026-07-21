@@ -560,3 +560,56 @@ Implementation evidence:
   the record-26 and record-27 direct-source assertions in one 20-test
   focused corpus while preserving its positive, mutation, historical, and
   current-head coverage.
+
+## RV-1-E-888 record-27 current-prefix causal RED checkpoint
+
+- Exact clean program authority `7dc72c1f3d83b2eccda7671801b4827eaff69638`
+  was normal-forward-merged into the preserved V4 lineage as
+  `0941c28e223847839d853cc58348b4ac977dc915`. Repository mode executed all
+  27 released commands, emitted `TASK136_REPOSITORY_PREFIX_OK records=27
+  commands=27`, then exited nonzero only with `repository release closure
+  incomplete: expected 29 records, found 27`.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `20` tests, `17` passed, and exactly `3` failed. The only
+  failures are current-registry cardinality assertions at lines `1159`,
+  `1475`, and `1655`, each reporting `27 !== 26`; every contract, checker,
+  command, blob, migration, dependency, product, and unrelated fixture check
+  remains green.
+- The sole GREEN change is to advance those three current registry-length
+  expectations from `26` to `27`. Synthetic record-26 repository fixtures,
+  preactivation/history fixtures, V1-V4, raw records 1-27, all 29 IDs/order,
+  finite mappings, product bytes, and prior evidence remain immutable.
+
+## RV-1-E-888 changed-tactic root-cause checkpoint
+
+- The first minimal GREEN attempt advanced the three current-prefix groups
+  from 26 to 27 and reproduced `20` tests with `18` passed and `2` failed.
+  `node:test` had short-circuited before the coupled repository-admission
+  expectations around lines `1323`-`1326`, which still expected found/marker/
+  command count 26 after their containing current-prefix fixture became 27.
+- The other masked failure was the nested W1 record-27 activation corpus
+  around line `1828`. Its intentionally preactivation assertions must remain
+  at record 26, but its local setup parsed the now-current 27-record registry.
+  The finite correction mirrors RV-1-E-870: slice only that nested local
+  prefix to 26 before synthesizing record-27 activation, while retaining its
+  later `afterActivation.records === 27` assertion unchanged.
+- GREEN is therefore limited to the original three current-prefix length and
+  ordered-ID updates, the first fixture's coupled repository closure/marker/
+  command count at 27, and the nested W1 fixture's local `.slice(0, 26)` setup.
+  No other test, registry, record, contract, checker, source/product byte, or
+  prior evidence is authorized to change.
+
+## RV-1-E-888 changed-tactic minimal GREEN evidence
+
+- The three semantic current-prefix groups now require length 27 and exact
+  `expectedIds.slice(0, 27)`. The first group's coupled repository admission
+  requires only incomplete found 27, the exact 27/27 prefix marker, and 27
+  command calls.
+- The nested W1 activation corpus retains its record-26 length and ordered-ID
+  expectations by slicing only its local parsed prefix to 26, then still
+  proves synthetic W1 activation produces `afterActivation.records === 27`.
+- Exact command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `0`; `20` tests, `20` passed, and `0` failed. No other test byte
+  or any registry, contract, checker, source/product, or package byte changed.
