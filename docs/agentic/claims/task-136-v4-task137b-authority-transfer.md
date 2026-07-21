@@ -580,3 +580,22 @@ Implementation evidence:
   expectations from `26` to `27`. Synthetic record-26 repository fixtures,
   preactivation/history fixtures, V1-V4, raw records 1-27, all 29 IDs/order,
   finite mappings, product bytes, and prior evidence remain immutable.
+
+## RV-1-E-888 changed-tactic root-cause checkpoint
+
+- The first minimal GREEN attempt advanced the three current-prefix groups
+  from 26 to 27 and reproduced `20` tests with `18` passed and `2` failed.
+  `node:test` had short-circuited before the coupled repository-admission
+  expectations around lines `1323`-`1326`, which still expected found/marker/
+  command count 26 after their containing current-prefix fixture became 27.
+- The other masked failure was the nested W1 record-27 activation corpus
+  around line `1828`. Its intentionally preactivation assertions must remain
+  at record 26, but its local setup parsed the now-current 27-record registry.
+  The finite correction mirrors RV-1-E-870: slice only that nested local
+  prefix to 26 before synthesizing record-27 activation, while retaining its
+  later `afterActivation.records === 27` assertion unchanged.
+- GREEN is therefore limited to the original three current-prefix length and
+  ordered-ID updates, the first fixture's coupled repository closure/marker/
+  command count at 27, and the nested W1 fixture's local `.slice(0, 26)` setup.
+  No other test, registry, record, contract, checker, source/product byte, or
+  prior evidence is authorized to change.
