@@ -26189,3 +26189,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
   unchanged.
+
+## RV-1-E-901 — Task138-H final browser-string defects; bounded firewall repair authorized
+
+- Recorded at: 2026-07-21T20:32:28Z
+- Fresh architecture review instance
+  `86da7a43-53cb-45f3-b2cc-f27a37f6c321` and fresh executable review
+  instance `cec95256-da2d-43b3-b854-eb212a034311` both return
+  `NEEDS_CHANGES` for exact candidate
+  `364ded1bf3baf6327f5685ae718e210750f11d4b`. The candidate is not approved,
+  integrated, released, or eligible for strict record 28.
+- The architecture reviewer confirms the five-field provenance matrix and
+  stale-authority control, then reproduces path-bearing browser output in
+  otherwise accepted handoff summary, artifact, and action strings because no
+  final DTO path guard exists. The executable reviewer independently confirms
+  the matrix and reproduces a fully canonical task-completed chain whose
+  `finalOutputStepId` passes the ontology event parser but fails the stronger
+  `isAgentSecretSafeText` predicate and is copied into browser provenance.
+- The existing non-reviewer repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for the unsafe final-output step ID
+  and for accepted path-bearing handoff summary, each emitted artifact string
+  class, and emitted action label, using otherwise canonical mounted chains.
+  Then it may add one final fail-closed browser DTO string firewall that checks
+  every emitted string leaf with `isAgentSecretSafeText` plus absolute Unix,
+  Windows-drive, UNC, and `file://` path rejection. It must return the whole
+  fixed-safe `secret-safety-rejection` DTO, never sanitize, truncate, or expose
+  a partial DTO. This event explicitly authorizes the final recursive output
+  check that RV-1-E-899 did not authorize for its narrower provenance repair.
+  Existing exact per-field predicates, parsers, hashes, schemas, lifecycle,
+  authority, source/related/diagnostic evidence, and assertions remain intact.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The new candidate must rerun focused/cross-boundary, standalone typecheck,
+  factory, V4 assurance/contract/repository prefix, full differential,
+  exact-scope/ancestry/dependency/clean gates, then receive a completely new
+  fresh dual-review pair whose architecture owner audits every output string
+  leaf. No prior reviewer may repair or approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
