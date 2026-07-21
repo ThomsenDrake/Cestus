@@ -418,3 +418,13 @@ Status: `ready-for-review`
   captures that optional reference rather than the created runtime. This is a
   claim-only compiler RED: no production, test, interface, behavior, or
   contract byte changes before GREEN.
+
+### V4 Compiler Recovery GREEN — Hostile Fixture Definite Runtime Reference
+
+- The test retains the optional outer `wakeRuntime` only for the `finally`
+  cleanup. It assigns the created wake runtime to that cleanup slot, while the
+  non-optional `createdWakeRuntime` is the sole value used for supervision,
+  factory authority issuance, and the returned callable `stop` closure.
+- No production byte, behavior, interface, authority, or lifecycle changed.
+  `npm run typecheck` exits `0`; the exact focused V4 suite exits `0`:
+  **4 files / 64 tests passed**.
