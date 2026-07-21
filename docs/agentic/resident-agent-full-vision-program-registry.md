@@ -25906,3 +25906,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   records 1-27, all 29 IDs/order, prior product releases, `neo`, providers,
   credentials, external systems, and fallback/write authorities remain
   unchanged.
+
+## RV-1-E-894 — Task138-H repaired candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-21T18:34:30Z
+- The bounded repair lineage preserves causal RED
+  `1a4bb7f6222f3fffd66ed6dfb78f9fd95b3832bc`, atomic GREEN
+  `3bcefb8d5ef8c04b93536cc63c03ad8bb000ba58`, and exact clean repaired
+  candidate `54f038cac08fe10bb0d62b7cedb641de45138598`. The repair changes only
+  the frozen Task138-H source, test, and claim paths and retains the prior
+  rejected candidate and both review verdicts in ancestry.
+- Causal RED adds seven exact failures for hostile top-level identity and
+  Proxy traps, terminal-only ready/failed lifecycle classification, and safe
+  diagnostic event/hash evidence. Repaired candidate gates pass **24/24**
+  focused tests, **60/60** exact cross-boundary tests, standalone typecheck,
+  factory readiness, V4 assurance **20/20**, all four exact contract markers,
+  diff hygiene, ancestry, exact three-path scope, clean state, and real local
+  Node 26.1.0 / Vitest 4.1.9 non-symlinked dependencies.
+- Clean repository mode executes all **27/27** released commands and emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, then exits only on
+  the expected unfinished closure `expected 29 records, found 27`. Fresh full
+  verification passes typecheck and reproduces the inherited cohort as **10
+  failing files / 48 failing tests / 2,884 passes / 5 skips**. The seven-pass
+  increase is exactly the new repaired-candidate coverage; no Task138-H test
+  fails. The three load-sensitive prerequisite cases pass **18/18** in fresh
+  isolation.
+- Fresh read-only architecture review instance
+  `df2f06a2-4ca5-49a5-a3c8-70b17cdbc484` owns frozen-contract, boundary,
+  lifecycle, diagnostic-provenance, secret-safety, replay, authority, and
+  exact-scope scrutiny. Fresh read-only executability review instance
+  `f3d8e242-9fd1-44de-a7f6-414c52e6daa7` owns independent gate reproduction,
+  hostile/adversarial probes, differential classification, ancestry,
+  dependencies, and clean-state scrutiny. Both review the exact candidate and
+  may not edit, commit, merge, push, invoke providers, or use external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. The strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
+  unchanged.
