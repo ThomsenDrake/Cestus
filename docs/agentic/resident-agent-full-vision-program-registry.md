@@ -26149,3 +26149,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
   credentials, external systems, and fallback/write authorities remain
   unchanged.
+
+## RV-1-E-900 — Task138-H provenance-safe candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-21T20:22:24Z
+- Provenance repair preserves causal RED
+  `a2bbf0ff82a5a98eefa2f920e9a65a13da53dd3c`, atomic GREEN
+  `dc7bd9a124a9d07895f963dbb783ed0229acd6bd`, and exact clean admitted
+  candidate `364ded1bf3baf6327f5685ae718e210750f11d4b`. Complete prior candidates,
+  review verdicts, fixes, and authority merges remain in ancestry; the diff
+  from provenance-repair authority is exactly the frozen three Task138-H
+  paths.
+- Causal RED supplies five fully canonical task-completed V2 chains, one for
+  each browser provenance event-ID field, and reproduces **5 failures / 35
+  prior passes**. GREEN requires all five IDs to satisfy
+  `isAgentSecretSafeText` before emitting provenance and closes the entire DTO
+  as `secret-safety-rejection`; genuine authority mismatch remains
+  `mount-authority-stale`. No truncation, hash, parser, schema, lifecycle,
+  source/related, or diagnostic-filter change occurs.
+- Candidate gates pass **40/40** focused and **76/76** exact cross-boundary
+  tests, standalone typecheck, factory readiness, V4 assurance **20/20**, all
+  four contract markers, clean repository prefix **27/27** followed only by
+  expected incomplete-29 closure, diff hygiene, ancestry, exact scope, clean
+  state, and real Node 26.1.0 / Vitest 4.1.9 dependencies. Full verification
+  retains the inherited cohort with load variance at **10 files / 47 failures
+  / 2,901 passes / 5 skips**; Task138-H is absent from all failures.
+- Fresh read-only architecture review instance
+  `86da7a43-53cb-45f3-b2cc-f27a37f6c321` owns the exact five-field provenance
+  firewall, diagnostic classification, released parser, canonical replay,
+  identity/source/related/action/artifact safety, lifecycle, authority,
+  no-effect, and exact-scope scrutiny. Fresh read-only executable review
+  instance `cec95256-da2d-43b3-b854-eb212a034311` owns independent five-row
+  reproduction, hostile/adversarial/browser-string probes, all deterministic
+  gates, differential, ancestry, dependencies, and clean state. Both review
+  only the exact candidate and may not edit, commit, merge, push, invoke
+  providers, or use external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
+  unchanged.
+
+## RV-1-E-901 — Task138-H final browser-string defects; bounded firewall repair authorized
+
+- Recorded at: 2026-07-21T20:32:28Z
+- Fresh architecture review instance
+  `86da7a43-53cb-45f3-b2cc-f27a37f6c321` and fresh executable review
+  instance `cec95256-da2d-43b3-b854-eb212a034311` both return
+  `NEEDS_CHANGES` for exact candidate
+  `364ded1bf3baf6327f5685ae718e210750f11d4b`. The candidate is not approved,
+  integrated, released, or eligible for strict record 28.
+- The architecture reviewer confirms the five-field provenance matrix and
+  stale-authority control, then reproduces path-bearing browser output in
+  otherwise accepted handoff summary, artifact, and action strings because no
+  final DTO path guard exists. The executable reviewer independently confirms
+  the matrix and reproduces a fully canonical task-completed chain whose
+  `finalOutputStepId` passes the ontology event parser but fails the stronger
+  `isAgentSecretSafeText` predicate and is copied into browser provenance.
+- The existing non-reviewer repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for the unsafe final-output step ID
+  and for accepted path-bearing handoff summary, each emitted artifact string
+  class, and emitted action label, using otherwise canonical mounted chains.
+  Then it may add one final fail-closed browser DTO string firewall that checks
+  every emitted string leaf with `isAgentSecretSafeText` plus absolute Unix,
+  Windows-drive, UNC, and `file://` path rejection. It must return the whole
+  fixed-safe `secret-safety-rejection` DTO, never sanitize, truncate, or expose
+  a partial DTO. This event explicitly authorizes the final recursive output
+  check that RV-1-E-899 did not authorize for its narrower provenance repair.
+  Existing exact per-field predicates, parsers, hashes, schemas, lifecycle,
+  authority, source/related/diagnostic evidence, and assertions remain intact.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The new candidate must rerun focused/cross-boundary, standalone typecheck,
+  factory, V4 assurance/contract/repository prefix, full differential,
+  exact-scope/ancestry/dependency/clean gates, then receive a completely new
+  fresh dual-review pair whose architecture owner audits every output string
+  leaf. No prior reviewer may repair or approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
