@@ -1,6 +1,6 @@
 import type { Buffer } from "node:buffer";
 import {
-  eventContracts,
+  validateKnowledgeEvent,
   type KnowledgeEvent,
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
@@ -312,9 +312,13 @@ function normalizeInput(input: unknown): NormalizedInput {
   const rawEvents = normalizeJsonValue(record.events, { nodes: 0 }, 0);
   if (!Array.isArray(rawEvents)) throw new BoundaryFailure("unsafe-boundary-value");
   if (containsSecretShapedUnknownField(rawEvents)) throw new BoundaryFailure("secret-safety-rejection");
-  assertNormalizedEventEnvelopes(rawEvents);
+  const parsedEvents = rawEvents.map((event) => {
+    const parsed = validateKnowledgeEvent(event);
+    if (!parsed.success) throw new BoundaryFailure("dto-invalid");
+    return parsed.data;
+  });
 
-  const frozenEvents = Object.freeze([...rawEvents]);
+  const frozenEvents = Object.freeze([...parsedEvents]);
   const identity = targetIdentity(frozenEvents, runId);
   const authorityBinding = normalizeAuthorityBinding(record.authorityBinding);
   const materialGet = captureReader(record.materialStore);
@@ -830,21 +834,6 @@ function containsSecretShapedUnknownField(value: unknown): boolean {
     if (containsSecretShapedUnknownField(nested)) return true;
   }
   return false;
-}
-
-function assertNormalizedEventEnvelopes(events: readonly unknown[]): asserts events is readonly KnowledgeEvent[] {
-  for (const value of events) {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      throw new BoundaryFailure("dto-invalid");
-    }
-    const event = value as Record<string, unknown>;
-    if (typeof event.type !== "string" ||
-      !Object.prototype.hasOwnProperty.call(eventContracts, event.type) ||
-      typeof event.payload !== "object" || event.payload === null || Array.isArray(event.payload) ||
-      typeof event.context !== "object" || event.context === null || Array.isArray(event.context)) {
-      throw new BoundaryFailure("dto-invalid");
-    }
-  }
 }
 
 function requiredText(value: unknown): string {

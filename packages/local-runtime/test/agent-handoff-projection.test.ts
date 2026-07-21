@@ -30,6 +30,23 @@ const hash333 = "sha256:33333333333333333333333333333333333333333333333333333333
 const hash444 = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
 
 describe("buildResidentHandoffDto", () => {
+  it("keeps every intended-valid synthetic lifecycle event canonical under the released parser", () => {
+    for (const fixture of [
+      handoffFixture(),
+      handoffFixture({ status: "waiting-for-approval" }),
+      handoffFixture({ status: "blocked" }),
+      handoffFixture({ status: "failed" }),
+      handoffFixture({ legacy: true })
+    ]) {
+      for (const event of fixture.completeEvents) {
+        expect(
+          validateKnowledgeEvent(event).success,
+          `${event.type} ${event.id}`
+        ).toBe(true);
+      }
+    }
+  });
+
   it("rebuilds a frozen browser-safe V2 DTO after restart using exact role-bound reads and no effects", async () => {
     const fixture = handoffFixture();
     const eventsBefore = JSON.parse(JSON.stringify(fixture.completeEvents)) as unknown;
@@ -369,8 +386,8 @@ describe("buildResidentHandoffDto", () => {
   });
 
   it.each([
-    ["runId", "run-private-key"],
-    ["taskId", "task-private-key"]
+    ["runId", "run_x-private-key"],
+    ["taskId", "task_x-private-key"]
   ] as const)("rejects a matching started-event %s unless it is secret-safe", async (field, unsafeIdentity) => {
     const fixture = handoffFixture();
     const stores = storesFor(fixture);
@@ -384,6 +401,7 @@ describe("buildResidentHandoffDto", () => {
     } as KnowledgeEvent;
 
     expect(isAgentSecretSafeText(unsafeIdentity)).toBe(false);
+    expect(validateKnowledgeEvent(started).success).toBe(true);
 
     const dto = await buildResidentHandoffDto({
       runId: field === "runId" ? unsafeIdentity : fixture.runId,
@@ -501,7 +519,7 @@ describe("buildResidentHandoffDto", () => {
     expect(JSON.stringify(dto)).not.toContain("Recorded handoff manifest bytes are not parseable canonical JSON.");
   });
 
-  it("drops unsafe upstream diagnostic IDs and hashes while retaining safe related event evidence", async () => {
+  it("rejects schema-invalid diagnostic material and filters a schema-valid conflict", async () => {
     const fixture = handoffFixture();
     if (fixture.terminal.type !== "agent.specialist-run.completed") {
       throw new Error("ready-for-review fixture must have a completed terminal");
@@ -517,17 +535,46 @@ describe("buildResidentHandoffDto", () => {
       }
     } as unknown as KnowledgeEvent;
 
-    const dto = await project(
+    expect(validateKnowledgeEvent(hostileTerminal).success).toBe(false);
+
+    const invalidStores = storesFor(fixture);
+    const invalidDto = await project(
       fixture,
       [...fixture.recordedEvents, hostileTerminal],
+      invalidStores
+    );
+
+    expectClosed(invalidDto, "inconsistent", "dto-invalid");
+    expect(invalidDto.diagnostics[0]).toMatchObject({ eventIds: [], artifactHashes: [] });
+    expect(JSON.stringify(invalidDto)).not.toMatch(/raw-provider-secret/i);
+    expect(invalidStores.materialStore.get).not.toHaveBeenCalled();
+    expect(invalidStores.manifestStore.get).not.toHaveBeenCalled();
+
+    const unsafeEventId = "evt_sk_live_task138conflict";
+    const schemaValidConflict = {
+      ...fixture.terminal,
+      id: unsafeEventId,
+      payload: {
+        ...fixture.terminal.payload,
+        outputArtifactHashes: [hash111]
+      }
+    } as KnowledgeEvent;
+
+    expect(validateKnowledgeEvent(schemaValidConflict).success).toBe(true);
+    expect(isAgentSecretSafeText(unsafeEventId)).toBe(false);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, schemaValidConflict],
       storesFor(fixture)
     );
 
     expectClosed(dto, "inconsistent", "terminal-status-conflict");
     expect(dto.diagnostics[0]).toMatchObject({
       eventIds: [fixture.recorded.id],
-      artifactHashes: []
+      artifactHashes: [hash111]
     });
+    expect(dto.diagnostics[0]?.artifactHashes.every((hash) => /^sha256:[a-f0-9]{64}$/.test(hash))).toBe(true);
     expect(JSON.stringify(dto)).not.toMatch(/raw-provider-secret|Terminal run state must agree|Completed run output hashes disagree/);
   });
 
@@ -909,7 +956,7 @@ function handoffFixture(options: {
     ...agentEvent("agent.task.orchestration.completed", `evt_orchestration_completed_${runId}`, {
       taskId,
       runType: "ontology-bootstrap",
-      attemptId: `attempt_${runId}`,
+      attemptId: `attempt_${"a".repeat(64)}`,
       retryGeneration: 0,
       runId,
       completedAt: "2026-07-21T14:04:00.000Z",
