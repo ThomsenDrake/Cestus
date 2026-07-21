@@ -25403,3 +25403,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   advances W1-123 `reviewing -> recovering`. V1-V4, raw records 1-26, all 29
   IDs/order, finite mappings/evidence, and `neo` remain immutable. No release,
   push, or external effect occurs.
+
+## RV-1-E-881 — W1-123 cursor-preservation root-cause checkpoint
+
+- Recorded at: 2026-07-21T00:35:14Z
+- The same Task123 owner preserves authority merge
+  `ad32f7e844b6b52d935ad40381058a1a21dd18bb`, causal RED
+  `f95af824cdb50e62cbb38d1bfccee6f16d607051`, and first ordering GREEN
+  `bbce3cf37d094bb1a4f6ddb005068444900baf56`. The GREEN closes the
+  reproduced 13-event admission gap and removes the hidden runtime-provider
+  cast, but coordinator committed-diff audit reproduces a new P1 before review.
+- Exact production drift adds an incremental-cursor filter that silently
+  ignores post-issuance events unrelated to the bound task/run. Its paired
+  test changes the frozen assertion from rejecting unrelated suffixes to only
+  rejecting unknown bound suffixes. That weakens Task122's released
+  cross-run/unrelated-suffix burn semantics and contradicts the W1-123
+  requirement to preserve the cursor unchanged. No reviewer is dispatched for
+  this intermediate GREEN.
+- Standing recovery authority changes tactic. After a normal registry-only
+  authority merge, the same owner will commit one causal RED restoring the
+  exact unrelated-suffix counterfactual, then one minimal GREEN. The cursor
+  and original suffix test must remain unchanged. Instead, the exact
+  factory-issued portable witness gets a finite one-shot pre-effect
+  currentness phase: it authenticates WeakMap membership, available state,
+  exact lifecycle/binding, and current mounted origin without locking history.
+  The existing later workflow preflight must invoke full cursor revalidation
+  and lock complete setup history before handoff effects; consumption always
+  invokes full revalidation. The early phase cannot repeat, clone, widen,
+  bypass, generalize, or survive failure.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Cumulative scope remains the exact nine
+  W1 paths. All prior evidence/history, V1-V4, raw records 1-26, all 29
+  IDs/order, finite mappings, and `neo` remain immutable. After exact gates,
+  one fresh concurrent final review pair is required. Status remains
+  `recovering`; no integration, release, push, or external effect occurs.
