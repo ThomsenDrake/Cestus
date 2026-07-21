@@ -200,7 +200,7 @@ export interface ProjectedAgentResolvedPayloadAudit {
   readonly schemaId: string;
 }
 
-export interface ProjectedAgentProductionPromptAudit {
+export interface ProjectedAgentProductionPromptAuditBase {
   readonly rendererId: string;
   readonly rendererVersion: number;
   readonly rendererHash: string;
@@ -213,6 +213,45 @@ export interface ProjectedAgentProductionPromptAudit {
   readonly evaluatedContextRequirements: readonly ProjectedAgentProductionContextRequirement[];
   readonly resolvedPayloadAudits: readonly ProjectedAgentResolvedPayloadAudit[];
 }
+
+export interface ProjectedAgentProductionPromptAuditV1 extends ProjectedAgentProductionPromptAuditBase {
+  readonly schemaVersion: "agent-production-prompt-binding.v1";
+}
+
+export interface ProjectedAgentProductionPromptProviderPostureV2 {
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityIds: readonly string[];
+  readonly selectionPolicyVersion: string;
+  readonly readinessState: "ready";
+  readonly approvalRequirementId: string;
+}
+
+export interface ProjectedAgentProductionPromptExactRunBindingV2 {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly approvedRunId: string;
+  readonly runId: string;
+  readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+  readonly residentAgentId: "agent_default";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly workflowDescriptorHash: string;
+  readonly policyVersion: string;
+  readonly providerPosture: ProjectedAgentProductionPromptProviderPostureV2;
+}
+
+export interface ProjectedAgentProductionPromptAuditV2 extends ProjectedAgentProductionPromptAuditBase {
+  readonly schemaVersion: "agent-production-prompt-binding.v2";
+  readonly sourceApprovedPromptArtifactHash: string;
+  readonly exactRunBinding: ProjectedAgentProductionPromptExactRunBindingV2;
+  readonly providerPostureHash: string;
+  readonly exactRunBindingHash: string;
+}
+
+export type ProjectedAgentProductionPromptAudit =
+  | ProjectedAgentProductionPromptAuditV1
+  | ProjectedAgentProductionPromptAuditV2;
 
 export interface ProjectedAgentModelInvocation extends ProjectedAgentProvenance {
   readonly invocationId: string;
@@ -368,6 +407,26 @@ export interface TaskOrchestratorHandoffReadbackProjection {
   readonly verifiedAt: string;
 }
 
+export interface TaskOrchestratorPromptBindingReceiptProjection {
+  readonly checkpointEventId: string;
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly sourceApprovedPromptArtifactHash: string;
+  readonly boundPromptArtifactHash: string;
+  readonly approvalEventId: string;
+  readonly providerPostureHash: string;
+  readonly exactRunBindingHash: string;
+  readonly receiptHash: string;
+}
+
+export interface TaskOrchestratorLatestCheckpointProjection {
+  readonly checkpointEventId: string;
+  readonly checkpointKind: string;
+  readonly attemptId: string;
+  readonly runId?: string | undefined;
+}
+
 export interface TaskOrchestratorAttemptProjection extends ProjectedAgentProvenance {
   readonly attemptKey: string;
   readonly taskId: string;
@@ -384,6 +443,10 @@ export interface TaskOrchestratorAttemptProjection extends ProjectedAgentProvena
   readonly handoffPreparedEventId?: string | undefined;
   readonly handoffRecordedEventId?: string | undefined;
   readonly handoffReadback?: TaskOrchestratorHandoffReadbackProjection | undefined;
+  /** Latest checkpoint state is distinct from the retained prompt-bound audit receipt. */
+  readonly latestCheckpoint?: TaskOrchestratorLatestCheckpointProjection | undefined;
+  /** Task/hash/event/attempt/run audit reference; it does not grant provider authority. */
+  readonly latestPromptBindingReceipt?: TaskOrchestratorPromptBindingReceiptProjection | undefined;
   readonly specialistRunCompletedEventId?: string | undefined;
   readonly orchestrationCompletedEventId?: string | undefined;
   readonly orchestrationFailedEventId?: string | undefined;

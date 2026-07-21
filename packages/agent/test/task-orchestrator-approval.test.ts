@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import * as agent from "../src/index.js";
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { createProviderRegistry } from "../src/provider-registry.js";
@@ -62,6 +63,44 @@ const residentSelfApprovalActor: ActorRef = {
 };
 
 describe("task orchestrator provider approval", () => {
+  it("rejects direct v2 without an approved v1 source", async () => {
+    const ledger = new InMemoryEventLedger();
+    const before = await ledger.readAll();
+    const assertion = (agent as unknown as {
+      readonly assertApprovedV1ToV2ArtifactInvariants?: (input: unknown) => void;
+    }).assertApprovedV1ToV2ArtifactInvariants;
+    const directV2 = {
+      ...promptArtifact,
+      manifest: {
+        ...promptArtifact.manifest,
+        production: { schemaVersion: "agent-production-prompt-binding.v2" }
+      }
+    };
+
+    expect(assertion).toBeTypeOf("function");
+    expect(() => assertion!({
+      approvedV1: directV2,
+      candidateV2: directV2
+    })).toThrow(/v1|approved|binding|production/i);
+    expect(await ledger.readAll()).toEqual(before);
+  });
+
+  it("rejects malformed v2 without reading task-orchestrator approval state", async () => {
+    const fixture = await prepare();
+    const assertion = (agent as unknown as {
+      readonly assertApprovedV1ToV2ArtifactInvariants?: (input: unknown) => void;
+    }).assertApprovedV1ToV2ArtifactInvariants;
+    const before = await fixture.ledger.readAll();
+
+    expect(assertion).toBeTypeOf("function");
+    expect(() => assertion!({
+      approvedV1: promptArtifact,
+      candidateV2: promptArtifact
+    })).toThrow(/v1|approved|binding|production/i);
+    expect(await fixture.ledger.readAll()).toEqual(before);
+    expect(fixture.providerCall).not.toHaveBeenCalled();
+  });
+
   it("records provider posture durably before approval wait", async () => {
     const prepared = await prepare();
 

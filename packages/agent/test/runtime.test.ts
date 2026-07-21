@@ -691,6 +691,14 @@ describe("agent runtime core", () => {
     expect(requestedPayload?.inputArtifactHash).not.toBe(providerOutputArtifactHash);
   });
 
+  it("keeps production prompt bindings explicitly discriminated in runtime fixtures", () => {
+    const artifact = productionPromptArtifactWithBinding("evidence-triage");
+
+    expect(artifact.manifest.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
+  });
+
   it("blocks all MVP production run types before appending a request when the prompt audit is absent, invalid, stale, or missing its binding", async () => {
     const ledger = new InMemoryEventLedger();
     const remoteProvider = new CountingRemoteProvider();
@@ -944,6 +952,7 @@ function productionPromptArtifactWithoutBinding(runType: typeof productionRunTyp
 function productionPromptArtifactWithBinding(runType: typeof productionRunTypes[number]): PromptArtifactEnvelope {
   const artifact = providerApprovedPromptArtifact();
   const production = {
+    schemaVersion: "agent-production-prompt-binding.v1" as const,
     rendererId: `${runType}.renderer.v1`,
     rendererVersion: 1,
     rendererHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

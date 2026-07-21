@@ -37,7 +37,17 @@ Never weaken these Cestus contracts:
 - Local-first solo mode must preserve a path to small newsroom/nonprofit team mode.
 - AI-legibility matters: contracts, tests, specs, and handoffs must be readable by generic coding agents.
 
-Stop and escalate on data-loss risk, schema conflict, unavailable dependency, credential need, external-service dependency, verifier failure after two focused repair attempts, or any task that would bypass those invariants.
+Stop the current child task and escalate to its assigned coordinator on
+data-loss risk, schema conflict, unavailable dependency, credential need,
+external-service dependency, verifier failure after two focused repair
+attempts, or any task that would bypass those invariants. For a program with an
+approved standing coordinator delegation, this is an internal recovery gate,
+not automatically a user prompt: the coordinator records the root cause,
+changes tactics or replaces the implementer/reviewer, issues a new scoped
+authorization, and continues within the approved contract. Escalate to the
+user only when recovery requires a new product or scope decision, a changed
+safety or truth invariant, an irreversible/data-loss choice, unofficial
+credentials, or acceptance of changed external behavior.
 
 ## Operating Lessons
 
@@ -71,6 +81,12 @@ Recent completed Cestus slices exposed a few recurring failure modes. Treat thes
 - User-facing execution controls must invoke an approved executable path. A control that only appends lifecycle metadata is a queue or proposal control and must be labeled as such; never present it as starting or completing agent work.
 - Integrate resident-agent execution in dependency order: scheduler/resumer, authoritative domain adapters, specialist runners, then cockpit/bridges. Downstream design may proceed against stable DTOs, but dependent implementation must rebase after upstream contracts land and run cross-boundary tests before merge.
 - Verify the checkout that will actually run. Rebuild ignored output such as `dist` from the target checkout, rerun sandbox-blocked gates in an unrestricted coordinator environment, keep dependency setup from churning lockfiles, and record spawned worker/reviewer session IDs with lane/task/role names before archiving them after integration.
+- Treat repair-count exhaustion as a root-cause checkpoint. After two focused
+  attempts, stop that child, preserve its evidence, use a fresh agent or a
+  different counterfactual test, and continue under a new coordinator-issued
+  scope. Do not turn a bounded documentation, test, or implementation repair
+  into a user approval loop when the approved contract already determines the
+  correct outcome.
 
 Detailed evidence and remaining gaps from the first resident-agent MVP integration are recorded in `docs/agentic/retrospectives/2026-07-10-resident-agent-mvp.md`.
 
@@ -78,31 +94,23 @@ Detailed evidence and remaining gaps from the first resident-agent MVP integrati
 
 - Brainstorming or new product behavior: explore context, ask clarifying questions, propose approaches, present a design, and wait for approval before writing files.
 - Implementation planning: write a plan with measurable tasks, owned files, exact targeted commands, acceptance criteria, rollback/escalation conditions, and review gates.
-- Implementation: run one task at a time through claim, failing test, targeted failure, production change, targeted pass, full verify, commit, and review.
+- Implementation: select the calibrated level from `docs/agentic/contracts/software-factory-mission-state.v1.json`, then use its proportionate validation, review, worktree, model, and commit rules.
 - Review: lead with defects, missing tests, spec drift, invariant violations, and verification gaps. Summaries come after findings.
 - Child thread dispatch: include only the current slice, this skill path, active branch, required docs, owned files, exact commands, and stop conditions.
 
-## Task Execution Contract
+## Calibrated Task Execution Contract
 
-For each implementation task:
+The mission-state source is the only authority for active feature facts, ownership, status, prerequisites, milestones, and release evidence. It defines the three levels:
 
-1. Use a task-scoped branch or isolated worktree.
-2. Claim one task in `docs/agentic/claims/task-<number>-<short-slug>.md` and commit the claim.
-3. Change status to `in-progress` before editing task files.
-4. Read every file named by the task.
-5. Write the failing test or failing contract first.
-6. Run the exact targeted command and record the expected failure.
-7. Implement the smallest scoped change.
-8. Run the targeted passing command.
-9. Run `npm run verify`.
-10. Commit only the files in scope plus any recorded claim/readiness evidence.
-11. Hand off to spec review, then code-quality review, before starting the next dependent task.
+- Level 1: concise scope, relevant inspection, focused validation, and atomic commits. A fresh automated review is required only when production code changes.
+- Level 2: one owner, compact durable state, test or exact reproduction before behavior edits, minimal implementation, focused cross-boundary gates, atomic commits, one fresh review, and milestone integration. Use dual review only for the source-defined high-impact boundaries. Keep behavior changes test-first.
+- Level 3: collaborative plan, finite behavioral contract, meaningful milestones, fresh bounded workers, externalized shared state, fresh scrutiny, black-box running-flow validation, targeted fixes, and milestone/release gates.
 
-If a task is documentation-only, replace red/green code tests with the relevant validation command, usually `npm run factory:check`, `git diff --check`, and skill validation when a skill changes.
+Registry events record only lifecycle transitions. Do not emit routine command, polling, waiting, unchanged-state, or reviewer-heartbeat events. Keep one coordinator layer. Preserve append-only ledger/provenance/rebuildability, human PRR-send and legal gates, fail-closed authority, secret safety, and no fallback writes at every level.
 
 ## Standard Commands
 
-Use task-specific commands from the active plan first. Common gates:
+Use only the commands required by the selected source-defined level and task. These commands are available gates, not default requirements for every task:
 
 ```bash
 npm run factory:check
@@ -121,11 +129,11 @@ Reviewers inspect the diff against the active spec, plan, tests, and Cestus inva
 
 - Does the change stay within the allowed files and task scope?
 - Did a failing test or equivalent validation exist before the fix?
-- Do targeted verification and `npm run verify` pass?
+- Do the source-defined targeted and risk-proportionate gates pass?
 - Are append-only, provenance, replayability, send-gate, and escalation-lock semantics preserved?
 - Would a fresh generic coding agent understand the resulting contracts, files, and handoff?
 
-Only approve when defects, missing tests, spec drift, and verification gaps are absent or explicitly non-blocking.
+Level 1 requires a fresh automated review only when production code changes. Level 2 and Level 3 use the source-defined fresh, dual, milestone, and release scrutiny. Only approve when required defects, missing tests, spec drift, and verification gaps are absent or explicitly non-blocking.
 
 ## Child Thread Prompt Skeleton
 
@@ -147,9 +155,13 @@ Required context:
 Operating style:
 - Spec first if the design is not approved.
 - Plan first if implementation tasks are not approved.
-- During implementation, use a task-scoped branch/worktree, durable claims, failing tests first, exact targeted commands, `npm run verify`, commits per task, and review gates.
+- During implementation, select the source-defined level first. Use compact claims only when that level requires them, test or exact reproduction before behavior edits, focused commands, atomic commits, and only the required review/gate sequence. Do not default Level 1 work to permanent RED commits, full verification, or review.
 - Preserve append-only ledger semantics, provenance, projection rebuildability, human-approved send gates, legal escalation locks, and AI-legible contracts.
-- Stop on data-loss risk, schema conflict, unavailable dependency, credential need, external-service dependency, or repeated verifier failure.
+- Stop this child and return structured evidence to the coordinator on
+  data-loss risk, schema conflict, unavailable dependency, credential need,
+  external-service dependency, or repeated verifier failure. Do not ask the
+  user for routine repair authorization when a standing coordinator delegation
+  governs the program.
 
 Begin by reading the required context and reporting the first clarifying question or first task checkpoint.
 ```

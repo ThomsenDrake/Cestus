@@ -1,4 +1,4 @@
-import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { type KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type {
   ContextPackRef,
   ContextPackRegistry,
@@ -40,6 +40,10 @@ export interface TaskOrchestratorContextDiagnostic {
 
 export interface TaskOrchestratorContextRenderInput {
   readonly taskId: string;
+  /** Captured claim identity; renderers must not derive it after an await. */
+  readonly attemptId: string;
+  /** Captured normalized orchestrator tick time; renderers must not call a clock. */
+  readonly generatedAt: string;
   readonly runType: TaskOrchestratorRunType;
   readonly scope: ProductionRunScope;
   readonly workflow: SpecialistWorkflowDescriptor;
@@ -48,6 +52,10 @@ export interface TaskOrchestratorContextRenderInput {
 
 export interface AssembleTaskOrchestratorContextInput {
   readonly taskId: string;
+  /** Required when a caller asks this assembly to render a production prompt. */
+  readonly attemptId?: string | undefined;
+  /** Required when a caller asks this assembly to render a production prompt. */
+  readonly generatedAt?: string | undefined;
   readonly runType: TaskOrchestratorRunType;
   readonly scope: ProductionRunScope;
   readonly workflow: SpecialistWorkflowDescriptor;
@@ -84,6 +92,22 @@ export interface TaskOrchestratorProviderPostureCheckpoint {
   readonly promptArtifactHash: string;
   readonly contextBindingHashes: readonly string[];
   readonly approvalRequirementId: string;
+}
+
+export interface TaskOrchestratorPromptBindingReceiptV1 {
+  readonly schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1";
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly sourceApprovedPromptArtifactHash: `sha256:${string}`;
+  readonly boundPromptArtifactHash: `sha256:${string}`;
+  readonly generatedAt: string;
+  readonly approvalEventId: string;
+  readonly providerPostureHash: `sha256:${string}`;
+  readonly exactRunBindingHash: `sha256:${string}`;
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly receiptHash: `sha256:${string}`;
 }
 
 export interface TaskOrchestrationBoundaryInput {

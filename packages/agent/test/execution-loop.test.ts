@@ -9,6 +9,7 @@ import {
 } from "../src/execution-loop.js";
 
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+const fakeDomainServiceActor = { id: "actor_fake_domain_service", kind: "system" as const, label: "Fake Domain Service" };
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 
 describe("resident agent fake execution loop", () => {
@@ -351,8 +352,9 @@ describe("resident agent fake execution loop", () => {
         async execute(input) {
           executions += 1;
           expect(input.toolRequestId).toBe("toolreq_provider_preview");
+          const domainResult = await appendFakeDomainResult(ledger, input.toolRequestId);
           return {
-            eventIds: ["evt_fake_domain_result"],
+            eventIds: [domainResult.id],
             artifactHashes: ["sha256:6666666666666666666666666666666666666666666666666666666666666666"],
             readModelChanges: ["fake approval resume complete"]
           };
@@ -405,10 +407,11 @@ describe("resident agent fake execution loop", () => {
       actor: agentActor,
       now: () => "2026-07-07T23:00:00.000Z",
       executor: {
-        async execute() {
+        async execute(input) {
           executions += 1;
+          const domainResult = await appendFakeDomainResult(inner, input.toolRequestId);
           return {
-            eventIds: ["evt_fake_domain_result"],
+            eventIds: [domainResult.id],
             artifactHashes: [],
             readModelChanges: []
           };
@@ -448,6 +451,8 @@ describe("resident agent fake execution loop", () => {
     expect((await inner.readAll()).map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved",
+      "agent.tool.execution.claimed",
+      "evidence.ingested",
       "agent.tool.denied"
     ]);
   });
@@ -507,6 +512,7 @@ describe("resident agent fake execution loop", () => {
     expect(events.map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved",
+      "agent.tool.execution.claimed",
       "agent.tool.failed"
     ]);
     const failedEvent = events.find((event) => event.type === "agent.tool.failed");
@@ -598,6 +604,7 @@ describe("resident agent fake execution loop", () => {
     expect(events.map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved",
+      "agent.tool.execution.claimed",
       "agent.tool.failed"
     ]);
     const failedEvent = events.find((event) => event.type === "agent.tool.failed");
@@ -644,8 +651,9 @@ describe("resident agent fake execution loop", () => {
           executions += 1;
           expect(input.taskId).toBe("task_provider_readiness");
           expect(input.toolRequestId).toBe("toolreq_provider_preview");
+          const domainResult = await appendFakeDomainResult(ledger, input.toolRequestId);
           return {
-            eventIds: ["evt_fake_domain_result"],
+            eventIds: [domainResult.id],
             artifactHashes: ["sha256:6666666666666666666666666666666666666666666666666666666666666666"],
             readModelChanges: ["fresh loop approval resume complete"]
           };
@@ -934,4 +942,31 @@ async function captureError(action: () => Promise<unknown>): Promise<unknown> {
   } catch (error) {
     return error;
   }
+}
+
+async function appendFakeDomainResult(ledger: InMemoryEventLedger, toolRequestId: string) {
+  const claim = (await ledger.readStream(`agent_tool_request_${toolRequestId}`)).find(
+    (event) => event.type === "agent.tool.execution.claimed"
+  );
+  if (claim === undefined) throw new Error("fake domain result requires execution claim");
+  return await ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: `evidence_fake_result_${toolRequestId}`,
+    context: {
+      actor: fakeDomainServiceActor,
+      occurredAt: "2026-07-07T23:00:00.000Z",
+      causationId: claim.id,
+      correlationId: `corr_${toolRequestId}_fake_result`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_fake_domain_result",
+      source: { kind: "manual", label: "Fake domain result" },
+      contentHash: "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  });
 }

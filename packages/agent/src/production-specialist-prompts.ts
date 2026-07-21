@@ -8,6 +8,7 @@ import {
 } from "./context-packs.js";
 import {
   buildPromptArtifact,
+  type CreatePromptArtifactExactRunBindingV2Input,
   type PromptArtifactEnvelope,
   type PromptArtifactEvaluatedContextRequirement,
   type PromptArtifactOmission,
@@ -78,6 +79,14 @@ export interface RenderProductionSpecialistPromptInput extends EvaluateProductio
 
 export interface VerifyProductionSpecialistPromptArtifactInput extends RenderProductionSpecialistPromptInput {
   readonly artifact: PromptArtifactEnvelope;
+}
+
+export interface BindApprovedProductionSpecialistPromptV2Input {
+  readonly approvedPromptArtifact: PromptArtifactEnvelope;
+  readonly generatedAt: string;
+  readonly scope: ProductionRunScope;
+  readonly resolvedContextPacks: readonly VerifiedResolvedContextPack[];
+  readonly exactRun: CreatePromptArtifactExactRunBindingV2Input;
 }
 
 const rendererVerifiedProductionPromptArtifacts = new WeakSet<object>();
@@ -410,6 +419,7 @@ export function renderProductionSpecialistPrompt(
     safeSummary: `Provider-approved ${input.runType} specialist prompt artifact.`,
     omissions: evaluated.omissions,
     production: {
+      schemaVersion: "agent-production-prompt-binding.v1",
       rendererId: registration.rendererId,
       rendererVersion: registration.rendererVersion,
       rendererHash: registration.rendererHash,
@@ -426,6 +436,53 @@ export function renderProductionSpecialistPrompt(
   });
   rendererVerifiedProductionPromptArtifacts.add(artifact);
   return artifact;
+}
+
+export function bindApprovedProductionSpecialistPromptV2(
+  input: BindApprovedProductionSpecialistPromptV2Input
+): PromptArtifactEnvelope {
+  const source = input.approvedPromptArtifact;
+  const sourceProduction = source.manifest.production;
+  if (sourceProduction === undefined || sourceProduction.schemaVersion !== "agent-production-prompt-binding.v1") {
+    throw new Error("Production v2 binding requires an explicit approved v1 prompt artifact");
+  }
+  if (source.manifest.runType !== input.exactRun.runType) {
+    throw new Error("Production v2 binding exact run type does not match the approved v1 artifact");
+  }
+  const { evaluated, resolvedContextPacks } = evaluateAndResolveProductionContext({
+    runType: input.exactRun.runType,
+    taskId: input.exactRun.taskId,
+    scope: input.scope,
+    resolvedContextPacks: input.resolvedContextPacks
+  });
+  if (
+    sourceProduction.scopeApplicabilityHash !== evaluated.scopeApplicabilityHash ||
+    !sameCanonicalJson(sourceProduction.evaluatedContextRequirements, evaluated.requirements) ||
+    !sameCanonicalJson(sourceProduction.resolvedPayloadAudits, payloadAudits(resolvedContextPacks)) ||
+    !sameCanonicalJson(source.manifest.contextPackRefs, resolvedContextPacks.map((resolved) => resolved.ref)) ||
+    !sameCanonicalJson(source.manifest.omissions, evaluated.omissions)
+  ) {
+    throw new Error("Production v2 binding current scope or resolved context packs do not match the approved v1 artifact");
+  }
+  return buildPromptArtifact({
+    promptTemplateId: source.manifest.promptTemplateId,
+    promptTemplateVersion: source.manifest.promptTemplateVersion,
+    generatedAt: input.generatedAt,
+    runType: source.manifest.runType,
+    safetyClass: source.manifest.safetyClass,
+    transferApprovalClass: source.manifest.transferApprovalClass,
+    contextPackRefs: source.manifest.contextPackRefs,
+    text: source.text,
+    safeSummary: source.manifest.safeSummary,
+    omissions: source.manifest.omissions,
+    production: {
+      schemaVersion: "agent-production-prompt-binding.v2",
+      sourceApprovedPromptArtifact: source,
+      scope: input.scope,
+      exactRun: input.exactRun
+    },
+    resolvedContextPacks
+  });
 }
 
 export function verifyProductionSpecialistPromptArtifact(

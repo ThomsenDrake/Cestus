@@ -37,6 +37,14 @@ const promptArtifactHash = hashText("triage prompt artifact");
 const providerParseHuman = { id: "actor_provider_reviewer", kind: "human" as const, label: "Provider Reviewer" };
 
 describe("evidence triage workflow", () => {
+  it("legacy deterministic caller remains explicit v1", async () => {
+    const audit = await promptAudit("evt_evidence_triage_001", "evt_evidence_link_triage_001");
+
+    expect(audit.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
+  });
+
   it("permits bounded instructional narrative while writing source-bound local artifacts", async () => {
     const { ledger, runtime } = await preparedRuntime(modelOutput());
     const providerPreview = await providerParseCurrentPreview(ledger);

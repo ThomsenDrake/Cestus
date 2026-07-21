@@ -1,11 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import {
   buildContextPackRef,
   buildPromptArtifact,
   createPromptArtifactResolver,
-  parsePromptArtifactEnvelope,
-  serializePromptArtifactEnvelope,
   type PromptArtifactEnvelope,
   type PromptArtifactOmission,
   type PromptArtifactResolver
@@ -77,8 +73,6 @@ export function buildLocalRuntimeStatusPromptArtifact(
     safeSummary: "Provider-approved local runtime status prompt assembled from safe context pack facts.",
     omissions
   });
-  persistPromptArtifactEnvelope(input.handle, envelope);
-
   return envelope;
 }
 
@@ -222,34 +216,4 @@ function stalenessInputs(
           value: String(input.projectionHighWaterMark)
         })])
   ]);
-}
-
-function persistPromptArtifactEnvelope(handle: LocalRuntimeHandle, envelope: PromptArtifactEnvelope): void {
-  const root = promptArtifactStoreRoot(handle);
-  const digest = envelope.manifest.inputArtifactHash.slice("sha256:".length);
-  const dir = join(root, "sha256", digest.slice(0, 2));
-  const path = join(dir, `${digest}.json`);
-  const bytes = Buffer.from(serializePromptArtifactEnvelope(envelope));
-  mkdirSync(dir, { recursive: true });
-
-  try {
-    writeFileSync(path, bytes, { flag: "wx" });
-  } catch (error) {
-    const nodeError = error as NodeJS.ErrnoException;
-    if (nodeError.code !== "EEXIST") {
-      throw error;
-    }
-    const existing = parsePromptArtifactEnvelope(readFileSync(path));
-    if (existing.manifest.inputArtifactHash !== envelope.manifest.inputArtifactHash) {
-      throw new Error("Prompt artifact persistence hash mismatch");
-    }
-  }
-}
-
-function promptArtifactStoreRoot(handle: LocalRuntimeHandle): string {
-  if (handle.mountedWorkspace !== undefined) {
-    return join(handle.mountedWorkspace.paths.blobRoot, "agent-prompt-artifacts");
-  }
-
-  return join(handle.config.cwd, ".cestus", "local", "prompt-artifacts");
 }
