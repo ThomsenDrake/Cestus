@@ -247,3 +247,35 @@ and fallback writes are prohibited.
   Every pre-existing focused test remains green, so the RED is confined to the
   four missing `RV-1-E-895` behaviors. No store write/read fallback, provider,
   credential, network, external system, or production-source edit participates.
+
+## Second Review Minimal GREEN
+
+- The repair addresses four bounded root causes: matching run/task identities
+  were emitted without the released secret-safety predicate; malformed event
+  envelopes could reach deeper interpretation or escape the public boundary;
+  syntax-valid diagnostic IDs were not secret-filtered; and exact recorded
+  retries could displace the authoritative recorded event used for terminal
+  causation.
+- The minimal implementation checks normalized event envelopes before any
+  mounted I/O using exact own-type membership in the released `eventContracts`
+  plus non-array object `payload` and `context` fields. It contains all deeper
+  asynchronous interpretation at the public fail-closed boundary, applies
+  `isAgentSecretSafeText` to matching run/task identities and diagnostic event
+  IDs, and derives the selected recorded event ID from the released projection
+  history before exact-event lookup and terminal classification.
+- The adapter does not add a full payload parser, duplicate released payload
+  schema validation, authority, executable effect, writer, fallback, provider,
+  credential, registry, path, witness, or approval-consumption capability.
+- Exact focused validation passes **1 file / 32 tests** and exact cross-boundary
+  validation passes **2 files / 68 tests**. Standalone `npm run typecheck`
+  passes, `npm run factory:check` passes, V4 standalone assurance passes
+  **20/20**, and contract mode emits the exact four release-graph,
+  composition-corpus, command-card, and ABI-corpus markers.
+- Full `npm run verify` exits `1` only with the inherited aggregate cohort:
+  **10 failing files / 48 failing tests / 2,892 passes / 5 skips**. Neither
+  Task138 owned source nor test is involved. Dependencies are local and real:
+  Node `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink.
+- Repository mode remains pending until this atomic GREEN commit provides the
+  required clean checkout. This is not approval, strict record 28, integration,
+  or release; the unfinished program frontier remains **27 of 29**.

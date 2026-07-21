@@ -1,10 +1,15 @@
 import type { Buffer } from "node:buffer";
-import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import {
+  eventContracts,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import type { HandoffAuthorityBinding } from "../../agent/src/specialist-handoff-authority.js";
 import {
   buildSpecialistHandoffProjection,
   type SpecialistHandoffProjectionDiagnostic
 } from "../../agent/src/specialist-handoff-projection.js";
+import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
 import type {
   SpecialistApprovalRequirement,
   SpecialistNextAction,
@@ -179,6 +184,17 @@ export async function buildResidentHandoffDto(
     return closedDto(invalidTargetIdentity, "inconsistent", category);
   }
 
+  try {
+    return await buildResidentHandoffDtoFromNormalized(normalized);
+  } catch (error) {
+    const category = error instanceof BoundaryFailure ? error.category : "dto-invalid";
+    return closedDto(normalized.identity, "inconsistent", category);
+  }
+}
+
+async function buildResidentHandoffDtoFromNormalized(
+  normalized: NormalizedInput
+): Promise<ResidentHandoffDto> {
   const sourceFailure = validateTargetSources(normalized.events, normalized.identity);
   if (sourceFailure !== undefined) {
     return closedDto(normalized.identity, "inconsistent", sourceFailure);
@@ -250,7 +266,11 @@ export async function buildResidentHandoffDto(
     return closedDto(normalized.identity, "inconsistent", "dto-cross-run");
   }
 
-  const recorded = findSelectedRecordedEvent(normalized.events, handoff);
+  const recordedEventId = authoritativeRecordedEventId(projection, handoff);
+  if (recordedEventId === undefined) {
+    return closedDto(normalized.identity, "inconsistent", "provenance-missing");
+  }
+  const recorded = findRecordedEventById(normalized.events, handoff, recordedEventId);
   if (recorded === undefined) {
     return closedDto(normalized.identity, "inconsistent", "provenance-missing");
   }
@@ -277,7 +297,7 @@ export async function buildResidentHandoffDto(
       handoff.status,
       provenance !== undefined,
       normalized.events,
-      recorded.id,
+      recordedEventId,
       handoff.runId
     ),
     handoff,
@@ -292,8 +312,9 @@ function normalizeInput(input: unknown): NormalizedInput {
   const rawEvents = normalizeJsonValue(record.events, { nodes: 0 }, 0);
   if (!Array.isArray(rawEvents)) throw new BoundaryFailure("unsafe-boundary-value");
   if (containsSecretShapedUnknownField(rawEvents)) throw new BoundaryFailure("secret-safety-rejection");
+  assertNormalizedEventEnvelopes(rawEvents);
 
-  const frozenEvents = Object.freeze([...rawEvents]) as unknown as readonly KnowledgeEvent[];
+  const frozenEvents = Object.freeze([...rawEvents]);
   const identity = targetIdentity(frozenEvents, runId);
   const authorityBinding = normalizeAuthorityBinding(record.authorityBinding);
   const materialGet = captureReader(record.materialStore);
@@ -313,6 +334,10 @@ function targetIdentity(events: readonly KnowledgeEvent[], runId: string): Targe
   if (starts.length !== 1) throw new BoundaryFailure("provenance-cross-run");
   const started = starts[0]!;
   if (!isResidentRunType(started.payload.runType)) throw new BoundaryFailure("dto-invalid");
+  if (!isAgentSecretSafeText(runId) ||
+    (started.payload.taskId !== undefined && !isAgentSecretSafeText(started.payload.taskId))) {
+    throw new BoundaryFailure("secret-safety-rejection");
+  }
   return Object.freeze({
     runId,
     ...(started.payload.taskId === undefined ? {} : { taskId: started.payload.taskId }),
@@ -363,12 +388,26 @@ function collectDeclaredHashes(
   }
 }
 
-function findSelectedRecordedEvent(
-  events: readonly KnowledgeEvent[],
+function authoritativeRecordedEventId(
+  projection: Awaited<ReturnType<typeof buildSpecialistHandoffProjection>>,
   handoff: SpecialistWorkflowHandoffDto
+): string | undefined {
+  return projection.history.find((entry) =>
+    entry.state === "handoff-recorded" &&
+    entry.runId === handoff.runId &&
+    entry.taskId === handoff.taskId &&
+    entry.handoffId === handoff.handoffId
+  )?.recordedEventId;
+}
+
+function findRecordedEventById(
+  events: readonly KnowledgeEvent[],
+  handoff: SpecialistWorkflowHandoffDto,
+  recordedEventId: string
 ): KnowledgeEventOf<"agent.specialist-handoff.recorded"> | undefined {
-  return [...events].reverse().find((candidate): candidate is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
+  return events.find((candidate): candidate is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
     candidate.type === "agent.specialist-handoff.recorded" &&
+    candidate.id === recordedEventId &&
     candidate.payload.runId === handoff.runId &&
     candidate.payload.handoffId === handoff.handoffId
   );
@@ -557,7 +596,9 @@ function diagnostic(
 }
 
 function freezeSafeEventIds(value: readonly string[] | undefined): readonly string[] {
-  return Object.freeze((value ?? []).filter((item) => /^evt_[a-zA-Z0-9_-]+$/.test(item)));
+  return Object.freeze((value ?? []).filter((item) =>
+    /^evt_[a-zA-Z0-9_-]+$/.test(item) && isAgentSecretSafeText(item)
+  ));
 }
 
 function freezeSafeHashes(value: readonly string[] | undefined): readonly ContentHash[] {
@@ -789,6 +830,21 @@ function containsSecretShapedUnknownField(value: unknown): boolean {
     if (containsSecretShapedUnknownField(nested)) return true;
   }
   return false;
+}
+
+function assertNormalizedEventEnvelopes(events: readonly unknown[]): asserts events is readonly KnowledgeEvent[] {
+  for (const value of events) {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new BoundaryFailure("dto-invalid");
+    }
+    const event = value as Record<string, unknown>;
+    if (typeof event.type !== "string" ||
+      !Object.prototype.hasOwnProperty.call(eventContracts, event.type) ||
+      typeof event.payload !== "object" || event.payload === null || Array.isArray(event.payload) ||
+      typeof event.context !== "object" || event.context === null || Array.isArray(event.context)) {
+      throw new BoundaryFailure("dto-invalid");
+    }
+  }
 }
 
 function requiredText(value: unknown): string {
