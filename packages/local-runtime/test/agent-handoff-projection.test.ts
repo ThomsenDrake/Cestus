@@ -97,6 +97,59 @@ describe("buildResidentHandoffDto", () => {
     expect(restarted.diagnostics).toEqual([]);
   });
 
+  it("keeps output-persisted and handoff-pending resumable and non-executable", async () => {
+    const fixture = handoffFixture();
+    const outputPersisted = await project(
+      fixture,
+      fixture.recordedEvents.slice(0, 2),
+      storesFor(fixture)
+    );
+    const handoffPending = await project(
+      fixture,
+      fixture.recordedEvents.slice(0, 3),
+      storesFor(fixture)
+    );
+
+    expect(outputPersisted.lifecycle).toBe("output-persisted");
+    expect(outputPersisted.provenance).toBeUndefined();
+    expect(outputPersisted.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(handoffPending.lifecycle).toBe("handoff-pending");
+    expect(handoffPending.provenance).toBeUndefined();
+    expect(handoffPending.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+  });
+
+  it.each([
+    ["waiting-for-approval", "resumable"],
+    ["blocked", "resumable"]
+  ] as const)("keeps %s handoffs resumable and never task-completed", async (status, stateKind) => {
+    const fixture = handoffFixture({ status });
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, fixture.terminal],
+      storesFor(fixture)
+    );
+
+    expect(dto.lifecycle).not.toBe("task-completed");
+    expect(dto.status).toBe(status);
+    expect(dto.stateKind).toBe(stateKind);
+    expect(dto.provenance).toBeUndefined();
+    expect(dto.nextSafeActions.length).toBeGreaterThan(0);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+  });
+
+  it("maps an exact failed terminal chain to failed terminal-consistent, never task-completed", async () => {
+    const fixture = handoffFixture({ status: "failed" });
+
+    const dto = await project(fixture, fixture.completeEvents, storesFor(fixture));
+
+    expect(dto.lifecycle).toBe("terminal-consistent");
+    expect(dto.status).toBe("failed");
+    expect(dto.stateKind).toBe("failed");
+    expect(dto.nextSafeActions.length).toBeGreaterThan(0);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(dto.lifecycle).not.toBe("task-completed");
+  });
+
   it("keeps historical V1 replay legacy-unbound with no provenance or executable action", async () => {
     const fixture = handoffFixture({ legacy: true });
 
@@ -263,7 +316,9 @@ interface ProjectionFixture {
   readonly started: KnowledgeEventOf<"agent.specialist-run.started">;
   readonly prepared: KnowledgeEventOf<"agent.specialist-handoff.prepared">;
   readonly recorded: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
-  readonly terminal: KnowledgeEventOf<"agent.specialist-run.completed">;
+  readonly terminal:
+    | KnowledgeEventOf<"agent.specialist-run.completed">
+    | KnowledgeEventOf<"agent.specialist-run.failed">;
   readonly taskStatus: KnowledgeEventOf<"agent.task.status.changed">;
   readonly recordedEvents: readonly KnowledgeEvent[];
   readonly completeEvents: readonly KnowledgeEvent[];
@@ -350,9 +405,11 @@ function handoffFixture(options: {
   readonly runId?: string;
   readonly taskId?: string;
   readonly sourceEventId?: string;
+  readonly status?: BuildSpecialistHandoffManifestInput["status"];
 } = {}): ProjectionFixture {
   const runId = options.runId ?? "run_task138_projection_001";
   const taskId = options.taskId ?? "task_task138_projection_001";
+  const status = options.status ?? "ready-for-review";
   const sourceEventId = options.sourceEventId ?? `evt_started_${runId}`;
   const finalOutputEventId = `evt_final_output_${runId}`;
   const finalOutputStepId = `step_final_output_${runId}`;
@@ -375,20 +432,30 @@ function handoffFixture(options: {
     artifactHashes: [hash444]
   } as const;
   const material = buildSpecialistHandoffMaterial({
-    status: "ready-for-review",
-    safeSummary: "Ontology bootstrap proposal bundle is ready for review.",
+    status,
+    safeSummary: safeSummaryFor(status),
     contextPackRefs: [contextPack],
     promptArtifactHash: hash111,
     outputArtifacts: [outputArtifact],
     toolRequestIds: [],
-    approvalRequirements: [],
+    approvalRequirements: status === "waiting-for-approval"
+      ? [{ approvalClass: "ontology-proposal-review", reason: "Independent review is required." }]
+      : [],
     nextSafeActions: [{
-      actionId: "action_review_proposals",
-      label: "Review proposal bundle",
-      kind: "review",
-      effect: "none",
+      actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
+      label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
+      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "repair" : "review",
+      effect: status === "waiting-for-approval" ? "request-approval" : "none",
       artifactId: outputArtifact.artifactId
     }],
+    ...(status === "failed" ? {
+      failure: {
+        category: "model-output-invalid",
+        code: "model-output-invalid",
+        safeSummary: "Proposal output could not be verified.",
+        retryable: true
+      }
+    } : {}),
     sourceEventIds: [sourceEventId],
     relatedEventIds: [sourceEventId]
   });
@@ -397,7 +464,7 @@ function handoffFixture(options: {
     runId,
     taskId,
     runType: "ontology-bootstrap",
-    status: "ready-for-review",
+    status,
     finalOutputEventId,
     outputArtifactHashes: [outputArtifact.artifactHash],
     handoffRevision: 1
@@ -419,9 +486,9 @@ function handoffFixture(options: {
     runType: "ontology-bootstrap",
     residentAgentId: "agent_default",
     generatedAt: "2026-07-21T14:01:00.000Z",
-    status: "ready-for-review",
-    safeSummary: "Ontology bootstrap proposal bundle is ready for review.",
-    stateKind: "completed",
+    status,
+    safeSummary: safeSummaryFor(status),
+    stateKind: status === "failed" ? "failed" : status === "ready-for-review" ? "completed" : "resumable",
     finalOutputStepId,
     finalOutputEventId,
     handoffMaterialArtifactHash: materialHash,
@@ -429,14 +496,24 @@ function handoffFixture(options: {
     promptArtifactHash: hash111,
     outputArtifacts: [outputArtifact],
     toolRequestIds: [],
-    approvalRequirements: [],
+    approvalRequirements: status === "waiting-for-approval"
+      ? [{ approvalClass: "ontology-proposal-review", reason: "Independent review is required." }]
+      : [],
     nextSafeActions: [{
-      actionId: "action_review_proposals",
-      label: "Review proposal bundle",
-      kind: "review",
-      effect: "none",
+      actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
+      label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
+      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "repair" : "review",
+      effect: status === "waiting-for-approval" ? "request-approval" : "none",
       artifactId: outputArtifact.artifactId
     }],
+    ...(status === "failed" ? {
+      failure: {
+        category: "model-output-invalid",
+        code: "model-output-invalid",
+        safeSummary: "Proposal output could not be verified.",
+        retryable: true
+      }
+    } : {}),
     sourceEventIds: [sourceEventId],
     relatedEventIds: [sourceEventId]
   };
@@ -459,7 +536,7 @@ function handoffFixture(options: {
     summary: "Final proposal bundle material is durably persisted.",
     stepKind: "final-output",
     stepSchemaId: "ontology-bootstrap-handoff.v1",
-    idempotencyKey: `specialist-final-output:${runId}:${taskId}:ontology-bootstrap:ready-for-review:${materialHash}`,
+    idempotencyKey: `specialist-final-output:${runId}:${taskId}:ontology-bootstrap:${status}:${materialHash}`,
     handoffMaterialArtifactHash: materialHash,
     inputArtifactHashes: [hash333, hash444, hash111],
     outputArtifactHashes: [hash222]
@@ -479,13 +556,23 @@ function handoffFixture(options: {
     preparedEventId: prepared.id,
     verifiedAt: "2026-07-21T14:02:00.000Z"
   }, { causationId: prepared.id });
-  const terminal = agentEvent("agent.specialist-run.completed", `evt_run_completed_${runId}`, {
-    runId,
-    completedAt: "2026-07-21T14:03:00.000Z",
-    outputArtifactHashes: [hash222],
-    relatedEventIds: [finalOutput.id],
-    summary: "Authority-bound ontology bootstrap reached terminal local state."
-  }, { causationId: recorded.id });
+  const terminal = status === "failed"
+    ? agentEvent("agent.specialist-run.failed", `evt_run_failed_${runId}`, {
+      runId,
+      failedAt: "2026-07-21T14:03:00.000Z",
+      category: "model-output-invalid",
+      message: "Proposal output failed safe verification.",
+      retryable: true,
+      allowedActions: ["inspect-retry"],
+      relatedEventIds: [recorded.id]
+    }, { causationId: recorded.id })
+    : agentEvent("agent.specialist-run.completed", `evt_run_completed_${runId}`, {
+      runId,
+      completedAt: "2026-07-21T14:03:00.000Z",
+      outputArtifactHashes: [hash222],
+      relatedEventIds: [finalOutput.id],
+      summary: "Authority-bound ontology bootstrap reached terminal local state."
+    }, { causationId: recorded.id });
   const orchestration = {
     ...agentEvent("agent.task.orchestration.completed", `evt_orchestration_completed_${runId}`, {
       taskId,
@@ -509,7 +596,7 @@ function handoffFixture(options: {
   };
   const taskStatus = agentEvent("agent.task.status.changed", `evt_task_completed_${runId}`, {
     taskId,
-    status: "completed",
+    status: status === "failed" ? "failed" : "completed",
     changedBy: "actor_cestus_agent",
     reason: "Task completed after exact durable handoff readback.",
     runId
@@ -535,6 +622,19 @@ function handoffFixture(options: {
     recordedEvents,
     completeEvents
   });
+}
+
+function safeSummaryFor(status: BuildSpecialistHandoffManifestInput["status"]): string {
+  switch (status) {
+    case "waiting-for-approval":
+      return "Ontology bootstrap proposal bundle is waiting for independent review.";
+    case "blocked":
+      return "Ontology bootstrap proposal bundle is blocked pending safe repair.";
+    case "failed":
+      return "Ontology bootstrap proposal bundle records a failed result.";
+    default:
+      return "Ontology bootstrap proposal bundle is ready for review.";
+  }
 }
 
 function compactBinding(
