@@ -279,3 +279,23 @@ and fallback writes are prohibited.
 - Repository mode remains pending until this atomic GREEN commit provides the
   required clean checkout. This is not approval, strict record 28, integration,
   or release; the unfinished program frontier remains **27 of 29**.
+
+## Second Repair Clean Admission
+
+- Atomic GREEN commit
+  `e46c1a808ebe600dd974840cf8075656b156fe7e` descends from causal RED commit
+  `d373a4d0cca3e8cfeb2862b4d32b5558d9c565b3` without rewrite. The exact
+  repair-base-to-candidate scope is the three frozen Task138 owned paths, and
+  the checkout was clean before the clean-only repository verifier ran.
+- Clean repository mode executed all **27 released commands**, emitted exact
+  marker `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exited
+  `1` only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the expected strict-prefix success at the unfinished
+  frontier rather than a candidate failure.
+- Ancestry and exact scope checks pass. Dependencies remain real and local:
+  Node `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink. The admitted candidate does not add a
+  provider, credential, network, external-system, fallback-write, destructive
+  history, or release action.
+- This clean admission is not approval, integration, strict record 28, or
+  release. The program frontier remains **27 of 29**.
