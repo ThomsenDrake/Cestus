@@ -126,3 +126,8 @@ and fallback writes are prohibited.
   `4eed212447bc457481b8b923159cd1eca3874e6a`. Publication does not convert this
   checkpoint into a reviewed, approved, integrated product card or strict
   record-28 release; those remaining gates stay pending.
+- Fresh factory readiness passed. Fresh `npm run verify` completed typecheck,
+  then reproduced the documented inherited aggregate cohort: **10 failing
+  files / 47 failing tests / 2,878 passes / 5 skips**. Neither Task138-H test
+  nor its source is in the failure cohort. V4 standalone assurance passed
+  **20/20** and contract mode emitted all four exact markers.
