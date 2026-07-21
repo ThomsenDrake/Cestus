@@ -263,7 +263,7 @@ async function mountedOntologyBootstrapHandoff(
     };
   }
   try {
-    const handoff = await acquire({
+    const acquiredHandoff = await acquire({
       taskId: launchInput.taskId,
       runId: launchInput.runId,
       attemptId: buildTaskAttemptId({
@@ -274,8 +274,14 @@ async function mountedOntologyBootstrapHandoff(
       runType: "ontology-bootstrap",
       retryGeneration: 0
     });
-    if (!isRuntimeMountedOntologyBootstrapHandoff(handoff)) throw new Error("invalid mounted handoff");
-    return Object.freeze({ ok: true as const, ...handoff });
+    const handoff = normalizeRuntimeMountedOntologyBootstrapHandoff(acquiredHandoff);
+    if (handoff === undefined) throw new Error("invalid mounted handoff");
+    return Object.freeze({
+      ok: true,
+      binding: handoff.binding,
+      controller: handoff.controller,
+      stop: handoff.stop
+    });
   } catch {
     return {
       ok: false,
@@ -305,6 +311,41 @@ function isRuntimeMountedOntologyBootstrapHandoff(
   return isObject(ownDataProperty(value, "binding")) &&
     isObject(ownDataProperty(value, "controller")) &&
     isStop(value);
+}
+
+function normalizeRuntimeMountedOntologyBootstrapHandoff(
+  value: unknown
+): RuntimeMountedOntologyBootstrapHandoff | undefined {
+  if (!hasExactRuntimeMountedOntologyBootstrapHandoffDescriptors(value)) return undefined;
+
+  const binding = ownDataProperty(value, "binding");
+  const controller = ownDataProperty(value, "controller");
+  const stop = ownDataProperty(value, "stop");
+  const normalized = Object.freeze({ binding, controller, stop });
+  return isRuntimeMountedOntologyBootstrapHandoff(normalized) ? normalized : undefined;
+}
+
+function hasExactRuntimeMountedOntologyBootstrapHandoffDescriptors(value: unknown): value is object {
+  if (!isObject(value)) return false;
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype || !Object.isFrozen(value)) return false;
+    const propertyNames = Object.getOwnPropertyNames(value);
+    if (
+      propertyNames.length !== 3 ||
+      !propertyNames.includes("binding") ||
+      !propertyNames.includes("controller") ||
+      !propertyNames.includes("stop") ||
+      Object.getOwnPropertySymbols(value).length !== 0
+    ) {
+      return false;
+    }
+    return propertyNames.every((propertyName) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, propertyName);
+      return descriptor !== undefined && descriptor.enumerable && !descriptor.configurable && !descriptor.writable && "value" in descriptor;
+    });
+  } catch {
+    return false;
+  }
 }
 
 function isStop(value: unknown): value is { readonly stop: () => Promise<void> } {
