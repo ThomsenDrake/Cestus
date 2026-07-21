@@ -185,11 +185,32 @@ export async function buildResidentHandoffDto(
   }
 
   try {
-    return await buildResidentHandoffDtoFromNormalized(normalized);
+    const dto = await buildResidentHandoffDtoFromNormalized(normalized);
+    return hasBrowserSafeStringLeaves(dto)
+      ? dto
+      : closedDto(normalized.identity, "inconsistent", "secret-safety-rejection");
   } catch (error) {
     const category = error instanceof BoundaryFailure ? error.category : "dto-invalid";
     return closedDto(normalized.identity, "inconsistent", category);
   }
+}
+
+function hasBrowserSafeStringLeaves(value: unknown): boolean {
+  if (typeof value === "string") {
+    return isAgentSecretSafeText(value) && !containsAbsolutePath(value);
+  }
+  if (Array.isArray(value)) return value.every(hasBrowserSafeStringLeaves);
+  if (value !== null && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).every(hasBrowserSafeStringLeaves);
+  }
+  return true;
+}
+
+function containsAbsolutePath(value: string): boolean {
+  return /(?:^|[\s("'])\//.test(value) ||
+    /(?:^|[\s("'])[a-z]:[\\/]/i.test(value) ||
+    /(?:^|[\s("'])\\\\[^\\/\s]+[\\/][^\\/\s]+/.test(value) ||
+    /\bfile:\/\//i.test(value);
 }
 
 async function buildResidentHandoffDtoFromNormalized(

@@ -473,3 +473,29 @@ and fallback writes are prohibited.
   `task-completed` and fails only at the required closed lifecycle assertion,
   proving the browser DTO retains the stronger-secret or path-bearing leaf
   after a canonical readback. Production source remains unchanged.
+
+## Final Browser-String Firewall Minimal GREEN
+
+- `buildResidentHandoffDto` now applies one final recursive string-leaf
+  firewall to every DTO returned by the normalized internal projection. Each
+  emitted string must satisfy the existing `isAgentSecretSafeText` predicate
+  and must not contain an absolute Unix, Windows-drive, UNC, or `file://`
+  path. Any violation replaces the entire result with the fixed-safe
+  `closedDto(normalized.identity, "inconsistent",
+  "secret-safety-rejection")`; no value is sanitized, truncated, partially
+  emitted, or fed recursively through projection.
+- Exact focused validation passes **1 file / 47 tests** and exact
+  cross-boundary validation passes **2 files / 83 tests**. Standalone
+  `npm run typecheck` emits `typecheck passed`; `npm run factory:check` emits
+  `factory-readiness passed`; V4 assurance passes **20/20**; and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers. Diff hygiene passes.
+- Full `npm run verify` completes typecheck and reports only the inherited
+  aggregate cohort: **10 failing files / 47 failing tests / 2,908 passes / 5
+  skips**. Neither Task138-H source nor test fails. The seven-pass increase
+  from the prior 2,901-pass run is exactly the new browser-firewall coverage.
+- Existing per-field predicates, released parsers and schemas, hashes,
+  lifecycle classification, replay authority, evidence filters, assertions,
+  mounted reads, and fixed closed DTOs remain unchanged. Both mounted stores
+  remain read-only; no registry, ontology/schema/parser, provider, credential,
+  external-system, fallback-write, or executable-effect authority is added.
