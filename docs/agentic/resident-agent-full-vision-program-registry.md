@@ -25309,3 +25309,423 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   complete assurance history may integrate and advance the preserved Task123
   RED. No push, external effect, release record, or `neo` action is authorized
   by this event.
+
+## RV-1-E-878 — Preflight assurance integrated; Task123 unblocked
+
+- Recorded at: 2026-07-20T23:37:16Z
+- Durable Git, registry, V4 contract, claim, and calibrated mission-state
+  reconstruction confirms clean program authority `f923812c`, clean assurance
+  candidate `2820387f978bf47d8fd42b1e7fada2a0084f3f4f`, and preserved Task123
+  causal RED `7a7509aa984e2d59ad212fa801c1dcaa2e996451`. Fresh architecture and
+  executability validation both approve the exact assurance candidate with no
+  reproduced P0/P1.
+- The complete preserved assurance lineage integrates without rewrite at merge
+  `ba5f06150deb745ec328ae4bf199c0efa8a25fc3`. Candidate and integrated
+  bytes pass mission-state **20/20**, factory readiness, V4 assurance **20/20**,
+  all four exact markers, repository prefix **26 records / 26 commands** then
+  only incomplete-29/found-26, typecheck, diff/scope/clean/dependency checks,
+  and identical `npm test` / `npm run verify` differential: **11 failing files
+  / 49 failing tests / 2,847 passes / 5 skips**.
+- The finite CF1-HR/Task122 to W1-123 ownership mapping, historical record-14
+  and record-26 evidence, V1–V3 pins, raw records 1–26, all 29 IDs/order, and
+  calibrated immutable envelope remain exact. Status advances assurance
+  `approved -> integrated` and W1-123 `blocked -> implementing`. The same
+  Task123 owner may now forward-merge this authority and produce only the
+  already authorized minimal GREEN after preserved RED `7a7509aa` within the
+  exact nine-path card boundary. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task. No strict
+  release record, push, external effect, or `neo` change occurs here.
+
+## RV-1-E-879 — W1-123 preflight candidate admitted for review
+
+- Recorded at: 2026-07-20T23:58:51Z
+- The same Task123 owner preserves causal RED
+  `7a7509aa984e2d59ad212fa801c1dcaa2e996451`, authority forward merge
+  `65f9fc9b9818dbefa7eceda0ebf9c1587b326065`, minimal GREEN
+  `74357184b5c91c90a2f09717beeeb220f0eec4f6`, and exact committed candidate
+  `68d09db346833d38286204e319c20352e6b6c539`. Cumulative scope is exactly the
+  nine V4-owned paths. The follow-up commit changes only a test annotation to
+  close strict TypeScript inference; it changes no production behavior.
+- Exact candidate bytes pass the focused **4 files / 58 tests** and relevant
+  cross-boundary **6 files / 148 tests**, standalone typecheck, mission-state
+  **20/20**, Task136 assurance **20/20**, all four V4 markers, factory
+  readiness, diff/scope/clean/dependency gates, and retain the required full
+  differential: **10 failing files / 48 failing tests / 2,854 passes / 5
+  skips**. This removes exactly one inherited Task123 failure and adds seven
+  passes without a new failure or skip.
+- Repository mode deliberately fails closed before the prefix marker at
+  `blob mismatch: CF1-HR:packages/agent/src/specialist-handoff-authority.ts`.
+  This is the same frozen preactivation ownership lock accepted for Task122:
+  CF1-HR and Task122 current ownership remains authoritative before strict
+  record 27 while this candidate necessarily changes the four transferred
+  paths. No checker bypass or premature migration is authorized. After
+  integration plus strict record 27, W1-123 becomes the current owner and the
+  exact **27 records / 27 commands** prefix must pass.
+- Status advances W1-123 `implementing -> candidate -> reviewing`. One fresh
+  concurrent read-only architecture/executability pair will review exact
+  candidate `68d09db3`, including non-consuming preflight, no-effect rejection,
+  exact witness/store/controller binding, later one-shot V2 consumption, and
+  the preactivation ownership lock. V1-V4, raw records 1-26, all 29 IDs/order,
+  historical evidence, calibrated mission state, and `neo` remain immutable.
+  No release record, push, or external effect occurs here.
+
+## RV-1-E-880 — W1-123 pre-effect authority root-cause checkpoint
+
+- Recorded at: 2026-07-21T00:15:36Z
+- Fresh read-only architecture reviewer
+  `019f81ff-d81c-7fc1-bb3b-39a8819472b2` approves exact clean candidate
+  `68d09db346833d38286204e319c20352e6b6c539` with no reproduced P0/P1.
+  Fresh executability/adversarial reviewer
+  `019f81ff-d822-7880-90b2-71c30f09885c` reproduces one P1: an unavailable
+  mounted handoff provider returns HTTP 503 only after **13** durable events,
+  including identity/task initialization, task-status changes, ingestion scan
+  and report generation, and specialist-run start.
+- Root cause is exact route ordering. Mounted handoff acquisition and portable
+  authority preflight currently begin only after those effects. The route also
+  reaches the optional provider through a hidden `Partial` intersection cast,
+  contrary to the frozen no-cast/no-widening boundary. The focused **58/58**
+  and assurance **20/20** gates remain green because they do not pin the full
+  pre-authority ledger delta. The pre-record-27 CF1-HR blob mismatch remains
+  the required ownership lock and is not a defect.
+- Standing recovery authority makes the correction contract-determined. The
+  same Task123 owner and preserved nine-path history will forward-merge this
+  registry authority, commit one causal RED proving zero durable event delta
+  for unavailable and invalid mounted authority, then one minimal GREEN.
+  GREEN must acquire and authenticate the exact portable binding before every
+  identity, task, ingestion, run, dossier, approval, tool, status, material,
+  manifest, or terminal effect; retain a later currentness preflight before
+  handoff effects; remove the runtime-provider cast without widening the
+  released runtime API; preserve later one-shot V2 consumption and every
+  previously approved invariant. Task-scoped subagent-driven development and
+  test-driven development are explicitly approved for this task.
+- Any code change invalidates the prior pair. After exact committed-byte gates,
+  one fresh concurrent architecture/executability pair is required. Status
+  advances W1-123 `reviewing -> recovering`. V1-V4, raw records 1-26, all 29
+  IDs/order, finite mappings/evidence, and `neo` remain immutable. No release,
+  push, or external effect occurs.
+
+## RV-1-E-881 — W1-123 cursor-preservation root-cause checkpoint
+
+- Recorded at: 2026-07-21T00:35:14Z
+- The same Task123 owner preserves authority merge
+  `ad32f7e844b6b52d935ad40381058a1a21dd18bb`, causal RED
+  `f95af824cdb50e62cbb38d1bfccee6f16d607051`, and first ordering GREEN
+  `bbce3cf37d094bb1a4f6ddb005068444900baf56`. The GREEN closes the
+  reproduced 13-event admission gap and removes the hidden runtime-provider
+  cast, but coordinator committed-diff audit reproduces a new P1 before review.
+- Exact production drift adds an incremental-cursor filter that silently
+  ignores post-issuance events unrelated to the bound task/run. Its paired
+  test changes the frozen assertion from rejecting unrelated suffixes to only
+  rejecting unknown bound suffixes. That weakens Task122's released
+  cross-run/unrelated-suffix burn semantics and contradicts the W1-123
+  requirement to preserve the cursor unchanged. No reviewer is dispatched for
+  this intermediate GREEN.
+- Standing recovery authority changes tactic. After a normal registry-only
+  authority merge, the same owner will commit one causal RED restoring the
+  exact unrelated-suffix counterfactual, then one minimal GREEN. The cursor
+  and original suffix test must remain unchanged. Instead, the exact
+  factory-issued portable witness gets a finite one-shot pre-effect
+  currentness phase: it authenticates WeakMap membership, available state,
+  exact lifecycle/binding, and current mounted origin without locking history.
+  The existing later workflow preflight must invoke full cursor revalidation
+  and lock complete setup history before handoff effects; consumption always
+  invokes full revalidation. The early phase cannot repeat, clone, widen,
+  bypass, generalize, or survive failure.
+- Task-scoped subagent-driven development and test-driven development are
+  explicitly approved for this task. Cumulative scope remains the exact nine
+  W1 paths. All prior evidence/history, V1-V4, raw records 1-26, all 29
+  IDs/order, finite mappings, and `neo` remain immutable. After exact gates,
+  one fresh concurrent final review pair is required. Status remains
+  `recovering`; no integration, release, push, or external effect occurs.
+
+## RV-1-E-882 — W1-123 compile-admission root-cause checkpoint
+
+- Recorded at: 2026-07-21T00:58:39Z
+- The same owner preserves second-cycle authority merge
+  `92d548fcf85a444b84bf0828ccaf40d55b87299d`, causal RED
+  `fe350130`, and changed-tactic GREEN exact candidate
+  `4b03a597519149643d4f4ae35ab147920c3117b7`. Focused **63/63**,
+  cross-boundary **153/153**, mission-state **20/20**, Task136 assurance
+  **20/20**, all four markers, factory, diff, scope, clean, dependency, and
+  inherited full-differential gates are green. The original unrelated-suffix
+  rejection is restored, while the finite early witness phase remains
+  one-shot and later preflight/consumption retain full cursor validation.
+- Independent committed-byte typecheck reproduces exactly one compiler error:
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts(93,12):
+  TS2687: All declarations of 'stop' must have identical modifiers.` The route
+  contains two adjacent declarations of the same internal mounted-handoff
+  interface, one using method syntax and one a readonly function property.
+  No behavioral, contract, test, ownership, or product decision is unresolved.
+- Standing recovery authority treats this exact compiler output as causal RED
+  evidence. After a registry-only authority merge, the same owner will commit
+  one claim-only RED recording the diagnostic, then one minimal GREEN that
+  removes the duplicate declaration and retains one strictly typed internal
+  shape. No cast, widening, behavior change, or other production edit is
+  allowed. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task.
+- All history and the nine-path boundary remain preserved. Exact admission and
+  a fresh concurrent final review pair follow the fix. No integration, release
+  record, push, external effect, or `neo` change occurs.
+
+## RV-1-E-883 — W1-123 corrected candidate enters final review
+
+- Recorded at: 2026-07-21T01:17:21Z
+- The same Task123 owner preserves the complete claim/RED/GREEN and registry
+  authority history through exact clean candidate
+  `240731525d64eb8383fce848628ddaf7cd836bad`. The final compiler packet adds
+  authority merge `bb6346a3`, claim-only RED `fda49a9a`, and one-line GREEN
+  `24073152`; the behavioral recovery remains exact candidate `4b03a597` with
+  causal cursor RED `fe350130` and every earlier commit ancestral.
+- Exact committed bytes pass focused **4 files / 63 tests**, cross-boundary
+  **6 files / 153 tests**, standalone typecheck, mission-state **20/20**,
+  Task136 assurance **20/20**, all four markers, factory, diff, exact
+  nine-path product scope, clean-state, and dependency gates. Full `npm test`
+  and `npm run verify` retain the improved inherited cohort: **9 failing files
+  / 45 failing tests / 2,859 passes / 5 skips**. Repository mode stops only at
+  the required pre-record-27 CF1-HR source-blob lock.
+- The route now authenticates the exact portable binding before Task123
+  effects without structural casts. The finite initial witness phase is
+  one-shot, verifies exact membership/lifecycle/binding and mounted origin,
+  then the existing workflow preflight performs full cursor validation before
+  handoff work; terminal consumption remains one-shot and fully revalidated.
+  Original unrelated/cross-run suffix rejection remains intact.
+- Status advances W1-123 `recovering -> candidate -> reviewing`. One fresh
+  concurrent read-only architecture/executability pair will review exact
+  `24073152`. V1-V4, raw records 1-26, all 29 IDs/order, prior evidence,
+  calibrated mission state, and `neo` remain immutable. No integration,
+  release record, push, or external effect occurs here.
+
+## RV-1-E-884 — W1-123 hostile-handoff preflight root-cause checkpoint
+
+- Recorded at: 2026-07-21T01:28:34Z
+- Fresh executability review of exact candidate
+  `240731525d64eb8383fce848628ddaf7cd836bad` reproduces one P1. The route's
+  post-acquisition `{ ...handoff }` spread evaluates an extra enumerable
+  accessor on an otherwise structurally acceptable hostile handoff before
+  portable preflight. The adversarial proof returned 503 but appended
+  `agent.task.created` and `agent.task.status.changed` before authority
+  rejection, violating the frozen zero-effect early-admission boundary. The
+  concurrent architecture review is invalidated and will not be counted.
+- Standing recovery authority resumes the same Task123 owner and exact
+  nine-path card. After a registry-only forward merge, one causal behavioral
+  RED must pin that unknown accessors are never evaluated and no Task123 event
+  is appended. One minimal GREEN must descriptor-normalize only the exact
+  `binding`, `controller`, and `stop` own data properties into a fresh return
+  object before any spread/copy can observe hostile structure. It must reject
+  accessors, extra string or symbol keys, structural copies, and incompatible
+  prototypes without casts, widening, fallback authority, or external effect.
+- The correction must preserve the released early one-shot witness phase,
+  later full cursor preflight, exact witness/store/controller binding, later
+  single V2 consumption, unrelated/cross-run suffix rejection, provenance,
+  approval, replay, proposal-only, and no-fallback invariants. Task-scoped
+  subagent-driven development and test-driven development are explicitly
+  approved for this task.
+- All admission gates and one fresh concurrent read-only
+  architecture/executability pair are required after code changes. Status
+  remains W1-123 `reviewing -> recovering`. V1-V4, raw records 1-26, all 29
+  IDs/order, finite compatibility mappings, prior evidence/history, and `neo`
+  remain immutable. No integration, release record, push, or external effect
+  occurs here.
+
+## RV-1-E-885 — W1-123 hostile-fixture compile-admission checkpoint
+
+- Recorded at: 2026-07-21T01:51:05Z
+- The same owner preserves authority merge `925351d7`, causal hostile-accessor
+  RED `4adb053e`, and descriptor-normalization candidate
+  `a1ec71a7efc505dbfd01e8e94aa26285f3f4fcfa`. Focused **4/64**,
+  cross-boundary **6/154**, mission-state **20/20**, Task136 assurance
+  **20/20**, all four markers, factory, diff, scope, clean, dependency, and
+  inherited full-test differential gates are otherwise green; repository mode
+  stops only at the required pre-record-27 ownership lock.
+- Independent exact-candidate typecheck reproduces one compiler diagnostic:
+  `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts(365,60):
+  TS18048: 'wakeRuntime' is possibly 'undefined'.` The final explicit cleanup
+  fixture assigned an optional outer variable, then captured that optional
+  variable inside its `stop` closure. This is a test-fixture typing defect, not
+  a product, contract, safety, ownership, or behavior decision.
+- Standing recovery authority resumes the same owner after a registry-only
+  merge. One claim-only causal RED will record this exact committed compiler
+  output, followed by one minimal GREEN that captures the already-created wake
+  runtime through a non-optional local reference for both authority issuance
+  and `stop`. No assertion, cast, non-null operator, production edit, test
+  weakening, API widening, or other path change is allowed. Task-scoped
+  subagent-driven development and test-driven development are explicitly
+  approved for this task.
+- Exact admission and one fresh concurrent read-only
+  architecture/executability pair remain required after the correction.
+  Status remains W1-123 `candidate -> recovering`. All history, the nine-path
+  boundary, V1-V4, raw records 1-26, all 29 IDs/order, prior evidence, and
+  `neo` remain immutable. No integration, release record, push, or external
+  effect occurs here.
+
+## RV-1-E-886 — W1-123 hostile-handoff correction enters final review
+
+- Recorded at: 2026-07-21T02:03:30Z
+- The same Task123 owner preserves the entire forward-only history through
+  exact clean candidate `54eee1e86d1408b4f83b427a6cb0513ea7932a8e`.
+  The final recovery chain adds registry authority merge `b6f028e4`,
+  claim-only compiler RED `203bea22`, and test-local GREEN `54eee1e8` after
+  hostile-accessor RED `4adb053e` and descriptor-normalization GREEN
+  `a1ec71a7`; every earlier claim/RED/GREEN and merge remains ancestral.
+- Exact committed bytes pass focused **4 files / 64 tests**, cross-boundary
+  **6 files / 154 tests**, and standalone typecheck independently at exit 0.
+  Mission-state and Task136 assurance are each **20/20**; all four exact V4
+  markers, factory, diff, exact nine-path product scope, clean-state, and real
+  dependency/Vitest gates are green. Repository mode stops only at the frozen
+  pre-record-27 CF1-HR source-blob lock. The inherited full differential
+  remains **9 failing files / 45 failing tests** with no Task123 regression.
+- The route now rejects extra string/symbol keys, accessors, incompatible
+  prototypes, and non-frozen outer handoffs by descriptor inspection, then
+  constructs a fresh exact `binding`/`controller`/`stop` object without
+  spreading untrusted structure. The causal direct-route fixture uses an exact
+  factory-issued current binding and production attempt ID, observes zero
+  getter reads, and preserves exact ledger equality before 503. The compiler
+  closure uses a non-optional local reference without casts or assertions.
+- Status advances W1-123 `recovering -> candidate -> reviewing`. One fresh
+  concurrent read-only architecture/executability pair will review exact
+  `54eee1e8`. V1-V4, raw records 1-26, all 29 IDs/order, finite mappings,
+  prior evidence, calibrated mission state, and `neo` remain immutable. No
+  integration, release record, push, or external effect occurs here.
+
+## RV-1-E-887 — W1-123 integrated and released
+
+- Recorded at: 2026-07-21T02:22:29Z
+- The complete preserved Task123 history through exact candidate
+  `54eee1e86d1408b4f83b427a6cb0513ea7932a8e` is integrated without history
+  rewrite at merge `f9faba8d81bf4769be4e601865b610c716813029`.
+  Fresh final architecture and executability reviewers
+  `019f826a-cee4-7631-8a7e-2af33b36febf` and
+  `019f826a-d52f-72d3-a789-dab9bde70dc8` both approve with no reproduced
+  P0/P1.
+- Integrated bytes pass focused **4 files / 64 tests**, exact cross-boundary
+  **6 files / 154 tests**, standalone typecheck, mission-state **20/20**,
+  Task136 assurance **20/20**, all four exact V4 markers, factory readiness,
+  diff hygiene, exact nine-path product scope, clean tracked/untracked state,
+  and real non-symlinked dependencies with executable local Vitest 4.1.9.
+- Full `npm test` and `npm run verify` retain the inherited semantic cohort of
+  **9 failing files / 45 failing tests**, with no Task123 failure. Aggregate
+  load also times out three cases in the untouched
+  `check-resident-task-prerequisites.test.ts`; that test and its production
+  checker are byte-identical to the record-26 base and pass **18/18** in
+  isolation, so the observed aggregate total **10 files / 48 tests / 2,860
+  passes / 5 skips** is load variance, not a candidate regression. Verify
+  completes typecheck before reproducing the same differential.
+- Status advances W1-123 `approved -> integrated -> released`. Strict V4
+  release record 27 below activates the finite CF1-HR and Task122 current-HEAD
+  ownership transfers while preserving every historical release disposition
+  and blob. No provider, credential, network, external effect, push, or `neo`
+  action occurs.
+
+## Task136 dispatch release v4: W1-123-BOOTSTRAP-HANDOFF
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "W1-123-BOOTSTRAP-HANDOFF",
+  "candidateSha": "54eee1e86d1408b4f83b427a6cb0513ea7932a8e",
+  "reviews": [
+    {
+      "threadId": "019f826a-cee4-7631-8a7e-2af33b36febf",
+      "candidateSha": "54eee1e86d1408b4f83b427a6cb0513ea7932a8e",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f826a-d52f-72d3-a789-dab9bde70dc8",
+      "candidateSha": "54eee1e86d1408b4f83b427a6cb0513ea7932a8e",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "f9faba8d81bf4769be4e601865b610c716813029",
+  "releaseEventId": "task136-release-v4-W1-123-BOOTSTRAP-HANDOFF",
+  "prerequisites": [
+    {
+      "cardId": "CF1-HR",
+      "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+      "releaseEventId": "task136-release-v4-CF1-HR"
+    },
+    {
+      "cardId": "Task121",
+      "integrationSha": "e3bf834d1adeca8146cd26d5c2dbce7a54a9626a",
+      "releaseEventId": "task136-release-v4-Task121"
+    },
+    {
+      "cardId": "Task122",
+      "integrationSha": "0d736e98100250df1a16a53dbfdc630536ca29d1",
+      "releaseEventId": "task136-release-v4-Task122"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/ontology-bootstrap-workflow.ts",
+      "disposition": "owned",
+      "blobSha": "5b3d2acf801bf2b10d7c0e2cb9c2bf68088efd56"
+    },
+    {
+      "path": "packages/agent/test/ontology-bootstrap-workflow.test.ts",
+      "disposition": "owned",
+      "blobSha": "e9079d5d6818701e9aa19e60c1819e25a16914c1"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-authority.ts",
+      "disposition": "owned",
+      "blobSha": "d99a09b2c28b40cfed6d8ebc87ecd9c46f0e5e81"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-authority.test.ts",
+      "disposition": "owned",
+      "blobSha": "96fc180be925bb394e8590e8065a6364e1326b93"
+    },
+    {
+      "path": "packages/local-runtime/src/agent-ontology-bootstrap-routes.ts",
+      "disposition": "owned",
+      "blobSha": "0e393178d2d08ca03dee6fa5901ece13c8929138"
+    },
+    {
+      "path": "packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts",
+      "disposition": "owned",
+      "blobSha": "529cde6e19860dd36f5c46a1941ec0122f9942fd"
+    },
+    {
+      "path": "docs/agentic/claims/task-123-resident-full-vision-bootstrap-handoff.md",
+      "disposition": "owned",
+      "blobSha": "080cfe0ce125d54428c7948c545a7e40fdc30a00"
+    },
+    {
+      "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+      "disposition": "owned",
+      "blobSha": "522fc920a2a5d5d5e18edca26ded2bb7dde9e23d"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+      "disposition": "owned",
+      "blobSha": "b27121a00b3109040a3221ab8ddfc8f2b965d63a"
+    }
+  ]
+}
+```
+
+## RV-1-E-888 — Record-27 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-21T02:25:05Z
+- Clean strict record-27 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 27`.
+- The standalone assurance corpus then reproduces exactly three failures at
+  lines 1159, 1475, and 1655: current-registry-length fixtures still pin
+  strict prefix **26**, observe **27**, and leave the other **17/20** tests
+  green. No contract, checker, blob, command, ownership, compatibility,
+  migration, dependency, released Task123, or product failure is reproduced.
+- This is the contract-determined append-only count-fixture transition. The
+  same V4 assurance owner will preserve its complete history, forward-merge
+  this clean program authority, commit one claim-only causal RED recording the
+  exact diagnostics, then one minimal GREEN changing only the three current
+  registry-length expectations from 26 to 27. Task-scoped subagent-driven
+  development and test-driven development are explicitly approved for this
+  task.
+- Exact assurance, contract, repository, factory, typecheck, diff, scope,
+  clean-state, dependency, and immutable-evidence gates plus one fresh
+  concurrent read-only architecture/executability pair are required. V1-V4,
+  raw records 1-27, all 29 IDs/order, finite mappings, product bytes, prior
+  evidence/history, and `neo` remain immutable. No new product release record,
+  provider, credential, network, push, or external effect occurs.
