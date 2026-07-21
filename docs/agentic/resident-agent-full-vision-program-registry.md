@@ -25984,3 +25984,85 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
   credentials, external systems, and fallback/write authorities remain
   unchanged.
+
+## RV-1-E-896 — Task138-H second repaired candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-21T19:17:01Z
+- The second bounded repair preserves causal RED
+  `d373a4d0cca3e8cfeb2862b4d32b5558d9c565b3`, atomic GREEN
+  `e46c1a808ebe600dd974840cf8075656b156fe7e`, and exact clean candidate
+  `2917ba4f20f9e113a54b49cb28cdb144636bd5b9`. The complete prior rejected
+  candidates, review verdicts, repairs, and program-authority merges remain in
+  ancestry without rewrite; cumulative repair scope is still exactly the
+  frozen three Task138-H paths.
+- Causal RED adds eight exact failures covering safe matching run/task
+  identities, malformed payload/context/type envelopes, syntax-valid but
+  secret-unsafe diagnostic event IDs, and ready/failed exact-recorded-retry
+  terminal chains. Candidate gates pass **32/32** focused tests, **68/68**
+  exact cross-boundary tests, standalone typecheck, factory readiness, V4
+  assurance **20/20**, all four exact contract markers, diff hygiene,
+  ancestry, exact scope, clean state, and real local Node 26.1.0 / Vitest 4.1.9
+  non-symlinked dependencies.
+- Clean repository mode executes all **27/27** released commands and emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, then exits only on
+  expected unfinished closure `expected 29 records, found 27`. Full
+  verification passes typecheck and reproduces the inherited cohort as **10
+  failing files / 48 failing tests / 2,892 passes / 5 skips**; Task138-H source
+  and tests are absent from all failures, and the eight-pass increase is
+  exactly the new causal coverage.
+- Fresh read-only architecture review instance
+  `d86cd8f4-1de4-4798-b7d9-90e3c2caa4b6` owns frozen-contract, event-envelope,
+  identity/secret-safety, released-history, lifecycle, provenance, replay,
+  authority, no-effect, and exact-scope scrutiny. Fresh read-only executability
+  review instance `007192ca-7ee8-4672-8ec7-7ca4a28f09ec` owns independent gate
+  reproduction, malformed/hostile/adversarial probes, idempotent-retry cases,
+  differential classification, ancestry, dependency, and clean-state checks.
+  Both review the exact candidate and may not edit, commit, merge, push, invoke
+  providers, or use external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. The strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
+  unchanged.
+
+## RV-1-E-897 — Task138-H exact-parser review defect; bounded repair authorized
+
+- Recorded at: 2026-07-21T19:32:12Z
+- Fresh architecture review instance
+  `d86cd8f4-1de4-4798-b7d9-90e3c2caa4b6` and fresh executable review
+  instance `007192ca-7ee8-4672-8ec7-7ca4a28f09ec` both return
+  `NEEDS_CHANGES` for exact candidate
+  `2917ba4f20f9e113a54b49cb28cdb144636bd5b9`. The candidate is not approved,
+  integrated, released, or eligible for strict record 28.
+- Both reviewers independently reproduce one P1 root cause: the local
+  structural envelope guard asserts `KnowledgeEvent[]` without the released
+  exact ontology parser. A schema-invalid started event can therefore place
+  path-bearing run/task identity in a clean browser DTO, and architecture
+  scrutiny also shows a schema-invalid incomplete terminal can promote
+  `terminal-consistent`. Existing secret-shaped identity tests do not cover
+  path safety, and the structural guard violates fail-closed replay and the
+  explicit no-parser-broadening boundary.
+- The existing non-reviewer repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage proving path-bearing identities and
+  incomplete terminal events are rejected before store I/O with fixed safe
+  output. Then it may replace the structural assertion with the released exact
+  `validateKnowledgeEvent` parser over the descriptor-copied snapshot and fix
+  only task-owned synthetic events that are noncanonical under that parser.
+  Existing hostile and released-diagnostic assertions must remain equally
+  strong using schema-valid fixtures; no production ontology/schema edit,
+  partial issue filtering, permissive parse, fallback parser, or assertion
+  weakening is authorized.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The new exact candidate must rerun focused/cross-boundary, standalone
+  typecheck, factory, V4 assurance/contract/repository prefix, full
+  differential, exact scope/ancestry/dependency/clean gates, then receive a
+  completely new dual-review pair. No current or prior reviewer may repair or
+  approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
