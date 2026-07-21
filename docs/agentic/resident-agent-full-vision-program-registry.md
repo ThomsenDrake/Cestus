@@ -25703,3 +25703,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-888 — Record-27 assurance fixture root-cause checkpoint
+
+- Recorded at: 2026-07-21T02:25:05Z
+- Clean strict record-27 repository mode executes every released command and
+  emits, in order, `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`
+  followed only by `repository release closure incomplete: expected 29
+  records, found 27`.
+- The standalone assurance corpus then reproduces exactly three failures at
+  lines 1159, 1475, and 1655: current-registry-length fixtures still pin
+  strict prefix **26**, observe **27**, and leave the other **17/20** tests
+  green. No contract, checker, blob, command, ownership, compatibility,
+  migration, dependency, released Task123, or product failure is reproduced.
+- This is the contract-determined append-only count-fixture transition. The
+  same V4 assurance owner will preserve its complete history, forward-merge
+  this clean program authority, commit one claim-only causal RED recording the
+  exact diagnostics, then one minimal GREEN changing only the three current
+  registry-length expectations from 26 to 27. Task-scoped subagent-driven
+  development and test-driven development are explicitly approved for this
+  task.
+- Exact assurance, contract, repository, factory, typecheck, diff, scope,
+  clean-state, dependency, and immutable-evidence gates plus one fresh
+  concurrent read-only architecture/executability pair are required. V1-V4,
+  raw records 1-27, all 29 IDs/order, finite mappings, product bytes, prior
+  evidence/history, and `neo` remain immutable. No new product release record,
+  provider, credential, network, push, or external effect occurs.
