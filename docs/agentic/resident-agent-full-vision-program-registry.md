@@ -25557,3 +25557,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   boundary, V1-V4, raw records 1-26, all 29 IDs/order, prior evidence, and
   `neo` remain immutable. No integration, release record, push, or external
   effect occurs here.
+
+## RV-1-E-886 — W1-123 hostile-handoff correction enters final review
+
+- Recorded at: 2026-07-21T02:03:30Z
+- The same Task123 owner preserves the entire forward-only history through
+  exact clean candidate `54eee1e86d1408b4f83b427a6cb0513ea7932a8e`.
+  The final recovery chain adds registry authority merge `b6f028e4`,
+  claim-only compiler RED `203bea22`, and test-local GREEN `54eee1e8` after
+  hostile-accessor RED `4adb053e` and descriptor-normalization GREEN
+  `a1ec71a7`; every earlier claim/RED/GREEN and merge remains ancestral.
+- Exact committed bytes pass focused **4 files / 64 tests**, cross-boundary
+  **6 files / 154 tests**, and standalone typecheck independently at exit 0.
+  Mission-state and Task136 assurance are each **20/20**; all four exact V4
+  markers, factory, diff, exact nine-path product scope, clean-state, and real
+  dependency/Vitest gates are green. Repository mode stops only at the frozen
+  pre-record-27 CF1-HR source-blob lock. The inherited full differential
+  remains **9 failing files / 45 failing tests** with no Task123 regression.
+- The route now rejects extra string/symbol keys, accessors, incompatible
+  prototypes, and non-frozen outer handoffs by descriptor inspection, then
+  constructs a fresh exact `binding`/`controller`/`stop` object without
+  spreading untrusted structure. The causal direct-route fixture uses an exact
+  factory-issued current binding and production attempt ID, observes zero
+  getter reads, and preserves exact ledger equality before 503. The compiler
+  closure uses a non-optional local reference without casts or assertions.
+- Status advances W1-123 `recovering -> candidate -> reviewing`. One fresh
+  concurrent read-only architecture/executability pair will review exact
+  `54eee1e8`. V1-V4, raw records 1-26, all 29 IDs/order, finite mappings,
+  prior evidence, calibrated mission state, and `neo` remain immutable. No
+  integration, release record, push, or external effect occurs here.
