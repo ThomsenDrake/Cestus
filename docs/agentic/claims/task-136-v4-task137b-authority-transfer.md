@@ -599,3 +599,17 @@ Implementation evidence:
   command count at 27, and the nested W1 fixture's local `.slice(0, 26)` setup.
   No other test, registry, record, contract, checker, source/product byte, or
   prior evidence is authorized to change.
+
+## RV-1-E-888 changed-tactic minimal GREEN evidence
+
+- The three semantic current-prefix groups now require length 27 and exact
+  `expectedIds.slice(0, 27)`. The first group's coupled repository admission
+  requires only incomplete found 27, the exact 27/27 prefix marker, and 27
+  command calls.
+- The nested W1 activation corpus retains its record-26 length and ordered-ID
+  expectations by slicing only its local parsed prefix to 26, then still
+  proves synthetic W1 activation produces `afterActivation.records === 27`.
+- Exact command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `0`; `20` tests, `20` passed, and `0` failed. No other test byte
+  or any registry, contract, checker, source/product, or package byte changed.
