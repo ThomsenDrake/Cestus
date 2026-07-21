@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import {
+  validateKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import {
   buildAuthorityBoundSpecialistHandoffManifest,
   buildSpecialistHandoffManifest,
@@ -15,6 +19,7 @@ import {
   type SpecialistHandoffMaterial
 } from "../../agent/src/specialist-handoff-manifest.js";
 import type { HandoffAuthorityBinding } from "../../agent/src/specialist-handoff-authority.js";
+import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
 import { buildResidentHandoffDto } from "../src/agent-handoff-projection.js";
 
 type ContentHash = `sha256:${string}`;
@@ -296,6 +301,86 @@ describe("buildResidentHandoffDto", () => {
     expect(stores.manifestStore.get).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["runId", "run-private-key"],
+    ["taskId", "task-private-key"]
+  ] as const)("rejects a matching started-event %s unless it is secret-safe", async (field, unsafeIdentity) => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const started = {
+      ...fixture.started,
+      ...(field === "runId" ? { streamId: `agent_run_${unsafeIdentity}` } : {}),
+      payload: {
+        ...fixture.started.payload,
+        [field]: unsafeIdentity
+      }
+    } as KnowledgeEvent;
+
+    expect(isAgentSecretSafeText(unsafeIdentity)).toBe(false);
+
+    const dto = await buildResidentHandoffDto({
+      runId: field === "runId" ? unsafeIdentity : fixture.runId,
+      events: [started],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(dto.taskId).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toContain(unsafeIdentity);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["payload", (fixture: ProjectionFixture) => ({
+      ...fixture.prepared,
+      id: "evt_task138_malformed_payload",
+      payload: null
+    })],
+    ["context", (fixture: ProjectionFixture) => ({
+      ...fixture.started,
+      id: "evt_task138_malformed_context",
+      streamId: "agent_run_run_task138_malformed_context",
+      context: null,
+      payload: {
+        ...fixture.started.payload,
+        runId: "run_task138_malformed_context"
+      }
+    })],
+    ["type", (fixture: ProjectionFixture) => ({
+      ...fixture.started,
+      id: "evt_task138_malformed_type",
+      type: "agent.task138.unknown",
+      streamId: "agent_run_run_task138_malformed_type",
+      payload: {
+        ...fixture.started.payload,
+        runId: "run_task138_malformed_type"
+      }
+    })]
+  ] as const)("contains a normalized plain-own event with schema-malformed %s data", async (_field, malformedEvent) => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const malformed = malformedEvent(fixture);
+
+    expect(validateKnowledgeEvent(malformed).success).toBe(false);
+
+    const dto = await buildResidentHandoffDto({
+      runId: fixture.runId,
+      events: [fixture.started, malformed as KnowledgeEvent],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "dto-invalid");
+    expect(isAgentSecretSafeText(JSON.stringify(dto))).toBe(true);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
   it.each(["descriptor", "prototype"] as const)(
     "contains hostile Proxy %s traps inside the bounded async boundary",
     async (trap) => {
@@ -377,6 +462,63 @@ describe("buildResidentHandoffDto", () => {
       artifactHashes: []
     });
     expect(JSON.stringify(dto)).not.toMatch(/raw-provider-secret|Terminal run state must agree|Completed run output hashes disagree/);
+  });
+
+  it("drops syntax-valid secret-unsafe diagnostic event IDs while retaining safe evidence", async () => {
+    const fixture = handoffFixture();
+    if (fixture.terminal.type !== "agent.specialist-run.completed") {
+      throw new Error("ready-for-review fixture must have a completed terminal");
+    }
+    const unsafeEventId = "evt_sk_live_task138unsafe";
+    const terminal = {
+      ...fixture.terminal,
+      id: unsafeEventId,
+      payload: {
+        ...fixture.terminal.payload,
+        outputArtifactHashes: [hash111]
+      }
+    } as KnowledgeEvent;
+
+    expect(/^evt_[a-zA-Z0-9_-]+$/.test(unsafeEventId)).toBe(true);
+    expect(validateKnowledgeEvent(terminal).success).toBe(true);
+    expect(isAgentSecretSafeText(unsafeEventId)).toBe(false);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, terminal],
+      storesFor(fixture)
+    );
+
+    expectClosed(dto, "inconsistent", "terminal-status-conflict");
+    expect(dto.diagnostics[0]?.eventIds).toEqual([fixture.recorded.id]);
+    expect(JSON.stringify(dto)).not.toContain(unsafeEventId);
+  });
+
+  it.each([
+    ["ready-for-review", "completed"],
+    ["failed", "failed"]
+  ] as const)("uses the released authoritative record for an exact %s recorded retry terminal", async (status, stateKind) => {
+    const fixture = handoffFixture({ status });
+    const exactRetry = {
+      ...fixture.recorded,
+      id: `evt_handoff_recorded_exact_retry_${status.replace(/-/g, "_")}`
+    } as KnowledgeEvent;
+
+    expect(validateKnowledgeEvent(exactRetry).success).toBe(true);
+    expect(fixture.terminal.context.causationId).toBe(fixture.recorded.id);
+    expect(fixture.terminal.context.causationId).not.toBe(exactRetry.id);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, exactRetry, fixture.terminal],
+      storesFor(fixture)
+    );
+
+    expect(dto.lifecycle).toBe("terminal-consistent");
+    expect(dto.status).toBe(status);
+    expect(dto.stateKind).toBe(stateKind);
+    expect(dto.provenance).toBeUndefined();
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
   });
 
   it("rejects hostile accessors before observation or store IO and retains no hostile value", async () => {

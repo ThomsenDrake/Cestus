@@ -227,3 +227,23 @@ and fallback writes are prohibited.
   passes, and the worktree was clean before this claim-only admission update.
   Full `npm run verify` was not run for this repair, so no aggregate cohort is
   newly claimed or inferred.
+
+## Second Fresh Review Causal RED
+
+- `RV-1-E-895` returns Task138-H to `implementing` and authorizes a second
+  causal RED before any production repair. Production source remains unchanged.
+- The owned focused test now covers all four review defects: matching started
+  `runId`/optional `taskId` values that fail `isAgentSecretSafeText`; normalized
+  plain-own events whose payload, context, or type fails the released
+  `validateKnowledgeEvent`; syntax-valid but secret-unsafe diagnostic event IDs;
+  and exact recorded retries whose terminal remains causally bound to the
+  released projector's authoritative first recorded event.
+- Exact command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  reports **1 failed file / 8 failed / 24 passed**. The identity cases return
+  `no-output`; malformed payload escapes as a raw `TypeError` while malformed
+  context/type return `no-output`; the unsafe diagnostic ID is retained; and
+  both ready/failed exact-retry terminal cases return `handoff-recorded`.
+  Every pre-existing focused test remains green, so the RED is confined to the
+  four missing `RV-1-E-895` behaviors. No store write/read fallback, provider,
+  credential, network, external system, or production-source edit participates.
