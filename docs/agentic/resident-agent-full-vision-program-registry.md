@@ -26024,3 +26024,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
   unchanged.
+
+## RV-1-E-897 — Task138-H exact-parser review defect; bounded repair authorized
+
+- Recorded at: 2026-07-21T19:32:12Z
+- Fresh architecture review instance
+  `d86cd8f4-1de4-4798-b7d9-90e3c2caa4b6` and fresh executable review
+  instance `007192ca-7ee8-4672-8ec7-7ca4a28f09ec` both return
+  `NEEDS_CHANGES` for exact candidate
+  `2917ba4f20f9e113a54b49cb28cdb144636bd5b9`. The candidate is not approved,
+  integrated, released, or eligible for strict record 28.
+- Both reviewers independently reproduce one P1 root cause: the local
+  structural envelope guard asserts `KnowledgeEvent[]` without the released
+  exact ontology parser. A schema-invalid started event can therefore place
+  path-bearing run/task identity in a clean browser DTO, and architecture
+  scrutiny also shows a schema-invalid incomplete terminal can promote
+  `terminal-consistent`. Existing secret-shaped identity tests do not cover
+  path safety, and the structural guard violates fail-closed replay and the
+  explicit no-parser-broadening boundary.
+- The existing non-reviewer repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage proving path-bearing identities and
+  incomplete terminal events are rejected before store I/O with fixed safe
+  output. Then it may replace the structural assertion with the released exact
+  `validateKnowledgeEvent` parser over the descriptor-copied snapshot and fix
+  only task-owned synthetic events that are noncanonical under that parser.
+  Existing hostile and released-diagnostic assertions must remain equally
+  strong using schema-valid fixtures; no production ontology/schema edit,
+  partial issue filtering, permissive parse, fallback parser, or assertion
+  weakening is authorized.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The new exact candidate must rerun focused/cross-boundary, standalone
+  typecheck, factory, V4 assurance/contract/repository prefix, full
+  differential, exact scope/ancestry/dependency/clean gates, then receive a
+  completely new dual-review pair. No current or prior reviewer may repair or
+  approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
