@@ -206,3 +206,24 @@ and fallback writes are prohibited.
   commit recording its exact result. This repair is not approval, product
   integration, strict record 28, or release; the frontier remains **27 of
   29**.
+
+## Clean Repair Candidate Admission
+
+- Atomic GREEN commit
+  `3bcefb8d5ef8c04b93536cc63c03ad8bb000ba58` contains only the minimal
+  production repair and this claim update over causal RED commit
+  `1a4bb7f6222f3fffd66ed6dfb78f9fd95b3832bc`; the causal test changes remain
+  in the RED parent rather than being weakened or rewritten.
+- From the clean GREEN checkout, exact repository command
+  `node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode
+  repository` executes all **27 released commands**, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exits `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the required strict-prefix success and expected unfinished
+  frontier closure; Task138-H remains unreleased record 28.
+- Candidate dependencies are real and local: Node `v26.1.0`, Vitest `4.1.9`,
+  and neither `node_modules` nor `node_modules/vitest` is a symlink. The exact
+  repair-base diff contains only the three frozen Task138-H paths, diff hygiene
+  passes, and the worktree was clean before this claim-only admission update.
+  Full `npm run verify` was not run for this repair, so no aggregate cohort is
+  newly claimed or inferred.
