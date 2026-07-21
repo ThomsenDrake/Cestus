@@ -25437,3 +25437,32 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   IDs/order, finite mappings, and `neo` remain immutable. After exact gates,
   one fresh concurrent final review pair is required. Status remains
   `recovering`; no integration, release, push, or external effect occurs.
+
+## RV-1-E-882 — W1-123 compile-admission root-cause checkpoint
+
+- Recorded at: 2026-07-21T00:58:39Z
+- The same owner preserves second-cycle authority merge
+  `92d548fcf85a444b84bf0828ccaf40d55b87299d`, causal RED
+  `fe350130`, and changed-tactic GREEN exact candidate
+  `4b03a597519149643d4f4ae35ab147920c3117b7`. Focused **63/63**,
+  cross-boundary **153/153**, mission-state **20/20**, Task136 assurance
+  **20/20**, all four markers, factory, diff, scope, clean, dependency, and
+  inherited full-differential gates are green. The original unrelated-suffix
+  rejection is restored, while the finite early witness phase remains
+  one-shot and later preflight/consumption retain full cursor validation.
+- Independent committed-byte typecheck reproduces exactly one compiler error:
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts(93,12):
+  TS2687: All declarations of 'stop' must have identical modifiers.` The route
+  contains two adjacent declarations of the same internal mounted-handoff
+  interface, one using method syntax and one a readonly function property.
+  No behavioral, contract, test, ownership, or product decision is unresolved.
+- Standing recovery authority treats this exact compiler output as causal RED
+  evidence. After a registry-only authority merge, the same owner will commit
+  one claim-only RED recording the diagnostic, then one minimal GREEN that
+  removes the duplicate declaration and retains one strictly typed internal
+  shape. No cast, widening, behavior change, or other production edit is
+  allowed. Task-scoped subagent-driven development and test-driven development
+  are explicitly approved for this task.
+- All history and the nine-path boundary remain preserved. Exact admission and
+  a fresh concurrent final review pair follow the fix. No integration, release
+  record, push, external effect, or `neo` change occurs.
