@@ -25494,3 +25494,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `24073152`. V1-V4, raw records 1-26, all 29 IDs/order, prior evidence,
   calibrated mission state, and `neo` remain immutable. No integration,
   release record, push, or external effect occurs here.
+
+## RV-1-E-884 — W1-123 hostile-handoff preflight root-cause checkpoint
+
+- Recorded at: 2026-07-21T01:28:34Z
+- Fresh executability review of exact candidate
+  `240731525d64eb8383fce848628ddaf7cd836bad` reproduces one P1. The route's
+  post-acquisition `{ ...handoff }` spread evaluates an extra enumerable
+  accessor on an otherwise structurally acceptable hostile handoff before
+  portable preflight. The adversarial proof returned 503 but appended
+  `agent.task.created` and `agent.task.status.changed` before authority
+  rejection, violating the frozen zero-effect early-admission boundary. The
+  concurrent architecture review is invalidated and will not be counted.
+- Standing recovery authority resumes the same Task123 owner and exact
+  nine-path card. After a registry-only forward merge, one causal behavioral
+  RED must pin that unknown accessors are never evaluated and no Task123 event
+  is appended. One minimal GREEN must descriptor-normalize only the exact
+  `binding`, `controller`, and `stop` own data properties into a fresh return
+  object before any spread/copy can observe hostile structure. It must reject
+  accessors, extra string or symbol keys, structural copies, and incompatible
+  prototypes without casts, widening, fallback authority, or external effect.
+- The correction must preserve the released early one-shot witness phase,
+  later full cursor preflight, exact witness/store/controller binding, later
+  single V2 consumption, unrelated/cross-run suffix rejection, provenance,
+  approval, replay, proposal-only, and no-fallback invariants. Task-scoped
+  subagent-driven development and test-driven development are explicitly
+  approved for this task.
+- All admission gates and one fresh concurrent read-only
+  architecture/executability pair are required after code changes. Status
+  remains W1-123 `reviewing -> recovering`. V1-V4, raw records 1-26, all 29
+  IDs/order, finite compatibility mappings, prior evidence/history, and `neo`
+  remain immutable. No integration, release record, push, or external effect
+  occurs here.
