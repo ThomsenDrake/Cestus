@@ -25466,3 +25466,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - All history and the nine-path boundary remain preserved. Exact admission and
   a fresh concurrent final review pair follow the fix. No integration, release
   record, push, external effect, or `neo` change occurs.
+
+## RV-1-E-883 — W1-123 corrected candidate enters final review
+
+- Recorded at: 2026-07-21T01:17:21Z
+- The same Task123 owner preserves the complete claim/RED/GREEN and registry
+  authority history through exact clean candidate
+  `240731525d64eb8383fce848628ddaf7cd836bad`. The final compiler packet adds
+  authority merge `bb6346a3`, claim-only RED `fda49a9a`, and one-line GREEN
+  `24073152`; the behavioral recovery remains exact candidate `4b03a597` with
+  causal cursor RED `fe350130` and every earlier commit ancestral.
+- Exact committed bytes pass focused **4 files / 63 tests**, cross-boundary
+  **6 files / 153 tests**, standalone typecheck, mission-state **20/20**,
+  Task136 assurance **20/20**, all four markers, factory, diff, exact
+  nine-path product scope, clean-state, and dependency gates. Full `npm test`
+  and `npm run verify` retain the improved inherited cohort: **9 failing files
+  / 45 failing tests / 2,859 passes / 5 skips**. Repository mode stops only at
+  the required pre-record-27 CF1-HR source-blob lock.
+- The route now authenticates the exact portable binding before Task123
+  effects without structural casts. The finite initial witness phase is
+  one-shot, verifies exact membership/lifecycle/binding and mounted origin,
+  then the existing workflow preflight performs full cursor validation before
+  handoff work; terminal consumption remains one-shot and fully revalidated.
+  Original unrelated/cross-run suffix rejection remains intact.
+- Status advances W1-123 `recovering -> candidate -> reviewing`. One fresh
+  concurrent read-only architecture/executability pair will review exact
+  `24073152`. V1-V4, raw records 1-26, all 29 IDs/order, prior evidence,
+  calibrated mission state, and `neo` remain immutable. No integration,
+  release record, push, or external effect occurs here.
+
+## RV-1-E-884 — W1-123 hostile-handoff preflight root-cause checkpoint
+
+- Recorded at: 2026-07-21T01:28:34Z
+- Fresh executability review of exact candidate
+  `240731525d64eb8383fce848628ddaf7cd836bad` reproduces one P1. The route's
+  post-acquisition `{ ...handoff }` spread evaluates an extra enumerable
+  accessor on an otherwise structurally acceptable hostile handoff before
+  portable preflight. The adversarial proof returned 503 but appended
+  `agent.task.created` and `agent.task.status.changed` before authority
+  rejection, violating the frozen zero-effect early-admission boundary. The
+  concurrent architecture review is invalidated and will not be counted.
+- Standing recovery authority resumes the same Task123 owner and exact
+  nine-path card. After a registry-only forward merge, one causal behavioral
+  RED must pin that unknown accessors are never evaluated and no Task123 event
+  is appended. One minimal GREEN must descriptor-normalize only the exact
+  `binding`, `controller`, and `stop` own data properties into a fresh return
+  object before any spread/copy can observe hostile structure. It must reject
+  accessors, extra string or symbol keys, structural copies, and incompatible
+  prototypes without casts, widening, fallback authority, or external effect.
+- The correction must preserve the released early one-shot witness phase,
+  later full cursor preflight, exact witness/store/controller binding, later
+  single V2 consumption, unrelated/cross-run suffix rejection, provenance,
+  approval, replay, proposal-only, and no-fallback invariants. Task-scoped
+  subagent-driven development and test-driven development are explicitly
+  approved for this task.
+- All admission gates and one fresh concurrent read-only
+  architecture/executability pair are required after code changes. Status
+  remains W1-123 `reviewing -> recovering`. V1-V4, raw records 1-26, all 29
+  IDs/order, finite compatibility mappings, prior evidence/history, and `neo`
+  remain immutable. No integration, release record, push, or external effect
+  occurs here.
