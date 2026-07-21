@@ -301,6 +301,73 @@ describe("buildResidentHandoffDto", () => {
     expect(stores.manifestStore.get).not.toHaveBeenCalled();
   });
 
+  it("rejects a released-parser-invalid path-bearing started identity before store IO", async () => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const pathRunId = "/home/cestus/runs/task138";
+    const pathTaskId = "/workspace/cestus/tasks/task138";
+    const started = {
+      ...fixture.started,
+      streamId: `agent_run_${pathRunId}`,
+      payload: {
+        ...fixture.started.payload,
+        runId: pathRunId,
+        taskId: pathTaskId
+      }
+    } as unknown as KnowledgeEvent;
+
+    expect(isAgentSecretSafeText(pathRunId)).toBe(true);
+    expect(isAgentSecretSafeText(pathTaskId)).toBe(true);
+    expect(validateKnowledgeEvent(started).success).toBe(false);
+
+    const dto = await buildResidentHandoffDto({
+      runId: pathRunId,
+      events: [started],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "dto-invalid");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(dto.taskId).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toMatch(/\/home\/|\/workspace\/|cestus\/runs|cestus\/tasks/i);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it("rejects a released-parser-invalid incomplete terminal before store IO", async () => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    if (fixture.terminal.type !== "agent.specialist-run.completed") {
+      throw new Error("ready-for-review fixture must have a completed terminal");
+    }
+    const { completedAt: _completedAt, ...incompletePayload } = fixture.terminal.payload;
+    const rawTerminalPath = "/home/cestus/raw-terminal-event";
+    const incompleteTerminal = {
+      ...fixture.terminal,
+      payload: {
+        ...incompletePayload,
+        summary: rawTerminalPath
+      }
+    } as unknown as KnowledgeEvent;
+
+    expect(validateKnowledgeEvent(incompleteTerminal).success).toBe(false);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, incompleteTerminal],
+      stores
+    );
+
+    expectClosed(dto, "inconsistent", "dto-invalid");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(dto.taskId).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toContain(rawTerminalPath);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["runId", "run-private-key"],
     ["taskId", "task-private-key"]

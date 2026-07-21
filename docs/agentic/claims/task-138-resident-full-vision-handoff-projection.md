@@ -299,3 +299,23 @@ and fallback writes are prohibited.
   history, or release action.
 - This clean admission is not approval, integration, strict record 28, or
   release. The program frontier remains **27 of 29**.
+
+## Exact Parser Causal RED
+
+- `RV-1-E-897` returns Task138-H to `implementing` from exact clean
+  forward-merged base `c70ec3fa1046ac2585d88efc82833b007b29c6ea` and
+  authorizes a third bounded repair without changing production source first.
+- The focused test now proves that a matching started event with path-bearing
+  `runId` and `taskId` values can pass the existing secret-safe predicate while
+  failing released `validateKnowledgeEvent`, and that an incomplete completed
+  terminal without required `completedAt` can fail the released parser while
+  retaining every field the permissive lifecycle logic consumes. Both cases
+  require fixed safe `dto-invalid` output before either mounted store read and
+  forbid path or raw-value retention.
+- Exact causal command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 2 failed / 32 passed**. The invalid started
+  event returns `no-output` with its rejected identity, while the incomplete
+  terminal returns `terminal-consistent`; every prior focused assertion remains
+  green. No production source, ontology/schema, registry, provider, credential,
+  external system, fallback write, or unrelated verifier participates.
