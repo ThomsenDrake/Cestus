@@ -112,3 +112,17 @@ and fallback writes are prohibited.
   repair any diagnostic before claiming GREEN.
 - This checkpoint is not reviewed, approved, integrated, released, or a
   strict record-28 release record. The program frontier remains **27 of 29**.
+
+## Publication Verification Supersession
+
+- After the pause, the user explicitly requested publication of all committed
+  work to `origin/neo`.
+- From exact checkpoint `05672a69bffccd0d75b9aacecdd0912f9f841ac3`, the
+  exact cross-boundary command passed **2 files / 53 tests**, including the
+  focused Task138-H suite's **17/17** tests.
+- A fresh uninterrupted `npm run typecheck` then exited 0 with
+  `typecheck passed`, superseding only the pause-time unknown verifier result.
+- Program pause authority `152e797c` was forward-merged without rewrite at
+  `4eed212447bc457481b8b923159cd1eca3874e6a`. Publication does not convert this
+  checkpoint into a reviewed, approved, integrated product card or strict
+  record-28 release; those remaining gates stay pending.
