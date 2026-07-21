@@ -87,12 +87,6 @@ interface RuntimeMountedOntologyBootstrapHandoff {
   stop(): Promise<void>;
 }
 
-interface RuntimeMountedOntologyBootstrapHandoff {
-  readonly binding: FactoryPortableMountedAgentHandoffProducerResultV1["binding"];
-  readonly controller: FactoryPortableMountedAgentHandoffProducerResultV1["controller"];
-  readonly stop: () => Promise<void>;
-}
-
 type RuntimeMountedOntologyBootstrapHandoffAcquirer = (input: {
     readonly taskId: string;
     readonly runId: string;
