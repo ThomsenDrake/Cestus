@@ -221,6 +221,7 @@ interface CursorState {
   prelude: DispatchPreludeCursor;
   lastRelevantEventId: string | undefined;
   readonly handoffEventIds: string[];
+  earlyWitnessPreflightState: "available" | "active" | "used";
   burned: boolean;
 }
 
@@ -249,11 +250,12 @@ export function createPortableMountedAgentArtifactStoreProducer(
 
       let cursor: CursorState | undefined;
       try {
+        const authorityBinding = deriveHandoffAuthorityBinding(state.origin.snapshot);
         const binding = Object.freeze({
           ...normalizeBinding(input),
-          authorityBinding: deriveHandoffAuthorityBinding(state.origin.snapshot)
+          authorityBinding
         });
-        cursor = {
+        const createdCursor: CursorState = {
           authorityOperation: state.authorityOperation,
           origin: state.origin,
           binding,
@@ -264,18 +266,20 @@ export function createPortableMountedAgentArtifactStoreProducer(
           prelude: Object.freeze({}),
           lastRelevantEventId: undefined,
           handoffEventIds: [],
+          earlyWitnessPreflightState: "available",
           burned: false
         };
-        await inspectCursor(cursor);
+        cursor = createdCursor;
+        await inspectCursor(createdCursor);
 
-        const remounted = remountCurrent(cursor.origin);
+        const remounted = remountCurrent(createdCursor.origin);
         const materialStore = createCursorBoundStore(
-          cursor,
+          createdCursor,
           new FileBlobStore(join(remounted.paths.derivativeRoot, "specialist-handoff-material")),
           true
         );
         const manifestStore = createCursorBoundStore(
-          cursor,
+          createdCursor,
           new FileBlobStore(join(remounted.paths.derivativeRoot, "specialist-handoff-manifest"))
         );
         if (materialStore === manifestStore) throw authorityError();
@@ -283,16 +287,16 @@ export function createPortableMountedAgentArtifactStoreProducer(
         const preparationBinder = createMountedSpecialistHandoffPreparationBinder({
           authority: Object.freeze({
             authorityVersion: "mounted-workspace-runtime-authority.v1" as const,
-            workspaceId: cursor.origin.snapshot.workspaceId,
-            mountInstanceId: cursor.origin.snapshot.mountInstanceId,
-            workspaceIdentityEventId: cursor.origin.snapshot.workspaceIdentityEventId,
-            policyVersion: cursor.origin.snapshot.policyVersion,
-            sourceHighWaterMark: cursor.origin.snapshot.highWaterOrdinal
+            workspaceId: createdCursor.origin.snapshot.workspaceId,
+            mountInstanceId: createdCursor.origin.snapshot.mountInstanceId,
+            workspaceIdentityEventId: createdCursor.origin.snapshot.workspaceIdentityEventId,
+            policyVersion: createdCursor.origin.snapshot.policyVersion,
+            sourceHighWaterMark: createdCursor.origin.snapshot.highWaterOrdinal
           }),
           artifactStores: Object.freeze({
             storesVersion: "mounted-agent-artifact-stores.v1" as const,
-            workspaceId: cursor.origin.snapshot.workspaceId,
-            mountInstanceId: cursor.origin.snapshot.mountInstanceId,
+            workspaceId: createdCursor.origin.snapshot.workspaceId,
+            mountInstanceId: createdCursor.origin.snapshot.mountInstanceId,
             materialStore,
             manifestStore
           }),
@@ -302,15 +306,15 @@ export function createPortableMountedAgentArtifactStoreProducer(
           runType: binding.runType
         });
         const authorityWitness = issueMountedSpecialistHandoffAuthorityWitness({
-          authorityBinding: cursor.binding.authorityBinding!,
+          authorityBinding,
           taskLifecycle: {
-            taskId: cursor.binding.taskId,
-            attemptId: cursor.binding.attemptId,
-            runId: cursor.binding.approvedRunId,
-            runType: cursor.binding.runType,
-            retryGeneration: cursor.binding.retryGeneration
+            taskId: createdCursor.binding.taskId,
+            attemptId: createdCursor.binding.attemptId,
+            runId: createdCursor.binding.approvedRunId,
+            runType: createdCursor.binding.runType,
+            retryGeneration: createdCursor.binding.retryGeneration
           },
-          revalidateCurrent: async () => await inspectCursor(cursor!)
+          revalidateCurrent: async () => await revalidateIssuedPortableWitness(createdCursor)
         });
         const handoffBinding = Object.freeze({
           schemaVersion: "portable-mounted-agent-handoff-binding.v1" as const,
@@ -320,16 +324,16 @@ export function createPortableMountedAgentArtifactStoreProducer(
           authorityWitness
         });
         const controller = Object.freeze({}) as MountedHandoffAuthorityController;
-        controllerStates.set(controller, cursor);
+        controllerStates.set(controller, createdCursor);
         issuedPortableMountedHandoffBindings.set(handoffBinding, Object.freeze({
-          cursor,
+          cursor: createdCursor,
           controller,
           binding: handoffBinding,
           materialStore,
           manifestStore,
           authorityWitness
         }));
-        await inspectCursor(cursor);
+        await inspectCursor(createdCursor);
         return Object.freeze({
           schemaVersion: "factory-portable-mounted-agent-handoff-result.v1" as const,
           binding: handoffBinding,
@@ -411,6 +415,7 @@ export async function consumeMountedHandoffAuthorityController(
  */
 export async function preflightPortableMountedAgentHandoffBinding(input: unknown): Promise<void> {
   let cursor: CursorState | undefined;
+  let issued: IssuedPortableMountedHandoffBinding | undefined;
   try {
     const values = exactOwnDataRecord(input, [
       "binding",
@@ -425,7 +430,7 @@ export async function preflightPortableMountedAgentHandoffBinding(input: unknown
     cursor = controllerStates.get(values.controller);
     if (cursor === undefined) throw authorityError();
     if (typeof values.binding !== "object" || values.binding === null) throw authorityError();
-    const issued = issuedPortableMountedHandoffBindings.get(values.binding);
+    issued = issuedPortableMountedHandoffBindings.get(values.binding);
     if (
       issued === undefined ||
       issued.cursor !== cursor ||
@@ -452,18 +457,93 @@ export async function preflightPortableMountedAgentHandoffBinding(input: unknown
     ) {
       throw authorityError();
     }
-    await inspectCursor(cursor);
-    await preflightMountedSpecialistHandoffAuthorityWitness({
-      witness: issued.authorityWitness,
+    await preflightInitialPortableWitness(cursor, issued.authorityWitness, {
       taskId,
       attemptId,
       runId,
       runType,
       retryGeneration
     });
-    await inspectCursor(cursor);
   } catch {
-    if (cursor !== undefined) cursor.burned = true;
+    if (cursor !== undefined) {
+      cursor.burned = true;
+      if (issued !== undefined) await burnIssuedPortableWitness(cursor, issued.authorityWitness);
+    }
+    throw authorityError();
+  }
+}
+
+interface PortableWitnessLifecycle {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly runType: AgentSpecialistRunType;
+  readonly retryGeneration: number;
+}
+
+async function preflightInitialPortableWitness(
+  cursor: CursorState,
+  witness: MountedSpecialistHandoffAuthorityWitness,
+  lifecycle: PortableWitnessLifecycle
+): Promise<void> {
+  if (cursor.earlyWitnessPreflightState !== "available") {
+    cursor.burned = true;
+    await preflightMountedSpecialistHandoffAuthorityWitness({ witness, ...lifecycle });
+    throw authorityError();
+  }
+  cursor.earlyWitnessPreflightState = "active";
+  try {
+    await preflightMountedSpecialistHandoffAuthorityWitness({ witness, ...lifecycle });
+    if (cursor.burned || cursor.earlyWitnessPreflightState !== "active") throw authorityError();
+    cursor.earlyWitnessPreflightState = "used";
+  } catch {
+    cursor.burned = true;
+    throw authorityError();
+  }
+}
+
+async function burnIssuedPortableWitness(
+  cursor: CursorState,
+  witness: MountedSpecialistHandoffAuthorityWitness
+): Promise<void> {
+  try {
+    await preflightMountedSpecialistHandoffAuthorityWitness({
+      witness,
+      taskId: cursor.binding.taskId,
+      attemptId: cursor.binding.attemptId,
+      runId: cursor.binding.approvedRunId,
+      runType: cursor.binding.runType,
+      retryGeneration: cursor.binding.retryGeneration
+    });
+  } catch {
+    return;
+  }
+  throw authorityError();
+}
+
+async function revalidateIssuedPortableWitness(cursor: CursorState): Promise<void> {
+  if (cursor.burned) throw authorityError();
+  if (cursor.earlyWitnessPreflightState !== "active") {
+    await inspectCursor(cursor);
+    return;
+  }
+  try {
+    if (
+      cursor.phase !== "initial"
+      || cursor.canonical !== undefined
+      || cursor.modelInvocation !== undefined
+      || Object.keys(cursor.prelude).length !== 0
+      || cursor.lastRelevantEventId !== undefined
+      || cursor.handoffEventIds.length !== 0
+      || cursor.accepted === undefined
+    ) {
+      throw authorityError();
+    }
+    assertOriginCurrent(cursor);
+    if (cursor.burned || cursor.earlyWitnessPreflightState !== "active") throw authorityError();
+    cursor.accepted = undefined;
+  } catch {
+    cursor.burned = true;
     throw authorityError();
   }
 }
@@ -516,7 +596,6 @@ async function inspectCursor(cursor: CursorState): Promise<void> {
         prelude = nextPrelude;
         continue;
       }
-      if (!isBoundEvent(event, cursor.binding) && !isModelInvocationTranscriptEvent(event, modelInvocation)) continue;
       const advanced = advancePhase(phase, event, cursor.binding, lastRelevantEventId, canonical, prelude, modelInvocation);
       phase = advanced.phase;
       canonical = advanced.canonical;
