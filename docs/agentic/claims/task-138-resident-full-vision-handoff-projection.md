@@ -319,3 +319,34 @@ and fallback writes are prohibited.
   terminal returns `terminal-consistent`; every prior focused assertion remains
   green. No production source, ontology/schema, registry, provider, credential,
   external system, fallback write, or unrelated verifier participates.
+
+## Exact Parser Minimal GREEN
+
+- The repair replaces the permissive local event-envelope assertion with the
+  released `validateKnowledgeEvent` parser over each descriptor-copied event
+  before identity selection, mounted-reader capture, or store I/O. It consumes
+  only successful canonical parser data and maps any parse failure to the fixed
+  safe `dto-invalid` result without filtering parser issues or adding a local,
+  fallback, or permissive schema.
+- Task-owned intended-valid fixtures now use the released 64-hex orchestration
+  `attemptId`; a permanent parser guard covers every ready, waiting, blocked,
+  failed, and legacy lifecycle event. Existing secret-boundary tests use
+  parser-valid IDs that remain unsafe to the stronger DTO secret predicate.
+  Hostile diagnostic coverage separately proves schema-invalid material is
+  rejected before store I/O and that a schema-valid terminal conflict retains
+  only safe related event and content-hash evidence.
+- Exact focused validation passes **1 file / 35 tests** and exact cross-boundary
+  validation passes **2 files / 71 tests**. Standalone `npm run typecheck`
+  emits `typecheck passed`; `npm run factory:check` emits
+  `factory-readiness passed`; V4 assurance passes **20/20**; and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers. Diff hygiene passes.
+- Full `npm run verify` completes typecheck and reproduces only the inherited
+  aggregate cohort: **10 failing files / 48 failing tests / 2,895 passes / 5
+  skips**. Neither Task138-H source nor test is in the failing cohort; the three
+  additional passes over the prior candidate are exactly the new canonical
+  fixture guard and two parser-rejection tests.
+- Repository mode remains pending until this atomic GREEN commit provides its
+  required clean checkout. This repair adds no ontology/schema, event filter,
+  writer, provider, credential, registry, path, fallback, witness, executable
+  effect, approval consumption, integration, strict record 28, or release.
