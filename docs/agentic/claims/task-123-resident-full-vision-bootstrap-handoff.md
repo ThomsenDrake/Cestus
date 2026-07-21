@@ -358,3 +358,17 @@ Status: `ready-for-review`
   revalidation rejects an unrelated suffix, and a repeated route preflight
   burns the otherwise untouched V2 witness. `npm run typecheck` also exited
   `0`.
+
+### V4 Compiler Recovery RED — Duplicate Internal Route Interface
+
+- After normal forward merge `bb6346a3ae9e3e9c5a263252d845e8cb5a595fc3`
+  of clean program authority `1c4ea1689a76946a3aeb6154fd97ff09066b8c3e`,
+  the standalone compiler reproduction changes no test or production byte.
+- `npm run typecheck` exits `1` with exactly:
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts(93,12):
+  error TS2687: All declarations of 'stop' must have identical modifiers.`
+- The route has two adjacent declarations of the same private
+  `RuntimeMountedOntologyBootstrapHandoff` interface: one declares `stop` as
+  a method and the other as a readonly function property. GREEN is restricted
+  to deleting the accidental duplicate declaration while retaining the
+  existing strictly typed internal interface and every route behavior.
