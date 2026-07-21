@@ -287,7 +287,13 @@ async function buildResidentHandoffDtoFromNormalized(
     ? undefined
     : provenanceFromReadback(projection.selectedReadback, normalized.authorityBinding);
   if (projection.selectedReadback !== undefined && provenance === undefined) {
-    return closedDto(normalized.identity, "inconsistent", "mount-authority-stale");
+    return closedDto(
+      normalized.identity,
+      "inconsistent",
+      sameAuthorityBinding(projection.selectedReadback.authorityBinding, normalized.authorityBinding)
+        ? "secret-safety-rejection"
+        : "mount-authority-stale"
+    );
   }
 
   return verifiedDto({
@@ -431,6 +437,13 @@ function provenanceFromReadback(
   authorityBinding: HandoffAuthorityBinding
 ): ResidentHandoffProvenanceDto | undefined {
   if (!sameAuthorityBinding(readback.authorityBinding, authorityBinding)) return undefined;
+  if (![
+    readback.finalOutputEventId,
+    readback.preparedEventId,
+    readback.recordedEventId,
+    readback.terminalRunEventId,
+    readback.taskStatusEventId
+  ].every(isAgentSecretSafeText)) return undefined;
   return Object.freeze({
     manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
     handoffManifestHash: readback.manifestHash,

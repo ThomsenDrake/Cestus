@@ -124,7 +124,7 @@ describe("buildResidentHandoffDto", () => {
 
     const dto = await project(fixture, fixture.completeEvents, stores);
 
-    expectClosed(dto, "inconsistent", "mount-authority-stale");
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
     expect(dto.runId).toBe(fixture.runId);
     expect(dto.taskId).toBe(fixture.taskId);
     expect(dto.provenance).toBeUndefined();
