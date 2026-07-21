@@ -499,3 +499,26 @@ and fallback writes are prohibited.
   mounted reads, and fixed closed DTOs remain unchanged. Both mounted stores
   remain read-only; no registry, ontology/schema/parser, provider, credential,
   external-system, fallback-write, or executable-effect authority is added.
+
+## Final Browser-String Firewall Clean Admission
+
+- Atomic GREEN commit
+  `33be6a197efd0a74ac63286934d215780f019caa` descends without rewrite from
+  causal RED commit `ebaa23567a7e804816eae9ecce72edd5c4e4f670`
+  and exact forward-merged repair base
+  `e87cb4810ccc6866af336ac0902b7c7d0975f00a`.
+- From the clean GREEN checkout, repository mode executed every one of the
+  **27 released commands**, emitted exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exited `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the required strict-prefix success at the unfinished
+  frontier; Task138-H remains unreleased record 28.
+- Exact repair-base scope contains only the three frozen Task138-H paths;
+  ancestry and diff hygiene pass. Dependencies are real and local: Node
+  `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink. The checkout was clean before repository
+  mode and before this claim-only admission update.
+- This admission adds no registry, ontology/schema/parser, provider,
+  credential, network, external system, fallback write, destructive history,
+  integration, approval, strict record 28, or release. The frontier remains
+  **27 of 29**.
