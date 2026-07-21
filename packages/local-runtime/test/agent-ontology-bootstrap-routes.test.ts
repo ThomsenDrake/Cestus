@@ -331,7 +331,7 @@ describe("ontology-bootstrap agent routes", () => {
       const baseRuntime = baseOntologyBootstrapRouteRuntimeFactory({ handle: directHandle, actor, now });
       await initializeResidentIdentityForDirectRoute(directHandle, baseRuntime, actor.id);
       let nextId = 0;
-      wakeRuntime = createWakeSupervisorRuntime({
+      const createdWakeRuntime = createWakeSupervisorRuntime({
         runtimeHandle: directHandle,
         actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
         supervisorEpoch: "epoch_run_ontology_bootstrap_extra_accessor",
@@ -343,10 +343,11 @@ describe("ontology-bootstrap agent routes", () => {
         now,
         createSafeId: (kind) => `${kind}_run_ontology_bootstrap_extra_accessor_${++nextId}`
       });
-      const started = await wakeRuntime.supervision.start();
+      wakeRuntime = createdWakeRuntime;
+      const started = await createdWakeRuntime.supervision.start();
       if (started.outcome !== "accepted") throw new Error("test runtime mounted authority was not accepted");
       const prepared = await createPortableMountedAgentArtifactStoreProducer(
-        issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+        issueMountedArtifactAuthorityOperationForFactory(createdWakeRuntime)
       ).bind({
         taskId: "task_ontology_bootstrap_extra_accessor",
         attemptId: buildTaskAttemptId({
@@ -362,7 +363,7 @@ describe("ontology-bootstrap agent routes", () => {
       Object.defineProperties(hostile, {
         binding: { enumerable: true, value: prepared.binding },
         controller: { enumerable: true, value: prepared.controller },
-        stop: { enumerable: true, value: async () => await wakeRuntime.stop() },
+        stop: { enumerable: true, value: async () => await createdWakeRuntime.stop() },
         extra: {
           enumerable: true,
           get() {
