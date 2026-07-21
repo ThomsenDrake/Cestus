@@ -25839,3 +25839,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   direct push to `origin/neo`, followed by exact local/remote SHA equality and
   clean-worktree checks. No provider, credential, unrelated-system, destructive
   history rewrite, or pull request is authorized by this event.
+
+## RV-1-E-892 — Task138-H candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-21T17:52:56Z
+- The user explicitly resumes the program from the graceful usage pause.
+  Program and Task138-H worktrees were clean and fast-forwarded without rewrite
+  to published authority `adda53377f8e363979fc68dbc3d268759a67e404` before
+  any new edit.
+- Candidate `c6e508b10fad9f949e616687e7159b2fbd8a9c64` contains the exact
+  Task138-H source/test blobs previously published at `16eb076a`; its only new
+  task-owned change records fresh candidate admission in the frozen claim.
+  The owned scope remains exactly the V4 three paths.
+- Fresh gates pass **17/17** focused tests, **53/53** cross-boundary tests,
+  standalone typecheck, factory readiness, V4 assurance **20/20**, all four
+  contract markers, diff hygiene, real dependency checks, and strict repository
+  prefix `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27` followed only by
+  expected 29-record closure.
+- Fresh full verification reproduces the inherited clean-tree aggregate cohort
+  as **10 failing files / 48 failing tests / 2,877 passes / 5 skips**. No
+  Task138-H file appears in that cohort, and candidate product bytes were exact
+  `neo` bytes for the run; this is not a Task138-H differential.
+- Fresh read-only review instance
+  `6ec28864-14a7-44a0-9463-94ef8f53945b` owns architecture, frozen-contract,
+  authority, provenance, replay, fail-closed, and scope scrutiny. Fresh
+  read-only review instance `6cc549fd-3724-44be-985e-390ea2b5cf38` owns
+  executable/adversarial verification and independent command reproduction.
+  Both review the exact candidate and may not edit, commit, merge, push, invoke
+  providers, or use external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, product integration, strict record 28, or release. The strict
+  frontier remains **27 of 29**; Task136 and Waves 3-5 remain unstarted.
