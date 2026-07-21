@@ -1,0 +1,192 @@
+# Task 117 Claim: Resident Full-Vision CF-1 Contract Freeze
+
+- Task and gate: Task 117 / CF-1 / Wave 0 completion gate.
+- Worker: fresh isolated Task117 contract-freeze author.
+- Branch and worktree: `codex/task-117-resident-full-vision-contract-freeze` / `/home/drake/.codex/worktrees/task-117-resident-full-vision-contract-freeze`.
+- Base commit: `c996b197bde35aecff3be5120b654e7cc761f145`.
+- Claimed at: `2026-07-13T16:22:07Z`.
+- Status: `in-progress`.
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture.
+
+## Scope And Authority
+
+RV-0-C-009 authorizes only these tracked files: this append-only claim,
+`docs/agentic/resident-agent-full-vision-contract-freeze.md`, and the
+append-only Task117 author evidence in
+`docs/agentic/resident-agent-full-vision-program-registry.md`. It authorizes
+documentation RED/GREEN as TDD, `superpowers:subagent-driven-development`
+where relevant, fresh independent review, and verification-before-completion.
+It prohibits production, tests, runtime, UI, provider, browser, credential,
+Nous, tailnet, live work, dispatching a Wave 1 child, self-review,
+self-integration, and every merge into `neo`.
+
+The freeze may reconcile the eight approved Wave 0B design/plan pairs, but it
+cannot create an implementation authorization. R remains the sole default
+factory writer, P remains the sole shared provider-configuration writer, and
+Task117 remains the sole shared-event/shared-DTO/shared-capability writer.
+
+## Documentation RED Evidence
+
+Before the freeze existed, this focused command exited `1`:
+
+```bash
+node --input-type=module -e 'import { existsSync } from "node:fs"; const path = "docs/agentic/resident-agent-full-vision-contract-freeze.md"; if (!existsSync(path)) { console.error("RED: CF-1 contract-freeze artifact is absent; no shared contract/owner/rebase matrix can dispatch Wave 1."); process.exit(1); } console.error("RED expected absence but freeze exists"); process.exit(2);'
+```
+
+Observed output: `RED: CF-1 contract-freeze artifact is absent; no shared
+contract/owner/rebase matrix can dispatch Wave 1.` The failure was expected
+documentation RED evidence; it did not run a production verifier.
+
+## Required Green And Stop Point
+
+Before one documentation-only commit, the author must run the embedded CF-1
+matrix audit, `git diff --check`, `npm run factory:check`, and `npm run
+verify`, append only actual results, confirm the exact three-file scope, and
+stop. A different fresh reviewer must lead with defects, missing bindings,
+spec drift, unsafe ownership, and verification gaps. Only Relay A may
+integrate an approved result, never into `neo`.
+
+## Documentation GREEN And Ready-For-Review Record
+
+- Recorded at: `2026-07-13T16:38:05Z`.
+- Status: `ready-for-review`; this forward-only record supersedes the initial
+  in-progress status for Task117 author work only. It is not a Wave 1
+  authorization, review verdict, integration decision, or `neo` merge
+  permission.
+- Matrix audit: the exact embedded audit exited `0` and printed `GREEN: CF-1
+  matrix audit passed (479 direct counterfactual mutations rejected, including
+  missing/conflicting ownership).` It hashed the full 53-row shared-contract
+  and exclusive-file matrix, directly mutated each governed event/DTO or
+  capability/file-owner/consumer/source/approval/idempotency/test/rebase cell,
+  and separately rejected missing and conflicting ownership as
+  non-dispatchable.
+- Whitespace: `git diff --check` exited `0` with no output.
+- Factory: `npm run factory:check` exited `0` and printed
+  `factory-readiness passed`.
+- Dependency recovery: the first `npm run verify` stopped before typecheck
+  with `tsc: command not found`. The root-cause check found the isolated
+  worktree lacked the ignored `node_modules/.bin/tsc`; `npm ci
+  --ignore-scripts` restored lockfile-pinned ignored dependencies without a
+  tracked-file change. This was one environment recovery, not a product repair.
+- Full verification: the fresh PTY `npm run verify` exited `0`: `typecheck
+  passed`; 189 test files passed with 3 skipped; 2,228 tests passed with 5
+  skipped; Vite completed with its existing chunk-size warning; and
+  `factory-readiness passed`. SQLite experimental warnings were emitted by
+  worker processes only. No provider, credential, browser, tailnet, Nous, or
+  live command was invoked.
+- Scope: the only tracked changes are this append-only claim, the new CF-1
+  freeze, and the append-only Task117 author records in the program registry.
+  This author did not self-review, integrate, dispatch Wave 1, or merge into
+  `neo`.
+- Stop point: hand this exact one-commit documentation result to a different
+  fresh reviewer. Relay A alone may act on an approve verdict and must repeat
+  cross-boundary/full verification before any coordinator integration.
+
+## RV-0-C-010 Repair Author Record
+
+- Repair branch and baseline: `codex/task-117-resident-full-vision-contract-freeze-repair` at coordinator-staged `5e1a25e4d12bc8928b954491e55d1cbbb01c36f0`; this is forward-only repair evidence and does not alter the rejected historical result above.
+- Status: repairing documentation audit and coverage only. Wave1, provider, credential, Nous, browser, tailnet, production, self-review, self-integration, and `neo` merge remain prohibited.
+- Reproduced RED: a direct in-memory mutation of `ResidentPlanRecord.v1` to `CounterfactualPlanRecord.v9` retained every old structural row and, after the old matrix integrity value was recomputed to `9f129a3579c6c12e57d45af2e20159839c1a6fd0175d2eadfc06f77a4355fa8d`, exited `1` with `RED: former audit's integrity oracle accepts CounterfactualPlanRecord.v9 when its expected hash is recomputed; semantic mismatch is not independently checked.`
+- Repair GREEN: the embedded section-local semantic audit exited `0` and printed `GREEN: CF-1 semantic contract audit passed (895 direct counterfactual mutations rejected, including recomputed-hash semantic, required-interface, owner, trigger-rebase, and cockpit-label failures).` Its static canonical expectations reject the PlanRecord mutation even with a recomputed integrity hash; integrity is additional tamper evidence only.
+- Coverage repaired: the freeze now gives singular source/owner/schema/parser/fixture/compatibility and rebase facts to `ResidentPlanPolicy`, `WakeSupervisor`, `TriggerEvaluationInput`, `TriggerHighWaterMark`, `MountedHandoffStore`, `OsSecretStore`, `ProviderInvocationPreparation`, `ProductionRuntimeReadinessCapability`, `ResidentRuntimeStatusDto`, `ResidentWakeDto`, `ResidentHandoffDto`, and supported runtime/wake command DTOs. It also freezes provider canonical schema/error/fixture/compatibility evidence, Task118's core event/evaluator/append/projection ownership and exact Task118 rebase for 149–151, and Task141's route-test ownership plus all six labels/no-effect constraints.
+- Preliminary scoped gates: `git diff --check` exited `0` with no output and `npm run factory:check` exited `0` with `factory-readiness passed`. A fresh final `npm run verify` will be run after this forward-only evidence record and recorded in a later append before the one repair commit.
+
+## RV-0-C-010 Repair Verification And Review Stop
+
+- Status: `ready-for-fresh-review` for the repair only; this is not review approval, coordinator integration, Wave1 authorization, or `neo` permission.
+- Final repair verification: a fresh PTY `npm run verify` exited `0`: typecheck passed; 189 test files passed and 3 skipped; 2,228 tests passed and 5 skipped; Vite built successfully; and factory readiness passed. The observed SQLite experimental warnings and existing Vite chunk-size warning did not fail the command.
+- Final documentation gates: the embedded semantic audit exited `0` with 895 direct counterfactual rejections, `git diff --check` exited `0` with no output, and `npm run factory:check` exited `0` with `factory-readiness passed`.
+- Exact changed-file boundary: only this Task117 claim, `docs/agentic/resident-agent-full-vision-contract-freeze.md`, and the append-only Task117 repair registry evidence are modified from coordinator-staged baseline `5e1a25e4d12bc8928b954491e55d1cbbb01c36f0`.
+- Stop point: make one forward-only repair commit only after a final post-record verification pass, then stop for a different fresh reviewer. The reviewer must rerun the recomputed-integrity semantic mutation, coverage/Task118/Task141 removals, scope/ancestry review, and feasible clean-worktree gates.
+
+## RV-0-C-016 Third-Fresh Full-Row-Oracle Repair
+
+- Repair branch and baseline: `codex/task-117-resident-full-vision-contract-freeze-repair-3` in `/home/drake/.codex/worktrees/task-117-resident-full-vision-contract-freeze-repair-3`, started from rejected-but-preserved repair head `90fecb86258f9d8f9d0f898e737a97718bbc30e2` under coordinator authorization RV-0-C-016. This is a new, bounded author attempt; it neither approves nor integrates either rejected predecessor.
+- Status: in-progress documentation-only repair. Only this claim, `docs/agentic/resident-agent-full-vision-contract-freeze.md`, and append-only Task117 registry evidence are writable. Production, tests, runtime, UI, provider, browser, credential, Nous, tailnet, live work, Wave1 dispatch, self-review, self-integration, and every merge into `neo` remain prohibited.
+- Documentation RED: before this repair, the focused Task118-row probe exited `1` with `RED: full-row CF-1 oracle is missing the dedicated W1-118 Task118 ownership binding.` This demonstrated the rejected freeze did not provide the required exclusive Task118 owner/file/test/rebase row.
+- Repair content: the audit now holds a complete literal 67-row `canonicalRows` oracle independent of candidate parsing and compares every one of all ten governed cells by exact equality in canonical order. It rejects missing, duplicate, unknown, additive, alias, reordered-owner, and substituted candidate rows even when the integrity hash is recomputed. The direct counterfactual loop changes every cell (including ID) in every row, and separately rejects `L; P`, direct self-approval, `Task141; R`, the W1-120 file/owner substitution, vague `T merge`, and all three forbidden cockpit-label substitutions.
+- Task118 correction: W1-118 is now the dedicated T-owned serialized `packages/ontology/src/contracts.ts` writer row, also owning `proactive-triggers.ts`, `trigger-projection.ts`, and all three focused tests. Its exact row freezes canonical event/schema/evaluator, mounted conditional append/readback, projection, source/policy/mount/lock fixture and safe-error facts, and the exact reviewed merged/rebased Task118 SHA required by Tasks149--151.
+- Task141 preservation: the full row and cockpit vocabulary retain Task141's sole route-test ownership, six exact code/label rows, narrow versioned DTO/parser, snapshot and idempotency binding, no-effect boundary, and `Run retry`/`Cancelled`/`Start the agent` RED counterfactuals.
+- Preliminary GREEN: the embedded audit exited `0` and printed `GREEN: CF-1 full-row canonicalRows audit passed (814 direct recomputed-hash counterfactual mutations rejected, including all ten cells of every CF1/Wave row, Task118, ownership, self-approval, W1-120, T merge, and cockpit labels).` `git diff --check` exited `0` with no output and `npm run factory:check` exited `0` with `factory-readiness passed`.
+- Required stop and review: a fourth fresh reviewer, distinct from the initial author, first repair author, and both prior reviewers, must inspect the single forward commit, rerun the full-row recomputed-hash audit and named special counterfactuals, confirm exactly this three-file scope and clean ancestry, and rerun feasible clean-worktree gates. No self-approval, Wave1 dispatch, or integration is authorized.
+
+## RV-0-C-016 Third-Fresh Verification And Review Stop
+
+- Status: ready-for-fourth-fresh-review. This is an author verification record only, not review approval, coordinator integration, a CF-1 decision, Wave1 authorization, or permission to merge `neo`.
+- Dependency recovery: the first author-owned full verifier stopped before typecheck because the isolated worktree had no ignored `node_modules/.bin/tsc`. The coordinator authorized `npm ci --ignore-scripts` only in this isolated worktree; it restored lockfile-pinned ignored dependencies and produced no tracked-file churn.
+- Final gates: the full-row audit exited `0` with 814 rejected direct recomputed-hash counterfactuals; `git diff --check` exited `0` with no output; `npm run factory:check` exited `0` with `factory-readiness passed`; and captured fresh `npm run verify` exit `0` reported typecheck passed, 189 passing test files with 3 skipped, 2,228 passing tests with 5 skipped, Vite build success, and factory readiness passed. SQLite experimental and existing Vite chunk-size warnings were non-failing.
+- Exact scope: only this append-only claim, `docs/agentic/resident-agent-full-vision-contract-freeze.md`, and append-only Task117 registry evidence are changed from `90fecb86258f9d8f9d0f898e737a97718bbc30e2`.
+- Review stop: stop after one forward-only documentation commit for a fourth fresh reviewer. The reviewer must prove literal-oracle independence from candidate rows, exact equality for all ten cells in every row, W1-118 completeness, all named recomputed-hash counterfactuals, Task141 six-label preservation, exact three-file scope, and feasible clean-worktree gates. No author self-review or integration is permitted.
+
+## RV-1-C-022 CF-1 Amendment Author Record: Serialized W1-119 Prerequisite
+
+- Base and authority: this narrowly scoped, forward-only amendment starts from
+  Relay B recovery `f1006d5ae19ce851772e2e68c261f0e4b66d91e4` under
+  `RV-1-C-021`. It changes only this Task117 claim,
+  `docs/agentic/resident-agent-full-vision-contract-freeze.md`, and the
+  append-only program registry evidence. It is not a Task119 claim,
+  implementation, production/test/runtime/UI/provider change, dispatch,
+  self-review, self-integration, or `neo` merge.
+- Status: in-progress documentation amendment. SDD, documentation RED/GREEN as
+  TDD, fresh independent review, `git diff --check`, `npm run factory:check`,
+  `npm run verify`, one forward-only commit, and a stop for review are
+  required. No shadow store or effect is authorized.
+- Documentation RED: before the amendment, the focused in-memory W1-119
+  prerequisite probe exited `1` with `RED: CF-1 lacks serialized W1-119
+  ownership row; W1-119 contracts and focused test ownership; W1-119 negative
+  parser and fixture contract; W1-119 focused command; W1-119 gates Task120,
+  W1-118, and Task136`. The probe required the five named resident-loop events,
+  the exclusive `contracts.ts` and `agent-resident-loop-contracts.test.ts`
+  owner, strict negative parser/replayable-fixture wording, its focused command,
+  and the serialized gate chain; it failed because the freeze had none.
+- Amendment contract: W1-119 is L's only shared-event-contract registrar for
+  `packages/ontology/src/contracts.ts`,
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and its own
+  future Task119 claim. It freezes exactly the five resident-loop events, the
+  strict own-data negative parser and replayable fixture requirements, and
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts`.
+  Its reviewed merged SHA gates restarted Task120; Task120's reviewed merged
+  SHA then gates W1-118 and Task136. W1-119 has no ledger/store/provider/tool/
+  scheduler/task/graph effect and cannot self-merge or merge `neo`.
+- Required review focus: a fresh reviewer must run the literal full-row audit,
+  inspect direct W1-119 parser/fixture counterfactuals and each W1-119 owner,
+  event, command, and gate cell, verify Task120 -> W1-118/Task136 ordering,
+  confirm this exact three-file scope and clean ancestry, and rerun feasible
+  documentation/full verification gates. The author must stop after the one
+  amendment commit.
+
+## RV-1-C-023 W1-119 Amendment Completion / Fresh-Review Stop
+
+- This forward-only completion supersedes no history: it retains the isolated
+  checkpoint `3ce2c79b3b6a0d137abdbc8f5adb0073acfe1c9b` and corrects the
+  incomplete W1-119 wording recorded at RV-1-C-022 without changing any
+  production, test, runtime, provider, UI, or `neo` file.
+- Documentation RED: a focused literal-requirement probe exited `1` with
+  `RED: W1-119 amendment is incomplete`, naming the missing paired focused
+  command; missing identity/policy/authority/source/context/budget/causation/
+  correlation requirements; forged plan-readback linkage; cross-run identity;
+  unsafe own-data shapes; and the terminal-looking-result readback ban.
+- Documentation GREEN: the independent literal `canonicalRows` audit exited
+  `0` after exact equality, count/order, and integrity checks. It rejected 837
+  direct recomputed-hash counterfactual mutations, including every governed
+  cell and each W1-119 event/schema/parser/fixture/command/gate term.
+- Frozen correction: W1-119 exclusively reserves `contracts.ts`, the dedicated
+  resident-loop contract test, and only its future claim; it names the exact
+  five events, strict schemas/parsers/fixtures, every required negative class,
+  the paired `agent-resident-loop-contracts` plus `agent-contracts` command,
+  no-effect boundary, and reviewed SHA gate chain W1-119 -> Task120 ->
+  W1-118/Task136.
+- Status: ready-for-fresh-review only after `git diff --check`,
+  `npm run factory:check`, and fresh `npm run verify` complete. A different
+  reviewer must validate the exact three-file scope, literal-oracle
+  independence, all-ten-cell and focused W1-119 mutations, and all standing
+  no-self-integration/no-`neo` constraints.
+- Verification completion: coordinator-authorized `npm ci --ignore-scripts`
+  restored only ignored, lockfile-pinned dependencies in this dedicated
+  worktree with no tracked setup churn. Fresh `npm run verify` then exited `0`:
+  typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed
+  with 5 skipped; Vite production build passed; and factory readiness passed.
+  Existing SQLite experimental and Vite chunk-size warnings were non-failing.
+- Review status: ready-for-fresh-review. This author stops after the scoped
+  forward commit; no production Task119 claim, implementation, integration,
+  Task120 restart, W1-118 dispatch, or `neo` action is authorized.

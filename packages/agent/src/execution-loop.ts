@@ -9,6 +9,7 @@ import {
   type AgentToolResult,
   type RequestAgentToolInput
 } from "./tool-gateway.js";
+import { createResidentLoopSchedulerCompletionAdapter } from "./resident-loop-scheduler-completion.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export interface FakeAgentToolExecutorInput {
@@ -151,6 +152,7 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
     actor: input.actor,
     now: input.now
   });
+  const completionAdapter = createResidentLoopSchedulerCompletionAdapter({ ledger: input.ledger });
   const residentAgentId = input.residentAgentId ?? defaultResidentAgentId;
 
   return Object.freeze({
@@ -270,6 +272,12 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         throw new Error("Active lock blocks approved tool resume.");
       }
 
+      const claim = await gateway.claimExecution({
+        toolRequestId: command.toolRequestId,
+        approvedPreviewHash: approval.payload.approvedPreviewHash,
+        leaseExpiresAt: new Date(Date.parse(input.now()) + 5 * 60 * 1000).toISOString()
+      });
+
       let fakeResult: FakeAgentToolExecutorResult;
       try {
         fakeResult = await input.executor.execute({
@@ -302,11 +310,16 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         throw new Error(invalidFakeToolResultMessage);
       }
 
-      const completed = await gateway.completeTool({
+      const evidence = await completionAdapter.reread({
         toolRequestId: command.toolRequestId,
+        runId: state.request.payload.runId,
+        toolId: state.request.payload.toolId,
+        toolVersion: state.request.payload.toolVersion,
         approvedPreviewHash: approval.payload.approvedPreviewHash,
+        executionClaimEventId: claim.id,
         result
       });
+      const completed = await gateway.completeToolFromSchedulerEvidence(evidence);
 
       return Object.freeze({
         state: "completed" as const,

@@ -14,6 +14,7 @@ import {
 } from "../../prr/src/index.js";
 import {
   buildAgentProjection,
+  buildSpecialistHandoffProjection,
   buildPrrCorrespondenceApprovalPreview,
   buildPromptArtifact,
   assertResolvedContextPacksForExecution,
@@ -34,6 +35,13 @@ import {
   runPrrNegotiationWorkflow
 } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import {
+  createMountedProductionPromptReadbackAuthority,
+  issueMountedProductionPromptReadback
+} from "../src/production-prompt-readback.js";
+import { serializePromptArtifactEnvelope } from "../src/prompt-artifacts.js";
+import { issueMountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
+import { buildTaskAttemptId } from "../src/task-orchestrator-events.js";
 import type {
   AgentApprovedToolExecutionInput,
   AgentContextPackJsonValue,
@@ -76,6 +84,22 @@ interface AuthoritativePrrFollowUpFixture {
 }
 
 describe("PRR negotiation workflow", () => {
+  it("legacy deterministic caller remains explicit v1", async () => {
+    const artifact = await providerApprovedPromptArtifact(createWorkflowContextPacks([
+      "prr-read-model.v1",
+      "jurisdiction-pack-summary.v1",
+      "governance-locks.v1",
+      "evidence-summary.v1",
+      "agent-memory-summary.v1",
+      "task-run-history.v1",
+      "workspace-runtime-status.v1"
+    ], []));
+
+    expect(artifact.manifest.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
+  });
+
   it("permits bounded instructional narrative while drafting locally and requesting follow-up approval", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
@@ -130,7 +154,7 @@ describe("PRR negotiation workflow", () => {
       messageSourceEventId: followUpPreview.messageSourceEventId
     });
 
-    const result = await runPrrNegotiationWorkflow({
+    const result = await runMountedPrrNegotiationWorkflow({
       ledger,
       actor,
       now,
@@ -211,18 +235,34 @@ describe("PRR negotiation workflow", () => {
       drafted?.id
     ]));
     expect(events.filter((event) => event.type === "agent.tool.requested")).toHaveLength(1);
-    const step = events.find((event) => event.type === "agent.specialist-run.step.recorded");
-    const completed = events.find((event): event is Extract<typeof events[number], { type: "agent.specialist-run.completed" }> =>
-      event.type === "agent.specialist-run.completed"
+    const terminalEvents = events.filter((event) =>
+      event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed"
     );
-    expect(completed?.payload.outputArtifactHashes).toEqual([draftHash]);
-    expect(completed?.payload.relatedEventIds).toEqual([step?.id, requested?.id]);
-    expect(result.eventIds).toEqual(expect.arrayContaining([completed!.id]));
+    expect(terminalEvents).toEqual([]);
+    expect(events.filter((event) => event.type === "agent.task.orchestration.completed")).toEqual([]);
+    expect(events.filter((event) =>
+      event.type === "agent.task.status.changed" && event.payload.status === "completed"
+    )).toEqual([]);
+    const forbiddenReturnedEventIds = new Set(events.filter((event) =>
+      event.type === "agent.specialist-run.completed" ||
+      event.type === "agent.specialist-run.failed" ||
+      event.type === "agent.task.orchestration.completed" ||
+      (event.type === "agent.task.status.changed" && event.payload.status === "completed")
+    ).map((event) => event.id));
+    expect(result.eventIds.every((eventId) => !forbiddenReturnedEventIds.has(eventId))).toBe(true);
     expect(buildAgentProjection(events).runs.get("run_prr_001")).toMatchObject({
-      state: "completed",
+      state: "running",
       toolRequestIds: [requested?.payload.toolRequestId]
     });
+    expect(result.handoff.nextSafeActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: "request-approval",
+        effect: "request-approval",
+        toolRequestId: requested?.payload.toolRequestId
+      })
+    ]));
     expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.tool.execution.claimed", "agent.tool.executed", "agent.tool.completed",
       "prr.request.sent", "prr.followup.sent", "prr.legal-escalation.confirmed"
     ]));
   });
@@ -256,7 +296,8 @@ describe("PRR negotiation workflow", () => {
       scope: { kind: "workspace", refs: ["ws_prr"] }
     });
 
-    const result = await runPrrNegotiationWorkflow({
+    const derivativeStore = createDerivativeStore();
+    const result = await runMountedPrrNegotiationWorkflow({
       ledger,
       actor,
       now,
@@ -268,7 +309,7 @@ describe("PRR negotiation workflow", () => {
         "agent-memory-summary.v1",
         "task-run-history.v1",
         "workspace-runtime-status.v1"
-      ], []),
+      ], [], undefined, { omitLedgerBoundRefs: true }),
       runtime,
       providerReadiness: providerReadinessDto("works-locally"),
       runId: "run_prr_001",
@@ -280,7 +321,7 @@ describe("PRR negotiation workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
-      derivativeStore: createDerivativeStore(),
+      derivativeStore,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
       jurisdictionRuleRefs: ["rule_foia_deadline_001"],
@@ -290,16 +331,261 @@ describe("PRR negotiation workflow", () => {
     expect(result.handoff.status).toBe("ready-for-review");
     expect(result.handoff.toolRequestIds).toEqual([]);
     const events = await ledger.readAll();
-    const step = events.find((event) => event.type === "agent.specialist-run.step.recorded");
+    const recorded = events.find((event): event is Extract<typeof events[number], { type: "agent.specialist-handoff.recorded" }> =>
+      event.type === "agent.specialist-handoff.recorded"
+    );
     const completed = events.find((event): event is Extract<typeof events[number], { type: "agent.specialist-run.completed" }> =>
       event.type === "agent.specialist-run.completed"
     );
-    expect(completed?.payload.relatedEventIds).toEqual([step?.id]);
+    expect(completed?.context.causationId).toBe(recorded?.id);
+    expect(completed?.payload.relatedEventIds).toEqual([recorded?.id]);
     expect(events.map((event) => event.type)).not.toContain("agent.tool.requested");
+    expect(events.map((event) => event.type)).toContain("agent.specialist-handoff.recorded");
+    const handoffProjection = await buildSpecialistHandoffProjection({
+      events,
+      manifestReader: derivativeStore,
+      runId: "run_prr_001",
+      taskId: "task_prr_001"
+    });
+    expect(handoffProjection).toMatchObject({
+      state: "task-completed",
+      selectedHandoff: expect.objectContaining({
+        runType: "prr-negotiation",
+        status: "ready-for-review"
+      }),
+      selectedReadback: expect.objectContaining({
+        outcome: "verified",
+        taskId: "task_prr_001",
+        runId: "run_prr_001"
+      })
+    });
+    expect(events.filter((event) =>
+      event.type === "agent.specialist-run.completed" ||
+      event.type === "agent.task.orchestration.completed" ||
+      (event.type === "agent.task.status.changed" && event.payload.status === "completed")
+    ).map((event) => event.type)).toEqual([
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed",
+      "agent.task.status.changed"
+    ]);
+    expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "prr.request.sent", "prr.followup.sent", "prr.legal-escalation.confirmed"
+    ]));
     expect(buildAgentProjection(events).runs.get("run_prr_001")).toMatchObject({
       state: "completed",
       toolRequestIds: []
     });
+  });
+
+  it("records a secret-safe terminal storage failure when readback is unavailable before final output", async () => {
+    const ledger = new InMemoryEventLedger();
+    const provider = new FakeModelProvider({
+      providerId: "provider_fake_local",
+      modelFamilies: ["fake-local"],
+      responseText: JSON.stringify({
+        draftSummary: "Private case narrative for investigator review only.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      })
+    });
+    const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
+    await runtime.createTask({
+      taskId: "task_prr_001",
+      title: "Review PRR deadline",
+      requestedBy: "actor_investigator",
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      runType: "prr-negotiation",
+      scope: { kind: "workspace", refs: ["ws_prr"] }
+    });
+    const backingStore = createDerivativeStore();
+    const unreadableStore = {
+      put: backingStore.put,
+      get: async () => { throw new Error("private mounted store readback failure"); }
+    };
+
+    const result = await runMountedPrrNegotiationWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createWorkflowContextPacks([
+        "prr-read-model.v1",
+        "jurisdiction-pack-summary.v1",
+        "governance-locks.v1",
+        "evidence-summary.v1",
+        "agent-memory-summary.v1",
+        "task-run-history.v1",
+        "workspace-runtime-status.v1"
+      ], [], undefined, { omitLedgerBoundRefs: true }),
+      runtime,
+      providerReadiness: providerReadinessDto("works-locally"),
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: unreadableStore,
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_001",
+      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      followUpApprovalPreview: followUpApprovalPreview()
+    });
+
+    expect(result.handoff).toMatchObject({
+      status: "failed",
+      failure: {
+        category: "external-effect-failed",
+        code: "prr-negotiation-handoff-storage-failed",
+        retryable: true
+      }
+    });
+    expect(JSON.stringify(result.handoff)).not.toContain("private mounted store readback failure");
+    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    expect(eventTypes).toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).not.toEqual(expect.arrayContaining([
+      "agent.specialist-run.completed",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "prr.request.sent",
+      "prr.followup.sent"
+    ]));
+    expect(eventTypes).toContain("agent.specialist-run.failed");
+  });
+
+  it("resumes a durable final-output PRR handoff after manifest recording fails without rerunning the provider or draft", async () => {
+    const ledger = new InMemoryEventLedger();
+    const fakeProvider = new FakeModelProvider({
+      providerId: "provider_fake_local",
+      modelFamilies: ["fake-local"],
+      responseText: JSON.stringify({
+        draftSummary: "Private case narrative for investigator review only.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      })
+    });
+    let providerCalls = 0;
+    const provider = {
+      describe: () => fakeProvider.describe(),
+      invoke: async (request: ModelInvocationRequest) => {
+        providerCalls += 1;
+        return await fakeProvider.invoke(request);
+      }
+    };
+    const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
+    await runtime.createTask({
+      taskId: "task_prr_001",
+      title: "Review PRR deadline",
+      requestedBy: "actor_investigator",
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      runType: "prr-negotiation",
+      scope: { kind: "workspace", refs: ["ws_prr"] }
+    });
+
+    const backingStore = createDerivativeStore();
+    let failManifestWrite = true;
+    const recordFailingStore = {
+      put: async (content: Buffer) => {
+        if (failManifestWrite && content.toString("utf8").includes("agent-specialist-handoff-manifest.v2")) {
+          failManifestWrite = false;
+          throw new Error("private handoff manifest write failure");
+        }
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+    const input = {
+      ledger,
+      actor,
+      now,
+      contextPacks: createWorkflowContextPacks([
+        "prr-read-model.v1",
+        "jurisdiction-pack-summary.v1",
+        "governance-locks.v1",
+        "evidence-summary.v1",
+        "agent-memory-summary.v1",
+        "task-run-history.v1",
+        "workspace-runtime-status.v1"
+      ], [], undefined, { omitLedgerBoundRefs: true }),
+      runtime,
+      providerReadiness: providerReadinessDto("works-locally"),
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret" as const
+      },
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_001",
+      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      followUpApprovalPreview: followUpApprovalPreview()
+    };
+
+    const blocked = await runMountedPrrNegotiationWorkflow({ ...input, derivativeStore: recordFailingStore });
+
+    expect(blocked.handoff).toMatchObject({
+      status: "blocked",
+      nextSafeActions: [expect.objectContaining({ kind: "retry", effect: "none" })]
+    });
+    expect(JSON.stringify(blocked.handoff)).not.toContain("private handoff manifest write failure");
+    const beforeResume = await ledger.readAll();
+    expect(beforeResume.filter((event) => event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output")).toHaveLength(1);
+    expect(beforeResume.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ]));
+
+    const resumed = await runMountedPrrNegotiationWorkflow({ ...input, derivativeStore: backingStore });
+
+    expect(resumed.handoff.status).toBe("ready-for-review");
+    expect(providerCalls).toBe(1);
+    const events = await ledger.readAll();
+    expect(events.filter((event) => event.type === "agent.model-invocation.requested")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-run.step.recorded" && event.payload.stepId === "step_prr_negotiation_draft")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-handoff.prepared")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-handoff.recorded")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-run.completed")).toHaveLength(1);
+    const resumedHandoffProjection = await buildSpecialistHandoffProjection({
+      events,
+      manifestReader: backingStore,
+      runId: "run_prr_001",
+      taskId: "task_prr_001"
+    });
+    expect(resumedHandoffProjection).toMatchObject({
+      state: "task-completed",
+      selectedHandoff: expect.objectContaining({ status: "ready-for-review" }),
+      selectedReadback: expect.objectContaining({
+        outcome: "verified",
+        taskId: "task_prr_001",
+        runId: "run_prr_001"
+      })
+    });
+    expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "prr.request.sent", "prr.followup.sent", "prr.legal-escalation.confirmed"
+    ]));
   });
 
   it("records PRR follow-up requests with exact rebuildable correspondence adapter bindings", async () => {
@@ -333,7 +619,7 @@ describe("PRR negotiation workflow", () => {
     const authoritative = await prepareAuthoritativePrrFollowUp(ledger);
     const derivativeStore = createDerivativeStore();
 
-    const result = await runPrrNegotiationWorkflow({
+    const result = await runMountedPrrNegotiationWorkflow({
       ledger,
       actor,
       now,
@@ -434,7 +720,7 @@ describe("PRR negotiation workflow", () => {
     };
     const authoritative = await prepareAuthoritativePrrFollowUp(ledger, { currentMessage: duplicateMessage });
 
-    await runPrrNegotiationWorkflow({
+    await runMountedPrrNegotiationWorkflow({
       ledger,
       actor,
       now,
@@ -526,7 +812,7 @@ describe("PRR negotiation workflow", () => {
       scope: { kind: "workspace", refs: ["ws_prr"] }
     });
 
-    await expect(runPrrNegotiationWorkflow({
+    await expect(runMountedPrrNegotiationWorkflow({
       ledger,
       actor,
       now,
@@ -869,7 +1155,7 @@ describe("PRR negotiation workflow", () => {
       scope: { kind: "workspace", refs: ["ws_prr"] }
     });
 
-    const result = await runPrrNegotiationWorkflow({
+    const result = await runMountedPrrNegotiationWorkflow({
       ledger,
       actor,
       now,
@@ -921,7 +1207,7 @@ describe("PRR negotiation workflow", () => {
     expect(buildAgentProjection(events).runs.get("run_prr_001")?.state).toBe("failed");
   });
 
-  it("requires exact provider byte-transfer approval before invoking a remote provider", async () => {
+  it("does not acquire remote provider authority even when a byte-transfer approval proof exists", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new CountingRemoteProvider();
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -980,19 +1266,15 @@ describe("PRR negotiation workflow", () => {
       followUpApprovalPreview: followUpApprovalPreview()
     };
 
-    await expect(runPrrNegotiationWorkflow(runInput)).rejects.toThrow(/provider byte-transfer approval/i);
+    await expect(runMountedPrrNegotiationWorkflow(runInput)).rejects.toThrow(/provider byte-transfer approval/i);
     expect(provider.calls).toHaveLength(0);
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
 
     const proof = await providerTransferApprovalProof(ledger, promptArtifact, remoteReadiness.cards[0]!, remoteEvidence);
-    const result = await runPrrNegotiationWorkflow({ ...runInput, providerTransferApproval: proof });
-
-    expect(result.handoff.status).toBe("waiting-for-approval");
-    expect(provider.calls).toHaveLength(1);
-    expect((await ledger.readAll()).map((event) => event.type)).toEqual(expect.arrayContaining([
-      "agent.model-invocation.requested",
-      "agent.model-invocation.completed"
-    ]));
+    await expect(runMountedPrrNegotiationWorkflow({ ...runInput, providerTransferApproval: proof }))
+      .rejects.toThrow(/production prompt.*renderer verification|provider.*authority/i);
+    expect(provider.calls).toHaveLength(0);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
   });
 
   it("rejects model output that claims a follow-up was sent, legal escalation completed, or a lock was cleared", async () => {
@@ -1024,7 +1306,7 @@ describe("PRR negotiation workflow", () => {
       scope: { kind: "workspace", refs: ["ws_prr"] }
     });
 
-    const result = await runPrrNegotiationWorkflow({
+    const result = await runMountedPrrNegotiationWorkflow({
       ledger,
       actor,
       now,
@@ -1074,7 +1356,8 @@ function createWorkflowContextPacks(
   remoteRefs: RemotePromptEvidenceRefs = {
     evidenceEventId: remoteEvidenceEventId,
     linkEventId: remoteLinkEventId
-  }
+  },
+  options: { readonly omitLedgerBoundRefs?: boolean } = {}
 ) {
   const registry = createContextPackRegistry();
   for (const contextPackId of ids) {
@@ -1098,8 +1381,10 @@ function createWorkflowContextPacks(
           payload: workflowContextPayload(contextPackId),
           safeSummary: `${contextPackId} is safe for planning.`,
           provenanceRefs: ["event:evt_context_001", remoteEvidenceId, remoteRefs.evidenceEventId, remoteEvidenceHash],
-          sourceEventIds: ["evt_context_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
-          artifactHashes: [remoteEvidenceHash],
+          ...(options.omitLedgerBoundRefs ? {} : {
+            sourceEventIds: ["evt_context_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
+            artifactHashes: [remoteEvidenceHash]
+          }),
           ...(contextPackId === "prr-read-model.v1" ? { scope: { kind: "prr-request", id: "prr_req_001" } } : {}),
           sizeBudgetBytes: 16_384
         };
@@ -1480,7 +1765,8 @@ function providerReadinessDto(
 }
 
 async function providerApprovedPromptArtifact(
-  contextPacks: ReturnType<typeof createContextPackRegistry>
+  contextPacks: ReturnType<typeof createContextPackRegistry>,
+  patch: Partial<Pick<Parameters<typeof renderProductionSpecialistPrompt>[0], "runId" | "taskId" | "scope">> = {}
 ) {
   const registration = productionSpecialistPromptRegistrationFor("prr-negotiation");
   const resolvedContextPacks = await Promise.all(registration.contextRequirements.map(async (requirement) =>
@@ -1493,13 +1779,78 @@ async function providerApprovedPromptArtifact(
   );
   return renderProductionSpecialistPrompt({
     runType: "prr-negotiation",
-    runId: "run_prr_001",
-    taskId: "task_prr_001",
+    runId: patch.runId ?? "run_prr_001",
+    taskId: patch.taskId ?? "task_prr_001",
     generatedAt: now(),
-    scope: { kind: "prr-request", refs: ["prr_req_001"], associatedPrrRequestId: "prr_req_001" },
+    scope: patch.scope ?? { kind: "prr-request", refs: ["prr_req_001"], associatedPrrRequestId: "prr_req_001" },
     resolvedContextPacks: verifiedResolvedContextPacks,
     omissions: []
   });
+}
+
+async function runMountedPrrNegotiationWorkflow(
+  input: Parameters<typeof runPrrNegotiationWorkflow>[0]
+): Promise<Awaited<ReturnType<typeof runPrrNegotiationWorkflow>>> {
+  const scope = input.scope ?? {
+    kind: "prr-request" as const,
+    refs: [input.prrRequestId],
+    associatedPrrRequestId: input.prrRequestId
+  };
+  const promptArtifact = input.promptArtifact ?? await providerApprovedPromptArtifact(input.contextPacks, {
+    runId: input.runId,
+    taskId: input.taskId,
+    scope
+  });
+  const serializedEnvelope = Buffer.from(serializePromptArtifactEnvelope(promptArtifact));
+  const promptAuthority = createMountedProductionPromptReadbackAuthority({
+    currentMount: () => ({ workspaceId: "ws_prr", rootDir: "/mounted/prr", blobRoot: "/mounted/prr/blobs" })
+  });
+  const mountedPromptReadbackWitness = await issueMountedProductionPromptReadback({
+    serializedEnvelope,
+    authoritativeResolvedContextPacks: promptArtifact.resolvedContextPacks,
+    authority: promptAuthority,
+    rereadCanonicalBytes: async () => Buffer.from(serializedEnvelope)
+  });
+  const started = (await input.ledger.readStream(`agent_run_${input.runId}`)).find((event) =>
+    event.type === "agent.specialist-run.started" &&
+    event.payload.runId === input.runId &&
+    event.payload.taskId === input.taskId &&
+    event.payload.runType === "prr-negotiation"
+  );
+  if (started === undefined) throw new Error("Expected a current PRR run before mounting workflow authority.");
+  const handoffAuthorityWitness = issueMountedSpecialistHandoffAuthorityWitness({
+    authorityBinding: {
+      workspaceIdentityHash: hashText("prr mounted workspace"),
+      mountGeneration: "prr-mounted-generation-001",
+      ledgerStoreIdentity: "prr-mounted-ledger-001",
+      artifactStoreIdentity: "prr-mounted-artifacts-001",
+      ledgerHighWaterEventId: started.id,
+      policyHash: hashText("prr mounted policy"),
+      activeLocksHash: hashText("prr mounted locks")
+    },
+    taskLifecycle: {
+      taskId: input.taskId,
+      attemptId: buildTaskAttemptId({ taskId: input.taskId, runType: "prr-negotiation", retryGeneration: 0 }),
+      runId: input.runId,
+      runType: "prr-negotiation",
+      retryGeneration: 0
+    },
+    revalidateCurrent: async () => undefined
+  });
+  const derivativeStore = input.derivativeStore as {
+    readonly put: (content: Buffer) => Promise<{ readonly contentHash: `sha256:${string}`; readonly sizeBytes: number }>;
+    readonly get?: (contentHash: `sha256:${string}`) => Promise<Buffer>;
+  } | undefined;
+  const handoffStore = input.handoffStore ?? (typeof derivativeStore?.get === "function"
+    ? { put: derivativeStore.put, get: derivativeStore.get.bind(derivativeStore) }
+    : createDerivativeStore());
+  return await runPrrNegotiationWorkflow({
+    ...input,
+    promptArtifact,
+    mountedPromptReadbackWitness,
+    handoffAuthorityWitness,
+    handoffStore
+  } as Parameters<typeof runPrrNegotiationWorkflow>[0]);
 }
 
 async function providerTransferApprovalProof(

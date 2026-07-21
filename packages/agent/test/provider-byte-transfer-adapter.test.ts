@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as agent from "../src/index.js";
 import type {
   ActorRef,
   AppendableKnowledgeEvent,
@@ -75,6 +76,36 @@ const readinessCard: ProviderSetupCard = {
 };
 
 describe("provider byte-transfer execution adapters", () => {
+  it("rejects every v2 hash and lookalike injection before transfer", async () => {
+    const prepared = await prepareTransfer();
+    const assertion = (agent as unknown as {
+      readonly assertApprovedV1ToV2ArtifactInvariants?: (input: unknown) => void;
+    }).assertApprovedV1ToV2ArtifactInvariants;
+    const before = await prepared.ledger.readAll();
+    const production = prepared.promptAudit.production!;
+    const injected = {
+      ...prepared.promptAudit,
+      production: {
+        ...production,
+        schemaVersion: "agent-production-prompt-binding.v2",
+        sourceApprovedPromptArtifactHash: hash("4"),
+        providerPostureHash: hash("5"),
+        exactRunBindingHash: hash("6"),
+        approvedPromptHash: hash("7"),
+        renderHash: hash("8"),
+        workflowHash: hash("9"),
+        providerHash: hash("a")
+      }
+    };
+
+    expect(assertion).toBeTypeOf("function");
+    expect(() => assertion!({
+      approvedV1: injected,
+      candidateV2: injected
+    })).toThrow(/v1|approved|binding|production|unsupported/i);
+    expect(await prepared.ledger.readAll()).toEqual(before);
+  });
+
   it("publishes only canonical fail-closed transfer and provider-parse descriptors", () => {
     expect(providerByteTransferDescriptors).toEqual([
       providerByteTransferDescriptor,
@@ -674,6 +705,7 @@ function withProductionAudit(audit: PromptArtifactAuditMetadata): PromptArtifact
   return {
     ...audit,
     production: {
+      schemaVersion: "agent-production-prompt-binding.v1",
       rendererId: "evidence-triage.classify.renderer",
       rendererVersion: 1,
       rendererHash: hash("9"),

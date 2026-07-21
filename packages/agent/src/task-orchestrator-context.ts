@@ -84,8 +84,13 @@ export async function assembleTaskOrchestratorContext(
     } satisfies TaskOrchestratorContextDiagnostic);
   }));
   if (input.renderPrompt !== undefined) {
+    if (input.attemptId === undefined || input.generatedAt === undefined) {
+      throw new Error("Task orchestrator prompt rendering requires an exact attempt id and generated-at snapshot.");
+    }
     await input.renderPrompt(Object.freeze({
       taskId: input.taskId,
+      attemptId: input.attemptId,
+      generatedAt: input.generatedAt,
       runType: input.runType,
       scope: input.scope,
       workflow: canonicalWorkflow,

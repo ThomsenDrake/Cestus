@@ -43,6 +43,7 @@ import {
   type SpecialistHandoffManifestStore
 } from "./specialist-runner-kernel.js";
 import type { SpecialistHandoffMaterial } from "./specialist-handoff-manifest.js";
+import type { UntrustedSpecialistHandoffPreparationV1 } from "./specialist-handoff-preparation.js";
 import type { ContextPackRegistry } from "./context-packs.js";
 import type { SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
 import type { PromptArtifactEnvelope } from "./prompt-artifacts.js";
@@ -112,7 +113,13 @@ export interface TaskOrchestratorRunnerDurableHandoffResult {
   readonly handoffMaterial: SpecialistHandoffMaterial;
 }
 
+export interface TaskOrchestratorRunnerPreparationResult {
+  readonly schemaVersion: "agent.task-orchestrator.runner-preparation.v1";
+  readonly preparation: UntrustedSpecialistHandoffPreparationV1;
+}
+
 export interface TaskOrchestratorRunnerDispatchResult {
+  readonly preparation?: TaskOrchestratorRunnerPreparationResult;
   readonly durableHandoff?: TaskOrchestratorRunnerDurableHandoffResult;
 }
 
@@ -740,25 +747,46 @@ async function checkpointContextOrBlock(
     return false;
   }
 
-  let renderedPromptHash: string | undefined;
+  let mountedPromptHash: string | undefined;
+  let revalidateMountedPromptAfterFinalLedgerRead: (() => Promise<void>) | undefined;
   try {
+    // Claim identity and the normalized tick time are Task133.5 render inputs.
+    // Capture them before any context resolution can suspend.
+    const attemptId = claim.payload.attemptId;
+    const generatedAt = tickedAt;
+    const taskId = claim.payload.taskId;
+    const runType = claim.payload.runType;
+    const scope = input.policy.scope ?? { kind: "task" as const, refs: [taskId] };
     const workflow = capabilities.workflowRegistry.require(claim.payload.runType);
     const assembled = await assembleTaskOrchestratorContext({
-      taskId: claim.payload.taskId,
-      runType: claim.payload.runType,
-      scope: input.policy.scope ?? { kind: "task", refs: [claim.payload.taskId] },
+      taskId,
+      attemptId,
+      generatedAt,
+      runType,
+      scope,
       workflow,
       contextRegistry: capabilities.contextRegistry,
       renderPrompt: async (renderInput) => {
         const rendered = await capabilities.promptRendererRegistry.render(renderInput);
-        renderedPromptHash = promptArtifactHashFrom(rendered);
+        const renderedPromptHash = promptArtifactHashFrom(rendered);
+        const readback = await capabilities.promptRendererRegistry.readback(renderInput, rendered);
+        if (typeof readback === "string") {
+          mountedPromptHash = readback;
+        } else {
+          mountedPromptHash = readback.inputArtifactHash;
+          revalidateMountedPromptAfterFinalLedgerRead = readback.revalidateAfterFinalLedgerRead;
+        }
+        if (!isSha256(mountedPromptHash) || mountedPromptHash !== renderedPromptHash) {
+          throw new Error("Task orchestrator context-ready prompt did not have exact mounted readback authority.");
+        }
         return rendered;
       }
     });
     await appendContextReadyCheckpoint(input, {
       claim,
       contextBindings: assembled.checkpointContextBindings,
-      promptArtifactHash: renderedPromptHash ?? providerPromptArtifactHash(input.policy.providerPolicy),
+      promptArtifactHash: mountedPromptHash,
+      revalidateMountedPromptAfterFinalLedgerRead,
       tickedAt
     });
     return true;
@@ -1217,12 +1245,13 @@ async function appendContextReadyCheckpoint(
     readonly claim: ClaimEvent;
     readonly contextBindings: readonly TaskOrchestratorContextBinding[];
     readonly promptArtifactHash?: string | undefined;
+    /** Factory-held closure, invoked after the last stream read before append. */
+    readonly revalidateMountedPromptAfterFinalLedgerRead?: (() => Promise<void>) | undefined;
     readonly tickedAt: string;
   }
 ): Promise<CheckpointEvent> {
   const { claim } = checkpoint;
   const streamId = taskOrchestrationStreamId(claim.payload.taskId, claim.payload.runType);
-  const stream = await input.ledger.readStream(streamId);
   const contextBindings = checkpoint.contextBindings.map(checkpointBindingPayload);
   const sourceEventIds = uniqueStrings(contextBindings.flatMap((binding) => binding.provenanceEventIds));
   const inputArtifactHashes = uniqueStrings([
@@ -1256,6 +1285,8 @@ async function appendContextReadyCheckpoint(
       safeNextActions: ["continue to exact provider byte-transfer approval"]
     }
   };
+  const stream = await input.ledger.readStream(streamId);
+  await checkpoint.revalidateMountedPromptAfterFinalLedgerRead?.();
   return await input.ledger.append(event, { expectedNextSequence: stream.length + 1 }) as CheckpointEvent;
 }
 
@@ -1348,7 +1379,13 @@ function taskOrchestratorHandoffCapability(value: unknown): TaskOrchestratorHand
 function contextAssemblyCapabilities(input: CreateTaskOrchestratorInput): {
   readonly workflowRegistry: { require(runType: TaskOrchestratorRunType): SpecialistWorkflowDescriptor };
   readonly contextRegistry: ContextPackRegistry;
-  readonly promptRendererRegistry: { render(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0]): unknown | Promise<unknown> };
+  readonly promptRendererRegistry: {
+    render(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0]): unknown | Promise<unknown>;
+    readback(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0], rendered: unknown):
+      | string
+      | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }
+      | Promise<string | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }>;
+  };
 } | undefined {
   const workflowRegistry = input.workflowRegistry;
   const contextRegistry = input.contextRegistry;
@@ -1368,7 +1405,8 @@ function contextAssemblyCapabilities(input: CreateTaskOrchestratorInput): {
   }
   if (
     typeof promptRendererRegistry !== "object" || promptRendererRegistry === null ||
-    !("render" in promptRendererRegistry) || typeof promptRendererRegistry.render !== "function"
+    !("render" in promptRendererRegistry) || typeof promptRendererRegistry.render !== "function" ||
+    !("readback" in promptRendererRegistry) || typeof promptRendererRegistry.readback !== "function"
   ) {
     return undefined;
   }
@@ -1377,6 +1415,10 @@ function contextAssemblyCapabilities(input: CreateTaskOrchestratorInput): {
     contextRegistry: contextRegistry as ContextPackRegistry,
     promptRendererRegistry: promptRendererRegistry as {
       render(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0]): unknown | Promise<unknown>;
+      readback(renderInput: Parameters<NonNullable<AssembleTaskOrchestratorContextInput["renderPrompt"]>>[0], rendered: unknown):
+        | string
+        | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }
+        | Promise<string | { readonly inputArtifactHash: string; readonly revalidateAfterFinalLedgerRead?: (() => Promise<void>) | undefined }>;
     }
   };
 }
@@ -1433,10 +1475,6 @@ function promptArtifactHashFrom(value: unknown): string | undefined {
   }
   const manifest = (value as PromptArtifactEnvelope).manifest;
   return typeof manifest?.inputArtifactHash === "string" ? manifest.inputArtifactHash : undefined;
-}
-
-function providerPromptArtifactHash(providerPolicy: TaskOrchestratorProviderPolicy | undefined): string | undefined {
-  return providerPolicy === undefined ? undefined : taskOrchestratorApprovalPromptArtifactHash(providerPolicy.approval);
 }
 
 function uniqueStrings(values: readonly string[]): string[] {
