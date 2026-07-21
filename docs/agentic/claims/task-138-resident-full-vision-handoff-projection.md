@@ -184,6 +184,25 @@ and fallback writes are prohibited.
   diagnostic-evidence cases received empty event/hash arrays. No pre-existing
   test failed, no production source changed, and no provider, credential,
   external system, fallback write, or unrelated verifier participated.
-- Minimal GREEN evidence is recorded below after the exact focused execution.
-  This repair is not approval, product integration, strict record 28, or
-  release; the frontier remains **27 of 29**.
+- Minimal GREEN replaces pre-normalization fallback observation with one fixed
+  safe identity, classifies exactly one compatible ready/failed terminal link
+  only after the released projector has accepted ordering, status, causation,
+  and output hashes, and filters released diagnostic evidence to exact
+  `evt_...` IDs and lowercase SHA-256 hashes without copying its message.
+  Existing next actions remain `effect: "none"`; no parser, writer, provider,
+  registry, path, fallback, witness, or approval-consumption capability was
+  added.
+- Intended GREEN bytes pass the focused command with **1 file / 24 tests** and
+  the cross-boundary command with **2 files / 60 tests**. Standalone
+  `npm run typecheck` exits `0` with `typecheck passed`; `npm run
+  factory:check` exits `0` with `factory-readiness passed`; and `git diff
+  --check` emits no error. V4 standalone assurance passes **20/20**, while
+  contract mode emits all four exact release-graph, composition-corpus,
+  command-card, and ABI-corpus markers.
+- Repository mode was invoked before GREEN commit and refused only with
+  `repository checkout is dirty`, as its clean-checkout gate requires. Per the
+  coordinator's explicit verifier-order direction, the atomic GREEN commit is
+  followed by clean-checkout repository mode and one claim-only admission
+  commit recording its exact result. This repair is not approval, product
+  integration, strict record 28, or release; the frontier remains **27 of
+  29**.
