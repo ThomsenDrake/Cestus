@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   consumeMountedSpecialistHandoffAuthorityWitness,
   issueMountedSpecialistHandoffAuthorityWitness,
-  type MountedSpecialistHandoffAuthorityWitness
+  preflightMountedSpecialistHandoffAuthorityWitness
 } from "../src/specialist-handoff-authority.js";
 
 const binding = {
@@ -31,7 +31,7 @@ describe("specialist handoff authority witness", () => {
         if (!current) throw new Error("stale mounted authority");
       }
     });
-    const copied = { ...witness } as MountedSpecialistHandoffAuthorityWitness;
+    const copied = { ...witness };
 
     await expect(consumeMountedSpecialistHandoffAuthorityWitness(copied)).rejects.toThrow(/authority/i);
     const consumed = await consumeMountedSpecialistHandoffAuthorityWitness(witness);
@@ -40,6 +40,66 @@ describe("specialist handoff authority witness", () => {
     current = false;
     await expect(consumed.revalidateCurrent()).rejects.toThrow(/authority/i);
     await expect(consumeMountedSpecialistHandoffAuthorityWitness(witness)).rejects.toThrow(/consumed|authority/i);
+  });
+
+  it("preflights only the exact current witness without consuming it and burns rejected members", async () => {
+    let current = true;
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: binding,
+      taskLifecycle: {
+        taskId: "task_authority_preflight_001",
+        attemptId: `attempt_${"c".repeat(64)}`,
+        runId: "run_authority_preflight_001",
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      },
+      revalidateCurrent: async () => {
+        if (!current) throw new Error("stale mounted authority");
+      }
+    });
+    const expected = {
+      witness,
+      taskId: "task_authority_preflight_001",
+      attemptId: `attempt_${"c".repeat(64)}`,
+      runId: "run_authority_preflight_001",
+      runType: "ontology-bootstrap",
+      retryGeneration: 0
+    };
+
+    await expect(preflightMountedSpecialistHandoffAuthorityWitness(expected)).resolves.toBeUndefined();
+    await expect(consumeMountedSpecialistHandoffAuthorityWitness(witness)).resolves.toMatchObject({
+      taskLifecycle: {
+        taskId: expected.taskId,
+        attemptId: expected.attemptId,
+        runId: expected.runId,
+        runType: expected.runType,
+        retryGeneration: expected.retryGeneration
+      }
+    });
+
+    const staleWitness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: binding,
+      taskLifecycle: {
+        taskId: "task_authority_preflight_stale",
+        attemptId: `attempt_${"d".repeat(64)}`,
+        runId: "run_authority_preflight_stale",
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      },
+      revalidateCurrent: async () => {
+        if (!current) throw new Error("stale mounted authority");
+      }
+    });
+    current = false;
+    await expect(preflightMountedSpecialistHandoffAuthorityWitness({
+      witness: staleWitness,
+      taskId: "task_authority_preflight_stale",
+      attemptId: `attempt_${"d".repeat(64)}`,
+      runId: "run_authority_preflight_stale",
+      runType: "ontology-bootstrap",
+      retryGeneration: 0
+    })).rejects.toThrow(/authority/i);
+    await expect(consumeMountedSpecialistHandoffAuthorityWitness(staleWitness)).rejects.toThrow(/consumed|authority/i);
   });
 
   it("rejects an unsupported runType before issuing the mounted authority witness", () => {

@@ -86,3 +86,345 @@ Status: `ready-for-review`
   `npm run factory:check` exited `0`. No candidate full verifier,
   self-integration, integration, or `neo` change is authorized; this sealed
   follow-up requires a fresh independent defects-first review.
+
+## V4 Card 27 — W1-123-BOOTSTRAP-HANDOFF Ownership And Status
+
+- Status transition: `claimed -> implementing` under strict record 26
+  (`RV-1-E-871`); base authority is clean program HEAD
+  `3fd03d675f58f69cc974396aa23257f060cbfcf3`.
+- Sole bounded implementation owner: Codex `gpt-5.6-terra` / `xhigh`, on
+  `codex/w1-123-bootstrap-handoff-v4`. Released prerequisites are exactly
+  `CF1-HR`, `Task121`, and `Task122`.
+- This V4 packet owns only `packages/agent/src/ontology-bootstrap-workflow.ts`,
+  `packages/agent/test/ontology-bootstrap-workflow.test.ts`,
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts`,
+  `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`, and
+  this claim. It consumes the mounted V2 authority/readback lifecycle and
+  Task122 cursor semantics without changing shared contracts, stores,
+  authority producers, providers, registry, assurance, or accepted ontology
+  truth.
+- Required sequence: preserve a claim-only commit, then a causal RED commit
+  that proves the missing production authority composition plus a fail-closed
+  mounted-authority counterfactual, followed by the minimum scoped GREEN and
+  exact V4 gates. No subagent, self-review, integration, release record, push,
+  provider, credential, network, external, PRR, legal, or `neo` action is
+  authorized.
+
+### Causal RED — Missing Mounted V2 Composition
+
+- Before production edits, the exact V4 command
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exited `1`: **2 files / 19 tests**, **2 failed / 17 passed**.
+- New causal counterfactual: an otherwise exact canonical report/run with
+  `handoffAuthorityWitness: undefined` returned `ok: true` and wrote bootstrap
+  material instead of failing before effects. The retained mounted production
+  launch independently returned HTTP `500` where its public contract requires
+  `200`.
+- Root cause: the workflow still calls the legacy
+  `recordSpecialistHandoff`/`finalizeSpecialistRunAfterHandoff` path and has no
+  V2 witness input. The production route supplies an ordinary derivative store
+  but no current factory-issued mounted authority/readback lifecycle. The
+  GREEN must consume only the released opaque mounted binding, retain exact
+  cursor/prelude semantics, and map unavailable, stale, or swapped capability
+  state to bounded no-material diagnostics.
+
+### V4 Green Boundary — Approval Suspension And Factory Entry
+
+- The released Task121 precedent resolves the approval branch without changing
+  a V2 terminal result back to waiting: mounted authority is required before
+  work; an outstanding approval request returns the existing
+  `waiting-for-approval` handoff with no final-output, prepared, recorded,
+  terminal, orchestration-completed, or completed-task effect; only an
+  approval-free path may consume the V2 terminal lifecycle.
+- The upstream default-factory
+  `blocked.factory-context-attestation-required` occurs before this card's
+  route boundary: `handleAgentHttpRoute` constructs
+  `defaultLocalAgentRuntimeFactory` before it invokes
+  `handleAgentOntologyBootstrapRoute`. It is the intended later Task140
+  predecessor boundary, not a Task123 defect.
+- The route's existing `agentRuntimeFactory` HTTP seam therefore injects a
+  released-interface-conformant resident runtime only in this card's route
+  test. That test injection neither changes nor bypasses the default factory,
+  and this card makes no claim that default composition is ready.
+- The bounded diagnostic that established the predecessor was:
+  `defaultLocalAgentRuntimeFactory` calls
+  `createFactoryHeldContextBindingVerifier(createContextPackRegistry())`, which
+  fails because its new registry has no registered descriptors. No fallback
+  runtime, store, controller, authority, or write was introduced.
+
+### V4 Intended GREEN
+
+- Exact focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exits `0`: **2 files / 19 tests passed**. This is a **+1 passing-test delta**
+  from the inherited 18-test baseline, retaining the missing-authority
+  counterfactual and the route's approval-suspended `waiting-for-approval`
+  behavior without a terminal V2 handoff.
+
+### V4 Recovery RED — Factory-Only Issuer Boundary
+
+- Candidate `763e3b943786ab69d157afccef50fed06b4c96cb` failed the required
+  repository mode during the Task137A command with one policy failure:
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts may not import
+  packages/local-runtime/src/mounted-artifact-authority-operation.ts`.
+  Repository mode consequently stopped at `release command failed: Task137A`,
+  before the expected record-26 closure diagnostic.
+- Cause: the first GREEN made the route call the factory-only
+  `issueMountedArtifactAuthorityOperationForFactory`. The released Task137
+  authority grammar and Task140 ownership make that an invalid route-side
+  composition tactic. The corrective tactic is to have the route consume only
+  a factory-provided opaque mounted handoff binding from its existing runtime
+  seam; the route neither issues nor inspects a factory operation. The
+  test-only runtime factory may provide that released binding before Task140;
+  production default composition remains deliberately unavailable.
+
+### V4 Recovery GREEN — Runtime Consumer Seam
+
+- The route no longer imports or calls
+  `issueMountedArtifactAuthorityOperationForFactory`. It consumes an opaque,
+  exact task/run binding only from its existing runtime object and stops that
+  binding after use. It cannot create, inspect, mint, or substitute a mounted
+  operation, store, controller, or witness.
+- The route test's injected resident runtime creates the same released
+  portable binding under test authority; a separate injected runtime without
+  that binding now returns bounded HTTP `503` before any bootstrap dossier,
+  approval request, final-output, handoff, or terminal effect. This remains a
+  test-only predecessor bridge and does not make default factory composition
+  ready.
+- Recovery focused GREEN:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exits `0`: **2 files / 20 tests passed** (+2 from the inherited 18-test
+  baseline).
+
+### V4 Recovery RED — Pre-effect Opaque-Authority Validation
+
+- Fresh independent architecture and execution reviews rejected candidate
+  `72e39d0eedab1904be2d217fbc6029e374dab474`: a plain object carrying the
+  public witness schema string reaches final-output/material writes before the
+  V2 recorder rejects it, and a factory-issued witness whose currentness
+  callback rejects reaches the approval-suspended dossier, tool-request, and
+  waiting task-status events without any revalidation.
+- The causal RED added both counterfactuals before source edits. Exact focused
+  command `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts
+  packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts` exited
+  `1`: **2 files / 22 tests**, **2 failed / 20 passed**. The forged witness
+  returned `external-effect-failed` with a newly appended failure event after
+  material work; the stale factory witness returned `ok: true` with three new
+  workflow events on the pending-approval path. Both tests require an empty
+  event delta and zero material writes.
+- The released-interface obstruction is exact and precedes any production
+  edit. `consumeMountedSpecialistHandoffAuthorityWitness` is the only exposed
+  opaque-witness validation path; it invokes `revalidate` and irrevocably marks
+  the witness `consumed` (`packages/agent/src/specialist-handoff-authority.ts`
+  lines 84-103). The required V2 recorder accepts only that original opaque
+  witness and consumes it itself (`packages/agent/src/specialist-runner-kernel.ts`
+  lines 952-960), after workflow material/final-output work
+  (`packages/agent/src/ontology-bootstrap-workflow.ts` lines 752-823). The
+  released portable binding exposes precisely one witness
+  (`packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`
+  lines 293-310), with no non-consuming currentness readback or successor
+  witness capability. Consuming it in Task123 preflight would make the later
+  mandatory V2 recorder reject it as already consumed; creating/accepting a
+  replacement, widening the workflow/runtime contract for a second witness,
+  or revising the shared authority/recorder would violate this card's scope.
+- Per the frozen ownership rule, no production GREEN is attempted from this
+  RED until a released authority interface supplies a non-consuming preflight
+  readback or an explicitly paired successor witness while preserving the V2
+  terminal consumer.
+
+### V4 Recovery GREEN — Exact Non-consuming Authority Preflight
+
+- Released authority `RV-1-E-878` transfers the authority source/test and
+  portable mounted-store source/test to this card, expanding its finite scope
+  to exactly nine V4 paths while preserving causal RED
+  `7a7509aa984e2d59ad212fa801c1dcaa2e996451`.
+- The authority module now preflights only an exact factory-issued WeakMap
+  witness in `available` state: it verifies the exact task, deterministic
+  attempt, run, type, retry, and normalized authority binding, invokes mounted
+  currentness, and burns rejected available members without exposing binding
+  bytes or consuming a successful witness. The later V2 recorder remains the
+  sole one-shot witness consumer.
+- The portable layer proves the exact issued binding object, its witness and
+  distinct material/manifest stores, the paired opaque controller/cursor, the
+  complete task/run/attempt/type/retry tuple, and current mounted lineage. It
+  performs only readback/currentness checks and burns its cursor on a forged,
+  swapped, stale, or conflicting preflight.
+- The ontology-bootstrap workflow invokes authority preflight before dossier,
+  approval, waiting-status, final-output, or material effects; the route
+  invokes portable preflight before entering that workflow. Approval suspension
+  remains `waiting-for-approval`, and an approval-free run still passes the
+  same preserved witness to the V2 final-output -> prepared -> recorded ->
+  terminal lifecycle.
+- GREEN focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts
+  packages/agent/test/specialist-handoff-authority.test.ts
+  packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts
+  packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `0`: **4 files / 58 tests passed**. The added authority and portable
+  counterfactuals prove no-effect preflight plus later one-shot V2 consumption;
+  the retained two workflow RED cases are now green.
+
+### V4 Recovery RED — Route Admission Before Durable Effects
+
+- After normal forward merge `ad32f7e844b6b52d935ad40381058a1a21dd18bb`
+  of clean program authority `951aadb9388d3374ccedb686ebedccefe8b23b68`,
+  the causal route tests reproduce the P1 from candidate
+  `68d09db346833d38286204e319c20352e6b6c539` without changing production
+  bytes.
+- Exact V4 command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `1`: **4 files / 59 tests**, **2 failed / 57 passed**.
+- An injected real route runtime with no mounted-handoff provider returned
+  `503` only after appending **13** durable events; the new full-ledger
+  snapshot requires an exact zero event delta. A hostile accessor-backed
+  structural handoff was also invoked by the route before the protected
+  portable preflight; its test requires that accessor to remain unread and the
+  same zero event delta. Both counterfactuals retain the real HTTP/runtime
+  entry path and require failure before identity, task, ingestion, run,
+  dossier/bootstrap, approval, material/manifest, or terminal effects.
+- Root cause: `launchOntologyBootstrapRun` obtains and preflights the opaque
+  mounted binding only after identity initialization, task creation,
+  ingestion inspection/report, and specialist-run setup. Its
+  `Partial<RuntimeMountedOntologyBootstrapHandoffProvider>` assertion also
+  reads an unverified structural runtime capability. GREEN must establish a
+  descriptor-checked runtime provider plus exact portable preflight directly
+  after mounted-workspace availability, preserve the same opaque binding for
+  the later workflow/V2 consumer, and stop it on every exit.
+
+### V4 Recovery GREEN — Early Route Admission With Preserved Witness Currentness
+
+- The route now acquires the opaque runtime handoff immediately after mounted
+  workspace availability, descriptor-checks only own data capability fields,
+  and runs the exact portable preflight before identity, task, ingestion, run,
+  dossier/bootstrap, approval, material/manifest, or terminal work. No
+  `Partial` runtime assertion, route-side issuer, alternate store, controller,
+  witness, or factory composition was introduced.
+- The portable preflight still invokes
+  `preflightMountedSpecialistHandoffAuthorityWitness`: it authenticates the
+  exact issued WeakMap witness in `available` state and revalidates mounted
+  currentness before route effects. The same untouched witness is revalidated
+  again by the workflow immediately before bootstrap/handoff work and remains
+  the one V2 consumer input. Incremental cursor readback now has the same
+  finite unbound-event filter as initial derivation, while the retained
+  adversarial portable test still rejects unknown events bound to this task or
+  run before store I/O.
+- Scope distinction: the direct Task123 route tests establish the released
+  resident identity prerequisite and then prove exact zero ledger delta for
+  both a missing provider and a hostile accessor-backed structural binding.
+  The real high-level HTTP route proves its only prior delta is the released
+  parent `agent.identity.initialized` readiness event; it appends no task,
+  ingestion, run, Task123 bootstrap/dossier, approval, tool, material,
+  manifest, handoff, or terminal event before `503`.
+- GREEN focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `0`: **4 files / 61 tests passed**. This is a **+3 passing-test
+  delta** from the prior 58-test Task123 candidate and retains the causal RED
+  without alteration.
+
+### V4 Recovery RED — Post-Issuance Unrelated Cursor Suffix
+
+- After normal forward merge `92d548fcf85a444b84bf0828ccaf40d55b87299d`
+  of clean program authority `8b59f90fc690a734e70399f96beca6d454c7049d`,
+  this recovery restores the original unrelated-suffix counterfactual without
+  changing production bytes.
+- Exact V4 command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `1`: **4 files / 61 tests**, **1 failed / 60 passed**.
+- The restored `rejects unrelated suffixes rollbacks replacements and reorder
+  before store io without fallback` case appends an unbound post-issuance
+  event, but `materialStore.put` resolves with a content hash instead of
+  rejecting. This proves the candidate's incremental `inspectCursor` filter
+  silently ignores the exact suffix that the cursor must reject; GREEN must
+  restore generic incremental rejection and keep route-only early authority
+  admission finite and non-locking.
+
+### V4 Recovery GREEN — Finite Pre-Effect Witness Phase
+
+- The portable incremental cursor again advances every post-issuance event;
+  the original unrelated-suffix regression is retained unchanged. Generic
+  callers therefore keep full cursor revalidation and fail closed on an
+  unrelated, cross-run, replaced, rolled-back, or reordered suffix.
+- Only the exact factory-issued portable witness has a finite initial route
+  phase. It first authenticates its WeakMap member, available state, exact
+  lifecycle tuple, binding, and mounted origin, then releases the initial
+  cursor snapshot without reading or accepting route setup history. The phase
+  is one-shot: a repeat, mismatch, or failed currentness check burns the
+  cursor and the available witness. The workflow's existing witness preflight
+  and all V2 consumption still invoke full cursor revalidation and bind the
+  complete setup history before effects.
+- Focused GREEN command exited `0`: **4 files / 63 tests passed**. This is a
+  **+2 passing-test delta** over the 61-test RED: the new portable proofs show
+  no ledger read during the finite origin-only preflight, later full
+  revalidation rejects an unrelated suffix, and a repeated route preflight
+  burns the otherwise untouched V2 witness. `npm run typecheck` also exited
+  `0`.
+
+### V4 Compiler Recovery RED — Duplicate Internal Route Interface
+
+- After normal forward merge `bb6346a3ae9e3e9c5a263252d845e8cb5a595fc3`
+  of clean program authority `1c4ea1689a76946a3aeb6154fd97ff09066b8c3e`,
+  the standalone compiler reproduction changes no test or production byte.
+- `npm run typecheck` exits `1` with exactly:
+  `packages/local-runtime/src/agent-ontology-bootstrap-routes.ts(93,12):
+  error TS2687: All declarations of 'stop' must have identical modifiers.`
+- The route has two adjacent declarations of the same private
+  `RuntimeMountedOntologyBootstrapHandoff` interface: one declares `stop` as
+  a method and the other as a readonly function property. GREEN is restricted
+  to deleting the accidental duplicate declaration while retaining the
+  existing strictly typed internal interface and every route behavior.
+
+### V4 Recovery RED — Hostile Extra Enumerable Handoff Accessor
+
+- At authority-merge head `925351d71008fcf7cd03481168148b3786940d6b`, the
+  direct real-route counterfactual acquires a factory-issued portable binding,
+  exact controller, and callable stop, then adds one otherwise unrelated
+  enumerable own accessor to the outer runtime handoff.
+- `npm test -- packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exits `1`: **1 file / 7 tests**, **1 failed / 6 passed**. The new
+  `rejects an unread extra enumerable getter before direct Task123 effects`
+  test receives `503` and preserves exact direct-ledger equality, but its
+  required `getterReads === 0` assertion observes `1`.
+- This isolates the route return spread: after its three-field structural
+  check, `{ ...handoff }` evaluates the hostile extra enumerable getter before
+  portable preflight. GREEN must reject the outer shape by descriptors alone,
+  before any getter evaluation or Task123 durable effect.
+
+### V4 Recovery GREEN — Descriptor-Normalized Runtime Handoff
+
+- The route now accepts only a frozen ordinary object with exactly enumerable,
+  non-writable, non-configurable own data properties `binding`, `controller`,
+  and `stop`, no symbol keys, and no incompatible prototype. It reads those
+  descriptors without evaluating values from the hostile object, then creates
+  a fresh exact handoff return object by explicit fields; no unknown-object
+  spread or copy remains.
+- The direct adversarial fixture is otherwise route-valid: it obtains the
+  actual factory-issued binding/controller and binds the exact released
+  `buildTaskAttemptId({ taskId, runType: "ontology-bootstrap",
+  retryGeneration: 0 })` before adding its one rejected accessor. Its wake
+  runtime is explicitly stopped after the direct equality assertion.
+- GREEN focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exits `0`: **4 files / 64 tests passed**, a **+1 passing-test delta** from
+  the preceding 63-test candidate. Standalone `npm run typecheck` exits `0`.
+
+### V4 Compiler Recovery RED — Hostile Fixture Optional Runtime Reference
+
+- At clean registry-merge head `b6f028e46f98a73d1df268e6145aa221c08f7fa7`,
+  standalone `npm run typecheck` reproduces exactly:
+  `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts(365,60):
+  error TS18048: 'wakeRuntime' is possibly 'undefined'.`
+- The direct hostile-accessor fixture correctly retains its optional outer
+  cleanup reference for `finally`, but its issued-authority `stop` closure
+  captures that optional reference rather than the created runtime. This is a
+  claim-only compiler RED: no production, test, interface, behavior, or
+  contract byte changes before GREEN.
+
+### V4 Compiler Recovery GREEN — Hostile Fixture Definite Runtime Reference
+
+- The test retains the optional outer `wakeRuntime` only for the `finally`
+  cleanup. It assigns the created wake runtime to that cleanup slot, while the
+  non-optional `createdWakeRuntime` is the sole value used for supervision,
+  factory authority issuance, and the returned callable `stop` closure.
+- No production byte, behavior, interface, authority, or lifecycle changed.
+  `npm run typecheck` exits `0`; the exact focused V4 suite exits `0`:
+  **4 files / 64 tests passed**.
