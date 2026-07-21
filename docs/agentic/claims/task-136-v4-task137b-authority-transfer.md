@@ -560,3 +560,23 @@ Implementation evidence:
   the record-26 and record-27 direct-source assertions in one 20-test
   focused corpus while preserving its positive, mutation, historical, and
   current-head coverage.
+
+## RV-1-E-888 record-27 current-prefix causal RED checkpoint
+
+- Exact clean program authority `7dc72c1f3d83b2eccda7671801b4827eaff69638`
+  was normal-forward-merged into the preserved V4 lineage as
+  `0941c28e223847839d853cc58348b4ac977dc915`. Repository mode executed all
+  27 released commands, emitted `TASK136_REPOSITORY_PREFIX_OK records=27
+  commands=27`, then exited nonzero only with `repository release closure
+  incomplete: expected 29 records, found 27`.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; `20` tests, `17` passed, and exactly `3` failed. The only
+  failures are current-registry cardinality assertions at lines `1159`,
+  `1475`, and `1655`, each reporting `27 !== 26`; every contract, checker,
+  command, blob, migration, dependency, product, and unrelated fixture check
+  remains green.
+- The sole GREEN change is to advance those three current registry-length
+  expectations from `26` to `27`. Synthetic record-26 repository fixtures,
+  preactivation/history fixtures, V1-V4, raw records 1-27, all 29 IDs/order,
+  finite mappings, product bytes, and prior evidence remain immutable.
