@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing
+- **Status:** paused at bounded candidate checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -92,4 +92,23 @@ and fallback writes are prohibited.
   file's production import (line 18), proving the Task138 adapter is absent;
   no test syntax, fixture, dependency, provider, credential, or unrelated
   failure was reported.
-- GREEN: pending minimal adapter commit.
+- GREEN: not yet admitted or claimed. The bounded candidate passed the exact
+  focused suite **17/17** and exact cross-boundary suite **53/53** after one
+  source repair. It remains subject to a fresh uninterrupted typecheck,
+  factory, verify, assurance/frontier, review, integration, and release gate.
+
+## Usage-Pause Checkpoint
+
+- Paused at the user's explicit Codex-plan usage boundary on 2026-07-21.
+- Permanent history before this checkpoint is claim-only commit `5e1de3e2`,
+  causal missing-module RED `d1694f0a`, and expanded lifecycle RED
+  `d855533e`.
+- The candidate implements only the authorized source and corrects two test
+  fixture literals to released enum values. No assertion was removed or
+  relaxed. It passed **17/17** focused and **53/53** cross-boundary tests.
+- A typecheck retry was terminated solely to honor the pause request. Its
+  outcome is unknown and must not be inferred. Resume by rerunning the exact
+  focused and cross-boundary suites, then `npm run typecheck`; classify and
+  repair any diagnostic before claiming GREEN.
+- This checkpoint is not reviewed, approved, integrated, released, or a
+  strict record-28 release record. The program frontier remains **27 of 29**.
