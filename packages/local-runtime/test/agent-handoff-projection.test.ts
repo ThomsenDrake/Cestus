@@ -150,6 +150,26 @@ describe("buildResidentHandoffDto", () => {
     expect(dto.lifecycle).not.toBe("task-completed");
   });
 
+  it.each([
+    ["ready-for-review", "completed"],
+    ["failed", "failed"]
+  ] as const)("maps an exact terminal-only %s chain to terminal-consistent without task completion", async (status, stateKind) => {
+    const fixture = handoffFixture({ status });
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, fixture.terminal],
+      storesFor(fixture)
+    );
+
+    expect(dto.lifecycle).toBe("terminal-consistent");
+    expect(dto.lifecycle).not.toBe("task-completed");
+    expect(dto.status).toBe(status);
+    expect(dto.stateKind).toBe(stateKind);
+    expect(dto.provenance).toBeUndefined();
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+  });
+
   it("keeps historical V1 replay legacy-unbound with no provenance or executable action", async () => {
     const fixture = handoffFixture({ legacy: true });
 
@@ -254,6 +274,109 @@ describe("buildResidentHandoffDto", () => {
     expect(JSON.stringify(dto)).not.toContain("portable-mounted-handoff-authority-invalid");
     expect(stores.materialStore.put).not.toHaveBeenCalled();
     expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it("uses a fixed safe identity for invalid top-level input without retaining hostile runId text", async () => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const hostileRunId = "raw-provider-secret-run-identity";
+
+    const dto = await buildResidentHandoffDto({
+      runId: hostileRunId,
+      events: [],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "run-identity-missing");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(JSON.stringify(dto)).not.toContain(hostileRunId);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it.each(["descriptor", "prototype"] as const)(
+    "contains hostile Proxy %s traps inside the bounded async boundary",
+    async (trap) => {
+      const fixture = handoffFixture();
+      const stores = storesFor(fixture);
+      const hostileText = `raw-provider-secret-${trap}-trap`;
+      const input = trap === "descriptor"
+        ? new Proxy({}, {
+          getOwnPropertyDescriptor() {
+            throw new Error(hostileText);
+          }
+        })
+        : {
+          runId: fixture.runId,
+          events: new Proxy([], {
+            getPrototypeOf() {
+              throw new Error(hostileText);
+            }
+          }),
+          materialStore: stores.materialStore,
+          manifestStore: stores.manifestStore,
+          authorityBinding: fixture.authorityBinding
+        };
+
+      const dto = await buildResidentHandoffDto(input as never);
+
+      expectClosed(dto, "inconsistent", "unsafe-boundary-value");
+      expect(dto.runId).toBe("unavailable-run");
+      expect(JSON.stringify(dto)).not.toContain(hostileText);
+      expect(stores.materialStore.get).not.toHaveBeenCalled();
+      expect(stores.manifestStore.get).not.toHaveBeenCalled();
+    }
+  );
+
+  it("preserves only safe upstream diagnostic event IDs and hashes without copying raw messages", async () => {
+    const fixture = handoffFixture();
+
+    const dto = await project(
+      fixture,
+      fixture.completeEvents,
+      storesFor(fixture, "corrupt manifest")
+    );
+
+    expectClosed(dto, "inconsistent", "manifest-content-mismatch");
+    expect(dto.diagnostics[0]).toMatchObject({
+      eventIds: [fixture.prepared.id],
+      artifactHashes: expect.arrayContaining([fixture.manifestHash])
+    });
+    expect(dto.diagnostics[0]?.artifactHashes).toHaveLength(2);
+    expect(dto.diagnostics[0]?.artifactHashes.every((hash) => /^sha256:[a-f0-9]{64}$/.test(hash))).toBe(true);
+    expect(JSON.stringify(dto)).not.toContain("Recorded handoff manifest bytes are not parseable canonical JSON.");
+  });
+
+  it("drops unsafe upstream diagnostic IDs and hashes while retaining safe related event evidence", async () => {
+    const fixture = handoffFixture();
+    if (fixture.terminal.type !== "agent.specialist-run.completed") {
+      throw new Error("ready-for-review fixture must have a completed terminal");
+    }
+    const hostileEventId = "raw-provider-secret-event-id";
+    const hostileArtifactHash = "raw-provider-secret-artifact-hash";
+    const hostileTerminal = {
+      ...fixture.terminal,
+      id: hostileEventId,
+      payload: {
+        ...fixture.terminal.payload,
+        outputArtifactHashes: [hostileArtifactHash]
+      }
+    } as unknown as KnowledgeEvent;
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, hostileTerminal],
+      storesFor(fixture)
+    );
+
+    expectClosed(dto, "inconsistent", "terminal-status-conflict");
+    expect(dto.diagnostics[0]).toMatchObject({
+      eventIds: [fixture.recorded.id],
+      artifactHashes: []
+    });
+    expect(JSON.stringify(dto)).not.toMatch(/raw-provider-secret|Terminal run state must agree|Completed run output hashes disagree/);
   });
 
   it("rejects hostile accessors before observation or store IO and retains no hostile value", async () => {
