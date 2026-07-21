@@ -5,10 +5,15 @@ import {
   buildOntologyBootstrapAgentReviewBundle,
   buildOntologyBootstrapDossierContextPack,
   hashOntologyBootstrapReviewBundle,
-  runOntologyBootstrapResidentWorkflow,
+  runOntologyBootstrapResidentWorkflow as runOntologyBootstrapResidentWorkflowKernel,
   toAgentOntologyBootstrapToolPreview
 } from "../src/ontology-bootstrap-workflow.js";
+import type { RunOntologyBootstrapResidentWorkflowInput } from "../src/ontology-bootstrap-workflow.js";
 import { validateOntologyBootstrapNousMemo } from "../src/ontology-bootstrap-nous.js";
+import {
+  issueMountedSpecialistHandoffAuthorityWitness,
+  type MountedSpecialistHandoffAuthorityWitness
+} from "../src/specialist-handoff-authority.js";
 import {
   bootstrapEvidenceLinksFixture,
   bootstrapReportFixture,
@@ -25,6 +30,7 @@ import {
 import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { buildAgentProjection } from "../src/projection.js";
 import { createAgentRuntime } from "../src/runtime.js";
+import { buildTaskAttemptId } from "../src/task-orchestrator-events.js";
 
 const now = () => "2026-07-08T14:00:00.000Z";
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
@@ -37,6 +43,7 @@ const canonicalBootstrapReportFixture = buildLegacyMigrationReport({
   proposedAssertionCandidates: bootstrapReportFixture.proposedAssertionCandidates,
   quarantineEntries: bootstrapReportFixture.quarantineEntries
 }) satisfies LegacyMigrationReport;
+const authorityHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
 
 describe("ontology bootstrap resident-agent review bundle", () => {
   it("builds a stable review bundle from an evidence-tied bootstrap dossier", () => {
@@ -235,6 +242,163 @@ describe("ontology bootstrap resident-agent review bundle", () => {
 });
 
 describe("runOntologyBootstrapResidentWorkflow", () => {
+  it("fails closed before bootstrap material effects when mounted handoff authority is unavailable", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
+    const before = (await ledger.readAll()).length;
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      handoffAuthorityWitness: undefined,
+      review: {
+        ...bootstrapReviewFixture,
+        latestReportId: canonical.report.legacyReportId,
+        ontologyStagingApproved: true
+      },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    } as never);
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing" });
+    expect((await ledger.readAll()).slice(before).map((event) => event.type)).toEqual([
+      "agent.specialist-run.failed"
+    ]);
+  });
+
+  it("rejects a structurally forged mounted authority before workflow events or material writes", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
+    let materialWrites = 0;
+    const noEffectStore: RunOntologyBootstrapResidentWorkflowInput["derivativeStore"] = Object.freeze({
+      put: async (bytes: Buffer) => {
+        materialWrites += 1;
+        return await canonical.derivativeStore.put(bytes);
+      },
+      get: async (contentHash: `sha256:${string}`) => await canonical.derivativeStore.get(contentHash)
+    });
+    const input = {
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: noEffectStore,
+      handoffMaterialStore: noEffectStore,
+      handoffManifestStore: noEffectStore,
+      review: {
+        ...bootstrapReviewFixture,
+        latestReportId: canonical.report.legacyReportId,
+        ontologyStagingApproved: true
+      },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    } satisfies RunOntologyBootstrapResidentWorkflowInput;
+    expect(Reflect.defineProperty(input, "handoffAuthorityWitness", {
+      value: Object.freeze({ schemaVersion: "agent-mounted-specialist-handoff-authority.v1" }),
+      enumerable: true
+    })).toBe(true);
+    const before = await ledger.readAll();
+
+    const result = await runOntologyBootstrapResidentWorkflowKernel(input);
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing", eventIds: [] });
+    expect(await ledger.readAll()).toEqual(before);
+    expect(materialWrites).toBe(0);
+  });
+
+  it("revalidates a factory-issued authority before pending approval workflow effects", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
+    const highWaterEventId = (await ledger.readAll()).at(-1)?.id;
+    expect(highWaterEventId).toBeDefined();
+    if (highWaterEventId === undefined) return;
+    const staleAuthority = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: {
+        workspaceIdentityHash: authorityHash,
+        mountGeneration: "mount_generation_ontology_bootstrap_001",
+        ledgerStoreIdentity: "ledger_store_ontology_bootstrap_001",
+        artifactStoreIdentity: "artifact_store_ontology_bootstrap_001",
+        ledgerHighWaterEventId: highWaterEventId,
+        policyHash: authorityHash,
+        activeLocksHash: authorityHash
+      },
+      taskLifecycle: {
+        taskId: "task_ontology_bootstrap_001",
+        attemptId: buildTaskAttemptId({
+          taskId: "task_ontology_bootstrap_001",
+          runType: "ontology-bootstrap",
+          retryGeneration: 0
+        }),
+        runId: "run_ontology_bootstrap_001",
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      },
+      revalidateCurrent: async () => {
+        throw new Error("stale mounted authority");
+      }
+    });
+    const before = await ledger.readAll();
+
+    const result = await runOntologyBootstrapResidentWorkflowKernel({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      handoffMaterialStore: canonical.derivativeStore,
+      handoffManifestStore: canonical.derivativeStore,
+      handoffAuthorityWitness: staleAuthority,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    });
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing", eventIds: [] });
+    expect(await ledger.readAll()).toEqual(before);
+  });
+
   it("fails closed before effects when the canonical reader identity is omitted", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
@@ -304,7 +468,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       stagedReport: canonicalStagedReportIdentity(canonical.report),
       reportEventId: canonical.reportEventId,
       derivativeStore: canonical.derivativeStore,
-      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      review: {
+        ...bootstrapReviewFixture,
+        latestReportId: canonical.report.legacyReportId,
+        ontologyStagingApproved: true
+      },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       now
@@ -394,7 +562,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       stagedReport: canonicalStagedReportIdentity(canonical.report),
       reportEventId: canonical.reportEventId,
       derivativeStore: canonical.derivativeStore,
-      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      review: {
+        ...bootstrapReviewFixture,
+        latestReportId: canonical.report.legacyReportId,
+        ontologyStagingApproved: true
+      },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       now
@@ -484,7 +656,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       taskId: "task_ontology_bootstrap_001",
       sourceCollectionId: "src_old_cestus",
       stagedReport: canonicalStagedReportIdentity(canonical.report),
-      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      review: {
+        ...bootstrapReviewFixture,
+        latestReportId: canonical.report.legacyReportId,
+        ontologyStagingApproved: true
+      },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       reportEventId: canonical.reportEventId,
@@ -569,9 +745,20 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     expect(result.ok).toBe(true);
     expect(projection.runs.get("run_ontology_bootstrap_001")?.stepIds).toContain("step_ontology_bootstrap_dossier");
     expect(projection.toolRequests.get("toolreq_ontology_bootstrap_staging_approval")?.requiredApprovalClass).toBe("ledger-review");
+    const events = await ledger.readAll();
     expect(projection.tasks.get("task_ontology_bootstrap_001")?.status).toBe("waiting-for-approval");
-    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("assertion.proposed");
-    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("assertion.accepted");
+    expect(result.ok && result.handoffEventIds).toEqual([]);
+    expect(events.filter((event) =>
+      (event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output") ||
+      [
+        "agent.specialist-handoff.prepared",
+        "agent.specialist-handoff.recorded",
+        "agent.specialist-run.completed",
+        "agent.task.orchestration.completed"
+      ].includes(event.type)
+    )).toEqual([]);
+    expect(events.map((event) => event.type)).not.toContain("assertion.proposed");
+    expect(events.map((event) => event.type)).not.toContain("assertion.accepted");
   });
 
   it("records a model-invocation-linked step when a Nous memo artifact is supplied", async () => {
@@ -642,7 +829,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       stagedReport: canonicalStagedReportIdentity(canonical.report),
       reportEventId: canonical.reportEventId,
       derivativeStore: canonical.derivativeStore,
-      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      review: {
+        ...bootstrapReviewFixture,
+        latestReportId: canonical.report.legacyReportId,
+        ontologyStagingApproved: true
+      },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       maxCandidatesPerBundle: 1,
@@ -656,7 +847,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
     const toolRequestedEvents = (await ledger.readAll()).filter((event) => event.type === "agent.tool.requested");
-    expect(toolRequestedEvents).toHaveLength(1);
+    expect(toolRequestedEvents).toHaveLength(0);
     expect(first.ok && second.ok ? second.reviewBundleHash : undefined).toBe(
       first.ok && second.ok ? first.reviewBundleHash : undefined
     );
@@ -820,6 +1011,55 @@ async function startCanonicalWorkflowRun(
     inputArtifactHashes: [canonical.report.reportHash, canonical.report.candidateSetHash]
   });
   return canonical;
+}
+
+type BootstrapWorkflowInput = RunOntologyBootstrapResidentWorkflowInput & {
+  readonly handoffAuthorityWitness?: MountedSpecialistHandoffAuthorityWitness | undefined;
+};
+
+async function runOntologyBootstrapResidentWorkflow(input: BootstrapWorkflowInput) {
+  const handoffAuthorityWitness = Object.prototype.hasOwnProperty.call(input, "handoffAuthorityWitness")
+    ? input.handoffAuthorityWitness
+    : await mountedBootstrapHandoffAuthorityWitness(input);
+  return await runOntologyBootstrapResidentWorkflowKernel({
+    ...input,
+    ...(input.derivativeStore === undefined ? {} : {
+      handoffMaterialStore: input.handoffMaterialStore ?? input.derivativeStore,
+      handoffManifestStore: input.handoffManifestStore ?? input.derivativeStore
+    }),
+    handoffAuthorityWitness
+  });
+}
+
+async function mountedBootstrapHandoffAuthorityWitness(
+  input: RunOntologyBootstrapResidentWorkflowInput
+): Promise<MountedSpecialistHandoffAuthorityWitness | undefined> {
+  if (input.taskId === undefined) return undefined;
+  const highWaterEventId = (await input.ledger.readAll()).at(-1)?.id;
+  if (highWaterEventId === undefined) return undefined;
+  return issueMountedSpecialistHandoffAuthorityWitness({
+    authorityBinding: {
+      workspaceIdentityHash: authorityHash,
+      mountGeneration: "mount_generation_ontology_bootstrap_001",
+      ledgerStoreIdentity: "ledger_store_ontology_bootstrap_001",
+      artifactStoreIdentity: "artifact_store_ontology_bootstrap_001",
+      ledgerHighWaterEventId: highWaterEventId,
+      policyHash: authorityHash,
+      activeLocksHash: authorityHash
+    },
+    taskLifecycle: {
+      taskId: input.taskId,
+      attemptId: buildTaskAttemptId({
+        taskId: input.taskId,
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      }),
+      runId: input.runId,
+      runType: "ontology-bootstrap",
+      retryGeneration: 0
+    },
+    revalidateCurrent: async () => undefined
+  });
 }
 
 function terminalCorrelationFaultLedger(delegate: EventLedger): EventLedger {

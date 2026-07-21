@@ -15,13 +15,19 @@ import {
   type MountedWorkspace
 } from "../../ingestion/src/mount-contract.js";
 import type { OntologyBootstrapEvidenceLink } from "../../ontology-bootstrap/src/dossier-builder.js";
+import { buildTaskAttemptId } from "../../agent/src/task-orchestrator-events.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import type { LocalAgentRuntimeFactory } from "./agent-runtime-factory.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import {
+  consumeMountedHandoffAuthorityController,
+  preflightPortableMountedAgentHandoffBinding,
+  type FactoryPortableMountedAgentHandoffProducerResultV1
+} from "./portable-mounted-agent-artifact-stores.js";
 
 const routeSchemaVersion = "agent-ontology-bootstrap-route.v1" as const;
 const residentAgentId = "agent_default";
-const residentAgentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+const residentAgentActor = { id: residentAgentId, kind: "agent" as const, label: "Cestus Agent" };
 
 export interface HandleAgentOntologyBootstrapRouteInput {
   readonly request: LocalRuntimeRequest;
@@ -75,6 +81,20 @@ interface LaunchInput {
   readonly maxCandidatesPerBundle?: number;
 }
 
+interface RuntimeMountedOntologyBootstrapHandoff {
+  readonly binding: FactoryPortableMountedAgentHandoffProducerResultV1["binding"];
+  readonly controller: FactoryPortableMountedAgentHandoffProducerResultV1["controller"];
+  stop(): Promise<void>;
+}
+
+type RuntimeMountedOntologyBootstrapHandoffAcquirer = (input: {
+    readonly taskId: string;
+    readonly runId: string;
+    readonly attemptId: `attempt_${string}`;
+    readonly runType: "ontology-bootstrap";
+    readonly retryGeneration: 0;
+  }) => Promise<unknown>;
+
 async function launchOntologyBootstrapRun(
   input: HandleAgentOntologyBootstrapRouteInput,
   launchInput: LaunchInput
@@ -87,97 +107,263 @@ async function launchOntologyBootstrapRun(
     ]));
   }
 
-  const initialized = await input.runtime.initializeDefaultIdentity({
-    workspaceId: mountedWorkspace.workspaceId,
-    initializedBy: input.actor.id
-  });
-  if (!initialized.ok) {
-    return json(500, diagnostic("Agent identity could not be initialized.", [
-      "inspect the local agent runtime configuration"
-    ]));
+  const mountedHandoff = await mountedOntologyBootstrapHandoff(input, launchInput);
+  if (!mountedHandoff.ok) return json(503, mountedHandoff.body);
+
+  try {
+    try {
+      await preflightPortableMountedAgentHandoffBinding({
+        binding: mountedHandoff.binding,
+        controller: mountedHandoff.controller,
+        taskId: launchInput.taskId,
+        attemptId: buildTaskAttemptId({
+          taskId: launchInput.taskId,
+          runType: "ontology-bootstrap",
+          retryGeneration: 0
+        }),
+        runId: launchInput.runId,
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      });
+    } catch {
+      return json(503, diagnostic("Ontology bootstrap mounted authority is unavailable or no longer current.", [
+        "restore the mounted workspace and retry the ontology bootstrap launch"
+      ]));
+    }
+
+    const initialized = await input.runtime.initializeDefaultIdentity({
+      workspaceId: mountedWorkspace.workspaceId,
+      initializedBy: input.actor.id
+    });
+    if (!initialized.ok) {
+      return json(500, diagnostic("Agent identity could not be initialized.", [
+        "inspect the local agent runtime configuration"
+      ]));
+    }
+
+    const taskReady = await ensureTask(input, launchInput.taskId);
+    if (!taskReady.ok) {
+      return json(500, taskReady.body);
+    }
+
+    const legacyRuntime = createLegacyImportRuntime({
+      mountedWorkspace,
+      actor: input.actor
+    });
+    const inspected = await legacyRuntime.inspect({
+      sourceCollectionId: launchInput.sourceCollectionId,
+      label: "Old Cestus archive",
+      sourceRoot: launchInput.sourceRoot,
+      scanBatchId: launchInput.scanBatchId
+    });
+    if (!inspected.ok) {
+      return json(500, legacyFailureDiagnostic(inspected.error.message, inspected.error.allowedRepairActions));
+    }
+
+    const report = await legacyRuntime.report({
+      sourceCollectionId: launchInput.sourceCollectionId,
+      legacyReportId: inspected.legacyReportId
+    });
+    if (!report.ok) {
+      return json(500, legacyFailureDiagnostic(report.error.message, report.error.allowedRepairActions));
+    }
+
+    const reportEventId = await canonicalReportEventId(input.handle.ledger, report);
+    if (reportEventId === undefined) {
+      return json(500, diagnostic("Ontology bootstrap requires one exact canonical staged report ledger binding.", [
+        "rerun legacy inspection and verify the staged report event"
+      ]));
+    }
+
+    const runReady = await ensureRun(input, launchInput, report, reportEventId);
+    if (!runReady.ok) {
+      return json(500, runReady.body);
+    }
+
+    let result: Awaited<ReturnType<typeof runOntologyBootstrapResidentWorkflow>>;
+    try {
+      const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
+      const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
+      result = await runOntologyBootstrapResidentWorkflow({
+        ledger: input.handle.ledger,
+        actor: residentAgentActor,
+        residentAgentId,
+        runId: launchInput.runId,
+        taskId: launchInput.taskId,
+        sourceCollectionId: launchInput.sourceCollectionId,
+        stagedReport: {
+          sourceCollectionId: report.report.sourceCollectionId,
+          scanBatchId: report.report.scanBatchId,
+          legacyReportId: report.report.legacyReportId,
+          reportHash: report.report.reportHash
+        },
+        reportEventId,
+        derivativeStore: mountedWorkspace.derivativeStore,
+        handoffMaterialStore: mountedHandoff.binding.materialStore,
+        handoffManifestStore: mountedHandoff.binding.manifestStore,
+        handoffAuthorityWitness: mountedHandoff.binding.authorityWitness,
+        review: report.review,
+        evidenceLinks,
+        selectedCandidateIds,
+        importBatchId: launchInput.importBatchId,
+        ...(launchInput.stagingBatchId === undefined ? {} : { stagingBatchId: launchInput.stagingBatchId }),
+        ...(launchInput.maxCandidatesPerBundle === undefined ? {} : {
+          maxCandidatesPerBundle: launchInput.maxCandidatesPerBundle
+        }),
+        now: input.now
+      });
+
+      if (!result.ok) {
+        return json(500, diagnostic(result.message, ["inspect ontology bootstrap agent diagnostics"]));
+      }
+      if (result.handoffEventIds.length > 0) {
+        await consumeMountedHandoffAuthorityController(mountedHandoff.controller, result.handoffEventIds);
+      }
+    } catch {
+      return json(503, diagnostic("Ontology bootstrap mounted authority is unavailable or no longer current.", [
+        "restore the mounted workspace and retry the ontology bootstrap launch"
+      ]));
+    }
+
+    if (!result.ok) {
+      return json(500, diagnostic("Ontology bootstrap handoff did not complete safely.", ["inspect ontology bootstrap agent diagnostics"]));
+    }
+    const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
+    const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
+
+    return json(200, routeDto({
+      generatedAt: input.now(),
+      taskId: launchInput.taskId,
+      runId: launchInput.runId,
+      reviewBundle: result.reviewBundle,
+      reviewBundleHash: result.reviewBundleHash,
+      pendingApprovalToolRequestIds: result.pendingApprovalToolRequestIds,
+      requestedCandidateIds: launchInput.selectedCandidateIds,
+      selectedCandidateIds
+    }));
+  } finally {
+    await mountedHandoff.stop().catch(() => undefined);
   }
+}
 
-  const taskReady = await ensureTask(input, launchInput.taskId);
-  if (!taskReady.ok) {
-    return json(500, taskReady.body);
+async function mountedOntologyBootstrapHandoff(
+  input: HandleAgentOntologyBootstrapRouteInput,
+  launchInput: LaunchInput
+): Promise<
+  | ({ readonly ok: true } & RuntimeMountedOntologyBootstrapHandoff)
+  | { readonly ok: false; readonly body: unknown }
+> {
+  const acquire = mountedOntologyBootstrapHandoffAcquirer(input.runtime);
+  if (acquire === undefined) {
+    return {
+      ok: false,
+      body: diagnostic("Ontology bootstrap requires a current mounted authority lifecycle from runtime composition.", [
+        "restore the mounted workspace and retry the ontology bootstrap launch"
+      ])
+    };
   }
-
-  const legacyRuntime = createLegacyImportRuntime({
-    mountedWorkspace,
-    actor: input.actor
-  });
-  const inspected = await legacyRuntime.inspect({
-    sourceCollectionId: launchInput.sourceCollectionId,
-    label: "Old Cestus archive",
-    sourceRoot: launchInput.sourceRoot,
-    scanBatchId: launchInput.scanBatchId
-  });
-  if (!inspected.ok) {
-    return json(500, legacyFailureDiagnostic(inspected.error.message, inspected.error.allowedRepairActions));
+  try {
+    const acquiredHandoff = await acquire({
+      taskId: launchInput.taskId,
+      runId: launchInput.runId,
+      attemptId: buildTaskAttemptId({
+        taskId: launchInput.taskId,
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      }),
+      runType: "ontology-bootstrap",
+      retryGeneration: 0
+    });
+    const handoff = normalizeRuntimeMountedOntologyBootstrapHandoff(acquiredHandoff);
+    if (handoff === undefined) throw new Error("invalid mounted handoff");
+    return Object.freeze({
+      ok: true,
+      binding: handoff.binding,
+      controller: handoff.controller,
+      stop: handoff.stop
+    });
+  } catch {
+    return {
+      ok: false,
+      body: diagnostic("Ontology bootstrap requires a current mounted authority lifecycle.", [
+        "restore the mounted workspace and retry the ontology bootstrap launch"
+      ])
+    };
   }
+}
 
-  const report = await legacyRuntime.report({
-    sourceCollectionId: launchInput.sourceCollectionId,
-    legacyReportId: inspected.legacyReportId
-  });
-  if (!report.ok) {
-    return json(500, legacyFailureDiagnostic(report.error.message, report.error.allowedRepairActions));
+function mountedOntologyBootstrapHandoffAcquirer(
+  runtime: unknown
+): RuntimeMountedOntologyBootstrapHandoffAcquirer | undefined {
+  const candidate = ownDataProperty(runtime, "acquireMountedOntologyBootstrapHandoff");
+  return isRuntimeMountedOntologyBootstrapHandoffAcquirer(candidate) ? candidate : undefined;
+}
+
+function isRuntimeMountedOntologyBootstrapHandoffAcquirer(
+  value: unknown
+): value is RuntimeMountedOntologyBootstrapHandoffAcquirer {
+  return typeof value === "function";
+}
+
+function isRuntimeMountedOntologyBootstrapHandoff(
+  value: unknown
+): value is RuntimeMountedOntologyBootstrapHandoff {
+  return isObject(ownDataProperty(value, "binding")) &&
+    isObject(ownDataProperty(value, "controller")) &&
+    isStop(value);
+}
+
+function normalizeRuntimeMountedOntologyBootstrapHandoff(
+  value: unknown
+): RuntimeMountedOntologyBootstrapHandoff | undefined {
+  if (!hasExactRuntimeMountedOntologyBootstrapHandoffDescriptors(value)) return undefined;
+
+  const binding = ownDataProperty(value, "binding");
+  const controller = ownDataProperty(value, "controller");
+  const stop = ownDataProperty(value, "stop");
+  const normalized = Object.freeze({ binding, controller, stop });
+  return isRuntimeMountedOntologyBootstrapHandoff(normalized) ? normalized : undefined;
+}
+
+function hasExactRuntimeMountedOntologyBootstrapHandoffDescriptors(value: unknown): value is object {
+  if (!isObject(value)) return false;
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype || !Object.isFrozen(value)) return false;
+    const propertyNames = Object.getOwnPropertyNames(value);
+    if (
+      propertyNames.length !== 3 ||
+      !propertyNames.includes("binding") ||
+      !propertyNames.includes("controller") ||
+      !propertyNames.includes("stop") ||
+      Object.getOwnPropertySymbols(value).length !== 0
+    ) {
+      return false;
+    }
+    return propertyNames.every((propertyName) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, propertyName);
+      return descriptor !== undefined && descriptor.enumerable && !descriptor.configurable && !descriptor.writable && "value" in descriptor;
+    });
+  } catch {
+    return false;
   }
+}
 
-  const reportEventId = await canonicalReportEventId(input.handle.ledger, report);
-  if (reportEventId === undefined) {
-    return json(500, diagnostic("Ontology bootstrap requires one exact canonical staged report ledger binding.", [
-      "rerun legacy inspection and verify the staged report event"
-    ]));
+function isStop(value: unknown): value is { readonly stop: () => Promise<void> } {
+  return typeof ownDataProperty(value, "stop") === "function";
+}
+
+function ownDataProperty(value: unknown, key: string): unknown | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
+  } catch {
+    return undefined;
   }
+}
 
-  const runReady = await ensureRun(input, launchInput, report, reportEventId);
-  if (!runReady.ok) {
-    return json(500, runReady.body);
-  }
-
-  const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
-  const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
-  const result = await runOntologyBootstrapResidentWorkflow({
-    ledger: input.handle.ledger,
-    actor: residentAgentActor,
-    residentAgentId,
-    runId: launchInput.runId,
-    taskId: launchInput.taskId,
-    sourceCollectionId: launchInput.sourceCollectionId,
-    stagedReport: {
-      sourceCollectionId: report.report.sourceCollectionId,
-      scanBatchId: report.report.scanBatchId,
-      legacyReportId: report.report.legacyReportId,
-      reportHash: report.report.reportHash
-    },
-    reportEventId,
-    derivativeStore: mountedWorkspace.derivativeStore,
-    review: report.review,
-    evidenceLinks,
-    selectedCandidateIds,
-    importBatchId: launchInput.importBatchId,
-    ...(launchInput.stagingBatchId === undefined ? {} : { stagingBatchId: launchInput.stagingBatchId }),
-    ...(launchInput.maxCandidatesPerBundle === undefined ? {} : {
-      maxCandidatesPerBundle: launchInput.maxCandidatesPerBundle
-    }),
-    now: input.now
-  });
-
-  if (!result.ok) {
-    return json(500, diagnostic(result.message, ["inspect ontology bootstrap agent diagnostics"]));
-  }
-
-  return json(200, routeDto({
-    generatedAt: input.now(),
-    taskId: launchInput.taskId,
-    runId: launchInput.runId,
-    reviewBundle: result.reviewBundle,
-    reviewBundleHash: result.reviewBundleHash,
-    pendingApprovalToolRequestIds: result.pendingApprovalToolRequestIds,
-    requestedCandidateIds: launchInput.selectedCandidateIds,
-    selectedCandidateIds
-  }));
+function isObject(value: unknown): value is object {
+  return typeof value === "object" && value !== null;
 }
 
 async function canonicalReportEventId(
