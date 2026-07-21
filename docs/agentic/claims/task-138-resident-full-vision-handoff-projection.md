@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** candidate pending fresh dual review
+- **Status:** repairing after fresh dual-review defects
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -160,3 +160,30 @@ and fallback writes are prohibited.
   residue before this claim-only transition, and no provider, credential,
   external system, fallback write, destructive history action, or product
   release record was used.
+
+## Fresh Review Repair
+
+- `RV-1-E-893` returns Task138-H to `implementing` after both fresh reviewers
+  rejected candidate `c6e508b10fad9f949e616687e7159b2fbd8a9c64` on three
+  bounded defects: hostile pre-normalization identity/trap handling,
+  terminal-only lifecycle classification, and discarded safe diagnostic
+  evidence.
+- This repair starts from exact clean base
+  `aea32bf7bc957bd15c5f50981700ea8b4199362e`, retains the frozen three-path
+  scope, and first adds causal coverage without changing production source.
+  The tests require a fixed fallback identity for invalid top-level input,
+  containment of descriptor/prototype Proxy traps, exact ready/failed
+  terminal-only `terminal-consistent` mapping, and safe event-ID/SHA-256
+  diagnostic evidence filtering without raw messages or unsafe values.
+- Causal RED command:
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`.
+  It exited `1` with **1 failed file / 7 failed / 17 passed**. The two exact
+  ready/failed terminal-only cases returned `handoff-recorded`; invalid input
+  retained hostile top-level `runId`; descriptor and prototype Proxy traps
+  escaped from `inferTargetIdentityWithoutObservation`; and both safe
+  diagnostic-evidence cases received empty event/hash arrays. No pre-existing
+  test failed, no production source changed, and no provider, credential,
+  external system, fallback write, or unrelated verifier participated.
+- Minimal GREEN evidence is recorded below after the exact focused execution.
+  This repair is not approval, product integration, strict record 28, or
+  release; the frontier remains **27 of 29**.
