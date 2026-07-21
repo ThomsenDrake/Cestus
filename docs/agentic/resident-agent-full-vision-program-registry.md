@@ -25944,3 +25944,43 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
   unchanged.
+
+## RV-1-E-895 — Task138-H second fresh review defects; bounded repair authorized
+
+- Recorded at: 2026-07-21T18:44:55Z
+- Fresh architecture review instance
+  `df2f06a2-4ca5-49a5-a3c8-70b17cdbc484` and fresh executability review
+  instance `f3d8e242-9fd1-44de-a7f6-414c52e6daa7` both return
+  `NEEDS_CHANGES` for exact repaired candidate
+  `54f038cac08fe10bb0d62b7cedb641de45138598`. The candidate is not approved,
+  integrated, released, or eligible for strict record 28.
+- Architecture scrutiny reproduces four P1 gaps: matching started-event
+  `runId`/`taskId` identities are copied without the repository secret-safety
+  predicate; plain-own schema-malformed event payload/context/type data can
+  escape post-normalization as raw exceptions; diagnostic event-ID filtering
+  enforces syntax but not secret safety; and an exact idempotent recorded retry
+  can make terminal-only lifecycle classification use the ignored retry ID
+  rather than the released projector's authoritative recorded event. The
+  executable reviewer independently reproduces the malformed-event escape and
+  otherwise reproduces every required deterministic gate.
+- The existing Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for safe run/task identities,
+  malformed payload/context/type containment, secret-safe diagnostic IDs, and
+  exact-recorded-retry terminal classification; then it may implement the
+  minimal fail-closed GREEN by reusing released validators/projection evidence
+  without permissive event parsing or weakened assertions.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The new exact candidate must rerun focused/cross-boundary, standalone
+  typecheck, factory, V4 assurance/contract/repository prefix, full
+  differential, diff/scope/ancestry/dependency/clean gates, then receive a
+  completely new architecture/executability review pair. Neither current
+  reviewer may repair its own finding and no earlier verdict can approve new
+  bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
