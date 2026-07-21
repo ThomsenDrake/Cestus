@@ -85,5 +85,11 @@ and fallback writes are prohibited.
 
 ## RED/GREEN Evidence
 
-- RED: pending production-shaped test commit.
+- RED: the exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exited `1` with **1 failed file / 0 tests collected**. The sole diagnostic
+  was `Cannot find module '../src/agent-handoff-projection.js'` at the new test
+  file's production import (line 18), proving the Task138 adapter is absent;
+  no test syntax, fixture, dependency, provider, credential, or unrelated
+  failure was reported.
 - GREEN: pending minimal adapter commit.
