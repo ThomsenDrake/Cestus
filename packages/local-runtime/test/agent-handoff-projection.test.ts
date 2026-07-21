@@ -135,6 +135,57 @@ describe("buildResidentHandoffDto", () => {
     expect(stores.manifestStore.put).not.toHaveBeenCalled();
   });
 
+  it("closes the whole DTO for a parser-valid but secret-unsafe final output step ID", async () => {
+    const unsafeStepId = "step_x-private-key";
+    const fixture = handoffFixture({ finalOutputStepId: unsafeStepId });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeStepId)).toBe(false);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeStepId);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeStepId);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["safeSummary", "/opt/cestus/handoffs/task138/summary.json"],
+    ["artifactId", "C:\\Cestus\\handoffs\\artifact-138"],
+    ["artifactKind", "\\\\cestus-host\\resident-share\\artifact-kind"],
+    ["schemaId", "/srv/cestus/schemas/ontology-bootstrap.json"],
+    ["artifactSafeSummary", "D:\\Cestus\\handoffs\\artifact-summary.txt"],
+    ["nextSafeActionLabel", "\\\\cestus-host\\resident-share\\review-action"]
+  ] as const)("closes the whole DTO for an accepted mounted path in %s", async (field, unsafePath) => {
+    const fixture = handoffFixture(mountedBrowserStringOptions(field, unsafePath));
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafePath)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafePath);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafePath);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafePath);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
   it("projects recorded-only V2 lifecycle after restart without synthesizing terminal provenance", async () => {
     const fixture = handoffFixture();
     const events = fixture.recordedEvents;
@@ -712,6 +763,32 @@ describe("buildResidentHandoffDto", () => {
   });
 });
 
+type MountedBrowserStringField =
+  | "safeSummary"
+  | "artifactId"
+  | "artifactKind"
+  | "schemaId"
+  | "artifactSafeSummary"
+  | "nextSafeActionLabel";
+
+interface HandoffFixtureOptions {
+  readonly legacy?: boolean;
+  readonly provenanceEventIds?: Partial<Record<ProvenanceEventIdField, string>>;
+  readonly runId?: string;
+  readonly taskId?: string;
+  readonly sourceEventId?: string;
+  readonly status?: BuildSpecialistHandoffManifestInput["status"];
+  readonly finalOutputStepId?: string;
+  readonly safeSummary?: string;
+  readonly outputArtifact?: Partial<{
+    readonly artifactId: string;
+    readonly artifactKind: string;
+    readonly schemaId: string;
+    readonly safeSummary: string;
+  }>;
+  readonly nextSafeActionLabel?: string;
+}
+
 interface ProjectionFixture {
   readonly runId: string;
   readonly taskId: string;
@@ -816,14 +893,7 @@ function expectClosed(
   expect(dto.diagnostics).toContainEqual(expect.objectContaining({ category }));
 }
 
-function handoffFixture(options: {
-  readonly legacy?: boolean;
-  readonly provenanceEventIds?: Partial<Record<ProvenanceEventIdField, string>>;
-  readonly runId?: string;
-  readonly taskId?: string;
-  readonly sourceEventId?: string;
-  readonly status?: BuildSpecialistHandoffManifestInput["status"];
-} = {}): ProjectionFixture {
+function handoffFixture(options: HandoffFixtureOptions = {}): ProjectionFixture {
   const runId = options.runId ?? "run_task138_projection_001";
   const taskId = options.taskId ?? "task_task138_projection_001";
   const status = options.status ?? "ready-for-review";
@@ -835,13 +905,21 @@ function handoffFixture(options: {
     ? `evt_run_failed_${runId}`
     : `evt_run_completed_${runId}`);
   const taskStatusEventId = options.provenanceEventIds?.taskStatusEventId ?? `evt_task_completed_${runId}`;
-  const finalOutputStepId = `step_final_output_${runId}`;
+  const finalOutputStepId = options.finalOutputStepId ?? `step_final_output_${runId}`;
   const outputArtifact = {
-    artifactId: "artifact_ontology_proposal_bundle",
-    artifactKind: "ontology-proposal-bundle",
-    schemaId: "ontology-bootstrap-handoff.v1",
+    artifactId: options.outputArtifact?.artifactId ?? "artifact_ontology_proposal_bundle",
+    artifactKind: options.outputArtifact?.artifactKind ?? "ontology-proposal-bundle",
+    schemaId: options.outputArtifact?.schemaId ?? "ontology-bootstrap-handoff.v1",
     artifactHash: hash222,
-    safeSummary: "Evidence-bound ontology proposals are ready for review."
+    safeSummary: options.outputArtifact?.safeSummary ?? "Evidence-bound ontology proposals are ready for review."
+  } as const;
+  const safeSummary = options.safeSummary ?? safeSummaryFor(status);
+  const nextSafeAction = {
+    actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
+    label: options.nextSafeActionLabel ?? (status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle"),
+    kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
+    effect: status === "waiting-for-approval" ? "request-approval" : "none",
+    artifactId: outputArtifact.artifactId
   } as const;
   const contextPack = {
     contextPackId: "ontology-bootstrap-context.v1",
@@ -856,7 +934,7 @@ function handoffFixture(options: {
   } as const;
   const material = buildSpecialistHandoffMaterial({
     status,
-    safeSummary: safeSummaryFor(status),
+    safeSummary,
     contextPackRefs: [contextPack],
     promptArtifactHash: hash111,
     outputArtifacts: [outputArtifact],
@@ -864,13 +942,7 @@ function handoffFixture(options: {
     approvalRequirements: status === "waiting-for-approval"
       ? [{ approvalClass: "human-review", reason: "Independent review is required." }]
       : [],
-    nextSafeActions: [{
-      actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
-      label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
-      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
-      effect: status === "waiting-for-approval" ? "request-approval" : "none",
-      artifactId: outputArtifact.artifactId
-    }],
+    nextSafeActions: [nextSafeAction],
     ...(status === "failed" ? {
       failure: {
         category: "model-output-invalid",
@@ -910,7 +982,7 @@ function handoffFixture(options: {
     residentAgentId: "agent_default",
     generatedAt: "2026-07-21T14:01:00.000Z",
     status,
-    safeSummary: safeSummaryFor(status),
+    safeSummary,
     stateKind: status === "failed" ? "failed" : status === "ready-for-review" ? "completed" : "resumable",
     finalOutputStepId,
     finalOutputEventId,
@@ -922,13 +994,7 @@ function handoffFixture(options: {
     approvalRequirements: status === "waiting-for-approval"
       ? [{ approvalClass: "human-review", reason: "Independent review is required." }]
       : [],
-    nextSafeActions: [{
-      actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
-      label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
-      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
-      effect: status === "waiting-for-approval" ? "request-approval" : "none",
-      artifactId: outputArtifact.artifactId
-    }],
+    nextSafeActions: [nextSafeAction],
     ...(status === "failed" ? {
       failure: {
         category: "model-output-invalid",
@@ -1045,6 +1111,29 @@ function handoffFixture(options: {
     recordedEvents,
     completeEvents
   });
+}
+
+function mountedBrowserStringOptions(
+  field: MountedBrowserStringField,
+  unsafePath: string
+): HandoffFixtureOptions {
+  switch (field) {
+    case "safeSummary": return { safeSummary: unsafePath };
+    case "artifactId": return { outputArtifact: { artifactId: unsafePath } };
+    case "artifactKind": return { outputArtifact: { artifactKind: unsafePath } };
+    case "schemaId": return { outputArtifact: { schemaId: unsafePath } };
+    case "artifactSafeSummary": return { outputArtifact: { safeSummary: unsafePath } };
+    case "nextSafeActionLabel": return { nextSafeActionLabel: unsafePath };
+  }
+}
+
+function stringLeaves(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(stringLeaves);
+  if (value !== null && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap(stringLeaves);
+  }
+  return [];
 }
 
 function safeSummaryFor(status: BuildSpecialistHandoffManifestInput["status"]): string {
