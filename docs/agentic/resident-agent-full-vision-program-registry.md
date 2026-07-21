@@ -25586,3 +25586,120 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `54eee1e8`. V1-V4, raw records 1-26, all 29 IDs/order, finite mappings,
   prior evidence, calibrated mission state, and `neo` remain immutable. No
   integration, release record, push, or external effect occurs here.
+
+## RV-1-E-887 — W1-123 integrated and released
+
+- Recorded at: 2026-07-21T02:22:29Z
+- The complete preserved Task123 history through exact candidate
+  `54eee1e86d1408b4f83b427a6cb0513ea7932a8e` is integrated without history
+  rewrite at merge `f9faba8d81bf4769be4e601865b610c716813029`.
+  Fresh final architecture and executability reviewers
+  `019f826a-cee4-7631-8a7e-2af33b36febf` and
+  `019f826a-d52f-72d3-a789-dab9bde70dc8` both approve with no reproduced
+  P0/P1.
+- Integrated bytes pass focused **4 files / 64 tests**, exact cross-boundary
+  **6 files / 154 tests**, standalone typecheck, mission-state **20/20**,
+  Task136 assurance **20/20**, all four exact V4 markers, factory readiness,
+  diff hygiene, exact nine-path product scope, clean tracked/untracked state,
+  and real non-symlinked dependencies with executable local Vitest 4.1.9.
+- Full `npm test` and `npm run verify` retain the inherited semantic cohort of
+  **9 failing files / 45 failing tests**, with no Task123 failure. Aggregate
+  load also times out three cases in the untouched
+  `check-resident-task-prerequisites.test.ts`; that test and its production
+  checker are byte-identical to the record-26 base and pass **18/18** in
+  isolation, so the observed aggregate total **10 files / 48 tests / 2,860
+  passes / 5 skips** is load variance, not a candidate regression. Verify
+  completes typecheck before reproducing the same differential.
+- Status advances W1-123 `approved -> integrated -> released`. Strict V4
+  release record 27 below activates the finite CF1-HR and Task122 current-HEAD
+  ownership transfers while preserving every historical release disposition
+  and blob. No provider, credential, network, external effect, push, or `neo`
+  action occurs.
+
+## Task136 dispatch release v4: W1-123-BOOTSTRAP-HANDOFF
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "W1-123-BOOTSTRAP-HANDOFF",
+  "candidateSha": "54eee1e86d1408b4f83b427a6cb0513ea7932a8e",
+  "reviews": [
+    {
+      "threadId": "019f826a-cee4-7631-8a7e-2af33b36febf",
+      "candidateSha": "54eee1e86d1408b4f83b427a6cb0513ea7932a8e",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "019f826a-d52f-72d3-a789-dab9bde70dc8",
+      "candidateSha": "54eee1e86d1408b4f83b427a6cb0513ea7932a8e",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "f9faba8d81bf4769be4e601865b610c716813029",
+  "releaseEventId": "task136-release-v4-W1-123-BOOTSTRAP-HANDOFF",
+  "prerequisites": [
+    {
+      "cardId": "CF1-HR",
+      "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+      "releaseEventId": "task136-release-v4-CF1-HR"
+    },
+    {
+      "cardId": "Task121",
+      "integrationSha": "e3bf834d1adeca8146cd26d5c2dbce7a54a9626a",
+      "releaseEventId": "task136-release-v4-Task121"
+    },
+    {
+      "cardId": "Task122",
+      "integrationSha": "0d736e98100250df1a16a53dbfdc630536ca29d1",
+      "releaseEventId": "task136-release-v4-Task122"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/agent/src/ontology-bootstrap-workflow.ts",
+      "disposition": "owned",
+      "blobSha": "5b3d2acf801bf2b10d7c0e2cb9c2bf68088efd56"
+    },
+    {
+      "path": "packages/agent/test/ontology-bootstrap-workflow.test.ts",
+      "disposition": "owned",
+      "blobSha": "e9079d5d6818701e9aa19e60c1819e25a16914c1"
+    },
+    {
+      "path": "packages/agent/src/specialist-handoff-authority.ts",
+      "disposition": "owned",
+      "blobSha": "d99a09b2c28b40cfed6d8ebc87ecd9c46f0e5e81"
+    },
+    {
+      "path": "packages/agent/test/specialist-handoff-authority.test.ts",
+      "disposition": "owned",
+      "blobSha": "96fc180be925bb394e8590e8065a6364e1326b93"
+    },
+    {
+      "path": "packages/local-runtime/src/agent-ontology-bootstrap-routes.ts",
+      "disposition": "owned",
+      "blobSha": "0e393178d2d08ca03dee6fa5901ece13c8929138"
+    },
+    {
+      "path": "packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts",
+      "disposition": "owned",
+      "blobSha": "529cde6e19860dd36f5c46a1941ec0122f9942fd"
+    },
+    {
+      "path": "docs/agentic/claims/task-123-resident-full-vision-bootstrap-handoff.md",
+      "disposition": "owned",
+      "blobSha": "080cfe0ce125d54428c7948c545a7e40fdc30a00"
+    },
+    {
+      "path": "packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts",
+      "disposition": "owned",
+      "blobSha": "522fc920a2a5d5d5e18edca26ded2bb7dde9e23d"
+    },
+    {
+      "path": "packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts",
+      "disposition": "owned",
+      "blobSha": "b27121a00b3109040a3221ab8ddfc8f2b965d63a"
+    }
+  ]
+}
+```
