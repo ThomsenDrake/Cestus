@@ -26108,3 +26108,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
   unchanged.
+
+## RV-1-E-899 — Task138-H provenance-ID review defect; bounded repair authorized
+
+- Recorded at: 2026-07-21T20:06:17Z
+- Fresh architecture review instance
+  `85261d89-5f39-43b7-b218-c56c883e96d8` and fresh executable review
+  instance `7f592943-93c5-488b-a8d5-1b645e5cbd28` both return
+  `NEEDS_CHANGES` for exact candidate
+  `cedca3f48b20513b93ef876461c1510adb73fcb4`. The candidate is not approved,
+  integrated, released, or eligible for strict record 28.
+- Both reviewers independently construct a fully canonical seven-event V2
+  completion chain that passes the released ontology parser but uses a
+  syntax-valid event ID rejected by `isAgentSecretSafeText`. Mounted readback
+  completes and the unsafe ID is copied into browser provenance. The exact gap
+  is the five event-ID fields copied by `provenanceFromReadback`:
+  `finalOutputEventId`, `preparedEventId`, `recordedEventId`,
+  `terminalRunEventId`, and `taskStatusEventId`. Executable scrutiny confirms
+  other browser-visible identity, artifact/action/summary, source/related, and
+  diagnostic fields already consume their released safety owners or explicit
+  predicate.
+- The existing non-reviewer repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage over all five exact provenance
+  event-ID positions using fully parser-valid mounted completion chains; then
+  it may add the minimal fail-closed predicate before emitting provenance.
+  Final-output step ID, hashes, released parsers, schemas, source/related and
+  diagnostic filtering, lifecycle, authority, and existing assertions remain
+  unchanged. No broad recursive sanitizer or silent provenance truncation is
+  authorized: any unsafe provenance binding closes the entire DTO.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The new candidate must rerun focused/cross-boundary, standalone typecheck,
+  factory, V4 assurance/contract/repository prefix, full differential,
+  scope/ancestry/dependency/clean gates, then receive a completely new fresh
+  dual-review pair. No prior reviewer may repair or approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
