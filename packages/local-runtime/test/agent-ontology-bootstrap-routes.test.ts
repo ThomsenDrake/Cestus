@@ -19,6 +19,7 @@ let sourceRoot: string;
 let workspaceRoot: string;
 let handler: LocalRuntimeHttpHandler | undefined;
 let config: ResolvedLocalRuntimeConfig;
+let hostileBindingAccessorRead = false;
 
 const baseOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) =>
   createAgentRuntime({
@@ -81,7 +82,44 @@ const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle
   });
 };
 
+const hostileOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) => {
+  const runtime = baseOntologyBootstrapRouteRuntimeFactory({
+    handle,
+    actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
+    now
+  });
+  return Object.freeze({
+    ...runtime,
+    async acquireMountedOntologyBootstrapHandoff() {
+      const handoff: object = Object.create(null);
+      Object.defineProperties(handoff, {
+        schemaVersion: {
+          enumerable: true,
+          value: "factory-portable-mounted-agent-handoff-result.v1"
+        },
+        binding: {
+          enumerable: true,
+          get() {
+            hostileBindingAccessorRead = true;
+            throw new Error("hostile binding accessor must not be read");
+          }
+        },
+        controller: {
+          enumerable: true,
+          value: Object.freeze({})
+        },
+        stop: {
+          enumerable: true,
+          value: async () => undefined
+        }
+      });
+      return Object.freeze(handoff);
+    }
+  });
+};
+
 beforeEach(() => {
+  hostileBindingAccessorRead = false;
   cwd = mkdtempSync(join(tmpdir(), "cestus-bootstrap-route-"));
   sourceRoot = mkdtempSync(join(tmpdir(), "cestus-bootstrap-source-"));
   workspaceRoot = join(cwd, "workspace");
@@ -178,6 +216,7 @@ describe("ontology-bootstrap agent routes", () => {
       now: () => "2026-07-08T16:00:00.000Z",
       agentRuntimeFactory: baseOntologyBootstrapRouteRuntimeFactory
     });
+    const eventsBefore = await durableEventIds(config);
 
     const launch = await handler({
       method: "POST",
@@ -199,6 +238,7 @@ describe("ontology-bootstrap agent routes", () => {
       ok: false,
       diagnostic: { message: expect.stringMatching(/mounted authority/i) }
     });
+    expect(await durableEventIds(config)).toEqual(eventsBefore);
     const types = await eventTypes(config);
     for (const type of [
       "agent.specialist-run.step.recorded",
@@ -209,6 +249,35 @@ describe("ontology-bootstrap agent routes", () => {
     ]) {
       expect(types).not.toContain(type);
     }
+  });
+
+  it("fails closed before every durable effect for a hostile runtime-mounted binding", async () => {
+    handler = createLocalRuntimeHttpHandler({
+      config,
+      actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" },
+      now: () => "2026-07-08T16:00:00.000Z",
+      agentRuntimeFactory: hostileOntologyBootstrapRouteRuntimeFactory
+    });
+    const eventsBefore = await durableEventIds(config);
+
+    const launch = await handler({
+      method: "POST",
+      url: "/api/agent/specialists/ontology-bootstrap/runs",
+      body: JSON.stringify({
+        taskId: "task_ontology_bootstrap_hostile",
+        runId: "run_ontology_bootstrap_hostile",
+        sourceCollectionId: "src_old_cestus",
+        sourceRoot,
+        scanBatchId: "scan_old_cestus_001",
+        importBatchId: "imp_old_cestus_001",
+        selectedCandidateIds: ["legacy_candidate_001"],
+        maxCandidatesPerBundle: 50
+      })
+    });
+
+    expect(launch.status).toBe(503);
+    expect(hostileBindingAccessorRead).toBe(false);
+    expect(await durableEventIds(config)).toEqual(eventsBefore);
   });
 
   it("requires exact canonical provenance before reusing a run", () => {
@@ -244,6 +313,15 @@ async function eventTypes(runtimeConfig: ResolvedLocalRuntimeConfig): Promise<re
   const ledger = new SQLiteEventLedger(runtimeConfig.storage.sqlitePath);
   try {
     return (await ledger.readAll()).map((event) => event.type);
+  } finally {
+    ledger.close();
+  }
+}
+
+async function durableEventIds(runtimeConfig: ResolvedLocalRuntimeConfig): Promise<readonly string[]> {
+  const ledger = new SQLiteEventLedger(runtimeConfig.storage.sqlitePath);
+  try {
+    return (await ledger.readAll()).map((event) => event.id);
   } finally {
     ledger.close();
   }

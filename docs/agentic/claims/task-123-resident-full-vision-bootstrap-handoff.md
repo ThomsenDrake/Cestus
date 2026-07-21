@@ -263,3 +263,30 @@ Status: `ready-for-review`
   exited `0`: **4 files / 58 tests passed**. The added authority and portable
   counterfactuals prove no-effect preflight plus later one-shot V2 consumption;
   the retained two workflow RED cases are now green.
+
+### V4 Recovery RED — Route Admission Before Durable Effects
+
+- After normal forward merge `ad32f7e844b6b52d935ad40381058a1a21dd18bb`
+  of clean program authority `951aadb9388d3374ccedb686ebedccefe8b23b68`,
+  the causal route tests reproduce the P1 from candidate
+  `68d09db346833d38286204e319c20352e6b6c539` without changing production
+  bytes.
+- Exact V4 command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `1`: **4 files / 59 tests**, **2 failed / 57 passed**.
+- An injected real route runtime with no mounted-handoff provider returned
+  `503` only after appending **13** durable events; the new full-ledger
+  snapshot requires an exact zero event delta. A hostile accessor-backed
+  structural handoff was also invoked by the route before the protected
+  portable preflight; its test requires that accessor to remain unread and the
+  same zero event delta. Both counterfactuals retain the real HTTP/runtime
+  entry path and require failure before identity, task, ingestion, run,
+  dossier/bootstrap, approval, material/manifest, or terminal effects.
+- Root cause: `launchOntologyBootstrapRun` obtains and preflights the opaque
+  mounted binding only after identity initialization, task creation,
+  ingestion inspection/report, and specialist-run setup. Its
+  `Partial<RuntimeMountedOntologyBootstrapHandoffProvider>` assertion also
+  reads an unverified structural runtime capability. GREEN must establish a
+  descriptor-checked runtime provider plus exact portable preflight directly
+  after mounted-workspace availability, preserve the same opaque binding for
+  the later workflow/V2 consumer, and stop it on every exit.
