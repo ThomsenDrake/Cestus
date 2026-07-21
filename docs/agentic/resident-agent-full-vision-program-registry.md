@@ -25812,3 +25812,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `Task138-H`, record 29 remains `Task136`, and Waves 3-5 have not started.
   V1-V4, raw records 1-27, all 29 IDs/order, prior evidence/history, and `neo`
   remain immutable.
+
+## RV-1-E-891 — Paused checkpoint prepared for explicit neo publication
+
+- Recorded at: 2026-07-21T13:54:51Z
+- The user explicitly supersedes RV-1-E-890's no-push/no-`neo` publication
+  hold and requests that all committed coordinator work be pushed directly to
+  `origin/neo`. This authority permits repository publication only; it does
+  not approve Task138-H as a product candidate or strict release record.
+- Task138-H pause checkpoint `05672a69bffccd0d75b9aacecdd0912f9f841ac3`
+  forward-merges pause authority at `4eed212447bc457481b8b923159cd1eca3874e6a`,
+  records fresh gate evidence through
+  `16eb076a62bdf8c1e361d19b61ddc5339fce2afe`, and joins program history without
+  rewrite at `363fcf9220a107e5f7add7ce9b39763baa2d9c52`.
+- Fresh Task138-H verification passes the exact **2 files / 53 tests**
+  cross-boundary suite, standalone typecheck, factory readiness, V4 assurance
+  **20/20**, all four contract markers, and diff hygiene. Fresh `npm run verify`
+  completes typecheck and reproduces the documented inherited aggregate cohort
+  of **10 failing files / 47 failing tests / 2,878 passes / 5 skips**; no
+  Task138-H test is in that cohort.
+- This publication checkpoint remains Task138-H `implementing`. It has no fresh
+  architecture/executability approval, is not product-integrated or released,
+  and does not create strict record 28. The strict frontier remains **27 of
+  29**; Task136 and Waves 3-5 remain unstarted.
+- Publication must use a history-preserving merge into local `neo`, then a
+  direct push to `origin/neo`, followed by exact local/remote SHA equality and
+  clean-worktree checks. No provider, credential, unrelated-system, destructive
+  history rewrite, or pull request is authorized by this event.
