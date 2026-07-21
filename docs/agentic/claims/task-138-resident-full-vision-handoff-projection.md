@@ -395,3 +395,32 @@ and fallback writes are prohibited.
   remains green, production source is unchanged, and no registry,
   ontology/schema/parser, provider, credential, external system, fallback
   write, or unrelated verifier participates.
+
+## Provenance Event-ID Minimal GREEN
+
+- `provenanceFromReadback` now returns no provenance unless all five exact
+  event-ID bindings satisfy `isAgentSecretSafeText`. The existing caller closes
+  the entire DTO when a selected readback cannot emit provenance and now
+  distinguishes a same-authority unsafe binding as `secret-safety-rejection`
+  from a genuine authority mismatch as `mount-authority-stale`. No provenance
+  field is silently omitted or truncated.
+- The change leaves `finalOutputStepId`, hashes, released parsers and schemas,
+  source/related and diagnostic filters, lifecycle classification, replay
+  authority, mounted reads, and all existing assertions unchanged. Every
+  rejected result retains only safe run/task identity, empty replay data, and
+  an `effect: "none"` repair action; both stores remain read-only.
+- Exact focused validation passes **1 file / 40 tests** and exact cross-boundary
+  validation passes **2 files / 76 tests**. Standalone `npm run typecheck`
+  emits `typecheck passed`; `npm run factory:check` emits
+  `factory-readiness passed`; V4 assurance passes **20/20**; and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers. Diff hygiene passes.
+- Full `npm run verify` completes typecheck and reports only the inherited
+  aggregate cohort: **10 failing files / 47 failing tests / 2,901 passes / 5
+  skips**. Neither Task138-H source nor test fails. Relative to the prior
+  48-failure run, the five provenance rows account for five additional passes
+  and one unrelated prerequisite timeout did not reproduce.
+- Repository mode remains pending until this atomic GREEN commit provides its
+  required clean checkout. This repair adds no registry, ontology/schema,
+  parser, broad sanitizer, writer, provider, credential, external system,
+  fallback, executable effect, integration, strict record 28, or release.
