@@ -447,3 +447,29 @@ and fallback writes are prohibited.
   credential, network, external system, fallback write, destructive history,
   integration, approval, strict record 28, or release. The frontier remains
   **27 of 29**.
+
+## Final Browser-String Firewall Causal RED
+
+- `RV-1-E-901` returns Task138-H to `implementing` from exact clean
+  forward-merged base `e87cb4810ccc6866af336ac0902b7c7d0975f00a` and
+  authorizes this final bounded repair without changing production source
+  first. The pre-change focused baseline passes **1 file / 40 tests**.
+- One canonical seven-event task-completed chain now carries a parser-valid
+  `finalOutputStepId` that fails the stronger `isAgentSecretSafeText`
+  predicate. Six further canonical mounted chains carry path-bearing values in
+  the emitted handoff `safeSummary`, artifact `artifactId`, `artifactKind`,
+  `schemaId`, artifact `safeSummary`, and next-safe-action label. The path rows
+  span accepted absolute Unix, Windows-drive, and UNC forms. The existing
+  material owner rejects `file://` before projection, so no false
+  otherwise-accepted file-URI chain is claimed; the authorized output
+  predicate must nevertheless reject that form.
+- Every row requires whole-DTO `secret-safety-rejection`, no provenance,
+  artifacts, source/related IDs, approvals, unsafe-value retention, writes, or
+  executable action. Mounted reads remain permitted and prove the defect lies
+  after canonical readback rather than at input normalization or storage.
+- Exact causal command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 7 failed / 40 passed**. Every new row reaches
+  `task-completed` and fails only at the required closed lifecycle assertion,
+  proving the browser DTO retains the stronger-secret or path-bearing leaf
+  after a canonical readback. Production source remains unchanged.
