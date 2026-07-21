@@ -406,3 +406,15 @@ Status: `ready-for-review`
   `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
   exits `0`: **4 files / 64 tests passed**, a **+1 passing-test delta** from
   the preceding 63-test candidate. Standalone `npm run typecheck` exits `0`.
+
+### V4 Compiler Recovery RED — Hostile Fixture Optional Runtime Reference
+
+- At clean registry-merge head `b6f028e46f98a73d1df268e6145aa221c08f7fa7`,
+  standalone `npm run typecheck` reproduces exactly:
+  `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts(365,60):
+  error TS18048: 'wakeRuntime' is possibly 'undefined'.`
+- The direct hostile-accessor fixture correctly retains its optional outer
+  cleanup reference for `finally`, but its issued-authority `stop` closure
+  captures that optional reference rather than the created runtime. This is a
+  claim-only compiler RED: no production, test, interface, behavior, or
+  contract byte changes before GREEN.
