@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** paused at bounded candidate checkpoint
+- **Status:** candidate pending fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -92,10 +92,14 @@ and fallback writes are prohibited.
   file's production import (line 18), proving the Task138 adapter is absent;
   no test syntax, fixture, dependency, provider, credential, or unrelated
   failure was reported.
-- GREEN: not yet admitted or claimed. The bounded candidate passed the exact
-  focused suite **17/17** and exact cross-boundary suite **53/53** after one
-  source repair. It remains subject to a fresh uninterrupted typecheck,
-  factory, verify, assurance/frontier, review, integration, and release gate.
+- GREEN: admitted on the exact published `neo` tree after the bounded candidate
+  again passed the exact focused suite **17/17** and exact cross-boundary suite
+  **53/53**. Fresh uninterrupted typecheck and factory readiness passed. The
+  standalone V4 assurance corpus passed **20/20**, contract mode emitted all
+  four exact markers, and repository mode executed the strict **27 commands / 27
+  records** prefix before the expected `expected 29 records, found 27` closure.
+  The candidate now awaits fresh architecture and executable review; it is not
+  approved, integrated as record 28, or released.
 
 ## Usage-Pause Checkpoint
 
@@ -131,3 +135,28 @@ and fallback writes are prohibited.
   files / 47 failing tests / 2,878 passes / 5 skips**. Neither Task138-H test
   nor its source is in the failure cohort. V4 standalone assurance passed
   **20/20** and contract mode emitted all four exact markers.
+
+## Resume Candidate Admission
+
+- The user explicitly resumed the program after the graceful usage pause. The
+  program and Task138-H worktrees were clean and fast-forwarded without rewrite
+  to published authority `adda53377f8e363979fc68dbc3d268759a67e404`.
+- The three Task138-H owned blobs at historical implementation checkpoint
+  `16eb076a62bdf8c1e361d19b61ddc5339fce2afe` exactly match the published
+  authority tree. The task branch and clean `neo` therefore have the same
+  candidate product bytes before this claim-only admission update.
+- Fresh admission evidence on those bytes is **17/17** focused, **53/53**
+  cross-boundary, `typecheck passed`, `factory-readiness passed`, V4 assurance
+  **20/20**, all four contract markers, and repository prefix marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27` followed only by the
+  expected 29-record closure.
+- Fresh `npm run verify` completed typecheck and reproduced the inherited
+  aggregate cohort as **10 failing files / 48 failing tests / 2,877 passes / 5
+  skips**. Task138-H is absent from every failing file. Because the task branch
+  and `neo` shared exact tree `adda5337` for this run, the aggregate result is
+  an inherited clean-tree result rather than a Task138-H differential.
+- Scope is exactly the frozen three owned paths; dependencies are real and
+  local (`node` 26.1.0, Vitest 4.1.9), the worktree had no tracked or untracked
+  residue before this claim-only transition, and no provider, credential,
+  external system, fallback write, destructive history action, or product
+  release record was used.
