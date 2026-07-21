@@ -25729,3 +25729,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   raw records 1-27, all 29 IDs/order, finite mappings, product bytes, prior
   evidence/history, and `neo` remain immutable. No new product release record,
   provider, credential, network, push, or external effect occurs.
+
+## RV-1-E-889 — Record-27 assurance integrated; Task138-H authorized
+
+- Recorded at: 2026-07-21T13:04:07Z
+- The same V4 assurance lineage preserves program-authority merge
+  `0941c28e223847839d853cc58348b4ac977dc915`, causal claim-only RED
+  `19a5e123258ecef158bdb53732561bc392184394`, changed-tactic claim checkpoint
+  `3b20a9066a9b0ab43e30bb16ac71fc913a63791b`, and exact clean GREEN candidate
+  `ecd795d0ddbc97ef43ff9046fea3707dfe0e931a`. The complete lineage is
+  integrated without history rewrite at
+  `e9dedba69b1393997c578cbdcffbb6d873fb31a0`.
+- Fresh read-only architecture and executability reviewers
+  `/root/record27_arch_review` and `/root/record27_exec_review` both return
+  `APPROVED` with no P0/P1. The executable review independently reproduces
+  the exact **17/20** causal RED, exact **18/20** masked-fixture checkpoint,
+  exact **20/20** GREEN, and the terminal repository output
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27` followed only by
+  `repository release closure incomplete: expected 29 records, found 27`.
+- Integrated bytes pass all four exact contract markers, standalone
+  typecheck, factory readiness, diff hygiene, exact two-path fixture/claim
+  scope, clean-state, real dependency, immutable-input, and no-product-byte
+  gates. Full-suite executions preserve the inherited semantic cohort; the
+  aggregate prerequisite timeout count varies under load while its unchanged
+  focused test passes **18/18**, and the assurance corpus is absent from every
+  failure cohort.
+- The three current-prefix fixtures now observe strict prefix 27. The coupled
+  repository closure/marker/call count also observe 27, while only the nested
+  historical W1 activation setup is bounded to the first 26 records so its
+  preactivation assertions remain historical and its synthetic activation
+  still reaches 27. Status advances record-27 assurance
+  `reviewing -> approved -> integrated`. This is not a product release record;
+  the strict release frontier remains **27 of 29**.
+- The next and only bounded product card is record 28 `Task138-H`. Its frozen
+  scope is exactly
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  The exact focused command is
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`;
+  the cross-boundary gate also includes
+  `packages/agent/test/specialist-handoff-projection.test.ts`. The V4 unfinished
+  card overrides the older plan's `handoff-runtime-projection` claim filename.
+- The Task138-H owner must start clean from the current program authority,
+  commit claim/RED/GREEN provenance, consume only released current interfaces,
+  project safe read-only handoff lifecycle state without raw payload or
+  fallback authority, and remain inside the exact three-path boundary.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+  Status advances Task138-H `claimed -> implementing`.
+- V1-V4, raw records 1-27, all 29 IDs/order, finite compatibility mappings,
+  prior releases/evidence, and `neo` remain immutable. No provider, credential,
+  network, push, external effect, Task138 integration, or record-28 release
+  occurs in this event.
