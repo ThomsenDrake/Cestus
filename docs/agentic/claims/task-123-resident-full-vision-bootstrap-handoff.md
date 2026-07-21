@@ -290,3 +290,33 @@ Status: `ready-for-review`
   descriptor-checked runtime provider plus exact portable preflight directly
   after mounted-workspace availability, preserve the same opaque binding for
   the later workflow/V2 consumer, and stop it on every exit.
+
+### V4 Recovery GREEN — Early Route Admission With Preserved Witness Currentness
+
+- The route now acquires the opaque runtime handoff immediately after mounted
+  workspace availability, descriptor-checks only own data capability fields,
+  and runs the exact portable preflight before identity, task, ingestion, run,
+  dossier/bootstrap, approval, material/manifest, or terminal work. No
+  `Partial` runtime assertion, route-side issuer, alternate store, controller,
+  witness, or factory composition was introduced.
+- The portable preflight still invokes
+  `preflightMountedSpecialistHandoffAuthorityWitness`: it authenticates the
+  exact issued WeakMap witness in `available` state and revalidates mounted
+  currentness before route effects. The same untouched witness is revalidated
+  again by the workflow immediately before bootstrap/handoff work and remains
+  the one V2 consumer input. Incremental cursor readback now has the same
+  finite unbound-event filter as initial derivation, while the retained
+  adversarial portable test still rejects unknown events bound to this task or
+  run before store I/O.
+- Scope distinction: the direct Task123 route tests establish the released
+  resident identity prerequisite and then prove exact zero ledger delta for
+  both a missing provider and a hostile accessor-backed structural binding.
+  The real high-level HTTP route proves its only prior delta is the released
+  parent `agent.identity.initialized` readiness event; it appends no task,
+  ingestion, run, Task123 bootstrap/dossier, approval, tool, material,
+  manifest, handoff, or terminal event before `503`.
+- GREEN focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exited `0`: **4 files / 61 tests passed**. This is a **+3 passing-test
+  delta** from the prior 58-test Task123 candidate and retains the causal RED
+  without alteration.

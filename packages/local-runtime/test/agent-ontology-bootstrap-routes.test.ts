@@ -13,6 +13,8 @@ import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../s
 import { isExactOntologyBootstrapRunProvenance } from "../src/agent-ontology-bootstrap-routes.js";
 import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+import { createSqlitePrrRuntime } from "../src/runtime-factory.js";
+import { handleAgentOntologyBootstrapRoute } from "../src/agent-ontology-bootstrap-routes.js";
 
 let cwd: string;
 let sourceRoot: string;
@@ -209,14 +211,14 @@ describe("ontology-bootstrap agent routes", () => {
     ]));
   });
 
-  it("fails closed before bootstrap material effects without a runtime-mounted handoff binding", async () => {
+  it("allows only the released parent identity-readiness event before rejecting an unavailable mounted provider", async () => {
     handler = createLocalRuntimeHttpHandler({
       config,
       actor: { id: "actor_route_owner", kind: "human", label: "Route Owner" },
       now: () => "2026-07-08T16:00:00.000Z",
       agentRuntimeFactory: baseOntologyBootstrapRouteRuntimeFactory
     });
-    const eventsBefore = await durableEventIds(config);
+    const eventTypesBefore = await eventTypes(config);
 
     const launch = await handler({
       method: "POST",
@@ -238,7 +240,7 @@ describe("ontology-bootstrap agent routes", () => {
       ok: false,
       diagnostic: { message: expect.stringMatching(/mounted authority/i) }
     });
-    expect(await durableEventIds(config)).toEqual(eventsBefore);
+    expect((await eventTypes(config)).slice(eventTypesBefore.length)).toEqual(["agent.identity.initialized"]);
     const types = await eventTypes(config);
     for (const type of [
       "agent.specialist-run.step.recorded",
@@ -251,6 +253,53 @@ describe("ontology-bootstrap agent routes", () => {
     }
   });
 
+  it("fails closed at the direct Task123 route boundary without a mounted provider", async () => {
+    const actor = { id: "actor_route_owner", kind: "human" as const, label: "Route Owner" };
+    const now = () => "2026-07-08T16:00:00.000Z";
+    const directHandle = createSqlitePrrRuntime({ config, actor, now });
+    try {
+      const runtime = baseOntologyBootstrapRouteRuntimeFactory({ handle: directHandle, actor, now });
+      await initializeResidentIdentityForDirectRoute(directHandle, runtime, actor.id);
+      const eventsBefore = await directHandle.ledger.readAll();
+      const launch = await handleAgentOntologyBootstrapRoute({
+        request: ontologyBootstrapLaunchRequest("task_ontology_bootstrap_direct_unavailable", "run_ontology_bootstrap_direct_unavailable"),
+        handle: directHandle,
+        actor,
+        now,
+        runtime
+      });
+
+      expect(launch?.status).toBe(503);
+      expect(await directHandle.ledger.readAll()).toEqual(eventsBefore);
+    } finally {
+      directHandle.close();
+    }
+  });
+
+  it("fails closed at the direct Task123 route boundary for a hostile mounted binding", async () => {
+    const actor = { id: "actor_route_owner", kind: "human" as const, label: "Route Owner" };
+    const now = () => "2026-07-08T16:00:00.000Z";
+    const directHandle = createSqlitePrrRuntime({ config, actor, now });
+    try {
+      const runtime = hostileOntologyBootstrapRouteRuntimeFactory({ handle: directHandle, actor, now });
+      await initializeResidentIdentityForDirectRoute(directHandle, runtime, actor.id);
+      const eventsBefore = await directHandle.ledger.readAll();
+      const launch = await handleAgentOntologyBootstrapRoute({
+        request: ontologyBootstrapLaunchRequest("task_ontology_bootstrap_hostile", "run_ontology_bootstrap_hostile"),
+        handle: directHandle,
+        actor,
+        now,
+        runtime
+      });
+
+      expect(launch?.status).toBe(503);
+      expect(hostileBindingAccessorRead).toBe(false);
+      expect(await directHandle.ledger.readAll()).toEqual(eventsBefore);
+    } finally {
+      directHandle.close();
+    }
+  });
+
   it("fails closed before every durable effect for a hostile runtime-mounted binding", async () => {
     handler = createLocalRuntimeHttpHandler({
       config,
@@ -258,7 +307,7 @@ describe("ontology-bootstrap agent routes", () => {
       now: () => "2026-07-08T16:00:00.000Z",
       agentRuntimeFactory: hostileOntologyBootstrapRouteRuntimeFactory
     });
-    const eventsBefore = await durableEventIds(config);
+    const eventTypesBefore = await eventTypes(config);
 
     const launch = await handler({
       method: "POST",
@@ -277,7 +326,7 @@ describe("ontology-bootstrap agent routes", () => {
 
     expect(launch.status).toBe(503);
     expect(hostileBindingAccessorRead).toBe(false);
-    expect(await durableEventIds(config)).toEqual(eventsBefore);
+    expect((await eventTypes(config)).slice(eventTypesBefore.length)).toEqual(["agent.identity.initialized"]);
   });
 
   it("requires exact canonical provenance before reusing a run", () => {
@@ -318,11 +367,32 @@ async function eventTypes(runtimeConfig: ResolvedLocalRuntimeConfig): Promise<re
   }
 }
 
-async function durableEventIds(runtimeConfig: ResolvedLocalRuntimeConfig): Promise<readonly string[]> {
-  const ledger = new SQLiteEventLedger(runtimeConfig.storage.sqlitePath);
-  try {
-    return (await ledger.readAll()).map((event) => event.id);
-  } finally {
-    ledger.close();
-  }
+async function initializeResidentIdentityForDirectRoute(
+  directHandle: ReturnType<typeof createSqlitePrrRuntime>,
+  runtime: ReturnType<LocalAgentRuntimeFactory>,
+  initializedBy: string
+): Promise<void> {
+  const mountedWorkspace = directHandle.mountedWorkspace;
+  if (mountedWorkspace === undefined) throw new Error("direct ontology-bootstrap route requires a mounted workspace");
+  await runtime.initializeDefaultIdentity({
+    workspaceId: mountedWorkspace.workspaceId,
+    initializedBy
+  });
+}
+
+function ontologyBootstrapLaunchRequest(taskId: string, runId: string) {
+  return {
+    method: "POST",
+    url: "/api/agent/specialists/ontology-bootstrap/runs",
+    body: JSON.stringify({
+      taskId,
+      runId,
+      sourceCollectionId: "src_old_cestus",
+      sourceRoot,
+      scanBatchId: "scan_old_cestus_001",
+      importBatchId: "imp_old_cestus_001",
+      selectedCandidateIds: ["legacy_candidate_001"],
+      maxCandidatesPerBundle: 50
+    })
+  };
 }
