@@ -26066,3 +26066,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
   credentials, external systems, and fallback/write authorities remain
   unchanged.
+
+## RV-1-E-898 — Task138-H exact-parser candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-21T19:53:55Z
+- Parser-repair lineage preserves causal RED
+  `ba406d57102c110599a401faa0b5479b72745bdc`, atomic GREEN
+  `7c49d0d7af1f87c7451444d76826418c6d13dc4f`, and exact clean admitted
+  candidate `cedca3f48b20513b93ef876461c1510adb73fcb4`. Every rejected candidate,
+  review, repair, and authority merge remains in ancestry; the cumulative diff
+  from parser-repair authority is exactly the frozen three Task138-H paths.
+- Causal RED reproduces exactly two parser bypasses while all prior **32** tests
+  pass: path-bearing invalid identity returns `no-output`, and an incomplete
+  terminal promotes `terminal-consistent`. GREEN applies the released exact
+  ontology parser to every descriptor-copied event before identity selection or
+  mounted reads, replaces the local structural assertion, canonicalizes only
+  the task-owned orchestration attempt fixture, and preserves invalid-input and
+  diagnostic scrutiny with parser-valid conflict evidence. A permanent fixture
+  guard requires every intended-valid ready/waiting/blocked/failed/legacy event
+  to pass the released parser.
+- Candidate gates pass **35/35** focused and **71/71** exact cross-boundary
+  tests, standalone typecheck, factory readiness, V4 assurance **20/20**, all
+  four contract markers, diff hygiene, ancestry, exact scope, clean state, and
+  real local Node 26.1.0 / Vitest 4.1.9 non-symlinked dependencies. Repository
+  mode executes **27/27** released commands before only expected incomplete-29
+  closure. Full verification preserves the inherited **10 files / 48 failures
+  / 2,895 passes / 5 skips** cohort with no Task138-H failure; the three-pass
+  increase is exactly the new parser/fixture coverage.
+- Fresh read-only architecture review instance
+  `85261d89-5f39-43b7-b218-c56c883e96d8` owns exact-parser, canonical-event,
+  identity/path/secret-safety, lifecycle, released-history, diagnostic,
+  provenance, authority, replay, no-effect, and exact-scope scrutiny. Fresh
+  read-only executable review instance
+  `7f592943-93c5-488b-a8d5-1b645e5cbd28` owns independent gate reproduction,
+  parser-invalid and hostile/adversarial probes, lifecycle/retry cases,
+  differential, ancestry, dependency, and clean-state checks. Both review only
+  the exact candidate and may not edit, commit, merge, push, invoke providers,
+  or use external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  release records 1-27, all 29 IDs/order, prior evidence, and `neo` remain
+  unchanged.
+
+## RV-1-E-899 — Task138-H provenance-ID review defect; bounded repair authorized
+
+- Recorded at: 2026-07-21T20:06:17Z
+- Fresh architecture review instance
+  `85261d89-5f39-43b7-b218-c56c883e96d8` and fresh executable review
+  instance `7f592943-93c5-488b-a8d5-1b645e5cbd28` both return
+  `NEEDS_CHANGES` for exact candidate
+  `cedca3f48b20513b93ef876461c1510adb73fcb4`. The candidate is not approved,
+  integrated, released, or eligible for strict record 28.
+- Both reviewers independently construct a fully canonical seven-event V2
+  completion chain that passes the released ontology parser but uses a
+  syntax-valid event ID rejected by `isAgentSecretSafeText`. Mounted readback
+  completes and the unsafe ID is copied into browser provenance. The exact gap
+  is the five event-ID fields copied by `provenanceFromReadback`:
+  `finalOutputEventId`, `preparedEventId`, `recordedEventId`,
+  `terminalRunEventId`, and `taskStatusEventId`. Executable scrutiny confirms
+  other browser-visible identity, artifact/action/summary, source/related, and
+  diagnostic fields already consume their released safety owners or explicit
+  predicate.
+- The existing non-reviewer repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage over all five exact provenance
+  event-ID positions using fully parser-valid mounted completion chains; then
+  it may add the minimal fail-closed predicate before emitting provenance.
+  Final-output step ID, hashes, released parsers, schemas, source/related and
+  diagnostic filtering, lifecycle, authority, and existing assertions remain
+  unchanged. No broad recursive sanitizer or silent provenance truncation is
+  authorized: any unsafe provenance binding closes the entire DTO.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The new candidate must rerun focused/cross-boundary, standalone typecheck,
+  factory, V4 assurance/contract/repository prefix, full differential,
+  scope/ancestry/dependency/clean gates, then receive a completely new fresh
+  dual-review pair. No prior reviewer may repair or approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, `neo`, providers,
+  credentials, external systems, and fallback/write authorities remain
+  unchanged.
