@@ -149,6 +149,58 @@ describe("portable mounted agent artifact stores", () => {
     await expect(beforeMountedHandoffAuthorityEffect(swapped.controller, "final-output")).rejects.toThrow(/authority/i);
   });
 
+  it("uses one origin-only route preflight before later full cursor revalidation", async () => {
+    const fixture = authorityFixture();
+    const events: KnowledgeEvent[] = [];
+    let reads = 0;
+    Object.defineProperty(fixture.handle.ledger, "readAll", {
+      configurable: true,
+      value: async () => {
+        reads += 1;
+        return events.map((event) => structuredClone(event));
+      }
+    });
+    const { result } = await issuedBinding(fixture);
+    const preflightInput = {
+      binding: result.binding,
+      controller: result.controller,
+      taskId: dispatch.taskId,
+      attemptId: dispatch.attemptId,
+      runId: dispatch.approvedRunId,
+      runType: dispatch.runType,
+      retryGeneration: dispatch.retryGeneration
+    };
+
+    reads = 0;
+    await expect(preflightPortableMountedAgentHandoffBinding(preflightInput)).resolves.toBeUndefined();
+    expect(reads).toBe(0);
+
+    events.push(taskCreatedEvent(), queuedTaskStatusEvent(), runningTaskStatusEvent(), startedEvent());
+    const consumed = await consumeMountedSpecialistHandoffAuthorityWitness(result.binding.authorityWitness);
+    expect(reads).toBeGreaterThan(0);
+
+    events.push(unrelatedEvent());
+    await expect(consumed.revalidateCurrent()).rejects.toThrow(/authority/i);
+  });
+
+  it("burns a repeated route preflight and its untouched V2 witness", async () => {
+    const fixture = authorityFixture();
+    const { result } = await issuedBinding(fixture);
+    const preflightInput = {
+      binding: result.binding,
+      controller: result.controller,
+      taskId: dispatch.taskId,
+      attemptId: dispatch.attemptId,
+      runId: dispatch.approvedRunId,
+      runType: dispatch.runType,
+      retryGeneration: dispatch.retryGeneration
+    };
+
+    await expect(preflightPortableMountedAgentHandoffBinding(preflightInput)).resolves.toBeUndefined();
+    await expect(preflightPortableMountedAgentHandoffBinding(preflightInput)).rejects.toThrow(/authority/i);
+    await expect(consumeMountedSpecialistHandoffAuthorityWitness(result.binding.authorityWitness)).rejects.toThrow(/authority/i);
+  });
+
   it("rejects an unsupported runType before portable witness issuance", async () => {
     const fixture = authorityFixture();
     const wakeRuntime = {};

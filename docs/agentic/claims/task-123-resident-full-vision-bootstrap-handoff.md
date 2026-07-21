@@ -337,3 +337,24 @@ Status: `ready-for-review`
   silently ignores the exact suffix that the cursor must reject; GREEN must
   restore generic incremental rejection and keep route-only early authority
   admission finite and non-locking.
+
+### V4 Recovery GREEN — Finite Pre-Effect Witness Phase
+
+- The portable incremental cursor again advances every post-issuance event;
+  the original unrelated-suffix regression is retained unchanged. Generic
+  callers therefore keep full cursor revalidation and fail closed on an
+  unrelated, cross-run, replaced, rolled-back, or reordered suffix.
+- Only the exact factory-issued portable witness has a finite initial route
+  phase. It first authenticates its WeakMap member, available state, exact
+  lifecycle tuple, binding, and mounted origin, then releases the initial
+  cursor snapshot without reading or accepting route setup history. The phase
+  is one-shot: a repeat, mismatch, or failed currentness check burns the
+  cursor and the available witness. The workflow's existing witness preflight
+  and all V2 consumption still invoke full cursor revalidation and bind the
+  complete setup history before effects.
+- Focused GREEN command exited `0`: **4 files / 63 tests passed**. This is a
+  **+2 passing-test delta** over the 61-test RED: the new portable proofs show
+  no ledger read during the finite origin-only preflight, later full
+  revalidation rejects an unrelated suffix, and a repeated route preflight
+  burns the otherwise untouched V2 witness. `npm run typecheck` also exited
+  `0`.
