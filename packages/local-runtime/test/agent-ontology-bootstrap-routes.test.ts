@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAgentRuntime } from "../../agent/src/index.js";
+import { buildTaskAttemptId } from "../../agent/src/task-orchestrator-events.js";
 import { createWakeSupervisorRuntime } from "../src/wake-supervisor-runtime.js";
 import { issueMountedArtifactAuthorityOperationForFactory } from "../src/mounted-artifact-authority-operation.js";
 import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
@@ -32,7 +33,7 @@ interface TestMountedOntologyBootstrapHandoff {
 
 type TestMountedOntologyBootstrapHandoffTransform = (
   handoff: TestMountedOntologyBootstrapHandoff
-) => unknown;
+) => object;
 
 const baseOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) =>
   createAgentRuntime({
@@ -103,24 +104,6 @@ function runtimeFactoryWithMountedOntologyBootstrapHandoff(
 const ontologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = runtimeFactoryWithMountedOntologyBootstrapHandoff(
   (handoff) => handoff
 );
-
-const hostileExtraAccessorOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory =
-  runtimeFactoryWithMountedOntologyBootstrapHandoff((handoff) => {
-    const hostile: object = Object.create(Object.prototype);
-    Object.defineProperties(hostile, {
-      binding: { enumerable: true, value: handoff.binding },
-      controller: { enumerable: true, value: handoff.controller },
-      stop: { enumerable: true, value: handoff.stop },
-      extra: {
-        enumerable: true,
-        get() {
-          hostileExtraAccessorReads += 1;
-          throw new Error("hostile extra accessor must not be read");
-        }
-      }
-    });
-    return Object.freeze(hostile);
-  });
 
 const hostileOntologyBootstrapRouteRuntimeFactory: LocalAgentRuntimeFactory = ({ handle, now }) => {
   const runtime = baseOntologyBootstrapRouteRuntimeFactory({
@@ -343,9 +326,57 @@ describe("ontology-bootstrap agent routes", () => {
     const actor = { id: "actor_route_owner", kind: "human" as const, label: "Route Owner" };
     const now = () => "2026-07-08T16:00:00.000Z";
     const directHandle = createSqlitePrrRuntime({ config, actor, now });
+    let wakeRuntime: ReturnType<typeof createWakeSupervisorRuntime> | undefined;
     try {
-      const runtime = hostileExtraAccessorOntologyBootstrapRouteRuntimeFactory({ handle: directHandle, actor, now });
-      await initializeResidentIdentityForDirectRoute(directHandle, runtime, actor.id);
+      const baseRuntime = baseOntologyBootstrapRouteRuntimeFactory({ handle: directHandle, actor, now });
+      await initializeResidentIdentityForDirectRoute(directHandle, baseRuntime, actor.id);
+      let nextId = 0;
+      wakeRuntime = createWakeSupervisorRuntime({
+        runtimeHandle: directHandle,
+        actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
+        supervisorEpoch: "epoch_run_ontology_bootstrap_extra_accessor",
+        policy: {
+          policyVersion: "ontology-bootstrap-handoff.v1",
+          policyDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          lockStateDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        now,
+        createSafeId: (kind) => `${kind}_run_ontology_bootstrap_extra_accessor_${++nextId}`
+      });
+      const started = await wakeRuntime.supervision.start();
+      if (started.outcome !== "accepted") throw new Error("test runtime mounted authority was not accepted");
+      const prepared = await createPortableMountedAgentArtifactStoreProducer(
+        issueMountedArtifactAuthorityOperationForFactory(wakeRuntime)
+      ).bind({
+        taskId: "task_ontology_bootstrap_extra_accessor",
+        attemptId: buildTaskAttemptId({
+          taskId: "task_ontology_bootstrap_extra_accessor",
+          runType: "ontology-bootstrap",
+          retryGeneration: 0
+        }),
+        approvedRunId: "run_ontology_bootstrap_extra_accessor",
+        runType: "ontology-bootstrap",
+        retryGeneration: 0
+      });
+      const hostile: object = Object.create(Object.prototype);
+      Object.defineProperties(hostile, {
+        binding: { enumerable: true, value: prepared.binding },
+        controller: { enumerable: true, value: prepared.controller },
+        stop: { enumerable: true, value: async () => await wakeRuntime.stop() },
+        extra: {
+          enumerable: true,
+          get() {
+            hostileExtraAccessorReads += 1;
+            throw new Error("hostile extra accessor must not be read");
+          }
+        }
+      });
+      const runtime = Object.freeze({
+        ...baseRuntime,
+        async acquireMountedOntologyBootstrapHandoff() {
+          return Object.freeze(hostile);
+        }
+      });
       const eventsBefore = await directHandle.ledger.readAll();
       const launch = await handleAgentOntologyBootstrapRoute({
         request: ontologyBootstrapLaunchRequest("task_ontology_bootstrap_extra_accessor", "run_ontology_bootstrap_extra_accessor"),
@@ -359,6 +390,7 @@ describe("ontology-bootstrap agent routes", () => {
       expect(hostileExtraAccessorReads).toBe(0);
       expect(await directHandle.ledger.readAll()).toEqual(eventsBefore);
     } finally {
+      await wakeRuntime?.stop().catch(() => undefined);
       directHandle.close();
     }
   });

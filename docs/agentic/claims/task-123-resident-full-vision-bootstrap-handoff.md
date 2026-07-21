@@ -388,3 +388,21 @@ Status: `ready-for-review`
   check, `{ ...handoff }` evaluates the hostile extra enumerable getter before
   portable preflight. GREEN must reject the outer shape by descriptors alone,
   before any getter evaluation or Task123 durable effect.
+
+### V4 Recovery GREEN — Descriptor-Normalized Runtime Handoff
+
+- The route now accepts only a frozen ordinary object with exactly enumerable,
+  non-writable, non-configurable own data properties `binding`, `controller`,
+  and `stop`, no symbol keys, and no incompatible prototype. It reads those
+  descriptors without evaluating values from the hostile object, then creates
+  a fresh exact handoff return object by explicit fields; no unknown-object
+  spread or copy remains.
+- The direct adversarial fixture is otherwise route-valid: it obtains the
+  actual factory-issued binding/controller and binds the exact released
+  `buildTaskAttemptId({ taskId, runType: "ontology-bootstrap",
+  retryGeneration: 0 })` before adding its one rejected accessor. Its wake
+  runtime is explicitly stopped after the direct equality assertion.
+- GREEN focused command:
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-authority.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts`
+  exits `0`: **4 files / 64 tests passed**, a **+1 passing-test delta** from
+  the preceding 63-test candidate. Standalone `npm run typecheck` exits `0`.
