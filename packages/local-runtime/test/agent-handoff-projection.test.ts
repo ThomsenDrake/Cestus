@@ -290,7 +290,7 @@ describe("buildResidentHandoffDto", () => {
       ? {
         ...event,
         payload: { ...event.payload, credentialValue: "sk-hostile-raw-provider-secret" }
-      } as KnowledgeEvent
+      } as unknown as KnowledgeEvent
       : event);
     const stores = storesFor(fixture);
 
@@ -439,12 +439,12 @@ function handoffFixture(options: {
     outputArtifacts: [outputArtifact],
     toolRequestIds: [],
     approvalRequirements: status === "waiting-for-approval"
-      ? [{ approvalClass: "ontology-proposal-review", reason: "Independent review is required." }]
+      ? [{ approvalClass: "human-review", reason: "Independent review is required." }]
       : [],
     nextSafeActions: [{
       actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
       label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
-      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "repair" : "review",
+      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
       effect: status === "waiting-for-approval" ? "request-approval" : "none",
       artifactId: outputArtifact.artifactId
     }],
@@ -497,12 +497,12 @@ function handoffFixture(options: {
     outputArtifacts: [outputArtifact],
     toolRequestIds: [],
     approvalRequirements: status === "waiting-for-approval"
-      ? [{ approvalClass: "ontology-proposal-review", reason: "Independent review is required." }]
+      ? [{ approvalClass: "human-review", reason: "Independent review is required." }]
       : [],
     nextSafeActions: [{
       actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
       label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
-      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "repair" : "review",
+      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
       effect: status === "waiting-for-approval" ? "request-approval" : "none",
       artifactId: outputArtifact.artifactId
     }],
