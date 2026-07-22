@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing generalized punctuation and outer-scheme repair
+- **Status:** generalized punctuation and outer-scheme GREEN checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -871,3 +871,37 @@ and fallback writes are prohibited.
   intact. No registry, V4, contract, shared source, provider, credential,
   network, external system, fallback write, admission, review, integration,
   strict record 28, or release action participates.
+
+## Generalized Boundary And Outer-Scheme Minimal GREEN
+
+- Permanent causal RED commit
+  `ab9084a6409da2788d53fd9aeb2434a37acd307d` retains all **90** failures and
+  all **83** prior passing cases without changing production source.
+- GREEN changes only the three native-path regex branches in
+  `containsAbsolutePath`. Native path starts now use a Unicode identifier-aware
+  boundary while excluding `/` and `\\` themselves from acting as the
+  preceding delimiter. The case-insensitive HTTP/HTTPS exemption starts only
+  at string start or after a non-identifier delimiter that is not `_`, `+`,
+  `.`, `-`, or `:`, so URI-scheme continuation and termination cannot
+  authorize nested HTTP-like text. The explicit `file://` branch is unchanged.
+- The first focused GREEN probe closed all **66** unsafe new rows but also
+  closed the **24** new and **6** prior genuine HTTP(S) controls, reporting
+  **30 failed / 143 passed / 173 total**. The cause was treating the first `/`
+  of a genuine URL as a fresh generalized delimiter for its second `/`.
+  Excluding both path separators from the preceding-delimiter class corrected
+  that same final-predicate boundary without altering tests or any other
+  production behavior.
+- The exact focused command then passes **1 file / 173 tests**. The exact
+  cross-boundary command passes **2 files / 209 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `fbaec143`, program authority `2eb55028`, authority merge
+  `b62074e9`, and causal RED `ab9084a6` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, diagnostic, registry, V4, contract, shared source, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action changes. Coordinator-owned
+  V4, repository, full-differential, admission, and fresh-review gates remain
+  pending.
