@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** compositional path candidate awaiting fresh dual review
+- **Status:** implementing non-HTTP authority and relative-path repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1125,3 +1125,37 @@ and fallback writes are prohibited.
   fresh independent architecture/executability pair. It is not approval,
   integration, strict record 28, or release. Strict frontier remains **27 of
   29**; every reviewer of earlier candidate bytes is excluded from approval.
+
+## Non-HTTP Authority And Relative-Path Causal RED
+
+- `RV-1-E-915` authorizes this bounded repair from exact clean authority merge
+  `4a32c6991cb480588f6605ce66fc119612f01fe5`, whose parents are rejected
+  candidate `0b5eb36e4b5db9e5e36e1d8f6e1a8af59e16ca91` and current program
+  authority `1931a9afdb1ab07bb140580f0e56b47d90f8abd8`. Both fresh rejecting
+  verdicts, every prior authority, candidate, RED/GREEN commit, and registry
+  correction remain intact.
+- Six causal composition rows cross path, query, and fragment separators with
+  doubled-slash POSIX and forward-slash UNC representatives. They include all
+  three exact reviewer literals, prove the complete leading outer URL protocol
+  is HTTP(S), prove the later nested protocol is `urn:` or `x:`, prove the
+  retained suffix absolute through Node's matching path owner, and require
+  whole-DTO closure.
+- Six safe controls cover exact `./child/path`, `../child/path`,
+  `~/child/path`, `.\child\draft`, `..\child\draft`, and `~\child\draft`
+  forms. Each is proven non-absolute through Node's matching `posix` or
+  `win32` owner and requires the canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 12 failed / 216 passed / 228 total**.
+  Exactly the **6** later non-HTTP authority compositions remain open and
+  exactly the **6** dot/home-relative controls close incorrectly. Every prior
+  **216** focused case remains green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  absolute Unix, drive, rooted-Windows, host-only/full UNC, explicit
+  `file://`, nested URI, generalized punctuation, lifecycle, provenance,
+  replay, diagnostic, no-effect, and whole-DTO assertions remain intact. No
+  registry, V4, contract, shared source, package metadata, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action participates.

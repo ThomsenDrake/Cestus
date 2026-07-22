@@ -677,6 +677,79 @@ describe("buildResidentHandoffDto", () => {
   });
 
   it.each([
+    ["path", "POSIX", "https://public.test/reports|urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["path", "forward UNC", "https://public.test/reports|x://cestus-host/share/private.json", "https:", "x:", "//cestus-host/share/private.json", "win32"],
+    ["query", "POSIX", "http://example.test?next=urn://opt/cestus/private.json", "http:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["query", "forward UNC", "http://example.test?next=x://cestus-host/share/private.json", "http:", "x:", "//cestus-host/share/private.json", "win32"],
+    ["fragment", "POSIX", "https://example.test#next=urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["fragment", "forward UNC", "https://example.test#next=x://cestus-host/share/private.json", "https:", "x:", "//cestus-host/share/private.json", "win32"]
+  ] as const)("closes a complete outer HTTP(S) URL followed by a non-HTTP authority in %s over %s", async (_separator, _family, unsafeSummary, outerProtocol, nestedProtocol, absolutePath, pathOwner) => {
+    const nestedMarker = `${nestedProtocol}//`;
+    const nestedStart = unsafeSummary.indexOf(nestedMarker);
+    const nestedUri = unsafeSummary.slice(nestedStart);
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary).protocol).toBe(outerProtocol);
+    expect(nestedStart).toBeGreaterThan(0);
+    expect(new URL(nestedUri).protocol).toBe(nestedProtocol);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["dot-relative POSIX", "./child/path", "posix"],
+    ["dot-dot-relative POSIX", "../child/path", "posix"],
+    ["home-relative POSIX", "~/child/path", "posix"],
+    ["dot-relative Windows", ".\\child\\draft", "win32"],
+    ["dot-dot-relative Windows", "..\\child\\draft", "win32"],
+    ["home-relative Windows", "~\\child\\draft", "win32"]
+  ] as const)("accepts safe non-absolute %s notation", async (_kind, relativePath, pathOwner) => {
+    const safeSummary = `Mounted output=${relativePath}`;
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(relativePath)
+      : win32.isAbsolute(relativePath)).toBe(false);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(safeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(safeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["HTTP", "string", "HTTP://example.test/public/records", "HTTP://example.test/public/records"],
     ["HTTPS", "string", "hTtPs://example.test/public/records", "hTtPs://example.test/public/records"],
     ["HTTP", "punctuation", "Mounted output=HtTp://example.test/public/records", "HtTp://example.test/public/records"],
