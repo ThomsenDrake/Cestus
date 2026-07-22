@@ -27041,3 +27041,53 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29 IDs/order, prior releases/evidence, published `neo`, provider/credential
   prohibitions, fallback-write prohibition, and external-effect boundaries
   remain unchanged.
+
+## RV-1-E-919 — Task138-H final path-boundary candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-22T17:48:57Z
+- The final bounded lineage preserves rejected candidate `0b5eb36e`, every
+  review verdict, repair authority and forward merge, all permanent causal
+  RED/GREEN pairs through colon-boundary RED
+  `cc997e7327aa54d06660493a88de84ad81fb1fbe` and GREEN
+  `17284a3fca132c994cab6ce68ae8514cc88c2654`, and exact clean admitted
+  candidate `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee`. No history is rewritten;
+  implementation scope from each authority merge and cumulative task-owned
+  scope remain exactly the frozen three Task138-H paths.
+- Permanent public-DTO coverage now owns punctuation/native path families,
+  complete and nested HTTP(S) contexts, every relevant URI scheme occurrence,
+  later non-HTTP authorities including colon introduction, rooted Windows and
+  host-only/full UNC forms, plus leading, chained, and internal dot/dot-dot/
+  home-relative controls. GREEN remains confined to the final path predicate;
+  parser/schema, per-field predicates, lifecycle, provenance, replay, mounted
+  reads, diagnostics, no-effect, whole-DTO closure, and explicit `file://`
+  behavior remain unchanged.
+- Candidate gates pass **262/262** focused and **298/298** cross-boundary
+  tests, standalone typecheck, factory readiness, diff hygiene, V4 assurance
+  **20/20**, all four exact contract markers, and strict **27/27** repository
+  prefix followed only by expected incomplete-29 closure. Fresh serial full
+  verification reports candidate **10 files / 47 failures / 3,123 passes / 5
+  skips** and clean `neo` **10 files / 48 failures / 2,877 passes / 5 skips**.
+  Candidate failures are a strict inherited subset; the sole baseline-only
+  timeout passes **1/1** in isolation on both trees, and the exact **246-pass**
+  increase is Task138-H. Scope, ancestry, dependencies, V4 pin, and clean
+  state pass.
+- Completely fresh read-only architecture review instance
+  `f0b217e4-92f5-4487-a82d-ce4264b6b820`, implemented by
+  `/root/task138_final_path_arch_review`, owns every browser-visible string
+  leaf, native/doubled-slash/URI/URL composition, all punctuation and scheme
+  boundaries, relative-path false positives, parser/lifecycle/provenance/
+  replay, mounted-read/no-effect/whole-DTO closure, scope, and ancestry.
+  Completely fresh read-only executability review instance
+  `3da47dfc-47d0-47c5-8e4a-a77435587029`, implemented by
+  `/root/task138_final_path_exec_review`, owns independent deterministic gate
+  reproduction, adversarial public-DTO matrices, full differential,
+  dependency, and clean-state checks. Immutable review package
+  `/tmp/task138-final-path-review-50ca5da9.diff` has SHA-256
+  `65d9439ff2c721bfb11865f845afea71d7215420d78baba77ac95afedb7fe9c1`.
+  Neither reviewer has prior transcript context or may edit, commit, merge,
+  push, invoke providers, use network access, or access external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  records 1-27, all 29 IDs/order, published `neo`, and external-effect
+  prohibitions remain unchanged.
