@@ -27501,3 +27501,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   and not Task136 implementation. Strict product frontier remains **28 of
   29**; Task136 is next and Waves 3-5 remain unstarted. No provider,
   credential, network, external-system, push, or pull request occurs.
+
+## RV-1-E-927 — Record-28 assurance calibration admitted to fresh dual review
+
+- Recorded at: 2026-07-22T19:56:33Z
+- Preserved assurance lineage forward-merges exact product/program authority
+  at `5cb84ff8f8de879af6eed47a96d1fd584019ee8a`, then records claim-only causal
+  RED `e565785edf8bd8b8cc706924f2b250104fecb023` and exact clean GREEN candidate
+  `96142632606668519b2198590bdb3ae87b367691`. Record-27 candidate
+  `ecd795d0`, every prior assurance transition, raw release record, product
+  integration, and review remain ancestors without rewrite.
+- RED reproduces exactly **17/20**: only the three current-registry groups
+  report `28 !== 27`. GREEN advances only those three current prefix
+  length/order pairs and the coupled repository incomplete-found, exact
+  `records=28 commands=28` marker, and 28-command call count. Historical W1
+  `.slice(0, 26)`, its 26 assertions, and synthetic record-27 activation are
+  byte-identical.
+- Fresh coordinator gates pass standalone assurance **20/20**, all four exact
+  contract markers, factory readiness, diff hygiene, exact two-file scope,
+  base/RED/GREEN ancestry, real dependencies, and clean state. Owner evidence
+  also passes standalone typecheck and clean repository strict **28/28**
+  followed only by expected incomplete-29 closure. Packages, checker,
+  contract, registry, manifests, and every product byte are unchanged from
+  authority merge `5cb84ff8`.
+- Immutable review package `/tmp/record28-assurance-review-96142632.diff` is
+  exactly **6,826 bytes**, has SHA-256
+  `c883136b1c16cb78ddad9cbbafa3467b3f4fcb466b52597becb9628986ad33ef`, and
+  contains only the V4 assurance test and durable V4 claim. A wholly fresh
+  read-only architecture reviewer owns calibration scope, current-versus-
+  historical semantics, immutable product/contract/registry boundaries,
+  ancestry, and no-release classification. A different wholly fresh read-only
+  executability reviewer owns independent RED/GREEN, assurance, contract,
+  repository, typecheck, dependency, scope, and clean-state reproduction.
+  Neither may edit, commit, merge, push, use providers/network/credentials, or
+  interact with external systems.
+- Status advances record-28 assurance `implementing -> candidate -> reviewing`.
+  This is not a product release, not strict record 29, and not Task136
+  implementation. Strict frontier remains **28 of 29**; Task136 is next and
+  Waves 3-5 remain unstarted.
