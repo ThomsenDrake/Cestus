@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** punctuation-safe candidate awaiting fresh dual review
+- **Status:** implementing doubled-slash path repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -607,3 +607,27 @@ and fallback writes are prohibited.
   The frontier remains **27 of 29**, and only a completely fresh independent
   architecture/executability review pair may approve the exact admitted
   candidate.
+
+## Doubled-Slash Path Causal RED
+
+- `RV-1-E-904` authorizes this bounded repair from exact clean authority merge
+  `0ca7e5844b06e3dcbc7de5b1e1a2ef500a10172e`, whose parents are rejected
+  candidate `b67863610af72d9b9d6e9b2212ccd8454c1fa893` and program authority
+  `72dc9525d530c7bf1c0f46049728fd7d9a1bebb7`. The complete prior lineage
+  remains intact.
+- One table crosses doubled-slash POSIX and forward-slash UNC absolute forms
+  with all **4** required punctuation boundaries, producing **8** causal
+  cases. Each row first passes the corresponding Node `posix` or `win32`
+  absolute-path owner, then reaches the canonical mounted browser projection.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 8 failed / 62 passed / 70 total**. Exactly
+  the 8 new rows return `task-completed` instead of the required whole-DTO
+  `inconsistent` closure. All prior **62** tests pass, including the prior
+  12-row native punctuation matrix and safe HTTP, HTTPS, and ordinary
+  punctuation controls.
+- Production source is unchanged for RED. Explicit `file://` rejection,
+  mounted read-only behavior, no-write assertions, and `effect: "none"` remain
+  intact. No registry, assurance, contract, parser, provider, credential,
+  external system, fallback write, integration, strict record 28, or release
+  action participates.

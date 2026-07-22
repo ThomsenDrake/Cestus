@@ -1,3 +1,4 @@
+import { posix, win32 } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   validateKnowledgeEvent,
@@ -204,6 +205,41 @@ describe("buildResidentHandoffDto", () => {
     const fixture = handoffFixture({ safeSummary: unsafeSummary });
     const stores = storesFor(fixture);
 
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["doubled-slash POSIX", "=", "//opt/cestus/handoffs/task138/summary.json"],
+    ["doubled-slash POSIX", ":", "//opt/cestus/handoffs/task138/summary.json"],
+    ["doubled-slash POSIX", "[", "//opt/cestus/handoffs/task138/summary.json"],
+    ["doubled-slash POSIX", ",", "//opt/cestus/handoffs/task138/summary.json"],
+    ["forward-slash UNC", "=", "//cestus-host/resident-share/task138/summary.json"],
+    ["forward-slash UNC", ":", "//cestus-host/resident-share/task138/summary.json"],
+    ["forward-slash UNC", "[", "//cestus-host/resident-share/task138/summary.json"],
+    ["forward-slash UNC", ",", "//cestus-host/resident-share/task138/summary.json"]
+  ] as const)("closes the whole DTO for a %s path after %s punctuation", async (family, punctuation, absolutePath) => {
+    const unsafeSummary = `Mounted output${punctuation}${absolutePath}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(family === "doubled-slash POSIX"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
     expect(fixture.completeEvents).toHaveLength(7);
     expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
     expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
