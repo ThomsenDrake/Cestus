@@ -26338,3 +26338,49 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   release records 1-27, all 29 IDs/order, published `neo`, and external-effect
   prohibitions remain unchanged.
+
+## RV-1-E-904 — Task138-H doubled-slash path defect; bounded repair authorized
+
+- Recorded at: 2026-07-22T13:39:00Z
+- Completely fresh architecture reviewer
+  `/root/task138_punctuation_arch_review` and completely fresh executability
+  reviewer `/root/task138_punctuation_exec_review` both return
+  `NEEDS_CHANGES` for exact candidate
+  `b67863610af72d9b9d6e9b2212ccd8454c1fa893`. The candidate is rejected and
+  remains immutable in ancestry; it is not approved, integrated, released, or
+  eligible for strict record 28.
+- Both reviewers independently reproduce one P1 root cause in the final
+  absolute-path predicate: the `(?!\/)` safeguard intended for HTTP/HTTPS
+  exempts every doubled slash. Parser-valid browser strings containing
+  `//opt/cestus/...` or forward-slash `//host/share/...`, including after the
+  authorized punctuation boundaries, therefore retain an absolute POSIX or
+  forward-slash UNC path and return `task-completed` instead of closing the
+  whole DTO. Node's platform path owners classify those samples as absolute.
+  Single-slash Unix, Windows-drive, backslash UNC, and explicit `file://`
+  rejection remain effective; safe HTTP/HTTPS controls remain required.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for doubled-slash POSIX and
+  forward-slash UNC forms after each of `=`, `:`, `[`, and `,`, while retaining
+  safe HTTP/HTTPS, ordinary-punctuation, prior twelve-row native-path, and
+  explicit `file://` controls. It may then make the smallest correction that
+  exempts actual HTTP/HTTPS scheme separators rather than every doubled slash.
+  No sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, mounted-read, diagnostic, no-effect, or whole-DTO closure change is
+  authorized.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The repaired lineage must preserve exact candidate `b6786361`, both fresh
+  rejection verdicts, all prior RED/GREEN/review history, and this authority by
+  forward merge. It must rerun the exact focused and cross-boundary suites,
+  standalone typecheck, factory readiness, V4 assurance **20/20**, all four
+  contract markers, strict repository-prefix gate, full differential,
+  diff/scope/ancestry/dependency/clean checks, and admit one new exact candidate
+  only after every gate. A completely new architecture/executability review
+  pair must review changed bytes; neither current reviewer may approve them.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, published `neo`, providers,
+  credentials, external systems, fallback writes, and external effects remain
+  unchanged.
