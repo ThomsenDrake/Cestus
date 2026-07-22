@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** nested-URI-safe candidate awaiting fresh dual review
+- **Status:** implementing compositional URL and Windows-root repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1011,3 +1011,40 @@ and fallback writes are prohibited.
   Strict frontier remains **27 of 29**. Only a completely fresh independent
   architecture/executability pair may approve the exact admitted candidate;
   all reviewers of earlier candidates are excluded from changed-byte approval.
+
+## Compositional URL And Windows-Root Causal RED
+
+- `RV-1-E-913` authorizes this bounded repair from exact clean authority merge
+  `f03e446426d5f68f0e65cac344170a603da398f8`, whose parents are rejected
+  candidate `df461e730557bbdbd92d4079ed6f4f0628282c8b` and current program
+  authority `6e4b2089c6b3818282c658745b1d24c2221ae1ea`. Both fresh rejecting
+  verdicts, every prior authority, candidate, RED/GREEN commit, and registry
+  correction remain intact.
+- Two causal rows use the reviewers' exact pipe and query literals where a
+  leading genuine HTTP(S) URL and a later non-HTTP `urn:` outer URI occur in
+  one non-whitespace token. Each proves the leading protocol is HTTP(S), the
+  nested protocol is `urn:`, the retained doubled-slash POSIX suffix is
+  absolute, and the whole DTO must close.
+- Five Windows rows cover rooted single-backslash paths
+  `\Windows\System32\config` and `\root\private.json`, plus host-only UNC
+  roots `\\cestus-host`, `\\host`, and `\\host\`. Every literal is proven
+  absolute through Node's `win32` path owner and requires whole-DTO closure.
+- Four complete outer-HTTP(S) URL controls cover an inner HTTP(S) URL in path,
+  query, and fragment positions plus the reviewer's exact safe-punctuation
+  path. A whitespace-separated scheme-mask control remains closed, while an
+  ordinary punctuation, ratio, relative-slash, and relative-backslash control
+  remains open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 9 failed / 207 passed / 216 total**.
+  Exactly the **2** same-token masks and **5** Windows-root rows remain open,
+  while exactly the **2** valid outer-HTTPS path controls close incorrectly.
+  All prior **203** cases and the four other new controls remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  generalized punctuation, explicit `file://`, lifecycle, provenance, replay,
+  diagnostic, no-effect, and whole-DTO assertions remain intact. No registry,
+  V4, contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action participates.
