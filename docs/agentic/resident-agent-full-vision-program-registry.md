@@ -26601,3 +26601,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   records 1-27, all 29 IDs/order, published `neo`, and external-effect
   prohibitions remain unchanged.
+
+## RV-1-E-910 — Task138-H generalized punctuation and outer-scheme defects; bounded repair authorized
+
+- Recorded at: 2026-07-22T15:07:55Z
+- Fresh architecture review instance
+  `38672bdd-76d3-47c6-aeee-dfefc1a82eba` and fresh executability review
+  instance `99dcb416-3435-4a63-a623-bbeb42be1d09` both return
+  `NEEDS_CHANGES` for exact candidate
+  `fbaec143263920f965322cbb973950a38a0f3713`. The candidate is rejected and
+  remains immutable in ancestry; it is not approved, integrated, released, or
+  eligible for strict record 28.
+- Both reviewers independently reproduce nested non-HTTP outer schemes:
+  `urn:http://...`, `x:https://...`, and equivalent canonical chains parse with
+  a non-HTTP outer protocol yet retain an absolute doubled-slash POSIX or
+  forward-slash UNC suffix because colon is shared as an HTTP-token delimiter.
+  The architecture reviewer also proves the hard-coded native-path delimiter
+  omits common punctuation including `)`, `{`, `}`, `<`, `>`, `;`, `]`, `!`,
+  `?`, `|`, backtick, and `~`. Every native path family can escape after those
+  characters, while actual HTTP/HTTPS URLs after the same characters can be
+  falsely rejected. A canonical `{`-preceded Unix-path DTO remains open. All
+  other deterministic gates, mounted-read, zero-write, and `effect: "none"`
+  evidence pass.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage crossing those omitted punctuation
+  characters with single-slash Unix, Windows-drive, backslash UNC,
+  doubled-slash POSIX, and forward-slash UNC paths. The same boundary must
+  retain actual mixed-case HTTP/HTTPS controls after safe punctuation and add
+  canonical `urn:`, `mailto:`, and arbitrary outer-scheme cases proving the
+  inner HTTP-like text is not the outer scheme. All prior **83** cases remain
+  green.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest generalized delimiter correction in the
+  final path predicate: native path starts must recognize non-identifier
+  punctuation consistently, while an HTTP/HTTPS exemption must begin at
+  string start or a delimiter that cannot continue or terminate an outer URI
+  scheme. Colon and URI-scheme continuation characters must not authorize a
+  nested HTTP-like exemption. Ordinary ratios/relative slashes and genuine
+  HTTP/HTTPS URLs must remain safe. No sanitizer, parser/schema, per-field
+  predicate, lifecycle, provenance, replay, mounted-read, diagnostic,
+  no-effect, or whole-DTO closure change is authorized.
+- Preserve rejected candidate `fbaec143`, both fresh verdicts, every prior
+  candidate/RED/GREEN/authority commit, and all registry-placement corrections
+  by forward merge. The new candidate must rerun focused/cross-boundary,
+  typecheck, factory, V4, contract, repository-prefix, full differential,
+  diff/scope/ancestry/dependency/clean gates and receive a completely new
+  architecture/executability pair. Neither current reviewer may approve
+  changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, published `neo`, providers,
+  credentials, external systems, fallback writes, and external effects remain
+  unchanged.
