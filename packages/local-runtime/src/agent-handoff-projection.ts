@@ -208,7 +208,7 @@ function hasBrowserSafeStringLeaves(value: unknown): boolean {
 
 function containsAbsolutePath(value: string): boolean {
   const containsNestedNonHttpUri = value.split(/\s+/u).some((token) => {
-    for (const match of token.matchAll(/(?:^|[^\p{ID_Continue}_+.\-:])([a-z][a-z0-9+.-]*):/giu)) {
+    for (const match of token.matchAll(/(?:^|[^\p{ID_Continue}_+.\-])([a-z][a-z0-9+.-]*):/giu)) {
       const scheme = match[1]?.toLowerCase();
       const schemePayload = token.slice(match.index + match[0].length);
       if (scheme !== undefined &&

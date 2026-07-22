@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing colon-introduced authority repair
+- **Status:** colon-introduced authority GREEN checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1365,3 +1365,39 @@ and fallback writes are prohibited.
   package metadata, provider, credential, network, external system, fallback
   write, admission, review, integration, strict record 28, or release action
   participates.
+
+## Colon-Introduced Authority Minimal GREEN
+
+- Permanent causal RED commit
+  `cc997e7327aa54d06660493a88de84ad81fb1fbe` retains exactly the **6**
+  causal failures, all six new inner-HTTP(S) controls, and all **250** prior
+  passing cases without changing production source or weakening any test.
+- GREEN changes one character class only in `containsAbsolutePath`: colon is
+  removed from the characters forbidden immediately before an all-scheme scan
+  occurrence. A later colon-introduced `urn:` or `x:` scheme is therefore
+  examined before the complete outer HTTP(S) token is excluded from native
+  path inspection.
+- The existing branch still returns unsafe only for a non-HTTP(S) scheme with
+  a direct `//authority` or nested HTTP(S)-like payload. The separate complete
+  outer-URL matcher and generic HTTP(S) native-path exemptions are unchanged,
+  so a colon-introduced inner HTTP or HTTPS authority remains open and an
+  outer non-HTTP composition remains closed.
+- The first focused GREEN attempt passes **1 file / 262 tests** without any
+  post-RED test change. The exact cross-boundary command passes **2 files / 298
+  tests**. Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Prior GREEN checkpoint `64f5e2740ece131b4a5f16aeadb199d3c1f9d8d4`, program
+  authority `e74eb7bb56887c202cf193fc134ce32feb2ea3b0`, authority merge
+  `beab46a08e84f451affb13fcd7217cfc36e1582e`, and permanent causal RED
+  `cc997e7327aa54d06660493a88de84ad81fb1fbe` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. The cumulative repair uses exactly the
+  frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, V4,
+  contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and
+  fresh-review gates remain pending.
