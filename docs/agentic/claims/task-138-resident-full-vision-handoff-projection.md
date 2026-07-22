@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** chained relative-prefix GREEN checkpoint
+- **Status:** implementing internal relative-segment repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1264,3 +1264,33 @@ and fallback writes are prohibited.
   external system, fallback write, admission, review, integration, strict
   record 28, or release action changes. Coordinator-owned admission and
   fresh-review gates remain pending.
+
+## Internal Relative-Segment Causal RED
+
+- `RV-1-E-917` authorizes this pre-admission bounded repair from exact clean
+  authority merge `469d3c315b0eceaca5c929c965fafd7083e4d523`, whose parents
+  are prior GREEN checkpoint `0e4be5a1b28c57f7e762ac111c4e4aed6b6e148f`
+  and current program authority `904fde9b4650c5a3496fac05b814e9839b306c16`.
+  Every prior authority, candidate, review verdict, RED/GREEN commit, and
+  registry correction remains intact.
+- Twelve safe public-DTO controls cross internal dot, dot-dot, and home
+  segments with POSIX and Windows relative paths. They include exact
+  `child/./path`, `./child/./path`, `child\.\path`, and `child\~\path`,
+  plus matching internal and leading-chain compositions. Every literal is
+  proven non-absolute through Node's matching path owner and requires the
+  canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 8 failed / 242 passed / 250 total**.
+  Exactly the **8** new internal dot/home rows close incorrectly. The four new
+  internal dot-dot controls and all prior **238** cases remain green,
+  including generalized punctuation absolute paths and every true native,
+  UNC, doubled-slash, URI-authority, and explicit `file://` closure.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. No sanitizer,
+  parser/schema, per-field predicate, lifecycle, provenance, replay,
+  mounted-read, diagnostic, registry, V4, contract, shared source, package
+  metadata, provider, credential, network, external system, fallback write,
+  admission, review, integration, strict record 28, or release action
+  participates.
