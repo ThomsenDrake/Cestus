@@ -1,5 +1,10 @@
+import { posix, win32 } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import {
+  validateKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import {
   buildAuthorityBoundSpecialistHandoffManifest,
   buildSpecialistHandoffManifest,
@@ -15,6 +20,7 @@ import {
   type SpecialistHandoffMaterial
 } from "../../agent/src/specialist-handoff-manifest.js";
 import type { HandoffAuthorityBinding } from "../../agent/src/specialist-handoff-authority.js";
+import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
 import { buildResidentHandoffDto } from "../src/agent-handoff-projection.js";
 
 type ContentHash = `sha256:${string}`;
@@ -24,7 +30,37 @@ const hash222 = "sha256:22222222222222222222222222222222222222222222222222222222
 const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
 const hash444 = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
 
+const generalizedSafePunctuation = [")", "{", "}", "<", ">", ";", "]", "!", "?", "|", "`", "~"] as const;
+const generalizedAbsolutePathRepresentatives = [
+  ["single-slash Unix", "/opt/cestus/handoffs/task138/summary.json", "posix"],
+  ["Windows-drive", "C:\\Cestus\\handoffs\\task138\\summary.json", "win32"],
+  ["backslash UNC", "\\\\cestus-host\\resident-share\\task138\\summary.json", "win32"],
+  ["doubled-slash POSIX", "//opt/cestus/handoffs/task138/summary.json", "posix"],
+  ["forward-slash UNC", "//cestus-host/resident-share/task138/summary.json", "win32"]
+] as const;
+const doubledSlashAbsoluteSuffixes = [
+  ["doubled-slash POSIX", "//opt/cestus/handoffs/task138/summary.json", "posix"],
+  ["forward-slash UNC", "//cestus-host/resident-share/task138/summary.json", "win32"]
+] as const;
+
 describe("buildResidentHandoffDto", () => {
+  it("keeps every intended-valid synthetic lifecycle event canonical under the released parser", () => {
+    for (const fixture of [
+      handoffFixture(),
+      handoffFixture({ status: "waiting-for-approval" }),
+      handoffFixture({ status: "blocked" }),
+      handoffFixture({ status: "failed" }),
+      handoffFixture({ legacy: true })
+    ]) {
+      for (const event of fixture.completeEvents) {
+        expect(
+          validateKnowledgeEvent(event).success,
+          `${event.type} ${event.id}`
+        ).toBe(true);
+      }
+    }
+  });
+
   it("rebuilds a frozen browser-safe V2 DTO after restart using exact role-bound reads and no effects", async () => {
     const fixture = handoffFixture();
     const eventsBefore = JSON.parse(JSON.stringify(fixture.completeEvents)) as unknown;
@@ -81,6 +117,1014 @@ describe("buildResidentHandoffDto", () => {
     expect(append).not.toHaveBeenCalled();
     expect(invokeProvider).not.toHaveBeenCalled();
     expect(JSON.stringify(restarted)).not.toMatch(/manifestBytes|rawArtifact|storeKind|registry|stack|\/home\/|credential|providerPayload/i);
+  });
+
+  it.each([
+    ["finalOutputEventId", "evt_sk_live_task138_final_output"],
+    ["preparedEventId", "evt_sk_live_task138_prepared"],
+    ["recordedEventId", "evt_sk_live_task138_recorded"],
+    ["terminalRunEventId", "evt_sk_live_task138_terminal"],
+    ["taskStatusEventId", "evt_sk_live_task138_task_status"]
+  ] as const)("closes the whole DTO for a secret-unsafe %s in canonical provenance", async (field, unsafeEventId) => {
+    const fixture = handoffFixture({
+      provenanceEventIds: { [field]: unsafeEventId }
+    });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(/^evt_[a-zA-Z0-9_-]+$/.test(unsafeEventId)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeEventId)).toBe(false);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(dto.provenance).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toContain(unsafeEventId);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it("closes the whole DTO for a parser-valid but secret-unsafe final output step ID", async () => {
+    const unsafeStepId = "step_x-private-key";
+    const fixture = handoffFixture({ finalOutputStepId: unsafeStepId });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeStepId)).toBe(false);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeStepId);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeStepId);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["safeSummary", "/opt/cestus/handoffs/task138/summary.json"],
+    ["artifactId", "C:\\Cestus\\handoffs\\artifact-138"],
+    ["artifactKind", "\\\\cestus-host\\resident-share\\artifact-kind"],
+    ["schemaId", "/srv/cestus/schemas/ontology-bootstrap.json"],
+    ["artifactSafeSummary", "D:\\Cestus\\handoffs\\artifact-summary.txt"],
+    ["nextSafeActionLabel", "\\\\cestus-host\\resident-share\\review-action"]
+  ] as const)("closes the whole DTO for an accepted mounted path in %s", async (field, unsafePath) => {
+    const fixture = handoffFixture(mountedBrowserStringOptions(field, unsafePath));
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafePath)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafePath);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafePath);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafePath);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Unix", "=", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Unix", ":", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Unix", "[", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Unix", ",", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Windows-drive", "=", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["Windows-drive", ":", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["Windows-drive", "[", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["Windows-drive", ",", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["UNC", "=", "\\\\cestus-host\\resident-share\\task138\\summary.json"],
+    ["UNC", ":", "\\\\cestus-host\\resident-share\\task138\\summary.json"],
+    ["UNC", "[", "\\\\cestus-host\\resident-share\\task138\\summary.json"],
+    ["UNC", ",", "\\\\cestus-host\\resident-share\\task138\\summary.json"]
+  ] as const)("closes the whole DTO for a %s path after %s punctuation", async (_family, punctuation, absolutePath) => {
+    const unsafeSummary = `Mounted output${punctuation}${absolutePath}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["doubled-slash POSIX", "=", "//opt/cestus/handoffs/task138/summary.json"],
+    ["doubled-slash POSIX", ":", "//opt/cestus/handoffs/task138/summary.json"],
+    ["doubled-slash POSIX", "[", "//opt/cestus/handoffs/task138/summary.json"],
+    ["doubled-slash POSIX", ",", "//opt/cestus/handoffs/task138/summary.json"],
+    ["forward-slash UNC", "=", "//cestus-host/resident-share/task138/summary.json"],
+    ["forward-slash UNC", ":", "//cestus-host/resident-share/task138/summary.json"],
+    ["forward-slash UNC", "[", "//cestus-host/resident-share/task138/summary.json"],
+    ["forward-slash UNC", ",", "//cestus-host/resident-share/task138/summary.json"]
+  ] as const)("closes the whole DTO for a %s path after %s punctuation", async (family, punctuation, absolutePath) => {
+    const unsafeSummary = `Mounted output${punctuation}${absolutePath}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(family === "doubled-slash POSIX"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP-like doubled-slash POSIX", "Mounted output=xHTTP://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json"],
+    ["HTTPS-like forward-slash UNC", "Mounted output=_hTtPs://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json"]
+  ] as const)("closes the whole DTO for a false or embedded %s prefix", async (family, unsafeSummary, absolutePath) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(family.includes("POSIX")
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["hyphenated non-HTTP scheme before doubled-slash POSIX", "Mounted output=x-http://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", "x-http:"],
+    ["hyphenated non-HTTP scheme before forward-slash UNC", "Mounted output=x-http://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "UNC", "x-http:"],
+    ["dotted non-HTTP scheme before doubled-slash POSIX", "Mounted output=x.http://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", "x.http:"],
+    ["dotted non-HTTP scheme before forward-slash UNC", "Mounted output=x.http://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "UNC", "x.http:"],
+    ["plus-suffixed non-HTTPS scheme before doubled-slash POSIX", "Mounted output=x+https://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", "x+https:"],
+    ["plus-suffixed non-HTTPS scheme before forward-slash UNC", "Mounted output=x+https://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "UNC", "x+https:"],
+    ["non-ASCII adjacent HTTP-like prefix", "Mounted output=éHTTP://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", undefined]
+  ] as const)("closes the whole DTO for a %s", async (_kind, unsafeSummary, absolutePath, pathOwner, expectedProtocol) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+    const uriLikeText = unsafeSummary.slice("Mounted output=".length);
+
+    expect(pathOwner === "POSIX"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(absolutePath);
+    if (expectedProtocol === undefined) {
+      expect(() => new URL(uriLikeText)).toThrow();
+    } else {
+      const protocol = new URL(uriLikeText).protocol;
+      expect(protocol).toBe(expectedProtocol);
+      expect(["http:", "https:"]).not.toContain(protocol);
+    }
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each(generalizedSafePunctuation.flatMap((punctuation) =>
+    generalizedAbsolutePathRepresentatives.map(([family, absolutePath, pathOwner]) =>
+      [family, punctuation, absolutePath, pathOwner] as const
+    )
+  ))("closes the whole DTO for a %s path after %s generalized punctuation", async (_family, punctuation, absolutePath, pathOwner) => {
+    const unsafeSummary = `Mounted output${punctuation}${absolutePath}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each(generalizedSafePunctuation.flatMap((punctuation) => [
+    ["HTTP", punctuation, `Mounted output${punctuation}hTtP://example.test/public/records`, "hTtP://example.test/public/records"],
+    ["HTTPS", punctuation, `Mounted output${punctuation}HtTpS://example.test/public/records`, "HtTpS://example.test/public/records"]
+  ] as const))("accepts a mixed-case %s scheme after %s generalized punctuation", async (scheme, _punctuation, safeSummary, url) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(url).protocol).toBe(`${scheme.toLowerCase()}:`);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["urn", "urn:hTtP://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "posix", "urn:"],
+    ["urn", "urn:hTtP://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "win32", "urn:"],
+    ["mailto", "mailto:HtTpS://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "posix", "mailto:"],
+    ["mailto", "mailto:HtTpS://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "win32", "mailto:"],
+    ["arbitrary x", "x:HTTP://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "posix", "x:"],
+    ["arbitrary x", "x:HTTPS://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "win32", "x:"]
+  ] as const)("closes the whole DTO for a nested HTTP-like %s outer scheme", async (_kind, nestedUri, absolutePath, pathOwner, expectedProtocol) => {
+    const unsafeSummary = `Mounted output=${nestedUri}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+    const protocol = new URL(nestedUri).protocol;
+
+    expect(protocol).toBe(expectedProtocol);
+    expect(["http:", "https:"]).not.toContain(protocol);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["slash-prefixed HTTP-like text", "x/hTtP:"],
+    ["backslash-prefixed HTTPS-like text", "x\\HtTpS:"]
+  ].flatMap(([kind, prefix]) => doubledSlashAbsoluteSuffixes.map(([family, absolutePath, pathOwner]) =>
+    [kind, family, `${prefix}${absolutePath}`, absolutePath, pathOwner] as const
+  )))("closes the whole DTO for %s before a %s suffix", async (_kind, _family, httpLikeText, absolutePath, pathOwner) => {
+    const unsafeSummary = `Mounted output=${httpLikeText}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(() => new URL(httpLikeText)).toThrow();
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(httpLikeText).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each(["urn:", "mailto:", "x:"].flatMap((outerProtocol) =>
+    [
+      ["query", "?url="],
+      ["fragment", "#"],
+      ["assignment", "payload="],
+      ["path payload", "payload/"]
+    ].flatMap(([payloadKind, payloadPrefix]) => doubledSlashAbsoluteSuffixes.map(([family, absolutePath, pathOwner]) => {
+      const innerScheme = pathOwner === "posix" ? "hTtP" : "HtTpS";
+      return [outerProtocol, payloadKind, family, `${outerProtocol}${payloadPrefix}${innerScheme}:${absolutePath}`, absolutePath, pathOwner] as const;
+    }))
+  ))("closes the whole DTO for %s outer protocol with inner HTTP(S) after %s over %s", async (expectedProtocol, _payloadKind, _family, nestedUri, absolutePath, pathOwner) => {
+    const unsafeSummary = `Mounted output=${nestedUri}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+    const protocol = new URL(nestedUri).protocol;
+
+    expect(protocol).toBe(expectedProtocol);
+    expect(["http:", "https:"]).not.toContain(protocol);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP", "hTtP://example.test/public/records?next=https://archive.test/public/records", "https://archive.test/public/records"],
+    ["HTTPS", "HtTpS://example.test/public/records?next=http://archive.test/public/records", "http://archive.test/public/records"]
+  ] as const)("accepts a genuine outer mixed-case %s URL carrying an HTTP(S) query URL", async (scheme, outerUrl, innerUrl) => {
+    const fixture = handoffFixture({ safeSummary: outerUrl });
+    const stores = storesFor(fixture);
+    const parsed = new URL(outerUrl);
+
+    expect(parsed.protocol).toBe(`${scheme.toLowerCase()}:`);
+    expect(parsed.searchParams.get("next")).toBe(innerUrl);
+    expect(["http:", "https:"]).toContain(new URL(innerUrl).protocol);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(outerUrl)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(outerUrl);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "pipe",
+      "http://example.test|urn:?url=http://opt/cestus/handoff.json",
+      "http://example.test",
+      "urn:?url=http://opt/cestus/handoff.json",
+      "//opt/cestus/handoff.json"
+    ],
+    [
+      "query",
+      "https://example.test/x?next=urn:?url=http://opt/cestus/private.json",
+      "https://example.test/x?next=",
+      "urn:?url=http://opt/cestus/private.json",
+      "//opt/cestus/private.json"
+    ]
+  ] as const)("closes a same-token leading HTTP(S) URL followed by a non-HTTP outer URI after %s punctuation", async (_kind, unsafeSummary, leadingUrl, nestedUri, absolutePath) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(["http:", "https:"]).toContain(new URL(leadingUrl).protocol);
+    expect(new URL(nestedUri).protocol).toBe("urn:");
+    expect(posix.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(nestedUri);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["rooted Windows system path", "\\Windows\\System32\\config"],
+    ["rooted Windows private path", "\\root\\private.json"],
+    ["host-only cestus UNC root", "\\\\cestus-host"],
+    ["host-only short UNC root", "\\\\host"],
+    ["host-only UNC root with trailing slash", "\\\\host\\"]
+  ] as const)("closes the whole DTO for a %s", async (_kind, absolutePath) => {
+    const unsafeSummary = `Mounted output=${absolutePath}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(win32.isAbsolute(absolutePath)).toBe(true);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTPS inner URL in path", "https:", "https://example.test/redirect/http://archive.test/public/records"],
+    ["HTTP inner URL in query", "http:", "http://example.test/public/records?next=https://archive.test/public/records"],
+    ["HTTPS inner URL in fragment", "https:", "https://example.test/public/records#http://archive.test/public/records"],
+    ["HTTPS safe punctuation in path", "https:", "https://example.test/section)/records"]
+  ] as const)("accepts a complete valid outer %s control", async (_kind, expectedProtocol, safeSummary) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(safeSummary).protocol).toBe(expectedProtocol);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it("keeps whitespace-separated scheme masking closed", async () => {
+    const unsafeSummary = "http://example.test urn:?url=http://opt/cestus/handoff.json";
+    const absolutePath = "//opt/cestus/handoff.json";
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary.split(" ")[0]!).protocol).toBe("http:");
+    expect(new URL(unsafeSummary.split(" ")[1]!).protocol).toBe("urn:");
+    expect(posix.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(absolutePath);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it("accepts ordinary punctuation and relative slash text after the compositional controls", async () => {
+    const safeSummary = "Notes=(section), relative=child/path, ratio=3/4, backslash=child\\draft.";
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(posix.isAbsolute("child/path")).toBe(false);
+    expect(win32.isAbsolute("child\\draft")).toBe(false);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["path", "POSIX", "https://public.test/reports|urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["path", "forward UNC", "https://public.test/reports|x://cestus-host/share/private.json", "https:", "x:", "//cestus-host/share/private.json", "win32"],
+    ["query", "POSIX", "http://example.test?next=urn://opt/cestus/private.json", "http:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["query", "forward UNC", "http://example.test?next=x://cestus-host/share/private.json", "http:", "x:", "//cestus-host/share/private.json", "win32"],
+    ["fragment", "POSIX", "https://example.test#next=urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["fragment", "forward UNC", "https://example.test#next=x://cestus-host/share/private.json", "https:", "x:", "//cestus-host/share/private.json", "win32"]
+  ] as const)("closes a complete outer HTTP(S) URL followed by a non-HTTP authority in %s over %s", async (_separator, _family, unsafeSummary, outerProtocol, nestedProtocol, absolutePath, pathOwner) => {
+    const nestedMarker = `${nestedProtocol}//`;
+    const nestedStart = unsafeSummary.indexOf(nestedMarker);
+    const nestedUri = unsafeSummary.slice(nestedStart);
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary).protocol).toBe(outerProtocol);
+    expect(nestedStart).toBeGreaterThan(0);
+    expect(new URL(nestedUri).protocol).toBe(nestedProtocol);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["path", "POSIX", "https://public.test/reports/:urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["path", "forward UNC", "http://public.test/reports/:x://cestus-host/share/private.json", "http:", "x:", "//cestus-host/share/private.json", "win32"],
+    ["query", "POSIX", "https://public.test/?next=:urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["query", "forward UNC", "http://example.test/?next=:x://cestus-host/share/private.json", "http:", "x:", "//cestus-host/share/private.json", "win32"],
+    ["fragment", "POSIX", "https://example.test/#next=:urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["fragment", "forward UNC", "http://example.test/#next=:x://cestus-host/share/private.json", "http:", "x:", "//cestus-host/share/private.json", "win32"]
+  ] as const)("closes a complete outer HTTP(S) URL followed by a colon-introduced non-HTTP authority in %s over %s", async (_position, _family, unsafeSummary, outerProtocol, nestedProtocol, absolutePath, pathOwner) => {
+    const nestedStart = unsafeSummary.indexOf(`${nestedProtocol}//`);
+    const nestedUri = unsafeSummary.slice(nestedStart);
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary).protocol).toBe(outerProtocol);
+    expect(nestedStart).toBeGreaterThan(0);
+    expect(unsafeSummary[nestedStart - 1]).toBe(":");
+    expect(new URL(nestedUri).protocol).toBe(nestedProtocol);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["query", "POSIX", "https://public.test/?next=:x:urn://opt/cestus/private.json", "https:", "urn:", "//opt/cestus/private.json", "posix"],
+    ["fragment", "forward UNC", "http://public.test/#next=:x:urn://cestus-host/share/private.json", "http:", "urn:", "//cestus-host/share/private.json", "win32"]
+  ] as const)("closes immediately adjacent nested schemes in an outer HTTP(S) %s over %s", async (_position, _family, unsafeSummary, outerProtocol, nestedProtocol, absolutePath, pathOwner) => {
+    const nestedStart = unsafeSummary.indexOf(`${nestedProtocol}//`);
+    const nestedUri = unsafeSummary.slice(nestedStart);
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary).protocol).toBe(outerProtocol);
+    expect(nestedStart).toBeGreaterThan(1);
+    expect(unsafeSummary.slice(nestedStart - 2, nestedStart)).toBe("x:");
+    expect(new URL(nestedUri).protocol).toBe(nestedProtocol);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["query", "file POSIX", "https://public.test/?next=file:/opt/cestus/private.json", "https:", "file:/opt/cestus/private.json", "/opt/cestus/private.json", "posix"],
+    ["fragment", "file drive", "http://public.test/#next=file:C:/Cestus/private.json", "http:", "file:C:/Cestus/private.json", "C:/Cestus/private.json", "win32"],
+    ["query", "native POSIX", "https://public.test/?path=/opt/cestus/private.json", "https:", "/opt/cestus/private.json", "/opt/cestus/private.json", "posix"],
+    ["fragment", "native drive", "http://public.test/#path=C:/Cestus/private.json", "http:", "C:/Cestus/private.json", "C:/Cestus/private.json", "win32"],
+    ["query", "native rooted Windows", "https://public.test/?path=\\Windows\\System32\\config", "https:", "\\Windows\\System32\\config", "\\Windows\\System32\\config", "win32"],
+    ["fragment", "native UNC", "http://public.test/#path=\\\\cestus-host\\share\\private.json", "http:", "\\\\cestus-host\\share\\private.json", "\\\\cestus-host\\share\\private.json", "win32"]
+  ] as const)("closes a complete outer HTTP(S) %s containing an absolute %s payload", async (_position, _family, unsafeSummary, outerProtocol, payload, absolutePath, pathOwner) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary).protocol).toBe(outerProtocol);
+    expect(unsafeSummary).toContain(payload);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["query", "[", "native POSIX", "https://public.test/?path=[/opt/cestus/private.json", "https:", "/opt/cestus/private.json", "/opt/cestus/private.json", "posix"],
+    ["query", ";", "native drive", "http://public.test/?path=;C:\\Cestus\\private.json", "http:", "C:\\Cestus\\private.json", "C:\\Cestus\\private.json", "win32"],
+    ["path", ":", "file rooted Windows", "https://public.test/reports:file:\\Windows\\System32\\config", "https:", "file:\\Windows\\System32\\config", "\\Windows\\System32\\config", "win32"],
+    ["fragment", ",", "native backslash UNC", "http://public.test/#path=,\\\\cestus-host\\share\\private.json", "http:", "\\\\cestus-host\\share\\private.json", "\\\\cestus-host\\share\\private.json", "win32"],
+    ["path", "(", "native forward UNC", "https://public.test/reports(//cestus-host/share/private.json", "https:", "//cestus-host/share/private.json", "//cestus-host/share/private.json", "win32"],
+    ["fragment", "|", "file UNC", "http://public.test/#next=|file:\\\\cestus-host\\share\\private.json", "http:", "file:\\\\cestus-host\\share\\private.json", "\\\\cestus-host\\share\\private.json", "win32"],
+    ["path", "=", "native POSIX", "https://public.test/reports=/srv/cestus/private.json", "https:", "/srv/cestus/private.json", "/srv/cestus/private.json", "posix"],
+    ["query", "=", "native drive", "http://public.test/?path=D:/Cestus/private.json", "http:", "D:/Cestus/private.json", "D:/Cestus/private.json", "win32"],
+    ["fragment", "=", "native rooted Windows", "https://public.test/#path=\\Windows\\System32\\drivers", "https:", "\\Windows\\System32\\drivers", "\\Windows\\System32\\drivers", "win32"],
+    ["query", "=", "native backslash UNC", "http://public.test/?path=\\\\archive-host\\share\\private.json", "http:", "\\\\archive-host\\share\\private.json", "\\\\archive-host\\share\\private.json", "win32"],
+    ["fragment", "=", "native forward UNC", "https://public.test/#path=//archive-host/share/private.json", "https:", "//archive-host/share/private.json", "//archive-host/share/private.json", "win32"],
+    ["query", "=", "file slash", "http://public.test/?next=file:/srv/cestus/private.json", "http:", "file:/srv/cestus/private.json", "/srv/cestus/private.json", "posix"],
+    ["fragment", "=", "file drive", "https://public.test/#next=file:D:\\Cestus\\private.json", "https:", "file:D:\\Cestus\\private.json", "D:\\Cestus\\private.json", "win32"],
+    ["path", "=", "file slash", "http://public.test/public=file:/var/cestus/private.json", "http:", "file:/var/cestus/private.json", "/var/cestus/private.json", "posix"]
+  ] as const)("closes an outer HTTP(S) %s with %s before an absolute %s payload", async (_position, punctuation, _family, unsafeSummary, outerProtocol, payload, absolutePath, pathOwner) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary).protocol).toBe(outerProtocol);
+    expect(unsafeSummary).toContain(`${punctuation}${payload}`);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(payload).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get.mock.calls.every(([hash]) => hash === fixture.materialHash)).toBe(true);
+    expect(stores.manifestStore.get.mock.calls.every(([hash]) => hash === fixture.manifestHash)).toBe(true);
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["POSIX adjacent home", "~/~/child/nested/path", "posix"],
+    ["POSIX home-dot-home", "~/./~/child/nested/path", "posix"],
+    ["POSIX dot-home", "./~/child/nested/path", "posix"],
+    ["POSIX dot-dot-home", "../~/child/nested/path", "posix"],
+    ["Windows adjacent home", "~\\~\\child\\nested\\path", "win32"],
+    ["Windows home-dot-home", "~\\.\\~\\child\\nested\\path", "win32"],
+    ["Windows dot-home", ".\\~\\child\\nested\\path", "win32"],
+    ["Windows dot-dot-home", "..\\~\\child\\nested\\path", "win32"]
+  ] as const)("accepts safe mixed leading %s relative notation", async (_kind, relativePath, pathOwner) => {
+    const safeSummary = `Mounted output=${relativePath}`;
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(relativePath)
+      : win32.isAbsolute(relativePath)).toBe(false);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(safeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(safeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get.mock.calls.every(([hash]) => hash === fixture.materialHash)).toBe(true);
+    expect(stores.manifestStore.get.mock.calls.every(([hash]) => hash === fixture.manifestHash)).toBe(true);
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["complete HTTP", "http://public.test/newsroom/records?view=public#summary", "http:", undefined, undefined],
+    ["complete HTTPS", "https://public.test/newsroom/records?view=public#summary", "https:", undefined, undefined],
+    ["nested HTTP", "https://public.test/?next=http://archive.test/public/records", "https:", undefined, undefined],
+    ["nested HTTPS", "http://public.test/#next=https://archive.test/public/records", "http:", undefined, undefined],
+    ["structural HTTP pathname", "http://public.test/public/reports/2026/summary.json", "http:", undefined, undefined],
+    ["structural HTTPS repeated pathname separators", "https://public.test/public//reports///summary.json", "https:", undefined, undefined],
+    ["ordinary query punctuation", "https://public.test/?note=a=b:c[d,e(f;g|h", "https:", undefined, undefined],
+    ["ordinary fragment punctuation", "http://public.test/#note=a=b:c[d,e(f;g|h", "http:", undefined, undefined],
+    ["drive-relative forward slash", "Mounted output=C:relative/draft", undefined, "C:relative/draft", "win32"],
+    ["drive-relative backslash", "Mounted output=D:relative\\draft", undefined, "D:relative\\draft", "win32"],
+    ["leading/internal/adjacent POSIX relative", "Mounted output=./child/../branch/~/./leaf", undefined, "./child/../branch/~/./leaf", "posix"],
+    ["leading/internal/adjacent Windows relative", "Mounted output=.\\child\\..\\branch\\~\\.\\leaf", undefined, ".\\child\\..\\branch\\~\\.\\leaf", "win32"]
+  ] as const)("accepts a matching safe %s control", async (_kind, safeSummary, outerProtocol, relativePath, pathOwner) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    if (outerProtocol !== undefined) {
+      expect(new URL(safeSummary).protocol).toBe(outerProtocol);
+    } else {
+      expect(relativePath).toBeDefined();
+      expect(pathOwner === "posix"
+        ? posix.isAbsolute(relativePath!)
+        : win32.isAbsolute(relativePath!)).toBe(false);
+    }
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get.mock.calls.every(([hash]) => hash === fixture.materialHash)).toBe(true);
+    expect(stores.manifestStore.get.mock.calls.every(([hash]) => hash === fixture.manifestHash)).toBe(true);
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["complete HTTP", "http://public.test/public/records", "http://public.test/public/records", undefined],
+    ["nested HTTPS", "https://public.test/?next=:https://archive.test/public/records", "https://archive.test/public/records", undefined],
+    ["ordinary query punctuation", "https://public.test/?note=x:urn:relative/path", "https://public.test/?note=x:urn:relative/path", undefined],
+    ["ordinary fragment punctuation", "http://public.test/#note=file:relative\\draft", "http://public.test/#note=file:relative\\draft", undefined],
+    ["separated POSIX dot/dot-dot/home", "Mounted output=child/relative/./draft/../home/~/leaf", undefined, "posix"],
+    ["separated Windows dot/dot-dot/home", "Mounted output=child\\relative\\.\\draft\\..\\home\\~\\leaf", undefined, "win32"]
+  ] as const)("accepts matching safe %s control text", async (_kind, safeSummary, url, pathOwner) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    if (url !== undefined) {
+      expect(["http:", "https:"]).toContain(new URL(url).protocol);
+    } else {
+      const relativePath = safeSummary.slice("Mounted output=".length);
+      expect(pathOwner === "posix"
+        ? posix.isAbsolute(relativePath)
+        : win32.isAbsolute(relativePath)).toBe(false);
+    }
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["path", "https://public.test/reports/:https://archive.test/public/records", "https:", "https://archive.test/public/records"],
+    ["path", "http://public.test/reports/:http://archive.test/public/records", "http:", "http://archive.test/public/records"],
+    ["query", "https://public.test/?next=:http://archive.test/public/records", "https:", "http://archive.test/public/records"],
+    ["query", "http://example.test/?next=:https://archive.test/public/records", "http:", "https://archive.test/public/records"],
+    ["fragment", "https://example.test/#next=:http://archive.test/public/records", "https:", "http://archive.test/public/records"],
+    ["fragment", "http://example.test/#next=:https://archive.test/public/records", "http:", "https://archive.test/public/records"]
+  ] as const)("accepts a complete outer HTTP(S) URL with a colon-introduced inner HTTP(S) authority in %s", async (_position, safeSummary, outerProtocol, nestedUrl) => {
+    const nestedStart = safeSummary.indexOf(nestedUrl);
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(safeSummary).protocol).toBe(outerProtocol);
+    expect(nestedStart).toBeGreaterThan(0);
+    expect(safeSummary[nestedStart - 1]).toBe(":");
+    expect(["http:", "https:"]).toContain(new URL(nestedUrl).protocol);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["dot-relative POSIX", "./child/path", "posix"],
+    ["dot-dot-relative POSIX", "../child/path", "posix"],
+    ["home-relative POSIX", "~/child/path", "posix"],
+    ["dot-relative Windows", ".\\child\\draft", "win32"],
+    ["dot-dot-relative Windows", "..\\child\\draft", "win32"],
+    ["home-relative Windows", "~\\child\\draft", "win32"],
+    ["chained dot-relative POSIX", "././child", "posix"],
+    ["chained dot-dot-relative POSIX", ".././child", "posix"],
+    ["chained home-relative POSIX", "~/./child", "posix"],
+    ["long chained dot-relative POSIX", "./.././child/path", "posix"],
+    ["long chained dot-dot-relative POSIX", "../.././child/path", "posix"],
+    ["chained dot-relative Windows", ".\\.\\child", "win32"],
+    ["chained dot-dot-relative Windows", "..\\.\\child", "win32"],
+    ["chained home-relative Windows", "~\\.\\child", "win32"],
+    ["long chained dot-relative Windows", ".\\..\\.\\child\\draft", "win32"],
+    ["long chained dot-dot-relative Windows", "..\\..\\.\\child\\draft", "win32"],
+    ["internal dot-relative POSIX", "child/./path", "posix"],
+    ["internal dot-dot-relative POSIX", "child/../path", "posix"],
+    ["internal home-relative POSIX", "child/~/path", "posix"],
+    ["leading-dot with internal dot POSIX", "./child/./path", "posix"],
+    ["leading-dot-dot with internal dot-dot POSIX", "../child/../path", "posix"],
+    ["leading-home with internal home POSIX", "~/child/~/path", "posix"],
+    ["adjacent internal dot POSIX", "child/././path", "posix"],
+    ["adjacent internal home POSIX", "child/~/~/path", "posix"],
+    ["long adjacent internal dot chain POSIX", "child/././.././path", "posix"],
+    ["long adjacent internal mixed chain POSIX", "child/~/./~/path", "posix"],
+    ["internal dot-relative Windows", "child\\.\\path", "win32"],
+    ["internal dot-dot-relative Windows", "child\\..\\path", "win32"],
+    ["internal home-relative Windows", "child\\~\\path", "win32"],
+    ["leading-dot with internal dot Windows", ".\\child\\.\\path", "win32"],
+    ["leading-dot-dot with internal dot-dot Windows", "..\\child\\..\\path", "win32"],
+    ["leading-home with internal home Windows", "~\\child\\~\\path", "win32"],
+    ["adjacent internal dot Windows", "child\\.\\.\\path", "win32"],
+    ["adjacent internal home Windows", "child\\~\\~\\path", "win32"],
+    ["long adjacent internal dot chain Windows", "child\\.\\.\\..\\.\\path", "win32"],
+    ["long adjacent internal mixed chain Windows", "child\\~\\.\\~\\path", "win32"]
+  ] as const)("accepts safe non-absolute %s notation", async (_kind, relativePath, pathOwner) => {
+    const safeSummary = `Mounted output=${relativePath}`;
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(relativePath)
+      : win32.isAbsolute(relativePath)).toBe(false);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(safeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(safeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP", "string", "HTTP://example.test/public/records", "HTTP://example.test/public/records"],
+    ["HTTPS", "string", "hTtPs://example.test/public/records", "hTtPs://example.test/public/records"],
+    ["HTTP", "punctuation", "Mounted output=HtTp://example.test/public/records", "HtTp://example.test/public/records"],
+    ["HTTPS", "punctuation", "Mounted output[HTTPS://example.test/public/records", "HTTPS://example.test/public/records"]
+  ] as const)("accepts a case-insensitive %s scheme at a %s boundary", async (scheme, _boundary, safeSummary, url) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(url).protocol).toBe(`${scheme.toLowerCase()}:`);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP URL", "http://example.test/public/records?section=one,two"],
+    ["HTTPS URL", "https://example.test/public/records?section=one,two"],
+    ["ordinary punctuation", "Notes=[section/name], ratio:3/4, drive=C:relative\\draft, pair=a\\b."]
+  ] as const)("accepts safe %s text without broad path rejection", async (_kind, safeSummary) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
   });
 
   it("projects recorded-only V2 lifecycle after restart without synthesizing terminal provenance", async () => {
@@ -148,6 +1192,26 @@ describe("buildResidentHandoffDto", () => {
     expect(dto.nextSafeActions.length).toBeGreaterThan(0);
     expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
     expect(dto.lifecycle).not.toBe("task-completed");
+  });
+
+  it.each([
+    ["ready-for-review", "completed"],
+    ["failed", "failed"]
+  ] as const)("maps an exact terminal-only %s chain to terminal-consistent without task completion", async (status, stateKind) => {
+    const fixture = handoffFixture({ status });
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, fixture.terminal],
+      storesFor(fixture)
+    );
+
+    expect(dto.lifecycle).toBe("terminal-consistent");
+    expect(dto.lifecycle).not.toBe("task-completed");
+    expect(dto.status).toBe(status);
+    expect(dto.stateKind).toBe(stateKind);
+    expect(dto.provenance).toBeUndefined();
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
   });
 
   it("keeps historical V1 replay legacy-unbound with no provenance or executable action", async () => {
@@ -256,6 +1320,343 @@ describe("buildResidentHandoffDto", () => {
     expect(stores.manifestStore.put).not.toHaveBeenCalled();
   });
 
+  it("uses a fixed safe identity for invalid top-level input without retaining hostile runId text", async () => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const hostileRunId = "raw-provider-secret-run-identity";
+
+    const dto = await buildResidentHandoffDto({
+      runId: hostileRunId,
+      events: [],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "run-identity-missing");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(JSON.stringify(dto)).not.toContain(hostileRunId);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it("rejects a released-parser-invalid path-bearing started identity before store IO", async () => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const pathRunId = "/home/cestus/runs/task138";
+    const pathTaskId = "/workspace/cestus/tasks/task138";
+    const started = {
+      ...fixture.started,
+      streamId: `agent_run_${pathRunId}`,
+      payload: {
+        ...fixture.started.payload,
+        runId: pathRunId,
+        taskId: pathTaskId
+      }
+    } as unknown as KnowledgeEvent;
+
+    expect(isAgentSecretSafeText(pathRunId)).toBe(true);
+    expect(isAgentSecretSafeText(pathTaskId)).toBe(true);
+    expect(validateKnowledgeEvent(started).success).toBe(false);
+
+    const dto = await buildResidentHandoffDto({
+      runId: pathRunId,
+      events: [started],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "dto-invalid");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(dto.taskId).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toMatch(/\/home\/|\/workspace\/|cestus\/runs|cestus\/tasks/i);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it("rejects a released-parser-invalid incomplete terminal before store IO", async () => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    if (fixture.terminal.type !== "agent.specialist-run.completed") {
+      throw new Error("ready-for-review fixture must have a completed terminal");
+    }
+    const { completedAt: _completedAt, ...incompletePayload } = fixture.terminal.payload;
+    const rawTerminalPath = "/home/cestus/raw-terminal-event";
+    const incompleteTerminal = {
+      ...fixture.terminal,
+      payload: {
+        ...incompletePayload,
+        summary: rawTerminalPath
+      }
+    } as unknown as KnowledgeEvent;
+
+    expect(validateKnowledgeEvent(incompleteTerminal).success).toBe(false);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, incompleteTerminal],
+      stores
+    );
+
+    expectClosed(dto, "inconsistent", "dto-invalid");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(dto.taskId).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toContain(rawTerminalPath);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["runId", "run_x-private-key"],
+    ["taskId", "task_x-private-key"]
+  ] as const)("rejects a matching started-event %s unless it is secret-safe", async (field, unsafeIdentity) => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const started = {
+      ...fixture.started,
+      ...(field === "runId" ? { streamId: `agent_run_${unsafeIdentity}` } : {}),
+      payload: {
+        ...fixture.started.payload,
+        [field]: unsafeIdentity
+      }
+    } as KnowledgeEvent;
+
+    expect(isAgentSecretSafeText(unsafeIdentity)).toBe(false);
+    expect(validateKnowledgeEvent(started).success).toBe(true);
+
+    const dto = await buildResidentHandoffDto({
+      runId: field === "runId" ? unsafeIdentity : fixture.runId,
+      events: [started],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe("unavailable-run");
+    expect(dto.taskId).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toContain(unsafeIdentity);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["payload", (fixture: ProjectionFixture) => ({
+      ...fixture.prepared,
+      id: "evt_task138_malformed_payload",
+      payload: null
+    })],
+    ["context", (fixture: ProjectionFixture) => ({
+      ...fixture.started,
+      id: "evt_task138_malformed_context",
+      streamId: "agent_run_run_task138_malformed_context",
+      context: null,
+      payload: {
+        ...fixture.started.payload,
+        runId: "run_task138_malformed_context"
+      }
+    })],
+    ["type", (fixture: ProjectionFixture) => ({
+      ...fixture.started,
+      id: "evt_task138_malformed_type",
+      type: "agent.task138.unknown",
+      streamId: "agent_run_run_task138_malformed_type",
+      payload: {
+        ...fixture.started.payload,
+        runId: "run_task138_malformed_type"
+      }
+    })]
+  ] as const)("contains a normalized plain-own event with schema-malformed %s data", async (_field, malformedEvent) => {
+    const fixture = handoffFixture();
+    const stores = storesFor(fixture);
+    const malformed = malformedEvent(fixture);
+
+    expect(validateKnowledgeEvent(malformed).success).toBe(false);
+
+    const dto = await buildResidentHandoffDto({
+      runId: fixture.runId,
+      events: [fixture.started, malformed as KnowledgeEvent],
+      materialStore: stores.materialStore,
+      manifestStore: stores.manifestStore,
+      authorityBinding: fixture.authorityBinding
+    });
+
+    expectClosed(dto, "inconsistent", "dto-invalid");
+    expect(isAgentSecretSafeText(JSON.stringify(dto))).toBe(true);
+    expect(stores.materialStore.get).not.toHaveBeenCalled();
+    expect(stores.manifestStore.get).not.toHaveBeenCalled();
+  });
+
+  it.each(["descriptor", "prototype"] as const)(
+    "contains hostile Proxy %s traps inside the bounded async boundary",
+    async (trap) => {
+      const fixture = handoffFixture();
+      const stores = storesFor(fixture);
+      const hostileText = `raw-provider-secret-${trap}-trap`;
+      const input = trap === "descriptor"
+        ? new Proxy({}, {
+          getOwnPropertyDescriptor() {
+            throw new Error(hostileText);
+          }
+        })
+        : {
+          runId: fixture.runId,
+          events: new Proxy([], {
+            getPrototypeOf() {
+              throw new Error(hostileText);
+            }
+          }),
+          materialStore: stores.materialStore,
+          manifestStore: stores.manifestStore,
+          authorityBinding: fixture.authorityBinding
+        };
+
+      const dto = await buildResidentHandoffDto(input as never);
+
+      expectClosed(dto, "inconsistent", "unsafe-boundary-value");
+      expect(dto.runId).toBe("unavailable-run");
+      expect(JSON.stringify(dto)).not.toContain(hostileText);
+      expect(stores.materialStore.get).not.toHaveBeenCalled();
+      expect(stores.manifestStore.get).not.toHaveBeenCalled();
+    }
+  );
+
+  it("preserves only safe upstream diagnostic event IDs and hashes without copying raw messages", async () => {
+    const fixture = handoffFixture();
+
+    const dto = await project(
+      fixture,
+      fixture.completeEvents,
+      storesFor(fixture, "corrupt manifest")
+    );
+
+    expectClosed(dto, "inconsistent", "manifest-content-mismatch");
+    expect(dto.diagnostics[0]).toMatchObject({
+      eventIds: [fixture.prepared.id],
+      artifactHashes: expect.arrayContaining([fixture.manifestHash])
+    });
+    expect(dto.diagnostics[0]?.artifactHashes).toHaveLength(2);
+    expect(dto.diagnostics[0]?.artifactHashes.every((hash) => /^sha256:[a-f0-9]{64}$/.test(hash))).toBe(true);
+    expect(JSON.stringify(dto)).not.toContain("Recorded handoff manifest bytes are not parseable canonical JSON.");
+  });
+
+  it("rejects schema-invalid diagnostic material and filters a schema-valid conflict", async () => {
+    const fixture = handoffFixture();
+    if (fixture.terminal.type !== "agent.specialist-run.completed") {
+      throw new Error("ready-for-review fixture must have a completed terminal");
+    }
+    const hostileEventId = "raw-provider-secret-event-id";
+    const hostileArtifactHash = "raw-provider-secret-artifact-hash";
+    const hostileTerminal = {
+      ...fixture.terminal,
+      id: hostileEventId,
+      payload: {
+        ...fixture.terminal.payload,
+        outputArtifactHashes: [hostileArtifactHash]
+      }
+    } as unknown as KnowledgeEvent;
+
+    expect(validateKnowledgeEvent(hostileTerminal).success).toBe(false);
+
+    const invalidStores = storesFor(fixture);
+    const invalidDto = await project(
+      fixture,
+      [...fixture.recordedEvents, hostileTerminal],
+      invalidStores
+    );
+
+    expectClosed(invalidDto, "inconsistent", "dto-invalid");
+    expect(invalidDto.diagnostics[0]).toMatchObject({ eventIds: [], artifactHashes: [] });
+    expect(JSON.stringify(invalidDto)).not.toMatch(/raw-provider-secret/i);
+    expect(invalidStores.materialStore.get).not.toHaveBeenCalled();
+    expect(invalidStores.manifestStore.get).not.toHaveBeenCalled();
+
+    const unsafeEventId = "evt_sk_live_task138conflict";
+    const schemaValidConflict = {
+      ...fixture.terminal,
+      id: unsafeEventId,
+      payload: {
+        ...fixture.terminal.payload,
+        outputArtifactHashes: [hash111]
+      }
+    } as KnowledgeEvent;
+
+    expect(validateKnowledgeEvent(schemaValidConflict).success).toBe(true);
+    expect(isAgentSecretSafeText(unsafeEventId)).toBe(false);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, schemaValidConflict],
+      storesFor(fixture)
+    );
+
+    expectClosed(dto, "inconsistent", "terminal-status-conflict");
+    expect(dto.diagnostics[0]).toMatchObject({
+      eventIds: [fixture.recorded.id],
+      artifactHashes: [hash111]
+    });
+    expect(dto.diagnostics[0]?.artifactHashes.every((hash) => /^sha256:[a-f0-9]{64}$/.test(hash))).toBe(true);
+    expect(JSON.stringify(dto)).not.toMatch(/raw-provider-secret|Terminal run state must agree|Completed run output hashes disagree/);
+  });
+
+  it("drops syntax-valid secret-unsafe diagnostic event IDs while retaining safe evidence", async () => {
+    const fixture = handoffFixture();
+    if (fixture.terminal.type !== "agent.specialist-run.completed") {
+      throw new Error("ready-for-review fixture must have a completed terminal");
+    }
+    const unsafeEventId = "evt_sk_live_task138unsafe";
+    const terminal = {
+      ...fixture.terminal,
+      id: unsafeEventId,
+      payload: {
+        ...fixture.terminal.payload,
+        outputArtifactHashes: [hash111]
+      }
+    } as KnowledgeEvent;
+
+    expect(/^evt_[a-zA-Z0-9_-]+$/.test(unsafeEventId)).toBe(true);
+    expect(validateKnowledgeEvent(terminal).success).toBe(true);
+    expect(isAgentSecretSafeText(unsafeEventId)).toBe(false);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, terminal],
+      storesFor(fixture)
+    );
+
+    expectClosed(dto, "inconsistent", "terminal-status-conflict");
+    expect(dto.diagnostics[0]?.eventIds).toEqual([fixture.recorded.id]);
+    expect(JSON.stringify(dto)).not.toContain(unsafeEventId);
+  });
+
+  it.each([
+    ["ready-for-review", "completed"],
+    ["failed", "failed"]
+  ] as const)("uses the released authoritative record for an exact %s recorded retry terminal", async (status, stateKind) => {
+    const fixture = handoffFixture({ status });
+    const exactRetry = {
+      ...fixture.recorded,
+      id: `evt_handoff_recorded_exact_retry_${status.replace(/-/g, "_")}`
+    } as KnowledgeEvent;
+
+    expect(validateKnowledgeEvent(exactRetry).success).toBe(true);
+    expect(fixture.terminal.context.causationId).toBe(fixture.recorded.id);
+    expect(fixture.terminal.context.causationId).not.toBe(exactRetry.id);
+
+    const dto = await project(
+      fixture,
+      [...fixture.recordedEvents, exactRetry, fixture.terminal],
+      storesFor(fixture)
+    );
+
+    expect(dto.lifecycle).toBe("terminal-consistent");
+    expect(dto.status).toBe(status);
+    expect(dto.stateKind).toBe(stateKind);
+    expect(dto.provenance).toBeUndefined();
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+  });
+
   it("rejects hostile accessors before observation or store IO and retains no hostile value", async () => {
     const fixture = handoffFixture();
     const stores = storesFor(fixture);
@@ -303,6 +1704,32 @@ describe("buildResidentHandoffDto", () => {
   });
 });
 
+type MountedBrowserStringField =
+  | "safeSummary"
+  | "artifactId"
+  | "artifactKind"
+  | "schemaId"
+  | "artifactSafeSummary"
+  | "nextSafeActionLabel";
+
+interface HandoffFixtureOptions {
+  readonly legacy?: boolean;
+  readonly provenanceEventIds?: Partial<Record<ProvenanceEventIdField, string>>;
+  readonly runId?: string;
+  readonly taskId?: string;
+  readonly sourceEventId?: string;
+  readonly status?: BuildSpecialistHandoffManifestInput["status"];
+  readonly finalOutputStepId?: string;
+  readonly safeSummary?: string;
+  readonly outputArtifact?: Partial<{
+    readonly artifactId: string;
+    readonly artifactKind: string;
+    readonly schemaId: string;
+    readonly safeSummary: string;
+  }>;
+  readonly nextSafeActionLabel?: string;
+}
+
 interface ProjectionFixture {
   readonly runId: string;
   readonly taskId: string;
@@ -323,6 +1750,13 @@ interface ProjectionFixture {
   readonly recordedEvents: readonly KnowledgeEvent[];
   readonly completeEvents: readonly KnowledgeEvent[];
 }
+
+type ProvenanceEventIdField =
+  | "finalOutputEventId"
+  | "preparedEventId"
+  | "recordedEventId"
+  | "terminalRunEventId"
+  | "taskStatusEventId";
 
 class ReadStore {
   readonly get = vi.fn(async (hash: ContentHash): Promise<Buffer> => {
@@ -400,25 +1834,33 @@ function expectClosed(
   expect(dto.diagnostics).toContainEqual(expect.objectContaining({ category }));
 }
 
-function handoffFixture(options: {
-  readonly legacy?: boolean;
-  readonly runId?: string;
-  readonly taskId?: string;
-  readonly sourceEventId?: string;
-  readonly status?: BuildSpecialistHandoffManifestInput["status"];
-} = {}): ProjectionFixture {
+function handoffFixture(options: HandoffFixtureOptions = {}): ProjectionFixture {
   const runId = options.runId ?? "run_task138_projection_001";
   const taskId = options.taskId ?? "task_task138_projection_001";
   const status = options.status ?? "ready-for-review";
   const sourceEventId = options.sourceEventId ?? `evt_started_${runId}`;
-  const finalOutputEventId = `evt_final_output_${runId}`;
-  const finalOutputStepId = `step_final_output_${runId}`;
+  const finalOutputEventId = options.provenanceEventIds?.finalOutputEventId ?? `evt_final_output_${runId}`;
+  const preparedEventId = options.provenanceEventIds?.preparedEventId ?? `evt_handoff_prepared_${runId}`;
+  const recordedEventId = options.provenanceEventIds?.recordedEventId ?? `evt_handoff_recorded_${runId}`;
+  const terminalRunEventId = options.provenanceEventIds?.terminalRunEventId ?? (status === "failed"
+    ? `evt_run_failed_${runId}`
+    : `evt_run_completed_${runId}`);
+  const taskStatusEventId = options.provenanceEventIds?.taskStatusEventId ?? `evt_task_completed_${runId}`;
+  const finalOutputStepId = options.finalOutputStepId ?? `step_final_output_${runId}`;
   const outputArtifact = {
-    artifactId: "artifact_ontology_proposal_bundle",
-    artifactKind: "ontology-proposal-bundle",
-    schemaId: "ontology-bootstrap-handoff.v1",
+    artifactId: options.outputArtifact?.artifactId ?? "artifact_ontology_proposal_bundle",
+    artifactKind: options.outputArtifact?.artifactKind ?? "ontology-proposal-bundle",
+    schemaId: options.outputArtifact?.schemaId ?? "ontology-bootstrap-handoff.v1",
     artifactHash: hash222,
-    safeSummary: "Evidence-bound ontology proposals are ready for review."
+    safeSummary: options.outputArtifact?.safeSummary ?? "Evidence-bound ontology proposals are ready for review."
+  } as const;
+  const safeSummary = options.safeSummary ?? safeSummaryFor(status);
+  const nextSafeAction = {
+    actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
+    label: options.nextSafeActionLabel ?? (status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle"),
+    kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
+    effect: status === "waiting-for-approval" ? "request-approval" : "none",
+    artifactId: outputArtifact.artifactId
   } as const;
   const contextPack = {
     contextPackId: "ontology-bootstrap-context.v1",
@@ -433,7 +1875,7 @@ function handoffFixture(options: {
   } as const;
   const material = buildSpecialistHandoffMaterial({
     status,
-    safeSummary: safeSummaryFor(status),
+    safeSummary,
     contextPackRefs: [contextPack],
     promptArtifactHash: hash111,
     outputArtifacts: [outputArtifact],
@@ -441,13 +1883,7 @@ function handoffFixture(options: {
     approvalRequirements: status === "waiting-for-approval"
       ? [{ approvalClass: "human-review", reason: "Independent review is required." }]
       : [],
-    nextSafeActions: [{
-      actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
-      label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
-      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
-      effect: status === "waiting-for-approval" ? "request-approval" : "none",
-      artifactId: outputArtifact.artifactId
-    }],
+    nextSafeActions: [nextSafeAction],
     ...(status === "failed" ? {
       failure: {
         category: "model-output-invalid",
@@ -487,7 +1923,7 @@ function handoffFixture(options: {
     residentAgentId: "agent_default",
     generatedAt: "2026-07-21T14:01:00.000Z",
     status,
-    safeSummary: safeSummaryFor(status),
+    safeSummary,
     stateKind: status === "failed" ? "failed" : status === "ready-for-review" ? "completed" : "resumable",
     finalOutputStepId,
     finalOutputEventId,
@@ -499,13 +1935,7 @@ function handoffFixture(options: {
     approvalRequirements: status === "waiting-for-approval"
       ? [{ approvalClass: "human-review", reason: "Independent review is required." }]
       : [],
-    nextSafeActions: [{
-      actionId: status === "waiting-for-approval" ? "action_request_review" : "action_review_proposals",
-      label: status === "waiting-for-approval" ? "Request proposal review" : status === "blocked" || status === "failed" ? "Repair proposal handoff" : "Review proposal bundle",
-      kind: status === "waiting-for-approval" ? "request-approval" : status === "blocked" || status === "failed" ? "retry" : "review",
-      effect: status === "waiting-for-approval" ? "request-approval" : "none",
-      artifactId: outputArtifact.artifactId
-    }],
+    nextSafeActions: [nextSafeAction],
     ...(status === "failed" ? {
       failure: {
         category: "model-output-invalid",
@@ -547,17 +1977,17 @@ function handoffFixture(options: {
     : compact;
   const prepared = agentEvent(
     "agent.specialist-handoff.prepared",
-    `evt_handoff_prepared_${runId}`,
+    preparedEventId,
     preparedPayload,
     { causationId: finalOutput.id }
   );
-  const recorded = agentEvent("agent.specialist-handoff.recorded", `evt_handoff_recorded_${runId}`, {
+  const recorded = agentEvent("agent.specialist-handoff.recorded", recordedEventId, {
     ...preparedPayload,
     preparedEventId: prepared.id,
     verifiedAt: "2026-07-21T14:02:00.000Z"
   }, { causationId: prepared.id });
   const terminal = status === "failed"
-    ? agentEvent("agent.specialist-run.failed", `evt_run_failed_${runId}`, {
+    ? agentEvent("agent.specialist-run.failed", terminalRunEventId, {
       runId,
       failedAt: "2026-07-21T14:03:00.000Z",
       category: "model-output-invalid",
@@ -566,7 +1996,7 @@ function handoffFixture(options: {
       allowedActions: ["inspect-retry"],
       relatedEventIds: [recorded.id]
     }, { causationId: recorded.id })
-    : agentEvent("agent.specialist-run.completed", `evt_run_completed_${runId}`, {
+    : agentEvent("agent.specialist-run.completed", terminalRunEventId, {
       runId,
       completedAt: "2026-07-21T14:03:00.000Z",
       outputArtifactHashes: [hash222],
@@ -577,7 +2007,7 @@ function handoffFixture(options: {
     ...agentEvent("agent.task.orchestration.completed", `evt_orchestration_completed_${runId}`, {
       taskId,
       runType: "ontology-bootstrap",
-      attemptId: `attempt_${runId}`,
+      attemptId: `attempt_${"a".repeat(64)}`,
       retryGeneration: 0,
       runId,
       completedAt: "2026-07-21T14:04:00.000Z",
@@ -594,7 +2024,7 @@ function handoffFixture(options: {
     }, { causationId: terminal.id }),
     streamId: `agent_task_orchestration_${taskId}_ontology-bootstrap`
   };
-  const taskStatus = agentEvent("agent.task.status.changed", `evt_task_completed_${runId}`, {
+  const taskStatus = agentEvent("agent.task.status.changed", taskStatusEventId, {
     taskId,
     status: status === "failed" ? "failed" : "completed",
     changedBy: "actor_cestus_agent",
@@ -622,6 +2052,29 @@ function handoffFixture(options: {
     recordedEvents,
     completeEvents
   });
+}
+
+function mountedBrowserStringOptions(
+  field: MountedBrowserStringField,
+  unsafePath: string
+): HandoffFixtureOptions {
+  switch (field) {
+    case "safeSummary": return { safeSummary: unsafePath };
+    case "artifactId": return { outputArtifact: { artifactId: unsafePath } };
+    case "artifactKind": return { outputArtifact: { artifactKind: unsafePath } };
+    case "schemaId": return { outputArtifact: { schemaId: unsafePath } };
+    case "artifactSafeSummary": return { outputArtifact: { safeSummary: unsafePath } };
+    case "nextSafeActionLabel": return { nextSafeActionLabel: unsafePath };
+  }
+}
+
+function stringLeaves(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(stringLeaves);
+  if (value !== null && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap(stringLeaves);
+  }
+  return [];
 }
 
 function safeSummaryFor(status: BuildSpecialistHandoffManifestInput["status"]): string {
