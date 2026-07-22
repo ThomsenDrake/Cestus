@@ -288,6 +288,48 @@ describe("buildResidentHandoffDto", () => {
   });
 
   it.each([
+    ["hyphenated non-HTTP scheme before doubled-slash POSIX", "Mounted output=x-http://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", "x-http:"],
+    ["hyphenated non-HTTP scheme before forward-slash UNC", "Mounted output=x-http://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "UNC", "x-http:"],
+    ["dotted non-HTTP scheme before doubled-slash POSIX", "Mounted output=x.http://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", "x.http:"],
+    ["dotted non-HTTP scheme before forward-slash UNC", "Mounted output=x.http://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "UNC", "x.http:"],
+    ["plus-suffixed non-HTTPS scheme before doubled-slash POSIX", "Mounted output=x+https://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", "x+https:"],
+    ["plus-suffixed non-HTTPS scheme before forward-slash UNC", "Mounted output=x+https://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json", "UNC", "x+https:"],
+    ["non-ASCII adjacent HTTP-like prefix", "Mounted output=éHTTP://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json", "POSIX", undefined]
+  ] as const)("closes the whole DTO for a %s", async (_kind, unsafeSummary, absolutePath, pathOwner, expectedProtocol) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+    const uriLikeText = unsafeSummary.slice("Mounted output=".length);
+
+    expect(pathOwner === "POSIX"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(absolutePath);
+    if (expectedProtocol === undefined) {
+      expect(() => new URL(uriLikeText)).toThrow();
+    } else {
+      const protocol = new URL(uriLikeText).protocol;
+      expect(protocol).toBe(expectedProtocol);
+      expect(["http:", "https:"]).not.toContain(protocol);
+    }
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["HTTP", "string", "HTTP://example.test/public/records", "HTTP://example.test/public/records"],
     ["HTTPS", "string", "hTtPs://example.test/public/records", "hTtPs://example.test/public/records"],
     ["HTTP", "punctuation", "Mounted output=HtTp://example.test/public/records", "HtTp://example.test/public/records"],

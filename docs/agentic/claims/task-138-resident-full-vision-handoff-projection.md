@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** actual-scheme-safe candidate awaiting fresh dual review
+- **Status:** implementing explicit URI-scheme token-boundary repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -743,3 +743,34 @@ and fallback writes are prohibited.
   architecture/executability review pair may approve the exact admitted
   candidate; both reviewers of `b6786361` are excluded from changed-byte
   approval.
+
+## Explicit URI-Scheme Token Causal RED
+
+- `RV-1-E-907` and corrective ratification `RV-1-E-908` authorize this bounded
+  repair from exact clean authority merge
+  `549cf45e95a713fee3dcd3b271d4a21a46ad7f72`, whose parents are rejected
+  candidate `9adc07c1ce695bd144755b27ae26384e46bc513f` and current program
+  authority `d513298d4d69803c31a934c1c52342e07efc6e95`. Every earlier authority,
+  candidate, review verdict, RED/GREEN commit, and admission remains intact.
+- Six causal rows cross valid non-HTTP schemes ending in `-http`, `.http`, and
+  `+https` with doubled-slash POSIX and forward-slash UNC representatives. A
+  seventh row covers a non-ASCII adjacent HTTP-like prefix. Every row proves
+  the retained `//...` suffix absolute through Node's matching `posix` or
+  `win32` owner. The six URL-valid rows also prove their parsed protocols are
+  exactly `x-http:`, `x.http:`, or `x+https:` and never HTTP(S); the non-ASCII
+  prefix is proven not to parse as a URL.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 7 failed / 76 passed / 83 total**. Exactly
+  the seven new rows return `task-completed` instead of the required whole-DTO
+  `inconsistent` closure. All prior **76** tests remain green, including the
+  genuine case-insensitive HTTP/HTTPS controls at string start and the already
+  authorized punctuation boundaries.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  mounted material and manifest fixtures, permits only exact role-bound reads,
+  forbids writes, requires no unsafe output retention, and preserves
+  `effect: "none"`. Explicit `file://`, ordinary punctuation, lifecycle,
+  provenance, replay, diagnostics, and whole-DTO closure assertions remain
+  intact. No registry, V4, contract, shared source, provider, credential,
+  network, external system, fallback write, admission, review, integration,
+  strict record 28, or release action participates.
