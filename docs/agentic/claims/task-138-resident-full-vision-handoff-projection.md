@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing non-HTTP authority and relative-path repair
+- **Status:** non-HTTP authority and relative-path GREEN checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1159,3 +1159,41 @@ and fallback writes are prohibited.
   registry, V4, contract, shared source, package metadata, provider,
   credential, network, external system, fallback write, admission, review,
   integration, strict record 28, or release action participates.
+
+## Non-HTTP Authority And Relative-Path Minimal GREEN
+
+- Permanent causal RED commit
+  `f2a821c85bca60d3ac834c82494763a9cdeb1944` retains exactly the **12**
+  causal failures and all **216** prior passing cases without changing
+  production source or weakening any test.
+- GREEN changes only `containsAbsolutePath`. Before complete outer HTTP(S) URL
+  context is excluded from native-path checks, the existing all-scheme scan
+  now recognizes a non-HTTP scheme whose immediate payload is a
+  `//authority` form as unsafe, while retaining the earlier nested-HTTP(S)
+  payload detection. This closes later `urn://` and `x://` compositions under
+  path, query, and fragment separators across both absolute suffix owners.
+- Dot, dot-dot, and home-relative prefixes are removed from native-root
+  consideration only when the prefix itself starts at string start or after a
+  safe non-path boundary. The first focused GREEN attempt used an unconditional
+  tilde/dot lookbehind and therefore reopened exactly **4** prior absolute-path
+  rows after `~` punctuation, producing **4 failed / 224 passed / 228 total**.
+  Replacing it with the boundary-qualified prefix treatment preserved those
+  generalized punctuation rows while leaving all tests unchanged.
+- The exact focused command then passes **1 file / 228 tests**. The exact
+  cross-boundary command passes **2 files / 264 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `0b5eb36e4b5db9e5e36e1d8f6e1a8af59e16ca91`, program
+  authority `1931a9afdb1ab07bb140580f0e56b47d90f8abd8`, authority merge
+  `4a32c6991cb480588f6605ce66fc119612f01fe5`, and permanent causal RED
+  `f2a821c85bca60d3ac834c82494763a9cdeb1944` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. The cumulative repair uses exactly the
+  frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, V4,
+  contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and
+  fresh-review gates remain pending.

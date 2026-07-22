@@ -210,10 +210,12 @@ function containsAbsolutePath(value: string): boolean {
   const containsNestedNonHttpUri = value.split(/\s+/u).some((token) => {
     for (const match of token.matchAll(/(?:^|[^\p{ID_Continue}_+.\-:])([a-z][a-z0-9+.-]*):/giu)) {
       const scheme = match[1]?.toLowerCase();
+      const schemePayload = token.slice(match.index + match[0].length);
       if (scheme !== undefined &&
         scheme !== "http" &&
         scheme !== "https" &&
-        /https?:\/\//i.test(token.slice(match.index + match[0].length))) {
+        (/^\/\/[^/?#\s]+(?:[/?#]|$)/u.test(schemePayload) ||
+          /https?:\/\//i.test(schemePayload))) {
         return true;
       }
     }
@@ -236,12 +238,16 @@ function containsAbsolutePath(value: string): boolean {
     }
     return token;
   }).join(" ");
+  const absolutePathText = nativePathText.replace(
+    /((?:^|[^\p{ID_Continue}_/\\])(?:\.{1,2}|~))[\\/]/gu,
+    "$1_"
+  );
 
   return containsNestedNonHttpUri ||
-    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(nativePathText) ||
-    /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(nativePathText) ||
-    /(?:^|[^\p{ID_Continue}_/\\])\\(?:[^\\/\s]|$)/u.test(nativePathText) ||
-    /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+(?:[\\/][^\\/\s]*)?/u.test(nativePathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(absolutePathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(absolutePathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\(?:[^\\/\s]|$)/u.test(absolutePathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+(?:[\\/][^\\/\s]*)?/u.test(absolutePathText) ||
     /\bfile:\/\//i.test(value);
 }
 
