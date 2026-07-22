@@ -186,6 +186,66 @@ describe("buildResidentHandoffDto", () => {
     expect(stores.manifestStore.put).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["Unix", "=", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Unix", ":", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Unix", "[", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Unix", ",", "/opt/cestus/handoffs/task138/summary.json"],
+    ["Windows-drive", "=", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["Windows-drive", ":", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["Windows-drive", "[", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["Windows-drive", ",", "C:\\Cestus\\handoffs\\task138\\summary.json"],
+    ["UNC", "=", "\\\\cestus-host\\resident-share\\task138\\summary.json"],
+    ["UNC", ":", "\\\\cestus-host\\resident-share\\task138\\summary.json"],
+    ["UNC", "[", "\\\\cestus-host\\resident-share\\task138\\summary.json"],
+    ["UNC", ",", "\\\\cestus-host\\resident-share\\task138\\summary.json"]
+  ] as const)("closes the whole DTO for a %s path after %s punctuation", async (_family, punctuation, absolutePath) => {
+    const unsafeSummary = `Mounted output${punctuation}${absolutePath}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP URL", "http://example.test/public/records?section=one,two"],
+    ["HTTPS URL", "https://example.test/public/records?section=one,two"],
+    ["ordinary punctuation", "Notes=[section/name], ratio:3/4, drive=C:relative\\draft, pair=a\\b."]
+  ] as const)("accepts safe %s text without broad path rejection", async (_kind, safeSummary) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
   it("projects recorded-only V2 lifecycle after restart without synthesizing terminal provenance", async () => {
     const fixture = handoffFixture();
     const events = fixture.recordedEvents;
