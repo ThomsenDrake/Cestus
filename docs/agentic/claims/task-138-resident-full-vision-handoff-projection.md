@@ -631,3 +631,27 @@ and fallback writes are prohibited.
   intact. No registry, assurance, contract, parser, provider, credential,
   external system, fallback write, integration, strict record 28, or release
   action participates.
+
+## Doubled-Slash Path Minimal GREEN
+
+- Permanent causal RED commit
+  `e4abe453761c298df098d8011e257b27fd4a8f7d` retains all **8** failing
+  doubled-slash rows and all **62** prior passing cases without changing
+  production source.
+- GREEN changes one line only in `containsAbsolutePath`: it removes the blanket
+  doubled-slash exemption and exempts a slash only when its consumed boundary
+  is preceded by an actual case-insensitive `http:` or `https:` scheme. The
+  existing punctuation boundaries, Windows-drive and backslash-UNC patterns,
+  and explicit `file://` rejection remain unchanged.
+- The exact focused command passes **1 file / 70 tests**. The exact
+  cross-boundary command passes **2 files / 106 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `b6786361`, authority merge `0ca7e584`, program authority
+  `72dc9525`, and causal RED `e4abe453` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  registry, assurance, contract, provider, credential, external system,
+  fallback write, integration, strict record 28, or release action occurs.
+  Coordinator-owned V4, repository, full-differential, admission, and fresh
+  review gates remain pending.
