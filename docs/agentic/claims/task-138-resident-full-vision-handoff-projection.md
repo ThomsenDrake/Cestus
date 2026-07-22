@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** final path-boundary candidate awaiting fresh dual review
+- **Status:** compositional path-boundary repair complete; awaiting coordinator admission
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1439,3 +1439,65 @@ and fallback writes are prohibited.
   fresh independent architecture/executability pair. It is not approval,
   integration, strict record 28, or release. Strict frontier remains **27 of
   29**; every reviewer of earlier candidate bytes is excluded from approval.
+
+## Compositional Path-Escape Causal RED
+
+- `RV-1-E-920` authorizes this bounded repair from exact clean authority merge
+  `30dce010302b1a529873b6dbd9c15b6e1dedb832`, whose parents are rejected and
+  immutable candidate `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee` and current
+  program authority `f05dda74ae923fe2b743af4e74b0666991647607`. Every prior
+  candidate, review verdict, RED/GREEN pair, authority, and registry event
+  remains intact.
+- Sixteen causal public-DTO rows cover two immediately adjacent nested-scheme
+  occurrences, `file:/` and drive-qualified `file:` payloads, native POSIX,
+  drive, rooted-Windows, and UNC payloads in complete outer HTTP(S) query or
+  fragment values, the four exact adjacent-relative controls from
+  `RV-1-E-920`, and longer POSIX and Windows chains. Six matching safe controls
+  retain complete and nested HTTP(S), ordinary URL-like query/fragment
+  punctuation, and separated relative dot, dot-dot, and home segments.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 16 failed / 268 passed / 284 total**.
+  Exactly the **8** unsafe composition rows remain open and exactly the **8**
+  adjacent-relative rows close incorrectly. All prior **262** focused cases
+  and all six new safe controls remain green.
+- Permanent causal RED commit
+  `064d568b174a948f1f3f9b8746645c780e44d0f5` changes only the focused public
+  DTO test. Each row uses parser-valid canonical material and manifest
+  fixtures, exact mounted reads, zero writes, whole-DTO closure, no unsafe
+  partial output, and only `effect: "none"` actions. Production source is
+  unchanged in RED.
+
+## Compositional Path-Escape Minimal GREEN
+
+- Atomic source-only GREEN commit
+  `920654748644c962d79f41471c473c7beff09938` descends directly from the
+  permanent RED without changing or weakening any post-RED test. Its only
+  production edit is confined to `containsAbsolutePath`.
+- Scheme occurrences use a non-consuming boundary assertion, so an immediately
+  adjacent later scheme remains discoverable. Before a complete outer HTTP(S)
+  token is excluded from native-path inspection, boundary-qualified native and
+  `file:` absolute payload families retain that token for the unchanged final
+  predicates. Internal relative dot, dot-dot, and home segments use a
+  non-consuming preceding-separator assertion so every adjacent occurrence is
+  normalized without exposing a later separator as an apparent root.
+- From the clean GREEN commit, the exact focused command passes **1 file / 284
+  tests** and the exact cross-boundary command passes **2 files / 320 tests**.
+  Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and both commit-range and
+  worktree `git diff --check` emit no diagnostic.
+- Rejected candidate `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee`, current
+  program authority `f05dda74ae923fe2b743af4e74b0666991647607`, and exact
+  authority merge `30dce010302b1a529873b6dbd9c15b6e1dedb832` remain
+  ancestors. Dependencies are real and local at Node `v26.1.0` and Vitest
+  `4.1.9`, with neither dependency directory a symlink. Implementation scope
+  before this claim-only evidence update is exactly the frozen source and test
+  paths; cumulative scope after it is exactly the frozen source, test, and
+  claim paths.
+- Both mounted stores remain read-only and all next actions retain
+  `effect: "none"`. No sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, contract,
+  V4, shared source, package metadata, provider, credential, network, external
+  system, fallback write, admission, review, merge, push, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and wholly
+  fresh dual review remain pending; strict frontier remains **27 of 29**.
