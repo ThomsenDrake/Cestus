@@ -26524,3 +26524,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   release records 1-27, all 29 IDs/order, published `neo`, and external-effect
   prohibitions remain unchanged.
+
+## RV-1-E-908 — Registry-order correction; URI-scheme token repair ratified
+
+- Recorded at: 2026-07-22T14:28:42Z
+- `RV-1-E-907` was committed as new text without changing prior event bytes,
+  but its repeated patch anchor placed it physically between `RV-1-E-903` and
+  `RV-1-E-904` instead of after `RV-1-E-906`. History preservation forbids
+  deleting, moving, amending, or reconstructing that committed event. This
+  append-at-end corrective event records the placement defect, preserves
+  `RV-1-E-907` as immutable evidence, and ratifies its exact bounded URI-scheme
+  token repair without changing writable scope or acceptance criteria.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Exact rejected candidate
+  `9adc07c1ce695bd144755b27ae26384e46bc513f`, architecture verdict instance
+  `10876a84-acf7-4b2e-869d-8b548f49ca0f`, executability verdict instance
+  `b5ff5361-d33f-431c-bd74-be1fcfa89fd6`, all earlier candidates and causal
+  commits, and strict frontier **27 of 29** remain unchanged. The next action is
+  only the RV-1-E-907 causal RED and minimal explicit-token-boundary GREEN in
+  the frozen three Task138-H paths, followed by the complete gate stack and a
+  completely new dual-review pair.
+- Status remains Task138-H `implementing`. This corrective authority is not a
+  candidate, approval, integration, strict record 28, product release, or
+  assurance transition. Task136 and Waves 3-5 remain unstarted; V1-V4, raw
+  records 1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
+  provider/credential prohibitions, and external-effect boundaries remain
+  unchanged.
