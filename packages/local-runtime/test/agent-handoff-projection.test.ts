@@ -722,7 +722,17 @@ describe("buildResidentHandoffDto", () => {
     ["home-relative POSIX", "~/child/path", "posix"],
     ["dot-relative Windows", ".\\child\\draft", "win32"],
     ["dot-dot-relative Windows", "..\\child\\draft", "win32"],
-    ["home-relative Windows", "~\\child\\draft", "win32"]
+    ["home-relative Windows", "~\\child\\draft", "win32"],
+    ["chained dot-relative POSIX", "././child", "posix"],
+    ["chained dot-dot-relative POSIX", ".././child", "posix"],
+    ["chained home-relative POSIX", "~/./child", "posix"],
+    ["long chained dot-relative POSIX", "./.././child/path", "posix"],
+    ["long chained dot-dot-relative POSIX", "../.././child/path", "posix"],
+    ["chained dot-relative Windows", ".\\.\\child", "win32"],
+    ["chained dot-dot-relative Windows", "..\\.\\child", "win32"],
+    ["chained home-relative Windows", "~\\.\\child", "win32"],
+    ["long chained dot-relative Windows", ".\\..\\.\\child\\draft", "win32"],
+    ["long chained dot-dot-relative Windows", "..\\..\\.\\child\\draft", "win32"]
   ] as const)("accepts safe non-absolute %s notation", async (_kind, relativePath, pathOwner) => {
     const safeSummary = `Mounted output=${relativePath}`;
     const fixture = handoffFixture({ safeSummary });
