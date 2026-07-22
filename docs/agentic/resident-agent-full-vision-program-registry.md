@@ -27567,3 +27567,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 implementation. The strict product frontier remains **28 of 29**;
   no provider, credential, external-system, push, or pull-request action is
   authorized by this event.
+
+## RV-1-E-929 — Record-28 assurance integrated; Task136 implementation authorized
+
+- Recorded at: 2026-07-22T20:13:09Z
+- Approved record-28 assurance candidate
+  `96142632606668519b2198590bdb3ae87b367691` is integrated by history-
+  preserving no-ff merge `8e958445e3a3b3d40396df82883153790362868d`,
+  whose exact parents are approval authority
+  `08ac8a74e63a7c0fd1045be647a79c08ffe27113` and candidate
+  `96142632606668519b2198590bdb3ae87b367691`. All prior RED/GREEN/review and
+  record-27/record-28 product history remains ancestral without rewrite.
+- Integrated gates pass assurance **20/20**, all four exact contract markers,
+  repository strict **28/28** followed only by expected incomplete-29 closure,
+  standalone typecheck, factory readiness, exact two-file scope, diff hygiene,
+  parent/ancestry, no-product-change, and clean-state checks. Status advances
+  record-28 assurance `approved -> integrated`. This calibrated assurance
+  transition is not a product release.
+- The V4 contract's final card `Task136` is now the sole bounded Level-2
+  mission-critical orchestration task. Its released prerequisites are exact
+  integrations `T120-R` `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`,
+  `Task136-FC-Ports` `365279fdd4e772c389188d05376ba87afe9782df`,
+  `Task139-P2` `6472c92bce3b6cd23e3128666524e575d9f9d236`,
+  `C136-P` `b69ebd003ec1c3afd7cc849f076cb245e98c58f6`, `G136-R`
+  `4e7e4f8069ad494b865c4c134b21767be4d7f961`, `Task137B-W`
+  `9e680b44c4284456eebaad79c00fabda5c2bd4ea`, and `Task138-H`
+  `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`.
+- Preserve the existing clean Task136 lineage rooted at
+  `7761d75d72103184153ad17dd23a2e6a9ffa040d` on
+  `codex/task-136-resident-full-vision-bounded-loop`; forward-merge this exact
+  program authority without reset, rebase, amend, cherry-pick reconstruction,
+  or discarded commit. The implementation owner may change only
+  `packages/agent/src/bounded-agent-loop.ts`,
+  `packages/agent/test/bounded-agent-loop.test.ts`, and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Before causal RED, run and record the Task120 focused suite. RED must prove
+  the absent finite loop against the frozen Task120/W/P/H/gateway fakes and
+  the plan's complete failure-injection matrix. GREEN implements only the
+  finite state machine: exact post-await mounted-authority revalidation,
+  durable append/readback, bounded plan/replan accounting, exact allowlist and
+  approval enforcement, ledger-only resume, zero fallback writes, and
+  completion only from the exact full HandoffReadback plus H-owned
+  `task-completed` projection.
+- Run focused and cross-boundary
+  `npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/execution-loop.test.ts`,
+  the V4 card command, Task120 boundary suites, typecheck, factory readiness,
+  contract markers, repository-prefix gate, diff/scope/ancestry/dependency/
+  clean checks, and fresh full-verification differential. Admit one exact
+  candidate SHA only after every gate passes, then obtain a wholly fresh
+  independent architecture/executability review pair; no prior reviewer may
+  approve changed bytes.
+- Status advances Task136 `claimed`. No integration or strict release record
+  29 exists yet. The strict product frontier remains **28 of 29**; Waves 3-5
+  remain unstarted. No provider, credential, external-system, push, or pull
+  request is authorized by this event.
