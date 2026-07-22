@@ -1,10 +1,14 @@
+import {
+  createOfficialFlowAbsenceWitness,
+  type OfficialFlowAbsenceWitnessV1
+} from "./official-flow-feasibility.js";
 import { isAgentSecretSafeText } from "./secret-safety.js";
 
 const hashPattern = /^sha256:[a-f0-9]{64}$/;
-const workspaceIdPattern = /^workspace_[a-zA-Z0-9_-]+$/;
+const workspaceIdPattern = /^ws_[a-zA-Z0-9_-]+$/;
 const mountInstanceIdPattern = /^mount_[a-zA-Z0-9_-]+$/;
 const taskIdPattern = /^task_[a-zA-Z0-9_-]+$/;
-const attemptIdPattern = /^attempt_[a-zA-Z0-9_-]+$/;
+const attemptIdPattern = /^attempt_[a-f0-9]{64}$/;
 const runIdPattern = /^run_[a-zA-Z0-9_-]+$/;
 const xaiProviderIdPattern = /^provider_xai_[a-zA-Z0-9_-]+$/;
 const credentialRefIdPattern = /^agent_credref_[a-zA-Z0-9_-]+$/;
@@ -30,21 +34,31 @@ export interface XaiSubscriptionHarness {
   assess(input: unknown): Promise<XaiSubscriptionHarnessResult>;
 }
 
+type OfficialFlowClassifierBlockedCategory =
+  | "unsafe-input"
+  | "posture-mismatch"
+  | "prohibited-credential-source";
+
+type OfficialFlowClassifierBlockedMember<C extends OfficialFlowClassifierBlockedCategory> = {
+  readonly kind: "blocked";
+  readonly category: C;
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly capabilityHash: string;
+  readonly safeDiagnosticCodes: readonly [C];
+};
+
+type OfficialFlowClassifierBlocked = {
+  [C in OfficialFlowClassifierBlockedCategory]: OfficialFlowClassifierBlockedMember<C>;
+}[OfficialFlowClassifierBlockedCategory];
+
 export type XaiSubscriptionHarnessResult =
-  {
-    readonly kind: "blocked";
-    readonly category:
-      | "unsafe-input"
-      | "posture-mismatch"
-      | "prohibited-credential-source"
-      | "feasibility-append-unavailable";
-    readonly providerId: string;
-    readonly modelId: string;
-    readonly capabilityHash: string;
-    readonly safeDiagnosticCodes: readonly [
-      "unsafe-input" | "posture-mismatch" | "prohibited-credential-source" | "feasibility-append-unavailable"
-    ];
-  };
+  | {
+    readonly kind: "official-flow-absence-classified";
+    readonly category: "official-flow-absent";
+    readonly witness: OfficialFlowAbsenceWitnessV1;
+  }
+  | OfficialFlowClassifierBlocked;
 
 export interface XaiSubscriptionHarnessPosture {
   readonly residentAgentId: "agent_default";
@@ -60,6 +74,7 @@ export interface XaiSubscriptionHarnessPosture {
   readonly policy: XaiHarnessPolicy;
   readonly approval: XaiHarnessApproval;
   readonly sourceEventIds: readonly string[];
+  readonly causationEventId: string;
 }
 
 export interface XaiHarnessCredentialReference {
@@ -90,16 +105,24 @@ interface NormalizedCreateInput {
 }
 
 interface NormalizedPosture {
+  readonly residentAgentId: "agent_default";
   readonly workspaceId: string;
   readonly mountInstanceId: string;
+  readonly taskId: string;
+  readonly attemptId: string;
   readonly runId: string;
   readonly providerId: string;
   readonly modelId: string;
   readonly capabilityHash: string;
   readonly credentialRefId: string;
+  readonly credentialKind: "subscription-oauth" | "device-code-oauth";
+  readonly capabilityScopes: readonly string[];
   readonly policyVersion: string;
   readonly officialFlowId: string;
+  readonly approvalClass: "provider-byte-transfer";
+  readonly approvalBindingHash: string;
   readonly sourceEventIds: readonly string[];
+  readonly causationEventId: string;
   readonly identity: string;
 }
 
@@ -113,14 +136,13 @@ interface NormalizedAssessment {
   readonly officialFlow: NormalizedOfficialFlow;
 }
 
-const unavailableProviderId = "provider_xai_unavailable";
-const unavailableModelId = "xai-unavailable";
-const unavailableHash = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+const blockedProviderId = "provider_xai_blocked";
+const blockedModelId = "xai-blocked";
+const blockedHash = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
 /**
- * xAI feasibility has no secret, network, token, API-key, alternate-provider,
- * or caller-supplied append/readback port. The future mounting owner must
- * supply a non-forgeable authority before this boundary can report unavailable.
+ * xAI absence classification is deliberately pure: it cannot inspect secrets,
+ * talk to a provider, append evidence, or accept a mounted authority port.
  */
 export function createXaiSubscriptionHarness(input: unknown): XaiSubscriptionHarness {
   const configured = normalizeCreateInput(input);
@@ -143,7 +165,21 @@ export function createXaiSubscriptionHarness(input: unknown): XaiSubscriptionHar
       if (assessment.officialFlow.kind === "invalid") {
         return blocked("unsafe-input", configured.currentPosture);
       }
-      return blocked("feasibility-append-unavailable", configured.currentPosture);
+
+      try {
+        const witness = createOfficialFlowAbsenceWitness({
+          configuredPosture: asOfficialFlowAbsencePosture(configured.currentPosture),
+          assessedPosture: asOfficialFlowAbsencePosture(assessment.posture),
+          officialFlow: undefined
+        });
+        return Object.freeze({
+          kind: "official-flow-absence-classified" as const,
+          category: "official-flow-absent" as const,
+          witness
+        });
+      } catch {
+        return blocked("unsafe-input", configured.currentPosture);
+      }
     }
   });
 }
@@ -188,7 +224,8 @@ function hasProhibitedOfficialFlowKind(value: unknown): boolean {
       return false;
     }
     const kind = Object.getOwnPropertyDescriptor(value, "kind");
-    return kind !== undefined && "value" in kind && typeof kind.value === "string" && prohibitedOfficialFlowKinds.has(kind.value);
+    return kind !== undefined && "value" in kind &&
+      typeof kind.value === "string" && prohibitedOfficialFlowKinds.has(kind.value);
   } catch {
     return false;
   }
@@ -198,11 +235,12 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
   const record = plainOwnDataRecord(value);
   if (record === undefined || !hasExactKeys(record, [
     "residentAgentId", "workspaceId", "mountInstanceId", "taskId", "attemptId", "runId", "providerId", "modelId",
-    "capabilityHash", "credentialReference", "policy", "approval", "sourceEventIds"
+    "capabilityHash", "credentialReference", "policy", "approval", "sourceEventIds", "causationEventId"
   ]) || record.residentAgentId !== "agent_default" ||
       !isSafeId(record.workspaceId, workspaceIdPattern) || !isSafeId(record.mountInstanceId, mountInstanceIdPattern) ||
       !isSafeId(record.taskId, taskIdPattern) || !isSafeId(record.attemptId, attemptIdPattern) || !isSafeId(record.runId, runIdPattern) ||
-      !isSafeId(record.providerId, xaiProviderIdPattern) || !isSafeId(record.modelId, modelIdPattern) || !isSafeHash(record.capabilityHash)) {
+      !isSafeId(record.providerId, xaiProviderIdPattern) || !isSafeId(record.modelId, modelIdPattern) || !isSafeHash(record.capabilityHash) ||
+      !isSafeId(record.causationEventId, eventIdPattern)) {
     return undefined;
   }
   const credential = normalizeCredentialReference(record.credentialReference);
@@ -211,10 +249,12 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
   const sourceEventIds = plainSafeStringArray(record.sourceEventIds, eventIdPattern);
   if (credential === undefined || policy === undefined || approval === undefined || sourceEventIds === undefined ||
       credential.providerId !== record.providerId || policy.providerId !== record.providerId ||
-      policy.modelId !== record.modelId || policy.capabilityHash !== record.capabilityHash) {
+      policy.modelId !== record.modelId || policy.capabilityHash !== record.capabilityHash ||
+      !sourceEventIds.includes(record.causationEventId)) {
     return undefined;
   }
   const facts = {
+    residentAgentId: "agent_default" as const,
     workspaceId: record.workspaceId,
     mountInstanceId: record.mountInstanceId,
     taskId: record.taskId,
@@ -225,24 +265,16 @@ function normalizePosture(value: unknown): NormalizedPosture | undefined {
     capabilityHash: record.capabilityHash,
     credentialRefId: credential.credentialRefId,
     credentialKind: credential.credentialKind,
-    credentialScopes: credential.capabilityScopes,
+    capabilityScopes: credential.capabilityScopes,
     policyVersion: policy.policyVersion,
     officialFlowId: policy.officialFlowId,
     approvalClass: approval.approvalClass,
     approvalBindingHash: approval.bindingHash,
-    sourceEventIds
+    sourceEventIds,
+    causationEventId: record.causationEventId
   };
   return Object.freeze({
-    workspaceId: facts.workspaceId,
-    mountInstanceId: facts.mountInstanceId,
-    runId: facts.runId,
-    providerId: facts.providerId,
-    modelId: facts.modelId,
-    capabilityHash: facts.capabilityHash,
-    credentialRefId: facts.credentialRefId,
-    policyVersion: facts.policyVersion,
-    officialFlowId: facts.officialFlowId,
-    sourceEventIds: Object.freeze([...sourceEventIds]),
+    ...facts,
     identity: JSON.stringify(facts)
   });
 }
@@ -304,18 +336,44 @@ function normalizeApproval(value: unknown): { readonly approvalClass: "provider-
   return Object.freeze({ approvalClass: "provider-byte-transfer", bindingHash: record.bindingHash });
 }
 
-function blocked(
-  category: Extract<XaiSubscriptionHarnessResult, { readonly kind: "blocked" }>["category"],
-  posture?: NormalizedPosture
-): XaiSubscriptionHarnessResult {
+function asOfficialFlowAbsencePosture(posture: NormalizedPosture): object {
   return Object.freeze({
-    kind: "blocked",
+    residentAgentId: posture.residentAgentId,
+    workspaceId: posture.workspaceId,
+    mountInstanceId: posture.mountInstanceId,
+    taskId: posture.taskId,
+    attemptId: posture.attemptId,
+    runId: posture.runId,
+    providerFamily: "xai" as const,
+    providerId: posture.providerId,
+    modelId: posture.modelId,
+    capabilityHash: posture.capabilityHash,
+    credentialRefId: posture.credentialRefId,
+    credentialKind: posture.credentialKind,
+    capabilityScopes: posture.capabilityScopes,
+    policyVersion: posture.policyVersion,
+    officialFlowId: posture.officialFlowId,
+    approvalClass: posture.approvalClass,
+    approvalBindingHash: posture.approvalBindingHash,
+    sourceEventIds: posture.sourceEventIds,
+    causationEventId: posture.causationEventId
+  });
+}
+
+function blocked<C extends OfficialFlowClassifierBlockedCategory>(
+  category: C,
+  posture?: NormalizedPosture
+): OfficialFlowClassifierBlockedMember<C> {
+  const safeDiagnosticCodes = Object.freeze<[C]>([category]);
+
+  return Object.freeze({
+    kind: "blocked" as const,
     category,
-    providerId: posture?.providerId ?? unavailableProviderId,
-    modelId: posture?.modelId ?? unavailableModelId,
-    capabilityHash: posture?.capabilityHash ?? unavailableHash,
-    safeDiagnosticCodes: Object.freeze([category])
-  }) as XaiSubscriptionHarnessResult;
+    providerId: posture?.providerId ?? blockedProviderId,
+    modelId: posture?.modelId ?? blockedModelId,
+    capabilityHash: posture?.capabilityHash ?? blockedHash,
+    safeDiagnosticCodes
+  });
 }
 
 function isSafeHash(value: unknown): value is string {
@@ -345,7 +403,10 @@ function plainSafeStringArray(value: unknown, itemPattern: RegExp): readonly str
       }
       values.push(descriptor.value);
     }
-    return Object.keys(descriptors).length === lengthDescriptor.value + 1 ? Object.freeze(values) : undefined;
+    if (Object.keys(descriptors).length !== lengthDescriptor.value + 1 || new Set(values).size !== values.length) {
+      return undefined;
+    }
+    return Object.freeze(values.sort());
   } catch {
     return undefined;
   }
@@ -353,11 +414,8 @@ function plainSafeStringArray(value: unknown, itemPattern: RegExp): readonly str
 
 function plainOwnDataRecord(value: unknown): Record<string, unknown> | undefined {
   try {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) {
-      return undefined;
-    }
-    const prototype = Object.getPrototypeOf(value);
-    if ((prototype !== Object.prototype && prototype !== null) || Object.getOwnPropertySymbols(value).length > 0) {
+    if (value === null || typeof value !== "object" || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype ||
+        Object.getOwnPropertySymbols(value).length > 0) {
       return undefined;
     }
     const copy = Object.create(null) as Record<string, unknown>;

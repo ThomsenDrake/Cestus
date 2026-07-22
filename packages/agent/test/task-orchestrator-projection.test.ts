@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import {
+  hashAgentTaskOrchestratorPromptBindingReceipt,
+  type KnowledgeEvent
+} from "../../ontology/src/contracts.js";
 import {
   buildTaskAttemptId,
   taskOrchestrationStreamId
 } from "../src/task-orchestrator-events.js";
 import { buildTaskOrchestratorProjection } from "../src/task-orchestrator-projection.js";
+import type { TaskOrchestratorPromptBindingReceiptV1 } from "../src/task-orchestrator-types.js";
 import type { AgentSpecialistRunType, AgentTaskStatus } from "../src/projection-types.js";
 
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
@@ -13,8 +17,174 @@ const hash333 = "sha256:33333333333333333333333333333333333333333333333333333333
 const hash444 = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
 const runType = "evidence-triage" satisfies AgentSpecialistRunType;
 const now = "2026-07-10T14:06:00.000Z";
+type PromptBindingReceiptIdentityOverride = Partial<Pick<
+  TaskOrchestratorPromptBindingReceiptV1,
+  "taskId" | "attemptId" | "runId"
+>>;
+
+function promptBindingReceiptFixture(
+  material: Omit<TaskOrchestratorPromptBindingReceiptV1, "schemaVersion" | "receiptHash">
+): TaskOrchestratorPromptBindingReceiptV1 {
+  const receiptMaterial = {
+    schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1" as const,
+    ...material
+  };
+  return Object.freeze({
+    ...receiptMaterial,
+    receiptHash: hashAgentTaskOrchestratorPromptBindingReceipt(receiptMaterial)
+  });
+}
+
+function promptBindingReceiptMaterial(
+  receipt: TaskOrchestratorPromptBindingReceiptV1
+): Omit<TaskOrchestratorPromptBindingReceiptV1, "schemaVersion" | "receiptHash"> {
+  const { schemaVersion: _schemaVersion, receiptHash: _receiptHash, ...material } = receipt;
+  return material;
+}
+
+function promptBindingReceiptFromPromptBoundCheckpoint(checkpoint: KnowledgeEvent) {
+  if (
+    checkpoint.type !== "agent.task.orchestration.checkpointed" ||
+    checkpoint.payload.checkpointKind !== "prompt-bound" ||
+    checkpoint.payload.promptBindingReceipt === undefined
+  ) {
+    throw new Error("Expected prompt-bound checkpoint fixture with a receipt.");
+  }
+  return checkpoint.payload.promptBindingReceipt;
+}
+
+function promptBindingReceiptHashFromPromptBoundCheckpoint(checkpoint: KnowledgeEvent): string {
+  return promptBindingReceiptFromPromptBoundCheckpoint(checkpoint).receiptHash;
+}
 
 describe("buildTaskOrchestratorProjection", () => {
+  it("projection preserves the exact receipt without granting authority", () => {
+    const taskId = "task_prompt_bound_projection";
+    const checkpoint = orchestrationCheckpointed(taskId, "prompt-bound", "evt_task2_prompt_bound");
+    const projection = buildTaskOrchestratorProjection([
+      taskCreated(taskId),
+      taskStatusChanged(taskId, "running", "evt_task2_prompt_bound_running", "2026-07-10T14:00:01.000Z"),
+      orchestrationClaimed(taskId),
+      checkpoint
+    ], { now });
+
+    expect(projection.attempts.get(attemptKey(taskId))).toMatchObject({
+      latestCheckpoint: {
+        checkpointEventId: checkpoint.id,
+        checkpointKind: "prompt-bound"
+      },
+      latestPromptBindingReceipt: {
+        checkpointEventId: checkpoint.id,
+        attemptId: attemptIdFor(taskId),
+        runId: runIdFor(taskId),
+        receiptHash: promptBindingReceiptHashFromPromptBoundCheckpoint(checkpoint)
+      },
+      state: "claimed"
+    });
+  });
+
+  it("retains latest valid prompt bound receipt after runner dispatching", () => {
+    const taskId = "task_prompt_bound_projection_retained";
+    const promptBound = orchestrationCheckpointed(taskId, "prompt-bound", "evt_task2_prompt_bound_retained");
+    const runnerDispatching = orchestrationCheckpointed(
+      taskId,
+      "runner-dispatching",
+      "evt_task2_runner_dispatching_retained",
+      { streamSequence: 3, occurredAt: "2026-07-10T14:03:00.000Z" }
+    );
+    const projection = buildTaskOrchestratorProjection([
+      taskCreated(taskId),
+      taskStatusChanged(taskId, "running", "evt_task2_prompt_bound_retained_running", "2026-07-10T14:00:01.000Z"),
+      orchestrationClaimed(taskId),
+      promptBound,
+      runnerDispatching
+    ], { now });
+
+    expect(projection.attempts.get(attemptKey(taskId))).toMatchObject({
+      latestCheckpoint: {
+        checkpointEventId: runnerDispatching.id,
+        checkpointKind: "runner-dispatching",
+        attemptId: attemptIdFor(taskId),
+        runId: runIdFor(taskId)
+      },
+      latestPromptBindingReceipt: {
+        checkpointEventId: promptBound.id,
+        attemptId: attemptIdFor(taskId),
+        runId: runIdFor(taskId),
+        receiptHash: promptBindingReceiptHashFromPromptBoundCheckpoint(promptBound)
+      }
+    });
+  });
+
+  it("rejects malformed or non prompt bound receipt before projection", () => {
+    const taskId = "task_prompt_bound_projection_rejected";
+    const checkpoint = orchestrationCheckpointed(taskId, "prompt-bound", "evt_task2_prompt_bound_rejected");
+    const receipt = "promptBindingReceipt" in checkpoint.payload
+      ? checkpoint.payload.promptBindingReceipt
+      : undefined;
+    if (receipt === undefined) {
+      throw new Error("Expected prompt-bound receipt fixture.");
+    }
+    const projection = buildTaskOrchestratorProjection([
+      taskCreated(taskId),
+      taskStatusChanged(taskId, "running", "evt_task2_prompt_bound_rejected_running", "2026-07-10T14:00:01.000Z"),
+      orchestrationClaimed(taskId),
+      {
+        ...checkpoint,
+        payload: { ...checkpoint.payload, promptBindingReceipt: { ...receipt, receiptHash: hash444 } }
+      } as KnowledgeEvent,
+      {
+        ...checkpoint,
+        id: "evt_task2_planning_receipt_rejected",
+        payload: { ...checkpoint.payload, checkpointKind: "planning", promptBindingReceipt: receipt }
+      } as KnowledgeEvent
+    ], { now });
+
+    expect(projection.attempts.get(attemptKey(taskId))?.latestPromptBindingReceipt).toBeUndefined();
+  });
+
+  it("rejects rehashed task attempt and run receipt mutations before projection", () => {
+    const taskId = "task_prompt_bound_projection_target";
+    const target = orchestrationCheckpointed(taskId, "prompt-bound", "evt_task2_prompt_bound_target");
+    const receiptMaterial = promptBindingReceiptMaterial(promptBindingReceiptFixture({
+      taskId,
+      attemptId: attemptIdFor(taskId),
+      runId: runIdFor(taskId),
+      sourceApprovedPromptArtifactHash: hash111,
+      boundPromptArtifactHash: hash222,
+      generatedAt: "2026-07-10T14:02:00.000Z",
+      approvalEventId: "evt_task2_provider_transfer_approved",
+      providerPostureHash: hash333,
+      exactRunBindingHash: hash111,
+      workspaceId: "ws_task2",
+      mountInstanceId: "mount_task2"
+    }));
+    const identityCases: readonly PromptBindingReceiptIdentityOverride[] = [
+      { taskId: "task_prompt_bound_projection_source" },
+      { attemptId: buildTaskAttemptId({ taskId, runType, retryGeneration: 1 }) },
+      { runId: "run_task2_transplanted" }
+    ];
+
+    for (const receiptIdentity of identityCases) {
+      const receipt = promptBindingReceiptFixture({ ...receiptMaterial, ...receiptIdentity });
+      const projection = buildTaskOrchestratorProjection([
+        taskCreated(taskId),
+        taskStatusChanged(taskId, "running", `evt_task2_prompt_bound_target_running_${receipt.receiptHash}`, "2026-07-10T14:00:01.000Z"),
+        orchestrationClaimed(taskId),
+        {
+          ...target,
+          id: `evt_task2_prompt_bound_target_transplanted_${receipt.receiptHash}`,
+          payload: {
+            ...target.payload,
+            promptBindingReceipt: receipt
+          }
+        } as KnowledgeEvent
+      ], { now });
+
+      expect(projection.attempts.get(attemptKey(taskId))?.latestPromptBindingReceipt).toBeUndefined();
+    }
+  });
+
   it("projects queued task awaiting claim from task status source", () => {
     const taskId = "task_projection_queued";
     const createdOnly = buildTaskOrchestratorProjection([taskCreated(taskId)], { now });
@@ -573,26 +743,47 @@ function orchestrationClaimed(
 
 function orchestrationCheckpointed(
   taskId: string,
-  checkpointKind: "approval-wait" | "handoff-pending" | "blocked",
-  eventId: string
+  checkpointKind: "approval-wait" | "handoff-pending" | "blocked" | "prompt-bound" | "runner-dispatching",
+  eventId: string,
+  options: {
+    readonly streamSequence?: number | undefined;
+    readonly occurredAt?: string | undefined;
+    readonly attemptId?: string | undefined;
+    readonly runId?: string | undefined;
+  } = {}
 ): LedgerEvent {
+  const attemptId = options.attemptId ?? attemptIdFor(taskId);
+  const runId = options.runId ?? runIdFor(taskId);
+  const promptBindingReceipt = promptBindingReceiptFixture({
+    taskId,
+    attemptId,
+    runId,
+    sourceApprovedPromptArtifactHash: hash111,
+    boundPromptArtifactHash: hash222,
+    generatedAt: "2026-07-10T14:02:00.000Z",
+    approvalEventId: "evt_task2_provider_transfer_approved",
+    providerPostureHash: hash333,
+    exactRunBindingHash: hash111,
+    workspaceId: "ws_task2",
+    mountInstanceId: "mount_task2"
+  });
   return ledgerEvent({
     id: eventId,
     type: "agent.task.orchestration.checkpointed",
     streamId: taskOrchestrationStreamId(taskId, runType),
-    sequence: 2,
-    occurredAt: "2026-07-10T14:02:00.000Z",
+    sequence: options.streamSequence ?? 2,
+    occurredAt: options.occurredAt ?? "2026-07-10T14:02:00.000Z",
     causationId: `evt_task2_claimed_${taskId}`,
     payload: {
       taskId,
       runType,
-      attemptId: attemptIdFor(taskId),
+      attemptId,
       retryGeneration: 0,
       leaseClaimGeneration: 1,
       checkpointKind,
-      checkpointedAt: "2026-07-10T14:02:00.000Z",
-      runId: runIdFor(taskId),
-      resumeIdempotencyKey: `task-orchestrator:${taskId}:${runType}:0:${attemptIdFor(taskId)}:resume-${checkpointKind}`,
+      checkpointedAt: options.occurredAt ?? "2026-07-10T14:02:00.000Z",
+      runId,
+      resumeIdempotencyKey: `task-orchestrator:${taskId}:${runType}:0:${attemptId}:resume-${checkpointKind}`,
       toolRequestIds: checkpointKind === "approval-wait" ? ["toolreq_provider_transfer"] : undefined,
       approvalRequirement: checkpointKind === "approval-wait"
         ? {
@@ -629,6 +820,9 @@ function orchestrationCheckpointed(
       inputArtifactHashes: [hash111],
       promptArtifactHash: checkpointKind === "approval-wait" ? hash111 : undefined,
       lockSnapshot: checkpointKind === "approval-wait" ? { activeLockIds: [], highWaterMark: 42 } : undefined,
+      ...(checkpointKind === "prompt-bound" ? {
+        promptBindingReceipt
+      } : {}),
       safeNextActions: ["resume from durable projection state"]
     }
   });

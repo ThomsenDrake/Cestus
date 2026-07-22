@@ -243,3 +243,414 @@ rejected and unintegrated.
   limited to the authorized claim, contract, and focused test. A reviewer
   distinct from this author and the reviewer that rejected `28b09362` must
   review before any integration.
+
+## CF-1R2 Versioned Contract-Reconciliation Authorization
+
+- Forward correction: the current strict v1 family and its preserved accepted
+  history are not the complete Task120/136 contract surface. Their historical
+  parser behavior remains immutable; no worker may silently widen a v1 payload
+  or relabel a v1 event. CF-1R2 authorizes exactly one fresh Terra/xhigh
+  author, distinct from all prior Task119 authors and reviewers, to add the
+  separate strict v2 five-event family recorded in the CF-1R2 coordinator
+  correction.
+- This is a changed-tactic recovery, not a third retry of the prior
+  public-boundary repair. The author owns only `packages/ontology/src/contracts.ts`,
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and this
+  append-only claim. It must first add a RED that proves v1 remains accepted
+  unchanged while each v2 parser rejects a missing or changed required
+  binding, then implement the smallest versioned strict parser/fixture change.
+  It must not add Task120's store/projection or any H/W/P/gateway/factory/UI/
+  provider/credential contract.
+- Required v2 coverage is the complete CF-1R2 identity, descriptor, policy,
+  ten-budget, source/context, mounted-authority, causation/correlation,
+  plan-readback, allowlist/effect/approval/artifact, suspension/resume-anchor,
+  and H lifecycle/provenance surface. The replay fixture must exercise exactly
+  one valid five-event v2 stream and negative mutations without relaxing v1.
+- Before one forward candidate commit, run exactly `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`. This is one fail-fast `&&` chain and must exit `0`. Stop for fresh independent Terra/xhigh review. Full verification remains **CLOSED**; no self-review, self-integration, merge, provider/network/credential/Nous, Task120 restart, Task136 work, or `neo` action is authorized.
+
+Status: in-progress only for this CF-1R2 recovery authorization. Earlier
+Task119 candidate/review records remain preserved historical evidence; they do
+not authorize a v1 rewrite or an integration without the new review and
+coordinator-only merge.
+
+## CF-1R2 Fresh-Review Bounded V2 Repair
+
+- Preserve `544d95c92ed3c3ebc8672d30137ac5718801846a` as unintegrated
+  history. Fresh Terra/xhigh review accepted four Important defects: its
+  completed result carries a narrowed local H proxy, its ten maxima have no
+  hard ceilings, invalid outcome/category pairs parse, and tool-step/replay
+  validation does not bind step ordinals/prerequisites to the declared plan.
+- One bounded repair author may edit only this claim,
+  `packages/ontology/src/contracts.ts`, and
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`. It must first
+  write/run causal REDs for every defect: a complete H-owned handoff readback
+  and each narrowed/forged substitute; every hard-budget maximum; invalid
+  category/outcome pairs; undeclared tool step; and self, future, or nonexistent
+  prerequisite. The complete H shape must follow the governing handoff and
+  bounded-loop plans without an H source edit or a local proxy.
+- Preserve v1 behavior, five v2 event names, strict own-data normalization, and
+  replay requirements. Do not edit Task120/136, H/W/P/gateway/factory,
+  provider/credential, or `neo` files. Before one forward commit run exactly
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`; it must exit `0` as one fail-fast chain. Full verification is **CLOSED**. Stop for a fresh independent Terra/xhigh review; no self-review, self-integration, merge, provider/network/credential/Nous, or `neo` action.
+
+## CF-1R2 Fresh Replay-State Recovery
+
+- Preserve `5bf4c2895e6bd0121d58fd8b8f1ab4b18abbde9a` as unintegrated
+  history. Its fresh review accepted the full-H and plan-step repair, but found
+  three remaining replay-state defects: whole-snapshot budget equality does
+  not account per action or enforce replan progression; resumable anchors do
+  not bind the actual suspension checkpoint/deadline/action; and the safe
+  outcome taxonomy omits required stale-authority/context, allowlist,
+  provenance, and secret-detection categories.
+- Prior v2 plus its one bounded repair are exhausted. A fresh Terra/xhigh
+  author with a changed replay-state tactic may edit only this claim,
+  `packages/ontology/src/contracts.ts`, and
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`. First write
+  REDs for a fourth plan record/over-limit revision, missing observation/tool/
+  result consumption, unrelated checkpoint/deadline/next-action anchor, and
+  every omitted category/outcome pair. Preserve v1, all five v2 names, full H
+  proof, strict own-data, declared-step/prerequisite checks, and no-effect
+  scope.
+- Before one forward commit run exactly `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`; exit `0` is required. Full verification remains **CLOSED**. Stop for fresh independent Terra/xhigh review; no self-review, self-integration, merge, provider/network/credential/Nous, or `neo` action.
+
+## CF-1R2 Replay-State Typecheck Correction
+
+- Preserve `f4ed276d093da6cb0e90df04ded7f4eca7062dff` as unreviewed,
+  unintegrated forward history. Its focused suite passed 129 tests, but the
+  coordinator's exact fail-fast chain stopped at `npm run typecheck` with exit
+  `2`: TS4104 at `packages/ontology/src/contracts.ts:936` and `:939` rejects
+  a readonly `(string | number)[]` passed where `PropertyKey[]` is mutable.
+  The later diff/factory stages did not run; no review or integration is
+  authorized from the false green claim.
+- One fresh Terra/xhigh type-correction author may start from `f4ed276d` and
+  edit only this claim, `packages/ontology/src/contracts.ts`, and its existing
+  focused loop-contract test if a behavior-preserving regression assertion is
+  necessary. First reproduce the two standalone TS4104 diagnostics and record
+  their exit. Make the smallest readonly-safe type-only repair; do not alter
+  replay semantics, v1/v2 event names, H proof, budget/anchor/category repair,
+  or task scope. Run the focused suite, then exactly `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git
+  diff --check && npm run factory:check` as one fail-fast chain. It must exit
+  `0` before one forward commit and fresh independent review.
+- Full verification is **CLOSED**. No self-review, self-integration, merge,
+  provider/network/credential/Nous, or `neo` action is authorized.
+## CF-1R2 Author RED/GREEN Evidence
+
+- Fresh author: `/root/task119_cf1r2_contracts` on
+  `codex/task-119-resident-full-vision-cf1r2`, starting from clean coordinator
+  authorization `fae25d1da52a1d6daa337a41d16cc712c77cf462`. Authoritative
+  session `turn_context` records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Environment-only checkpoint: the isolated worktree initially had no ignored
+  `vitest` binary. A temporary symlink to the canonical worktree's existing
+  ignored `node_modules` directory enabled local verification; it changes no
+  tracked dependency or lockfile and will be removed before handoff.
+- RED: `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts`
+  then ran with the v2 test fixture in place. The historical v1 coverage passed
+  (30 tests), while the required v2 registration assertion failed because all
+  five `agent.resident-*.v2` event contracts were absent. This causally proves
+  v1 remained accepted while the missing versioned parser family caused the
+  failure.
+- GREEN: the same focused suite passed **31 tests** after adding only the strict
+  v2 parser/contract/replay family. The v2 fixture covers one ordered five-event
+  stream; negative mutations reject missing or changed workspace/descriptor/
+  policy/authority/ten-budget/plan-readback/allowlist/preview/gateway/
+  checkpoint/H-proof/resume-anchor bindings, plus unknown and accessor-backed
+  own-data. No Task120 store/projection or H/W/P/gateway/factory/UI/provider/
+  credential source changed.
+- Companion focused evidence: `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts && npm run typecheck` exited
+  `0` with **2 files / 91 tests** passing. The required single pre-commit
+  fail-fast chain then exited `0` exactly as authorized:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It passed the same **2 files / 91 tests**, TypeScript, diff check, and factory
+  readiness. Full verification remains **CLOSED**.
+
+Status: ready-for-review only after the recorded exact CF-1R2 fail-fast gate
+exits `0` and the scoped forward candidate commits. No self-review,
+self-integration, merge, Task120 restart, Task136 work, provider/network/
+credential/Nous action, or `neo` action is authorized.
+
+## CF-1R2 Fresh-Review Bounded V2 Repair Evidence
+
+- Fresh recovery author: `/root/task119_cf1r2_review_repair` on
+  `codex/task-119-resident-full-vision-cf1r2-review-repair`, starting from
+  preserved rejected candidate `544d95c92ed3c3ebc8672d30137ac5718801846a`.
+  The authoritative child `turn_context` records `model=gpt-5.6-terra` and
+  `reasoning_effort=xhigh`; generic base prose was not used as model evidence.
+- Environment-only recovery: the isolated worktree lacked ignored Node
+  dependencies, so `npm ci --ignore-scripts` restored lockfile-pinned ignored
+  dependencies without tracked package or lockfile changes. The standalone
+  `npm run typecheck` and the authorized exact fail-fast chain at the rejected
+  clean candidate each exited `0`; that does not supersede its accepted review
+  defects. Full verification remains **CLOSED**.
+- RED: the focused ontology contract test first failed with 17 causal failures:
+  a genuine complete H readback was rejected in favor of the local
+  `attemptId`/`safeDiagnostics` proxy; all ten conserved-but-over-limit budget
+  ceilings parsed; invalid failed/resumable category pairs parsed; and
+  self/future/missing plan prerequisites parsed. After the full H readback
+  surface was restored, the same focused RED exposed the two replay failures
+  for an undeclared tool ordinal and a declared ordinal with a swapped tool
+  binding. These tests retain the accepted v1 fixture as valid.
+- GREEN: v2 now carries the complete H-owned completed readback surface from
+  the approved handoff contract—verified outcome, run/task/handoff identity,
+  manifest schema/hash, final-output step/event, prepared/recorded/terminal/
+  task-status events, exact authority binding, and diagnostics with category,
+  retry, safe message, event IDs, and artifact hashes. It does not invent an
+  L-owned `attemptId` or `safeDiagnostics` substitute. Counterfactuals reject
+  each narrowed diagnostic field and the forged proxy, each hard maximum,
+  invalid terminal/resumable category pairing, undeclared/swapped tool plan
+  binding, and self/future/missing prerequisites. The v2 replay remains the
+  same exact five event names; v1 behavior and strict own-data normalization
+  remain unchanged.
+- Pre-claim focused GREEN command:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+  exited `0` with **2 files / 117 tests** passing, then TypeScript, diff check,
+  and factory readiness passing. The same exact one-line `&&` command must be
+  rerun after this append before the single scoped forward commit.
+
+Status: in-progress only for this bounded repair until the post-append exact
+fail-fast gate exits `0` and a fresh independent Terra/xhigh reviewer receives
+the committed range. `544d95c9` remains preserved, unreviewed for integration,
+and unintegrated history; no self-review, self-integration, merge, full
+verification, provider/network/credential/Nous, Task120/136, or `neo` action
+is authorized.
+
+## CF-1R2 Fresh Replay-State Recovery Checkpoint
+
+- Fresh recovery author: `/root/task119_replay_state_recovery_retry` on
+  `codex/task-119-resident-full-vision-cf1r2-replay-state-recovery`, starting
+  from preserved unintegrated candidate
+  `5bf4c2895e6bd0121d58fd8b8f1ab4b18abbde9a`.
+- Runtime evidence is authoritative session metadata, not generic base prose:
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T21-24-08-019f635f-c36a-7943-ac85-1b171200f05a.jsonl:8`
+  records `turn_context` with `model=gpt-5.6-terra` and `effort=xhigh`.
+- Recovered governing-spec path: the assigned
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-design.md`
+  filename is absent in this checkout; the canonical present full-vision
+  program design is
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md`.
+- Root-cause investigation of the current v2 pure replay parser found three
+  coupled omissions: it admits only a fixed plan/observation/tool/suspension/
+  result quintet and requires all complete `budget` snapshots to be equal, so
+  it cannot prove per-record consumption or initial-plus-three-replan durable
+  progression; it checks a resumable anchor only for presence rather than the
+  immediately preceding suspension checkpoint, deadline, and next action; and
+  its result vocabulary lacks separately inspectable authority-stale,
+  context-stale, allowlist-mismatch, provenance-missing, and secret-detected
+  outcome semantics. The changed tactic is a pure replay-state transition
+  validator over per-record immutable budget deltas, exact prior-plan and
+  suspension bindings, and explicit category/outcome maps. It adds no store,
+  projection, provider, tool, H/W/P/gateway, or effect behavior.
+- Before production changes, this recovery will add and run causal REDs for a
+  valid fourth plan record plus an over-limit revision, omitted observation/
+  tool/result consumption, each swapped resume-anchor component, and every
+  required category's valid and invalid outcome pair. Full verification is
+  closed; the only final gate is the coordinator-specified fail-fast chain.
+
+## CF-1R2 Fresh Replay-State RED/GREEN Evidence
+
+- Environment-only recovery: the first focused RED invocation exited `127`
+  before loading tests because this isolated worktree had no ignored `vitest`
+  binary. `npm ci --ignore-scripts` then exited `0`, restoring only
+  lockfile-pinned ignored dependencies; it did not change a tracked package or
+  lockfile.
+- Causal RED: `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts` exited `1` with **13 failed
+  and 116 passed tests**. The valid five-event control failed on the absent
+  `budget.actionConsumption` boundary; the new fourth-plan control failed on
+  the fixed-quintet replay parser; and each resumable-anchor and category/
+  outcome control failed because the prior parser accepted only anchor
+  presence and omitted the required safe categories. Historical v1 tests
+  remained green.
+- GREEN: the same exact focused command exited `0` with **2 files / 129
+  tests passing**. Each v2 record now has a strict, immutable action budget
+  delta and the pure replay validator proves cumulative consumed/remaining
+  transitions, fixed ceilings, required record-class consumption, contiguous
+  revisions `0..3`, exact previous-plan readbacks, and a hard maximum of four
+  plan records (initial plus three replans). The original five-event fixture
+  remains valid, while the fourth-plan stream is valid and revision four is
+  rejected.
+- The pure replay validator binds a resumable result's checkpoint ID,
+  deadline, and next safe action to the immediately preceding durable
+  suspension checkpoint. The result contract now separately exposes
+  `authority-stale` and `context-stale` only as resumable outcomes, plus
+  `allowlist-mismatch`, `provenance-missing`, and `secret-detected` only as
+  failed outcomes; each has a valid and an invalid pair counterfactual.
+  This remains a no-effect contract/parser repair: no store, projection,
+  runner, H/W/P/gateway, provider, credential, network, or Nous behavior was
+  added or changed.
+
+Status: in-progress pending the one authorized post-claim fail-fast gate,
+scoped forward commit, and a distinct fresh Terra/xhigh review. Full
+verification remains closed; no self-review, self-integration, merge, Task120
+restart, Task136 work, provider/network/credential/Nous action, or `neo`
+action is authorized.
+
+## CF-1R2 Replay-State Fail-Fast Gate
+
+- The sole authorized non-full gate exited `0` as one fail-fast command:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported **2 files / 129 tests passing**; typecheck, diff check, and
+  factory readiness completed without a failing stage. Full verification was
+  not run and remains closed.
+
+Status: gate-passing and pending one scoped forward commit plus a distinct
+fresh Terra/xhigh review. No self-review, self-integration, merge, Task120
+restart, Task136 work, provider/network/credential/Nous action, or `neo`
+action is authorized.
+
+## CF-1R2 Replay-State Typecheck Recovery Evidence
+
+- Runtime metadata: authoritative session metadata at
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T21-45-31-019f6373-58ab-74d3-993f-ff6841209d38.jsonl:8`
+  records `gpt-5.6-terra` with `xhigh` reasoning effort.
+- Required initial reproduction is the coordinator's standalone `npm run
+  typecheck` on this exact `f4ed276d` worktree: exit `2`, with TS4104 at
+  `packages/ontology/src/contracts.ts:936` and `:939`. No setup, provider,
+  network, credential, or Nous action was performed for this correction.
+- Root-cause hypothesis, confirmed against Zod's local `addIssue` declaration:
+  `addResidentLoopV2OrderedUniqueIssues` correctly exposes its incoming path
+  as readonly, but `z.RefinementCtx.addIssue` requires mutable
+  `PropertyKey[]`. Copying the path at the two issue construction sites gives
+  Zod an independently mutable array without widening the helper input or
+  changing any path values, parser behavior, event names, H proof, replay
+  budget/anchor/category repair, or runtime effect.
+- The compiler diagnostic is the type-only RED; no behavior-preserving test
+  change is necessary because the correction changes neither accepted input
+  nor emitted issue content. The focused suite then passed **2 files / 129
+  tests**.
+- The sole authorized non-full fail-fast command exited `0`:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported **2 files / 129 tests passing**; typecheck, diff check, and
+  factory readiness reached their successful completion stages. Full
+  verification was not run and remains closed.
+
+Status: gate-passing pending one scoped forward commit and a distinct fresh
+Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
+Task136 work, provider/network/credential/Nous action, or `neo` action is
+authorized.
+
+## RV-1-E-198 Semantic Repair RED/GREEN
+
+- Fresh semantic-repair author: `/root/task119_semantic_repair` on
+  `codex/task-119-resident-full-vision-cf1r2-semantic-repair`, starting from
+  preserved unintegrated `00ded92b75b6030b3c58581babf5ac93aa6d6111`.
+  Authoritative runtime evidence is
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T22-08-23-019f6388-47fc-7d73-8745-4cbee294f702.jsonl:8`,
+  whose `turn_context` records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Root cause: v2 charged the initial plan to `planRevisions`, thereby treating
+  the four-slot value as four replans instead of three revisions after initial
+  planning; its replay accepted the inherited plan ID and had no observation
+  readback binding on a replan; and prerequisite ordinals were parsed as static
+  metadata without recording causally prior executed tool steps.
+- Causal RED: `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts` exited `1` with **4 failed
+  and 129 passed tests**. The four expected failures proved acceptance of a
+  fourth replan budget slot, a reused predecessor plan ID, a replan after the
+  preceding observation was removed while counters remained replayable, and a
+  declared step whose prerequisite had not executed.
+- GREEN: the same focused command exited `0` with **2 files / 133 tests
+  passing**. The initial plan now consumes zero replan slots while each replan
+  consumes exactly one against the three-replan ceiling; replans require a
+  fresh plan ID plus an exact prior-plan and prior-observation readback; and
+  replay admits a declared prerequisite only after its matching prior tool step
+  reached `executed`. The repair preserves v1, the exact five v2 event names,
+  strict own-data, complete H proof, prior budget/anchor/category behavior,
+  append-only provenance, and no-effect scope.
+
+Status: in-progress pending the one authorized post-claim fail-fast gate, one
+scoped forward commit, and a fresh complete-range independent Terra/xhigh
+review. Full verification remains closed; no self-review, self-integration,
+merge, Task120 restart, Task136 work, provider/network/credential/Nous action,
+or `neo` action is authorized.
+
+## RV-1-E-198 Semantic Repair Fail-Fast Gate
+
+- The sole authorized post-repair command exited `0` as one fail-fast chain:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported **2 files / 133 tests passing**; typecheck, diff check, and
+  factory readiness completed without a failing stage. Full verification was
+  not run and remains closed.
+
+Status: ready for one fresh independent complete-range Terra/xhigh review after
+the scoped forward commit. No self-review, self-integration, merge, Task120
+restart, Task136 work, provider/network/credential/Nous action, or `neo` action
+is authorized.
+
+## RV-1-E-202 Complete-Range Plan-ID Repair
+
+- Fresh repair author: `/root/task119_plan_id_repair` on
+  `codex/task-119-resident-full-vision-plan-id-repair`, starting from preserved
+  unintegrated `2b1c6f193024d5a4aa7f02d829df88e896d35a12`. Authoritative
+  session metadata at
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T22-39-09-019f63a4-72da-7621-b228-dc53312fdd1f.jsonl:8`
+  records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Fresh complete-range review finding: the v2 replay validator retained prior
+  plan records but compared a replan ID only with the immediately preceding
+  plan. It therefore accepted `plan_001 -> plan_002 -> plan_001` when all
+  revisions, plan/observation readbacks, and durable budget transitions were
+  otherwise valid.
+- Causal RED: `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts`
+  exited `1` with 1 failed and 133 passed tests. The new complete replay
+  counterfactual was individually valid yet `validateResidentLoopEventSequence`
+  returned `true` for the reused earlier ID.
+- GREEN: replay now rejects a replan when its plan ID appears in any prior plan
+  record, while preserving the existing initial-plus-three accounting,
+  predecessor observation causation, executed-prerequisite, H proof, v1,
+  exact v2 names, strict own-data, budget/anchor/category, provenance, and
+  no-effect contracts. The focused v2 suite passed 74 tests. The authorized
+  non-full fail-fast chain is the only remaining pre-commit gate; full
+  verification remains **CLOSED**.
+
+Status: in-progress pending the one authorized exact non-full fail-fast chain,
+one scoped forward commit, and a new fresh complete-range independent
+Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
+Task136 work, provider/network/credential/Nous action, or `neo` action is
+authorized.
+
+## RV-1-E-207 Causal Observation Repair
+
+- Fresh repair author: `/root/task119_observation_causality_repair` on
+  `codex/task-119-resident-full-vision-observation-causality-repair`, starting
+  exactly at preserved unintegrated
+  `e1afd3fc3c68ae543a4d08dbfb8d690e9b0fa9ce`. Authoritative runtime evidence
+  is `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T23-07-45-019f63be-a200-7002-bc53-4869c235435c.jsonl:8`:
+  its `turn_context` records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Causal RED: the focused command exited `1` with 1 failed and 134 passed
+  tests. The new parser-valid three-plan counterfactual removes plan_002's
+  observation, reuses plan_001's observation event ID in plan_003's replan
+  readback, spoofs the required plan_002-shaped readback fields, and recounts
+  every budget transition and sequence. Before the repair,
+  `validateResidentLoopEventSequence` accepted that stale-observation replay.
+- Root cause: the ordered replay parser retained `finalObservation` across a
+  newly active plan. The replan, suspension, and result checks therefore had
+  an old observation event ID available after a plan transition while testing
+  only readback identity fields. The smallest repair validates a replan against
+  the preceding plan's final observation, then clears that consumed state when
+  the new plan becomes active; later records can only bind an observation
+  observed under the active plan.
+- GREEN: the same focused command exited `0` with 2 files / 135 tests passing.
+  Existing valid revisions, exact readbacks, observation and prerequisite
+  causality, H proof, and initial-plus-three plan accounting remain covered.
+
+Status: in-progress pending the exact authorized non-full fail-fast chain, one
+scoped forward commit, and a new fresh true-lineage Terra/xhigh review. Full
+verification, `neo`, provider/network/credential/Nous action, reset-credit
+use, self-review, self-integration, and merge remain closed.
+
+## RV-1-E-207 Causal Observation Repair Gate
+
+- The exact authorized one-line non-full fail-fast gate exited `0`:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported 2 focused files / 135 tests passing; typecheck, diff check, and
+  factory readiness completed without a failing stage. Full verification was
+  not run.
+
+Status: ready for one scoped forward commit and a new fresh true-lineage
+Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
+Task136 work, provider/network/credential/Nous action, reset-credit use, or
+`neo` action is authorized.

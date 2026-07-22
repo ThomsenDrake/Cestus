@@ -16,12 +16,13 @@ Before editing, read:
 
 ## Work Rules
 
+- Select Level 1, 2, or 3 from `docs/agentic/contracts/software-factory-mission-state.v1.json`; it is the sole current authority for mission mechanics, ownership, status, and gates.
 - Use a task-scoped branch or worktree.
 - Change only files listed by the current task unless a verifier requires a small supporting edit.
-- Write failing tests before production code.
-- Run the exact targeted command in the task.
-- Run `npm run verify` before committing.
-- Commit after each completed task.
+- Use a failing test or exact reproduction before behavior edits; Level 1 documentation and behavior-neutral work use focused validation.
+- Run the source-mandated targeted validation and the risk-proportionate gates before committing.
+- Use atomic commits; permanent RED commits are reserved for the source-defined Level 2 cases.
+- Record registry events only for `claimed`, `implementing`, `candidate`, `reviewing`, `approved`, `integrated`, and `released` transitions.
 - Do not weaken append-only ledger semantics, provenance requirements, or projection rebuildability.
 - Stop child-task execution and escalate to the assigned coordinator on data-loss
   risk, schema conflict, unavailable dependency, or repeated verifier failure.
@@ -33,4 +34,4 @@ Before editing, read:
 
 ## Review Rules
 
-Reviewer agents lead with defects, missing tests, and spec drift. A change is complete only when the tests, typecheck, and factory readiness check pass.
+Reviewer agents lead with defects, missing tests, and spec drift. Use one fresh review for Level 2, the source-defined dual-review cases, and the Level 3 fresh scrutiny plus black-box milestone gates. Preserve human PRR-send and legal gates, fail-closed authority, secret safety, and no fallback writes.

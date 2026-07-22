@@ -390,3 +390,207 @@ Task122 candidates remain preserved, rejected, and unintegrated.
   for a fresh independent reviewer with no prior Task122 author or reviewer
   role. It remains unintegrated; no self-review, self-integration, `neo` merge,
   PRR, graph, provider, tool, external, or fallback-store effect occurred.
+
+## V4 CF1-HR Authority-Bound Adoption Claim
+
+- Status transition: `released historical Task122 candidates` -> `in-progress`
+  for strict V4 position 26 only.
+- Worker: `/root` on `codex/task122-cf1-handoff-adoption` in
+  `/home/drake/.codex/worktrees/da35/Cestus`.
+- Immutable program base verified before this transition:
+  `986c2a43b018e72acf1104e84853826b06b1abdd`.
+- Governing authority: released CF1-HR strict record 14 (`RV-1-E-714`), the
+  Task136 V4 contract, and Task122's three owned paths only.
+
+This finite packet migrates investigation planning from the legacy handoff
+recorder/finalizer path to CF1-HR's strict V2 authority-bound lifecycle. The
+workflow must consume only an injected opaque current mounted handoff-authority
+witness and mounted prompt/artifact stores. It must not mint caller-structural
+authority, use V1 compatibility to complete V2, invoke a raw V2 completion
+helper, create a shadow contract, or use a fallback write.
+
+The successful lifecycle is exact durable final output -> V2 prepared -> V2
+recorded -> specialist-run terminal -> agent.task.orchestration.completed ->
+task status, followed by complete authority-bound projection/readback. Exact
+task, run, workspace/currentness, provenance, source/context/prompt, and
+investigation bindings remain required. Stale, cross-run, conflicting, missing,
+or consumed authority fails closed; advisory outputs remain limited to the
+investigation plan, task suggestions, and PRR draft candidates.
+
+The required causal RED and GREEN command is:
+
+```bash
+npm test -- packages/agent/test/investigation-planner-workflow.test.ts
+```
+
+Before the GREEN commit, run the Task122 cross-boundary command, standalone
+typecheck, differential `npm test` and `npm run verify`, `git diff --check`,
+and `npm run factory:check`. No registry, contract, spec, plan, provider,
+credential, network, live-service, integration, or `neo` action is authorized.
+
+## RV-1-E-854 Consolidated Causal RED
+
+- Authority merge: `84861d1a975d9ec9688a1fa6e74165ddd017e947` forward-merges
+  exact program authority `3b43a00294bed9e6e4e0532a1389dc3d0b27d0e2` into the
+  preserved reviewed candidate history. No history was rewritten.
+- RED scope is this append-only claim and
+  `packages/agent/test/investigation-planner-workflow.test.ts`; production
+  `packages/agent/src/investigation-planner-workflow.ts` remains byte-identical
+  to the authority merge.
+- Causal coverage adds exact normal and restored/recovery swapped-
+  `investigationId` cases, each requiring fail-closed rejection before model,
+  recovery store, or completing effect. The unchanged workflow instead records
+  the normal swap as `ready-for-review`/`handoff-recorded`; the recovery swap
+  continues only as `output-persisted` rather than rejecting the mismatched
+  durable start binding.
+- The mounted cursor case uses a real portable workspace, SQLite ledger,
+  portable producer, opaque controller/witness, separate bound material and
+  manifest stores, mounted production prompt readback, and the actual planner
+  model invocation. It expects the bound material store to remain current for
+  final-output material. The released producer instead rejects with
+  `portable-mounted-handoff-authority-invalid` from its post-invocation cursor
+  check, before final output can be appended; no no-op witness or ordinary
+  store satisfies this positive path.
+- RED command on the exact authority-merge bytes plus these test/claim changes:
+  `npm test -- packages/agent/test/investigation-planner-workflow.test.ts`
+  exited `1` with 3 expected failures and 16 retained passes (19 total): the
+  normal swap, recovery swap, and real mounted post-model cursor assertion.
+
+## RV-1-E-861 Direct Portable Cursor GREEN
+
+- Authority merge retained: `dba925a1e056c9db0804bfefbd89450e6576a054`
+  forward-merges the exact clean program authority
+  `de2a5518d5db6180a216a3c889ee39af641ed2c4` into the preserved causal RED
+  `358a683aaacf3e4ffb18de5ef1f4efefdbb71fce`; no history was rewritten.
+- The planner now requires the durable `agent.specialist-run.started`
+  investigation ID to equal the supplied ID both before normal preparation and
+  before recovery readback or completion. A same task/run/type with a swapped
+  investigation therefore returns the safe blocked result before model,
+  storage, terminal, projection, provider, or external work.
+- The transferred portable cursor records exactly one same-run provider
+  transcript while its handoff phase remains `started` or `started-running`:
+  a schema-valid `agent.model-invocation.requested` with the exact resident
+  actor, invocation stream, run, provider, model family, input hash, run type,
+  correlation, and durable-start causation; then exactly one matching
+  `completed` or `failed` terminal at stream sequence two and request
+  causation. A completed terminal additionally binds its output hash and model
+  family. The released failed-event schema has no output artifact, so that
+  terminal binds its exact no-output payload instead. Pending, duplicate,
+  reordered, malformed, cross-run, or unknown transcript material burns the
+  opaque authority without advancing the handoff lifecycle.
+- The real positive coverage uses a portable workspace and SQLite ledger, a
+  current portable producer, its separate bound material/manifest capability
+  pair, opaque witness/controller, mounted production-prompt readback, and the
+  released runtime model invocation. It proves normal verified V2 readback and
+  fresh-admission recovery after a manifest interruption without a second model
+  invocation. No no-op witness, ordinary store, raw V2 completion, fallback
+  write, task creation, crawl, provider transfer, graph mutation, tool, or PRR
+  send satisfies the positive path.
+- GREEN focused command:
+
+  ```bash
+  npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts
+  ```
+
+  exited `0` with 2 files and 49 tests passed. The governing cross-boundary
+  command
+
+  ```bash
+  npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-runner-kernel.test.ts
+  ```
+
+  exited `0` with 4 files and 139 tests passed. The V4 bounded assurance gate
+  exited `0` with exactly 20/20 tests, and V4 contract mode emitted all four
+  required markers. `npm run factory:check` exited `0`. Remaining committed-byte
+  differential and repository gates are recorded by the final bounded packet; no integration,
+  registry, `neo`, provider, credential, network, external, or fallback action
+  is authorized.
+
+## RV-1-E-864 Provider Transcript and Prelude Causal RED
+
+- Recovery starts from the clean registry-only authority merge
+  `99c16639d6e38551ec7a022787db37f02c699325`, which preserves reviewed
+  candidate `911747851a25c56510b00cba8787af9cb309c0b3` and exact program
+  authority `2f69e097`. This RED changes only this append-only claim and the
+  portable mounted-store test; both production files remain byte-identical to
+  the merge.
+- The causal test uses the actual portable workspace, SQLite ledger, mounted
+  issuer, opaque controller, and bound stores. An investigation-planner
+  durable history containing only its exact started event still permits
+  `final-output`: provider request/completed-or-failed provenance is absent.
+- It also reproduces three usable malformed histories: a duplicate claim, a
+  checkpoint before its claim, and a matching checkpoint appended after the
+  started/provider transcript. The current cursor skips each apparently
+  matching prelude unconditionally and permits final output, rather than
+  burning its opaque authority before material I/O.
+- The focused RED command is the required two-file command. It must fail only
+  at the new absent-provider and duplicate/reordered/post-start prelude cases;
+  no production, registry, contract, checker, or ownership expansion occurs.
+
+## RV-1-E-865 Provider Transcript and Prelude GREEN
+
+- The portable cursor now treats a final output as authority-bound only when
+  an investigation-planner durable start has exactly one already-validated
+  same-run `agent.model-invocation.requested` and exactly one matching
+  completed-or-failed terminal. The transcript remains optional for released
+  legacy run types. Missing and pending investigation transcripts burn the
+  opaque authority before final-output material can be written.
+- Dispatch history is now an optional but finite pre-start state machine. If
+  present, it accepts one schema-valid resident claim and one immediately
+  subsequent runner-dispatching checkpoint, each on the exact orchestration
+  stream and task/run/type/attempt/retry/lease tuple. The claim binds its
+  released task causation and worker; the checkpoint binds the claim causation,
+  resident actor, and approved run. Duplicate, reordered, post-start,
+  mutated, unknown-bound, and cross-run material fail closed. Final-output and
+  all later V2 transitions retain their existing durable order.
+- The real portable planner fixture now emits that released pre-start
+  claim/checkpoint order with the resident actor and `corr_<taskId>`
+  correlation; it continues to prove mounted prompt/readback, opaque witness,
+  verified V2 readback, and recovery without a second model invocation.
+- GREEN focused command:
+
+  ```bash
+  npm test -- packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/portable-mounted-agent-artifact-stores.test.ts
+  ```
+
+  exits `0` with 2 files and 53 tests passed: the prior 49 plus the four
+  named causal cases. No registry, contract, checker, spec, plan, raw record,
+  provider, network, credential, external, fallback, or `neo` behavior is
+  changed.
+
+## RV-1-E-866 Pre-Effect Final-Material Causal RED
+
+- Recovery begins from clean registry-only authority merge
+  `0a24f610f1ba109b9fb7e2a3856f5328b8bf3bd0`, preserving candidate
+  `799de1e9f0fc65383f60c55d344f93be126a7efa` and program authority
+  `eefd8ef5`. This RED changes only the append-only Task122 claim and planner
+  test; production remains byte-identical to the merge.
+- The causal case uses `appendSpecialistFinalOutputStep` with the real mounted
+  portable investigation planner fixture, opaque controller, and bound
+  material store. Its exact queued/claim/checkpoint/started history contains
+  no provider transcript. Current bytes still persist canonical final handoff
+  material, append `agent.specialist-run.step.recorded`, and leave that hash
+  readable before the later controller path rejects.
+- RED requires rejection before the final-material write and ledger append,
+  asserting zero final-output events, no readable material hash, and unchanged
+  ledger. No registry, contract, checker, spec, plan, raw record, network,
+  provider, credential, external, fallback, or ownership change occurs.
+
+## RV-1-E-867 Pre-Effect Final-Material GREEN
+
+- The mounted material-store capability now receives the final-output
+  prerequisite check immediately after its current cursor inspection and before
+  its real `FileBlobStore.put`. For a durable planner in `started` or
+  `started-running`, a missing or incomplete required provider transcript, or
+  an incomplete dispatch prelude, burns opaque authority before final handoff
+  material persistence or `agent.specialist-run.step.recorded` append.
+- The guard is local to the mounted final-material store. It retains the
+  released legacy-run transcript behavior, preserves the approved exact
+  request-to-terminal and pre-start bindings, and leaves final-output and all
+  later V2 transitions unchanged after a valid material write.
+- The causal RED now passes through the released
+  `appendSpecialistFinalOutputStep` boundary with zero final-output events,
+  zero material persistence, and an unchanged ledger. Verification evidence
+  for the committed GREEN follows in the bounded packet; no registry,
+  contract, checker, provider, credential, network, external, fallback, or
+  `neo` action is part of this change.

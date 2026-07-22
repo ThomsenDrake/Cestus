@@ -70,6 +70,23 @@ interface ActiveAdmission {
   readonly verifiedLease?: ClaimReconciliationAdmissionTuple["verifiedLease"];
 }
 
+interface MountedArtifactAuthorityLifecycleState {
+  readonly currentAdmission: () => ActiveAdmission | undefined;
+  readonly currentRevision: () => number;
+  readonly hasPendingReconciliation: () => boolean;
+  readonly assertLeaseCurrent: (lease: ClaimReconciliationAdmissionTuple["verifiedLease"]) => void;
+}
+
+export interface CurrentMountedArtifactAuthorityAdmission {
+  readonly admission: WorkspaceAdmissionSnapshot;
+  readonly facts: PortableWorkspaceMountedFacts;
+}
+
+const mountedArtifactAuthorityLifecycleStates = new WeakMap<
+  PortableWorkspaceLifecyclePorts,
+  MountedArtifactAuthorityLifecycleState
+>();
+
 /**
  * Creates the availability façade without exposing a ledger, writer, provider,
  * tool, runtime, or fallback store. A generation is issued for one admission
@@ -157,7 +174,14 @@ export function createPortableWorkspaceLifecyclePorts(
     async readOrAcquire(rawInput: SupervisorLeaseAdmissionInput) {
       const leaseInput = canonicalLeaseInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
       requireCurrentLeaseInput(leaseInput);
-      const result = canonicalLeaseResult(await mountedLease.readOrAcquire(leaseInput));
+      let result: Awaited<ReturnType<DurableSupervisorLeasePort["readOrAcquire"]>>;
+      try {
+        result = canonicalLeaseResult(await mountedLease.readOrAcquire(leaseInput));
+      } catch {
+        revision += 1;
+        active = undefined;
+        throw new Error("workspace admission is no longer current");
+      }
       const current = requireCurrentLeaseInput(leaseInput);
       if (result.outcome === "acquired-and-read-back") {
         requireLeaseReadback(result.readback, current);
@@ -204,7 +228,25 @@ export function createPortableWorkspaceLifecyclePorts(
     }
   });
 
-  return Object.freeze({ authority, supervisorLease, activeClaimReconciliation });
+  const ports: PortableWorkspaceLifecyclePorts = Object.freeze({ authority, supervisorLease, activeClaimReconciliation });
+  mountedArtifactAuthorityLifecycleStates.set(ports, {
+    currentAdmission: () => active,
+    currentRevision: () => revision,
+    hasPendingReconciliation: () => pendingOutage !== undefined || pendingOutageClaim !== undefined,
+    assertLeaseCurrent: (lease) => {
+      const observedAt = Date.parse(requiredText(now()));
+      const expiresAt = Date.parse(requiredText(lease.expiresAt));
+      if (!Number.isFinite(observedAt) || !Number.isFinite(expiresAt)) {
+        authority.invalidate?.("authority-loss");
+        throw new Error("portable workspace supervisor lease instant is invalid");
+      }
+      if (observedAt >= expiresAt) {
+        authority.invalidate?.("authority-loss");
+        throw new Error("portable workspace supervisor lease is expired");
+      }
+    }
+  });
+  return ports;
 
   function requireCurrentAdmission(admission: WorkspaceAdmissionSnapshot): ActiveAdmission {
     const current = active;
@@ -306,6 +348,55 @@ export function createPortableWorkspaceLifecyclePorts(
       pendingOutageClaim = undefined;
     }
   }
+}
+
+/** Source-path-only membership check for the mounted artifact authority. */
+export function assertPortableWorkspaceLifecyclePortsForMountedArtifactAuthority(
+  lifecyclePorts: PortableWorkspaceLifecyclePorts
+): void {
+  if (!mountedArtifactAuthorityLifecycleStates.has(lifecyclePorts)) {
+    throw new Error("portable workspace lifecycle ports are not registered");
+  }
+}
+
+/**
+ * Returns no caller-supplied admission. The exact Task125-issued admission is
+ * retained privately while mounted facts are copied at this inspection boundary.
+ */
+export function inspectCurrentPortableWorkspaceAdmissionForMountedArtifactAuthority(
+  lifecyclePorts: PortableWorkspaceLifecyclePorts
+): CurrentMountedArtifactAuthorityAdmission {
+  const state = mountedArtifactAuthorityLifecycleStates.get(lifecyclePorts);
+  if (state === undefined) {
+    throw new Error("portable workspace lifecycle ports are not registered");
+  }
+  const current = state.currentAdmission();
+  if (
+    current === undefined
+    || current.revision !== state.currentRevision()
+    || current.verifiedLease === undefined
+    || state.hasPendingReconciliation()
+  ) {
+    throw new Error("portable workspace admission is not currently complete");
+  }
+  state.assertLeaseCurrent(current.verifiedLease);
+  return Object.freeze({
+    admission: current.snapshot,
+    facts: copyMountedFactsForAuthority(current.facts)
+  });
+}
+
+function copyMountedFactsForAuthority(facts: PortableWorkspaceMountedFacts): PortableWorkspaceMountedFacts {
+  if (facts.observedActiveClaim === undefined) {
+    return Object.freeze({ ...facts });
+  }
+  return Object.freeze({
+    ...facts,
+    observedActiveClaim: Object.freeze({
+      ...facts.observedActiveClaim,
+      causation: Object.freeze({ ...facts.observedActiveClaim.causation })
+    })
+  });
 }
 
 export function createPortableWorkspaceAvailabilityAuthority(

@@ -823,3 +823,25 @@ stop, GPT-5.6 Terra / Extra High, TDD, fresh review,
 verification-before-completion, and no merge into `neo`. Approval of one task
 never starts another. The real Nous command remains coordinator-only and needs
 its own explicit live-provider authorization after all stated prerequisites.
+
+<!-- TASK136-BOUNDED-ASSURANCE-V1-BEGIN -->
+## Task136 Bounded Assurance V1
+
+The program registry remains the lineage authority for Task136 mutable status:
+`docs/agentic/resident-agent-full-vision-program-registry.md`, reset event
+`RV-1-E-545`.
+
+The active bounded contract is
+`docs/agentic/contracts/task136-bounded-assurance-v1.json` and freezes:
+
+- `task136-release-graph.v1`
+- `task136-composition-grammar.v1`
+- `task136-composition-corpus.v1`
+
+Earlier sections are append-only evidence and are not task-dispatch
+instructions. Use only these commands for the bounded Task136 assurance gate:
+
+```bash
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode contract
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository
+```

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as publicAgentApi from "../src/index.js";
+import * as productionSpecialistPrompts from "../src/production-specialist-prompts.js";
 import {
   evaluateProductionContextRequirements,
   hashProductionSpecialistRendererMaterial,
@@ -63,6 +64,24 @@ describe("production specialist prompt registrations", () => {
       expect(registration.transferApprovalClass).toBe("provider-byte-transfer");
       expect(registration.rendererHash).toMatch(/^sha256:[a-f0-9]{64}$/);
     }
+  });
+
+  it("renders one explicit production binding v1", async () => {
+    const artifact = await renderedArtifactForRunType("evidence-triage");
+
+    expect(artifact.manifest.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
+  });
+
+  it("binds approved v1 bytes to strict v2 without rendering", async () => {
+    const artifact = await renderedArtifactForRunType("evidence-triage");
+    const binder = productionSpecialistPrompts as unknown as Record<string, unknown>;
+
+    expect(typeof binder.bindApprovedProductionSpecialistPromptV2).toBe("function");
+    expect(artifact.manifest.production).toMatchObject({
+      schemaVersion: "agent-production-prompt-binding.v1"
+    });
   });
 
   it("binds timeline, contradiction, and report renderers to strict provider output schemas", async () => {

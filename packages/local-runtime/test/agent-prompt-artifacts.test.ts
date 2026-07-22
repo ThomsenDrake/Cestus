@@ -62,7 +62,7 @@ describe("local runtime prompt artifacts", () => {
     }
   });
 
-  it("persists durable prompt artifact envelopes without exposing local paths in the manifest", async () => {
+  it("keeps status prompt artifacts out of fallback storage and local paths", async () => {
     const workspaceRoot = tempDir("cestus-agent-prompt-workspace-");
     createPortableWorkspace({
       rootDir: workspaceRoot,
@@ -85,7 +85,7 @@ describe("local runtime prompt artifacts", () => {
 
       const blobRoot = handle.mountedWorkspace?.paths.blobRoot;
       expect(blobRoot).toBeDefined();
-      expect(countStoredFiles(blobRoot ?? "")).toBeGreaterThan(0);
+      expect(countStoredFiles(blobRoot ?? "")).toBe(0);
       expect(JSON.stringify(envelope.manifest)).not.toContain(workspaceRoot);
       expect(envelope.manifest.contextPackRefs[0]).toMatchObject({
         projectionHighWaterMark: 4,

@@ -1401,3 +1401,25 @@ run verify; commit only this plan and the Task 112 claim. Stop for fresh plan
 review and coordinator lane-plan approval. This task does not authorize Task
 120/136, CF-1 implementation, provider call, child dispatch, integration merge,
 or merge into neo.
+
+<!-- TASK136-BOUNDED-ASSURANCE-V1-BEGIN -->
+## Task136 Bounded Assurance V1
+
+The program registry remains the lineage authority for Task136 mutable status:
+`docs/agentic/resident-agent-full-vision-program-registry.md`, reset event
+`RV-1-E-545`.
+
+The active bounded contract is
+`docs/agentic/contracts/task136-bounded-assurance-v1.json` and freezes:
+
+- `task136-release-graph.v1`
+- `task136-composition-grammar.v1`
+- `task136-composition-corpus.v1`
+
+Earlier sections are append-only evidence and are not task-dispatch
+instructions. Use only these commands for the bounded Task136 assurance gate:
+
+```bash
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode contract
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode repository
+```

@@ -63,6 +63,13 @@ export interface InvestigativeRegistrationIdentity {
   readonly limitsHash: `sha256:${string}`;
 }
 
+export interface InvestigativeContextPackRegistrarEvidence {
+  readonly descriptorHash: string;
+  readonly parserIdentity: string;
+  readonly producerIdentity: "packages/agent/src/investigative-context-packs";
+  readonly registrationIdentity: string;
+}
+
 export interface InvestigativeContextPackDefaultLimits {
   readonly limitsVersion: "investigative-context-pack-limits.v1";
   readonly descriptorSchemaVersion: "investigative-context-pack-descriptor.v1";
@@ -633,6 +640,33 @@ export function registerInvestigativeContextPacks(
     build: async () => asResolvedContextPack(await buildGovernanceLocksContextPack(registrationBuildInput(input)))
   });
   registeredRegistries.set(registry, identityKey);
+}
+
+/**
+ * Read-only identity facts for registrations this module made in its private
+ * WeakMap. This cannot attest a manually registered or foreign registry.
+ */
+export function lookupInvestigativeContextPackRegistrarEvidence(
+  registry: ContextPackRegistry,
+  contextPackId: string
+): InvestigativeContextPackRegistrarEvidence | undefined {
+  const registrationIdentity = registeredRegistries.get(registry);
+  const expectedDescriptor = investigativeContextPackDescriptors.find((descriptor) => descriptor.contextPackId === contextPackId);
+  const actualDescriptor = registry.getDescriptor(contextPackId);
+  if (registrationIdentity === undefined || expectedDescriptor === undefined || actualDescriptor === undefined ||
+    hashAgentContextPack(actualDescriptor) !== hashAgentContextPack(expectedDescriptor)) {
+    return undefined;
+  }
+  const parser = investigativeContextPackPayloadParsers.find((candidate) => candidate.contextPackId === contextPackId);
+  if (parser === undefined) {
+    return undefined;
+  }
+  return Object.freeze({
+    descriptorHash: hashAgentContextPack(actualDescriptor),
+    parserIdentity: parser.parserIdentity.contextPackId,
+    producerIdentity: "packages/agent/src/investigative-context-packs" as const,
+    registrationIdentity
+  });
 }
 
 function registrationBuildInput(input: RegisterInvestigativeContextPacksInput): BuildInvestigativeContextPackInput {

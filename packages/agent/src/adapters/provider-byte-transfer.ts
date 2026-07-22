@@ -1441,10 +1441,14 @@ function parseProductionPromptAudit(
 ): PromptArtifactProductionBinding {
   const record = dataRecordFromObject(clonePlainJson(value, label), label);
   rejectUnsupportedKeys(record, new Set([
-    "rendererId", "rendererVersion", "rendererHash", "renderedPromptHash", "providerOutputSchemaId",
+    "schemaVersion", "rendererId", "rendererVersion", "rendererHash", "renderedPromptHash", "providerOutputSchemaId",
     "providerOutputSchemaVersion", "handoffSchemaId", "handoffSchemaVersion", "scopeApplicabilityHash",
     "evaluatedContextRequirements", "resolvedPayloadAudits"
   ]), label);
+  const schemaVersion = readStringProperty(record, "schemaVersion", label);
+  if (schemaVersion !== "agent-production-prompt-binding.v1") {
+    throw new Error(`${label} must be the approved production binding v1; direct v2 transfer is unsupported.`);
+  }
   const requirements = readPlainObjectArray(record, "evaluatedContextRequirements", label).map((requirement) => {
     rejectUnsupportedKeys(requirement, new Set([
       "contextPackId", "requirementMode", "status", "contentHash", "omissionReason"
@@ -1526,6 +1530,7 @@ function parseProductionPromptAudit(
     throw new Error(`${label} resolved payload audits require applicable context requirements.`);
   }
   return Object.freeze({
+    schemaVersion: "agent-production-prompt-binding.v1",
     rendererId: readProductionAuditId(record, "rendererId", label),
     rendererVersion: readPositiveInteger(record, "rendererVersion", label),
     rendererHash: readHashProperty(record, "rendererHash", label),
@@ -1537,7 +1542,7 @@ function parseProductionPromptAudit(
     scopeApplicabilityHash: readHashProperty(record, "scopeApplicabilityHash", label),
     evaluatedContextRequirements: Object.freeze(requirements) as PromptArtifactProductionBinding["evaluatedContextRequirements"],
     resolvedPayloadAudits: Object.freeze(payloadAudits) as PromptArtifactProductionBinding["resolvedPayloadAudits"]
-  });
+  }) as PromptArtifactProductionBinding;
 }
 
 function readProductionAuditId(record: Record<string, unknown>, key: string, label: string): string {
