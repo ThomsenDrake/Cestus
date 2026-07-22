@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing doubled-slash path repair
+- **Status:** implementing actual HTTP-scheme boundary repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -655,3 +655,29 @@ and fallback writes are prohibited.
   fallback write, integration, strict record 28, or release action occurs.
   Coordinator-owned V4, repository, full-differential, admission, and fresh
   review gates remain pending.
+
+## Actual HTTP-Scheme Boundary Causal RED
+
+- `RV-1-E-905` authorizes this bounded repair from exact clean authority merge
+  `61daa81b82145971192154a5837e5c8c0fa8765e`, whose parents are GREEN
+  checkpoint `681a7ac5a1bfca1513d40e41234981c29bdb6722` and program authority
+  `70b5b888b51eaaced8cc52d37123f4bfe47dfdf2`. The complete prior lineage
+  remains intact.
+- Two causal rows cover an embedded HTTP-like doubled-slash POSIX path and a
+  false HTTPS-like forward-slash UNC path. Each row proves the retained
+  `//...` substring absolute through the corresponding Node `posix` or
+  `win32` owner before reaching the canonical mounted browser projection.
+  Four passing controls cover mixed-case HTTP and HTTPS schemes at both string
+  and punctuation boundaries and prove their exact URL substrings with the
+  released Node URL parser.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 2 failed / 74 passed / 76 total**. Exactly
+  the two false/embedded-prefix rows return `task-completed` instead of the
+  required whole-DTO `inconsistent` closure. All prior **70** tests and all
+  four new actual-scheme controls pass.
+- Production source is unchanged for RED. Explicit `file://` rejection,
+  mounted read-only behavior, no-write assertions, and `effect: "none"` remain
+  intact. No registry, assurance, contract, parser, provider, credential,
+  external system, fallback write, integration, strict record 28, or release
+  action participates.

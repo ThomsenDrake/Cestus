@@ -259,6 +259,61 @@ describe("buildResidentHandoffDto", () => {
   });
 
   it.each([
+    ["HTTP-like doubled-slash POSIX", "Mounted output=xHTTP://opt/cestus/handoffs/task138/summary.json", "//opt/cestus/handoffs/task138/summary.json"],
+    ["HTTPS-like forward-slash UNC", "Mounted output=_hTtPs://cestus-host/resident-share/task138/summary.json", "//cestus-host/resident-share/task138/summary.json"]
+  ] as const)("closes the whole DTO for a false or embedded %s prefix", async (family, unsafeSummary, absolutePath) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(family.includes("POSIX")
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP", "string", "HTTP://example.test/public/records", "HTTP://example.test/public/records"],
+    ["HTTPS", "string", "hTtPs://example.test/public/records", "hTtPs://example.test/public/records"],
+    ["HTTP", "punctuation", "Mounted output=HtTp://example.test/public/records", "HtTp://example.test/public/records"],
+    ["HTTPS", "punctuation", "Mounted output[HTTPS://example.test/public/records", "HTTPS://example.test/public/records"]
+  ] as const)("accepts a case-insensitive %s scheme at a %s boundary", async (scheme, _boundary, safeSummary, url) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(url).protocol).toBe(`${scheme.toLowerCase()}:`);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["HTTP URL", "http://example.test/public/records?section=one,two"],
     ["HTTPS URL", "https://example.test/public/records?section=one,two"],
     ["ordinary punctuation", "Notes=[section/name], ratio:3/4, drive=C:relative\\draft, pair=a\\b."]
