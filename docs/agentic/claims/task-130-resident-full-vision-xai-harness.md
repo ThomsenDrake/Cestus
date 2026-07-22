@@ -200,3 +200,101 @@ independent review.
   program branch, then ran `npm test -- packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain successfully (18 focused tests). The full verifier remains closed.
 - Status: merged, non-full-verified. No child self-integration, provider,
   credential, network, material, fallback, or `neo` action occurred.
+
+## Task 5B Pure Official-Flow Classifier Recovery
+
+- Recovery base: `419da41b71df7e044e00822b16a796a15889fe5d`
+  (`docs: release task129 mfa mounted authority`).
+- Branch and worktree: `codex/task130-pure-xai-official-flow-classifier` /
+  `/home/drake/.codex/worktrees/task130-pure-xai-official-flow-classifier`.
+- Governing recovery design and plan:
+  `docs/superpowers/specs/2026-07-16-mounted-provider-feasibility-authority-recovery-design.md`;
+  `docs/superpowers/plans/2026-07-16-mounted-provider-feasibility-authority-recovery-implementation.md`
+  Task 5B.
+- Exclusive scope: this claim, `packages/agent/src/xai-subscription-harness.ts`,
+  and `packages/agent/test/xai-subscription-harness.test.ts`.
+- Status: in-progress. The causal RED will precede any production change.
+- Contract: consume the released `agent-official-flow-absence.v1` witness as a
+  pure xAI classifier; do not accept or invoke persistence, authority, ledger,
+  runtime, provider, network, credential, secret, or alternate-backend ports;
+  do not return durable unavailable evidence.
+
+## Task 5B RED/GREEN And Candidate Evidence
+
+- Causal RED: `npm test -- packages/agent/test/xai-subscription-harness.test.ts`
+  exited `1` with **1 file / 18 tests: 10 failed, 8 passed**. The released
+  harness rejected the canonical `ws_` posture as unsafe, still accepted the
+  provisional workspace contract, and returned its old unavailable-adjacent
+  classification instead of the shared absence witness.
+- Narrow implementation: replace the persistence-unavailable branch with the
+  released `createOfficialFlowAbsenceWitness` call; require the canonical
+  workspace, xAI provider family, exact nested provider/policy/credential/
+  approval bindings, nonempty duplicate-free source membership, and a required
+  causation event. The public result union now has only the opaque
+  `official-flow-absence-classified` outcome and bounded blocked outcomes.
+  The harness has no append, authority, ledger, runtime, provider, network,
+  secret, or generic API-key fallback port.
+- GREEN: the identical focused command exited `0` with **1 file / 18 tests**.
+  It retains every xAI prohibited-source fixture, proves no material reads,
+  validates the exact opaque xAI witness and classification hash, rejects
+  malformed or swapped posture/causation inputs, and rejects all supplied raw
+  authority/readback shapes without invocation.
+- Candidate gates before commit: `npm run typecheck` exited `0`; working-tree
+  `git diff --check` exited `0`; `npm run factory:check` exited `0` with
+  `factory-readiness passed`. The changed-file audit found exactly the three
+  owned paths, and `node_modules` is a real directory rather than a symlink.
+- Full verification was not run, as this recovery explicitly prohibits
+  `npm run verify`. No provider, network, credential, OAuth, append,
+  persistence, alternate-backend, integration, registry, Task139, push,
+  reset, or `neo` action occurred.
+- Status: ready-for-review.
+- Next review gate: fresh independent architecture/invariant and
+  executability/adversarial review of the one scoped candidate commit.
+
+## Forward Exact-Contract Correlation Repair
+
+- Repair parent: `fc3111ef34a1f92d029f75cce2ac43f60b01f929`.
+- Root cause: the xAI pure classifier represented the blocked category and its
+  sole safe diagnostic code as independent unions. A structurally valid result
+  could therefore pair `unsafe-input` with `posture-mismatch`, contrary to the
+  approved mapped `OfficialFlowClassifierBlocked` contract.
+- Causal RED: after adding the compile-time mismatched tuple fixture, `npm run
+  typecheck` exited `2` only because TypeScript reported the fixture's
+  `@ts-expect-error` as unused. The old independent union accepted the invalid
+  category/diagnostic pair.
+- Narrow repair: the xAI harness now defines
+  `OfficialFlowClassifierBlockedCategory` and the mapped
+  `OfficialFlowClassifierBlocked` union from the recovery design. Its public
+  result uses that union, and the generic blocked helper returns a
+  category-specific member with a `readonly [C]` diagnostic tuple without a
+  broad result cast.
+- GREEN: `npm run typecheck` exited `0`, consuming the fixture's expected
+  mismatch error. `npm test -- packages/agent/test/xai-subscription-harness.test.ts`
+  exited `0` with **1 file / 18 tests**; the fixture adds no runtime test.
+- Status: ready-for-review.
+- Next review gate: two fresh exact-revision architecture/invariant and
+  executability/adversarial reviews before any coordinator integration.
+
+## Forward Runtime-Immutability Review Repair
+
+- Repair parent: `192a0707cca0a107caaf1d41eff163408e1868b7`.
+- Root cause: `blocked()` froze its containing result but left the generic
+  `safeDiagnosticCodes` array mutable. A JavaScript caller could mutate that
+  one-element tuple into a category mismatch despite the mapped TypeScript
+  result union.
+- Causal RED: after extending the existing prohibited-source test with a
+  frozen-tuple assertion and unsafe mutable-cast write, `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts` exited `1` with **1
+  file / 18 tests: 1 failed, 17 passed** because the returned tuple was not
+  frozen.
+- Narrow repair: `blocked()` now uses `Object.freeze<[C]>([category])`, which
+  retains the exact `readonly [C]` diagnostic correlation without a broad
+  result cast. The existing test confirms the tuple is frozen, an unsafe
+  mutation attempt throws, and its original diagnostic code remains unchanged.
+- GREEN: the identical focused command exited `0` with **1 file / 18 tests**.
+- Full verification was not run; this scoped repair prohibits `npm run verify`.
+  No provider, network, credential, OAuth, append, persistence, integration,
+  registry, Task139, push, reset, or `neo` action occurred.
+- Status: ready-for-review.
+- Next review gate: two fresh exact-revision architecture/invariant and
+  executability/adversarial reviews before any coordinator integration.

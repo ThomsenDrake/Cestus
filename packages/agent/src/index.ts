@@ -60,6 +60,16 @@ export * from "./ontology-bootstrap-workflow.js";
 export * from "./provider-registry.js";
 export * from "./provider-readiness.js";
 export * from "./provider-selection.js";
+export {
+  createByokProviderBoundary,
+  evaluateByokProviderBoundary
+} from "./byok-provider.js";
+export type {
+  ByokProviderBoundary,
+  ByokProviderBoundaryResult,
+  ByokProviderBoundarySelection,
+  ByokProviderRequestedUse
+} from "./byok-provider.js";
 export * from "./permission-policy.js";
 export * from "./runtime.js";
 export * from "./runtime-types.js";
@@ -85,6 +95,7 @@ export * from "./specialist-workflows.js";
 export * from "./specialist-handoffs.js";
 export * from "./specialist-handoff-hash.js";
 export * from "./specialist-handoff-manifest.js";
+export * from "./specialist-handoff-preparation.js";
 export * from "./specialist-handoff-projection.js";
 export * from "./specialist-readiness.js";
 export * from "./specialist-runner-kernel.js";

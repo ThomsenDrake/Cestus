@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
+import * as agent from "../src/index.js";
 import {
+  bindApprovedProductionSpecialistPromptV2,
   buildContextPackRef,
   buildSpecialistHandoffMaterial,
   buildPromptArtifact,
@@ -17,16 +22,133 @@ import {
   productionSpecialistPromptRegistrations,
   recordSpecialistHandoff,
   serializeSpecialistLocalArtifact,
+  specialistWorkflowDescriptorFor,
   type AgentContextPackJsonValue,
   type ContextPackRegistry,
   type SpecialistRunnerBaseInput,
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
+import {
+  appendSpecialistCompletion,
+  recordAuthorityBoundSpecialistHandoff,
+  type RecordAuthorityBoundSpecialistHandoffResult
+} from "../src/specialist-runner-kernel.js";
+import { issueMountedSpecialistHandoffAuthorityWitness } from "../src/specialist-handoff-authority.js";
+import { buildSpecialistHandoffProjection } from "../src/specialist-handoff-projection.js";
+import { buildTaskAttemptId } from "../src/task-orchestrator-events.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import {
+  createMountedProductionPromptReadbackAuthority,
+  issueMountedProductionPromptReadback
+} from "../src/production-prompt-readback.js";
+import { serializePromptArtifactEnvelope } from "../src/prompt-artifacts.js";
 import { ConcurrencyConflictError, InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { resolveLocalRuntimeConfig } from "../../local-runtime/src/config.js";
+import { createMountedPromptArtifactStore } from "../../local-runtime/src/mounted-prompt-artifact-store.js";
+import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../../local-runtime/src/runtime-factory.js";
+
+const mountedRunnerDirs: string[] = [];
+const mountedRunnerHandles: LocalRuntimeHandle[] = [];
+
+afterEach(() => {
+  for (const handle of mountedRunnerHandles.splice(0)) handle.close();
+  for (const dir of mountedRunnerDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 describe("specialist runner artifact serialization", () => {
+  it("rejects missing mounted context-ready prompt instead of rendering", async () => {
+    const fixture = await runnerFixture({ includeWitness: false });
+
+    await expect(prepareSpecialistRun(fixture.input, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("accepts the exact supplied context-ready v1 without another render", async () => {
+    const fixture = await runnerFixture();
+    const prepared = await prepareSpecialistRun(fixture.input, "evidence-triage");
+
+    expect(prepared.promptArtifact.manifest.inputArtifactHash).toBe(fixture.rendered.manifest.inputArtifactHash);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("rejects structurally valid v1 without mounted readback membership", async () => {
+    const fixture = await runnerFixture();
+    const rendered = await renderedRunnerPrompt(fixture.input);
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: undefined, promptArtifact: rendered }, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+  });
+
+  it("rejects copied swapped and reused mounted readback witness", async () => {
+    const fixture = await runnerFixture();
+    const witness = fixture.input.mountedPromptReadbackWitness;
+    if (witness === undefined) throw new Error("Expected mounted witness.");
+    const copied = { ...witness };
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: copied }, "evidence-triage"))
+      .rejects.toThrow(/mounted.*prompt.*readback|required/i);
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { inputArtifactHash: fixture.rendered.manifest.inputArtifactHash } } });
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .rejects.toThrow(/consumed|mounted.*prompt.*readback/i);
+  });
+
+  it("consumes one exact post-mount-check v1 witness without rendering", async () => {
+    const fixture = await runnerFixture();
+    const witness = fixture.input.mountedPromptReadbackWitness;
+    if (witness === undefined) throw new Error("Expected mounted witness.");
+
+    await expect(prepareSpecialistRun({ ...fixture.input, mountedPromptReadbackWitness: witness }, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { production: { schemaVersion: "agent-production-prompt-binding.v1" } } } });
+  });
+
+  it("concurrent mounted witness preparation yields at most one provider-preparable run", async () => {
+    const fixture = await runnerFixture({ includeWitness: false });
+    const canonical = Buffer.from(serializePromptArtifactEnvelope(fixture.rendered));
+    const rereadStarted = deferred<void>();
+    const rereadRelease = deferred<Uint8Array>();
+    let deferConsumption = false;
+    let rereadCount = 0;
+    const authority = createMountedProductionPromptReadbackAuthority({
+      currentMount: () => ({ workspaceId: "ws_runner_test", rootDir: "/runner", blobRoot: "/runner/blobs" })
+    });
+    const witness = await issueMountedProductionPromptReadback({
+      serializedEnvelope: canonical,
+      authoritativeResolvedContextPacks: fixture.rendered.resolvedContextPacks,
+      authority,
+      rereadCanonicalBytes: async () => {
+        rereadCount += 1;
+        if (!deferConsumption) return canonical;
+        rereadStarted.resolve();
+        return await rereadRelease.promise;
+      }
+    });
+    const input = { ...fixture.input, mountedPromptReadbackWitness: witness };
+
+    deferConsumption = true;
+    const first = prepareSpecialistRun(input, "evidence-triage");
+    const second = prepareSpecialistRun(input, "evidence-triage");
+    await rereadStarted.promise;
+    for (let microtask = 0; microtask < 20; microtask += 1) await Promise.resolve();
+
+    expect(rereadCount).toBe(2);
+    rereadRelease.resolve(canonical);
+    await expect(first).resolves.toMatchObject({ promptArtifact: { manifest: { inputArtifactHash: fixture.rendered.manifest.inputArtifactHash } } });
+    await expect(second).rejects.toThrow(/already consumed|mounted.*readback/i);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("preserves the authoritative artifact timestamp across delayed approval resume", async () => {
+    let resumedNow = "2026-07-11T08:00:00.000Z";
+    const fixture = await runnerFixture({ now: () => resumedNow });
+    resumedNow = "2026-07-12T09:30:00.000Z";
+
+    await expect(prepareSpecialistRun(fixture.input, "evidence-triage"))
+      .resolves.toMatchObject({ promptArtifact: { manifest: { generatedAt: "2026-07-11T08:00:00.000Z" } } });
+  });
   it("serializes plain JSON deterministically with sorted object keys", () => {
     expect(serializeSpecialistLocalArtifact({
       beta: 2,
@@ -151,6 +273,102 @@ describe("specialist runner artifact serialization", () => {
 });
 
 describe("production specialist run preparation", () => {
+  it("structurally valid v2 is blocked without factory authority", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const block = (agent as unknown as {
+      readonly blockV2ProviderTransferUntilFactoryAuthority?: (input: unknown) => unknown;
+    }).blockV2ProviderTransferUntilFactoryAuthority;
+    const selected = (agent as unknown as {
+      readonly assertSelectedSpecialistProviderByteTransferApproval?: (input: unknown) => Promise<unknown>;
+    }).assertSelectedSpecialistProviderByteTransferApproval;
+
+    expect(block).toBeTypeOf("function");
+    const blocked = block!({
+      approvedV1: fixture.approvedPromptArtifact,
+      candidateV2: fixture.boundPromptArtifact
+    });
+    expect(blocked).toEqual(expect.objectContaining({
+      schemaVersion: "agent-task133-v2-transfer-boundary.v1",
+      status: "blocked",
+      code: "authority-resolution-required",
+      sourceApprovedPromptArtifactHash: fixture.approvedPromptArtifact.manifest.inputArtifactHash,
+      boundPromptArtifactHash: fixture.boundPromptArtifact.manifest.inputArtifactHash
+    }));
+    expect(Object.isFrozen(blocked)).toBe(true);
+    expect(selected).toBeTypeOf("function");
+    const blockedSelection = v2BlockedSelectionInput(fixture, fixture.exactRun);
+    await expect(selected!(blockedSelection.input)).resolves.toEqual(blocked);
+    expect(blockedSelection.effects).toEqual([]);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("rejects swapped source v1 and rerendered text", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const alternate = await boundRunnerPromptFixture({ runId: "run_runner_test_swapped", taskId: "task_runner_test_swapped" });
+    const assertion = (agent as unknown as {
+      readonly assertApprovedV1ToV2ArtifactInvariants?: (input: unknown) => void;
+    }).assertApprovedV1ToV2ArtifactInvariants;
+
+    expect(assertion).toBeTypeOf("function");
+    expect(() => assertion!({
+      approvedV1: alternate.approvedPromptArtifact,
+      candidateV2: fixture.boundPromptArtifact
+    })).toThrow(/approved|source|binding/i);
+    expect(() => assertion!({
+      approvedV1: fixture.approvedPromptArtifact,
+      candidateV2: { ...fixture.boundPromptArtifact, text: `${fixture.boundPromptArtifact.text}\nRerendered.` }
+    })).toThrow(/hash|text|approved|binding/i);
+    expect(fixture.invocationCount()).toBe(0);
+    expect(alternate.invocationCount()).toBe(0);
+  });
+
+  it("direct v2 proof and exact run cannot become transfer authority", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const selected = (agent as unknown as {
+      readonly assertSelectedSpecialistProviderByteTransferApproval?: (input: unknown) => Promise<unknown>;
+    }).assertSelectedSpecialistProviderByteTransferApproval;
+
+    expect(selected).toBeTypeOf("function");
+    const blockedSelection = v2BlockedSelectionInput(fixture, {
+      ...fixture.exactRun,
+      attemptId: "attempt_runner_test_direct_proof"
+    });
+    await expect(selected!(blockedSelection.input)).resolves.toEqual(expect.objectContaining({
+      status: "blocked",
+      code: "authority-resolution-required"
+    }));
+    expect(blockedSelection.effects).toEqual([]);
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
+  it("each missing current authority family remains zero effect", async () => {
+    const fixture = await boundRunnerPromptFixture();
+    const selected = (agent as unknown as {
+      readonly assertSelectedSpecialistProviderByteTransferApproval?: (input: unknown) => Promise<unknown>;
+    }).assertSelectedSpecialistProviderByteTransferApproval;
+
+    expect(selected).toBeTypeOf("function");
+    for (const exactRun of [
+      { ...fixture.exactRun, attemptId: "attempt_runner_test_swapped" },
+      { ...fixture.exactRun, approvedRunId: "run_runner_test_approved_swapped" },
+      { ...fixture.exactRun, workspaceId: "ws_runner_test_swapped" },
+      { ...fixture.exactRun, mountInstanceId: "mount_runner_test_swapped" },
+      { ...fixture.exactRun, workflowDescriptor: specialistWorkflowDescriptorFor("prr-negotiation") },
+      { ...fixture.exactRun, policyVersion: "runner-policy.swapped" },
+      { ...fixture.exactRun, providerPosture: { ...fixture.exactRun.providerPosture, capabilityIds: ["capability_runner_swapped"] } },
+      { ...fixture.exactRun, providerPosture: { ...fixture.exactRun.providerPosture, selectionPolicyVersion: "runner-selection.swapped" } },
+      { ...fixture.exactRun, providerPosture: { ...fixture.exactRun.providerPosture, readinessState: "requires-byte-transfer-approval" as never } }
+    ]) {
+      const blockedSelection = v2BlockedSelectionInput(fixture, exactRun);
+      await expect(selected!(blockedSelection.input)).resolves.toEqual(expect.objectContaining({
+        status: "blocked",
+        code: "authority-resolution-required"
+      }));
+      expect(blockedSelection.effects).toEqual([]);
+    }
+    expect(fixture.invocationCount()).toBe(0);
+  });
+
   it("rejects a missing production registration before provider invocation", async () => {
     const fixture = await runnerFixture();
 
@@ -209,7 +427,7 @@ describe("production specialist run preparation", () => {
       safeSummary: "Test-only prompt artifact."
     });
     await expect(prepareSpecialistRun({ ...fixture.input, promptArtifact: genericArtifact }, "evidence-triage"))
-      .rejects.toThrow(/production binding|production specialist prompt artifact/i);
+      .rejects.toThrow(/consumed|mounted.*prompt.*readback/i);
     expect(fixture.invocationCount()).toBe(0);
   });
 
@@ -256,6 +474,219 @@ describe("production specialist run preparation", () => {
 });
 
 describe("durable specialist handoff runner lifecycle", () => {
+  it("rejects a structural V2 authority substitute before it can append handoff evidence", async () => {
+    const fixture = await durableHandoffFixture();
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const eventCount = (await fixture.ledger.readAll()).length;
+
+    await expect(recordAuthorityBoundSpecialistHandoff({
+      ...recordInput(fixture),
+      handoffAuthorityWitness: { schemaVersion: "agent-mounted-specialist-handoff-authority.v1" } as never
+    })).rejects.toThrow(/authority/i);
+
+    expect((await fixture.ledger.readAll())).toHaveLength(eventCount);
+  });
+
+  it("records only matching V2 manifest and compact-event authority bindings from one witness", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_001", taskId: "task_authority_v2_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const authorityBinding = {
+      workspaceIdentityHash: runnerHash,
+      mountGeneration: "mount_generation_001",
+      ledgerStoreIdentity: "ledger_store_001",
+      artifactStoreIdentity: "artifact_store_001",
+      ledgerHighWaterEventId: fixture.runStartedEventId,
+      policyHash: runnerHash,
+      activeLocksHash: runnerHash
+    } as const;
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding,
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
+      revalidateCurrent: async () => undefined
+    });
+
+    const recorded = await recordAuthorityBoundSpecialistHandoff({ ...recordInput(fixture), handoffAuthorityWitness: witness });
+
+    expect(recorded.manifest).toMatchObject({
+      schemaVersion: "agent-specialist-handoff-manifest.v2",
+      authorityBinding
+    });
+    expect(recorded.prepared.payload).toMatchObject({
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2",
+      authorityBinding
+    });
+    expect(recorded.recorded.payload).toMatchObject({
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2",
+      authorityBinding,
+      preparedEventId: recorded.prepared.id
+    });
+  });
+
+  it("drives the authority-bound production record through terminal, orchestration completion, task status, and complete replayed readback", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_complete_001", taskId: "task_authority_v2_complete_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const authorityBinding = handoffAuthorityBindingFor(fixture);
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding,
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
+      revalidateCurrent: async () => undefined
+    });
+
+    const recorded = await recordAuthorityBoundSpecialistHandoff({ ...recordInput(fixture), handoffAuthorityWitness: witness });
+
+    expect(recorded.terminal).toMatchObject({
+      type: "agent.specialist-run.completed",
+      context: { causationId: recorded.recorded.id },
+      payload: { runId: fixture.runId }
+    });
+    const orchestration = (await fixture.ledger.readAll()).find((event) =>
+      event.type === "agent.task.orchestration.completed" && event.payload.runId === fixture.runId
+    );
+    expect(orchestration).toMatchObject({
+      context: { causationId: recorded.terminal.id },
+      payload: {
+        taskId: fixture.taskId,
+        runId: fixture.runId,
+        finalOutputStepEventId: recorded.manifest.finalOutputEventId,
+        handoffPreparedEventId: recorded.prepared.id,
+        handoffRecordedEventId: recorded.recorded.id,
+        specialistRunCompletedEventId: recorded.terminal.id
+      }
+    });
+    expect(recorded.taskStatus).toMatchObject({
+      type: "agent.task.status.changed",
+      context: { causationId: orchestration?.id },
+      payload: { taskId: fixture.taskId, runId: fixture.runId, status: "completed" }
+    });
+    expect((await fixture.ledger.readAll()).filter((event) =>
+      event.type === "agent.specialist-run.completed" ||
+      event.type === "agent.task.orchestration.completed" ||
+      (event.type === "agent.task.status.changed" && event.payload.status === "completed")
+    ).map((event) => event.type)).toEqual([
+      "agent.specialist-run.completed",
+      "agent.task.orchestration.completed",
+      "agent.task.status.changed"
+    ]);
+    expect(recorded.readback).toMatchObject({
+      outcome: "verified",
+      handoffId: recorded.handoff.handoffId,
+      taskId: fixture.taskId,
+      runId: fixture.runId,
+      finalOutputEventId: recorded.manifest.finalOutputEventId,
+      preparedEventId: recorded.prepared.id,
+      recordedEventId: recorded.recorded.id,
+      terminalRunEventId: recorded.terminal.id,
+      taskStatusEventId: recorded.taskStatus.id,
+      authorityBinding
+    });
+  });
+
+  it("keeps strict V2 results out of the V1 finalizer and stops a remounted authority before task-status append", async () => {
+    expectTypeOf<RecordAuthorityBoundSpecialistHandoffResult>()
+      .not.toMatchTypeOf<Parameters<typeof finalizeSpecialistRunAfterHandoff>[0]["recorded"]>();
+
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_stale_001", taskId: "task_authority_v2_stale_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    let stale = false;
+    const ledger = new StaleAfterEventLedger(fixture.ledger, "agent.specialist-run.completed", () => { stale = true; });
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: handoffAuthorityBindingFor(fixture),
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
+      revalidateCurrent: async () => {
+        if (stale) throw new Error("mounted authority is stale");
+      }
+    });
+
+    await expect(recordAuthorityBoundSpecialistHandoff({
+      ...recordInput(fixture),
+      ledger,
+      handoffAuthorityWitness: witness
+    })).rejects.toThrow(/authority|stale/i);
+
+    expect((await fixture.ledger.readStream(`agent_task_${fixture.taskId}`)).filter((event) =>
+      event.type === "agent.task.status.changed" &&
+      event.payload.runId === fixture.runId &&
+      event.payload.status !== "running"
+    )).toEqual([]);
+  });
+
+  it("rejects raw completion and projection completion after stale V2 authority rejects", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_authority_v2_raw_bypass_001", taskId: "task_authority_v2_raw_bypass_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    let stale = false;
+    const ledger = new StaleAfterEventLedger(fixture.ledger, "agent.specialist-handoff.recorded", () => { stale = true; });
+    const witness = issueMountedSpecialistHandoffAuthorityWitness({
+      authorityBinding: handoffAuthorityBindingFor(fixture),
+      taskLifecycle: handoffTaskLifecycleFor(fixture),
+      revalidateCurrent: async () => {
+        if (stale) throw new Error("mounted authority is stale");
+      }
+    });
+
+    await expect(recordAuthorityBoundSpecialistHandoff({
+      ...recordInput(fixture),
+      ledger,
+      handoffAuthorityWitness: witness
+    })).rejects.toThrow(/authority|stale/i);
+
+    const recorded = (await fixture.ledger.readAll()).find((event) => event.type === "agent.specialist-handoff.recorded");
+    if (recorded === undefined || recorded.type !== "agent.specialist-handoff.recorded") {
+      throw new Error("fixture must retain the stale V2 recorded handoff");
+    }
+    const terminalCount = (await fixture.ledger.readAll()).filter((event) =>
+      event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed"
+    ).length;
+
+    await expect(appendSpecialistCompletion({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      runId: fixture.runId,
+      summary: "Durable specialist handoff is available for review.",
+      outputArtifactHashes: [fixture.outputArtifact.artifactHash],
+      relatedEventIds: [recorded.id]
+    })).rejects.toThrow(/authority-bound|authority/i);
+    expect((await fixture.ledger.readAll()).filter((event) =>
+      event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed"
+    )).toHaveLength(terminalCount);
+
+    const rawTerminal = await fixture.ledger.append({
+      type: "agent.specialist-run.completed",
+      version: 1,
+      streamId: `agent_run_${fixture.runId}`,
+      context: lifecycleContext(fixture, recorded.id),
+      payload: {
+        runId: fixture.runId,
+        completedAt: fixture.clock.now(),
+        outputArtifactHashes: [fixture.outputArtifact.artifactHash],
+        relatedEventIds: [recorded.id],
+        summary: "Durable specialist handoff is available for review."
+      }
+    });
+    await fixture.ledger.append({
+      type: "agent.task.status.changed",
+      version: 1,
+      streamId: `agent_task_${fixture.taskId}`,
+      context: lifecycleContext(fixture, rawTerminal.id),
+      payload: {
+        taskId: fixture.taskId,
+        status: "completed",
+        changedBy: fixture.actor.id,
+        reason: "Raw caller status must not complete a rejected V2 handoff.",
+        runId: fixture.runId
+      }
+    });
+
+    const projection = await buildSpecialistHandoffProjection({
+      events: await fixture.ledger.readAll(),
+      manifestReader: fixture.manifestStore,
+      runId: fixture.runId,
+      taskId: fixture.taskId
+    });
+    expect(projection.state).not.toBe("task-completed");
+    expect(projection.selectedReadback).toBeUndefined();
+  });
+
   it("uses last stream sequence plus one for expected append sequencing", async () => {
     const eventA = lifecycleEvent("evt_sequence_a", 1);
     const eventB = lifecycleEvent("evt_sequence_b", 1);
@@ -276,8 +707,15 @@ describe("durable specialist handoff runner lifecycle", () => {
       now: fixture.clock.now,
       recorded
     });
+    const replayed = await finalizeSpecialistRunAfterHandoff({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      recorded
+    });
 
     expect(finalized.taskStatus).toBeUndefined();
+    expect(replayed.terminal.id).toBe(finalized.terminal.id);
     expect((await fixture.ledger.readAll()).map((event) => event.type)).toEqual(expect.arrayContaining([
       "agent.specialist-run.step.recorded",
       "agent.specialist-handoff.prepared",
@@ -872,6 +1310,7 @@ interface DurableHandoffFixture {
   readonly clock: { readonly now: () => string; readonly calls: number };
   readonly runId: string;
   readonly taskId: string;
+  readonly runType: "evidence-triage" | "ontology-bootstrap";
   readonly status: DurableHandoffStatus;
   readonly runStartedEventId: string;
   readonly manifestStore: MemoryManifestStore;
@@ -899,6 +1338,7 @@ async function durableHandoffFixture(options: {
   const actor = { id: "actor_durable_handoff", kind: "agent" as const, label: "Durable Handoff Test" };
   const runId = options.runId ?? "run_durable_handoff_001";
   const taskId = options.taskId ?? "task_durable_handoff_001";
+  const runType = options.runType ?? "evidence-triage";
   const status = options.status ?? "ready-for-review";
   const clock = steppedClock(options.clockValues ?? ["2026-07-10T15:00:00.000Z"]);
   const lifecycle = createAgentRuntime({ ledger, actor, now: () => "2026-07-10T14:00:00.000Z", providers: [] });
@@ -907,7 +1347,7 @@ async function durableHandoffFixture(options: {
   const started = await lifecycle.startRun({
     runId,
     taskId,
-    runType: options.runType ?? "evidence-triage",
+    runType,
     scope: { kind: "workspace", refs: ["ws_durable_handoff"] }
   });
   if (!started.ok) throw new Error("Unable to start durable handoff fixture run.");
@@ -929,6 +1369,7 @@ async function durableHandoffFixture(options: {
     clock,
     runId,
     taskId,
+    runType,
     status,
     runStartedEventId: started.eventIds[0]!,
     manifestStore,
@@ -969,6 +1410,28 @@ function recordInput(fixture: DurableHandoffFixture) {
     runId: fixture.runId,
     taskId: fixture.taskId,
   };
+}
+
+function handoffAuthorityBindingFor(fixture: DurableHandoffFixture) {
+  return {
+    workspaceIdentityHash: runnerHash,
+    mountGeneration: "mount_generation_001",
+    ledgerStoreIdentity: "ledger_store_001",
+    artifactStoreIdentity: "artifact_store_001",
+    ledgerHighWaterEventId: fixture.runStartedEventId,
+    policyHash: runnerHash,
+    activeLocksHash: runnerHash
+  } as const;
+}
+
+function handoffTaskLifecycleFor(fixture: DurableHandoffFixture) {
+  return {
+    taskId: fixture.taskId,
+    attemptId: buildTaskAttemptId({ taskId: fixture.taskId, runType: fixture.runType, retryGeneration: 0 }),
+    runId: fixture.runId,
+    runType: fixture.runType,
+    retryGeneration: 0
+  } as const;
 }
 
 function handoffMaterialInput(fixture: DurableHandoffFixture) {
@@ -1160,6 +1623,23 @@ class MutatingReadLedger implements EventLedger {
   }
 }
 
+class StaleAfterEventLedger implements EventLedger {
+  constructor(
+    private readonly delegate: EventLedger,
+    private readonly eventType: KnowledgeEvent["type"],
+    private readonly markStale: () => void
+  ) {}
+
+  async append(event: Parameters<EventLedger["append"]>[0], options?: Parameters<EventLedger["append"]>[1]) {
+    const appended = await this.delegate.append(event, options);
+    if (event.type === this.eventType) this.markStale();
+    return appended;
+  }
+
+  async readStream(streamId: string) { return await this.delegate.readStream(streamId); }
+  async readAll() { return await this.delegate.readAll(); }
+}
+
 class ExactAppendRaceLedger implements EventLedger {
   private injected = false;
 
@@ -1264,18 +1744,26 @@ const runnerContextPackIds = [
   "jurisdiction-pack-summary.v1"
 ] as const;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
+
 async function runnerFixture(patch: {
   readonly contextPacks?: ContextPackRegistry;
   readonly runId?: string;
   readonly taskId?: string;
   readonly workspaceId?: string;
+  readonly includeWitness?: boolean;
+  readonly now?: () => string;
 } = {}) {
   const runId = patch.runId ?? "run_runner_test_001";
   const taskId = patch.taskId ?? "task_runner_test_001";
   const workspaceId = patch.workspaceId ?? "ws_runner_test";
   const ledger = new InMemoryEventLedger();
   const actor = { id: "actor_runner_test", kind: "agent" as const, label: "Runner Test" };
-  const now = () => "2026-07-11T08:00:00.000Z";
+  const now = patch.now ?? (() => "2026-07-11T08:00:00.000Z");
   const lifecycle = createAgentRuntime({ ledger, actor, now, providers: [] });
   await lifecycle.initializeDefaultIdentity({ workspaceId });
   await lifecycle.createTask({
@@ -1292,7 +1780,7 @@ async function runnerFixture(patch: {
   });
 
   let invocations = 0;
-  const input: SpecialistRunnerBaseInput = {
+  const baseInput: SpecialistRunnerBaseInput = {
       ledger,
       actor,
       now,
@@ -1325,9 +1813,165 @@ async function runnerFixture(patch: {
         }]
       }
   };
+  const rendered = await renderedRunnerPrompt({ ...baseInput, contextPacks: runnerContextPackRegistry() });
+  const handle = mountedRunnerHandle(workspaceId);
+  const store = await createMountedPromptArtifactStore({ handle });
+  await store.put(rendered);
+  const readback = await store.read({
+    inputArtifactHash: rendered.manifest.inputArtifactHash as `sha256:${string}`,
+    authoritativeResolvedContextPacks: rendered.resolvedContextPacks
+  });
+  if (readback.witness === undefined) throw new Error("Expected mounted V1 prompt witness.");
+  const witness = readback.witness;
+  const input: SpecialistRunnerBaseInput = patch.includeWitness === false
+    ? baseInput
+    : { ...baseInput, mountedPromptReadbackWitness: witness };
   return {
     input,
+    rendered,
     invocationCount: () => invocations
+  };
+}
+
+async function renderedRunnerPrompt(input: SpecialistRunnerBaseInput) {
+  const runType = "evidence-triage" as const;
+  const scope = input.scope ?? { kind: "task" as const, refs: [input.taskId] };
+  const registration = productionSpecialistPromptRegistrationFor(runType);
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || scope.associatedPrrRequestId !== undefined)
+    .map(async (requirement) => await input.contextPacks.buildResolved(requirement.contextPackId)));
+  return agent.renderProductionSpecialistPrompt({
+    taskId: input.taskId,
+    runId: input.runId,
+    runType,
+    generatedAt: input.now(),
+    scope,
+    resolvedContextPacks
+  });
+}
+
+function mountedRunnerHandle(workspaceId: string): LocalRuntimeHandle {
+  const root = mkdtempSync(join(tmpdir(), "cestus-runner-mounted-"));
+  const cwd = mkdtempSync(join(tmpdir(), "cestus-runner-mounted-cwd-"));
+  mountedRunnerDirs.push(root, cwd);
+  createPortableWorkspace({
+    rootDir: root,
+    workspaceId,
+    label: "Runner mounted prompt fixture",
+    createdAt: "2026-07-11T08:00:00.000Z",
+    createdBy: "actor_runner_test"
+  });
+  const handle = createSqlitePrrRuntime({
+    config: {
+      ...resolveLocalRuntimeConfig({ cwd, env: {} }),
+      storage: {
+        strategy: "portable-workspace",
+        workspaceRoot: root,
+        expectedWorkspaceId: workspaceId,
+        sqlitePath: join(root, "ledger", "ontology.sqlite")
+      }
+    },
+    actor: { id: "actor_runner_test", kind: "system", label: "Runner Test" },
+    now: () => "2026-07-11T08:00:00.000Z"
+  });
+  mountedRunnerHandles.push(handle);
+  return handle;
+}
+
+async function boundRunnerPromptFixture(patch: {
+  readonly runId?: string;
+  readonly taskId?: string;
+} = {}) {
+  const fixture = await runnerFixture(patch);
+  const prepared = await prepareSpecialistRun(fixture.input, "evidence-triage");
+  const approvedPromptArtifact = prepared.promptArtifact;
+  const resolvedContextPacks = approvedPromptArtifact.resolvedContextPacks;
+  if (resolvedContextPacks === undefined) {
+    throw new Error("Expected canonical v1 prompt artifact to retain verified context packs.");
+  }
+  const exactRun = {
+    taskId: fixture.input.taskId,
+    attemptId: `attempt_${fixture.input.runId}`,
+    approvedRunId: fixture.input.runId,
+    runId: fixture.input.runId,
+    runType: "evidence-triage" as const,
+    residentAgentId: "agent_default" as const,
+    workspaceId: "ws_runner_test",
+    mountInstanceId: "mount_runner_test",
+    workflowDescriptor: specialistWorkflowDescriptorFor("evidence-triage"),
+    policyVersion: "runner-policy.v1",
+    providerPosture: {
+      providerId: fixture.input.providerId,
+      modelId: fixture.input.modelFamily,
+      capabilityIds: ["capability_runner_local_test"],
+      selectionPolicyVersion: "runner-selection.v1",
+      readinessState: "ready" as const,
+      approvalRequirementId: `toolreq_${fixture.input.runId}`
+    }
+  };
+  const boundPromptArtifact = bindApprovedProductionSpecialistPromptV2({
+    approvedPromptArtifact,
+    generatedAt: approvedPromptArtifact.manifest.generatedAt,
+    scope: fixture.input.scope ?? { kind: "task", refs: [fixture.input.taskId] },
+    resolvedContextPacks,
+    exactRun
+  });
+  return { ...fixture, approvedPromptArtifact, boundPromptArtifact, exactRun };
+}
+
+function v2InvocationFacts(fixture: Awaited<ReturnType<typeof boundRunnerPromptFixture>>) {
+  return {
+    taskId: fixture.input.taskId,
+    runId: fixture.input.runId,
+    runType: "evidence-triage" as const,
+    residentAgentId: "agent_default" as const,
+    providerId: fixture.input.providerId,
+    modelId: fixture.input.modelFamily,
+    approvalRequirementId: fixture.exactRun.providerPosture.approvalRequirementId
+  };
+}
+
+function v2BlockedSelectionInput(
+  fixture: Awaited<ReturnType<typeof boundRunnerPromptFixture>>,
+  exactRun: ReturnType<typeof boundRunnerPromptFixture> extends Promise<infer Result>
+    ? Result extends { readonly exactRun: infer ExactRun } ? ExactRun : never
+    : never
+) {
+  const effects: string[] = [];
+  const forbidden = (name: string) => new Proxy({}, {
+    get() {
+      effects.push(name);
+      throw new Error(`Unexpected ${name} access while v2 authority is blocked.`);
+    }
+  });
+  const proof = {
+    approvedPromptArtifact: fixture.approvedPromptArtifact,
+    get exactRun() {
+      effects.push("proof.exactRun");
+      return exactRun;
+    },
+    get v2InvocationFacts() {
+      effects.push("proof.v2InvocationFacts");
+      return v2InvocationFacts(fixture);
+    },
+    get currentPreviewInput() {
+      effects.push("proof.currentPreviewInput");
+      throw new Error("Current preview must not be read while v2 authority is blocked.");
+    }
+  };
+  return {
+    effects,
+    input: {
+      ledger: forbidden("ledger") as EventLedger,
+      runId: fixture.input.runId,
+      taskId: fixture.input.taskId,
+      providerId: fixture.input.providerId,
+      modelFamily: fixture.input.modelFamily,
+      credentialRef: forbidden("credential") as SpecialistRunnerBaseInput["credentialRef"],
+      providerReadiness: forbidden("provider-readiness") as SpecialistRunnerBaseInput["providerReadiness"],
+      providerTransferApproval: proof,
+      promptArtifact: fixture.boundPromptArtifact
+    }
   };
 }
 

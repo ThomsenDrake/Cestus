@@ -1,17 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { createXaiSubscriptionHarness } from "../src/xai-subscription-harness.js";
+import {
+  createXaiSubscriptionHarness,
+  type XaiSubscriptionHarnessResult
+} from "../src/xai-subscription-harness.js";
+import {
+  inspectOfficialFlowAbsenceWitness
+} from "../src/official-flow-feasibility.js";
 
+const attemptId = "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const capabilityHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 const approvalBindingHash = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const documentationHash = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+const classificationHash = "sha256:a5f6a4b66c6898640edbed0dc7d254b2943400de3b46c1551b7ef3647c05fef9";
+
+const mismatchedBlockedDiagnostic: XaiSubscriptionHarnessResult = {
+  kind: "blocked",
+  category: "unsafe-input",
+  providerId: "provider_xai_blocked",
+  modelId: "xai-blocked",
+  capabilityHash,
+  // @ts-expect-error blocked diagnostics must match their category exactly
+  safeDiagnosticCodes: ["posture-mismatch"]
+};
 
 function currentPosture(overrides: Record<string, unknown> = {}) {
   return {
     residentAgentId: "agent_default" as const,
-    workspaceId: "workspace_primary",
+    workspaceId: "ws_primary",
     mountInstanceId: "mount_primary",
     taskId: "task_primary",
-    attemptId: "attempt_primary",
+    attemptId,
     runId: "run_primary",
     providerId: "provider_xai_grok",
     modelId: "grok-4",
@@ -37,6 +55,7 @@ function currentPosture(overrides: Record<string, unknown> = {}) {
       bindingHash: approvalBindingHash
     },
     sourceEventIds: ["evt_xai_policy_current"] as const,
+    causationEventId: "evt_xai_policy_current",
     ...overrides
   };
 }
@@ -75,6 +94,13 @@ describe("official xAI subscription harness", () => {
         category: "prohibited-credential-source",
         safeDiagnosticCodes: ["prohibited-credential-source"]
       });
+      if (result.kind !== "blocked") {
+        throw new Error("expected a blocked prohibited credential source");
+      }
+      const mutableDiagnosticCodes = result.safeDiagnosticCodes as unknown as string[];
+      expect(Object.isFrozen(result.safeDiagnosticCodes)).toBe(true);
+      expect(() => { mutableDiagnosticCodes[0] = "unsafe-input"; }).toThrow(TypeError);
+      expect(result.safeDiagnosticCodes).toEqual(["prohibited-credential-source"]);
       expect(JSON.stringify(result)).not.toContain(sourceMaterial);
     }
   });
@@ -113,35 +139,71 @@ describe("official xAI subscription harness", () => {
     });
   });
 
-  it("fails closed without append or unavailable when no authenticated mounted readback capability exists", async () => {
+  it("returns the exact opaque xAI absence witness for an absent official flow", async () => {
     const result = await createHarness().assess({
       posture: currentPosture(),
       officialFlow: undefined
     });
 
-    expect(result).toEqual({
-      kind: "blocked",
-      category: "feasibility-append-unavailable",
+    expect(result).toMatchObject({
+      kind: "official-flow-absence-classified",
+      category: "official-flow-absent"
+    });
+    expect(result).not.toMatchObject({ kind: "unavailable" });
+    expect(result).not.toMatchObject({ category: "feasibility-append-unavailable" });
+    if (result.kind !== "official-flow-absence-classified") {
+      throw new Error("expected an official-flow absence classification");
+    }
+
+    expect(result.witness).toEqual({
+      schemaVersion: "agent-official-flow-absence-witness.v1",
+      providerFamily: "xai"
+    });
+    expect(Object.isFrozen(result.witness)).toBe(true);
+    expect(inspectOfficialFlowAbsenceWitness(result.witness)).toEqual({
+      schemaVersion: "agent-official-flow-absence.v1",
+      residentAgentId: "agent_default",
+      workspaceId: "ws_primary",
+      mountInstanceId: "mount_primary",
+      taskId: "task_primary",
+      attemptId,
+      runId: "run_primary",
+      providerFamily: "xai",
       providerId: "provider_xai_grok",
       modelId: "grok-4",
       capabilityHash,
-      safeDiagnosticCodes: ["feasibility-append-unavailable"]
+      credentialRefId: "agent_credref_xai_primary",
+      credentialKind: "subscription-oauth",
+      capabilityScopes: ["harness-execution"],
+      policyVersion: "policy_xai_harness_v1",
+      officialFlowId: "xai-grok-named-integration.v1",
+      approvalClass: "provider-byte-transfer",
+      approvalBindingHash,
+      sourceEventIds: ["evt_xai_policy_current"],
+      causationEventId: "evt_xai_policy_current",
+      classification: "official-flow-absent",
+      classificationHash
     });
+    expect(inspectOfficialFlowAbsenceWitness({ ...result.witness })).toBeUndefined();
   });
 
-  it("rejects unrecognized secret or alternate-provider ports instead of resolving, emulating, or substituting", async () => {
-    let secretResolutions = 0;
-    let alternateProviderCalls = 0;
+  it("rejects persistence, authority, runtime, secret, and fallback ports without invoking them", async () => {
+    let portCalls = 0;
     const harness = createHarness({
-      resolveSecret: () => { secretResolutions += 1; },
-      useAlternateProvider: () => { alternateProviderCalls += 1; }
+      appendOfficialFlowUnavailable: () => { portCalls += 1; },
+      authorityOperation: { append: () => { portCalls += 1; } },
+      mountedOwner: { record: () => { portCalls += 1; } },
+      ledger: { append: () => { portCalls += 1; } },
+      runtimeHandle: { resolve: () => { portCalls += 1; } },
+      resolveSecret: () => { portCalls += 1; },
+      useAlternateProvider: () => { portCalls += 1; },
+      genericApiKeyFallback: () => { portCalls += 1; }
     });
 
     const result = await harness.assess({ posture: currentPosture(), officialFlow: undefined });
 
     expect(result).toMatchObject({ kind: "blocked", category: "unsafe-input" });
-    expect(secretResolutions).toBe(0);
-    expect(alternateProviderCalls).toBe(0);
+    expect(portCalls).toBe(0);
   });
 
   it.each([
@@ -151,7 +213,7 @@ describe("official xAI subscription harness", () => {
       policy: { ...currentPosture().policy, capabilityHash: approvalBindingHash }
     })],
     ["credential reference", currentPosture({ credentialReference: { ...currentPosture().credentialReference, credentialRefId: "agent_credref_xai_other" } })],
-    ["workspace", currentPosture({ workspaceId: "workspace_other" })],
+    ["workspace", currentPosture({ workspaceId: "ws_other" })],
     ["mount", currentPosture({ mountInstanceId: "mount_other" })],
     ["run", currentPosture({ runId: "run_other" })],
     ["approval", currentPosture({ approval: { ...currentPosture().approval, bindingHash: documentationHash } })]
@@ -165,17 +227,25 @@ describe("official xAI subscription harness", () => {
     });
   });
 
-  it("fails closed for unsafe posture data before any feasibility result", async () => {
+  it("rejects unsafe, missing, or swapped causation before any feasibility result", async () => {
+    const harness = createHarness();
     const scopes = Proxy.revocable(["harness-execution"], {});
     scopes.revoke();
+    const { causationEventId: _causationEventId, ...missingCausation } = currentPosture();
 
-    await expect(createHarness().assess({
+    await expect(harness.assess({
       posture: currentPosture({
         credentialReference: {
           ...currentPosture().credentialReference,
           capabilityScopes: scopes.proxy
         }
       }),
+      officialFlow: undefined
+    })).resolves.toMatchObject({ kind: "blocked", category: "unsafe-input" });
+    await expect(harness.assess({ posture: missingCausation, officialFlow: undefined }))
+      .resolves.toMatchObject({ kind: "blocked", category: "unsafe-input" });
+    await expect(harness.assess({
+      posture: currentPosture({ causationEventId: "evt_xai_other" }),
       officialFlow: undefined
     })).resolves.toMatchObject({ kind: "blocked", category: "unsafe-input" });
   });
@@ -201,7 +271,7 @@ describe("official xAI subscription harness", () => {
     expect(result).toMatchObject({ kind: "blocked", category: "unsafe-input" });
   });
 
-  it("rejects a caller-supplied test route instead of exposing a feasibility result", async () => {
+  it("rejects a caller-supplied route instead of exposing a feasibility result", async () => {
     const result = await createHarness().assess({
       posture: currentPosture(),
       officialFlow: {

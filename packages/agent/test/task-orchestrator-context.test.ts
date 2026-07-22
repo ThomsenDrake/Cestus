@@ -162,6 +162,8 @@ describe("resident task orchestrator context assembly", () => {
     const renderer = vi.fn();
     const assembled = await assembleTaskOrchestratorContext({
       taskId: "task_task4_renderer_payload",
+      attemptId: "attempt_task4_renderer_payload",
+      generatedAt: "2026-07-15T21:00:00.000Z",
       runType: "evidence-triage",
       scope,
       workflow: descriptor,
@@ -172,6 +174,27 @@ describe("resident task orchestrator context assembly", () => {
     expect(assembled.dispatchReady).toBe(true);
     expect(renderer).toHaveBeenCalledOnce();
     expect(renderer.mock.calls[0]?.[0].resolvedContextPacks[0]?.payload).toMatchObject({ marker: payloadMarker });
+  });
+
+  it("requires attempt id and generated at before context rendering", async () => {
+    const renderer = vi.fn();
+
+    await assembleTaskOrchestratorContext({
+      taskId: "task_task4_render_snapshot",
+      attemptId: "attempt_task4_render_snapshot",
+      generatedAt: "2026-07-15T21:00:00.000Z",
+      runType: "evidence-triage",
+      scope,
+      workflow: descriptor,
+      contextRegistry: contextRegistry(),
+      renderPrompt: renderer
+    });
+
+    expect(renderer).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: "task_task4_render_snapshot",
+      attemptId: "attempt_task4_render_snapshot",
+      generatedAt: "2026-07-15T21:00:00.000Z"
+    }));
   });
 
   it("does not build context refs separately from resolved payload verification", async () => {

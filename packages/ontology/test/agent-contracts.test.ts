@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { eventContracts, validateKnowledgeEvent } from "../src/contracts.js";
+import {
+  eventContracts,
+  hashAgentTaskOrchestratorPromptBindingReceipt,
+  validateKnowledgeEvent
+} from "../src/contracts.js";
 
 const context = {
   actor: { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" },
@@ -55,16 +59,17 @@ function agentEvent(id: string, type: string, streamId: string, payload: Record<
 
 describe("resident agent event contracts", () => {
   it("accepts agent.task.orchestration.claimed with stable attempt and lease generation", () => {
-    expect(
-      validateKnowledgeEvent(
-        agentEvent(
-          "evt_agent_task_orchestration_claimed",
-          "agent.task.orchestration.claimed",
-          orchestratorStreamId,
-          taskOrchestrationClaimedPayload()
-        )
-      ).success
-    ).toBe(true);
+    const claimed = agentEvent(
+      "evt_agent_task_orchestration_claimed",
+      "agent.task.orchestration.claimed",
+      orchestratorStreamId,
+      taskOrchestrationClaimedPayload()
+    );
+    expect(validateKnowledgeEvent(claimed).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      ...claimed,
+      context: { ...claimed.context, correlationId: "credential-migration" }
+    }).success).toBe(true);
   });
 
   it("accepts agent.task.orchestration.checkpointed without raw context payload", () => {
@@ -139,6 +144,134 @@ describe("resident agent event contracts", () => {
         payload: { ...checkpointed.payload, toolRequestIds: [] }
       }).success
     ).toBe(false);
+  });
+
+  it("rejects missing unknown or unversioned durable prompt binding", () => {
+    const receiptMaterial = {
+      schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1",
+      taskId: "task_001",
+      attemptId: orchestratorAttemptId,
+      runId: "run_001",
+      sourceApprovedPromptArtifactHash: hash111,
+      boundPromptArtifactHash: hash222,
+      generatedAt: context.occurredAt,
+      approvalEventId: "evt_agent_tool_approved_provider_transfer",
+      providerPostureHash: hash333,
+      exactRunBindingHash: hash111,
+      workspaceId: "ws_001",
+      mountInstanceId: "mount_001"
+    };
+    const receipt = {
+      ...receiptMaterial,
+      receiptHash: hashAgentTaskOrchestratorPromptBindingReceipt(receiptMaterial)
+    };
+    const checkpointed = agentEvent(
+      "evt_agent_task_orchestration_prompt_bound",
+      "agent.task.orchestration.checkpointed",
+      orchestratorStreamId,
+      {
+        ...taskOrchestrationCheckpointedPayload(),
+        checkpointKind: "prompt-bound",
+        checkpointedAt: receipt.generatedAt,
+        promptArtifactHash: hash222,
+        sourceEventIds: ["evt_agent_task_created", receipt.approvalEventId],
+        inputArtifactHashes: [hash111, hash222],
+        promptBindingReceipt: receipt
+      }
+    );
+
+    expect(validateKnowledgeEvent(checkpointed).success).toBe(true);
+    const { schemaVersion: _schemaVersion, ...versionlessReceipt } = receipt;
+    for (const [suffix, promptBindingReceipt] of [
+      ["unknown", { ...receipt, unexpectedReceiptField: "reject" }],
+      ["missing", versionlessReceipt],
+      ["v0", { ...receipt, schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v0" }]
+    ] as const) {
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_strict_${suffix}`,
+        payload: { ...checkpointed.payload, promptBindingReceipt }
+      }).success).toBe(false);
+    }
+    for (const production of [
+      undefined,
+      { schemaVersion: "agent-production-prompt-binding.v0" },
+      { rendererId: "unversioned" }
+    ]) {
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_${String(production)}`,
+        payload: {
+          ...checkpointed.payload,
+          promptBindingReceipt: production === undefined ? undefined : receipt,
+          production
+        }
+      }).success).toBe(false);
+    }
+  });
+
+  it("rejects prompt-bound receipts transplanted across task attempt or run identity", () => {
+    const receiptMaterial = {
+      schemaVersion: "agent-task-orchestrator.prompt-binding-receipt.v1",
+      taskId: "task_001",
+      attemptId: orchestratorAttemptId,
+      runId: "run_001",
+      sourceApprovedPromptArtifactHash: hash111,
+      boundPromptArtifactHash: hash222,
+      generatedAt: context.occurredAt,
+      approvalEventId: "evt_agent_tool_approved_provider_transfer",
+      providerPostureHash: hash333,
+      exactRunBindingHash: hash111,
+      workspaceId: "ws_001",
+      mountInstanceId: "mount_001"
+    };
+    const receipt = {
+      ...receiptMaterial,
+      receiptHash: hashAgentTaskOrchestratorPromptBindingReceipt(receiptMaterial)
+    };
+    const checkpointed = agentEvent(
+      "evt_agent_task_orchestration_prompt_bound_identity",
+      "agent.task.orchestration.checkpointed",
+      orchestratorStreamId,
+      {
+        ...taskOrchestrationCheckpointedPayload(),
+        checkpointKind: "prompt-bound",
+        checkpointedAt: receipt.generatedAt,
+        promptArtifactHash: hash222,
+        sourceEventIds: ["evt_agent_task_created", receipt.approvalEventId],
+        inputArtifactHashes: [hash111, hash222],
+        promptBindingReceipt: receipt
+      }
+    );
+
+    for (const [field, value] of [
+      ["taskId", "task_002"],
+      ["attemptId", "attempt_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+      ["runId", "run_002"]
+    ] as const) {
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_transplanted_${field}`,
+        payload: { ...checkpointed.payload, [field]: value }
+      }).success).toBe(false);
+    }
+
+    for (const [field, value] of [
+      ["taskId", "task_002"],
+      ["attemptId", "attempt_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+      ["runId", "run_002"]
+    ] as const) {
+      const transplantedMaterial = { ...receiptMaterial, [field]: value };
+      const transplantedReceipt = {
+        ...transplantedMaterial,
+        receiptHash: hashAgentTaskOrchestratorPromptBindingReceipt(transplantedMaterial)
+      };
+      expect(validateKnowledgeEvent({
+        ...checkpointed,
+        id: `evt_agent_task_orchestration_prompt_bound_receipt_transplanted_${field}`,
+        payload: { ...checkpointed.payload, promptBindingReceipt: transplantedReceipt }
+      }).success).toBe(false);
+    }
   });
 
   it("accepts agent.task.orchestration.released for approval suspension and stale claim recovery", () => {
@@ -390,6 +523,58 @@ describe("resident agent event contracts", () => {
         )
       ).success
     ).toBe(false);
+  });
+
+  it("accepts only matching authority-bound V2 prepared and recorded handoff payloads", () => {
+    const authorityBinding = {
+      workspaceIdentityHash: hash111,
+      mountGeneration: "mount_generation_001",
+      ledgerStoreIdentity: "ledger_store_001",
+      artifactStoreIdentity: "artifact_store_001",
+      ledgerHighWaterEventId: "evt_ledger_high_water_001",
+      policyHash: hash222,
+      activeLocksHash: hash333
+    } as const;
+    const v2Binding = {
+      handoffId: "handoff_run_handoff_001_0123456789abcdef",
+      handoffRevision: 1,
+      idempotencyKey: `specialist-handoff:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:${hash222}`,
+      handoffManifestHash: hash222,
+      handoffDtoHash: hash333,
+      runId: "run_handoff_001",
+      taskId: "task_handoff_001",
+      runType: "evidence-triage",
+      residentAgentId: "agent_default",
+      status: "ready-for-review",
+      safeSummary: "Evidence triage handoff is ready for human review.",
+      finalOutputStepId: "step_run_handoff_001_final_output",
+      finalOutputEventId: "evt_final_output",
+      handoffMaterialArtifactHash: hash333,
+      contextPackHashes: [hash111],
+      promptArtifactHash: hash111,
+      outputArtifactHashes: [hash222],
+      toolRequestIds: [],
+      sourceEventIds: ["evt_source_001"],
+      relatedEventIds: ["evt_final_output"],
+      manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
+      authorityBinding
+    };
+    const prepared = agentEvent("evt_handoff_v2_prepared", "agent.specialist-handoff.prepared", "agent_run_run_handoff_001", v2Binding);
+    const recorded = agentEvent("evt_handoff_v2_recorded", "agent.specialist-handoff.recorded", "agent_run_run_handoff_001", {
+      ...v2Binding,
+      preparedEventId: prepared.id,
+      verifiedAt: "2026-07-10T14:00:00.000Z"
+    });
+
+    expect(validateKnowledgeEvent(prepared).success).toBe(true);
+    expect(validateKnowledgeEvent(recorded).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      ...recorded,
+      payload: {
+        ...recorded.payload,
+        authorityBinding: { ...authorityBinding, workspaceIdentityHash: "sha256:forged" }
+      }
+    }).success).toBe(false);
   });
 
   it("accepts the default resident identity and agent actor kind", () => {
@@ -963,7 +1148,180 @@ describe("resident agent event contracts", () => {
     expect(validateKnowledgeEvent(validEvent).success).toBe(true);
     expect(validateKnowledgeEvent({ ...validEvent, streamId: "wrong_stream" }).success).toBe(false);
   });
+
+  it("accepts the strict advisory provider feasibility observation", () => {
+    expect(validateKnowledgeEvent(providerFeasibilityEvent()).success).toBe(true);
+  });
+
+  it("routes provider feasibility observations to the exact provider stream", () => {
+    const event = providerFeasibilityEvent();
+    expect(validateKnowledgeEvent({ ...event, streamId: "agent_provider_feasibility_wrong" }).success).toBe(false);
+  });
+
+  it("requires the resident-agent actor for provider feasibility observations", () => {
+    const event = providerFeasibilityEvent();
+    expect(validateKnowledgeEvent({ ...event, context: humanContext }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      context: { ...event.context, actor: { id: "system_feasibility", kind: "system", label: "System" } }
+    }).success).toBe(false);
+  });
+
+  it("rejects mismatched resident workspace mount task attempt and run feasibility facts", () => {
+    const event = providerFeasibilityEvent();
+    for (const [field, value] of [
+      ["residentAgentId", "agent_other"],
+      ["workspaceId", "workspace_other"],
+      ["mountInstanceId", "mounted_other"],
+      ["taskId", "review_other"],
+      ["attemptId", "attempt_not_hex"],
+      ["runId", "review_other"]
+    ] as const) {
+      expect(validateKnowledgeEvent({
+        ...event,
+        id: `evt_provider_feasibility_mismatch_${field}`,
+        payload: { ...event.payload, [field]: value }
+      }).success).toBe(false);
+    }
+  });
+
+  it("rejects unknown fields and unsafe payload shapes", () => {
+    const event = providerFeasibilityEvent();
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, unknown: true }
+    }).success).toBe(false);
+    const hostile = { ...event.payload } as Record<string, unknown>;
+    Object.defineProperty(hostile, "providerId", { enumerable: true, get: () => "provider_openai_codex_review" });
+    expect(validateKnowledgeEvent({ ...event, payload: hostile }).success).toBe(false);
+  });
+
+  it("rejects a non-advisory availability outcome or category", () => {
+    const event = providerFeasibilityEvent();
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, posture: "ready" }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, category: "provider-ready" }
+    }).success).toBe(false);
+  });
+
+  it("requires nonempty feasibility provenance with causation inside the source set", () => {
+    const event = providerFeasibilityEvent();
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, sourceEventIds: [] }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      context: { ...event.context, causationId: "evt_other" }
+    }).success).toBe(false);
+  });
+
+  it("rejects secret-shaped provider feasibility material", () => {
+    const event = providerFeasibilityEvent();
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, modelId: unsafeCredentialHeaderMarker() }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      context: { ...event.context, correlationId: "Cookie: session=abc" }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      context: { ...event.context, correlationId: "X-Cookie: raw" }
+    }).success).toBe(false);
+    for (const correlationId of ["corr-X-Cookie: raw", "corr-session=abc", "auth=raw"]) {
+      expect(validateKnowledgeEvent({
+        ...event,
+        context: { ...event.context, correlationId }
+      }).success).toBe(false);
+    }
+    for (const [field, value] of [
+      ["modelId", "oauth=raw"],
+      ["officialFlowId", "codex-credential=raw"],
+      ["credentialRefId", "agent_credref_sk_live_abc"]
+    ] as const) {
+      expect(validateKnowledgeEvent({
+        ...event,
+        payload: { ...event.payload, [field]: value }
+      }).success).toBe(false);
+    }
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: {
+        ...event.payload,
+        modelId: "oauth-capability-review",
+        officialFlowId: "codex-credential-migration",
+        credentialRefId: "agent_credref_subscription_oauth_reference",
+        credentialKind: "subscription-oauth"
+      }
+    }).success).toBe(true);
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, capabilityScopes: ["harness-execution", "sk_live_abc"] }
+    }).success).toBe(false);
+    expect(validateKnowledgeEvent({
+      ...event,
+      payload: { ...event.payload, capabilityScopes: ["harness-execution", "oauth-capability-review"] }
+    }).success).toBe(true);
+  });
 });
+
+function providerFeasibilityEvent() {
+  const payload = {
+    recordVersion: "agent-provider-feasibility.v1",
+    residentAgentId: "agent_default",
+    workspaceId: "ws_review",
+    mountInstanceId: "mount_review",
+    admissionGenerationId: "admission_review",
+    workspaceIdentityEventId: "evt_workspace_review",
+    mountEvidenceId: "mount_evidence_review",
+    authorityEvidenceId: "authority_evidence_review",
+    ledgerStoreEvidenceId: "ledger_store_evidence_review",
+    policyVersion: "policy_review.v1",
+    policyDigest: "sha256:policy_review",
+    lockStateDigest: "sha256:lock_review",
+    highWaterMark: "hwm_review",
+    highWaterOrdinal: 7,
+    taskId: "task_review",
+    attemptId: `attempt_${"a".repeat(64)}`,
+    runId: "run_review",
+    providerFamily: "codex",
+    providerId: "provider_openai_codex_review",
+    modelId: "codex-review",
+    capabilityHash: hash222,
+    credentialRefId: "agent_credref_review",
+    credentialKind: "subscription-oauth",
+    capabilityScopes: ["harness-execution"],
+    officialFlowId: "codex-review",
+    approvalClass: "provider-byte-transfer",
+    approvalBindingHash: hash333,
+    posture: "unavailable",
+    category: "official-flow-unavailable",
+    classification: "official-flow-absent",
+    classificationHash: hash111,
+    sourceEventIds: ["evt_approval_review", "evt_checkpoint_review"],
+    idempotencyKey: hash111,
+    observedAt: "2026-07-16T00:00:00.000Z"
+  };
+  return {
+    id: "evt_provider_feasibility_review",
+    type: "agent.provider.feasibility.observed.v1",
+    version: 1,
+    streamId: "agent_provider_feasibility_task_review_attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_run_review_provider_openai_codex_review",
+    sequence: 1,
+    context: {
+      ...context,
+      actor: { id: "agent_default", kind: "agent" as const, label: "Cestus Agent" },
+      causationId: "evt_checkpoint_review"
+    },
+    payload
+  };
+}
 
 function modelInvocationPromptAuditPayload(): Record<string, unknown> {
   return {
@@ -993,6 +1351,7 @@ function modelInvocationPromptAuditPayload(): Record<string, unknown> {
 
 function productionPromptAuditBinding(): Record<string, unknown> {
   return {
+    schemaVersion: "agent-production-prompt-binding.v1",
     rendererId: "evidence-triage.classify.renderer",
     rendererVersion: 1,
     rendererHash: hash111,
