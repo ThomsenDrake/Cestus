@@ -27153,3 +27153,53 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   records 1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
   provider/credential prohibitions, fallback-write prohibition, and
   external-effect boundaries remain unchanged.
+
+## RV-1-E-921 — Task138-H compositional path-boundary candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-22T18:32:56Z
+- Exact clean candidate
+  `5d9b6e631a9ca15e386fed2425b60d66305cd5cb` preserves rejected candidate
+  `50ca5da9`, repair authority `f05dda74`, exact forward merge `30dce010`,
+  permanent causal RED `064d568b`, source-only GREEN `92065474`, claim
+  checkpoint `3f9dac31`, and all earlier candidates, reviews, RED/GREEN pairs,
+  authority merges, and registry corrections without rewrite.
+- The causal RED suite contains **284** cases and proves exactly **16**
+  failures against the prior source: two immediately adjacent nested-scheme
+  fail-opens, six complete outer-URL file/native absolute-payload fail-opens,
+  and eight adjacent-relative false closures. All prior **262** cases and six
+  new safe controls remain green. Minimal GREEN is confined to the final
+  `containsAbsolutePath` predicate and makes scheme scanning non-consuming,
+  detects boundary-qualified file/native absolute payloads before complete
+  outer HTTP(S) masking, and normalizes adjacent relative segments without
+  consuming their shared preceding separator.
+- Fresh coordinator gates pass exact focused **284/284**, cross-boundary
+  **320/320**, typecheck, factory readiness, diff hygiene, exact frozen scope,
+  ancestry, dependency, V4 pin, and clean state. V4 standalone assurance
+  passes **20/20** and contract mode emits all four exact release-graph,
+  composition-corpus, command-card, and ABI-corpus markers. Clean repository
+  mode executes strict **27/27**, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and stops only at the
+  expected incomplete-29 closure.
+- Fresh serial full verification reports candidate **10 failing files / 48
+  failing tests / 3,144 passes / 5 skips** and clean `neo` **10 failing files
+  / 48 failing tests / 2,877 passes / 5 skips**. All **48** failure identities
+  are equal, Task138-H is absent, and the exact **267-pass** increase equals
+  focused-file growth from `neo` **17** to candidate **284**.
+- Immutable review package
+  `/tmp/task138-compositional-review-5d9b6e63.diff` has SHA-256
+  `082d4dedaa2a8b85a9590d63ff6c604384f751988de041b00bd89fd7da491db2`
+  and contains exactly the frozen Task138-H source, focused test, and claim
+  paths relative to authority `f05dda74`. A wholly fresh read-only architecture
+  reviewer owns complete browser-string fail-closed semantics, URL/URI/native
+  path composition, boundary and false-positive analysis, mounted-read and
+  no-effect closure, scope, and ancestry. A different wholly fresh read-only
+  executability reviewer owns independent gate reproduction, adversarial
+  public-DTO matrices, full differential, dependencies, and clean state. No
+  reviewer of earlier candidate bytes may approve this candidate; reviewers
+  may not edit, commit, merge, push, invoke providers, use network access, or
+  interact with external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  records 1-27, all 29 IDs/order, published `neo`, and all external-effect
+  prohibitions remain unchanged.
