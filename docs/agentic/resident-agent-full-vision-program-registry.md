@@ -27649,3 +27649,40 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3, use providers/credentials/external systems, or open a pull request.
 - The strict product frontier remains **28 of 29**. This implementation
   admission is not a product release.
+
+## RV-1-E-931 — Task136 record-29 producer-reconciliation design authorized
+
+- Recorded at: 2026-07-22T20:53:23Z
+- The program owner explicitly approves the 29-card-preserving finite V4
+  direct-source correction after the clean pre-RED schema/API audit. The
+  existing Task136 implementation owner is stopped without source, test, or
+  claim edits at exact clean history-preserving checkpoint
+  `72e1ee6624c582218995e3e075e2303998811834`; its Task120 pre-RED evidence and
+  both authority merges remain preserved. Strict frontier stays **28 of 29**.
+- One documentation-only Level-2 design owner may add exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The design must enumerate a finite source-and-target-specific V4 transfer
+  set for the T120-R, C136-P, G136-R, Task137B-W, CF1-HR, and
+  Task136-FC-Ports producer seams; preserve all **29** card IDs/order and raw
+  records **1–28**; keep Task136 as strict record **29**; and define exact
+  causal RED/GREEN, ownership, review, migration, mission-state-pin, and
+  repository-prefix gates.
+- The design must resolve the released ontology/plan contradiction without a
+  synthetic successful suspension: suspension remains required for resumable
+  outcomes, while completed/failed terminal results must carry their exact
+  final observation and durable terminal readback without inventing a
+  resumable category. It must also require a canonical V2 store/readback,
+  typed candidate boundary, prebound G execution/approval capability, opaque
+  W suspend/reclaim/reverify capability, internal H full-readback projection,
+  and R-owned composition. Task138's browser DTO remains narrow and unchanged.
+- This authority permits no product source/test edit, V4/checker/mission-state
+  edit, raw-record mutation, V5, new card, compatibility fallback, public
+  authority issuer, provider/credential/network/external effect, Task136 RED,
+  integration, push, pull request, or Wave-3 work. The written design requires
+  explicit program-owner review before an implementation plan or correction
+  packet begins. Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Status advances Task136 producer reconciliation design `claimed ->
+  implementing`. This is not a product release and does not approve or release
+  Task136.
