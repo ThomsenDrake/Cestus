@@ -27360,3 +27360,103 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29**. Task136 and Waves 3-5 remain unstarted, and V1-V4, raw records 1-27,
   all 29 IDs/order, published `neo`, and external-effect prohibitions remain
   unchanged.
+
+## RV-1-E-925 — Task138-H integrated and released as strict record 28
+
+- Recorded at: 2026-07-22T19:44:34Z
+- The coordinator integrates the complete approved Task138-H lineage without
+  rewrite at merge `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`, whose parents
+  are exact approval authority `f317c9a39e2059091a0c1edcc7661a90639be3a1`
+  and exact approved candidate `6d4517a40d8394526ee2c9c2dad7695ddb396483`.
+  The three frozen product/claim blobs are byte-identical between candidate
+  and integration.
+- Integrated gates pass focused **318/318**, cross-boundary **354/354**,
+  standalone typecheck, factory readiness, V4 assurance **20/20**, all four
+  exact contract markers, diff hygiene, exact scope, ancestry, dependency,
+  V4 pin, and clean state. Clean pre-record repository mode executes the
+  released **27/27** prefix and stops only at expected incomplete-29 closure.
+  Fresh exact-candidate review evidence already establishes an inherited-equal
+  full differential with no Task138-H failure.
+- Strict V4 record 28 below binds candidate `6d4517a4`, fresh architecture
+  review `fa2ca01a-4573-4dd0-8e3e-da6b972101d6`, fresh executability review
+  `4903bc55-9a0e-4d68-abaf-8a7421c17842`, integration `12d23a69`, the six
+  contract-ordered released prerequisites, and the three exact integration
+  blobs. Status advances Task138-H `approved -> integrated -> released`.
+- This is product release record **28 of 29**. It is not the subsequent
+  calibrated record-28 assurance-only transition and is not yet publication
+  to `neo`. Task136 becomes the only next V4 product card at strict record 29;
+  Waves 3-5 remain unstarted. No provider, credential, network, unrelated
+  external system, fallback write, push, or pull request occurs.
+
+## Task136 dispatch release v4: Task138-H
+
+```json
+{
+  "schemaVersion": "task136-dispatch-release.v4",
+  "cardId": "Task138-H",
+  "candidateSha": "6d4517a40d8394526ee2c9c2dad7695ddb396483",
+  "reviews": [
+    {
+      "threadId": "fa2ca01a-4573-4dd0-8e3e-da6b972101d6",
+      "candidateSha": "6d4517a40d8394526ee2c9c2dad7695ddb396483",
+      "verdict": "APPROVED"
+    },
+    {
+      "threadId": "4903bc55-9a0e-4d68-abaf-8a7421c17842",
+      "candidateSha": "6d4517a40d8394526ee2c9c2dad7695ddb396483",
+      "verdict": "APPROVED"
+    }
+  ],
+  "integrationSha": "12d23a69047d58e14dd04c4f89daf3f8a528e8aa",
+  "releaseEventId": "task136-release-v4-Task138-H",
+  "prerequisites": [
+    {
+      "cardId": "CF1-HR",
+      "integrationSha": "32d4e3fdf8b4b79178d616daff91ecc5dd341548",
+      "releaseEventId": "task136-release-v4-CF1-HR"
+    },
+    {
+      "cardId": "Task121",
+      "integrationSha": "e3bf834d1adeca8146cd26d5c2dbce7a54a9626a",
+      "releaseEventId": "task136-release-v4-Task121"
+    },
+    {
+      "cardId": "Task122",
+      "integrationSha": "0d736e98100250df1a16a53dbfdc630536ca29d1",
+      "releaseEventId": "task136-release-v4-Task122"
+    },
+    {
+      "cardId": "W1-123-BOOTSTRAP-HANDOFF",
+      "integrationSha": "f9faba8d81bf4769be4e601865b610c716813029",
+      "releaseEventId": "task136-release-v4-W1-123-BOOTSTRAP-HANDOFF"
+    },
+    {
+      "cardId": "Task135B",
+      "integrationSha": "908d26fa252989c9217cb40e1f22a5b9f583aa8f",
+      "releaseEventId": "task136-release-v4-Task135B"
+    },
+    {
+      "cardId": "Task137B-W",
+      "integrationSha": "9e680b44c4284456eebaad79c00fabda5c2bd4ea",
+      "releaseEventId": "task136-release-v4-Task137B-W"
+    }
+  ],
+  "ownedPathBlobs": [
+    {
+      "path": "packages/local-runtime/src/agent-handoff-projection.ts",
+      "disposition": "owned",
+      "blobSha": "bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404"
+    },
+    {
+      "path": "packages/local-runtime/test/agent-handoff-projection.test.ts",
+      "disposition": "owned",
+      "blobSha": "1a993ba0d14cb49e406f356568f09a00f17242f3"
+    },
+    {
+      "path": "docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md",
+      "disposition": "owned",
+      "blobSha": "e04acf26ca6eecb27548dad7e946bce1e0c97358"
+    }
+  ]
+}
+```
