@@ -27320,3 +27320,43 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   records 1-27, all 29 IDs/order, published `neo`, and external-effect
   prohibitions remain unchanged.
+
+## RV-1-E-924 — Task138-H final outer-URL path candidate approved
+
+- Recorded at: 2026-07-22T19:39:29Z
+- Completely fresh architecture review task
+  `fa2ca01a-4573-4dd0-8e3e-da6b972101d6` returns `APPROVED` with no defect
+  for exact candidate `6d4517a40d8394526ee2c9c2dad7695ddb396483`.
+  Its independent canonical matrix passes **223/223** DTOs: **193** unsafe
+  whole-DTO closures and **30** safe controls, with exact role-bound reads,
+  zero writes, only `effect: "none"`, and no unsafe surviving leaf. Its
+  separate predicate matrix covers **361** cases across every committed
+  native, URI/URL, punctuation, relative, case, and Unicode boundary.
+- Completely fresh executability review task
+  `4903bc55-9a0e-4d68-abaf-8a7421c17842` independently returns `APPROVED`
+  with no defect for the same exact candidate. Its canonical DTO matrix passes
+  **98/98**, comprising **32** unsafe closures and **66** safe openings with
+  material reads **294**, manifest reads **196**, writes **0**, and only
+  `effect: "none"`.
+- Both reviewers independently verify exact focused **318/318**,
+  cross-boundary **354/354**, standalone typecheck, factory readiness, V4
+  assurance **20/20**, all four exact contract markers, diff hygiene, exact
+  three-path scope, ancestry, dependency, V4 pin, packet hash, and clean
+  state. Executability independently runs repository mode through strict
+  **27/27** followed only by expected incomplete-29 closure.
+- The independent serial full differential reports candidate **10 failing
+  files / 48 failing tests / 3,178 passes / 5 skips** and clean `neo` **10
+  failing files / the exact same 48 named tests / 2,877 passes / 5 skips**.
+  Task138-H is absent and the exact **301-pass** increase equals its focused
+  file growth from **17** to **318**. This is `INHERITED_EQUAL / NO
+  REGRESSION`.
+- Immutable packet SHA-256 remains
+  `7f2ba064f53fb0b8bb6f06e193b944736c9da19af5903ab3d4c5f985bd866d6b`.
+  Candidate and program worktrees remain clean at exact heads. Neither review
+  edited, committed, merged, pushed, used a provider or network, accessed
+  credentials, or interacted with an external system.
+- Status advances Task138-H `reviewing -> approved`. This event is not product
+  integration, strict record 28, or release; strict frontier remains **27 of
+  29**. Task136 and Waves 3-5 remain unstarted, and V1-V4, raw records 1-27,
+  all 29 IDs/order, published `neo`, and external-effect prohibitions remain
+  unchanged.
