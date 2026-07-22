@@ -9,9 +9,14 @@ mission-state, product, or Task136 RED change.
 **Revision note:** the first committed written revision at
 `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` failed independent design review
 because it did not freeze R's trusted construction boundary or the durable
-decision representation for approval class `none`. This revision corrects
-both defects without changing the finite 21-path transfer, the 24-path Task136
-card, any prospective contract fingerprint, or the strict frontier.
+decision representation for approval class `none`. Its correction at
+`e41a1504b7a0a2438770f567e5b08672ba0ed4f2` then failed fresh architecture and
+executability review because generic completion is private, the existing
+executor ABI requires a human approver, the portable H cursor rejects later
+V2 events, and W/T120 construction order was not frozen. This revision
+corrects all six findings without changing the finite 21-path transfer, the
+24-path Task136 card, any prospective contract fingerprint, or the strict
+frontier.
 
 ## Decision And Authority
 
@@ -311,12 +316,47 @@ grants permission or authority.
 
 ### G: prebound single-use execution and approval
 
-R supplies G's exact dispatcher descriptors only at the trusted factory
-construction boundary described below. G copies and validates one frozen
-descriptor registry at construction, rejects duplicate tool/version keys, and
-binds every descriptor to its exact tool ID, version, side-effect class, and
-approval class before it can issue a readback. The per-loop and resume APIs
-cannot add, replace, or select an executor. The execution surface is:
+R supplies G's exact descriptors only at the trusted factory construction
+boundary described below. G owns this non-barrel discriminated ABI; it does
+not reuse the human-only `AgentApprovedToolExecutorDescriptor`:
+
+```ts
+type ResidentLoopPreboundToolExecutorDescriptor =
+  | {
+      readonly toolId: string;
+      readonly toolVersion: string;
+      readonly sideEffectClass: ResidentLoopV2ToolSideEffectClass;
+      readonly approvalClass: "none";
+      readonly buildCurrentPreview: ResidentLoopBuildCurrentPreview;
+      executeAutomaticPolicy(
+        input: ResidentLoopAutomaticPolicyExecutionInput
+      ): Promise<AgentToolResult>;
+    }
+  | {
+      readonly toolId: string;
+      readonly toolVersion: string;
+      readonly sideEffectClass: ResidentLoopV2ToolSideEffectClass;
+      readonly approvalClass: Exclude<ResidentLoopV2ApprovalClass, "none">;
+      readonly buildCurrentPreview: ResidentLoopBuildCurrentPreview;
+      executeHumanApproved(
+        input: ResidentLoopHumanApprovedExecutionInput
+      ): Promise<AgentToolResult>;
+    };
+```
+
+Both execution inputs bind task/run, tool/version/effect, preview, request,
+claim, plan, policy, authority, sources, input artifacts, provenance, and W
+currentness. The human input additionally requires `decisionEventId`,
+`approvedPreviewHash`, and `approvedBy`. The automatic input instead requires
+`authorizationKind: "automatic-policy"`, the exact request-caused claim, and
+the policy/allowlist proof; it has no `decisionEventId`, `approvedBy`, or other
+human-approval field.
+
+G copies and validates one frozen descriptor registry at construction,
+rejects duplicate tool/version keys, and binds every descriptor to its exact
+tool ID, version, side-effect class, and approval class before it can issue a
+readback. The per-loop and resume APIs cannot add, replace, or select an
+executor. The execution surface is:
 
 ```ts
 executeApprovedAndReadback(
@@ -359,25 +399,42 @@ directly appends one `agent.tool.execution.claimed` event whose causation is
 the request event. The request plus that durable unique claim is the automatic
 authorization; the request is not relabeled as a decision.
 
-The unchanged generic gateway's `claimExecution` method remains human-only.
-After automatic execution, G uses the existing generic `completeTool` method,
-which already permits approval class `none`, through the same exact global and
-stream concurrency guard used for human completion. Immediately before that
-call G rereads the unique claim, proves it is still the stream's latest open
-event and is caused by the exact request, and proves the copied safe result.
-The resulting completion must be caused by that claim and is reread byte-for-
-byte before G returns it. Human completion continues through the existing
-scheduler-completion evidence adapter. G never duplicates completion-event
-construction and never fabricates a human approval. Denial, revocation,
-expiry, plan or preview drift, an existing claim, or terminal stream state
-burns the execution path before effect.
+The unchanged generic gateway's `claimExecution` method remains human-only and
+its structural `completeTool` method remains deliberately inaccessible. Human
+completion continues through the existing scheduler-completion evidence
+adapter. Automatic completion instead uses a private G-owned
+`appendAutomaticCompletionAndReadback` path in the transferred G source.
+
+That path copies the executor result before I/O; requires nonempty unique
+domain event IDs; rereads each exact domain event after the claim; rejects any
+agent event, agent actor, pre-claim event, foreign request/correlation, open
+overlapping claim, missing provenance, changed hash, or noncausal result; and
+rechecks the exact request, request-caused claim, plan, preview, policy,
+authority, descriptor, and W token. It then appends one canonical
+`agent.tool.completed` event with the resident actor and exact claim as
+causation using both expected stream sequence and captured global event count.
+It rereads that assigned ID, compares canonical bytes, rereads the plan and
+tool stream, revalidates W, and only then returns an issued result readback.
+The updated transferred import-policy test continues to forbid
+`.completeTool(...)`, a structural completion callback, or exposure of the
+generic gateway; it requires the named private automatic route and the
+unchanged human evidence adapter. G never fabricates a human approval. Denial,
+revocation, expiry, plan or preview drift, an existing claim, or terminal
+stream state burns the execution path before effect.
 
 ### W: opaque mounted authority and resume
 
 The authenticated wake runtime and mounted wake store jointly issue a
-WeakMap-backed, non-serializable currentness token. R injects the canonical
-T120 store during W construction; no caller receives the ledger, store, raw
-runtime handle, mounted path, issuer, or callback.
+WeakMap-backed, non-serializable currentness token. W records its private store
+state in a WeakMap at construction. After unchanged Core has started and bound
+authority, R calls the non-barrel, import-gated, one-shot
+`bindResidentLoopCapabilitiesForFactory(wakeRuntime, binding)` lookup. That
+lookup accepts only the exact issued wake-runtime identity plus the Core/P/H
+binding; the mounted store privately constructs T120 from its authenticated
+ledger and returns only the issued T120, W, event-reader, and exact-hash H
+reader capabilities. Core needs no change and R never injects T120 into W. No
+caller receives the ledger, raw mounted store, runtime handle, mounted path,
+issuer, or replaceable callback.
 
 ```ts
 interface ResidentLoopMountedAuthorityPort {
@@ -408,6 +465,19 @@ suspension, and appends/rereads the orchestration checkpoint/release facts
 before releasing the claim. `reclaimAndReverify` rereads the suspension,
 resumable result, release, request/decision, deadline, complete binding, and
 budget before appending/rereading a fresh claim and issuing a new token.
+
+The H artifact capability does not retain or call the portable handoff
+binding's cursor-bound stores: that cursor recognizes the released specialist
+sequence and would correctly reject later V2 loop events. Instead W derives
+the two fixed mounted handoff material/manifest stores from its already
+authenticated mounted workspace. A read accepts one exact content hash, checks
+mounted identity/policy/locks/high-water before and after, performs direct
+content-addressed lookup in exactly those two stores, requires exactly one
+matching byte value, verifies its hash, and returns a copy. It never enumerates
+a directory, accepts a path, falls back to another root, or writes. The
+portable binding/controller preflight and Core's one-shot witness consumption
+still prove the expected H task/run and artifact-store authority; W's reader
+must match that authority before H can use it.
 
 If mounted authority is lost before a durable result can be appended and read
 back, Task136 returns a distinct safe non-durable envelope:
@@ -476,7 +546,7 @@ interface CreateResidentBoundedAgentLoopFactoryInput {
     readonly retryGeneration: number;
   };
   readonly providerPosture: ResidentLoopProviderPosture;
-  readonly approvedToolExecutors: readonly AgentApprovedToolExecutorDescriptor[];
+  readonly toolExecutors: readonly ResidentLoopPreboundToolExecutorDescriptor[];
 }
 ```
 
@@ -484,12 +554,12 @@ This is a local factory trust boundary, not a loop-request boundary. The
 factory bootstrap caller may provide only the released factory-issued handle,
 opaque mounted provider authority, the exact factory portable-mounted H
 producer result plus its lifecycle tuple, current P posture, clocks/ID factory,
-and the same typed executor-descriptor form already accepted by the local
-agent factory. R copies and freezes the descriptor registry before any await,
-and the real-mounted integration tests prove rejection of proxies, accessors,
-mutable arrays/descriptors, duplicate keys, invalid classes, or post-
-construction substitution. No later `advance` or `resume` caller supplies any
-of those capabilities.
+and the G-owned discriminated executor descriptors. R copies and freezes the
+descriptor registry before any await, and the real-mounted integration tests
+prove rejection of proxies, accessors, mutable arrays/descriptors, duplicate
+keys, wrong branch methods, invalid classes, fabricated automatic approvers,
+or post-construction substitution. No later `advance` or `resume` caller
+supplies any of those capabilities.
 
 R immediately constructs unchanged Core from the handle, starts it, binds the
 provider authority and `handoff.binding.authorityWitness`, compares Core and P
@@ -497,17 +567,18 @@ readbacks, and thereafter retains the handle/witness only inside Core/W-owned
 closures. Before Core consumes the witness, R calls the unchanged
 `preflightPortableMountedAgentHandoffBinding` with the exact binding,
 controller, and supplied lifecycle tuple; it then requires Core's consumed H
-readback and P to equal that same tuple. R retains only the authenticated
-binding's cursor-bound manifest reader for H.
+readback and P to equal that same tuple. R retains the authenticated binding
+and controller only as provenance; it never uses their cursor-bound stores as
+the post-loop H reader.
 
-Through the transferred W source, R obtains issued private T120/event-reader
-capabilities without exporting their ledger or mounted store. It uses those
-capabilities to construct prebound G and the internal H reader, constructs C
-locally, freeze-brands their exact bundle, and constructs Task136. The return
-value is only `{ metadata, loop, stop }`; `loop` exposes `advance` and `resume`,
-and `stop` closes the retained composition. No public mint, raw handle,
-witness, store, ledger, reader, executor descriptor, provider body, or caller-
-replaceable structural port bag is exported.
+R invokes W's one-shot private registrar only after those comparisons. It uses
+the returned issued T120/W/event/H capabilities to construct prebound G and the
+internal H projection port, constructs C locally, freeze-brands their exact
+bundle, and constructs Task136. The return value is only
+`{ metadata, loop, stop }`; `loop` exposes `advance` and `resume`, and `stop`
+closes the retained composition. No public mint, raw handle, witness, store,
+ledger, reader, executor descriptor, provider body, or caller-replaceable
+structural port bag is exported.
 
 Record 29 deliberately does not install this entrypoint into
 `defaultLocalAgentRuntimeFactory`, HTTP routes, operator status, or any other
@@ -550,7 +621,9 @@ The permanent RED matrix covers at least:
   terminal stream, and crash re-execution;
 - W structural/copied/stale tokens, foreign or missing checkpoints/releases,
   wrong claim generation, expired deadline, cross-run anchor, remount/store/
-  policy/lock drift, and unrecognized ledger advance;
+  policy/lock drift, duplicate registrar use, unrecognized ledger advance,
+  cursor-store substitution, exact-hash artifact miss/ambiguity, and any path
+  or directory enumeration;
 - H caller-supplied events/readers, cross-run/authority mismatch, non-completed
   state, selected-readback mismatch, missing terminal evidence, and any
   Task138 DTO widening;
