@@ -26550,3 +26550,54 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   records 1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
   provider/credential prohibitions, and external-effect boundaries remain
   unchanged.
+
+## RV-1-E-909 — Task138-H explicit-token candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-22T14:51:17Z
+- The bounded lineage preserves rejected candidate
+  `9adc07c1ce695bd144755b27ae26384e46bc513f`, exact corrective authority
+  merge `549cf45e95a713fee3dcd3b271d4a21a46ad7f72`, permanent causal RED
+  `4a47ca4b1d5dcdf3d83fc5510a29a3ee34454bd0`, atomic minimal GREEN
+  `d2b73dc7314ed4ca73e827e86c867e2057e38ed0`, and exact clean admitted
+  candidate `fbaec143263920f965322cbb973950a38a0f3713`. Every prior authority,
+  rejected candidate, review verdict, RED/GREEN commit, and registry placement
+  correction remains in ancestry without rewrite; the task repair changes
+  exactly the frozen three Task138-H paths.
+- Causal coverage rejects all `-http`, `.http`, and `+https` non-HTTP schemes
+  across doubled-slash POSIX and forward-slash UNC representatives plus a
+  non-ASCII adjacent prefix, while retaining all prior native-path,
+  doubled-slash, pseudo-prefix, actual case-insensitive HTTP/HTTPS, ordinary
+  punctuation, explicit `file://`, no-write, and `effect: "none"` assertions.
+  GREEN changes only the final predicate so an exempt scheme token begins at
+  string start or the existing explicit safe delimiter class; generic word
+  boundaries are removed. No parser/schema, per-field predicate, lifecycle,
+  provenance, replay, mounted-read, diagnostic, no-effect, or whole-DTO
+  closure logic changes.
+- Candidate gates pass **83/83** focused and **119/119** cross-boundary tests,
+  standalone typecheck, factory readiness, diff hygiene, V4 assurance
+  **20/20**, all four contract markers, and the strict **27/27** repository
+  prefix followed only by expected incomplete-29 closure. Fresh serial full
+  verification reproduces the identical inherited **10-file / 48-test /
+  5-skip** failure cohort on candidate and clean `neo`; candidate **2,943**
+  versus `neo` **2,877** passes differ by exactly the **66** added Task138-H
+  tests. Scope, ancestry, dependencies, pinned V4 hash, and clean state pass.
+- Completely fresh read-only architecture review instance
+  `38672bdd-76d3-47c6-aeee-dfefc1a82eba`, implemented by
+  `/root/task138_explicit_arch_review`, owns every browser string leaf, all
+  native/doubled-slash/scheme-token boundaries, URI-scheme grammar, URL and
+  punctuation false-positive controls, parser/lifecycle/provenance/replay,
+  mounted-read/no-effect/whole-DTO closure, scope, and ancestry scrutiny.
+  Completely fresh read-only executability review instance
+  `99dcb416-3435-4a63-a623-bbeb42be1d09`, implemented by
+  `/root/task138_explicit_exec_review`, owns independent deterministic gate
+  reproduction, adversarial public-DTO path/URI/URL controls, differential,
+  dependency, and clean-state checks. Immutable review package
+  `/tmp/task138-explicit-token-review-fbaec143.diff` has SHA-256
+  `8274e77e12fc3026d99b0a5f3168dbb3a6a7851234585313e7ec76eea6a4a75b`.
+  Neither reviewer has prior transcript context or may edit, commit, merge,
+  push, invoke providers, use network access, or access external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  records 1-27, all 29 IDs/order, published `neo`, and external-effect
+  prohibitions remain unchanged.
