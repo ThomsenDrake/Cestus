@@ -26954,3 +26954,47 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29 IDs/order, prior releases/evidence, published `neo`, provider/credential
   prohibitions, fallback-write prohibition, and external-effect boundaries
   remain unchanged.
+
+## RV-1-E-917 — Task138-H internal relative-segment false positive; pre-admission repair authorized
+
+- Recorded at: 2026-07-22T17:18:03Z
+- The RV-1-E-916 cycle preserves permanent causal RED
+  `4d8c97c5bbf9681e5f226c72f30ed00ab6747726` and clean GREEN checkpoint
+  `0e4be5a1b28c57f7e762ac111c4e4aed6b6e148f`. Focused tests pass
+  **238/238**, cross-boundary tests pass **274/274**, and typecheck, factory
+  readiness, diff hygiene, exact frozen scope, ancestry, dependencies, and
+  clean state pass. The checkpoint has not been admitted as a candidate or
+  sent to review.
+- Coordinator-owned adversarial admission evaluation proves the leading-chain
+  normalization leaves an internal current-directory or home-relative segment
+  visible to the native-root expressions. Non-absolute strings such as
+  `child/./path`, `./child/./path`, `child\\.\\path`, and
+  `child\\~\\path` therefore still classify as absolute. This is a
+  pre-admission defect, not a review verdict, approval, integration, strict
+  record 28, or release.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED public-DTO controls crossing internal dot,
+  dot-dot, and home segments with POSIX and Windows relative paths, including
+  leading-chain composition. Each row must prove Node path-owner
+  non-absoluteness and remain open. All prior **238** cases, generalized
+  punctuation absolute rows, true native/UNC/doubled-slash roots, URI
+  authority closure, and explicit file URIs must remain green.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest final-predicate correction that masks path
+  separators immediately following bounded relative dot, dot-dot, or home
+  segments inside an already-relative path. It must not exempt punctuation-
+  preceded absolute roots. No sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, no-effect, or
+  whole-DTO closure change is authorized.
+- Preserve checkpoint `0e4be5a1`, all prior candidates, RED/GREEN/review and
+  authority commits, and all registry-placement corrections by forward merge.
+  After RED/GREEN, rerun the complete candidate gate stack and obtain a wholly
+  new architecture/executability pair before integration or release.
+- Status remains Task138-H `implementing`. Strict frontier remains **27 of
+  29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records 1-27, all
+  29 IDs/order, prior releases/evidence, published `neo`, provider/credential
+  prohibitions, fallback-write prohibition, and external-effect boundaries
+  remain unchanged.
