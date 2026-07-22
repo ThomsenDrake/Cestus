@@ -26339,6 +26339,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release records 1-27, all 29 IDs/order, published `neo`, and external-effect
   prohibitions remain unchanged.
 
+## RV-1-E-907 — Task138-H URI-scheme continuation defect; bounded token repair authorized
+
+- Recorded at: 2026-07-22T14:27:44Z
+- Fresh architecture review instance
+  `10876a84-acf7-4b2e-869d-8b548f49ca0f` and fresh executability review
+  instance `b5ff5361-d33f-431c-bd74-be1fcfa89fd6` both return
+  `NEEDS_CHANGES` for exact candidate
+  `9adc07c1ce695bd144755b27ae26384e46bc513f`. The candidate is rejected and
+  remains immutable in ancestry; it is not approved, integrated, released, or
+  eligible for strict record 28.
+- Both reviewers independently reproduce one P1 root cause: JavaScript `\b`
+  treats URI-scheme continuation characters `-`, `.`, and `+` as word
+  boundaries. Valid non-HTTP schemes such as `x-http:`, `x.http:`, and
+  `x+https:` can therefore end in the exempt suffix while their following
+  `//opt/...` or `//host/share/...` remains an absolute POSIX or forward-slash
+  UNC path. Canonical public DTO probes return `task-completed` and retain the
+  string rather than closing the whole DTO. All other deterministic gates,
+  writes-zero assertions, and `effect: "none"` behavior pass.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for `-`, `.`, and `+` scheme
+  continuation prefixes across doubled-slash POSIX and forward-slash UNC
+  representatives, plus a non-ASCII adjacent prefix, while all prior **76**
+  cases and actual case-insensitive HTTP/HTTPS controls at string and the
+  already authorized safe punctuation boundaries remain green. It may then
+  make the smallest final-predicate correction that exempts HTTP/HTTPS only
+  when the scheme token begins at string start or an explicit already-safe
+  delimiter, never from a generic word boundary. No sanitizer, parser/schema,
+  per-field predicate, lifecycle, provenance, replay, mounted-read, diagnostic,
+  no-effect, or whole-DTO closure change is authorized.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Preserve rejected candidate `9adc07c1`, both fresh verdicts, all prior
+  candidates, RED/GREEN history, and this authority by forward merge. The new
+  exact candidate must rerun focused/cross-boundary, typecheck, factory, V4,
+  contract, repository-prefix, full differential,
+  diff/scope/ancestry/dependency/clean gates and receive a completely new
+  architecture/executability pair. Neither current reviewer may approve
+  changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, published `neo`, providers,
+  credentials, external systems, fallback writes, and external effects remain
+  unchanged.
+
 ## RV-1-E-904 — Task138-H doubled-slash path defect; bounded repair authorized
 
 - Recorded at: 2026-07-22T13:39:00Z
