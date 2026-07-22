@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing internal relative-segment repair
+- **Status:** internal relative-segment GREEN checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1294,3 +1294,40 @@ and fallback writes are prohibited.
   metadata, provider, credential, network, external system, fallback write,
   admission, review, integration, strict record 28, or release action
   participates.
+
+## Internal Relative-Segment Minimal GREEN
+
+- Permanent causal RED commit
+  `4724c17f95d071203fd958d7ac0a359480786873` retains exactly the **8**
+  causal failures, the four new already-safe dot-dot controls, and all **238**
+  prior passing cases without changing production source or weakening any
+  test.
+- GREEN changes one line only in `containsAbsolutePath`. After the existing
+  boundary-qualified leading-chain normalization, a second local replacement
+  recognizes a slash/backslash-bounded dot, dot-dot, or home segment and masks
+  only the separator immediately following that segment before the unchanged
+  native-root expressions run.
+- The segment's preceding separator stays visible. A true absolute root at
+  string start or after punctuation therefore still closes, while an internal
+  relative segment inside an already-relative path cannot manufacture a new
+  root. Raw dot/tilde punctuation without path-segment boundaries remains
+  unchanged.
+- The first focused GREEN attempt passes **1 file / 250 tests** without any
+  post-RED test change. The exact cross-boundary command passes **2 files / 286
+  tests**. Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Prior GREEN checkpoint `0e4be5a1b28c57f7e762ac111c4e4aed6b6e148f`, program
+  authority `904fde9b4650c5a3496fac05b814e9839b306c16`, authority merge
+  `469d3c315b0eceaca5c929c965fafd7083e4d523`, and permanent causal RED
+  `4724c17f95d071203fd958d7ac0a359480786873` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. The cumulative repair uses exactly the
+  frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, V4,
+  contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and
+  fresh-review gates remain pending.

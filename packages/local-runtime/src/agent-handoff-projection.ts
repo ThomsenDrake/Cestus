@@ -241,7 +241,7 @@ function containsAbsolutePath(value: string): boolean {
   const absolutePathText = nativePathText.replace(
     /(?:^|[^\p{ID_Continue}_/\\])(?:\.{1,2}|~)(?:[\\/]\.{1,2})*[\\/]/gu,
     (relativePrefix) => relativePrefix.replace(/[\\/]/g, "_")
-  );
+  ).replace(/([\\/](?:\.{1,2}|~))[\\/]/g, "$1_");
 
   return containsNestedNonHttpUri ||
     /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(absolutePathText) ||
