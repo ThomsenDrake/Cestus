@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** generalized punctuation and outer-scheme GREEN checkpoint
+- **Status:** implementing nested URI payload and separator repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -905,3 +905,38 @@ and fallback writes are prohibited.
   integration, strict record 28, or release action changes. Coordinator-owned
   V4, repository, full-differential, admission, and fresh-review gates remain
   pending.
+
+## Nested URI Payload And Separator Causal RED
+
+- `RV-1-E-911` authorizes this bounded repair from exact clean authority merge
+  `ca26cc89b34fa200cb339c2a23326d23372d814a`, whose parents are generalized
+  GREEN checkpoint `cc21728078df0d8abe76df7913b0bbdc48175acd` and current
+  program authority `cf2ac7729c43082890368f3ce02ff4e22c707ab6`. Every prior
+  authority, candidate, review verdict, RED/GREEN commit, and registry
+  correction remains intact.
+- Four causal rows cross slash-prefixed HTTP-like and backslash-prefixed
+  HTTPS-like text with doubled-slash POSIX and forward-slash UNC suffixes.
+  Each proves the prefix is not a parseable authorized URL token, proves the
+  suffix absolute through Node's matching path owner, and requires whole-DTO
+  closure.
+- Twenty-four further rows cross `urn:`, `mailto:`, and arbitrary `x:` outer
+  schemes with inner mixed-case HTTP(S) text after query `?`, fragment `#`,
+  assignment `=`, and path payload across both absolute suffix families. Each
+  proves its parsed outer protocol is not HTTP(S), proves suffix absoluteness,
+  and requires whole-DTO closure. Two matching controls prove genuine outer
+  mixed-case HTTP and HTTPS URLs remain open while their query safely carries
+  another HTTP(S) URL.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 28 failed / 175 passed / 203 total**.
+  Exactly the **4** separator-prefix and **24** non-HTTP outer-scheme rows
+  return `task-completed` instead of `inconsistent`. All prior **173** cases
+  and both new genuine outer-HTTP(S) controls remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  generalized punctuation, ordinary ratio/relative-slash, explicit `file://`,
+  lifecycle, provenance, replay, diagnostic, no-effect, and whole-DTO
+  assertions remain intact. No registry, V4, contract, shared source,
+  provider, credential, network, external system, fallback write, admission,
+  review, integration, strict record 28, or release action participates.
