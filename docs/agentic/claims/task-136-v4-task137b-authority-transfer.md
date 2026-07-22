@@ -613,3 +613,48 @@ Implementation evidence:
   scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
   Result: exit `0`; `20` tests, `20` passed, and `0` failed. No other test byte
   or any registry, contract, checker, source/product, or package byte changed.
+
+## RV-1-E-926 record-28 current-prefix causal RED checkpoint
+
+- Exact clean record-28 program authority was normal-forward-merged into the
+  preserved V4 lineage as `5cb84ff8f8de879af6eed47a96d1fd584019ee8a`.
+  This claim-only checkpoint preserves every prior assurance RED/GREEN commit
+  and leaves the focused assurance test, V1-V4 contracts, checker, raw strict
+  records 1-28, all 29 card IDs/order, historical W1 activation fixture,
+  product/package bytes, and integration/review/release evidence unchanged.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; exactly `20` tests ran, `17` passed, and `3` failed. The
+  only failures are current-registry cardinality assertions at lines `1159`,
+  `1475`, and `1655`, each reporting `28 !== 27`. No contract, checker,
+  release-record, command, blob, ownership, compatibility, migration,
+  dependency, Task138-H product, or unrelated fixture failure occurred.
+- The authorized GREEN changes only this claim and the focused assurance
+  test. It will advance exactly the three current-prefix length/order groups
+  and the first group's coupled repository incomplete-found, exact prefix
+  marker, and command-call expectations from `27` to `28`. The historical W1
+  activation corpus's local `.slice(0, 26)`, its length/order assertions at
+  `26`, and its synthetic record-27 behavior remain byte-identical. No
+  registry, contract, checker, raw record, product/package byte, release
+  authority, network, provider, credential, external system, push, `neo`, or
+  Task136 implementation is authorized.
+
+## RV-1-E-926 record-28 minimal GREEN evidence
+
+- The three live registry-prefix groups now require exactly `28` records and
+  `expectedIds.slice(0, 28)`. The first group's coupled repository admission
+  expects only incomplete closure `found 28`, the exact
+  `TASK136_REPOSITORY_PREFIX_OK records=28 commands=28` marker, and `28`
+  command calls.
+- The historical W1 activation corpus remains byte-identical: its local
+  `.slice(0, 26)`, length/order expectations at `26`, and synthetic record-27
+  activation are unchanged. No registry, V1-V4 contract, checker, raw strict
+  release record, product/package byte, integration/review evidence, release
+  semantics, command card, or other test behavior changed.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed. Final
+  committed-byte admission will rerun assurance, all four contract markers,
+  repository strict 28/28 plus only incomplete-29 closure, standalone
+  typecheck, factory, diff/scope/ancestry/dependency/clean, and no-product-byte
+  gates.
