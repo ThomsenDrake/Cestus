@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** non-HTTP authority and relative-path GREEN checkpoint
+- **Status:** implementing chained relative-prefix repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1197,3 +1197,33 @@ and fallback writes are prohibited.
   external system, fallback write, admission, review, integration, strict
   record 28, or release action changes. Coordinator-owned admission and
   fresh-review gates remain pending.
+
+## Chained Relative-Prefix Causal RED
+
+- `RV-1-E-916` authorizes this pre-admission bounded repair from exact clean
+  authority merge `baf78f6f2533d96418246c9fed53d4721c2a16bf`, whose parents
+  are prior GREEN checkpoint `fe19229e8970ff82be7fc2ddd29af857d1befc48`
+  and current program authority `de8992209bf2686470abf7e9fa01a321fd0e5f71`.
+  Every prior authority, candidate, review verdict, RED/GREEN commit, and
+  registry correction remains intact.
+- Ten safe public-DTO controls include exact `././child`, `.././child`,
+  `~/./child`, `.\.\child`, `..\.\child`, and `~\.\child`, plus two
+  longer dot/dot-dot chains for each Node path owner. Each literal is proven
+  non-absolute through `posix.isAbsolute` or `win32.isAbsolute` and requires
+  the canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 10 failed / 228 passed / 238 total**.
+  Exactly the **10** new chained-relative controls close incorrectly. Every
+  prior **228** case remains green, including all four generalized
+  `~`-punctuation absolute-path rows and every true Unix, drive,
+  rooted-Windows, UNC, doubled-slash, URI-authority, and explicit `file://`
+  closure.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. No sanitizer,
+  parser/schema, per-field predicate, lifecycle, provenance, replay,
+  mounted-read, diagnostic, registry, V4, contract, shared source, package
+  metadata, provider, credential, network, external system, fallback write,
+  admission, review, integration, strict record 28, or release action
+  participates.
