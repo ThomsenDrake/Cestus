@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** compositional path-boundary repair complete; awaiting coordinator admission
+- **Status:** compositional path-boundary candidate awaiting fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1501,3 +1501,41 @@ and fallback writes are prohibited.
   system, fallback write, admission, review, merge, push, integration, strict
   record 28, or release action changes. Coordinator-owned admission and wholly
   fresh dual review remain pending; strict frontier remains **27 of 29**.
+
+## Compositional Path-Boundary Clean Admission
+
+- Clean implementation evidence ends at claim checkpoint
+  `3f9dac311e59bf0b7c86b34fde42f7ab37be421c`, preserving rejected candidate
+  `50ca5da9`, exact authority `f05dda74`, authority merge `30dce010`, permanent
+  causal RED `064d568b`, source-only GREEN `92065474`, every earlier
+  RED/GREEN pair, review verdict, authority, and registry event without
+  rewrite. Exact authority-to-checkpoint scope is the frozen source, focused
+  test, and claim paths.
+- Fresh coordinator validation from that clean checkpoint passes the exact
+  focused suite **284/284**, exact cross-boundary suite **320/320**, standalone
+  typecheck, factory readiness, worktree and commit-range diff hygiene, and
+  exact scope, ancestry, dependency, V4-pin, and clean-state checks. Node is
+  `v26.1.0`, Vitest is `4.1.9`, neither dependency directory is a symlink, and
+  the V4 contract SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`.
+- Standalone V4 assurance passes **20/20**. Contract mode emits exact markers
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`. Clean repository mode executes all
+  **27/27** released commands, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`, proving the expected unfinished strict prefix.
+- Fresh serial full-verification differential reports this checkpoint at
+  **10 failing files / 48 failing tests / 3,144 passes / 5 skips** and exact
+  clean `neo` at **10 failing files / 48 failing tests / 2,877 passes / 5
+  skips**. The complete **48** failure identities are equal and Task138-H is
+  absent. The exact **267-pass** increase equals the focused Task138-H file's
+  growth from `neo` **17** to candidate **284**, so the candidate introduces
+  no differential regression.
+- This claim-only transition changes no production or test byte and admits its
+  resulting exact commit for one wholly fresh architecture/executability
+  review pair. No reviewer of any earlier candidate may approve these changed
+  bytes. This is not approval, integration, strict record 28, or release;
+  strict frontier remains **27 of 29**.
