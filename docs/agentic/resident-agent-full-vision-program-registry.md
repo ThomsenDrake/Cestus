@@ -26808,3 +26808,104 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
   provider/credential prohibitions, fallback-write prohibition, and external-
   effect boundaries remain unchanged.
+
+## RV-1-E-914 — Task138-H compositional path candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-22T16:38:32Z
+- The bounded lineage preserves rejected candidate
+  `df461e730557bbdbd92d4079ed6f4f0628282c8b`, compositional authority
+  `6e4b2089c6b3818282c658745b1d24c2221ae1ea`, exact forward authority merge
+  `f03e446426d5f68f0e65cac344170a603da398f8`, permanent causal RED
+  `80d004eb116cde2c72c751ef86aaf4afe344d6a7`, atomic minimal GREEN
+  `14c8722bd91eac78bd6341fa0bb403c9c743f93d`, and exact clean admitted
+  candidate `0b5eb36e4b5db9e5e36e1d8f6e1a8af59e16ca91`. Every prior authority,
+  rejected candidate, review verdict, RED/GREEN commit, and registry-placement
+  correction remains in ancestry without rewrite; implementation scope from
+  authority merge is exactly the frozen three Task138-H paths.
+- Permanent public-DTO coverage adds two same-token multi-scheme masks, five
+  Windows rooted/host-only UNC forms, four complete outer-HTTP(S) controls,
+  and ordinary-punctuation/relative-path controls. GREEN changes only the
+  final path predicate: it scans every relevant scheme occurrence, preserves
+  parseable complete outer HTTP(S) URL context for native checks, and closes
+  rooted single-backslash and host-only UNC forms. Parser/schema, per-field
+  predicates, lifecycle, provenance, replay, mounted reads, diagnostics,
+  no-effect, whole-DTO closure, and explicit `file://` remain unchanged.
+- Candidate gates pass **216/216** focused and **252/252** cross-boundary
+  tests, standalone typecheck, factory readiness, diff hygiene, V4 assurance
+  **20/20**, all four exact contract markers, and strict **27/27** repository
+  prefix followed only by expected incomplete-29 closure. Fresh serial full
+  verification reports the identical inherited **10-file / 48-test / 5-skip**
+  failure set on candidate and clean `neo`; candidate **3,076** versus `neo`
+  **2,877** passes differ by exactly the **199** cumulative Task138-H tests.
+  Scope, ancestry, dependencies, pinned V4 hash, and clean state pass.
+- Completely fresh read-only architecture review instance
+  `614e3aaf-4659-4168-be26-a0c8288c2a99`, implemented by
+  `/root/task138_compositional_arch_review`, owns every browser-visible string
+  leaf, native/doubled-slash/URI/URL composition and boundary coverage,
+  false-positive controls, parser/lifecycle/provenance/replay,
+  mounted-read/no-effect/whole-DTO closure, scope, and ancestry scrutiny.
+  Completely fresh read-only executability review instance
+  `90e23d85-abd9-4cec-96f2-c6c514619aec`, implemented by
+  `/root/task138_compositional_exec_review`, owns independent deterministic
+  gate reproduction, adversarial public-DTO matrices, full differential,
+  dependency, and clean-state checks. Immutable review package
+  `/tmp/task138-compositional-review-0b5eb36e.diff` has SHA-256
+  `d649447e6da32de69a26d0700b440cdf2e91f89f1fac31ce0753e0c5e23ef962`.
+  Neither reviewer has prior transcript context or may edit, commit, merge,
+  push, invoke providers, use network access, or access external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  records 1-27, all 29 IDs/order, published `neo`, and external-effect
+  prohibitions remain unchanged.
+
+## RV-1-E-915 — Task138-H non-HTTP authority masking and relative-path false positives; bounded repair authorized
+
+- Recorded at: 2026-07-22T16:53:44Z
+- Fresh architecture review instance
+  `614e3aaf-4659-4168-be26-a0c8288c2a99` and fresh executability review
+  instance `90e23d85-abd9-4cec-96f2-c6c514619aec` both return
+  `NEEDS_CHANGES` for exact candidate
+  `0b5eb36e4b5db9e5e36e1d8f6e1a8af59e16ca91`. The candidate is rejected and
+  remains immutable in ancestry; it is not approved, integrated, released, or
+  eligible for strict record 28.
+- Both reviewers reproduce a leading complete HTTP(S) URL masking a later
+  non-HTTP `scheme://authority` segment with an absolute doubled-slash suffix,
+  including `urn://` and arbitrary `x://` variants in path, query, and fragment
+  composition. They independently reproduce false-positive whole-DTO closure
+  for non-absolute dot-, dot-dot-, and home-relative POSIX and Windows text.
+  Canonical mounted DTOs remain parser-valid and secret-safe, perform only
+  mounted reads, perform zero writes, and expose only `effect: "none"` actions.
+  All mandated deterministic gates otherwise pass; one reviewer-observed
+  full-suite timeout passes in isolated runs on candidate and `neo` and is
+  classified as inherited load variance.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED public-DTO coverage for the reviewers' exact
+  leading-HTTP(S) plus later `urn://` and `x://` authority literals, extended
+  across path/query/fragment separators and both doubled-slash absolute path
+  families. It must also cover `./`, `../`, `~/`, `.\\`, `..\\`, and `~\\`
+  relative forms as safe controls, while retaining absolute Unix, drive,
+  rooted-Windows, host-only/full UNC, explicit `file://`, nested URI, and
+  ordinary punctuation closure. Every prior **216** focused case must remain
+  green.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest correction in the final path predicate. It
+  must recognize any later non-HTTP authority as a new unsafe URI composition
+  before complete outer-HTTP context is excluded, and must distinguish
+  dot/home-relative notation from absolute native roots. No sanitizer,
+  parser/schema, per-field predicate, lifecycle, provenance, replay,
+  mounted-read, diagnostic, no-effect, or whole-DTO closure change is
+  authorized.
+- Preserve rejected candidate `0b5eb36e`, both fresh verdicts, every prior
+  candidate/RED/GREEN/review/authority commit, and all registry-placement
+  corrections by forward merge. After RED/GREEN, rerun the complete candidate
+  gate stack and obtain a completely new architecture/executability pair;
+  neither current reviewer may approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
+  provider/credential prohibitions, fallback-write prohibition, and external-
+  effect boundaries remain unchanged.
