@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** compositional URL and Windows-root GREEN checkpoint
+- **Status:** compositional path candidate awaiting fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1088,3 +1088,40 @@ and fallback writes are prohibited.
   system, fallback write, admission, review, integration, strict record 28,
   or release action changes. Coordinator-owned admission and fresh-review
   gates remain pending.
+
+## Compositional Path Clean Admission
+
+- Atomic GREEN checkpoint
+  `14c8722bd91eac78bd6341fa0bb403c9c743f93d` descends without rewrite from
+  permanent causal RED `80d004eb116cde2c72c751ef86aaf4afe344d6a7`, exact
+  authority merge `f03e446426d5f68f0e65cac344170a603da398f8`, rejected
+  candidate `df461e730557bbdbd92d4079ed6f4f0628282c8b`, and all prior
+  Task138-H history.
+- Fresh coordinator validation passes the exact focused suite **216/216**,
+  exact cross-boundary suite **252/252**, standalone typecheck, factory
+  readiness, and diff hygiene. V4 standalone assurance passes **20/20** and
+  contract mode emits all four exact release-graph, composition-corpus,
+  command-card, and ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is strict-prefix success at the unfinished frontier.
+- Fresh serial full-verification differential reports candidate **10 failing
+  files / 48 failing tests / 3,076 passes / 5 skips** and clean `neo` **10
+  failing files / 48 failing tests / 2,877 passes / 5 skips**. The failure
+  files and test names are identical and exclude Task138-H; the exact
+  **199-pass** increase is the cumulative Task138-H focused-suite delta.
+- Exact implementation scope from authority merge to GREEN is the frozen
+  three Task138-H paths. Rejected candidate `df461e73`, authority
+  `6e4b2089`, authority merge `f03e4464`, RED `80d004eb`, and every earlier
+  authority, rejected candidate, review, RED/GREEN, and registry correction
+  remain ancestors. Dependencies are real and local at Node `v26.1.0` and
+  Vitest `4.1.9`; neither dependency directory is a symlink, the V4 contract
+  SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`,
+  and both candidate and `neo` remain clean.
+- This claim-only transition admits one exact candidate for a completely
+  fresh independent architecture/executability pair. It is not approval,
+  integration, strict record 28, or release. Strict frontier remains **27 of
+  29**; every reviewer of earlier candidate bytes is excluded from approval.
