@@ -207,7 +207,20 @@ function hasBrowserSafeStringLeaves(value: unknown): boolean {
 }
 
 function containsAbsolutePath(value: string): boolean {
-  return /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:])https:)\//iu.test(value) ||
+  const containsNestedNonHttpUri = value.split(/\s+/u).some((token) => {
+    const firstScheme = /(?:^|[^\p{ID_Continue}_+.\-:/\\])([a-z][a-z0-9+.-]*):/iu.exec(token);
+    if (firstScheme === null) {
+      return false;
+    }
+    const outerScheme = firstScheme?.[1]?.toLowerCase();
+    return outerScheme !== undefined &&
+      outerScheme !== "http" &&
+      outerScheme !== "https" &&
+      /https?:\/\//i.test(token.slice(firstScheme.index + firstScheme[0].length));
+  });
+
+  return containsNestedNonHttpUri ||
+    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(value) ||
     /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(value) ||
     /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+[\\/][^\\/\s]+/u.test(value) ||
     /\bfile:\/\//i.test(value);

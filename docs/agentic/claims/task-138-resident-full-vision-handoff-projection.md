@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing nested URI payload and separator repair
+- **Status:** nested URI payload and separator GREEN checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -940,3 +940,38 @@ and fallback writes are prohibited.
   assertions remain intact. No registry, V4, contract, shared source,
   provider, credential, network, external system, fallback write, admission,
   review, integration, strict record 28, or release action participates.
+
+## Nested URI Payload And Separator Minimal GREEN
+
+- Permanent causal RED commit
+  `136b7d23c079b0d1deae133cde96e95310093508` retains exactly the **28**
+  causal failures and all **175** passing cases without changing production
+  source.
+- GREEN changes only the final `containsAbsolutePath` predicate. Slash and
+  backslash no longer act as delimiters that can introduce an exempt HTTP(S)
+  token. A same-whitespace-token scan identifies the first URI scheme after
+  string start or a safe non-scheme delimiter and closes the DTO when that
+  outer scheme is not HTTP(S) but later text contains an inner HTTP(S)-like
+  doubled-slash payload. Genuine outer mixed-case HTTP(S) URLs remain open,
+  including the two new query-carried inner-URL controls.
+- The first standalone typecheck identified only an incomplete TypeScript
+  null narrowing for the regular-expression match after its optional capture
+  was inspected. An explicit null return preserves the same runtime predicate;
+  the focused suite remained **203/203**, and the repeated standalone
+  typecheck then emitted `typecheck passed`.
+- The exact focused command passes **1 file / 203 tests**. The exact
+  cross-boundary command passes **2 files / 239 tests**. `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Generalized GREEN checkpoint `cc21728078df0d8abe76df7913b0bbdc48175acd`,
+  program authority `cf2ac7729c43082890368f3ce02ff4e22c707ab6`, authority
+  merge `ca26cc89b34fa200cb339c2a23326d23372d814a`, and permanent causal RED
+  `136b7d23c079b0d1deae133cde96e95310093508` remain ancestors. The cumulative
+  repair uses exactly the frozen Task138-H source, test, and claim paths. Both
+  mounted stores remain read-only, all next actions retain `effect: "none"`,
+  and no sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, diagnostic, registry, V4, contract, shared source, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action changes. Coordinator-owned
+  V4, repository, full-differential, admission, and fresh-review gates remain
+  pending.
