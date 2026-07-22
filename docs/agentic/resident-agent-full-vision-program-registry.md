@@ -27268,3 +27268,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   records 1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
   provider/credential prohibitions, fallback-write prohibition, and
   external-effect boundaries remain unchanged.
+
+## RV-1-E-923 — Task138-H final outer-URL path candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-22T19:17:30Z
+- Exact clean candidate
+  `6d4517a40d8394526ee2c9c2dad7695ddb396483` preserves rejected candidates
+  `5d9b6e63` and `50ca5da9`, exact repair authority `756d82f1`, forward merge
+  `d0a15fa8`, permanent causal RED `e585adb9`, source-only GREEN `842174d4`,
+  claim checkpoint `fa84c7d5`, and every earlier candidate, review, RED/GREEN
+  pair, authority, merge, and registry correction without rewrite.
+- Permanent public-DTO coverage totals **318** focused cases. The latest
+  **34-case** matrix crosses outer HTTP(S) path, query, and fragment positions;
+  punctuation `=`, `:`, `[`, `,`, `(`, `;`, and `|`; native POSIX, drive,
+  rooted-Windows, backslash-UNC, forward-UNC, and all authorized `file:` root
+  families; plus exact mixed home/dot/dot-dot relative chains and matching
+  complete/nested HTTP(S), structural-pathname, ordinary-punctuation,
+  drive-relative, and general relative controls. GREEN remains confined to
+  the final path predicate and does not decode or change parser, lifecycle,
+  provenance, replay, mounted-read, diagnostic, no-effect, or whole-DTO
+  semantics.
+- Fresh coordinator gates pass exact focused **318/318**, cross-boundary
+  **354/354**, typecheck, factory readiness, diff hygiene, exact frozen scope,
+  ancestry, dependency, V4 pin, and clean state. V4 standalone assurance
+  passes **20/20** and contract mode emits all four exact markers. Clean
+  repository mode executes strict **27/27**, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and stops only at
+  expected incomplete-29 closure.
+- Fresh serial full verification reports candidate **10 failing files / 47
+  failing tests / 3,179 passes / 5 skips** and clean `neo` **10 failing files
+  / 48 failing tests / 2,877 passes / 5 skips**. Candidate failures are a
+  strict inherited subset and exclude Task138-H; the sole baseline-only
+  prerequisite timeout passes **1/1** in isolated runs on both trees. The
+  focused file grows from `neo` **17** to candidate **318**, adding **301**
+  passing Task138-H cases without differential regression.
+- Immutable review package
+  `/tmp/task138-final-outer-url-review-6d4517a4.diff` has SHA-256
+  `7f2ba064f53fb0b8bb6f06e193b944736c9da19af5903ab3d4c5f985bd866d6b`
+  and contains exactly the frozen source, focused test, and claim paths
+  relative to authority `756d82f1`. A wholly fresh read-only architecture
+  reviewer owns all browser-visible string leaves, nested URL/URI and native
+  path composition, punctuation/root completeness, relative false positives,
+  mounted-read/no-effect closure, scope, and ancestry. A different wholly
+  fresh read-only executability reviewer owns independent adversarial DTO
+  matrices, deterministic gate reproduction, full differential, dependencies,
+  and clean state. Neither may have reviewed any earlier candidate bytes or
+  edit, commit, merge, push, invoke providers, use network access, or interact
+  with external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  records 1-27, all 29 IDs/order, published `neo`, and external-effect
+  prohibitions remain unchanged.
