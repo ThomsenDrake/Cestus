@@ -208,21 +208,40 @@ function hasBrowserSafeStringLeaves(value: unknown): boolean {
 
 function containsAbsolutePath(value: string): boolean {
   const containsNestedNonHttpUri = value.split(/\s+/u).some((token) => {
-    const firstScheme = /(?:^|[^\p{ID_Continue}_+.\-:/\\])([a-z][a-z0-9+.-]*):/iu.exec(token);
-    if (firstScheme === null) {
-      return false;
+    for (const match of token.matchAll(/(?:^|[^\p{ID_Continue}_+.\-:])([a-z][a-z0-9+.-]*):/giu)) {
+      const scheme = match[1]?.toLowerCase();
+      if (scheme !== undefined &&
+        scheme !== "http" &&
+        scheme !== "https" &&
+        /https?:\/\//i.test(token.slice(match.index + match[0].length))) {
+        return true;
+      }
     }
-    const outerScheme = firstScheme?.[1]?.toLowerCase();
-    return outerScheme !== undefined &&
-      outerScheme !== "http" &&
-      outerScheme !== "https" &&
-      /https?:\/\//i.test(token.slice(firstScheme.index + firstScheme[0].length));
+    return false;
   });
 
+  const nativePathText = value.split(/\s+/u).map((token) => {
+    for (const match of token.matchAll(/(?:^|[^\p{ID_Continue}_+.\-:/\\])(https?:\/\/)/giu)) {
+      const httpPrefix = match[1];
+      if (httpPrefix === undefined) continue;
+      const urlStart = match.index + match[0].length - httpPrefix.length;
+      try {
+        const parsed = new URL(token.slice(urlStart));
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+          return token.slice(0, urlStart);
+        }
+      } catch {
+        // Incomplete HTTP-like text does not establish an outer URL context.
+      }
+    }
+    return token;
+  }).join(" ");
+
   return containsNestedNonHttpUri ||
-    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(value) ||
-    /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(value) ||
-    /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+[\\/][^\\/\s]+/u.test(value) ||
+    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(nativePathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(nativePathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\(?:[^\\/\s]|$)/u.test(nativePathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+(?:[\\/][^\\/\s]*)?/u.test(nativePathText) ||
     /\bfile:\/\//i.test(value);
 }
 
