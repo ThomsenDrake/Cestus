@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** outer-URL punctuation and mixed-home repair complete; awaiting coordinator admission
+- **Status:** final outer-URL path candidate awaiting fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1610,4 +1610,40 @@ and fallback writes are prohibited.
   credential, network, external system, fallback write, admission, review,
   merge, push, integration, strict record 28, or release action changes.
   Coordinator-owned admission and wholly fresh dual review remain pending;
+  strict frontier remains **27 of 29**.
+
+## Final Outer-URL Path Clean Admission
+
+- Clean implementation evidence ends at claim checkpoint
+  `fa84c7d561ea5e5545c50a8346fcdd0f0370808d`, preserving rejected candidates
+  `5d9b6e63` and `50ca5da9`, exact authority `756d82f1`, authority merge
+  `d0a15fa8`, permanent causal RED `e585adb9`, source-only GREEN `842174d4`,
+  and every earlier candidate, review verdict, RED/GREEN pair, authority,
+  merge, and registry correction without rewrite. Exact authority-to-checkpoint
+  scope is the frozen source, focused test, and claim paths.
+- Fresh coordinator validation from that clean checkpoint passes exact focused
+  **318/318**, exact cross-boundary **354/354**, standalone typecheck, factory
+  readiness, worktree and commit-range diff hygiene, exact scope, ancestry,
+  dependency, V4-pin, and clean-state checks. Node is `v26.1.0`, Vitest is
+  `4.1.9`, neither dependency directory is a symlink, and the V4 contract
+  SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`.
+- Standalone V4 assurance passes **20/20** and contract mode emits all four
+  exact release-graph, composition-corpus, command-card, and ABI-corpus
+  markers. Clean repository mode executes all **27/27** released commands,
+  emits `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`, proving the expected unfinished strict prefix.
+- Fresh serial full-verification differential reports this checkpoint at
+  **10 failing files / 47 failing tests / 3,179 passes / 5 skips** and clean
+  `neo` at **10 failing files / 48 failing tests / 2,877 passes / 5 skips**.
+  Candidate failures are an exact strict subset and exclude Task138-H. The
+  sole baseline-only prerequisite timeout passes **1/1** in isolated runs on
+  both trees, classifying it as inherited load variance. Task138-H's focused
+  file grows from `neo` **17** to candidate **318**, accounting for **301**
+  new passing cases without a differential regression.
+- This claim-only transition changes no production or test byte and admits its
+  resulting exact commit for one wholly fresh architecture/executability
+  review pair. No reviewer of any earlier candidate may approve these changed
+  bytes. This is not approval, integration, strict record 28, or release;
   strict frontier remains **27 of 29**.
