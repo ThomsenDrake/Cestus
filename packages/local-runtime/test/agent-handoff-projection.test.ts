@@ -732,7 +732,19 @@ describe("buildResidentHandoffDto", () => {
     ["chained dot-dot-relative Windows", "..\\.\\child", "win32"],
     ["chained home-relative Windows", "~\\.\\child", "win32"],
     ["long chained dot-relative Windows", ".\\..\\.\\child\\draft", "win32"],
-    ["long chained dot-dot-relative Windows", "..\\..\\.\\child\\draft", "win32"]
+    ["long chained dot-dot-relative Windows", "..\\..\\.\\child\\draft", "win32"],
+    ["internal dot-relative POSIX", "child/./path", "posix"],
+    ["internal dot-dot-relative POSIX", "child/../path", "posix"],
+    ["internal home-relative POSIX", "child/~/path", "posix"],
+    ["leading-dot with internal dot POSIX", "./child/./path", "posix"],
+    ["leading-dot-dot with internal dot-dot POSIX", "../child/../path", "posix"],
+    ["leading-home with internal home POSIX", "~/child/~/path", "posix"],
+    ["internal dot-relative Windows", "child\\.\\path", "win32"],
+    ["internal dot-dot-relative Windows", "child\\..\\path", "win32"],
+    ["internal home-relative Windows", "child\\~\\path", "win32"],
+    ["leading-dot with internal dot Windows", ".\\child\\.\\path", "win32"],
+    ["leading-dot-dot with internal dot-dot Windows", "..\\child\\..\\path", "win32"],
+    ["leading-home with internal home Windows", "~\\child\\~\\path", "win32"]
   ] as const)("accepts safe non-absolute %s notation", async (_kind, relativePath, pathOwner) => {
     const safeSummary = `Mounted output=${relativePath}`;
     const fixture = handoffFixture({ safeSummary });
