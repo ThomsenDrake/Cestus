@@ -52,9 +52,16 @@ Bounded design result:
 - Approval class `none` uses a discriminated automatic-policy readback: exact
   request, direct durable single-use claim caused by that request, and exact
   claim-caused completion, with no decision ID or fabricated human approval.
-  Human approval retains its exact decision ID. Complete mount loss returns a
-  safe non-durable unavailable envelope until a canonical result can actually
-  be persisted and reread.
+  It uses a G/R-owned automatic executor input with no `approvedBy` and a
+  private G-owned append/reread completion route; the inaccessible generic
+  completion API and human-only scheduler evidence path remain unchanged.
+  Human approval retains its exact decision ID and human executor branch.
+- W's one-shot private registrar constructs T120 after unchanged Core binding
+  and issues H an exact-hash, cursor-free mounted artifact reader. The portable
+  H binding/controller remains authority provenance but its cursor-bound store
+  is not reused after V2 events. Complete mount loss returns a safe non-durable
+  unavailable envelope until a canonical result can actually be persisted and
+  reread.
 - Task138-H product, tests, claim, DTO, and browser projection remain unchanged.
 
 Prohibitions:
@@ -77,10 +84,15 @@ Independent design review:
   `approvalClass: "none"` decision representation.
 - Follow-up review confirmed that no current production source imports
   FC-Ports and that the existing scheduler-completion adapter is human-only.
-  This revision therefore defers default runtime activation explicitly and
-  specifies automatic completion through the existing generic gateway's
-  no-approval `completeTool` path after the exact direct claim reread. No
-  seventh producer seam or changed runtime-factory owner is implied.
+  Revision `e41a1504b7a0a2438770f567e5b08672ba0ed4f2` therefore deferred
+  default runtime activation, but fresh architecture and executability reviews
+  rejected its inaccessible `completeTool` call, human-only executor input,
+  cursor-bound post-loop H reader, and unspecified W/T120 construction order.
+- This revision replaces those four claims with a G-owned automatic executor
+  and completion route plus W's post-Core one-shot private registrar and
+  exact-hash mounted H reader. No seventh producer seam, generic gateway,
+  scheduler-adapter, portable-store, FC-Core, or runtime-factory edit is
+  implied.
 
 Validation required before commit:
 
