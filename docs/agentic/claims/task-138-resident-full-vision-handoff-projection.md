@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** internal relative-segment GREEN checkpoint
+- **Status:** implementing colon-introduced authority repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1331,3 +1331,37 @@ and fallback writes are prohibited.
   external system, fallback write, admission, review, integration, strict
   record 28, or release action changes. Coordinator-owned admission and
   fresh-review gates remain pending.
+
+## Colon-Introduced Authority Causal RED
+
+- `RV-1-E-918` authorizes this pre-admission bounded repair from exact clean
+  authority merge `beab46a08e84f451affb13fcd7217cfc36e1582e`, whose parents
+  are prior GREEN checkpoint `64f5e2740ece131b4a5f16aeadb199d3c1f9d8d4`
+  and current program authority `e74eb7bb56887c202cf193fc134ce32feb2ea3b0`.
+  Every prior authority, candidate, review verdict, RED/GREEN commit, and
+  registry correction remains intact.
+- Six causal public-DTO rows cross colon-introduced `urn://` and arbitrary
+  `x://` authorities with path, query, and fragment positions and both
+  doubled-slash POSIX and forward-slash UNC suffix owners. They include exact
+  `https://public.test/?next=:urn://opt/cestus/private.json`, prove the leading
+  outer protocol is HTTP(S), prove the later protocol is non-HTTP, prove the
+  retained suffix absolute through Node's matching owner, and require
+  whole-DTO closure.
+- Six matching controls carry a colon-introduced inner HTTP or HTTPS authority
+  under the same complete outer HTTP(S) path, query, and fragment contexts.
+  They require the canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 6 failed / 256 passed / 262 total**.
+  Exactly the **6** colon-introduced non-HTTP authority rows remain open. All
+  six new inner-HTTP(S) controls and every prior **250** case remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing outer
+  non-HTTP, URI authority, relative-path, native/UNC/doubled-slash,
+  generalized punctuation, and explicit `file://` closure remain intact. No
+  sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, mounted-read, diagnostic, registry, V4, contract, shared source,
+  package metadata, provider, credential, network, external system, fallback
+  write, admission, review, integration, strict record 28, or release action
+  participates.
