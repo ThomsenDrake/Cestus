@@ -42,10 +42,19 @@ Bounded design result:
   require an exact suspension/checkpoint/anchor and same-stream segmented
   replay.
 - C is typed but untrusted; G is prebound and single-use; W is opaque and
-  reverified; H is an internal full-readback port; R alone composes production.
-- Approval class `none` uses a durable automatic claim, never a fabricated
-  human approval. Complete mount loss returns a safe non-durable unavailable
-  envelope until a canonical result can actually be persisted and reread.
+  reverified; H is an internal full-readback port; R alone exposes the concrete
+  real-mounted library composition entrypoint.
+- R's exact trusted-bootstrap input and capability provenance are frozen. Loop
+  callers receive only `advance`/`resume`; no handle, ledger, witness, reader,
+  executor, or structural port bag escapes. Record 29 intentionally does not
+  install a default runtime or route call site because those owners are outside
+  the authorized correction.
+- Approval class `none` uses a discriminated automatic-policy readback: exact
+  request, direct durable single-use claim caused by that request, and exact
+  claim-caused completion, with no decision ID or fabricated human approval.
+  Human approval retains its exact decision ID. Complete mount loss returns a
+  safe non-durable unavailable envelope until a canonical result can actually
+  be persisted and reread.
 - Task138-H product, tests, claim, DTO, and browser projection remain unchanged.
 
 Prohibitions:
@@ -56,8 +65,22 @@ Prohibitions:
 - No V5, new card, generic transfer language, local Task136 adapter, public
   authority issuer, compatibility fallback, synthetic suspension, or narrowed
   H readback is permitted.
+- No claim that the record-29 library entrypoint is activated by the current
+  default runtime, HTTP routes, or operator-status paths is permitted.
 - The written design requires explicit program-owner review before the
   implementation plan or any correction packet begins.
+
+Independent design review:
+
+- Revision `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` received `NEEDS_CHANGES`
+  for missing constructor capability provenance and an incomplete
+  `approvalClass: "none"` decision representation.
+- Follow-up review confirmed that no current production source imports
+  FC-Ports and that the existing scheduler-completion adapter is human-only.
+  This revision therefore defers default runtime activation explicitly and
+  specifies automatic completion through the existing generic gateway's
+  no-approval `completeTool` path after the exact direct claim reread. No
+  seventh producer seam or changed runtime-factory owner is implied.
 
 Validation required before commit:
 

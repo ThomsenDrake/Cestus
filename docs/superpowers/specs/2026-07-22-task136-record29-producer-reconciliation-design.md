@@ -6,6 +6,13 @@
 requires program-owner review before implementation planning or any assurance,
 mission-state, product, or Task136 RED change.
 
+**Revision note:** the first committed written revision at
+`7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` failed independent design review
+because it did not freeze R's trusted construction boundary or the durable
+decision representation for approval class `none`. This revision corrects
+both defects without changing the finite 21-path transfer, the 24-path Task136
+card, any prospective contract fingerprint, or the strict frontier.
+
 ## Decision And Authority
 
 Task136 remains the twenty-ninth and final card in the frozen V4 release graph.
@@ -304,8 +311,12 @@ grants permission or authority.
 
 ### G: prebound single-use execution and approval
 
-R supplies G's exact dispatcher/executor capability at construction. The
-production execution surface is:
+R supplies G's exact dispatcher descriptors only at the trusted factory
+construction boundary described below. G copies and validates one frozen
+descriptor registry at construction, rejects duplicate tool/version keys, and
+binds every descriptor to its exact tool ID, version, side-effect class, and
+approval class before it can issue a readback. The per-loop and resume APIs
+cannot add, replace, or select an executor. The execution surface is:
 
 ```ts
 executeApprovedAndReadback(
@@ -314,16 +325,50 @@ executeApprovedAndReadback(
 ```
 
 It accepts no caller execution callback. G appends and rereads one execution
-claim bound to the exact request, decision, preview, tool/version, plan,
-policy, authority, and W currentness token before invoking the prebound
+claim bound to the exact request, authorization proof, preview, tool/version,
+plan, policy, authority, and W currentness token before invoking the prebound
 executor. One authorization permits at most one claim. After a crash following
 claim, G may recover completion only from already durable domain evidence and
 must never invoke the executor again.
 
+The ontology's V2 `gatewayReadbacks` becomes this strict discriminated union:
+
+```ts
+type ResidentLoopV2GatewayReadbacks =
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly requestEventId: string;
+      readonly decisionEventId: string;
+      readonly executionClaimEventId: string;
+      readonly resultEventId: string;
+    }
+  | {
+      readonly authorizationKind: "automatic-policy";
+      readonly requestEventId: string;
+      readonly executionClaimEventId: string;
+      readonly resultEventId: string;
+    };
+```
+
 For an approval class other than `none`, G requires exactly one independent
-human approval and consumes it once. For `none`, the exact policy-approved
-request plus its single-use durable execution claim is the automatic
-authorization. G never fabricates a human approval. Denial, revocation,
+human approval, uses the `human-approval` branch, and consumes it once. Its
+claim is caused by the exact approval event. For `none`, G requires the
+`automatic-policy` branch, forbids every `agent.tool.approved` event and every
+`decisionEventId`, rereads the exact request/plan/policy/currentness facts, and
+directly appends one `agent.tool.execution.claimed` event whose causation is
+the request event. The request plus that durable unique claim is the automatic
+authorization; the request is not relabeled as a decision.
+
+The unchanged generic gateway's `claimExecution` method remains human-only.
+After automatic execution, G uses the existing generic `completeTool` method,
+which already permits approval class `none`, through the same exact global and
+stream concurrency guard used for human completion. Immediately before that
+call G rereads the unique claim, proves it is still the stream's latest open
+event and is caused by the exact request, and proves the copied safe result.
+The resulting completion must be caused by that claim and is reread byte-for-
+byte before G returns it. Human completion continues through the existing
+scheduler-completion evidence adapter. G never duplicates completion-event
+construction and never fabricates a human approval. Denial, revocation,
 expiry, plan or preview drift, an existing claim, or terminal stream state
 burns the execution path before effect.
 
@@ -402,19 +447,78 @@ Task138's `agent-handoff-projection.ts`, tests, claim, `ResidentHandoffDto.v1`,
 and browser `lifecycle` field remain byte-for-byte unchanged. Task136 never
 uses that narrow DTO and never reconstructs H from it.
 
-### R and Task136: sole production composition
+### R and Task136: sole concrete composition boundary
 
-`resident-loop-factory-ports.ts` remains the R-owned seam but gains a named
-production constructor. It authenticates the factory runtime through existing
-Core composition, validates the existing P and H authority, constructs T120,
-C, prebound G, opaque W, and internal H, freeze-brands their exact bundle, and
-constructs Task136. It returns only the bounded-loop API plus safe metadata.
+`resident-loop-factory-ports.ts` remains the R-owned seam. Its existing
+`createResidentLoopFactoryPorts` data projection remains byte-compatible. A
+separate named async `createResidentBoundedAgentLoopFactory` is the only
+concrete composition entrypoint released by record 29.
 
-The current data summary may remain as a read-only property for existing
-callers, but it cannot be the production execution boundary. No public mint,
-raw handle, witness, store, ledger, executor, provider body, or caller-
-replaceable structural port bag is exported. Import-policy tests permit the
-new direct imports only at R and the existing W/H source owners.
+That entrypoint has one exact trusted-bootstrap input and no structural port
+bag:
+
+```ts
+interface CreateResidentBoundedAgentLoopFactoryInput {
+  readonly runtimeHandle: LocalRuntimeHandle;
+  readonly actor: WakeSupervisorRuntimeInput["actor"];
+  readonly supervisorEpoch: string;
+  readonly policy: ResidentLoopFactoryCompositionInput["policy"];
+  readonly now: () => string;
+  readonly nowMonotonicMs: () => number;
+  readonly createSafeId: ResidentLoopFactoryCompositionInput["createSafeId"];
+  readonly providerAuthority: MountedProviderAuthority;
+  readonly handoff: FactoryPortableMountedAgentHandoffProducerResultV1;
+  readonly handoffLifecycle: {
+    readonly taskId: string;
+    readonly attemptId: string;
+    readonly runId: string;
+    readonly runType: AgentSpecialistRunType;
+    readonly retryGeneration: number;
+  };
+  readonly providerPosture: ResidentLoopProviderPosture;
+  readonly approvedToolExecutors: readonly AgentApprovedToolExecutorDescriptor[];
+}
+```
+
+This is a local factory trust boundary, not a loop-request boundary. The
+factory bootstrap caller may provide only the released factory-issued handle,
+opaque mounted provider authority, the exact factory portable-mounted H
+producer result plus its lifecycle tuple, current P posture, clocks/ID factory,
+and the same typed executor-descriptor form already accepted by the local
+agent factory. R copies and freezes the descriptor registry before any await,
+and the real-mounted integration tests prove rejection of proxies, accessors,
+mutable arrays/descriptors, duplicate keys, invalid classes, or post-
+construction substitution. No later `advance` or `resume` caller supplies any
+of those capabilities.
+
+R immediately constructs unchanged Core from the handle, starts it, binds the
+provider authority and `handoff.binding.authorityWitness`, compares Core and P
+readbacks, and thereafter retains the handle/witness only inside Core/W-owned
+closures. Before Core consumes the witness, R calls the unchanged
+`preflightPortableMountedAgentHandoffBinding` with the exact binding,
+controller, and supplied lifecycle tuple; it then requires Core's consumed H
+readback and P to equal that same tuple. R retains only the authenticated
+binding's cursor-bound manifest reader for H.
+
+Through the transferred W source, R obtains issued private T120/event-reader
+capabilities without exporting their ledger or mounted store. It uses those
+capabilities to construct prebound G and the internal H reader, constructs C
+locally, freeze-brands their exact bundle, and constructs Task136. The return
+value is only `{ metadata, loop, stop }`; `loop` exposes `advance` and `resume`,
+and `stop` closes the retained composition. No public mint, raw handle,
+witness, store, ledger, reader, executor descriptor, provider body, or caller-
+replaceable structural port bag is exported.
+
+Record 29 deliberately does not install this entrypoint into
+`defaultLocalAgentRuntimeFactory`, HTTP routes, operator status, or any other
+running default path. No current production file imports FC-Ports, those paths
+are outside RV-1-E-931 and the V4 graph, and the governing Task136 plan forbids
+route/default-factory edits. The card's executability gate therefore means the
+exported composition entrypoint runs end-to-end against the real mounted
+fixture; it does not mean runtime activation. Any default/runtime call site is
+a later owner-authorized Wave task, never an implicit record-29 edit or claim.
+Import-policy tests permit the new direct imports only at R and the existing
+W/H source owners.
 
 Task136 receives one R-issued bundle. It performs bounded planning,
 observation, tool execution, replanning, approval suspension, and same-stream
@@ -439,15 +543,21 @@ The permanent RED matrix covers at least:
 - C widening of tool/version, side effect, approval, provider/model posture,
   sources, contexts, automatic/output class, or budget;
 - G caller or swapped executors, forged/self/stale/expired/denied/revoked/
-  duplicate approval, `none` masquerading as human approval, changed preview,
-  reused authorization, duplicate claim, terminal stream, and crash
-  re-execution;
+  duplicate approval, `none` masquerading as human approval, a human request
+  without `decisionEventId`, an automatic request with `decisionEventId` or an
+  approval event, request/claim causation drift, completion not caused by the
+  exact claim, changed preview, reused authorization, duplicate claim,
+  terminal stream, and crash re-execution;
 - W structural/copied/stale tokens, foreign or missing checkpoints/releases,
   wrong claim generation, expired deadline, cross-run anchor, remount/store/
   policy/lock drift, and unrecognized ledger advance;
 - H caller-supplied events/readers, cross-run/authority mismatch, non-completed
   state, selected-readback mismatch, missing terminal evidence, and any
   Task138 DTO widening;
+- R hostile or mutable bootstrap data, non-factory handles, stale/foreign
+  provider or handoff authorities, duplicate or changed executor descriptors,
+  capability escape, structural port substitution, and any claim that the
+  record-29 library entrypoint is installed in a default runtime or route;
 - terminal without a synthetic suspension as GREEN, genuine repeated resume
   segments as GREEN, and fake terminal suspension, resumable without
   suspension, event after terminal, dangling readback, or cross-segment
@@ -518,7 +628,9 @@ minimum history-preserving sequence is:
 5. Commit claim-only recovery evidence. Commit one permanent product RED that
    adds the exact producer and Task136 negative tests before source GREEN.
    Apply only the 10 product source files required by those tests. The final
-   Task136 product candidate has exactly the 24-path card scope above.
+   Task136 product candidate has exactly the 24-path card scope above. The RED
+   must exercise `createResidentBoundedAgentLoopFactory` with the real mounted
+   fixture and must not add a default runtime or route call site.
 6. Run the exact 13-test card command, the original focused and cross-boundary
    Task136/Task120/execution-loop/portable-workspace/Task138 suites, standalone
    typecheck, factory readiness, assurance 20/20, all contract markers,
@@ -561,6 +673,9 @@ The correction is complete only when all of the following hold:
 - focused, cross-boundary, typecheck, factory, V4, marker, repository, diff,
   scope, ancestry, dependency, clean-state, and full-verification differential
   evidence is fresh from committed bytes;
+- the concrete record-29 composition entrypoint executes against the real
+  mounted fixture, while the repository contains no claimed or accidental
+  default runtime/route activation;
 - the exact assurance and product candidates each receive their required fresh
   independent architecture/executability approvals;
 - Task138-H and the browser DTO are byte-identical to strict release 28;
