@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** explicit URI-scheme token-boundary GREEN checkpoint
+- **Status:** explicit-token candidate awaiting fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -800,3 +800,37 @@ and fallback writes are prohibited.
   integration, strict record 28, or release action occurs. Coordinator-owned
   V4, repository, full-differential, admission, and fresh review gates remain
   pending.
+
+## Explicit-Token Clean Admission
+
+- Atomic GREEN checkpoint
+  `d2b73dc7314ed4ca73e827e86c867e2057e38ed0` descends without rewrite from
+  causal RED `4a47ca4b1d5dcdf3d83fc5510a29a3ee34454bd0`, exact authority merge
+  `549cf45e95a713fee3dcd3b271d4a21a46ad7f72`, and rejected candidate
+  `9adc07c1ce695bd144755b27ae26384e46bc513f`. Every prior authority,
+  candidate, RED/GREEN commit, and review verdict remains in ancestry.
+- Fresh coordinator validation passes the exact focused suite **83/83**, exact
+  cross-boundary suite **119/119**, standalone typecheck, factory readiness,
+  and diff hygiene. V4 standalone assurance passes **20/20** and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is strict-prefix success at the unfinished frontier.
+- Fresh serial full-verification differential runs reproduce the exact same
+  inherited cohort on candidate and clean `neo`: **10 failing files / 48
+  failing tests / 5 skips**. The candidate has **2,943 passes** versus
+  `neo`'s **2,877**; the exact **66-pass** increase is the expanded Task138-H
+  focused suite, and neither owned source nor test appears in the failure set.
+- Exact cumulative scope is the frozen three Task138-H paths. Dependencies are
+  real and local: Node `v26.1.0`, Vitest `4.1.9`, neither `node_modules` nor
+  `node_modules/vitest` is a symlink, and the V4 contract SHA-256 equals its
+  mission pin. Scope, ancestry, dependency, and clean-state checks pass before
+  this claim-only admission transition.
+- This admission is not approval, integration, strict record 28, or release.
+  Strict frontier remains **27 of 29**. Only a completely fresh independent
+  architecture/executability review pair may approve the exact admitted
+  candidate; every reviewer of `b6786361` and `9adc07c1` is excluded from
+  changed-byte approval.
