@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing compositional URL and Windows-root repair
+- **Status:** compositional URL and Windows-root GREEN checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1048,3 +1048,43 @@ and fallback writes are prohibited.
   V4, contract, shared source, package metadata, provider, credential, network,
   external system, fallback write, admission, review, integration, strict
   record 28, or release action participates.
+
+## Compositional URL And Windows-Root Minimal GREEN
+
+- Permanent causal RED commit
+  `80d004eb116cde2c72c751ef86aaf4afe344d6a7` retains exactly the **9**
+  causal failures and all **207** passing cases without changing production
+  source or weakening any test.
+- GREEN changes only `containsAbsolutePath`. The same-token scheme scan now
+  inspects every relevant scheme occurrence, so a leading HTTP(S) scheme can no
+  longer mask a later non-HTTP outer scheme carrying an HTTP-like absolute
+  doubled-slash payload. Native-path checks exclude only the suffix of a
+  safely delimited HTTP(S) occurrence that parses as a complete HTTP(S) URL;
+  this preserves safe path punctuation and inner HTTP(S) URLs in outer URL
+  path, query, and fragment positions without exempting slash/backslash
+  pseudo-prefixes.
+- A bounded single-backslash-root branch closes rooted Windows paths without
+  treating relative `a\b` text as absolute. The UNC branch now accepts a
+  host-only root, an optional trailing separator, or the already covered
+  host/share form. Drive, POSIX, doubled-slash, explicit `file://`, and
+  generalized boundary behavior remain in the same final predicate.
+- The first focused GREEN attempt passes **1 file / 216 tests** without any
+  post-RED test change. The exact cross-boundary command passes **2 files / 252
+  tests**. Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Rejected candidate `df461e730557bbdbd92d4079ed6f4f0628282c8b`, program
+  authority `6e4b2089c6b3818282c658745b1d24c2221ae1ea`, authority merge
+  `f03e446426d5f68f0e65cac344170a603da398f8`, and permanent causal RED
+  `80d004eb116cde2c72c751ef86aaf4afe344d6a7` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  `node_modules` nor `node_modules/vitest` a symlink. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle,
+  provenance, replay, mounted-read, diagnostic, registry, V4, contract,
+  shared source, package metadata, provider, credential, network, external
+  system, fallback write, admission, review, integration, strict record 28,
+  or release action changes. Coordinator-owned admission and fresh-review
+  gates remain pending.
