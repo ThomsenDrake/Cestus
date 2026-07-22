@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** compositional path-boundary candidate awaiting fresh dual review
+- **Status:** outer-URL punctuation and mixed-home repair complete; awaiting coordinator admission
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1538,4 +1538,76 @@ and fallback writes are prohibited.
   resulting exact commit for one wholly fresh architecture/executability
   review pair. No reviewer of any earlier candidate may approve these changed
   bytes. This is not approval, integration, strict record 28, or release;
+  strict frontier remains **27 of 29**.
+
+## Outer-URL Punctuation And Mixed-Home Causal RED
+
+- `RV-1-E-922` authorizes this bounded repair from exact clean authority merge
+  `d0a15fa8b6e5bcfef8cf6b732824fbde4fce3e39`, whose parents are rejected and
+  immutable candidate `5d9b6e631a9ca15e386fed2425b60d66305cd5cb` and current
+  program authority `756d82f10946f26eee946441afbc5715e399eb0e`. Rejected
+  predecessor `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee` and every prior
+  candidate, RED/GREEN pair, review verdict, authority, and registry event
+  remain intact.
+- The public-DTO matrix adds **34** canonical cases: **14** unsafe outer
+  HTTP(S) values and **20** safe controls. The unsafe cases cross path, query,
+  and fragment positions; punctuation `=`, `:`, `[`, `,`, `(`, `;`, and `|`;
+  native POSIX, drive, rooted-Windows, backslash-UNC, and forward-UNC roots;
+  and slash, drive, rooted-Windows, and UNC `file:` payloads. The safe cases
+  include eight exact POSIX/Windows mixed-home chains and twelve matching
+  complete/nested HTTP(S), structural-pathname, ordinary-punctuation,
+  drive-relative, and general relative controls.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 14 failed / 304 passed / 318 total**.
+  Exactly **6** punctuation/file outer-URL cases remain open and exactly **8**
+  mixed-home relative cases close incorrectly. All prior **284** focused
+  cases, eight new already-correct unsafe controls, and twelve new safe
+  controls remain green.
+- Permanent causal RED commit
+  `e585adb923db8ff3c1a13b616d943bf4810970fb` changes only the focused public
+  DTO test. Every row uses parser-valid canonical material and manifest
+  fixtures, exact role-bound mounted hash routing, zero writes, whole-DTO
+  closure, no unsafe partial output, and only `effect: "none"` actions.
+  Production source is unchanged in RED.
+
+## Outer-URL Punctuation And Mixed-Home Minimal GREEN
+
+- Atomic source-only GREEN commit
+  `842174d484d27e2a156feefbf7fdd133c8770ec7` descends directly from the
+  permanent RED without changing or weakening any post-RED test. Its only
+  production edit is confined to `containsAbsolutePath`.
+- The final native-root predicates are factored into one local helper. Before
+  excluding a complete outer HTTP(S) token, the predicate examines only its
+  raw content after the scheme and authority, without decoding. Nested HTTP(S)
+  authority separators are masked, and only candidates immediately following
+  the authorized query, fragment, or punctuation boundaries are checked with
+  the shared native semantics. Scheme delimiters, authority separators,
+  ordinary pathname separators, nested HTTP(S), and ordinary punctuation
+  therefore remain non-native while every native and `file:` root family
+  closes.
+- Leading relative normalization extends its repeated-segment alternation from
+  dot/dot-dot alone to dot, dot-dot, or home. Mixed `~/~/`, `~/./~/`, `./~/`,
+  and `../~/` chains under both separator families are normalized as complete
+  relative prefixes before the unchanged absolute-root decision.
+- From the clean GREEN commit, the exact focused command passes **1 file / 318
+  tests** and the exact cross-boundary command passes **2 files / 354 tests**.
+  Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and both commit-range and
+  worktree `git diff --check` emit no diagnostic.
+- Rejected candidates `5d9b6e631a9ca15e386fed2425b60d66305cd5cb` and
+  `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee`, current program authority
+  `756d82f10946f26eee946441afbc5715e399eb0e`, and exact authority merge
+  `d0a15fa8b6e5bcfef8cf6b732824fbde4fce3e39` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. Implementation scope before this claim-only
+  evidence update is exactly the frozen source and test paths; cumulative
+  scope after it is exactly the frozen source, test, and claim paths.
+- Both mounted stores remain read-only and all next actions retain
+  `effect: "none"`. No sanitizer, decoding, parser/schema, per-field
+  predicate, lifecycle, provenance, replay, mounted-read, diagnostic,
+  registry, contract, V4, shared source, package metadata, provider,
+  credential, network, external system, fallback write, admission, review,
+  merge, push, integration, strict record 28, or release action changes.
+  Coordinator-owned admission and wholly fresh dual review remain pending;
   strict frontier remains **27 of 29**.
