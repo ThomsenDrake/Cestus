@@ -638,3 +638,23 @@ Implementation evidence:
   registry, contract, checker, raw record, product/package byte, release
   authority, network, provider, credential, external system, push, `neo`, or
   Task136 implementation is authorized.
+
+## RV-1-E-926 record-28 minimal GREEN evidence
+
+- The three live registry-prefix groups now require exactly `28` records and
+  `expectedIds.slice(0, 28)`. The first group's coupled repository admission
+  expects only incomplete closure `found 28`, the exact
+  `TASK136_REPOSITORY_PREFIX_OK records=28 commands=28` marker, and `28`
+  command calls.
+- The historical W1 activation corpus remains byte-identical: its local
+  `.slice(0, 26)`, length/order expectations at `26`, and synthetic record-27
+  activation are unchanged. No registry, V1-V4 contract, checker, raw strict
+  release record, product/package byte, integration/review evidence, release
+  semantics, command card, or other test behavior changed.
+- From intended GREEN bytes, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed. Final
+  committed-byte admission will rerun assurance, all four contract markers,
+  repository strict 28/28 plus only incomplete-29 closure, standalone
+  typecheck, factory, diff/scope/ancestry/dependency/clean, and no-product-byte
+  gates.
