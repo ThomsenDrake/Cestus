@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** explicit-token candidate awaiting fresh dual review
+- **Status:** implementing generalized punctuation and outer-scheme repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -834,3 +834,40 @@ and fallback writes are prohibited.
   architecture/executability review pair may approve the exact admitted
   candidate; every reviewer of `b6786361` and `9adc07c1` is excluded from
   changed-byte approval.
+
+## Generalized Boundary And Outer-Scheme Causal RED
+
+- `RV-1-E-910` authorizes this bounded repair from exact clean authority merge
+  `b62074e924006d3d5705f797f15b4db6704e8b7a`, whose parents are rejected
+  candidate `fbaec143263920f965322cbb973950a38a0f3713` and current program
+  authority `2eb5502868d55e1093d25296d3f5f733b61fd581`. Every prior authority,
+  candidate, review verdict, RED/GREEN commit, and registry correction remains
+  intact.
+- The causal matrix crosses all **12** omitted punctuation delimiters `)`, `{`,
+  `}`, `<`, `>`, `;`, `]`, `!`, `?`, `|`, backtick, and `~` with all **5**
+  required absolute-path representatives: single-slash Unix, Windows-drive,
+  backslash UNC, doubled-slash POSIX, and forward-slash UNC. All **60** rows
+  prove absoluteness through Node's matching `posix` or `win32` path owner and
+  require whole-DTO closure.
+- A second matrix adds mixed-case HTTP and HTTPS controls after every new
+  punctuation delimiter for **24** cases. Each proves the URL substring's
+  exact HTTP(S) protocol through Node's URL owner and requires the canonical
+  DTO to remain open. Six further canonical cases cross `urn:`, `mailto:`, and
+  arbitrary `x:` outer schemes with doubled-slash POSIX and forward-slash UNC
+  suffixes, proving a non-HTTP(S) parsed outer protocol, an absolute retained
+  suffix, and required whole-DTO closure.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 90 failed / 83 passed / 173 total**. Exactly
+  the **60** generalized native-path and **6** nested outer-scheme rows return
+  `task-completed` instead of `inconsistent`; exactly the **24** genuine
+  HTTP(S) controls return `inconsistent` instead of `task-completed`. All prior
+  **83** tests remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  mounted material and manifest fixtures, exact role-bound reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  explicit `file://`, ordinary punctuation/ratio/relative-slash, lifecycle,
+  provenance, replay, diagnostic, no-effect, and whole-DTO assertions remain
+  intact. No registry, V4, contract, shared source, provider, credential,
+  network, external system, fallback write, admission, review, integration,
+  strict record 28, or release action participates.
