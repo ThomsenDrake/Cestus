@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** paused at bounded candidate checkpoint
+- **Status:** final outer-URL path candidate awaiting fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -61,8 +61,9 @@ synthesizing it; the frozen acceptance permits this fail-closed omission.
 
 ## Execution Authority And Gates
 
-`RV-1-E-889` and the coordinator explicitly authorize task-scoped
-subagent-driven development and test-driven development for this card. Required
+`RV-1-E-889` and the coordinator authorize this bounded implementation.
+Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+Required
 lineage is claim-only, permanent causal RED, then minimal GREEN. The exact
 focused command is:
 
@@ -92,10 +93,14 @@ and fallback writes are prohibited.
   file's production import (line 18), proving the Task138 adapter is absent;
   no test syntax, fixture, dependency, provider, credential, or unrelated
   failure was reported.
-- GREEN: not yet admitted or claimed. The bounded candidate passed the exact
-  focused suite **17/17** and exact cross-boundary suite **53/53** after one
-  source repair. It remains subject to a fresh uninterrupted typecheck,
-  factory, verify, assurance/frontier, review, integration, and release gate.
+- GREEN: admitted on the exact published `neo` tree after the bounded candidate
+  again passed the exact focused suite **17/17** and exact cross-boundary suite
+  **53/53**. Fresh uninterrupted typecheck and factory readiness passed. The
+  standalone V4 assurance corpus passed **20/20**, contract mode emitted all
+  four exact markers, and repository mode executed the strict **27 commands / 27
+  records** prefix before the expected `expected 29 records, found 27` closure.
+  The candidate now awaits fresh architecture and executable review; it is not
+  approved, integrated as record 28, or released.
 
 ## Usage-Pause Checkpoint
 
@@ -131,3 +136,1514 @@ and fallback writes are prohibited.
   files / 47 failing tests / 2,878 passes / 5 skips**. Neither Task138-H test
   nor its source is in the failure cohort. V4 standalone assurance passed
   **20/20** and contract mode emitted all four exact markers.
+
+## Resume Candidate Admission
+
+- The user explicitly resumed the program after the graceful usage pause. The
+  program and Task138-H worktrees were clean and fast-forwarded without rewrite
+  to published authority `adda53377f8e363979fc68dbc3d268759a67e404`.
+- The three Task138-H owned blobs at historical implementation checkpoint
+  `16eb076a62bdf8c1e361d19b61ddc5339fce2afe` exactly match the published
+  authority tree. The task branch and clean `neo` therefore have the same
+  candidate product bytes before this claim-only admission update.
+- Fresh admission evidence on those bytes is **17/17** focused, **53/53**
+  cross-boundary, `typecheck passed`, `factory-readiness passed`, V4 assurance
+  **20/20**, all four contract markers, and repository prefix marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27` followed only by the
+  expected 29-record closure.
+- Fresh `npm run verify` completed typecheck and reproduced the inherited
+  aggregate cohort as **10 failing files / 48 failing tests / 2,877 passes / 5
+  skips**. Task138-H is absent from every failing file. Because the task branch
+  and `neo` shared exact tree `adda5337` for this run, the aggregate result is
+  an inherited clean-tree result rather than a Task138-H differential.
+- Scope is exactly the frozen three owned paths; dependencies are real and
+  local (`node` 26.1.0, Vitest 4.1.9), the worktree had no tracked or untracked
+  residue before this claim-only transition, and no provider, credential,
+  external system, fallback write, destructive history action, or product
+  release record was used.
+
+## Fresh Review Repair
+
+- `RV-1-E-893` returns Task138-H to `implementing` after both fresh reviewers
+  rejected candidate `c6e508b10fad9f949e616687e7159b2fbd8a9c64` on three
+  bounded defects: hostile pre-normalization identity/trap handling,
+  terminal-only lifecycle classification, and discarded safe diagnostic
+  evidence.
+- This repair starts from exact clean base
+  `aea32bf7bc957bd15c5f50981700ea8b4199362e`, retains the frozen three-path
+  scope, and first adds causal coverage without changing production source.
+  The tests require a fixed fallback identity for invalid top-level input,
+  containment of descriptor/prototype Proxy traps, exact ready/failed
+  terminal-only `terminal-consistent` mapping, and safe event-ID/SHA-256
+  diagnostic evidence filtering without raw messages or unsafe values.
+- Causal RED command:
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`.
+  It exited `1` with **1 failed file / 7 failed / 17 passed**. The two exact
+  ready/failed terminal-only cases returned `handoff-recorded`; invalid input
+  retained hostile top-level `runId`; descriptor and prototype Proxy traps
+  escaped from `inferTargetIdentityWithoutObservation`; and both safe
+  diagnostic-evidence cases received empty event/hash arrays. No pre-existing
+  test failed, no production source changed, and no provider, credential,
+  external system, fallback write, or unrelated verifier participated.
+- Minimal GREEN replaces pre-normalization fallback observation with one fixed
+  safe identity, classifies exactly one compatible ready/failed terminal link
+  only after the released projector has accepted ordering, status, causation,
+  and output hashes, and filters released diagnostic evidence to exact
+  `evt_...` IDs and lowercase SHA-256 hashes without copying its message.
+  Existing next actions remain `effect: "none"`; no parser, writer, provider,
+  registry, path, fallback, witness, or approval-consumption capability was
+  added.
+- Intended GREEN bytes pass the focused command with **1 file / 24 tests** and
+  the cross-boundary command with **2 files / 60 tests**. Standalone
+  `npm run typecheck` exits `0` with `typecheck passed`; `npm run
+  factory:check` exits `0` with `factory-readiness passed`; and `git diff
+  --check` emits no error. V4 standalone assurance passes **20/20**, while
+  contract mode emits all four exact release-graph, composition-corpus,
+  command-card, and ABI-corpus markers.
+- Repository mode was invoked before GREEN commit and refused only with
+  `repository checkout is dirty`, as its clean-checkout gate requires. Per the
+  coordinator's explicit verifier-order direction, the atomic GREEN commit is
+  followed by clean-checkout repository mode and one claim-only admission
+  commit recording its exact result. This repair is not approval, product
+  integration, strict record 28, or release; the frontier remains **27 of
+  29**.
+
+## Clean Repair Candidate Admission
+
+- Atomic GREEN commit
+  `3bcefb8d5ef8c04b93536cc63c03ad8bb000ba58` contains only the minimal
+  production repair and this claim update over causal RED commit
+  `1a4bb7f6222f3fffd66ed6dfb78f9fd95b3832bc`; the causal test changes remain
+  in the RED parent rather than being weakened or rewritten.
+- From the clean GREEN checkout, exact repository command
+  `node scripts/resident-agent/assurance/task136-bounded-assurance.mjs --mode
+  repository` executes all **27 released commands**, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exits `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the required strict-prefix success and expected unfinished
+  frontier closure; Task138-H remains unreleased record 28.
+- Candidate dependencies are real and local: Node `v26.1.0`, Vitest `4.1.9`,
+  and neither `node_modules` nor `node_modules/vitest` is a symlink. The exact
+  repair-base diff contains only the three frozen Task138-H paths, diff hygiene
+  passes, and the worktree was clean before this claim-only admission update.
+  Full `npm run verify` was not run for this repair, so no aggregate cohort is
+  newly claimed or inferred.
+
+## Second Fresh Review Causal RED
+
+- `RV-1-E-895` returns Task138-H to `implementing` and authorizes a second
+  causal RED before any production repair. Production source remains unchanged.
+- The owned focused test now covers all four review defects: matching started
+  `runId`/optional `taskId` values that fail `isAgentSecretSafeText`; normalized
+  plain-own events whose payload, context, or type fails the released
+  `validateKnowledgeEvent`; syntax-valid but secret-unsafe diagnostic event IDs;
+  and exact recorded retries whose terminal remains causally bound to the
+  released projector's authoritative first recorded event.
+- Exact command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  reports **1 failed file / 8 failed / 24 passed**. The identity cases return
+  `no-output`; malformed payload escapes as a raw `TypeError` while malformed
+  context/type return `no-output`; the unsafe diagnostic ID is retained; and
+  both ready/failed exact-retry terminal cases return `handoff-recorded`.
+  Every pre-existing focused test remains green, so the RED is confined to the
+  four missing `RV-1-E-895` behaviors. No store write/read fallback, provider,
+  credential, network, external system, or production-source edit participates.
+
+## Second Review Minimal GREEN
+
+- The repair addresses four bounded root causes: matching run/task identities
+  were emitted without the released secret-safety predicate; malformed event
+  envelopes could reach deeper interpretation or escape the public boundary;
+  syntax-valid diagnostic IDs were not secret-filtered; and exact recorded
+  retries could displace the authoritative recorded event used for terminal
+  causation.
+- The minimal implementation checks normalized event envelopes before any
+  mounted I/O using exact own-type membership in the released `eventContracts`
+  plus non-array object `payload` and `context` fields. It contains all deeper
+  asynchronous interpretation at the public fail-closed boundary, applies
+  `isAgentSecretSafeText` to matching run/task identities and diagnostic event
+  IDs, and derives the selected recorded event ID from the released projection
+  history before exact-event lookup and terminal classification.
+- The adapter does not add a full payload parser, duplicate released payload
+  schema validation, authority, executable effect, writer, fallback, provider,
+  credential, registry, path, witness, or approval-consumption capability.
+- Exact focused validation passes **1 file / 32 tests** and exact cross-boundary
+  validation passes **2 files / 68 tests**. Standalone `npm run typecheck`
+  passes, `npm run factory:check` passes, V4 standalone assurance passes
+  **20/20**, and contract mode emits the exact four release-graph,
+  composition-corpus, command-card, and ABI-corpus markers.
+- Full `npm run verify` exits `1` only with the inherited aggregate cohort:
+  **10 failing files / 48 failing tests / 2,892 passes / 5 skips**. Neither
+  Task138 owned source nor test is involved. Dependencies are local and real:
+  Node `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink.
+- Repository mode remains pending until this atomic GREEN commit provides the
+  required clean checkout. This is not approval, strict record 28, integration,
+  or release; the unfinished program frontier remains **27 of 29**.
+
+## Second Repair Clean Admission
+
+- Atomic GREEN commit
+  `e46c1a808ebe600dd974840cf8075656b156fe7e` descends from causal RED commit
+  `d373a4d0cca3e8cfeb2862b4d32b5558d9c565b3` without rewrite. The exact
+  repair-base-to-candidate scope is the three frozen Task138 owned paths, and
+  the checkout was clean before the clean-only repository verifier ran.
+- Clean repository mode executed all **27 released commands**, emitted exact
+  marker `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exited
+  `1` only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the expected strict-prefix success at the unfinished
+  frontier rather than a candidate failure.
+- Ancestry and exact scope checks pass. Dependencies remain real and local:
+  Node `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink. The admitted candidate does not add a
+  provider, credential, network, external-system, fallback-write, destructive
+  history, or release action.
+- This clean admission is not approval, integration, strict record 28, or
+  release. The program frontier remains **27 of 29**.
+
+## Exact Parser Causal RED
+
+- `RV-1-E-897` returns Task138-H to `implementing` from exact clean
+  forward-merged base `c70ec3fa1046ac2585d88efc82833b007b29c6ea` and
+  authorizes a third bounded repair without changing production source first.
+- The focused test now proves that a matching started event with path-bearing
+  `runId` and `taskId` values can pass the existing secret-safe predicate while
+  failing released `validateKnowledgeEvent`, and that an incomplete completed
+  terminal without required `completedAt` can fail the released parser while
+  retaining every field the permissive lifecycle logic consumes. Both cases
+  require fixed safe `dto-invalid` output before either mounted store read and
+  forbid path or raw-value retention.
+- Exact causal command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 2 failed / 32 passed**. The invalid started
+  event returns `no-output` with its rejected identity, while the incomplete
+  terminal returns `terminal-consistent`; every prior focused assertion remains
+  green. No production source, ontology/schema, registry, provider, credential,
+  external system, fallback write, or unrelated verifier participates.
+
+## Exact Parser Minimal GREEN
+
+- The repair replaces the permissive local event-envelope assertion with the
+  released `validateKnowledgeEvent` parser over each descriptor-copied event
+  before identity selection, mounted-reader capture, or store I/O. It consumes
+  only successful canonical parser data and maps any parse failure to the fixed
+  safe `dto-invalid` result without filtering parser issues or adding a local,
+  fallback, or permissive schema.
+- Task-owned intended-valid fixtures now use the released 64-hex orchestration
+  `attemptId`; a permanent parser guard covers every ready, waiting, blocked,
+  failed, and legacy lifecycle event. Existing secret-boundary tests use
+  parser-valid IDs that remain unsafe to the stronger DTO secret predicate.
+  Hostile diagnostic coverage separately proves schema-invalid material is
+  rejected before store I/O and that a schema-valid terminal conflict retains
+  only safe related event and content-hash evidence.
+- Exact focused validation passes **1 file / 35 tests** and exact cross-boundary
+  validation passes **2 files / 71 tests**. Standalone `npm run typecheck`
+  emits `typecheck passed`; `npm run factory:check` emits
+  `factory-readiness passed`; V4 assurance passes **20/20**; and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers. Diff hygiene passes.
+- Full `npm run verify` completes typecheck and reproduces only the inherited
+  aggregate cohort: **10 failing files / 48 failing tests / 2,895 passes / 5
+  skips**. Neither Task138-H source nor test is in the failing cohort; the three
+  additional passes over the prior candidate are exactly the new canonical
+  fixture guard and two parser-rejection tests.
+- Repository mode remains pending until this atomic GREEN commit provides its
+  required clean checkout. This repair adds no ontology/schema, event filter,
+  writer, provider, credential, registry, path, fallback, witness, executable
+  effect, approval consumption, integration, strict record 28, or release.
+
+## Exact Parser Clean Admission
+
+- Atomic GREEN commit
+  `7c49d0d7af1f87c7451444d76826418c6d13dc4f` descends without rewrite from
+  causal RED commit `ba406d57102c110599a401faa0b5479b72745bdc`
+  and exact forward-merged repair base
+  `c70ec3fa1046ac2585d88efc82833b007b29c6ea`.
+- From the clean GREEN checkout, repository mode executed every one of the
+  **27 released commands**, emitted exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exited `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the required strict-prefix success at the unfinished
+  frontier; Task138-H remains unreleased record 28.
+- Exact repair-base scope contains only the three frozen Task138-H paths;
+  ancestry and diff hygiene pass. Dependencies are real and local: Node
+  `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink. The checkout was clean before repository
+  mode and before this claim-only admission update.
+- This admission adds no provider, credential, network, external system,
+  fallback write, destructive history action, registry mutation, integration,
+  approval, strict record 28, or release. The frontier remains **27 of 29**.
+
+## Provenance Event-ID Causal RED
+
+- `RV-1-E-899` returns Task138-H to `implementing` from exact clean
+  forward-merged base `7283b79952790f1d0507c1490150d5b122a29dbe` and
+  authorizes a fourth bounded repair without changing production source first.
+- One table now covers all five browser provenance event-ID fields:
+  `finalOutputEventId`, `preparedEventId`, `recordedEventId`,
+  `terminalRunEventId`, and `taskStatusEventId`. Every row builds a complete
+  seven-event V2 ready-for-review chain, propagates its syntax-valid but
+  `isAgentSecretSafeText`-unsafe event ID through every manifest, payload, and
+  causation binding, and proves all seven events pass `validateKnowledgeEvent`.
+  The required result closes the whole DTO with no provenance, artifacts,
+  source/related IDs, approvals, unsafe ID retention, writes, or executable
+  actions; mounted reads remain permitted.
+- Exact causal command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 5 failed / 35 passed**. All five rows return
+  `task-completed` instead of `inconsistent`, proving each unsafe event ID is
+  copied into otherwise valid browser provenance. Every prior focused test
+  remains green, production source is unchanged, and no registry,
+  ontology/schema/parser, provider, credential, external system, fallback
+  write, or unrelated verifier participates.
+
+## Provenance Event-ID Minimal GREEN
+
+- `provenanceFromReadback` now returns no provenance unless all five exact
+  event-ID bindings satisfy `isAgentSecretSafeText`. The existing caller closes
+  the entire DTO when a selected readback cannot emit provenance and now
+  distinguishes a same-authority unsafe binding as `secret-safety-rejection`
+  from a genuine authority mismatch as `mount-authority-stale`. No provenance
+  field is silently omitted or truncated.
+- The change leaves `finalOutputStepId`, hashes, released parsers and schemas,
+  source/related and diagnostic filters, lifecycle classification, replay
+  authority, mounted reads, and all existing assertions unchanged. Every
+  rejected result retains only safe run/task identity, empty replay data, and
+  an `effect: "none"` repair action; both stores remain read-only.
+- Exact focused validation passes **1 file / 40 tests** and exact cross-boundary
+  validation passes **2 files / 76 tests**. Standalone `npm run typecheck`
+  emits `typecheck passed`; `npm run factory:check` emits
+  `factory-readiness passed`; V4 assurance passes **20/20**; and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers. Diff hygiene passes.
+- Full `npm run verify` completes typecheck and reports only the inherited
+  aggregate cohort: **10 failing files / 47 failing tests / 2,901 passes / 5
+  skips**. Neither Task138-H source nor test fails. Relative to the prior
+  48-failure run, the five provenance rows account for five additional passes
+  and one unrelated prerequisite timeout did not reproduce.
+- Repository mode remains pending until this atomic GREEN commit provides its
+  required clean checkout. This repair adds no registry, ontology/schema,
+  parser, broad sanitizer, writer, provider, credential, external system,
+  fallback, executable effect, integration, strict record 28, or release.
+
+## Provenance Event-ID Clean Admission
+
+- Atomic GREEN commit
+  `dc7bd9a124a9d07895f963dbb783ed0229acd6bd` descends without rewrite from
+  causal RED commit `a2bbf0ff82a5a98eefa2f920e9a65a13da53dd3c`
+  and exact forward-merged repair base
+  `7283b79952790f1d0507c1490150d5b122a29dbe`.
+- From the clean GREEN checkout, repository mode executed every one of the
+  **27 released commands**, emitted exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exited `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the required strict-prefix success at the unfinished
+  frontier; Task138-H remains unreleased record 28.
+- Exact repair-base scope contains only the three frozen Task138-H paths;
+  ancestry and diff hygiene pass. Dependencies are real and local: Node
+  `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink. The checkout was clean before repository
+  mode and before this claim-only admission update.
+- This admission adds no registry, ontology/schema/parser, provider,
+  credential, network, external system, fallback write, destructive history,
+  integration, approval, strict record 28, or release. The frontier remains
+  **27 of 29**.
+
+## Final Browser-String Firewall Causal RED
+
+- `RV-1-E-901` returns Task138-H to `implementing` from exact clean
+  forward-merged base `e87cb4810ccc6866af336ac0902b7c7d0975f00a` and
+  authorizes this final bounded repair without changing production source
+  first. The pre-change focused baseline passes **1 file / 40 tests**.
+- One canonical seven-event task-completed chain now carries a parser-valid
+  `finalOutputStepId` that fails the stronger `isAgentSecretSafeText`
+  predicate. Six further canonical mounted chains carry path-bearing values in
+  the emitted handoff `safeSummary`, artifact `artifactId`, `artifactKind`,
+  `schemaId`, artifact `safeSummary`, and next-safe-action label. The path rows
+  span accepted absolute Unix, Windows-drive, and UNC forms. The existing
+  material owner rejects `file://` before projection, so no false
+  otherwise-accepted file-URI chain is claimed; the authorized output
+  predicate must nevertheless reject that form.
+- Every row requires whole-DTO `secret-safety-rejection`, no provenance,
+  artifacts, source/related IDs, approvals, unsafe-value retention, writes, or
+  executable action. Mounted reads remain permitted and prove the defect lies
+  after canonical readback rather than at input normalization or storage.
+- Exact causal command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 7 failed / 40 passed**. Every new row reaches
+  `task-completed` and fails only at the required closed lifecycle assertion,
+  proving the browser DTO retains the stronger-secret or path-bearing leaf
+  after a canonical readback. Production source remains unchanged.
+
+## Final Browser-String Firewall Minimal GREEN
+
+- `buildResidentHandoffDto` now applies one final recursive string-leaf
+  firewall to every DTO returned by the normalized internal projection. Each
+  emitted string must satisfy the existing `isAgentSecretSafeText` predicate
+  and must not contain an absolute Unix, Windows-drive, UNC, or `file://`
+  path. Any violation replaces the entire result with the fixed-safe
+  `closedDto(normalized.identity, "inconsistent",
+  "secret-safety-rejection")`; no value is sanitized, truncated, partially
+  emitted, or fed recursively through projection.
+- Exact focused validation passes **1 file / 47 tests** and exact
+  cross-boundary validation passes **2 files / 83 tests**. Standalone
+  `npm run typecheck` emits `typecheck passed`; `npm run factory:check` emits
+  `factory-readiness passed`; V4 assurance passes **20/20**; and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers. Diff hygiene passes.
+- Full `npm run verify` completes typecheck and reports only the inherited
+  aggregate cohort: **10 failing files / 47 failing tests / 2,908 passes / 5
+  skips**. Neither Task138-H source nor test fails. The seven-pass increase
+  from the prior 2,901-pass run is exactly the new browser-firewall coverage.
+- Existing per-field predicates, released parsers and schemas, hashes,
+  lifecycle classification, replay authority, evidence filters, assertions,
+  mounted reads, and fixed closed DTOs remain unchanged. Both mounted stores
+  remain read-only; no registry, ontology/schema/parser, provider, credential,
+  external-system, fallback-write, or executable-effect authority is added.
+
+## Final Browser-String Firewall Clean Admission
+
+- Atomic GREEN commit
+  `33be6a197efd0a74ac63286934d215780f019caa` descends without rewrite from
+  causal RED commit `ebaa23567a7e804816eae9ecce72edd5c4e4f670`
+  and exact forward-merged repair base
+  `e87cb4810ccc6866af336ac0902b7c7d0975f00a`.
+- From the clean GREEN checkout, repository mode executed every one of the
+  **27 released commands**, emitted exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exited `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is the required strict-prefix success at the unfinished
+  frontier; Task138-H remains unreleased record 28.
+- Exact repair-base scope contains only the three frozen Task138-H paths;
+  ancestry and diff hygiene pass. Dependencies are real and local: Node
+  `v26.1.0`, Vitest `4.1.9`, and neither `node_modules` nor
+  `node_modules/vitest` is a symlink. The checkout was clean before repository
+  mode and before this claim-only admission update.
+- This admission adds no registry, ontology/schema/parser, provider,
+  credential, network, external system, fallback write, destructive history,
+  integration, approval, strict record 28, or release. The frontier remains
+  **27 of 29**.
+
+## Punctuation-Boundary Causal RED
+
+- `RV-1-E-902` authorizes this bounded repair from exact authority merge
+  `9c1a20eb81bfe7e9d0cd68cc055f0985c6611111`, whose first parent is rejected
+  candidate `3824f9d071ae6ff4e948f7f045883e971df27435`. The complete prior lineage
+  remains intact and the initial worktree was clean.
+- One table crosses all **3** required native absolute-path families with all
+  **4** required punctuation boundaries, producing **12** causal cases. A
+  second table adds **3** passing controls for valid HTTP, valid HTTPS, and
+  mixed ordinary punctuation with non-absolute slash, colon, and backslash
+  text.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 12 failed / 50 passed / 62 total**. Exactly
+  the 12 path rows return `task-completed` instead of the required whole-DTO
+  `inconsistent` closure. All **47** prior tests and all **3** new safe controls
+  pass, so the failure is confined to the omitted punctuation boundary in the
+  final absolute-path predicate.
+- Production source is unchanged for RED. Mounted reads remain read-only, all
+  existing no-write and `effect: "none"` assertions remain intact, and no
+  registry, assurance, contract, parser, provider, credential, external
+  system, fallback write, integration, strict record 28, or release action
+  participates.
+
+## Punctuation-Boundary Minimal GREEN
+
+- Permanent causal RED commit `601b8e13` retains the **12** failing
+  path-family/punctuation rows and **3** passing controls without changing
+  production source. The GREEN child changes only `containsAbsolutePath` in
+  the final recursive browser-string firewall.
+- The three existing native-path patterns now recognize `=`, `:`, `[`, and
+  `,` as path-start boundaries in addition to their prior boundaries. The Unix
+  pattern excludes a doubled slash at that boundary so valid HTTP and HTTPS
+  scheme separators remain accepted; the existing explicit `file://`
+  rejection remains unchanged. No sanitizer, parser, schema, DTO field,
+  lifecycle, provenance, mounted-read, diagnostic, no-effect, or whole-DTO
+  closure logic changes.
+- The exact focused command passes **1 file / 62 tests**. The exact
+  cross-boundary command passes **2 files / 98 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `3824f9d0` and causal RED `601b8e13` remain ancestors.
+  The cumulative repair uses exactly the frozen Task138-H source, test, and
+  claim paths. Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no registry, assurance, contract, provider,
+  credential, external system, fallback write, integration, strict record 28,
+  or release action occurs. Coordinator-owned comprehensive V4, repository
+  prefix, full differential, admission, and fresh review gates remain pending.
+
+## Punctuation-Safe Clean Admission
+
+- Atomic GREEN commit
+  `96f1ac6cbfc1b78e0601d59fa5f2c9c561beb616` descends without rewrite from
+  causal RED commit `601b8e134cf453e6bdbeda3e8793204fb2aa0c6a`
+  and authority merge `9c1a20eb81bfe7e9d0cd68cc055f0985c6611111`.
+  Rejected candidate `3824f9d071ae6ff4e948f7f045883e971df27435`
+  remains an ancestor rather than being amended or reconstructed.
+- Fresh coordinator validation passes the exact focused suite **62/62**, exact
+  cross-boundary suite **98/98**, standalone typecheck, factory readiness, and
+  diff hygiene. V4 standalone assurance passes **20/20** and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exits `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is strict-prefix success at the unfinished frontier rather
+  than a candidate failure.
+- Serial full-verification differential runs reproduce the exact same inherited
+  cohort on candidate and clean `neo`: **10 failing files / 48 failing tests /
+  5 skips**. The candidate has **2,922 passes** versus `neo`'s **2,877**;
+  the exact **45-pass** increase is the expanded Task138-H focused suite, while
+  every failing file and test name is identical and excludes all three owned
+  paths.
+- Exact cumulative scope is the frozen three Task138-H paths. Dependencies are
+  real and local: Node `v26.1.0`, Vitest `4.1.9`, neither `node_modules` nor
+  `node_modules/vitest` is a symlink, and the V4 contract hash matches its
+  mission-pinned SHA-256. Scope, ancestry, dependency, and clean-state checks
+  pass before this claim-only admission transition.
+- This admission is not approval, integration, strict record 28, or release.
+  The frontier remains **27 of 29**, and only a completely fresh independent
+  architecture/executability review pair may approve the exact admitted
+  candidate.
+
+## Doubled-Slash Path Causal RED
+
+- `RV-1-E-904` authorizes this bounded repair from exact clean authority merge
+  `0ca7e5844b06e3dcbc7de5b1e1a2ef500a10172e`, whose parents are rejected
+  candidate `b67863610af72d9b9d6e9b2212ccd8454c1fa893` and program authority
+  `72dc9525d530c7bf1c0f46049728fd7d9a1bebb7`. The complete prior lineage
+  remains intact.
+- One table crosses doubled-slash POSIX and forward-slash UNC absolute forms
+  with all **4** required punctuation boundaries, producing **8** causal
+  cases. Each row first passes the corresponding Node `posix` or `win32`
+  absolute-path owner, then reaches the canonical mounted browser projection.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 8 failed / 62 passed / 70 total**. Exactly
+  the 8 new rows return `task-completed` instead of the required whole-DTO
+  `inconsistent` closure. All prior **62** tests pass, including the prior
+  12-row native punctuation matrix and safe HTTP, HTTPS, and ordinary
+  punctuation controls.
+- Production source is unchanged for RED. Explicit `file://` rejection,
+  mounted read-only behavior, no-write assertions, and `effect: "none"` remain
+  intact. No registry, assurance, contract, parser, provider, credential,
+  external system, fallback write, integration, strict record 28, or release
+  action participates.
+
+## Doubled-Slash Path Minimal GREEN
+
+- Permanent causal RED commit
+  `e4abe453761c298df098d8011e257b27fd4a8f7d` retains all **8** failing
+  doubled-slash rows and all **62** prior passing cases without changing
+  production source.
+- GREEN changes one line only in `containsAbsolutePath`: it removes the blanket
+  doubled-slash exemption and exempts a slash only when its consumed boundary
+  is preceded by an actual case-insensitive `http:` or `https:` scheme. The
+  existing punctuation boundaries, Windows-drive and backslash-UNC patterns,
+  and explicit `file://` rejection remain unchanged.
+- The exact focused command passes **1 file / 70 tests**. The exact
+  cross-boundary command passes **2 files / 106 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `b6786361`, authority merge `0ca7e584`, program authority
+  `72dc9525`, and causal RED `e4abe453` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  registry, assurance, contract, provider, credential, external system,
+  fallback write, integration, strict record 28, or release action occurs.
+  Coordinator-owned V4, repository, full-differential, admission, and fresh
+  review gates remain pending.
+
+## Actual HTTP-Scheme Boundary Causal RED
+
+- `RV-1-E-905` authorizes this bounded repair from exact clean authority merge
+  `61daa81b82145971192154a5837e5c8c0fa8765e`, whose parents are GREEN
+  checkpoint `681a7ac5a1bfca1513d40e41234981c29bdb6722` and program authority
+  `70b5b888b51eaaced8cc52d37123f4bfe47dfdf2`. The complete prior lineage
+  remains intact.
+- Two causal rows cover an embedded HTTP-like doubled-slash POSIX path and a
+  false HTTPS-like forward-slash UNC path. Each row proves the retained
+  `//...` substring absolute through the corresponding Node `posix` or
+  `win32` owner before reaching the canonical mounted browser projection.
+  Four passing controls cover mixed-case HTTP and HTTPS schemes at both string
+  and punctuation boundaries and prove their exact URL substrings with the
+  released Node URL parser.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 2 failed / 74 passed / 76 total**. Exactly
+  the two false/embedded-prefix rows return `task-completed` instead of the
+  required whole-DTO `inconsistent` closure. All prior **70** tests and all
+  four new actual-scheme controls pass.
+- Production source is unchanged for RED. Explicit `file://` rejection,
+  mounted read-only behavior, no-write assertions, and `effect: "none"` remain
+  intact. No registry, assurance, contract, parser, provider, credential,
+  external system, fallback write, integration, strict record 28, or release
+  action participates.
+
+## Actual HTTP-Scheme Boundary Minimal GREEN
+
+- Permanent causal RED commit
+  `f6148f58350d43cffd0b70516c03e9afffa9cd12` retains both false/embedded
+  prefix failures and all **74** passing prior/control cases without changing
+  production source.
+- GREEN changes one line only in `containsAbsolutePath`, adding a word-token
+  boundary to each existing case-insensitive `http:` and `https:` lookbehind.
+  Genuine schemes at string or punctuation boundaries remain exempt, while
+  `xHTTP:` and `_https:` suffixes no longer exempt their absolute `//...`
+  substring. Every other path branch and the explicit `file://` rejection are
+  unchanged.
+- The exact focused command passes **1 file / 76 tests**. The exact
+  cross-boundary command passes **2 files / 112 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- GREEN checkpoint `681a7ac5`, program authority `70b5b888`, authority merge
+  `61daa81b`, and causal RED `f6148f58` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  registry, assurance, contract, provider, credential, external system,
+  fallback write, integration, strict record 28, or release action occurs.
+  Coordinator-owned V4, repository, full-differential, admission, and fresh
+  review gates remain pending.
+
+## Actual-Scheme-Safe Clean Admission
+
+- Atomic GREEN checkpoint
+  `843ea52afb9f7c73b64209753229ddee559abfc5` descends without rewrite from
+  causal RED `f6148f58350d43cffd0b70516c03e9afffa9cd12`, exact authority merge
+  `61daa81b82145971192154a5837e5c8c0fa8765e`, and prior rejected candidate
+  `b67863610af72d9b9d6e9b2212ccd8454c1fa893`. Every earlier authority,
+  rejected candidate, RED/GREEN, and review verdict remains in ancestry.
+- Fresh coordinator validation passes the exact focused suite **76/76**, exact
+  cross-boundary suite **112/112**, standalone typecheck, factory readiness,
+  and diff hygiene. V4 standalone assurance passes **20/20** and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is the required strict-prefix success at the unfinished frontier.
+- Serial full-verification differential runs report candidate **10 failing
+  files / 47 failing tests / 2,937 passes / 5 skips** and clean `neo` **10
+  failing files / 48 failing tests / 2,877 passes / 5 skips**. The candidate
+  failure set is an exact strict subset of the baseline set and excludes all
+  Task138-H paths. The sole baseline-only prerequisite test passes **1/1** in
+  isolated runs on both trees, classifying its full-suite absence as inherited
+  timeout variance; the remaining **59** additional candidate tests are the
+  expanded Task138-H focused suite.
+- Cumulative repair scope is exactly the frozen three Task138-H paths.
+  Dependencies are real and local: Node `v26.1.0`, Vitest `4.1.9`, neither
+  `node_modules` nor `node_modules/vitest` is a symlink, and the V4 contract
+  hash equals its mission-pinned SHA-256. Scope, ancestry, dependency, and
+  clean-state checks pass before this claim-only admission transition.
+- This admission is not approval, integration, strict record 28, or release.
+  The frontier remains **27 of 29**. Only a completely fresh independent
+  architecture/executability review pair may approve the exact admitted
+  candidate; both reviewers of `b6786361` are excluded from changed-byte
+  approval.
+
+## Explicit URI-Scheme Token Causal RED
+
+- `RV-1-E-907` and corrective ratification `RV-1-E-908` authorize this bounded
+  repair from exact clean authority merge
+  `549cf45e95a713fee3dcd3b271d4a21a46ad7f72`, whose parents are rejected
+  candidate `9adc07c1ce695bd144755b27ae26384e46bc513f` and current program
+  authority `d513298d4d69803c31a934c1c52342e07efc6e95`. Every earlier authority,
+  candidate, review verdict, RED/GREEN commit, and admission remains intact.
+- Six causal rows cross valid non-HTTP schemes ending in `-http`, `.http`, and
+  `+https` with doubled-slash POSIX and forward-slash UNC representatives. A
+  seventh row covers a non-ASCII adjacent HTTP-like prefix. Every row proves
+  the retained `//...` suffix absolute through Node's matching `posix` or
+  `win32` owner. The six URL-valid rows also prove their parsed protocols are
+  exactly `x-http:`, `x.http:`, or `x+https:` and never HTTP(S); the non-ASCII
+  prefix is proven not to parse as a URL.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 7 failed / 76 passed / 83 total**. Exactly
+  the seven new rows return `task-completed` instead of the required whole-DTO
+  `inconsistent` closure. All prior **76** tests remain green, including the
+  genuine case-insensitive HTTP/HTTPS controls at string start and the already
+  authorized punctuation boundaries.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  mounted material and manifest fixtures, permits only exact role-bound reads,
+  forbids writes, requires no unsafe output retention, and preserves
+  `effect: "none"`. Explicit `file://`, ordinary punctuation, lifecycle,
+  provenance, replay, diagnostics, and whole-DTO closure assertions remain
+  intact. No registry, V4, contract, shared source, provider, credential,
+  network, external system, fallback write, admission, review, integration,
+  strict record 28, or release action participates.
+
+## Explicit URI-Scheme Token Minimal GREEN
+
+- Permanent causal RED commit
+  `4a47ca4b1d5dcdf3d83fc5510a29a3ee34454bd0` retains all **7** failures and
+  all **76** prior passing cases without changing production source.
+- GREEN changes one line only in `containsAbsolutePath`: the existing
+  case-insensitive HTTP and HTTPS negative lookbehinds now require their scheme
+  token to begin at string start or after the same explicit safe delimiter
+  class already owned by the native-path predicate. The generic JavaScript
+  word boundary is removed, so `-`, `.`, `+`, and non-ASCII adjacency cannot
+  manufacture an HTTP(S) exemption. Every other native-path branch and the
+  explicit `file://` rejection remain byte-for-byte unchanged.
+- The exact focused command passes **1 file / 83 tests**. The exact
+  cross-boundary command passes **2 files / 119 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `9adc07c1`, program authority `d513298d`, authority merge
+  `549cf45e`, and causal RED `4a47ca4b` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  registry, V4, contract, shared source, package metadata, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action occurs. Coordinator-owned
+  V4, repository, full-differential, admission, and fresh review gates remain
+  pending.
+
+## Explicit-Token Clean Admission
+
+- Atomic GREEN checkpoint
+  `d2b73dc7314ed4ca73e827e86c867e2057e38ed0` descends without rewrite from
+  causal RED `4a47ca4b1d5dcdf3d83fc5510a29a3ee34454bd0`, exact authority merge
+  `549cf45e95a713fee3dcd3b271d4a21a46ad7f72`, and rejected candidate
+  `9adc07c1ce695bd144755b27ae26384e46bc513f`. Every prior authority,
+  candidate, RED/GREEN commit, and review verdict remains in ancestry.
+- Fresh coordinator validation passes the exact focused suite **83/83**, exact
+  cross-boundary suite **119/119**, standalone typecheck, factory readiness,
+  and diff hygiene. V4 standalone assurance passes **20/20** and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is strict-prefix success at the unfinished frontier.
+- Fresh serial full-verification differential runs reproduce the exact same
+  inherited cohort on candidate and clean `neo`: **10 failing files / 48
+  failing tests / 5 skips**. The candidate has **2,943 passes** versus
+  `neo`'s **2,877**; the exact **66-pass** increase is the expanded Task138-H
+  focused suite, and neither owned source nor test appears in the failure set.
+- Exact cumulative scope is the frozen three Task138-H paths. Dependencies are
+  real and local: Node `v26.1.0`, Vitest `4.1.9`, neither `node_modules` nor
+  `node_modules/vitest` is a symlink, and the V4 contract SHA-256 equals its
+  mission pin. Scope, ancestry, dependency, and clean-state checks pass before
+  this claim-only admission transition.
+- This admission is not approval, integration, strict record 28, or release.
+  Strict frontier remains **27 of 29**. Only a completely fresh independent
+  architecture/executability review pair may approve the exact admitted
+  candidate; every reviewer of `b6786361` and `9adc07c1` is excluded from
+  changed-byte approval.
+
+## Generalized Boundary And Outer-Scheme Causal RED
+
+- `RV-1-E-910` authorizes this bounded repair from exact clean authority merge
+  `b62074e924006d3d5705f797f15b4db6704e8b7a`, whose parents are rejected
+  candidate `fbaec143263920f965322cbb973950a38a0f3713` and current program
+  authority `2eb5502868d55e1093d25296d3f5f733b61fd581`. Every prior authority,
+  candidate, review verdict, RED/GREEN commit, and registry correction remains
+  intact.
+- The causal matrix crosses all **12** omitted punctuation delimiters `)`, `{`,
+  `}`, `<`, `>`, `;`, `]`, `!`, `?`, `|`, backtick, and `~` with all **5**
+  required absolute-path representatives: single-slash Unix, Windows-drive,
+  backslash UNC, doubled-slash POSIX, and forward-slash UNC. All **60** rows
+  prove absoluteness through Node's matching `posix` or `win32` path owner and
+  require whole-DTO closure.
+- A second matrix adds mixed-case HTTP and HTTPS controls after every new
+  punctuation delimiter for **24** cases. Each proves the URL substring's
+  exact HTTP(S) protocol through Node's URL owner and requires the canonical
+  DTO to remain open. Six further canonical cases cross `urn:`, `mailto:`, and
+  arbitrary `x:` outer schemes with doubled-slash POSIX and forward-slash UNC
+  suffixes, proving a non-HTTP(S) parsed outer protocol, an absolute retained
+  suffix, and required whole-DTO closure.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 90 failed / 83 passed / 173 total**. Exactly
+  the **60** generalized native-path and **6** nested outer-scheme rows return
+  `task-completed` instead of `inconsistent`; exactly the **24** genuine
+  HTTP(S) controls return `inconsistent` instead of `task-completed`. All prior
+  **83** tests remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  mounted material and manifest fixtures, exact role-bound reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  explicit `file://`, ordinary punctuation/ratio/relative-slash, lifecycle,
+  provenance, replay, diagnostic, no-effect, and whole-DTO assertions remain
+  intact. No registry, V4, contract, shared source, provider, credential,
+  network, external system, fallback write, admission, review, integration,
+  strict record 28, or release action participates.
+
+## Generalized Boundary And Outer-Scheme Minimal GREEN
+
+- Permanent causal RED commit
+  `ab9084a6409da2788d53fd9aeb2434a37acd307d` retains all **90** failures and
+  all **83** prior passing cases without changing production source.
+- GREEN changes only the three native-path regex branches in
+  `containsAbsolutePath`. Native path starts now use a Unicode identifier-aware
+  boundary while excluding `/` and `\\` themselves from acting as the
+  preceding delimiter. The case-insensitive HTTP/HTTPS exemption starts only
+  at string start or after a non-identifier delimiter that is not `_`, `+`,
+  `.`, `-`, or `:`, so URI-scheme continuation and termination cannot
+  authorize nested HTTP-like text. The explicit `file://` branch is unchanged.
+- The first focused GREEN probe closed all **66** unsafe new rows but also
+  closed the **24** new and **6** prior genuine HTTP(S) controls, reporting
+  **30 failed / 143 passed / 173 total**. The cause was treating the first `/`
+  of a genuine URL as a fresh generalized delimiter for its second `/`.
+  Excluding both path separators from the preceding-delimiter class corrected
+  that same final-predicate boundary without altering tests or any other
+  production behavior.
+- The exact focused command then passes **1 file / 173 tests**. The exact
+  cross-boundary command passes **2 files / 209 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `fbaec143`, program authority `2eb55028`, authority merge
+  `b62074e9`, and causal RED `ab9084a6` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, diagnostic, registry, V4, contract, shared source, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action changes. Coordinator-owned
+  V4, repository, full-differential, admission, and fresh-review gates remain
+  pending.
+
+## Nested URI Payload And Separator Causal RED
+
+- `RV-1-E-911` authorizes this bounded repair from exact clean authority merge
+  `ca26cc89b34fa200cb339c2a23326d23372d814a`, whose parents are generalized
+  GREEN checkpoint `cc21728078df0d8abe76df7913b0bbdc48175acd` and current
+  program authority `cf2ac7729c43082890368f3ce02ff4e22c707ab6`. Every prior
+  authority, candidate, review verdict, RED/GREEN commit, and registry
+  correction remains intact.
+- Four causal rows cross slash-prefixed HTTP-like and backslash-prefixed
+  HTTPS-like text with doubled-slash POSIX and forward-slash UNC suffixes.
+  Each proves the prefix is not a parseable authorized URL token, proves the
+  suffix absolute through Node's matching path owner, and requires whole-DTO
+  closure.
+- Twenty-four further rows cross `urn:`, `mailto:`, and arbitrary `x:` outer
+  schemes with inner mixed-case HTTP(S) text after query `?`, fragment `#`,
+  assignment `=`, and path payload across both absolute suffix families. Each
+  proves its parsed outer protocol is not HTTP(S), proves suffix absoluteness,
+  and requires whole-DTO closure. Two matching controls prove genuine outer
+  mixed-case HTTP and HTTPS URLs remain open while their query safely carries
+  another HTTP(S) URL.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 28 failed / 175 passed / 203 total**.
+  Exactly the **4** separator-prefix and **24** non-HTTP outer-scheme rows
+  return `task-completed` instead of `inconsistent`. All prior **173** cases
+  and both new genuine outer-HTTP(S) controls remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  generalized punctuation, ordinary ratio/relative-slash, explicit `file://`,
+  lifecycle, provenance, replay, diagnostic, no-effect, and whole-DTO
+  assertions remain intact. No registry, V4, contract, shared source,
+  provider, credential, network, external system, fallback write, admission,
+  review, integration, strict record 28, or release action participates.
+
+## Nested URI Payload And Separator Minimal GREEN
+
+- Permanent causal RED commit
+  `136b7d23c079b0d1deae133cde96e95310093508` retains exactly the **28**
+  causal failures and all **175** passing cases without changing production
+  source.
+- GREEN changes only the final `containsAbsolutePath` predicate. Slash and
+  backslash no longer act as delimiters that can introduce an exempt HTTP(S)
+  token. A same-whitespace-token scan identifies the first URI scheme after
+  string start or a safe non-scheme delimiter and closes the DTO when that
+  outer scheme is not HTTP(S) but later text contains an inner HTTP(S)-like
+  doubled-slash payload. Genuine outer mixed-case HTTP(S) URLs remain open,
+  including the two new query-carried inner-URL controls.
+- The first standalone typecheck identified only an incomplete TypeScript
+  null narrowing for the regular-expression match after its optional capture
+  was inspected. An explicit null return preserves the same runtime predicate;
+  the focused suite remained **203/203**, and the repeated standalone
+  typecheck then emitted `typecheck passed`.
+- The exact focused command passes **1 file / 203 tests**. The exact
+  cross-boundary command passes **2 files / 239 tests**. `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Generalized GREEN checkpoint `cc21728078df0d8abe76df7913b0bbdc48175acd`,
+  program authority `cf2ac7729c43082890368f3ce02ff4e22c707ab6`, authority
+  merge `ca26cc89b34fa200cb339c2a23326d23372d814a`, and permanent causal RED
+  `136b7d23c079b0d1deae133cde96e95310093508` remain ancestors. The cumulative
+  repair uses exactly the frozen Task138-H source, test, and claim paths. Both
+  mounted stores remain read-only, all next actions retain `effect: "none"`,
+  and no sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, diagnostic, registry, V4, contract, shared source, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action changes. Coordinator-owned
+  V4, repository, full-differential, admission, and fresh-review gates remain
+  pending.
+
+## Nested-URI-Safe Clean Admission
+
+- Atomic GREEN checkpoint
+  `1f4a6e64bbe1b49adbe2d51582415ebf476f0718` descends without rewrite from
+  causal RED `136b7d23c079b0d1deae133cde96e95310093508`, exact authority merge
+  `ca26cc89b34fa200cb339c2a23326d23372d814a`, and generalized GREEN checkpoint
+  `cc21728078df0d8abe76df7913b0bbdc48175acd`. Every earlier authority,
+  rejected candidate, RED/GREEN commit, review verdict, and registry correction
+  remains in ancestry.
+- Fresh coordinator validation passes the exact focused suite **203/203**,
+  exact cross-boundary suite **239/239**, standalone typecheck, factory
+  readiness, and diff hygiene. V4 standalone assurance passes **20/20** and
+  contract mode emits all four exact release-graph, composition-corpus,
+  command-card, and ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is strict-prefix success at the unfinished frontier.
+- Fresh serial full-verification differential reports candidate **10 failing
+  files / 47 failing tests / 3,064 passes / 5 skips** and clean `neo` **10
+  failing files / 48 failing tests / 2,877 passes / 5 skips**. Candidate
+  failures are an exact strict subset and exclude all Task138-H paths. The sole
+  baseline-only prerequisite timeout passes **1/1** in isolated runs on both
+  trees, classifying the difference as inherited load variance; the remaining
+  **186** additional candidate tests are the expanded Task138-H focused suite.
+- Exact cumulative scope is the frozen three Task138-H paths. Dependencies are
+  real and local: Node `v26.1.0`, Vitest `4.1.9`, neither `node_modules` nor
+  `node_modules/vitest` is a symlink, and the V4 contract SHA-256 equals its
+  mission pin. Scope, ancestry, dependency, and clean-state checks pass before
+  this claim-only admission transition.
+- This admission is not approval, integration, strict record 28, or release.
+  Strict frontier remains **27 of 29**. Only a completely fresh independent
+  architecture/executability pair may approve the exact admitted candidate;
+  all reviewers of earlier candidates are excluded from changed-byte approval.
+
+## Compositional URL And Windows-Root Causal RED
+
+- `RV-1-E-913` authorizes this bounded repair from exact clean authority merge
+  `f03e446426d5f68f0e65cac344170a603da398f8`, whose parents are rejected
+  candidate `df461e730557bbdbd92d4079ed6f4f0628282c8b` and current program
+  authority `6e4b2089c6b3818282c658745b1d24c2221ae1ea`. Both fresh rejecting
+  verdicts, every prior authority, candidate, RED/GREEN commit, and registry
+  correction remain intact.
+- Two causal rows use the reviewers' exact pipe and query literals where a
+  leading genuine HTTP(S) URL and a later non-HTTP `urn:` outer URI occur in
+  one non-whitespace token. Each proves the leading protocol is HTTP(S), the
+  nested protocol is `urn:`, the retained doubled-slash POSIX suffix is
+  absolute, and the whole DTO must close.
+- Five Windows rows cover rooted single-backslash paths
+  `\Windows\System32\config` and `\root\private.json`, plus host-only UNC
+  roots `\\cestus-host`, `\\host`, and `\\host\`. Every literal is proven
+  absolute through Node's `win32` path owner and requires whole-DTO closure.
+- Four complete outer-HTTP(S) URL controls cover an inner HTTP(S) URL in path,
+  query, and fragment positions plus the reviewer's exact safe-punctuation
+  path. A whitespace-separated scheme-mask control remains closed, while an
+  ordinary punctuation, ratio, relative-slash, and relative-backslash control
+  remains open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 9 failed / 207 passed / 216 total**.
+  Exactly the **2** same-token masks and **5** Windows-root rows remain open,
+  while exactly the **2** valid outer-HTTPS path controls close incorrectly.
+  All prior **203** cases and the four other new controls remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  generalized punctuation, explicit `file://`, lifecycle, provenance, replay,
+  diagnostic, no-effect, and whole-DTO assertions remain intact. No registry,
+  V4, contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action participates.
+
+## Compositional URL And Windows-Root Minimal GREEN
+
+- Permanent causal RED commit
+  `80d004eb116cde2c72c751ef86aaf4afe344d6a7` retains exactly the **9**
+  causal failures and all **207** passing cases without changing production
+  source or weakening any test.
+- GREEN changes only `containsAbsolutePath`. The same-token scheme scan now
+  inspects every relevant scheme occurrence, so a leading HTTP(S) scheme can no
+  longer mask a later non-HTTP outer scheme carrying an HTTP-like absolute
+  doubled-slash payload. Native-path checks exclude only the suffix of a
+  safely delimited HTTP(S) occurrence that parses as a complete HTTP(S) URL;
+  this preserves safe path punctuation and inner HTTP(S) URLs in outer URL
+  path, query, and fragment positions without exempting slash/backslash
+  pseudo-prefixes.
+- A bounded single-backslash-root branch closes rooted Windows paths without
+  treating relative `a\b` text as absolute. The UNC branch now accepts a
+  host-only root, an optional trailing separator, or the already covered
+  host/share form. Drive, POSIX, doubled-slash, explicit `file://`, and
+  generalized boundary behavior remain in the same final predicate.
+- The first focused GREEN attempt passes **1 file / 216 tests** without any
+  post-RED test change. The exact cross-boundary command passes **2 files / 252
+  tests**. Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Rejected candidate `df461e730557bbdbd92d4079ed6f4f0628282c8b`, program
+  authority `6e4b2089c6b3818282c658745b1d24c2221ae1ea`, authority merge
+  `f03e446426d5f68f0e65cac344170a603da398f8`, and permanent causal RED
+  `80d004eb116cde2c72c751ef86aaf4afe344d6a7` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  `node_modules` nor `node_modules/vitest` a symlink. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle,
+  provenance, replay, mounted-read, diagnostic, registry, V4, contract,
+  shared source, package metadata, provider, credential, network, external
+  system, fallback write, admission, review, integration, strict record 28,
+  or release action changes. Coordinator-owned admission and fresh-review
+  gates remain pending.
+
+## Compositional Path Clean Admission
+
+- Atomic GREEN checkpoint
+  `14c8722bd91eac78bd6341fa0bb403c9c743f93d` descends without rewrite from
+  permanent causal RED `80d004eb116cde2c72c751ef86aaf4afe344d6a7`, exact
+  authority merge `f03e446426d5f68f0e65cac344170a603da398f8`, rejected
+  candidate `df461e730557bbdbd92d4079ed6f4f0628282c8b`, and all prior
+  Task138-H history.
+- Fresh coordinator validation passes the exact focused suite **216/216**,
+  exact cross-boundary suite **252/252**, standalone typecheck, factory
+  readiness, and diff hygiene. V4 standalone assurance passes **20/20** and
+  contract mode emits all four exact release-graph, composition-corpus,
+  command-card, and ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is strict-prefix success at the unfinished frontier.
+- Fresh serial full-verification differential reports candidate **10 failing
+  files / 48 failing tests / 3,076 passes / 5 skips** and clean `neo` **10
+  failing files / 48 failing tests / 2,877 passes / 5 skips**. The failure
+  files and test names are identical and exclude Task138-H; the exact
+  **199-pass** increase is the cumulative Task138-H focused-suite delta.
+- Exact implementation scope from authority merge to GREEN is the frozen
+  three Task138-H paths. Rejected candidate `df461e73`, authority
+  `6e4b2089`, authority merge `f03e4464`, RED `80d004eb`, and every earlier
+  authority, rejected candidate, review, RED/GREEN, and registry correction
+  remain ancestors. Dependencies are real and local at Node `v26.1.0` and
+  Vitest `4.1.9`; neither dependency directory is a symlink, the V4 contract
+  SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`,
+  and both candidate and `neo` remain clean.
+- This claim-only transition admits one exact candidate for a completely
+  fresh independent architecture/executability pair. It is not approval,
+  integration, strict record 28, or release. Strict frontier remains **27 of
+  29**; every reviewer of earlier candidate bytes is excluded from approval.
+
+## Non-HTTP Authority And Relative-Path Causal RED
+
+- `RV-1-E-915` authorizes this bounded repair from exact clean authority merge
+  `4a32c6991cb480588f6605ce66fc119612f01fe5`, whose parents are rejected
+  candidate `0b5eb36e4b5db9e5e36e1d8f6e1a8af59e16ca91` and current program
+  authority `1931a9afdb1ab07bb140580f0e56b47d90f8abd8`. Both fresh rejecting
+  verdicts, every prior authority, candidate, RED/GREEN commit, and registry
+  correction remain intact.
+- Six causal composition rows cross path, query, and fragment separators with
+  doubled-slash POSIX and forward-slash UNC representatives. They include all
+  three exact reviewer literals, prove the complete leading outer URL protocol
+  is HTTP(S), prove the later nested protocol is `urn:` or `x:`, prove the
+  retained suffix absolute through Node's matching path owner, and require
+  whole-DTO closure.
+- Six safe controls cover exact `./child/path`, `../child/path`,
+  `~/child/path`, `.\child\draft`, `..\child\draft`, and `~\child\draft`
+  forms. Each is proven non-absolute through Node's matching `posix` or
+  `win32` owner and requires the canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 12 failed / 216 passed / 228 total**.
+  Exactly the **6** later non-HTTP authority compositions remain open and
+  exactly the **6** dot/home-relative controls close incorrectly. Every prior
+  **216** focused case remains green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing
+  absolute Unix, drive, rooted-Windows, host-only/full UNC, explicit
+  `file://`, nested URI, generalized punctuation, lifecycle, provenance,
+  replay, diagnostic, no-effect, and whole-DTO assertions remain intact. No
+  registry, V4, contract, shared source, package metadata, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action participates.
+
+## Non-HTTP Authority And Relative-Path Minimal GREEN
+
+- Permanent causal RED commit
+  `f2a821c85bca60d3ac834c82494763a9cdeb1944` retains exactly the **12**
+  causal failures and all **216** prior passing cases without changing
+  production source or weakening any test.
+- GREEN changes only `containsAbsolutePath`. Before complete outer HTTP(S) URL
+  context is excluded from native-path checks, the existing all-scheme scan
+  now recognizes a non-HTTP scheme whose immediate payload is a
+  `//authority` form as unsafe, while retaining the earlier nested-HTTP(S)
+  payload detection. This closes later `urn://` and `x://` compositions under
+  path, query, and fragment separators across both absolute suffix owners.
+- Dot, dot-dot, and home-relative prefixes are removed from native-root
+  consideration only when the prefix itself starts at string start or after a
+  safe non-path boundary. The first focused GREEN attempt used an unconditional
+  tilde/dot lookbehind and therefore reopened exactly **4** prior absolute-path
+  rows after `~` punctuation, producing **4 failed / 224 passed / 228 total**.
+  Replacing it with the boundary-qualified prefix treatment preserved those
+  generalized punctuation rows while leaving all tests unchanged.
+- The exact focused command then passes **1 file / 228 tests**. The exact
+  cross-boundary command passes **2 files / 264 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `0b5eb36e4b5db9e5e36e1d8f6e1a8af59e16ca91`, program
+  authority `1931a9afdb1ab07bb140580f0e56b47d90f8abd8`, authority merge
+  `4a32c6991cb480588f6605ce66fc119612f01fe5`, and permanent causal RED
+  `f2a821c85bca60d3ac834c82494763a9cdeb1944` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. The cumulative repair uses exactly the
+  frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, V4,
+  contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and
+  fresh-review gates remain pending.
+
+## Chained Relative-Prefix Causal RED
+
+- `RV-1-E-916` authorizes this pre-admission bounded repair from exact clean
+  authority merge `baf78f6f2533d96418246c9fed53d4721c2a16bf`, whose parents
+  are prior GREEN checkpoint `fe19229e8970ff82be7fc2ddd29af857d1befc48`
+  and current program authority `de8992209bf2686470abf7e9fa01a321fd0e5f71`.
+  Every prior authority, candidate, review verdict, RED/GREEN commit, and
+  registry correction remains intact.
+- Ten safe public-DTO controls include exact `././child`, `.././child`,
+  `~/./child`, `.\.\child`, `..\.\child`, and `~\.\child`, plus two
+  longer dot/dot-dot chains for each Node path owner. Each literal is proven
+  non-absolute through `posix.isAbsolute` or `win32.isAbsolute` and requires
+  the canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 10 failed / 228 passed / 238 total**.
+  Exactly the **10** new chained-relative controls close incorrectly. Every
+  prior **228** case remains green, including all four generalized
+  `~`-punctuation absolute-path rows and every true Unix, drive,
+  rooted-Windows, UNC, doubled-slash, URI-authority, and explicit `file://`
+  closure.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. No sanitizer,
+  parser/schema, per-field predicate, lifecycle, provenance, replay,
+  mounted-read, diagnostic, registry, V4, contract, shared source, package
+  metadata, provider, credential, network, external system, fallback write,
+  admission, review, integration, strict record 28, or release action
+  participates.
+
+## Chained Relative-Prefix Minimal GREEN
+
+- Permanent causal RED commit
+  `4d8c97c5bbf9681e5f226c72f30ed00ab6747726` retains exactly the **10**
+  causal failures and all **228** prior passing cases without changing
+  production source or weakening any test.
+- GREEN changes only two lines in `containsAbsolutePath`. The existing
+  boundary-qualified relative-prefix normalization now matches the complete
+  leading chain: one dot, dot-dot, or home marker followed by zero or more
+  slash/backslash plus dot/dot-dot segments and a final separator. Its local
+  replacement masks every separator inside that matched prefix before the
+  unchanged native-root expressions run.
+- Because the chain must still begin at string start or after the same safe
+  non-path boundary, raw dot or tilde punctuation after identifier text does
+  not become a relative prefix. All generalized punctuation and true absolute
+  path rows, including the four `~`-punctuation representatives, remain
+  closed.
+- The first focused GREEN attempt passes **1 file / 238 tests** without any
+  post-RED test change. The exact cross-boundary command passes **2 files / 274
+  tests**. Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Prior GREEN checkpoint `fe19229e8970ff82be7fc2ddd29af857d1befc48`, program
+  authority `de8992209bf2686470abf7e9fa01a321fd0e5f71`, authority merge
+  `baf78f6f2533d96418246c9fed53d4721c2a16bf`, and permanent causal RED
+  `4d8c97c5bbf9681e5f226c72f30ed00ab6747726` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. The cumulative repair uses exactly the
+  frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, V4,
+  contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and
+  fresh-review gates remain pending.
+
+## Internal Relative-Segment Causal RED
+
+- `RV-1-E-917` authorizes this pre-admission bounded repair from exact clean
+  authority merge `469d3c315b0eceaca5c929c965fafd7083e4d523`, whose parents
+  are prior GREEN checkpoint `0e4be5a1b28c57f7e762ac111c4e4aed6b6e148f`
+  and current program authority `904fde9b4650c5a3496fac05b814e9839b306c16`.
+  Every prior authority, candidate, review verdict, RED/GREEN commit, and
+  registry correction remains intact.
+- Twelve safe public-DTO controls cross internal dot, dot-dot, and home
+  segments with POSIX and Windows relative paths. They include exact
+  `child/./path`, `./child/./path`, `child\.\path`, and `child\~\path`,
+  plus matching internal and leading-chain compositions. Every literal is
+  proven non-absolute through Node's matching path owner and requires the
+  canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 8 failed / 242 passed / 250 total**.
+  Exactly the **8** new internal dot/home rows close incorrectly. The four new
+  internal dot-dot controls and all prior **238** cases remain green,
+  including generalized punctuation absolute paths and every true native,
+  UNC, doubled-slash, URI-authority, and explicit `file://` closure.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. No sanitizer,
+  parser/schema, per-field predicate, lifecycle, provenance, replay,
+  mounted-read, diagnostic, registry, V4, contract, shared source, package
+  metadata, provider, credential, network, external system, fallback write,
+  admission, review, integration, strict record 28, or release action
+  participates.
+
+## Internal Relative-Segment Minimal GREEN
+
+- Permanent causal RED commit
+  `4724c17f95d071203fd958d7ac0a359480786873` retains exactly the **8**
+  causal failures, the four new already-safe dot-dot controls, and all **238**
+  prior passing cases without changing production source or weakening any
+  test.
+- GREEN changes one line only in `containsAbsolutePath`. After the existing
+  boundary-qualified leading-chain normalization, a second local replacement
+  recognizes a slash/backslash-bounded dot, dot-dot, or home segment and masks
+  only the separator immediately following that segment before the unchanged
+  native-root expressions run.
+- The segment's preceding separator stays visible. A true absolute root at
+  string start or after punctuation therefore still closes, while an internal
+  relative segment inside an already-relative path cannot manufacture a new
+  root. Raw dot/tilde punctuation without path-segment boundaries remains
+  unchanged.
+- The first focused GREEN attempt passes **1 file / 250 tests** without any
+  post-RED test change. The exact cross-boundary command passes **2 files / 286
+  tests**. Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Prior GREEN checkpoint `0e4be5a1b28c57f7e762ac111c4e4aed6b6e148f`, program
+  authority `904fde9b4650c5a3496fac05b814e9839b306c16`, authority merge
+  `469d3c315b0eceaca5c929c965fafd7083e4d523`, and permanent causal RED
+  `4724c17f95d071203fd958d7ac0a359480786873` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. The cumulative repair uses exactly the
+  frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, V4,
+  contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and
+  fresh-review gates remain pending.
+
+## Colon-Introduced Authority Causal RED
+
+- `RV-1-E-918` authorizes this pre-admission bounded repair from exact clean
+  authority merge `beab46a08e84f451affb13fcd7217cfc36e1582e`, whose parents
+  are prior GREEN checkpoint `64f5e2740ece131b4a5f16aeadb199d3c1f9d8d4`
+  and current program authority `e74eb7bb56887c202cf193fc134ce32feb2ea3b0`.
+  Every prior authority, candidate, review verdict, RED/GREEN commit, and
+  registry correction remains intact.
+- Six causal public-DTO rows cross colon-introduced `urn://` and arbitrary
+  `x://` authorities with path, query, and fragment positions and both
+  doubled-slash POSIX and forward-slash UNC suffix owners. They include exact
+  `https://public.test/?next=:urn://opt/cestus/private.json`, prove the leading
+  outer protocol is HTTP(S), prove the later protocol is non-HTTP, prove the
+  retained suffix absolute through Node's matching owner, and require
+  whole-DTO closure.
+- Six matching controls carry a colon-introduced inner HTTP or HTTPS authority
+  under the same complete outer HTTP(S) path, query, and fragment contexts.
+  They require the canonical task-completed DTO to remain open.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 6 failed / 256 passed / 262 total**.
+  Exactly the **6** colon-introduced non-HTTP authority rows remain open. All
+  six new inner-HTTP(S) controls and every prior **250** case remain green.
+- Production source is unchanged for RED. Every new row uses parser-valid
+  canonical material and manifest fixtures, exact mounted reads, zero writes,
+  no unsafe partial output, and only `effect: "none"` actions. Existing outer
+  non-HTTP, URI authority, relative-path, native/UNC/doubled-slash,
+  generalized punctuation, and explicit `file://` closure remain intact. No
+  sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, mounted-read, diagnostic, registry, V4, contract, shared source,
+  package metadata, provider, credential, network, external system, fallback
+  write, admission, review, integration, strict record 28, or release action
+  participates.
+
+## Colon-Introduced Authority Minimal GREEN
+
+- Permanent causal RED commit
+  `cc997e7327aa54d06660493a88de84ad81fb1fbe` retains exactly the **6**
+  causal failures, all six new inner-HTTP(S) controls, and all **250** prior
+  passing cases without changing production source or weakening any test.
+- GREEN changes one character class only in `containsAbsolutePath`: colon is
+  removed from the characters forbidden immediately before an all-scheme scan
+  occurrence. A later colon-introduced `urn:` or `x:` scheme is therefore
+  examined before the complete outer HTTP(S) token is excluded from native
+  path inspection.
+- The existing branch still returns unsafe only for a non-HTTP(S) scheme with
+  a direct `//authority` or nested HTTP(S)-like payload. The separate complete
+  outer-URL matcher and generic HTTP(S) native-path exemptions are unchanged,
+  so a colon-introduced inner HTTP or HTTPS authority remains open and an
+  outer non-HTTP composition remains closed.
+- The first focused GREEN attempt passes **1 file / 262 tests** without any
+  post-RED test change. The exact cross-boundary command passes **2 files / 298
+  tests**. Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and `git diff --check`
+  emits no diagnostic.
+- Prior GREEN checkpoint `64f5e2740ece131b4a5f16aeadb199d3c1f9d8d4`, program
+  authority `e74eb7bb56887c202cf193fc134ce32feb2ea3b0`, authority merge
+  `beab46a08e84f451affb13fcd7217cfc36e1582e`, and permanent causal RED
+  `cc997e7327aa54d06660493a88de84ad81fb1fbe` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. The cumulative repair uses exactly the
+  frozen Task138-H source, test, and claim paths.
+- Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, V4,
+  contract, shared source, package metadata, provider, credential, network,
+  external system, fallback write, admission, review, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and
+  fresh-review gates remain pending.
+
+## Final Path-Boundary Clean Admission
+
+- Atomic GREEN checkpoint
+  `17284a3fca132c994cab6ce68ae8514cc88c2654` descends without rewrite from
+  colon-boundary RED `cc997e7327aa54d06660493a88de84ad81fb1fbe`, exact
+  authority merge `beab46a08e84f451affb13fcd7217cfc36e1582e`, every earlier
+  path-boundary RED/GREEN pair, rejected candidate, authority, review, and
+  registry correction in the preserved Task138-H lineage.
+- Fresh coordinator validation passes the exact focused suite **262/262**,
+  exact cross-boundary suite **298/298**, standalone typecheck, factory
+  readiness, and diff hygiene. V4 standalone assurance passes **20/20** and
+  contract mode emits all four exact release-graph, composition-corpus,
+  command-card, and ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is strict-prefix success at the unfinished frontier.
+- Fresh serial full-verification differential reports candidate **10 failing
+  files / 47 failing tests / 3,123 passes / 5 skips** and clean `neo` **10
+  failing files / 48 failing tests / 2,877 passes / 5 skips**. Candidate
+  failures are an exact strict subset and exclude Task138-H. The sole
+  baseline-only prerequisite timeout passes **1/1** in isolated runs on both
+  trees, classifying the difference as inherited load variance; the exact
+  **246-pass** increase is cumulative Task138-H coverage.
+- Exact implementation scope from the latest authority merge to GREEN is the
+  frozen three Task138-H paths; cumulative task-owned scope remains those same
+  paths. All required repair authorities, forward merges, rejected candidates,
+  reviewer verdicts, and permanent RED/GREEN commits remain ancestors.
+  Dependencies are real and local at Node `v26.1.0` and Vitest `4.1.9`;
+  neither dependency directory is a symlink, the V4 contract SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`,
+  and both candidate and `neo` remain clean.
+- This claim-only transition admits one exact candidate for a completely
+  fresh independent architecture/executability pair. It is not approval,
+  integration, strict record 28, or release. Strict frontier remains **27 of
+  29**; every reviewer of earlier candidate bytes is excluded from approval.
+
+## Compositional Path-Escape Causal RED
+
+- `RV-1-E-920` authorizes this bounded repair from exact clean authority merge
+  `30dce010302b1a529873b6dbd9c15b6e1dedb832`, whose parents are rejected and
+  immutable candidate `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee` and current
+  program authority `f05dda74ae923fe2b743af4e74b0666991647607`. Every prior
+  candidate, review verdict, RED/GREEN pair, authority, and registry event
+  remains intact.
+- Sixteen causal public-DTO rows cover two immediately adjacent nested-scheme
+  occurrences, `file:/` and drive-qualified `file:` payloads, native POSIX,
+  drive, rooted-Windows, and UNC payloads in complete outer HTTP(S) query or
+  fragment values, the four exact adjacent-relative controls from
+  `RV-1-E-920`, and longer POSIX and Windows chains. Six matching safe controls
+  retain complete and nested HTTP(S), ordinary URL-like query/fragment
+  punctuation, and separated relative dot, dot-dot, and home segments.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 16 failed / 268 passed / 284 total**.
+  Exactly the **8** unsafe composition rows remain open and exactly the **8**
+  adjacent-relative rows close incorrectly. All prior **262** focused cases
+  and all six new safe controls remain green.
+- Permanent causal RED commit
+  `064d568b174a948f1f3f9b8746645c780e44d0f5` changes only the focused public
+  DTO test. Each row uses parser-valid canonical material and manifest
+  fixtures, exact mounted reads, zero writes, whole-DTO closure, no unsafe
+  partial output, and only `effect: "none"` actions. Production source is
+  unchanged in RED.
+
+## Compositional Path-Escape Minimal GREEN
+
+- Atomic source-only GREEN commit
+  `920654748644c962d79f41471c473c7beff09938` descends directly from the
+  permanent RED without changing or weakening any post-RED test. Its only
+  production edit is confined to `containsAbsolutePath`.
+- Scheme occurrences use a non-consuming boundary assertion, so an immediately
+  adjacent later scheme remains discoverable. Before a complete outer HTTP(S)
+  token is excluded from native-path inspection, boundary-qualified native and
+  `file:` absolute payload families retain that token for the unchanged final
+  predicates. Internal relative dot, dot-dot, and home segments use a
+  non-consuming preceding-separator assertion so every adjacent occurrence is
+  normalized without exposing a later separator as an apparent root.
+- From the clean GREEN commit, the exact focused command passes **1 file / 284
+  tests** and the exact cross-boundary command passes **2 files / 320 tests**.
+  Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and both commit-range and
+  worktree `git diff --check` emit no diagnostic.
+- Rejected candidate `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee`, current
+  program authority `f05dda74ae923fe2b743af4e74b0666991647607`, and exact
+  authority merge `30dce010302b1a529873b6dbd9c15b6e1dedb832` remain
+  ancestors. Dependencies are real and local at Node `v26.1.0` and Vitest
+  `4.1.9`, with neither dependency directory a symlink. Implementation scope
+  before this claim-only evidence update is exactly the frozen source and test
+  paths; cumulative scope after it is exactly the frozen source, test, and
+  claim paths.
+- Both mounted stores remain read-only and all next actions retain
+  `effect: "none"`. No sanitizer, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, registry, contract,
+  V4, shared source, package metadata, provider, credential, network, external
+  system, fallback write, admission, review, merge, push, integration, strict
+  record 28, or release action changes. Coordinator-owned admission and wholly
+  fresh dual review remain pending; strict frontier remains **27 of 29**.
+
+## Compositional Path-Boundary Clean Admission
+
+- Clean implementation evidence ends at claim checkpoint
+  `3f9dac311e59bf0b7c86b34fde42f7ab37be421c`, preserving rejected candidate
+  `50ca5da9`, exact authority `f05dda74`, authority merge `30dce010`, permanent
+  causal RED `064d568b`, source-only GREEN `92065474`, every earlier
+  RED/GREEN pair, review verdict, authority, and registry event without
+  rewrite. Exact authority-to-checkpoint scope is the frozen source, focused
+  test, and claim paths.
+- Fresh coordinator validation from that clean checkpoint passes the exact
+  focused suite **284/284**, exact cross-boundary suite **320/320**, standalone
+  typecheck, factory readiness, worktree and commit-range diff hygiene, and
+  exact scope, ancestry, dependency, V4-pin, and clean-state checks. Node is
+  `v26.1.0`, Vitest is `4.1.9`, neither dependency directory is a symlink, and
+  the V4 contract SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`.
+- Standalone V4 assurance passes **20/20**. Contract mode emits exact markers
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`. Clean repository mode executes all
+  **27/27** released commands, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`, proving the expected unfinished strict prefix.
+- Fresh serial full-verification differential reports this checkpoint at
+  **10 failing files / 48 failing tests / 3,144 passes / 5 skips** and exact
+  clean `neo` at **10 failing files / 48 failing tests / 2,877 passes / 5
+  skips**. The complete **48** failure identities are equal and Task138-H is
+  absent. The exact **267-pass** increase equals the focused Task138-H file's
+  growth from `neo` **17** to candidate **284**, so the candidate introduces
+  no differential regression.
+- This claim-only transition changes no production or test byte and admits its
+  resulting exact commit for one wholly fresh architecture/executability
+  review pair. No reviewer of any earlier candidate may approve these changed
+  bytes. This is not approval, integration, strict record 28, or release;
+  strict frontier remains **27 of 29**.
+
+## Outer-URL Punctuation And Mixed-Home Causal RED
+
+- `RV-1-E-922` authorizes this bounded repair from exact clean authority merge
+  `d0a15fa8b6e5bcfef8cf6b732824fbde4fce3e39`, whose parents are rejected and
+  immutable candidate `5d9b6e631a9ca15e386fed2425b60d66305cd5cb` and current
+  program authority `756d82f10946f26eee946441afbc5715e399eb0e`. Rejected
+  predecessor `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee` and every prior
+  candidate, RED/GREEN pair, review verdict, authority, and registry event
+  remain intact.
+- The public-DTO matrix adds **34** canonical cases: **14** unsafe outer
+  HTTP(S) values and **20** safe controls. The unsafe cases cross path, query,
+  and fragment positions; punctuation `=`, `:`, `[`, `,`, `(`, `;`, and `|`;
+  native POSIX, drive, rooted-Windows, backslash-UNC, and forward-UNC roots;
+  and slash, drive, rooted-Windows, and UNC `file:` payloads. The safe cases
+  include eight exact POSIX/Windows mixed-home chains and twelve matching
+  complete/nested HTTP(S), structural-pathname, ordinary-punctuation,
+  drive-relative, and general relative controls.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 14 failed / 304 passed / 318 total**.
+  Exactly **6** punctuation/file outer-URL cases remain open and exactly **8**
+  mixed-home relative cases close incorrectly. All prior **284** focused
+  cases, eight new already-correct unsafe controls, and twelve new safe
+  controls remain green.
+- Permanent causal RED commit
+  `e585adb923db8ff3c1a13b616d943bf4810970fb` changes only the focused public
+  DTO test. Every row uses parser-valid canonical material and manifest
+  fixtures, exact role-bound mounted hash routing, zero writes, whole-DTO
+  closure, no unsafe partial output, and only `effect: "none"` actions.
+  Production source is unchanged in RED.
+
+## Outer-URL Punctuation And Mixed-Home Minimal GREEN
+
+- Atomic source-only GREEN commit
+  `842174d484d27e2a156feefbf7fdd133c8770ec7` descends directly from the
+  permanent RED without changing or weakening any post-RED test. Its only
+  production edit is confined to `containsAbsolutePath`.
+- The final native-root predicates are factored into one local helper. Before
+  excluding a complete outer HTTP(S) token, the predicate examines only its
+  raw content after the scheme and authority, without decoding. Nested HTTP(S)
+  authority separators are masked, and only candidates immediately following
+  the authorized query, fragment, or punctuation boundaries are checked with
+  the shared native semantics. Scheme delimiters, authority separators,
+  ordinary pathname separators, nested HTTP(S), and ordinary punctuation
+  therefore remain non-native while every native and `file:` root family
+  closes.
+- Leading relative normalization extends its repeated-segment alternation from
+  dot/dot-dot alone to dot, dot-dot, or home. Mixed `~/~/`, `~/./~/`, `./~/`,
+  and `../~/` chains under both separator families are normalized as complete
+  relative prefixes before the unchanged absolute-root decision.
+- From the clean GREEN commit, the exact focused command passes **1 file / 318
+  tests** and the exact cross-boundary command passes **2 files / 354 tests**.
+  Standalone `npm run typecheck` emits `typecheck passed`, `npm run
+  factory:check` emits `factory-readiness passed`, and both commit-range and
+  worktree `git diff --check` emit no diagnostic.
+- Rejected candidates `5d9b6e631a9ca15e386fed2425b60d66305cd5cb` and
+  `50ca5da9cacd2ca8b00f94b9e8e8c769c2db09ee`, current program authority
+  `756d82f10946f26eee946441afbc5715e399eb0e`, and exact authority merge
+  `d0a15fa8b6e5bcfef8cf6b732824fbde4fce3e39` remain ancestors. Dependencies
+  are real and local at Node `v26.1.0` and Vitest `4.1.9`, with neither
+  dependency directory a symlink. Implementation scope before this claim-only
+  evidence update is exactly the frozen source and test paths; cumulative
+  scope after it is exactly the frozen source, test, and claim paths.
+- Both mounted stores remain read-only and all next actions retain
+  `effect: "none"`. No sanitizer, decoding, parser/schema, per-field
+  predicate, lifecycle, provenance, replay, mounted-read, diagnostic,
+  registry, contract, V4, shared source, package metadata, provider,
+  credential, network, external system, fallback write, admission, review,
+  merge, push, integration, strict record 28, or release action changes.
+  Coordinator-owned admission and wholly fresh dual review remain pending;
+  strict frontier remains **27 of 29**.
+
+## Final Outer-URL Path Clean Admission
+
+- Clean implementation evidence ends at claim checkpoint
+  `fa84c7d561ea5e5545c50a8346fcdd0f0370808d`, preserving rejected candidates
+  `5d9b6e63` and `50ca5da9`, exact authority `756d82f1`, authority merge
+  `d0a15fa8`, permanent causal RED `e585adb9`, source-only GREEN `842174d4`,
+  and every earlier candidate, review verdict, RED/GREEN pair, authority,
+  merge, and registry correction without rewrite. Exact authority-to-checkpoint
+  scope is the frozen source, focused test, and claim paths.
+- Fresh coordinator validation from that clean checkpoint passes exact focused
+  **318/318**, exact cross-boundary **354/354**, standalone typecheck, factory
+  readiness, worktree and commit-range diff hygiene, exact scope, ancestry,
+  dependency, V4-pin, and clean-state checks. Node is `v26.1.0`, Vitest is
+  `4.1.9`, neither dependency directory is a symlink, and the V4 contract
+  SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`.
+- Standalone V4 assurance passes **20/20** and contract mode emits all four
+  exact release-graph, composition-corpus, command-card, and ABI-corpus
+  markers. Clean repository mode executes all **27/27** released commands,
+  emits `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`, proving the expected unfinished strict prefix.
+- Fresh serial full-verification differential reports this checkpoint at
+  **10 failing files / 47 failing tests / 3,179 passes / 5 skips** and clean
+  `neo` at **10 failing files / 48 failing tests / 2,877 passes / 5 skips**.
+  Candidate failures are an exact strict subset and exclude Task138-H. The
+  sole baseline-only prerequisite timeout passes **1/1** in isolated runs on
+  both trees, classifying it as inherited load variance. Task138-H's focused
+  file grows from `neo` **17** to candidate **318**, accounting for **301**
+  new passing cases without a differential regression.
+- This claim-only transition changes no production or test byte and admits its
+  resulting exact commit for one wholly fresh architecture/executability
+  review pair. No reviewer of any earlier candidate may approve these changed
+  bytes. This is not approval, integration, strict record 28, or release;
+  strict frontier remains **27 of 29**.
