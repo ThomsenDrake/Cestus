@@ -207,9 +207,9 @@ function hasBrowserSafeStringLeaves(value: unknown): boolean {
 }
 
 function containsAbsolutePath(value: string): boolean {
-  return /(?:^|[\s("'])\//.test(value) ||
-    /(?:^|[\s("'])[a-z]:[\\/]/i.test(value) ||
-    /(?:^|[\s("'])\\\\[^\\/\s]+[\\/][^\\/\s]+/.test(value) ||
+  return /(?:^|[\s("'=:\[,])\/(?!\/)/.test(value) ||
+    /(?:^|[\s("'=:\[,])[a-z]:[\\/]/i.test(value) ||
+    /(?:^|[\s("'=:\[,])\\\\[^\\/\s]+[\\/][^\\/\s]+/.test(value) ||
     /\bfile:\/\//i.test(value);
 }
 

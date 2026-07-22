@@ -546,3 +546,28 @@ and fallback writes are prohibited.
   registry, assurance, contract, parser, provider, credential, external
   system, fallback write, integration, strict record 28, or release action
   participates.
+
+## Punctuation-Boundary Minimal GREEN
+
+- Permanent causal RED commit `601b8e13` retains the **12** failing
+  path-family/punctuation rows and **3** passing controls without changing
+  production source. The GREEN child changes only `containsAbsolutePath` in
+  the final recursive browser-string firewall.
+- The three existing native-path patterns now recognize `=`, `:`, `[`, and
+  `,` as path-start boundaries in addition to their prior boundaries. The Unix
+  pattern excludes a doubled slash at that boundary so valid HTTP and HTTPS
+  scheme separators remain accepted; the existing explicit `file://`
+  rejection remains unchanged. No sanitizer, parser, schema, DTO field,
+  lifecycle, provenance, mounted-read, diagnostic, no-effect, or whole-DTO
+  closure logic changes.
+- The exact focused command passes **1 file / 62 tests**. The exact
+  cross-boundary command passes **2 files / 98 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `3824f9d0` and causal RED `601b8e13` remain ancestors.
+  The cumulative repair uses exactly the frozen Task138-H source, test, and
+  claim paths. Both mounted stores remain read-only, all next actions retain
+  `effect: "none"`, and no registry, assurance, contract, provider,
+  credential, external system, fallback write, integration, strict record 28,
+  or release action occurs. Coordinator-owned comprehensive V4, repository
+  prefix, full differential, admission, and fresh review gates remain pending.
