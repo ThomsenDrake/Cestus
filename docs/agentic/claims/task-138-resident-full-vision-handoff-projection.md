@@ -681,3 +681,28 @@ and fallback writes are prohibited.
   intact. No registry, assurance, contract, parser, provider, credential,
   external system, fallback write, integration, strict record 28, or release
   action participates.
+
+## Actual HTTP-Scheme Boundary Minimal GREEN
+
+- Permanent causal RED commit
+  `f6148f58350d43cffd0b70516c03e9afffa9cd12` retains both false/embedded
+  prefix failures and all **74** passing prior/control cases without changing
+  production source.
+- GREEN changes one line only in `containsAbsolutePath`, adding a word-token
+  boundary to each existing case-insensitive `http:` and `https:` lookbehind.
+  Genuine schemes at string or punctuation boundaries remain exempt, while
+  `xHTTP:` and `_https:` suffixes no longer exempt their absolute `//...`
+  substring. Every other path branch and the explicit `file://` rejection are
+  unchanged.
+- The exact focused command passes **1 file / 76 tests**. The exact
+  cross-boundary command passes **2 files / 112 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- GREEN checkpoint `681a7ac5`, program authority `70b5b888`, authority merge
+  `61daa81b`, and causal RED `f6148f58` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  registry, assurance, contract, provider, credential, external system,
+  fallback write, integration, strict record 28, or release action occurs.
+  Coordinator-owned V4, repository, full-differential, admission, and fresh
+  review gates remain pending.
