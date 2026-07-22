@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** repairing after fresh dual-review defects
+- **Status:** implementing punctuation-boundary repair
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -522,3 +522,27 @@ and fallback writes are prohibited.
   credential, network, external system, fallback write, destructive history,
   integration, approval, strict record 28, or release. The frontier remains
   **27 of 29**.
+
+## Punctuation-Boundary Causal RED
+
+- `RV-1-E-902` authorizes this bounded repair from exact authority merge
+  `9c1a20eb81bfe7e9d0cd68cc055f0985c6611111`, whose first parent is rejected
+  candidate `3824f9d071ae6ff4e948f7f045883e971df27435`. The complete prior lineage
+  remains intact and the initial worktree was clean.
+- One table crosses all **3** required native absolute-path families with all
+  **4** required punctuation boundaries, producing **12** causal cases. A
+  second table adds **3** passing controls for valid HTTP, valid HTTPS, and
+  mixed ordinary punctuation with non-absolute slash, colon, and backslash
+  text.
+- The exact focused command
+  `npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts`
+  exits `1` with **1 failed file / 12 failed / 50 passed / 62 total**. Exactly
+  the 12 path rows return `task-completed` instead of the required whole-DTO
+  `inconsistent` closure. All **47** prior tests and all **3** new safe controls
+  pass, so the failure is confined to the omitted punctuation boundary in the
+  final absolute-path predicate.
+- Production source is unchanged for RED. Mounted reads remain read-only, all
+  existing no-write and `effect: "none"` assertions remain intact, and no
+  registry, assurance, contract, parser, provider, credential, external
+  system, fallback write, integration, strict record 28, or release action
+  participates.
