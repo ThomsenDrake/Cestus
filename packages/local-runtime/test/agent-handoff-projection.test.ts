@@ -828,6 +828,126 @@ describe("buildResidentHandoffDto", () => {
   });
 
   it.each([
+    ["query", "[", "native POSIX", "https://public.test/?path=[/opt/cestus/private.json", "https:", "/opt/cestus/private.json", "/opt/cestus/private.json", "posix"],
+    ["query", ";", "native drive", "http://public.test/?path=;C:\\Cestus\\private.json", "http:", "C:\\Cestus\\private.json", "C:\\Cestus\\private.json", "win32"],
+    ["path", ":", "file rooted Windows", "https://public.test/reports:file:\\Windows\\System32\\config", "https:", "file:\\Windows\\System32\\config", "\\Windows\\System32\\config", "win32"],
+    ["fragment", ",", "native backslash UNC", "http://public.test/#path=,\\\\cestus-host\\share\\private.json", "http:", "\\\\cestus-host\\share\\private.json", "\\\\cestus-host\\share\\private.json", "win32"],
+    ["path", "(", "native forward UNC", "https://public.test/reports(//cestus-host/share/private.json", "https:", "//cestus-host/share/private.json", "//cestus-host/share/private.json", "win32"],
+    ["fragment", "|", "file UNC", "http://public.test/#next=|file:\\\\cestus-host\\share\\private.json", "http:", "file:\\\\cestus-host\\share\\private.json", "\\\\cestus-host\\share\\private.json", "win32"],
+    ["path", "=", "native POSIX", "https://public.test/reports=/srv/cestus/private.json", "https:", "/srv/cestus/private.json", "/srv/cestus/private.json", "posix"],
+    ["query", "=", "native drive", "http://public.test/?path=D:/Cestus/private.json", "http:", "D:/Cestus/private.json", "D:/Cestus/private.json", "win32"],
+    ["fragment", "=", "native rooted Windows", "https://public.test/#path=\\Windows\\System32\\drivers", "https:", "\\Windows\\System32\\drivers", "\\Windows\\System32\\drivers", "win32"],
+    ["query", "=", "native backslash UNC", "http://public.test/?path=\\\\archive-host\\share\\private.json", "http:", "\\\\archive-host\\share\\private.json", "\\\\archive-host\\share\\private.json", "win32"],
+    ["fragment", "=", "native forward UNC", "https://public.test/#path=//archive-host/share/private.json", "https:", "//archive-host/share/private.json", "//archive-host/share/private.json", "win32"],
+    ["query", "=", "file slash", "http://public.test/?next=file:/srv/cestus/private.json", "http:", "file:/srv/cestus/private.json", "/srv/cestus/private.json", "posix"],
+    ["fragment", "=", "file drive", "https://public.test/#next=file:D:\\Cestus\\private.json", "https:", "file:D:\\Cestus\\private.json", "D:\\Cestus\\private.json", "win32"],
+    ["path", "=", "file slash", "http://public.test/public=file:/var/cestus/private.json", "http:", "file:/var/cestus/private.json", "/var/cestus/private.json", "posix"]
+  ] as const)("closes an outer HTTP(S) %s with %s before an absolute %s payload", async (_position, punctuation, _family, unsafeSummary, outerProtocol, payload, absolutePath, pathOwner) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary).protocol).toBe(outerProtocol);
+    expect(unsafeSummary).toContain(`${punctuation}${payload}`);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(payload).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get.mock.calls.every(([hash]) => hash === fixture.materialHash)).toBe(true);
+    expect(stores.manifestStore.get.mock.calls.every(([hash]) => hash === fixture.manifestHash)).toBe(true);
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["POSIX adjacent home", "~/~/child/nested/path", "posix"],
+    ["POSIX home-dot-home", "~/./~/child/nested/path", "posix"],
+    ["POSIX dot-home", "./~/child/nested/path", "posix"],
+    ["POSIX dot-dot-home", "../~/child/nested/path", "posix"],
+    ["Windows adjacent home", "~\\~\\child\\nested\\path", "win32"],
+    ["Windows home-dot-home", "~\\.\\~\\child\\nested\\path", "win32"],
+    ["Windows dot-home", ".\\~\\child\\nested\\path", "win32"],
+    ["Windows dot-dot-home", "..\\~\\child\\nested\\path", "win32"]
+  ] as const)("accepts safe mixed leading %s relative notation", async (_kind, relativePath, pathOwner) => {
+    const safeSummary = `Mounted output=${relativePath}`;
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(relativePath)
+      : win32.isAbsolute(relativePath)).toBe(false);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(safeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(safeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get.mock.calls.every(([hash]) => hash === fixture.materialHash)).toBe(true);
+    expect(stores.manifestStore.get.mock.calls.every(([hash]) => hash === fixture.manifestHash)).toBe(true);
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["complete HTTP", "http://public.test/newsroom/records?view=public#summary", "http:", undefined, undefined],
+    ["complete HTTPS", "https://public.test/newsroom/records?view=public#summary", "https:", undefined, undefined],
+    ["nested HTTP", "https://public.test/?next=http://archive.test/public/records", "https:", undefined, undefined],
+    ["nested HTTPS", "http://public.test/#next=https://archive.test/public/records", "http:", undefined, undefined],
+    ["structural HTTP pathname", "http://public.test/public/reports/2026/summary.json", "http:", undefined, undefined],
+    ["structural HTTPS repeated pathname separators", "https://public.test/public//reports///summary.json", "https:", undefined, undefined],
+    ["ordinary query punctuation", "https://public.test/?note=a=b:c[d,e(f;g|h", "https:", undefined, undefined],
+    ["ordinary fragment punctuation", "http://public.test/#note=a=b:c[d,e(f;g|h", "http:", undefined, undefined],
+    ["drive-relative forward slash", "Mounted output=C:relative/draft", undefined, "C:relative/draft", "win32"],
+    ["drive-relative backslash", "Mounted output=D:relative\\draft", undefined, "D:relative\\draft", "win32"],
+    ["leading/internal/adjacent POSIX relative", "Mounted output=./child/../branch/~/./leaf", undefined, "./child/../branch/~/./leaf", "posix"],
+    ["leading/internal/adjacent Windows relative", "Mounted output=.\\child\\..\\branch\\~\\.\\leaf", undefined, ".\\child\\..\\branch\\~\\.\\leaf", "win32"]
+  ] as const)("accepts a matching safe %s control", async (_kind, safeSummary, outerProtocol, relativePath, pathOwner) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    if (outerProtocol !== undefined) {
+      expect(new URL(safeSummary).protocol).toBe(outerProtocol);
+    } else {
+      expect(relativePath).toBeDefined();
+      expect(pathOwner === "posix"
+        ? posix.isAbsolute(relativePath!)
+        : win32.isAbsolute(relativePath!)).toBe(false);
+    }
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get.mock.calls.every(([hash]) => hash === fixture.materialHash)).toBe(true);
+    expect(stores.manifestStore.get.mock.calls.every(([hash]) => hash === fixture.manifestHash)).toBe(true);
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["complete HTTP", "http://public.test/public/records", "http://public.test/public/records", undefined],
     ["nested HTTPS", "https://public.test/?next=:https://archive.test/public/records", "https://archive.test/public/records", undefined],
     ["ordinary query punctuation", "https://public.test/?note=x:urn:relative/path", "https://public.test/?note=x:urn:relative/path", undefined],
