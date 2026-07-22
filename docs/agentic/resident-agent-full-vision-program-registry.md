@@ -27686,3 +27686,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Status advances Task136 producer reconciliation design `claimed ->
   implementing`. This is not a product release and does not approve or release
   Task136.
+
+## RV-1-E-932 — Task136 seven-seam Approach 1 design amendment authorized
+
+- Recorded at: 2026-07-22T23:22:54Z
+- The program owner explicitly approves the review-mandated seven-seam
+  Approach 1 amendment. Rejected written-design candidate
+  `40d507d549ea5127e9f2597fa8d150c8a4c3d904` and its rejected ancestors
+  `819d3b066ea6757d6a25163906b8803517b6480b`,
+  `e41a1504b7a0a2438770f567e5b08672ba0ed4f2`, and
+  `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` remain preserved. They are
+  design checkpoints, not approved candidates, integrations, assurances, or
+  product releases.
+- Fresh independent architecture and executability reviews of `40d507d5`
+  prove that the six-seam/21-path RV-1-E-931 ceiling cannot establish
+  authoritative executor provenance: G, W, or R can brand caller-supplied
+  functions but cannot prove that they came from the registered domain
+  dispatcher. The same reviews require an exact staged G readback union, a
+  G-owned logical locator, idempotent recovery after every durable suspension
+  prefix, a checkpoint kind the existing task orchestrator cannot release,
+  and a W-owned stale-authority recording capability.
+- The finite correction adds exactly one source seam, `G136-SC`. Its released
+  test `packages/agent/test/domain-execution-dispatcher.test.ts` transfers to
+  Task136. The previously unowned
+  `packages/agent/src/domain-execution-dispatcher.ts` is adopted directly by
+  Task136 from one exact pinned baseline; it is not retroactively attributed
+  to G136-SC and no raw release record changes. The source and test are
+  byte-identical at G136-SC candidate
+  `70814c1259871c5458a3578fae8a5c8281540377` and integration
+  `253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5`, with blobs
+  `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `bd9df733d7ab8f915269624168524ac48bc64621`, respectively.
+- G136-SC's exact raw record remains pinned at SHA-256
+  `1576cf80cb9cc2184a12f60db44abda79e7d3b0f375f10310b1e88fe28812574`
+  and canonical JSON SHA-256
+  `b7ec22083b3b8be5140b3a40b09dfa4e34c2e86f01fe15c3cc3453d16c77d0b0`.
+  Its target array becomes `G136-R`, then `Task136`; its historical dispatcher
+  test remains recorded as `owned`. Task136 adds G136-SC as its final direct
+  prerequisite and appends the dispatcher source/test immediately before its
+  claim path and the dispatcher test to its exact command.
+- The resulting bounded design has exactly seven producer seams, **22**
+  transferred paths, one exact baseline-adopted source, and **26** Task136
+  paths: **11** product sources, **14** tests, and one claim. It preserves all
+  **29** card IDs/order, raw strict records **1-28**, Task136 as strict record
+  **29**, Task138-H bytes, and the strict product frontier at **28 of 29**.
+  With the exact ordering authorized here, prospective values are V4 JSON
+  SHA-256 `6085471123099150a4c0ead9a1315f0db2353432ea639cc274c31c60bd6d4c4f`,
+  assurance fingerprint
+  `14f5e3118d478fdb8b76ae1627350942706a4a87b428b048c2e13249981904e4`,
+  and mission immutable-envelope fingerprint
+  `sha256:f919da5f8543811786b94bb6821a4102fdf4d81713fda68c2972a208c389df20`.
+- The documentation-only design owner may now revise exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The revision must specify the opaque dispatcher-issued capability and stable
+  implementation identity; G's requested, human-approved, claimed, and
+  completed stages; durable logical discovery; W's exact read-or-reuse prefix
+  recovery including release-before-return; the new resident-only
+  orchestration checkpoint discriminator; and recordable-stale versus wholly
+  unavailable authority outcomes. It then requires a completely fresh
+  independent architecture/executability review pair.
+- This amendment authorizes no product source/test, V4/checker/mission-state,
+  raw-record, Task136 RED, implementation-plan, integration, push, provider,
+  credential, network, external-system, pull-request, record-29, or Wave-3
+  mutation. The exact revised written design still requires explicit
+  program-owner review before implementation planning or any correction
+  packet begins. Status remains Task136 producer reconciliation design
+  `implementing`. This event is not a product release.
