@@ -26339,6 +26339,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release records 1-27, all 29 IDs/order, published `neo`, and external-effect
   prohibitions remain unchanged.
 
+## RV-1-E-907 — Task138-H URI-scheme continuation defect; bounded token repair authorized
+
+- Recorded at: 2026-07-22T14:27:44Z
+- Fresh architecture review instance
+  `10876a84-acf7-4b2e-869d-8b548f49ca0f` and fresh executability review
+  instance `b5ff5361-d33f-431c-bd74-be1fcfa89fd6` both return
+  `NEEDS_CHANGES` for exact candidate
+  `9adc07c1ce695bd144755b27ae26384e46bc513f`. The candidate is rejected and
+  remains immutable in ancestry; it is not approved, integrated, released, or
+  eligible for strict record 28.
+- Both reviewers independently reproduce one P1 root cause: JavaScript `\b`
+  treats URI-scheme continuation characters `-`, `.`, and `+` as word
+  boundaries. Valid non-HTTP schemes such as `x-http:`, `x.http:`, and
+  `x+https:` can therefore end in the exempt suffix while their following
+  `//opt/...` or `//host/share/...` remains an absolute POSIX or forward-slash
+  UNC path. Canonical public DTO probes return `task-completed` and retain the
+  string rather than closing the whole DTO. All other deterministic gates,
+  writes-zero assertions, and `effect: "none"` behavior pass.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for `-`, `.`, and `+` scheme
+  continuation prefixes across doubled-slash POSIX and forward-slash UNC
+  representatives, plus a non-ASCII adjacent prefix, while all prior **76**
+  cases and actual case-insensitive HTTP/HTTPS controls at string and the
+  already authorized safe punctuation boundaries remain green. It may then
+  make the smallest final-predicate correction that exempts HTTP/HTTPS only
+  when the scheme token begins at string start or an explicit already-safe
+  delimiter, never from a generic word boundary. No sanitizer, parser/schema,
+  per-field predicate, lifecycle, provenance, replay, mounted-read, diagnostic,
+  no-effect, or whole-DTO closure change is authorized.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Preserve rejected candidate `9adc07c1`, both fresh verdicts, all prior
+  candidates, RED/GREEN history, and this authority by forward merge. The new
+  exact candidate must rerun focused/cross-boundary, typecheck, factory, V4,
+  contract, repository-prefix, full differential,
+  diff/scope/ancestry/dependency/clean gates and receive a completely new
+  architecture/executability pair. Neither current reviewer may approve
+  changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, published `neo`, providers,
+  credentials, external systems, fallback writes, and external effects remain
+  unchanged.
+
 ## RV-1-E-904 — Task138-H doubled-slash path defect; bounded repair authorized
 
 - Recorded at: 2026-07-22T13:39:00Z
@@ -26426,3 +26472,81 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records 1-27, all
   29 IDs/order, prior releases/evidence, published `neo`, provider/credential
   prohibitions, and external-effect boundaries remain unchanged.
+
+## RV-1-E-906 — Task138-H actual-scheme-safe candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-22T14:08:41Z
+- The final bounded lineage preserves rejected candidate
+  `b67863610af72d9b9d6e9b2212ccd8454c1fa893`, doubled-slash causal RED
+  `e4abe453761c298df098d8011e257b27fd4a8f7d`, intermediate GREEN
+  `681a7ac5a1bfca1513d40e41234981c29bdb6722`, actual-scheme causal RED
+  `f6148f58350d43cffd0b70516c03e9afffa9cd12`, minimal GREEN
+  `843ea52afb9f7c73b64209753229ddee559abfc5`, and exact clean admitted
+  candidate `9adc07c1ce695bd144755b27ae26384e46bc513f`. All earlier candidates,
+  verdicts, repairs, authority merges, and RED/GREEN commits remain in ancestry
+  without rewrite. The cumulative repair diff is exactly the frozen three
+  Task138-H paths.
+- Permanent causal coverage now includes the original **12** native
+  path-family/punctuation rows, **8** doubled-slash POSIX/forward-UNC rows, **2**
+  embedded false-scheme rows, and genuine HTTP/HTTPS plus ordinary-punctuation
+  controls. GREEN changes only the final absolute-path predicate: native path
+  starts include the required punctuation, arbitrary doubled slashes remain
+  rejected, and only case-insensitive word-bounded HTTP/HTTPS scheme separators
+  are exempt. Explicit `file://`, parser, schema, per-field predicates,
+  lifecycle, provenance, replay, mounted reads, diagnostics, no-effect, and
+  whole-DTO closure remain unchanged.
+- Candidate gates pass **76/76** focused and **112/112** exact cross-boundary
+  tests, standalone typecheck, factory readiness, diff hygiene, V4 assurance
+  **20/20**, and all four contract markers. Clean repository mode executes the
+  strict **27/27** command prefix before only expected incomplete-29 closure.
+  Serial full verification reports candidate **10 files / 47 failures / 2,937
+  passes / 5 skips** and clean `neo` **10 files / 48 failures / 2,877 passes /
+  5 skips**. Candidate failures are an exact strict subset; the sole
+  baseline-only prerequisite timeout passes **1/1** in isolation on both trees,
+  while all **59** added tests are Task138-H passes. Scope, ancestry,
+  dependency, pinned V4 hash, and clean-state checks pass.
+- Completely fresh read-only architecture review instance
+  `10876a84-acf7-4b2e-869d-8b548f49ca0f`, implemented by
+  `/root/task138_final_arch_review`, owns every browser-visible string leaf,
+  native/doubled-slash/scheme-token boundary, false-positive control, parser,
+  lifecycle, provenance, replay, mounted-read, no-effect, whole-DTO closure,
+  exact-scope, and ancestry scrutiny. Completely fresh read-only executability
+  review instance `b5ff5361-d33f-431c-bd74-be1fcfa89fd6`, implemented by
+  `/root/task138_final_exec_review`, owns independent deterministic gate
+  reproduction, adversarial path/scheme controls, differential, dependency,
+  and clean-state checks. Their immutable review package is
+  `/tmp/task138-final-review-9adc07c1.diff` with SHA-256
+  `6bd84e8344ddd705d85c9d6905835efd5b622cafe8a83924ab925df263525f19`.
+  Neither reviewer has prior transcript context or may edit, commit, merge,
+  push, invoke providers, use network access, or interact with external systems.
+- Status advances Task138-H `implementing -> candidate -> reviewing`. This is
+  not approval, integration, strict record 28, or release. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  release records 1-27, all 29 IDs/order, published `neo`, and external-effect
+  prohibitions remain unchanged.
+
+## RV-1-E-908 — Registry-order correction; URI-scheme token repair ratified
+
+- Recorded at: 2026-07-22T14:28:42Z
+- `RV-1-E-907` was committed as new text without changing prior event bytes,
+  but its repeated patch anchor placed it physically between `RV-1-E-903` and
+  `RV-1-E-904` instead of after `RV-1-E-906`. History preservation forbids
+  deleting, moving, amending, or reconstructing that committed event. This
+  append-at-end corrective event records the placement defect, preserves
+  `RV-1-E-907` as immutable evidence, and ratifies its exact bounded URI-scheme
+  token repair without changing writable scope or acceptance criteria.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Exact rejected candidate
+  `9adc07c1ce695bd144755b27ae26384e46bc513f`, architecture verdict instance
+  `10876a84-acf7-4b2e-869d-8b548f49ca0f`, executability verdict instance
+  `b5ff5361-d33f-431c-bd74-be1fcfa89fd6`, all earlier candidates and causal
+  commits, and strict frontier **27 of 29** remain unchanged. The next action is
+  only the RV-1-E-907 causal RED and minimal explicit-token-boundary GREEN in
+  the frozen three Task138-H paths, followed by the complete gate stack and a
+  completely new dual-review pair.
+- Status remains Task138-H `implementing`. This corrective authority is not a
+  candidate, approval, integration, strict record 28, product release, or
+  assurance transition. Task136 and Waves 3-5 remain unstarted; V1-V4, raw
+  records 1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
+  provider/credential prohibitions, and external-effect boundaries remain
+  unchanged.
