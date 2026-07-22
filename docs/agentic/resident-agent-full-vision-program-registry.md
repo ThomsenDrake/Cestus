@@ -25985,6 +25985,62 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credentials, external systems, and fallback/write authorities remain
   unchanged.
 
+## RV-1-E-902 — Task138-H punctuation-path firewall defect; bounded repair authorized
+
+- Recorded at: 2026-07-22T12:58:56Z
+- Fresh recovery audit verifies clean exact heads: published `neo`, local
+  `origin/neo`, and remote-advertised `origin/neo` all equal
+  `adda53377f8e363979fc68dbc3d268759a67e404`; program authority is
+  `2cd7888ce96cce0e552ba82d7bf87429ac4c65e3`; Task138-H is
+  `3824f9d071ae6ff4e948f7f045883e971df27435`; record-27 V4 assurance is
+  `ecd795d0ddbc97ef43ff9046fea3707dfe0e931a`; and the preserved Task136
+  lineage is `7761d75d72103184153ad17dd23a2e6a9ffa040d`. The five named
+  worktrees are clean. `adda5337` is an ancestor of program authority,
+  `2cd7888c` is an ancestor of Task138-H, and record-27 assurance is already
+  in published `neo`.
+- The user ratifies the two mechanical record-27 fixture adaptations recorded
+  by RV-1-E-889: the coupled repository closure/marker/call-count transition
+  to 27 and the historical W1 activation slice remaining bounded to 26. That
+  completed assurance transition is immutable and receives no further edit.
+- Exact candidate `3824f9d071ae6ff4e948f7f045883e971df27435` is rejected.
+  It preserves RV-1-E-901's causal RED `ebaa2356f7769e83e375210017d036075e354586`,
+  GREEN `33be6a1956f1045811bb36c8e5de765768efc2a8`, admission checkpoint, and
+  every earlier RED/GREEN/review/authority commit, but its final absolute-path
+  predicate recognizes path starts only at string start or after whitespace,
+  `(`, or quote characters. Fully accepted browser strings can therefore
+  retain absolute Unix, Windows-drive, or UNC paths after common punctuation
+  including `=`, `:`, `[`, and `,`. This is an incomplete predicate, not an
+  approval, integration, strict record 28, or product release.
+- The same bounded non-reviewer Task138-H repair owner must first
+  history-preservingly forward-merge this program authority into the existing
+  `codex/task138-h-record28` lineage. It may then change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must commit causal RED tests proving the final browser-string firewall
+  rejects absolute Unix, Windows-drive, and UNC paths when preceded by common
+  punctuation such as `=`, `:`, `[`, or `,`; the same test boundary must
+  include safe URL and ordinary-punctuation controls that prevent false-positive
+  broadening. It may then apply only the smallest GREEN correction to the final
+  path predicate, preserving every existing parser, per-field predicate,
+  lifecycle, provenance, mounted-read, diagnostic, no-effect, and whole-DTO
+  fail-closed assertion.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The repaired lineage must preserve candidate `3824f9d0` and all prior
+  history, then run the exact focused and cross-boundary suites, standalone
+  typecheck, factory readiness, V4 assurance **20/20**, all four contract
+  markers, strict repository-prefix gate, diff/scope/ancestry/dependency/clean
+  checks, and a fresh full-verification differential. One exact candidate SHA
+  may be admitted only after those gates. It then requires a completely fresh,
+  independent architecture/executability review pair; no previous reviewer
+  may approve changed bytes.
+- Status remains Task138-H `implementing`. Strict frontier remains **27 of
+  29**; record 28 remains Task138-H, record 29 remains Task136, and Waves 3-5
+  remain unstarted. V1-V4, raw release records 1-27, all 29 IDs/order, finite
+  compatibility mappings, prior evidence, published `neo`, providers,
+  credentials, unrelated systems, fallback writes, and external effects remain
+  unchanged.
+
 ## RV-1-E-896 — Task138-H second repaired candidate admitted to fresh dual review
 
 - Recorded at: 2026-07-21T19:17:01Z
