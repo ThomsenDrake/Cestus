@@ -27622,3 +27622,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29 exists yet. The strict product frontier remains **28 of 29**; Waves 3-5
   remain unstarted. No provider, credential, external-system, push, or pull
   request is authorized by this event.
+
+## RV-1-E-930 — Task136 exact implementation base admitted
+
+- Recorded at: 2026-07-22T20:20:51Z
+- The preserved Task136 lineage at
+  `7761d75d72103184153ad17dd23a2e6a9ffa040d` forward-merges exact program
+  authority `3f018940af12a1d8290e04ffe3927198aa804a57` by no-ff merge
+  `20acd8246ab8162d26a05ca8645c1b7e922daacb`. Its exact parents are the
+  preserved Task136 authorization history and current program authority; no
+  reset, rebase, amend, reconstruction, or discarded commit occurs.
+- This older worktree initially lacked local dependencies. A lockfile-pinned
+  `npm ci --offline` restored real local dependencies without a tracked or
+  untracked repository change. At exact clean merge base `20acd824`, the
+  mandated Task120 pre-RED suite passes **2 files / 9 tests**.
+- One bounded implementation owner may now create the frozen Task136 test and
+  claim, commit permanent causal RED evidence, then implement only the frozen
+  Task136 source. It must preserve every prerequisite owner boundary and may
+  not edit the registry, V4 assurance, contracts, plans, manifests, dependency
+  files, or any other product path.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Status advances Task136 `claimed -> implementing`. The owner must stop at a
+  clean, fully gated candidate lineage and return exact RED, GREEN, evidence,
+  scope, ancestry, and differential-verification SHAs to the coordinator. It
+  may not self-review, integrate, publish, push, create strict record 29, start
+  Wave 3, use providers/credentials/external systems, or open a pull request.
+- The strict product frontier remains **28 of 29**. This implementation
+  admission is not a product release.
