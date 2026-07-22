@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** colon-introduced authority GREEN checkpoint
+- **Status:** final path-boundary candidate awaiting fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -1401,3 +1401,41 @@ and fallback writes are prohibited.
   external system, fallback write, admission, review, integration, strict
   record 28, or release action changes. Coordinator-owned admission and
   fresh-review gates remain pending.
+
+## Final Path-Boundary Clean Admission
+
+- Atomic GREEN checkpoint
+  `17284a3fca132c994cab6ce68ae8514cc88c2654` descends without rewrite from
+  colon-boundary RED `cc997e7327aa54d06660493a88de84ad81fb1fbe`, exact
+  authority merge `beab46a08e84f451affb13fcd7217cfc36e1582e`, every earlier
+  path-boundary RED/GREEN pair, rejected candidate, authority, review, and
+  registry correction in the preserved Task138-H lineage.
+- Fresh coordinator validation passes the exact focused suite **262/262**,
+  exact cross-boundary suite **298/298**, standalone typecheck, factory
+  readiness, and diff hygiene. V4 standalone assurance passes **20/20** and
+  contract mode emits all four exact release-graph, composition-corpus,
+  command-card, and ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and exits `1` only
+  with `repository release closure incomplete: expected 29 records, found
+  27`. This is strict-prefix success at the unfinished frontier.
+- Fresh serial full-verification differential reports candidate **10 failing
+  files / 47 failing tests / 3,123 passes / 5 skips** and clean `neo` **10
+  failing files / 48 failing tests / 2,877 passes / 5 skips**. Candidate
+  failures are an exact strict subset and exclude Task138-H. The sole
+  baseline-only prerequisite timeout passes **1/1** in isolated runs on both
+  trees, classifying the difference as inherited load variance; the exact
+  **246-pass** increase is cumulative Task138-H coverage.
+- Exact implementation scope from the latest authority merge to GREEN is the
+  frozen three Task138-H paths; cumulative task-owned scope remains those same
+  paths. All required repair authorities, forward merges, rejected candidates,
+  reviewer verdicts, and permanent RED/GREEN commits remain ancestors.
+  Dependencies are real and local at Node `v26.1.0` and Vitest `4.1.9`;
+  neither dependency directory is a symlink, the V4 contract SHA-256 remains
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`,
+  and both candidate and `neo` remain clean.
+- This claim-only transition admits one exact candidate for a completely
+  fresh independent architecture/executability pair. It is not approval,
+  integration, strict record 28, or release. Strict frontier remains **27 of
+  29**; every reviewer of earlier candidate bytes is excluded from approval.
