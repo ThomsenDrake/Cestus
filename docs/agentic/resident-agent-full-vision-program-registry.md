@@ -27203,3 +27203,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   records 1-27, all 29 IDs/order, published `neo`, and all external-effect
   prohibitions remain unchanged.
+
+## RV-1-E-922 — Task138-H outer-URL punctuation and mixed-home relative gaps; bounded repair authorized
+
+- Recorded at: 2026-07-22T18:48:19Z
+- Exact candidate `5d9b6e631a9ca15e386fed2425b60d66305cd5cb`
+  is rejected and immutable. Completely fresh architecture review
+  `task138_path_final2_arch` and completely fresh executability review
+  `task138_path_final2_exec` independently conclude `NEEDS_CHANGES`. This is
+  a review rejection, not approval, integration, strict record 28, or release.
+- Architecture reproduced a canonical parser-valid mounted DTO retaining
+  `https://public.test/?next=file:\\Windows\\System32\\config` with
+  `handoff-recorded`, the exact unsafe leaf, material reads **3**, manifest
+  reads **2**, writes **0**, and only `effect: "none"`. Its predicate matrix
+  also exposes `file:\\\\host...` and POSIX, drive, rooted-Windows, and UNC
+  roots introduced by ordinary punctuation inside complete outer HTTP(S)
+  path, query, and fragment contexts. The pre-mask check is incorrectly
+  limited to `[?#&=]` and omits backslash-rooted `file:` payloads.
+- Executability independently exercises **34** canonical no-write DTOs. Six
+  punctuation-adjacent outer-URL absolute payloads fail open and eight safe
+  mixed leading home-relative chains close incorrectly; exact mounted routing,
+  zero writes, and only `effect: "none"` hold **34/34**. Representative unsafe
+  boundaries include `[`, `;`, `,`, and `:` before POSIX, drive,
+  rooted-Windows, UNC, `file:\\`, and `file:\\\\` owners. Representative
+  safe relative chains include `~/~/...`, `~/./~/...`, `./~/...`, and
+  `../~/...` with both POSIX and Windows separators.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED public-DTO coverage crossing outer HTTP(S)
+  path, query, and fragment positions; punctuation `=`, `:`, `[`, `,`, `(`,
+  `;`, and `|`; native POSIX, drive, rooted-Windows, backslash UNC, and
+  forward-UNC owners; and `file:` followed by slash, drive, rooted-Windows,
+  and UNC payloads. It must also commit the exact mixed home-relative controls
+  above plus longer permutations under both separator families. Matching safe
+  controls must retain complete and nested HTTP/HTTPS URLs, their structural
+  path separators, URL-like ordinary punctuation, drive-relative text, and
+  leading/internal/adjacent dot, dot-dot, and home-relative chains. All prior
+  **284** focused cases must remain unchanged and green outside the new causal
+  failures.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest final-predicate repair. Before excluding a
+  complete outer HTTP(S) token, apply the same boundary-aware native absolute
+  semantics used by the final path checks across its non-structural contents,
+  including all authorized punctuation and file payload families; do not
+  treat the scheme delimiter, authority separator, or normal URL pathname as
+  a native path. Extend leading relative normalization only enough to cover
+  adjacent home segments mixed with dot and dot-dot segments. Preserve safe
+  HTTP(S), ordinary punctuation, drive-relative, and all prior relative
+  controls. No sanitizer, decoding, parser/schema, per-field predicate,
+  lifecycle, provenance, replay, mounted-read, diagnostic, no-effect,
+  whole-DTO closure, registry, contract, shared-source, package, provider,
+  credential, network, external-system, or fallback-write change is
+  authorized.
+- Preserve candidate `5d9b6e63`, candidate `50ca5da9`, every earlier
+  candidate, every permanent RED/GREEN pair and review verdict, and all
+  authority and registry-placement commits by forward merge. After causal
+  RED/GREEN, rerun the complete candidate stack and admit exactly one clean
+  SHA to a wholly fresh architecture/executability pair. Neither reviewer
+  above nor any reviewer of earlier changed bytes may approve it.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier
+  remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
+  records 1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
+  provider/credential prohibitions, fallback-write prohibition, and
+  external-effect boundaries remain unchanged.
