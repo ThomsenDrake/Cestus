@@ -26756,3 +26756,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   remains **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw
   records 1-27, all 29 IDs/order, published `neo`, and external-effect
   prohibitions remain unchanged.
+
+## RV-1-E-913 — Task138-H compositional URL and Windows-root gaps; bounded repair authorized
+
+- Recorded at: 2026-07-22T16:07:18Z
+- Fresh architecture review instance
+  `a6a55b76-b3dd-4b16-b3a5-97d97c211114` and fresh executability review
+  instance `7158e661-5757-48b0-b0e1-7fbb23188a2e` both return
+  `NEEDS_CHANGES` for exact candidate
+  `df461e730557bbdbd92d4079ed6f4f0628282c8b`. The candidate is rejected and
+  remains immutable in ancestry; it is not approved, integrated, released, or
+  eligible for strict record 28.
+- Both reviewers reproduce first-scheme masking when one non-whitespace token
+  begins with a genuine HTTP(S) URL but later contains a non-HTTP outer scheme
+  carrying an absolute doubled-slash payload. They also reproduce false
+  rejection of valid outer HTTP(S) URLs whose path contains safe punctuation
+  or an inner HTTP(S) URL, because punctuation matching currently lacks whole
+  URL context. Architecture and executability additionally prove that rooted
+  Windows paths such as `\\Windows\\...` and host-only UNC roots such as
+  `\\\\host` are absolute under the owned Windows path semantics yet remain
+  browser-visible. All mandated deterministic gates, mounted-read, zero-write,
+  and `effect: "none"` evidence otherwise pass.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED public-DTO coverage for multiple schemes in
+  one token, including a leading safe HTTP(S) URL followed by punctuation and
+  a non-HTTP outer URI carrying an absolute payload; rooted single-backslash
+  Windows paths; and host-only UNC roots with and without a trailing slash.
+  Controls must keep complete valid HTTP/HTTPS URLs open when safe punctuation
+  or an inner HTTP/HTTPS URL appears in path, query, or fragment positions,
+  while ordinary punctuation and relative slash text remain open. Every prior
+  **203** focused case must remain green.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest compositional correction in the final path
+  predicate. It must evaluate all relevant scheme occurrences rather than
+  trusting the first scheme in a whitespace token, distinguish an actual
+  complete outer HTTP(S) URL from punctuation-separated or non-HTTP nested
+  URI payloads, and cover the remaining Windows absolute-root forms. No
+  sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, mounted-read, diagnostic, no-effect, or whole-DTO closure change is
+  authorized.
+- Preserve rejected candidate `df461e73`, both fresh verdicts, every prior
+  candidate/RED/GREEN/review/authority commit, and all registry-placement
+  corrections by forward merge. After RED/GREEN, rerun the complete candidate
+  gate stack and obtain a completely new architecture/executability pair;
+  neither current reviewer may approve changed bytes.
+- Status returns Task138-H `reviewing -> implementing`. Strict frontier remains
+  **27 of 29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records
+  1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
+  provider/credential prohibitions, fallback-write prohibition, and external-
+  effect boundaries remain unchanged.
