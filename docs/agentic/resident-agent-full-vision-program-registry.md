@@ -27539,3 +27539,31 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   This is not a product release, not strict record 29, and not Task136
   implementation. Strict frontier remains **28 of 29**; Task136 is next and
   Waves 3-5 remain unstarted.
+
+## RV-1-E-928 — Record-28 assurance calibration approved for integration
+
+- Recorded at: 2026-07-22T20:08:28Z
+- Exact clean assurance candidate
+  `96142632606668519b2198590bdb3ae87b367691` is approved by two wholly fresh,
+  independent, read-only reviewers against immutable 6,826-byte package
+  `/tmp/record28-assurance-review-96142632.diff`, SHA-256
+  `c883136b1c16cb78ddad9cbbafa3467b3f4fcb466b52597becb9628986ad33ef`.
+- Architecture review UUID `fac42fe2-d0c1-499e-aa41-313ca7b89dab` reports no
+  defects. It verifies exact two-file scope, the three calibrated current
+  prefix groups, byte-identical historical W1 `.slice(0, 26)` semantics,
+  immutable product/checker/contracts/registry/manifests, preserved ancestry,
+  and correct assurance-only classification.
+- Executability review UUID `e8bbc849-1479-48f8-a7fb-e40cb1406092` reports no
+  defects. It independently reproduces causal RED exactly **17/20**, with only
+  three `28 !== 27` current-cardinality failures, and GREEN **20/20**; all four
+  exact contract markers; repository strict **28/28** followed only by the
+  expected incomplete-29 closure; standalone typecheck; factory readiness;
+  exact scope, ancestry, real-dependency, diff-hygiene, no-product-change, and
+  clean-state gates.
+- Status advances record-28 assurance `reviewing -> approved`. A no-ff merge
+  may now integrate the exact candidate into this program lineage, after which
+  the integrated gates must be rerun before Task136 authorization.
+- This approval is not a product release, not strict record 29, and not
+  Task136 implementation. The strict product frontier remains **28 of 29**;
+  no provider, credential, external-system, push, or pull-request action is
+  authorized by this event.
