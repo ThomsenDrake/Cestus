@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing punctuation-boundary repair
+- **Status:** punctuation-safe candidate awaiting fresh dual review
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -61,8 +61,9 @@ synthesizing it; the frozen acceptance permits this fail-closed omission.
 
 ## Execution Authority And Gates
 
-`RV-1-E-889` and the coordinator explicitly authorize task-scoped
-subagent-driven development and test-driven development for this card. Required
+`RV-1-E-889` and the coordinator authorize this bounded implementation.
+Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+Required
 lineage is claim-only, permanent causal RED, then minimal GREEN. The exact
 focused command is:
 
@@ -571,3 +572,38 @@ and fallback writes are prohibited.
   credential, external system, fallback write, integration, strict record 28,
   or release action occurs. Coordinator-owned comprehensive V4, repository
   prefix, full differential, admission, and fresh review gates remain pending.
+
+## Punctuation-Safe Clean Admission
+
+- Atomic GREEN commit
+  `96f1ac6cbfc1b78e0601d59fa5f2c9c561beb616` descends without rewrite from
+  causal RED commit `601b8e134cf453e6bdbeda3e8793204fb2aa0c6a`
+  and authority merge `9c1a20eb81bfe7e9d0cd68cc055f0985c6611111`.
+  Rejected candidate `3824f9d071ae6ff4e948f7f045883e971df27435`
+  remains an ancestor rather than being amended or reconstructed.
+- Fresh coordinator validation passes the exact focused suite **62/62**, exact
+  cross-boundary suite **98/98**, standalone typecheck, factory readiness, and
+  diff hygiene. V4 standalone assurance passes **20/20** and contract mode
+  emits all four exact release-graph, composition-corpus, command-card, and
+  ABI-corpus markers.
+- From the clean GREEN checkout, repository mode executes every one of the
+  **27 released commands**, emits exact marker
+  `TASK136_REPOSITORY_PREFIX_OK records=27 commands=27`, and then exits `1`
+  only with `repository release closure incomplete: expected 29 records,
+  found 27`. This is strict-prefix success at the unfinished frontier rather
+  than a candidate failure.
+- Serial full-verification differential runs reproduce the exact same inherited
+  cohort on candidate and clean `neo`: **10 failing files / 48 failing tests /
+  5 skips**. The candidate has **2,922 passes** versus `neo`'s **2,877**;
+  the exact **45-pass** increase is the expanded Task138-H focused suite, while
+  every failing file and test name is identical and excludes all three owned
+  paths.
+- Exact cumulative scope is the frozen three Task138-H paths. Dependencies are
+  real and local: Node `v26.1.0`, Vitest `4.1.9`, neither `node_modules` nor
+  `node_modules/vitest` is a symlink, and the V4 contract hash matches its
+  mission-pinned SHA-256. Scope, ancestry, dependency, and clean-state checks
+  pass before this claim-only admission transition.
+- This admission is not approval, integration, strict record 28, or release.
+  The frontier remains **27 of 29**, and only a completely fresh independent
+  architecture/executability review pair may approve the exact admitted
+  candidate.
