@@ -26909,3 +26909,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   1-27, all 29 IDs/order, prior releases/evidence, published `neo`,
   provider/credential prohibitions, fallback-write prohibition, and external-
   effect boundaries remain unchanged.
+
+## RV-1-E-916 — Task138-H chained relative-prefix false positive; pre-admission repair authorized
+
+- Recorded at: 2026-07-22T17:06:41Z
+- The RV-1-E-915 cycle preserves permanent causal RED
+  `f2a821c85bca60d3ac834c82494763a9cdeb1944` and clean GREEN checkpoint
+  `fe19229e8970ff82be7fc2ddd29af857d1befc48`. Focused tests pass
+  **228/228**, cross-boundary tests pass **264/264**, and typecheck, factory
+  readiness, diff hygiene, exact frozen scope, ancestry, dependencies, and
+  clean state pass. The checkpoint has not been admitted as a candidate or
+  sent to review.
+- Coordinator-owned adversarial admission evaluation proves the single-prefix
+  normalization leaves a later current-directory segment visible to the
+  native-root expressions. Non-absolute chained relatives such as `././child`,
+  `.././child`, `~/./child`, `.\\.\\child`, `..\\.\\child`, and
+  `~\\.\\child` therefore still classify as absolute, while Node path owners
+  classify them as relative. This is a pre-admission defect, not a review
+  verdict, approval, integration, strict record 28, or release.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED public-DTO coverage for chained dot,
+  dot-dot, and home-relative POSIX and Windows prefixes, proving each is
+  non-absolute and remains open. Controls must retain all prior **228** cases,
+  especially the four generalized `~`-punctuation absolute-path rows and all
+  true Unix, Windows, UNC, doubled-slash, URI-authority, and explicit-file URI
+  closures.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest final-predicate correction that recognizes
+  an entire boundary-qualified leading relative-prefix chain instead of only
+  its first segment. It must not treat raw dot or tilde punctuation as a
+  relative prefix outside that bounded chain. No sanitizer, parser/schema,
+  per-field predicate, lifecycle, provenance, replay, mounted-read,
+  diagnostic, no-effect, or whole-DTO closure change is authorized.
+- Preserve checkpoint `fe19229e`, rejected candidate `0b5eb36e`, every prior
+  candidate/RED/GREEN/review/authority commit, and all registry-placement
+  corrections by forward merge. After RED/GREEN, rerun the complete candidate
+  gate stack and obtain a wholly new architecture/executability pair before
+  integration or release.
+- Status remains Task138-H `implementing`. Strict frontier remains **27 of
+  29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records 1-27, all
+  29 IDs/order, prior releases/evidence, published `neo`, provider/credential
+  prohibitions, fallback-write prohibition, and external-effect boundaries
+  remain unchanged.
