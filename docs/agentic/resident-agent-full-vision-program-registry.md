@@ -27460,3 +27460,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   ]
 }
 ```
+
+## RV-1-E-926 — Record-28 assurance fixture transition authorized
+
+- Recorded at: 2026-07-22T19:47:39Z
+- Clean strict record-28 repository mode executes every released command,
+  including Task138-H focused **318/318**, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=28 commands=28`, and exits only with
+  `repository release closure incomplete: expected 29 records, found 28`.
+  This confirms strict product release 28; no product repair is implicated.
+- Standalone V4 assurance now exits `1` with exactly **17/20** passing. The
+  only failures are the three current-registry cardinality assertions at
+  lines 1159, 1475, and 1655, each reporting `28 !== 27`. Contract mode still
+  emits all four exact markers. No checker, contract, release record, command,
+  blob, ownership, compatibility, migration, dependency, Task138-H product,
+  or unrelated fixture failure is present.
+- The preserved record-27 V4 assurance lineage at exact clean
+  `ecd795d0ddbc97ef43ff9046fea3707dfe0e931a` must forward-merge current
+  program authority without rewriting history. Its implementation owner may
+  change only
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` and
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`.
+  It must first commit claim-only causal RED evidence for exact **17/20**,
+  then minimally advance the three current-prefix length/order assertions and
+  their coupled repository incomplete-found, prefix marker, and command-call
+  expectations from **27** to **28**.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- The historical W1 activation corpus's local `.slice(0, 26)` and its
+  preactivation length/order assertions remain byte-identical at **26**; its
+  synthetic record-27 activation remains historical. V1-V4, raw records 1-28,
+  all 29 IDs/order, product bytes, integration/review evidence, immutable
+  inputs, release semantics, and command cards are not authorized to change.
+- After GREEN, run assurance **20/20**, all four markers, repository strict
+  **28/28** plus only incomplete-29 closure, standalone typecheck, factory,
+  diff/scope/ancestry/dependency/clean and no-product-byte gates, then obtain
+  one completely fresh read-only architecture/executability pair. No earlier
+  assurance reviewer may approve changed bytes.
+- Status advances record-28 assurance `claimed -> implementing`. This is an
+  assurance-only calibration, not a product release, not strict record 29,
+  and not Task136 implementation. Strict product frontier remains **28 of
+  29**; Task136 is next and Waves 3-5 remain unstarted. No provider,
+  credential, network, external-system, push, or pull request occurs.
