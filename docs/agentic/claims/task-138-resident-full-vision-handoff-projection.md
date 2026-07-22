@@ -1,6 +1,6 @@
 # Task138-H Claim: Mounted Resident Handoff Projection
 
-- **Status:** implementing explicit URI-scheme token-boundary repair
+- **Status:** explicit URI-scheme token-boundary GREEN checkpoint
 - **Task:** strict release record 28 `Task138-H`
 - **Claimed at (UTC):** 2026-07-21
 - **Worker:** Codex Task138-H bounded implementation owner
@@ -774,3 +774,29 @@ and fallback writes are prohibited.
   intact. No registry, V4, contract, shared source, provider, credential,
   network, external system, fallback write, admission, review, integration,
   strict record 28, or release action participates.
+
+## Explicit URI-Scheme Token Minimal GREEN
+
+- Permanent causal RED commit
+  `4a47ca4b1d5dcdf3d83fc5510a29a3ee34454bd0` retains all **7** failures and
+  all **76** prior passing cases without changing production source.
+- GREEN changes one line only in `containsAbsolutePath`: the existing
+  case-insensitive HTTP and HTTPS negative lookbehinds now require their scheme
+  token to begin at string start or after the same explicit safe delimiter
+  class already owned by the native-path predicate. The generic JavaScript
+  word boundary is removed, so `-`, `.`, `+`, and non-ASCII adjacency cannot
+  manufacture an HTTP(S) exemption. Every other native-path branch and the
+  explicit `file://` rejection remain byte-for-byte unchanged.
+- The exact focused command passes **1 file / 83 tests**. The exact
+  cross-boundary command passes **2 files / 119 tests**. Standalone `npm run
+  typecheck` emits `typecheck passed`, `npm run factory:check` emits
+  `factory-readiness passed`, and `git diff --check` emits no diagnostic.
+- Rejected candidate `9adc07c1`, program authority `d513298d`, authority merge
+  `549cf45e`, and causal RED `4a47ca4b` remain ancestors. The cumulative repair
+  uses exactly the frozen Task138-H source, test, and claim paths. Both mounted
+  stores remain read-only, all next actions retain `effect: "none"`, and no
+  registry, V4, contract, shared source, package metadata, provider,
+  credential, network, external system, fallback write, admission, review,
+  integration, strict record 28, or release action occurs. Coordinator-owned
+  V4, repository, full-differential, admission, and fresh review gates remain
+  pending.
