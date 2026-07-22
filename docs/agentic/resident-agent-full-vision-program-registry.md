@@ -26384,3 +26384,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   1-27, all 29 IDs/order, prior releases/evidence, published `neo`, providers,
   credentials, external systems, fallback writes, and external effects remain
   unchanged.
+
+## RV-1-E-905 — Task138-H actual-HTTP-scheme boundary gap; pre-admission repair authorized
+
+- Recorded at: 2026-07-22T13:48:59Z
+- The bounded RV-1-E-904 cycle preserves causal doubled-slash RED
+  `e4abe453761c298df098d8011e257b27fd4a8f7d` and clean GREEN checkpoint
+  `681a7ac5a1bfca1513d40e41234981c29bdb6722`. Focused tests pass **70/70**,
+  cross-boundary tests pass **106/106**, and standalone typecheck, factory
+  readiness, diff hygiene, exact scope, ancestry, and clean state pass. The
+  checkpoint has not been admitted as a candidate or sent to review.
+- Coordinator-owned adversarial admission checking finds the one-line GREEN
+  still exempts any text suffix `http:` or `https:` immediately before a
+  doubled slash, rather than an actual scheme token as RV-1-E-904 requires.
+  Consequently non-URL strings such as `xhttp://opt/cestus/...` and
+  `_https://host/share/...` retain an absolute doubled-slash POSIX or
+  forward-slash UNC substring while bypassing the path predicate. Actual
+  HTTP/HTTPS controls remain safe, and arbitrary doubled slashes are otherwise
+  rejected. This is a pre-admission defect, not a reviewer verdict, approval,
+  integration, strict record 28, or release.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED cases proving false or embedded HTTP-like
+  prefixes cannot exempt doubled-slash POSIX and forward-slash UNC paths while
+  actual case-insensitive HTTP/HTTPS schemes at string and punctuation
+  boundaries remain accepted. It may then add only the minimal token-boundary
+  correction to the final path predicate. All prior **70** cases and every
+  parser, schema, per-field predicate, lifecycle, provenance, replay,
+  mounted-read, diagnostic, no-effect, and whole-DTO closure invariant must
+  remain unchanged.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Preserve `681a7ac5`, both RV-1-E-904 rejection verdicts, all earlier
+  candidates and RED/GREEN history, and this authority by forward merge. After
+  the new causal RED/minimal GREEN, rerun the focused/cross-boundary,
+  typecheck, factory, V4, contract, repository-prefix, differential,
+  diff/scope/ancestry/dependency/clean gates before admitting one exact
+  candidate to a completely fresh architecture/executability pair.
+- Status remains Task138-H `implementing`. Strict frontier remains **27 of
+  29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records 1-27, all
+  29 IDs/order, prior releases/evidence, published `neo`, provider/credential
+  prohibitions, and external-effect boundaries remain unchanged.
