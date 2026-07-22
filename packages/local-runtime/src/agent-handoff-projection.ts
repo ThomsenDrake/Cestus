@@ -208,7 +208,7 @@ function hasBrowserSafeStringLeaves(value: unknown): boolean {
 
 function containsAbsolutePath(value: string): boolean {
   const containsNestedNonHttpUri = value.split(/\s+/u).some((token) => {
-    for (const match of token.matchAll(/(?:^|[^\p{ID_Continue}_+.\-])([a-z][a-z0-9+.-]*):/giu)) {
+    for (const match of token.matchAll(/(?<![\p{ID_Continue}_+.\-])([a-z][a-z0-9+.-]*):/giu)) {
       const scheme = match[1]?.toLowerCase();
       const schemePayload = token.slice(match.index + match[0].length);
       if (scheme !== undefined &&
@@ -230,6 +230,11 @@ function containsAbsolutePath(value: string): boolean {
       try {
         const parsed = new URL(token.slice(urlStart));
         if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+          const outerUrl = token.slice(urlStart);
+          if (/(?:^|[/?#&=])file:(?:\/|[a-z]:[\\/])/iu.test(outerUrl) ||
+            /[?#&=](?:\/|[a-z]:[\\/]|\\)/iu.test(outerUrl)) {
+            return token;
+          }
           return token.slice(0, urlStart);
         }
       } catch {
@@ -241,7 +246,7 @@ function containsAbsolutePath(value: string): boolean {
   const absolutePathText = nativePathText.replace(
     /(?:^|[^\p{ID_Continue}_/\\])(?:\.{1,2}|~)(?:[\\/]\.{1,2})*[\\/]/gu,
     (relativePrefix) => relativePrefix.replace(/[\\/]/g, "_")
-  ).replace(/([\\/](?:\.{1,2}|~))[\\/]/g, "$1_");
+  ).replace(/(?<=[\\/])(\.{1,2}|~)[\\/]/g, "$1_");
 
   return containsNestedNonHttpUri ||
     /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(absolutePathText) ||
