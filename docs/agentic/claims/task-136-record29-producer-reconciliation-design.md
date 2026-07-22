@@ -41,9 +41,10 @@ Bounded design result:
   durable T120 result reread without a synthetic suspension. Resumable results
   require an exact suspension/checkpoint/anchor and same-stream segmented
   replay.
-- C is typed but untrusted; G is prebound and single-use; W is opaque and
-  reverified; H is an internal full-readback port; R alone exposes the concrete
-  real-mounted library composition entrypoint.
+- C is typed, stateless, and untrusted; G is prebound, single-use, and can
+  reissue a branded readback only from an exact durable locator; W is opaque
+  and reverified; H is an internal full-readback port; R alone exposes the
+  concrete real-mounted library composition entrypoint.
 - R's exact trusted-bootstrap input and capability provenance are frozen. Loop
   callers receive only `advance`/`resume`; no handle, ledger, witness, reader,
   executor, or structural port bag escapes. Record 29 intentionally does not
@@ -56,12 +57,17 @@ Bounded design result:
   private G-owned append/reread completion route; the inaccessible generic
   completion API and human-only scheduler evidence path remain unchanged.
   Human approval retains its exact decision ID and human executor branch.
-- W's one-shot private registrar constructs T120 after unchanged Core binding
-  and issues H an exact-hash, cursor-free mounted artifact reader. The portable
-  H binding/controller remains authority provenance but its cursor-bound store
-  is not reused after V2 events. Complete mount loss returns a safe non-durable
-  unavailable envelope until a canonical result can actually be persisted and
-  reread.
+- W's one-shot private registrar constructs T120 and prebound G after unchanged
+  Core binding, then issues H an exact-hash, cursor-free mounted artifact
+  reader. Its suspension transaction durably rereads orchestration checkpoint,
+  resident suspension, resident resumable result, and orchestration release in
+  that order; the resident suspension's ledger-assigned ID is the resume
+  checkpoint and is never self-referenced in its input payload. Approval-wait
+  checkpoints bind the existing request but no future decision; non-approval
+  categories carry no gateway IDs. The portable H binding/controller remains
+  authority provenance but its cursor-bound store is not reused after V2
+  events. Complete mount loss returns a safe non-durable unavailable envelope
+  until a canonical result can actually be persisted and reread.
 - Task138-H product, tests, claim, DTO, and browser projection remain unchanged.
 
 Prohibitions:
@@ -93,6 +99,15 @@ Independent design review:
   exact-hash mounted H reader. No seventh producer seam, generic gateway,
   scheduler-adapter, portable-store, FC-Core, or runtime-factory edit is
   implied.
+- Revision `819d3b066ea6757d6a25163906b8803517b6480b` then received
+  `NEEDS_CHANGES` because R rather than W constructed G, W exposed no append
+  authority to that G, release preceded any durable resumable result, the
+  suspension checkpoint required an impossible future self ID and irrelevant
+  decision IDs, and restart depended on process-local G/C state. This
+  descendant makes construction package-valid, defines the exact four-event
+  suspension/release order and category union, treats the reread suspension
+  event ID as the resident checkpoint, and adds exact-ID G plus stateless C
+  rehydration. The transfer/card counts and prospective hashes remain fixed.
 
 Validation required before commit:
 

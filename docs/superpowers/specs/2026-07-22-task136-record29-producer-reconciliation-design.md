@@ -13,10 +13,14 @@ decision representation for approval class `none`. Its correction at
 `e41a1504b7a0a2438770f567e5b08672ba0ed4f2` then failed fresh architecture and
 executability review because generic completion is private, the existing
 executor ABI requires a human approver, the portable H cursor rejects later
-V2 events, and W/T120 construction order was not frozen. This revision
-corrects all six findings without changing the finite 21-path transfer, the
-24-path Task136 card, any prospective contract fingerprint, or the strict
-frontier.
+V2 events, and W/T120 construction order was not frozen. Revision
+`819d3b066ea6757d6a25163906b8803517b6480b` closed those four findings but
+failed a new review pair because its construction crossed package ownership,
+W did not append the resumable result before release, the checkpoint payload
+required a ledger-assigned self ID and irrelevant gateway decisions, and G/C
+had no ledger-only process-restart rehydration ABI. This descendant corrects
+all eleven findings without changing the finite 21-path transfer, the 24-path
+Task136 card, any prospective contract fingerprint, or the strict frontier.
 
 ## Decision And Authority
 
@@ -292,6 +296,46 @@ deadline, and next-safe-action anchor. It closes an execution segment, not the
 whole run. Continuation requires W reclaim/reverification and a causally linked
 recovery observation.
 
+The resident suspension payload does not contain its own future event ID.
+The ledger-assigned ID of the durably reread
+`agent.resident-loop.suspended.v2` event is the resident checkpoint ID. Its
+checkpoint payload instead contains the already durable
+`orchestrationCheckpointEventId`, deadline, next safe action, and this strict
+category-dependent authorization union:
+
+```ts
+type ResidentLoopV2SuspensionCheckpoint =
+  | {
+      readonly authorizationKind: "awaiting-human-approval";
+      readonly orchestrationCheckpointEventId: string;
+      readonly requestEventId: string;
+      readonly resumptionDeadlineAt: string;
+      readonly nextSafeAction: string;
+    }
+  | {
+      readonly authorizationKind: "not-applicable";
+      readonly orchestrationCheckpointEventId: string;
+      readonly resumptionDeadlineAt: string;
+      readonly nextSafeAction: string;
+    };
+```
+
+Only `suspensionCategory: "approval-required"` may use
+`awaiting-human-approval`, and it requires the exact already durable request
+but forbids `decisionEventId`, execution claim, completion, and approver. The
+four non-approval suspension categories require `not-applicable` and forbid
+every gateway ID. Automatic-policy execution never fabricates a suspension
+decision. A later human decision is a post-checkpoint recovery fact, not a
+field retroactively inserted into the immutable suspension.
+
+The immediately following resumable result's
+`resumeAnchor.checkpointEventId` equals the reread suspension event ID; its
+deadline and next safe action equal the suspension payload. Replay also
+requires the suspension's `orchestrationCheckpointEventId` to name the exact
+prior same-attempt orchestration checkpoint. This removes the impossible
+pre-append self-reference while preserving an exact resident/orchestration
+cross-stream chain.
+
 A completed or failed result requires its exact final observation and is the
 last event. It has no suspension and no resume anchor. Completed requires the
 full H readback; failed forbids H and a resume anchor. A dangling suspension or
@@ -313,6 +357,16 @@ boundary. Task136 reparses every returned candidate, compares its complete
 posture, policy, tool/model, source/context, budget, authority, and causation
 facts to current R/P/W readbacks, and only then calls T120. A C value never
 grants permission or authority.
+
+C is stateless across candidates. `createReplanCandidate` accepts copied,
+frozen canonical `priorPlan`, `priorPlanReadback`, and
+`replanObservationReadback` values supplied from the current T120 replay and
+validates the new candidate solely against those exact values. It has no
+process-local `latest` prerequisite. On both same-process and process-restart
+paths Task136 rereads that prior plan and observation from T120 before calling
+C, reparses C's untrusted result afterward, and rejects any difference. A
+fresh C instance therefore has no authority to invent history and can replan
+from ledger state without an in-memory recovery cache.
 
 ### G: prebound single-use execution and approval
 
@@ -422,17 +476,44 @@ unchanged human evidence adapter. G never fabricates a human approval. Denial,
 revocation, expiry, plan or preview drift, an existing claim, or terminal
 stream state burns the execution path before effect.
 
+G also exposes an internal exact-ID
+`rereadAndIssueForResume(locator)` method to Task136; it never appends a second
+request. The copied locator contains the task/attempt/run, plan-record event,
+tool request, and request event IDs plus only the branch-appropriate known
+decision/claim/result IDs. G rereads the exact plan and complete tool-request
+stream, proves there is exactly one canonical branch and no foreign or extra
+decision, claim, or completion, rechecks the frozen descriptor, policy,
+authority, preview, causation, and W currentness before and after I/O, then
+issues a new process-local branded readback over those durable facts. For an
+approval-wait resume, W first requires exactly one human decision later than
+the suspension and causally bound to its request, within the checkpoint
+deadline; that decision ID is then the human locator. For a crash after an
+automatic claim or completion, the locator must name the unique
+request-caused claim and optional claim-caused result, and G never re-executes
+an already claimed effect. A request-only automatic locator is reissuable only
+when the complete tool-request stream proves that no claim or completion
+exists; after full revalidation, the normal unique-claim path may then execute
+once. The locator must name every later durable event that does exist. The
+method rejects partial locators, multiple decisions, missing or extra exact
+IDs, stale policy/authority/currentness, and every attempt to pass an old
+issued object as a locator.
+
 ### W: opaque mounted authority and resume
 
 The authenticated wake runtime and mounted wake store jointly issue a
 WeakMap-backed, non-serializable currentness token. W records its private store
 state in a WeakMap at construction. After unchanged Core has started and bound
 authority, R calls the non-barrel, import-gated, one-shot
-`bindResidentLoopCapabilitiesForFactory(wakeRuntime, binding)` lookup. That
-lookup accepts only the exact issued wake-runtime identity plus the Core/P/H
-binding; the mounted store privately constructs T120 from its authenticated
-ledger and returns only the issued T120, W, event-reader, and exact-hash H
-reader capabilities. Core needs no change and R never injects T120 into W. No
+`bindResidentLoopCapabilitiesForFactory(wakeRuntime, binding, descriptors)`
+lookup. That lookup accepts only the exact issued wake-runtime identity plus
+the Core/P/H binding and R's already copied/frozen G descriptors. The mounted
+store privately constructs T120 from its authenticated ledger and constructs
+prebound G with that same ledger, the descriptors, and W-private
+reverify-before/after-effect closures. This dependency is local-runtime W to
+agent G; no agent source imports local-runtime. The registrar returns only the
+issued T120, prebound G, W, event-reader, and exact-hash H-reader capabilities.
+Core needs no change and R never injects T120 or a ledger into W. G receives
+append authority only inside W's one-shot construction; neither R nor a loop
 caller receives the ledger, raw mounted store, runtime handle, mounted path,
 issuer, or replaceable callback.
 
@@ -460,11 +541,38 @@ match. The immutable event payload's authority remains the admitted source
 snapshot; the opaque token separately tracks mutable current stream/global
 high water so Task136 cannot stale itself merely by making an expected append.
 
-`suspendAndRelease` parses the candidate, uses T120 to append/reread the exact
-suspension, and appends/rereads the orchestration checkpoint/release facts
-before releasing the claim. `reclaimAndReverify` rereads the suspension,
-resumable result, release, request/decision, deadline, complete binding, and
-budget before appending/rereading a fresh claim and issuing a new token.
+`suspendAndRelease` parses and copies the candidate, burns the incoming token,
+and holds the current claim while it performs this exact sequence with fresh
+stream/global concurrency checks and a durable reread after every append:
+
+1. append/reread the category-correct orchestration checkpoint;
+2. use T120 to append/reread resident suspension `S`, whose payload names that
+   orchestration checkpoint but contains no future resident event ID;
+3. use T120 to append/reread `R-resumable`, whose resume anchor names `S.id`
+   and repeats its deadline and next safe action;
+4. append/reread the orchestration release naming the orchestration checkpoint,
+   then relinquish the claim.
+
+The orchestration event mapping is closed: `approval-required` uses
+`approval-wait` plus `approval-suspended`; `budget-exhausted` uses `blocked`
+plus `budget-blocked`; `authority-stale` and `context-stale` use `blocked` plus
+`stale-recovered`; and `provider-unavailable` uses `blocked` plus
+`worker-shutdown`. Every release, not only the approval release, names the
+exact orchestration checkpoint from step 1. The approval checkpoint carries
+the exact request in its released approval-requirement/tool-request fields;
+all other mappings omit approval material.
+
+It returns one opaque readback containing the exact four durable event IDs and
+resident rereads. If any step fails, it never claims a later step succeeded;
+in particular, it never releases before the resident `S -> R-resumable` pair
+is durable. `reclaimAndReverify` rereads that pair and release. For
+approval-required suspension it additionally rereads the exact request and
+requires exactly one later independent human decision caused by that request
+and recorded before the deadline; for every other category it requires the
+absence of checkpoint gateway IDs. It then validates the complete binding and
+budget, appends/rereads a fresh orchestration claim, and issues a new token.
+Task136 uses G's exact-ID method to reissue any needed gateway capability and
+appends a causally linked recovery observation before continuing the segment.
 
 The H artifact capability does not retain or call the portable handoff
 binding's cursor-bound stores: that cursor recognizes the released specialist
@@ -529,7 +637,7 @@ bag:
 
 ```ts
 interface CreateResidentBoundedAgentLoopFactoryInput {
-  readonly runtimeHandle: LocalRuntimeHandle;
+  readonly runtimeHandle: ResidentLoopFactoryCompositionInput["runtimeHandle"];
   readonly actor: WakeSupervisorRuntimeInput["actor"];
   readonly supervisorEpoch: string;
   readonly policy: ResidentLoopFactoryCompositionInput["policy"];
@@ -571,10 +679,18 @@ readback and P to equal that same tuple. R retains the authenticated binding
 and controller only as provenance; it never uses their cursor-bound stores as
 the post-loop H reader.
 
-R invokes W's one-shot private registrar only after those comparisons. It uses
-the returned issued T120/W/event/H capabilities to construct prebound G and the
-internal H projection port, constructs C locally, freeze-brands their exact
-bundle, and constructs Task136. The return value is only
+R invokes W's one-shot private registrar only after those comparisons and
+passes the already copied/frozen descriptors into that registrar. W constructs
+prebound G while it alone holds the authenticated ledger and W currentness
+closures, then returns the issued T120/G/W/event/H capabilities. R constructs
+stateless C and the internal H projection port locally, then invokes the
+agent-owned, non-barrel `createResidentBoundedAgentLoopFromIssuedCapabilities`
+issuer from `bounded-agent-loop.ts`. Import-policy tests allow that issuer only
+from R, allow W to import only the named G constructor, and forbid every
+agent-to-local-runtime import. The issuer copies and freeze-brands the exact
+R-supplied identities once; there is no exported generic constructor or
+structural port-bag parameter, and every issued capability verifies its own
+WeakMap membership on use. The return value is only
 `{ metadata, loop, stop }`; `loop` exposes `advance` and `resume`, and `stop`
 closes the retained composition. No public mint, raw handle, witness, store,
 ledger, reader, executor descriptor, provider body, or caller-replaceable
@@ -618,19 +734,26 @@ The permanent RED matrix covers at least:
   without `decisionEventId`, an automatic request with `decisionEventId` or an
   approval event, request/claim causation drift, completion not caused by the
   exact claim, changed preview, reused authorization, duplicate claim,
-  terminal stream, and crash re-execution;
+  terminal stream, restart locator with missing/extra/wrong exact IDs,
+  duplicate gateway reissuance branch, and crash re-execution;
 - W structural/copied/stale tokens, foreign or missing checkpoints/releases,
   wrong claim generation, expired deadline, cross-run anchor, remount/store/
   policy/lock drift, duplicate registrar use, unrecognized ledger advance,
-  cursor-store substitution, exact-hash artifact miss/ambiguity, and any path
-  or directory enumeration;
+  resident self-ID in a suspension payload, release before a durable resumable
+  pair, approval checkpoint with a future decision, non-approval checkpoint
+  with any gateway ID, cursor-store substitution, exact-hash artifact
+  miss/ambiguity, and any path or directory enumeration;
 - H caller-supplied events/readers, cross-run/authority mismatch, non-completed
   state, selected-readback mismatch, missing terminal evidence, and any
   Task138 DTO widening;
 - R hostile or mutable bootstrap data, non-factory handles, stale/foreign
   provider or handoff authorities, duplicate or changed executor descriptors,
-  capability escape, structural port substitution, and any claim that the
-  record-29 library entrypoint is installed in a default runtime or route;
+  G constructed outside W, agent-to-local-runtime imports, capability escape,
+  structural port substitution, and any claim that the record-29 library
+  entrypoint is installed in a default runtime or route;
+- a fresh-process resume with G readback reissuance and stateless C replan as
+  GREEN, and any dependence on a prior WeakSet/WeakMap-issued G object or C
+  `latest` cache as RED;
 - terminal without a synthetic suspension as GREEN, genuine repeated resume
   segments as GREEN, and fake terminal suspension, resumable without
   suspension, event after terminal, dangling readback, or cross-segment
