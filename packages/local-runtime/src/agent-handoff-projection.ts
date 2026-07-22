@@ -207,6 +207,16 @@ function hasBrowserSafeStringLeaves(value: unknown): boolean {
 }
 
 function containsAbsolutePath(value: string): boolean {
+  const normalizeRelativePathSegments = (pathText: string): string => pathText.replace(
+    /(?:^|[^\p{ID_Continue}_/\\])(?:\.{1,2}|~)(?:[\\/](?:\.{1,2}|~))*[\\/]/gu,
+    (relativePrefix) => relativePrefix.replace(/[\\/]/g, "_")
+  ).replace(/(?<=[\\/])(\.{1,2}|~)[\\/]/g, "$1_");
+  const containsNativeAbsolutePath = (pathText: string): boolean =>
+    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(pathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(pathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\(?:[^\\/\s]|$)/u.test(pathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+(?:[\\/][^\\/\s]*)?/u.test(pathText);
+
   const containsNestedNonHttpUri = value.split(/\s+/u).some((token) => {
     for (const match of token.matchAll(/(?<![\p{ID_Continue}_+.\-])([a-z][a-z0-9+.-]*):/giu)) {
       const scheme = match[1]?.toLowerCase();
@@ -231,8 +241,23 @@ function containsAbsolutePath(value: string): boolean {
         const parsed = new URL(token.slice(urlStart));
         if (parsed.protocol === "http:" || parsed.protocol === "https:") {
           const outerUrl = token.slice(urlStart);
-          if (/(?:^|[/?#&=])file:(?:\/|[a-z]:[\\/])/iu.test(outerUrl) ||
-            /[?#&=](?:\/|[a-z]:[\\/]|\\)/iu.test(outerUrl)) {
+          const authorityAndContent = outerUrl.slice(httpPrefix.length);
+          const contentStart = authorityAndContent.search(/[/?#]/u);
+          const nonStructuralContent = contentStart === -1
+            ? ""
+            : authorityAndContent.slice(contentStart);
+          const boundaryText = normalizeRelativePathSegments(nonStructuralContent).replace(
+            /(?<![\p{ID_Continue}_+.\-])(https?):\/\//giu,
+            "$1:__"
+          );
+          const containsOuterAbsolutePath = [...boundaryText.matchAll(/[?#&=:\[,(;|]/gu)]
+            .some((boundary) => {
+              const candidate = boundaryText.slice(boundary.index + boundary[0].length)
+                .replace(/^file:/iu, "");
+              return /^(?:\/|[a-z]:[\\/]|\\)/iu.test(candidate) &&
+                containsNativeAbsolutePath(candidate);
+            });
+          if (containsOuterAbsolutePath) {
             return token;
           }
           return token.slice(0, urlStart);
@@ -243,16 +268,10 @@ function containsAbsolutePath(value: string): boolean {
     }
     return token;
   }).join(" ");
-  const absolutePathText = nativePathText.replace(
-    /(?:^|[^\p{ID_Continue}_/\\])(?:\.{1,2}|~)(?:[\\/]\.{1,2})*[\\/]/gu,
-    (relativePrefix) => relativePrefix.replace(/[\\/]/g, "_")
-  ).replace(/(?<=[\\/])(\.{1,2}|~)[\\/]/g, "$1_");
+  const absolutePathText = normalizeRelativePathSegments(nativePathText);
 
   return containsNestedNonHttpUri ||
-    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(absolutePathText) ||
-    /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(absolutePathText) ||
-    /(?:^|[^\p{ID_Continue}_/\\])\\(?:[^\\/\s]|$)/u.test(absolutePathText) ||
-    /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+(?:[\\/][^\\/\s]*)?/u.test(absolutePathText) ||
+    containsNativeAbsolutePath(absolutePathText) ||
     /\bfile:\/\//i.test(value);
 }
 
