@@ -1156,8 +1156,8 @@ test("binds four historical source records and exact record-11 and record-14 cur
   const task137ARecord = parsedPrefix.find((record) => record.cardId === "Task137A");
   const task129MfaRecord = parsedPrefix.find((record) => record.cardId === "Task129-MFA");
 
-  assert.equal(parsedPrefix.length, 27);
-  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 27));
+  assert.equal(parsedPrefix.length, 28);
+  assert.deepEqual(parsedPrefix.map((record) => record.cardId), expectedIds.slice(0, 28));
   assert.equal(
     createHash("sha256").update(JSON.stringify(task137ARecord)).digest("hex"),
     historicalTask137ASha256
@@ -1320,10 +1320,10 @@ test("binds four historical source records and exact record-11 and record-14 cur
         successfulMessages.push(message);
       }
     }),
-    /repository release closure incomplete: expected 29 records, found 27/
+    /repository release closure incomplete: expected 29 records, found 28/
   );
-  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=27 commands=27"]);
-  assert.equal(successfulAdapter.commandCalls.length, 27);
+  assert.deepEqual(successfulMessages, ["TASK136_REPOSITORY_PREFIX_OK records=28 commands=28"]);
+  assert.equal(successfulAdapter.commandCalls.length, 28);
 
   const task126 = parsedPrefix.find((record) => record.cardId === "Task126");
   const task137A = parsedPrefix.find((record) => record.cardId === "Task137A");
@@ -1472,8 +1472,8 @@ test("requires the finite Task137B-W to Task139-PM transfer only at record 18", 
     pathDispositions: [...task137bToCf1Paths, ...task137bToTask139PmPaths]
       .map((path) => ({ path, recordDisposition: "owned" }))
   });
-  assert.equal(releasedPrefix.length, 27);
-  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 27));
+  assert.equal(releasedPrefix.length, 28);
+  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 28));
   for (const [cardId, expectedHash] of rawPrefixPins) {
     assert.equal(createHash("sha256").update(rawRecordJson(cardId)).digest("hex"), expectedHash, cardId);
   }
@@ -1652,8 +1652,8 @@ test("requires the finite CF1-HR and Task122 direct-source transfers at records 
   assert.equal(createHash("sha256").update(readFileSync(v2ContractPath)).digest("hex"), v2ContractSha256);
   assert.equal(createHash("sha256").update(readFileSync(v3ContractPath)).digest("hex"), v3ContractSha256);
   assert.deepEqual(contract.releaseGraph.cards.map((card) => card.id), expectedIds);
-  assert.equal(releasedPrefix.length, 27);
-  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 27));
+  assert.equal(releasedPrefix.length, 28);
+  assert.deepEqual(releasedPrefix.map((record) => record.cardId), expectedIds.slice(0, 28));
   assert.equal(createHash("sha256").update(rawRecordJson("CF1-HR")).digest("hex"), rawPrefixPins.get("CF1-HR"));
   assert.equal(createHash("sha256").update(JSON.stringify(rawCf1HrRecord)).digest("hex"), historicalCf1HrSha256);
   assert.deepEqual(
