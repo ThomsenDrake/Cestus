@@ -26998,3 +26998,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29 IDs/order, prior releases/evidence, published `neo`, provider/credential
   prohibitions, fallback-write prohibition, and external-effect boundaries
   remain unchanged.
+
+## RV-1-E-918 — Task138-H colon-introduced nested authority gap; pre-admission repair authorized
+
+- Recorded at: 2026-07-22T17:28:29Z
+- The RV-1-E-917 cycle preserves permanent causal RED
+  `4724c17f95d071203fd958d7ac0a359480786873` and clean GREEN checkpoint
+  `64f5e2740ece131b4a5f16aeadb199d3c1f9d8d4`. Focused tests pass
+  **250/250**, cross-boundary tests pass **286/286**, and typecheck, factory
+  readiness, diff hygiene, exact frozen scope, ancestry, dependencies, and
+  clean state pass. The checkpoint has not been admitted as a candidate or
+  sent to review.
+- Coordinator-owned punctuation evaluation proves colon remains excluded from
+  the all-scheme boundary. A complete leading HTTP(S) URL whose path, query,
+  or fragment contains `:urn://...` or `:x://...` therefore hides the later
+  non-HTTP authority and its absolute doubled-slash suffix when the outer URL
+  token is removed from native-path inspection. This is a pre-admission
+  defect, not a review verdict, approval, integration, strict record 28, or
+  release.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED public-DTO coverage crossing colon-introduced
+  `urn://` and arbitrary non-HTTP authorities with path, query, and fragment
+  positions and both doubled-slash absolute path owners. Matching controls
+  must retain actual outer HTTP/HTTPS URL contexts without a later non-HTTP
+  authority, all relative-path controls, and every prior **250** focused case.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest all-scheme-boundary correction in the final
+  predicate. Colon may introduce a later scheme occurrence for unsafe
+  non-HTTP authority detection, but it must not create a generic HTTP(S)
+  exemption or weaken outer non-HTTP detection. No sanitizer, parser/schema,
+  per-field predicate, lifecycle, provenance, replay, mounted-read,
+  diagnostic, no-effect, or whole-DTO closure change is authorized.
+- Preserve checkpoint `64f5e274`, all prior candidates, RED/GREEN/review and
+  authority commits, and all registry-placement corrections by forward merge.
+  After RED/GREEN, rerun the complete candidate gate stack and obtain a wholly
+  new architecture/executability pair before integration or release.
+- Status remains Task138-H `implementing`. Strict frontier remains **27 of
+  29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records 1-27, all
+  29 IDs/order, prior releases/evidence, published `neo`, provider/credential
+  prohibitions, fallback-write prohibition, and external-effect boundaries
+  remain unchanged.
