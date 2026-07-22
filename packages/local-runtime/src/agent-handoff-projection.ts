@@ -1,10 +1,15 @@
 import type { Buffer } from "node:buffer";
-import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import {
+  validateKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import type { HandoffAuthorityBinding } from "../../agent/src/specialist-handoff-authority.js";
 import {
   buildSpecialistHandoffProjection,
   type SpecialistHandoffProjectionDiagnostic
 } from "../../agent/src/specialist-handoff-projection.js";
+import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
 import type {
   SpecialistApprovalRequirement,
   SpecialistNextAction,
@@ -148,6 +153,11 @@ interface TargetIdentity {
   readonly runType: ResidentHandoffRunType;
 }
 
+const invalidTargetIdentity: TargetIdentity = Object.freeze({
+  runId: "unavailable-run",
+  runType: "ontology-bootstrap"
+});
+
 interface ReadFailure {
   readonly availability: "missing" | "unavailable";
 }
@@ -166,15 +176,108 @@ class BoundaryFailure extends Error {
 export async function buildResidentHandoffDto(
   input: CreateAgentHandoffProjectionInput
 ): Promise<ResidentHandoffDto> {
-  const fallback = inferTargetIdentityWithoutObservation(input);
   let normalized: NormalizedInput;
   try {
     normalized = normalizeInput(input);
   } catch (error) {
     const category = error instanceof BoundaryFailure ? error.category : "unsafe-boundary-value";
-    return closedDto(fallback, "inconsistent", category);
+    return closedDto(invalidTargetIdentity, "inconsistent", category);
   }
 
+  try {
+    const dto = await buildResidentHandoffDtoFromNormalized(normalized);
+    return hasBrowserSafeStringLeaves(dto)
+      ? dto
+      : closedDto(normalized.identity, "inconsistent", "secret-safety-rejection");
+  } catch (error) {
+    const category = error instanceof BoundaryFailure ? error.category : "dto-invalid";
+    return closedDto(normalized.identity, "inconsistent", category);
+  }
+}
+
+function hasBrowserSafeStringLeaves(value: unknown): boolean {
+  if (typeof value === "string") {
+    return isAgentSecretSafeText(value) && !containsAbsolutePath(value);
+  }
+  if (Array.isArray(value)) return value.every(hasBrowserSafeStringLeaves);
+  if (value !== null && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).every(hasBrowserSafeStringLeaves);
+  }
+  return true;
+}
+
+function containsAbsolutePath(value: string): boolean {
+  const normalizeRelativePathSegments = (pathText: string): string => pathText.replace(
+    /(?:^|[^\p{ID_Continue}_/\\])(?:\.{1,2}|~)(?:[\\/](?:\.{1,2}|~))*[\\/]/gu,
+    (relativePrefix) => relativePrefix.replace(/[\\/]/g, "_")
+  ).replace(/(?<=[\\/])(\.{1,2}|~)[\\/]/g, "$1_");
+  const containsNativeAbsolutePath = (pathText: string): boolean =>
+    /(?:^|[^\p{ID_Continue}_/\\])(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])http:)(?<!(?:^|[^\p{ID_Continue}_+.\-:/\\])https:)\//iu.test(pathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])[a-z]:[\\/]/iu.test(pathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\(?:[^\\/\s]|$)/u.test(pathText) ||
+    /(?:^|[^\p{ID_Continue}_/\\])\\\\[^\\/\s]+(?:[\\/][^\\/\s]*)?/u.test(pathText);
+
+  const containsNestedNonHttpUri = value.split(/\s+/u).some((token) => {
+    for (const match of token.matchAll(/(?<![\p{ID_Continue}_+.\-])([a-z][a-z0-9+.-]*):/giu)) {
+      const scheme = match[1]?.toLowerCase();
+      const schemePayload = token.slice(match.index + match[0].length);
+      if (scheme !== undefined &&
+        scheme !== "http" &&
+        scheme !== "https" &&
+        (/^\/\/[^/?#\s]+(?:[/?#]|$)/u.test(schemePayload) ||
+          /https?:\/\//i.test(schemePayload))) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  const nativePathText = value.split(/\s+/u).map((token) => {
+    for (const match of token.matchAll(/(?:^|[^\p{ID_Continue}_+.\-:/\\])(https?:\/\/)/giu)) {
+      const httpPrefix = match[1];
+      if (httpPrefix === undefined) continue;
+      const urlStart = match.index + match[0].length - httpPrefix.length;
+      try {
+        const parsed = new URL(token.slice(urlStart));
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+          const outerUrl = token.slice(urlStart);
+          const authorityAndContent = outerUrl.slice(httpPrefix.length);
+          const contentStart = authorityAndContent.search(/[/?#]/u);
+          const nonStructuralContent = contentStart === -1
+            ? ""
+            : authorityAndContent.slice(contentStart);
+          const boundaryText = normalizeRelativePathSegments(nonStructuralContent).replace(
+            /(?<![\p{ID_Continue}_+.\-])(https?):\/\//giu,
+            "$1:__"
+          );
+          const containsOuterAbsolutePath = [...boundaryText.matchAll(/[?#&=:\[,(;|]/gu)]
+            .some((boundary) => {
+              const candidate = boundaryText.slice(boundary.index + boundary[0].length)
+                .replace(/^file:/iu, "");
+              return /^(?:\/|[a-z]:[\\/]|\\)/iu.test(candidate) &&
+                containsNativeAbsolutePath(candidate);
+            });
+          if (containsOuterAbsolutePath) {
+            return token;
+          }
+          return token.slice(0, urlStart);
+        }
+      } catch {
+        // Incomplete HTTP-like text does not establish an outer URL context.
+      }
+    }
+    return token;
+  }).join(" ");
+  const absolutePathText = normalizeRelativePathSegments(nativePathText);
+
+  return containsNestedNonHttpUri ||
+    containsNativeAbsolutePath(absolutePathText) ||
+    /\bfile:\/\//i.test(value);
+}
+
+async function buildResidentHandoffDtoFromNormalized(
+  normalized: NormalizedInput
+): Promise<ResidentHandoffDto> {
   const sourceFailure = validateTargetSources(normalized.events, normalized.identity);
   if (sourceFailure !== undefined) {
     return closedDto(normalized.identity, "inconsistent", sourceFailure);
@@ -225,10 +328,12 @@ export async function buildResidentHandoffDto(
   }
 
   if (projection.state === "inconsistent") {
+    const projectionDiagnostic = projection.diagnostics[0];
     return closedDto(
       normalized.identity,
       "inconsistent",
-      mapProjectionDiagnostic(projection.diagnostics[0])
+      mapProjectionDiagnostic(projectionDiagnostic),
+      projectionDiagnostic
     );
   }
 
@@ -244,10 +349,15 @@ export async function buildResidentHandoffDto(
     return closedDto(normalized.identity, "inconsistent", "dto-cross-run");
   }
 
-  const compact = findSelectedCompactBinding(normalized.events, handoff);
-  if (compact === undefined) {
+  const recordedEventId = authoritativeRecordedEventId(projection, handoff);
+  if (recordedEventId === undefined) {
     return closedDto(normalized.identity, "inconsistent", "provenance-missing");
   }
+  const recorded = findRecordedEventById(normalized.events, handoff, recordedEventId);
+  if (recorded === undefined) {
+    return closedDto(normalized.identity, "inconsistent", "provenance-missing");
+  }
+  const compact = recorded.payload as unknown as Record<string, unknown>;
   const replayAuthority = authorityBindingFrom(compact);
   if (compact.manifestSchemaVersion === "agent-specialist-handoff-manifest.v2" && replayAuthority === undefined) {
     return closedDto(normalized.identity, "inconsistent", "provenance-missing");
@@ -260,12 +370,25 @@ export async function buildResidentHandoffDto(
     ? undefined
     : provenanceFromReadback(projection.selectedReadback, normalized.authorityBinding);
   if (projection.selectedReadback !== undefined && provenance === undefined) {
-    return closedDto(normalized.identity, "inconsistent", "mount-authority-stale");
+    return closedDto(
+      normalized.identity,
+      "inconsistent",
+      sameAuthorityBinding(projection.selectedReadback.authorityBinding, normalized.authorityBinding)
+        ? "secret-safety-rejection"
+        : "mount-authority-stale"
+    );
   }
 
   return verifiedDto({
     identity: normalized.identity,
-    lifecycle: lifecycleForVerifiedProjection(projection.state, handoff.status, provenance !== undefined),
+    lifecycle: lifecycleForVerifiedProjection(
+      projection.state,
+      handoff.status,
+      provenance !== undefined,
+      normalized.events,
+      recordedEventId,
+      handoff.runId
+    ),
     handoff,
     compact,
     provenance
@@ -278,8 +401,13 @@ function normalizeInput(input: unknown): NormalizedInput {
   const rawEvents = normalizeJsonValue(record.events, { nodes: 0 }, 0);
   if (!Array.isArray(rawEvents)) throw new BoundaryFailure("unsafe-boundary-value");
   if (containsSecretShapedUnknownField(rawEvents)) throw new BoundaryFailure("secret-safety-rejection");
+  const parsedEvents = rawEvents.map((event) => {
+    const parsed = validateKnowledgeEvent(event);
+    if (!parsed.success) throw new BoundaryFailure("dto-invalid");
+    return parsed.data;
+  });
 
-  const frozenEvents = Object.freeze([...rawEvents]) as unknown as readonly KnowledgeEvent[];
+  const frozenEvents = Object.freeze([...parsedEvents]);
   const identity = targetIdentity(frozenEvents, runId);
   const authorityBinding = normalizeAuthorityBinding(record.authorityBinding);
   const materialGet = captureReader(record.materialStore);
@@ -299,30 +427,15 @@ function targetIdentity(events: readonly KnowledgeEvent[], runId: string): Targe
   if (starts.length !== 1) throw new BoundaryFailure("provenance-cross-run");
   const started = starts[0]!;
   if (!isResidentRunType(started.payload.runType)) throw new BoundaryFailure("dto-invalid");
+  if (!isAgentSecretSafeText(runId) ||
+    (started.payload.taskId !== undefined && !isAgentSecretSafeText(started.payload.taskId))) {
+    throw new BoundaryFailure("secret-safety-rejection");
+  }
   return Object.freeze({
     runId,
     ...(started.payload.taskId === undefined ? {} : { taskId: started.payload.taskId }),
     runType: started.payload.runType
   });
-}
-
-function inferTargetIdentityWithoutObservation(input: unknown): TargetIdentity {
-  const runId = safeOwnText(input, "runId") ?? "unavailable-run";
-  const events = ownDataValue(input, "events");
-  if (Array.isArray(events) && Object.getPrototypeOf(events) === Array.prototype) {
-    for (const descriptor of numericArrayDataDescriptors(events)) {
-      if (descriptor === undefined || !("value" in descriptor)) continue;
-      const event = descriptor.value;
-      const payload = ownDataValue(event, "payload");
-      const candidateRunId = safeOwnText(payload, "runId");
-      const candidateRunType = safeOwnText(payload, "runType");
-      if (candidateRunId === runId && candidateRunType !== undefined && isResidentRunType(candidateRunType)) {
-        const taskId = safeOwnText(payload, "taskId");
-        return Object.freeze({ runId, ...(taskId === undefined ? {} : { taskId }), runType: candidateRunType });
-      }
-    }
-  }
-  return Object.freeze({ runId, runType: "ontology-bootstrap" });
 }
 
 function validateTargetSources(
@@ -368,16 +481,29 @@ function collectDeclaredHashes(
   }
 }
 
-function findSelectedCompactBinding(
-  events: readonly KnowledgeEvent[],
+function authoritativeRecordedEventId(
+  projection: Awaited<ReturnType<typeof buildSpecialistHandoffProjection>>,
   handoff: SpecialistWorkflowHandoffDto
-): Record<string, unknown> | undefined {
-  const event = [...events].reverse().find((candidate) =>
+): string | undefined {
+  return projection.history.find((entry) =>
+    entry.state === "handoff-recorded" &&
+    entry.runId === handoff.runId &&
+    entry.taskId === handoff.taskId &&
+    entry.handoffId === handoff.handoffId
+  )?.recordedEventId;
+}
+
+function findRecordedEventById(
+  events: readonly KnowledgeEvent[],
+  handoff: SpecialistWorkflowHandoffDto,
+  recordedEventId: string
+): KnowledgeEventOf<"agent.specialist-handoff.recorded"> | undefined {
+  return events.find((candidate): candidate is KnowledgeEventOf<"agent.specialist-handoff.recorded"> =>
     candidate.type === "agent.specialist-handoff.recorded" &&
+    candidate.id === recordedEventId &&
     candidate.payload.runId === handoff.runId &&
     candidate.payload.handoffId === handoff.handoffId
   );
-  return event?.payload as unknown as Record<string, unknown> | undefined;
 }
 
 function authorityBindingFrom(compact: Record<string, unknown>): HandoffAuthorityBinding | undefined {
@@ -394,6 +520,13 @@ function provenanceFromReadback(
   authorityBinding: HandoffAuthorityBinding
 ): ResidentHandoffProvenanceDto | undefined {
   if (!sameAuthorityBinding(readback.authorityBinding, authorityBinding)) return undefined;
+  if (![
+    readback.finalOutputEventId,
+    readback.preparedEventId,
+    readback.recordedEventId,
+    readback.terminalRunEventId,
+    readback.taskStatusEventId
+  ].every(isAgentSecretSafeText)) return undefined;
   return Object.freeze({
     manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" as const,
     handoffManifestHash: readback.manifestHash,
@@ -409,13 +542,42 @@ function provenanceFromReadback(
 function lifecycleForVerifiedProjection(
   state: Awaited<ReturnType<typeof buildSpecialistHandoffProjection>>["state"],
   status: SpecialistWorkflowHandoffDto["status"],
-  hasTerminalReadback: boolean
+  hasTerminalReadback: boolean,
+  events: readonly KnowledgeEvent[],
+  recordedEventId: string,
+  runId: string
 ): HandoffLifecycle {
   if (status === "failed" && hasTerminalReadback) return "terminal-consistent";
   if ((status === "waiting-for-approval" || status === "blocked") && state === "task-completed") {
     return "terminal-consistent";
   }
+  if (
+    state === "handoff-recorded" &&
+    (status === "ready-for-review" || status === "failed") &&
+    hasReleasedValidatedTerminal(events, runId, recordedEventId, status)
+  ) {
+    return "terminal-consistent";
+  }
   return state;
+}
+
+function hasReleasedValidatedTerminal(
+  events: readonly KnowledgeEvent[],
+  runId: string,
+  recordedEventId: string,
+  status: SpecialistWorkflowHandoffDto["status"]
+): boolean {
+  const terminals = events.filter((event) =>
+    (event.type === "agent.specialist-run.completed" || event.type === "agent.specialist-run.failed") &&
+    event.payload.runId === runId &&
+    event.context.causationId === recordedEventId &&
+    (status === "failed"
+      ? event.type === "agent.specialist-run.failed"
+      : event.type === "agent.specialist-run.completed")
+  );
+  // The released projector has already rejected incompatible ordering,
+  // status, causation, and completed-output hashes before this classification.
+  return terminals.length === 1;
 }
 
 function verifiedDto(input: {
@@ -495,7 +657,8 @@ function legacyDto(identity: TargetIdentity): ResidentHandoffDto {
 function closedDto(
   identity: TargetIdentity,
   lifecycle: "unavailable" | "inconsistent",
-  category: HandoffDiagnosticCategory
+  category: HandoffDiagnosticCategory,
+  projectionDiagnostic?: SpecialistHandoffProjectionDiagnostic
 ): ResidentHandoffDto {
   const unavailable = lifecycle === "unavailable";
   return freezeDto({
@@ -513,20 +676,33 @@ function closedDto(
       effect: "none" as const,
       label: unavailable ? "Restore mounted workspace access" : "Review and repair the handoff binding"
     })]),
-    diagnostics: Object.freeze([diagnostic(category)])
+    diagnostics: Object.freeze([diagnostic(category, projectionDiagnostic)])
   });
 }
 
-function diagnostic(category: HandoffDiagnosticCategory): HandoffDiagnosticDto {
+function diagnostic(
+  category: HandoffDiagnosticCategory,
+  projectionDiagnostic?: SpecialistHandoffProjectionDiagnostic
+): HandoffDiagnosticDto {
   const remount = category === "workspace-unavailable" || category.startsWith("mount-");
   const review = category === "legacy-manifest-unbound";
   return Object.freeze({
     category,
     retry: remount ? "after-remount" as const : review ? "after-review" as const : "after-repair" as const,
     safeMessage: safeDiagnosticMessage(category),
-    eventIds: Object.freeze([]),
-    artifactHashes: Object.freeze([])
+    eventIds: freezeSafeEventIds(projectionDiagnostic?.relatedEventIds),
+    artifactHashes: freezeSafeHashes(projectionDiagnostic?.artifactHashes)
   });
+}
+
+function freezeSafeEventIds(value: readonly string[] | undefined): readonly string[] {
+  return Object.freeze((value ?? []).filter((item) =>
+    /^evt_[a-zA-Z0-9_-]+$/.test(item) && isAgentSecretSafeText(item)
+  ));
+}
+
+function freezeSafeHashes(value: readonly string[] | undefined): readonly ContentHash[] {
+  return Object.freeze((value ?? []).filter(isContentHash));
 }
 
 function safeDiagnosticMessage(category: HandoffDiagnosticCategory): string {
@@ -754,17 +930,6 @@ function containsSecretShapedUnknownField(value: unknown): boolean {
     if (containsSecretShapedUnknownField(nested)) return true;
   }
   return false;
-}
-
-function safeOwnText(value: unknown, field: string): string | undefined {
-  const candidate = ownDataValue(value, field);
-  return typeof candidate === "string" && candidate.length > 0 ? candidate : undefined;
-}
-
-function ownDataValue(value: unknown, field: string): unknown {
-  if (typeof value !== "object" || value === null) return undefined;
-  const descriptor = Object.getOwnPropertyDescriptor(value, field);
-  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
 }
 
 function requiredText(value: unknown): string {
