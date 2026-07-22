@@ -534,6 +534,149 @@ describe("buildResidentHandoffDto", () => {
   });
 
   it.each([
+    [
+      "pipe",
+      "http://example.test|urn:?url=http://opt/cestus/handoff.json",
+      "http://example.test",
+      "urn:?url=http://opt/cestus/handoff.json",
+      "//opt/cestus/handoff.json"
+    ],
+    [
+      "query",
+      "https://example.test/x?next=urn:?url=http://opt/cestus/private.json",
+      "https://example.test/x?next=",
+      "urn:?url=http://opt/cestus/private.json",
+      "//opt/cestus/private.json"
+    ]
+  ] as const)("closes a same-token leading HTTP(S) URL followed by a non-HTTP outer URI after %s punctuation", async (_kind, unsafeSummary, leadingUrl, nestedUri, absolutePath) => {
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(["http:", "https:"]).toContain(new URL(leadingUrl).protocol);
+    expect(new URL(nestedUri).protocol).toBe("urn:");
+    expect(posix.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(nestedUri);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["rooted Windows system path", "\\Windows\\System32\\config"],
+    ["rooted Windows private path", "\\root\\private.json"],
+    ["host-only cestus UNC root", "\\\\cestus-host"],
+    ["host-only short UNC root", "\\\\host"],
+    ["host-only UNC root with trailing slash", "\\\\host\\"]
+  ] as const)("closes the whole DTO for a %s", async (_kind, absolutePath) => {
+    const unsafeSummary = `Mounted output=${absolutePath}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(win32.isAbsolute(absolutePath)).toBe(true);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTPS inner URL in path", "https:", "https://example.test/redirect/http://archive.test/public/records"],
+    ["HTTP inner URL in query", "http:", "http://example.test/public/records?next=https://archive.test/public/records"],
+    ["HTTPS inner URL in fragment", "https:", "https://example.test/public/records#http://archive.test/public/records"],
+    ["HTTPS safe punctuation in path", "https:", "https://example.test/section)/records"]
+  ] as const)("accepts a complete valid outer %s control", async (_kind, expectedProtocol, safeSummary) => {
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(safeSummary).protocol).toBe(expectedProtocol);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it("keeps whitespace-separated scheme masking closed", async () => {
+    const unsafeSummary = "http://example.test urn:?url=http://opt/cestus/handoff.json";
+    const absolutePath = "//opt/cestus/handoff.json";
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(new URL(unsafeSummary.split(" ")[0]!).protocol).toBe("http:");
+    expect(new URL(unsafeSummary.split(" ")[1]!).protocol).toBe("urn:");
+    expect(posix.isAbsolute(absolutePath)).toBe(true);
+    expect(unsafeSummary).toContain(absolutePath);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it("accepts ordinary punctuation and relative slash text after the compositional controls", async () => {
+    const safeSummary = "Notes=(section), relative=child/path, ratio=3/4, backslash=child\\draft.";
+    const fixture = handoffFixture({ safeSummary });
+    const stores = storesFor(fixture);
+
+    expect(posix.isAbsolute("child/path")).toBe(false);
+    expect(win32.isAbsolute("child\\draft")).toBe(false);
+    expect(isAgentSecretSafeText(safeSummary)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(safeSummary);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["HTTP", "string", "HTTP://example.test/public/records", "HTTP://example.test/public/records"],
     ["HTTPS", "string", "hTtPs://example.test/public/records", "hTtPs://example.test/public/records"],
     ["HTTP", "punctuation", "Mounted output=HtTp://example.test/public/records", "HtTp://example.test/public/records"],
