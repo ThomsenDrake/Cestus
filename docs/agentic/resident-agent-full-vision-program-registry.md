@@ -26656,3 +26656,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   1-27, all 29 IDs/order, prior releases/evidence, published `neo`, providers,
   credentials, external systems, fallback writes, and external effects remain
   unchanged.
+
+## RV-1-E-911 — Task138-H nested-URI payload and separator gap; pre-admission repair authorized
+
+- Recorded at: 2026-07-22T15:24:22Z
+- The RV-1-E-910 cycle preserves permanent causal RED
+  `ab9084a6409da2788d53fd9aeb2434a37acd307d` and clean GREEN checkpoint
+  `cc21728078df0d8abe76df7913b0bbdc48175acd`. Focused tests pass **173/173**,
+  cross-boundary tests pass **209/209**, and typecheck, factory readiness, diff
+  hygiene, exact frozen scope, ancestry, and clean state pass. The checkpoint
+  has not been admitted as a candidate or sent to review.
+- Coordinator-owned adversarial admission checks show the generalized HTTP
+  token delimiter still accepts slash and backslash, so `x/http://...` and
+  `x\\https://...` can hide an absolute doubled-slash suffix. They also show a
+  non-HTTP outer URI can carry the inner HTTP-like token after query/fragment
+  punctuation or assignment, such as `urn:?url=http://...` and
+  `urn:#https://...`, while remaining open. The current direct `urn:http://`
+  causal rows do not cover these intervening payload characters. This is a
+  pre-admission defect, not a reviewer verdict, candidate, approval,
+  integration, strict record 28, or release.
+- The existing non-reviewer Task138-H repair owner may change only
+  `packages/local-runtime/src/agent-handoff-projection.ts`,
+  `packages/local-runtime/test/agent-handoff-projection.test.ts`, and
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md`.
+  It must first commit causal RED coverage for slash/backslash-prefixed
+  HTTP-like text and for `urn:`, `mailto:`, and arbitrary non-HTTP outer schemes
+  whose inner HTTP(S) token follows `?`, `#`, `=`, or path payload. Each row
+  must prove the outer protocol is non-HTTP(S), the retained `//...` suffix is
+  absolute, and the whole DTO closes. Matching controls must keep genuine
+  outer HTTP/HTTPS URLs—including safe query-carried HTTP(S) text—open. All
+  prior **173** cases remain green.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- GREEN may make only the smallest final-predicate correction: path separators
+  cannot introduce an exempt HTTP token, and a non-HTTP outer scheme earlier in
+  the same non-whitespace URI token must prevent an inner HTTP-like exemption.
+  Genuine outer HTTP/HTTPS URLs, the generalized punctuation matrix, ordinary
+  ratios/relative slashes, and explicit `file://` behavior remain unchanged.
+  No sanitizer, parser/schema, per-field predicate, lifecycle, provenance,
+  replay, mounted-read, diagnostic, no-effect, or whole-DTO closure change is
+  authorized.
+- Preserve checkpoint `cc217280`, every prior candidate/RED/GREEN/review and
+  authority commit, and all registry-placement corrections by forward merge.
+  After RED/GREEN, rerun the complete candidate gate stack and obtain a wholly
+  new architecture/executability pair before any integration or release.
+- Status remains Task138-H `implementing`. Strict frontier remains **27 of
+  29**; Task136 and Waves 3-5 remain unstarted. V1-V4, raw records 1-27, all
+  29 IDs/order, prior releases/evidence, published `neo`, provider/credential
+  prohibitions, and external-effect boundaries remain unchanged.
