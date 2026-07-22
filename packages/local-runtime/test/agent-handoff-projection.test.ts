@@ -38,6 +38,10 @@ const generalizedAbsolutePathRepresentatives = [
   ["doubled-slash POSIX", "//opt/cestus/handoffs/task138/summary.json", "posix"],
   ["forward-slash UNC", "//cestus-host/resident-share/task138/summary.json", "win32"]
 ] as const;
+const doubledSlashAbsoluteSuffixes = [
+  ["doubled-slash POSIX", "//opt/cestus/handoffs/task138/summary.json", "posix"],
+  ["forward-slash UNC", "//cestus-host/resident-share/task138/summary.json", "win32"]
+] as const;
 
 describe("buildResidentHandoffDto", () => {
   it("keeps every intended-valid synthetic lifecycle event canonical under the released parser", () => {
@@ -423,6 +427,106 @@ describe("buildResidentHandoffDto", () => {
     expect(dto.runId).toBe(fixture.runId);
     expect(dto.taskId).toBe(fixture.taskId);
     expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["slash-prefixed HTTP-like text", "x/hTtP:"],
+    ["backslash-prefixed HTTPS-like text", "x\\HtTpS:"]
+  ].flatMap(([kind, prefix]) => doubledSlashAbsoluteSuffixes.map(([family, absolutePath, pathOwner]) =>
+    [kind, family, `${prefix}${absolutePath}`, absolutePath, pathOwner] as const
+  )))("closes the whole DTO for %s before a %s suffix", async (_kind, _family, httpLikeText, absolutePath, pathOwner) => {
+    const unsafeSummary = `Mounted output=${httpLikeText}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+
+    expect(() => new URL(httpLikeText)).toThrow();
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(httpLikeText).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each(["urn:", "mailto:", "x:"].flatMap((outerProtocol) =>
+    [
+      ["query", "?url="],
+      ["fragment", "#"],
+      ["assignment", "payload="],
+      ["path payload", "payload/"]
+    ].flatMap(([payloadKind, payloadPrefix]) => doubledSlashAbsoluteSuffixes.map(([family, absolutePath, pathOwner]) => {
+      const innerScheme = pathOwner === "posix" ? "hTtP" : "HtTpS";
+      return [outerProtocol, payloadKind, family, `${outerProtocol}${payloadPrefix}${innerScheme}:${absolutePath}`, absolutePath, pathOwner] as const;
+    }))
+  ))("closes the whole DTO for %s outer protocol with inner HTTP(S) after %s over %s", async (expectedProtocol, _payloadKind, _family, nestedUri, absolutePath, pathOwner) => {
+    const unsafeSummary = `Mounted output=${nestedUri}`;
+    const fixture = handoffFixture({ safeSummary: unsafeSummary });
+    const stores = storesFor(fixture);
+    const protocol = new URL(nestedUri).protocol;
+
+    expect(protocol).toBe(expectedProtocol);
+    expect(["http:", "https:"]).not.toContain(protocol);
+    expect(pathOwner === "posix"
+      ? posix.isAbsolute(absolutePath)
+      : win32.isAbsolute(absolutePath)).toBe(true);
+    expect(nestedUri).toContain(absolutePath);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(unsafeSummary)).toBe(true);
+    expect(stringLeaves(fixture.material)).toContain(unsafeSummary);
+    expect(stringLeaves(fixture.manifest)).toContain(unsafeSummary);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expectClosed(dto, "inconsistent", "secret-safety-rejection");
+    expect(dto.runId).toBe(fixture.runId);
+    expect(dto.taskId).toBe(fixture.taskId);
+    expect(stringLeaves(dto)).not.toContain(unsafeSummary);
+    expect(stores.materialStore.get).toHaveBeenCalled();
+    expect(stores.manifestStore.get).toHaveBeenCalled();
+    expect(stores.materialStore.put).not.toHaveBeenCalled();
+    expect(stores.manifestStore.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HTTP", "hTtP://example.test/public/records?next=https://archive.test/public/records", "https://archive.test/public/records"],
+    ["HTTPS", "HtTpS://example.test/public/records?next=http://archive.test/public/records", "http://archive.test/public/records"]
+  ] as const)("accepts a genuine outer mixed-case %s URL carrying an HTTP(S) query URL", async (scheme, outerUrl, innerUrl) => {
+    const fixture = handoffFixture({ safeSummary: outerUrl });
+    const stores = storesFor(fixture);
+    const parsed = new URL(outerUrl);
+
+    expect(parsed.protocol).toBe(`${scheme.toLowerCase()}:`);
+    expect(parsed.searchParams.get("next")).toBe(innerUrl);
+    expect(["http:", "https:"]).toContain(new URL(innerUrl).protocol);
+    expect(fixture.completeEvents).toHaveLength(7);
+    expect(fixture.completeEvents.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(isAgentSecretSafeText(outerUrl)).toBe(true);
+
+    const dto = await project(fixture, fixture.completeEvents, stores);
+
+    expect(dto.lifecycle).toBe("task-completed");
+    expect(dto.safeSummary).toBe(outerUrl);
+    expect(dto.diagnostics).toEqual([]);
+    expect(dto.nextSafeActions.every((action) => action.effect === "none")).toBe(true);
     expect(stores.materialStore.get).toHaveBeenCalled();
     expect(stores.manifestStore.get).toHaveBeenCalled();
     expect(stores.materialStore.put).not.toHaveBeenCalled();
