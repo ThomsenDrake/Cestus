@@ -613,3 +613,28 @@ Implementation evidence:
   scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
   Result: exit `0`; `20` tests, `20` passed, and `0` failed. No other test byte
   or any registry, contract, checker, source/product, or package byte changed.
+
+## RV-1-E-926 record-28 current-prefix causal RED checkpoint
+
+- Exact clean record-28 program authority was normal-forward-merged into the
+  preserved V4 lineage as `5cb84ff8f8de879af6eed47a96d1fd584019ee8a`.
+  This claim-only checkpoint preserves every prior assurance RED/GREEN commit
+  and leaves the focused assurance test, V1-V4 contracts, checker, raw strict
+  records 1-28, all 29 card IDs/order, historical W1 activation fixture,
+  product/package bytes, and integration/review/release evidence unchanged.
+- Causal command: `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Result: exit `1`; exactly `20` tests ran, `17` passed, and `3` failed. The
+  only failures are current-registry cardinality assertions at lines `1159`,
+  `1475`, and `1655`, each reporting `28 !== 27`. No contract, checker,
+  release-record, command, blob, ownership, compatibility, migration,
+  dependency, Task138-H product, or unrelated fixture failure occurred.
+- The authorized GREEN changes only this claim and the focused assurance
+  test. It will advance exactly the three current-prefix length/order groups
+  and the first group's coupled repository incomplete-found, exact prefix
+  marker, and command-call expectations from `27` to `28`. The historical W1
+  activation corpus's local `.slice(0, 26)`, its length/order assertions at
+  `26`, and its synthetic record-27 behavior remain byte-identical. No
+  registry, contract, checker, raw record, product/package byte, release
+  authority, network, provider, credential, external system, push, `neo`, or
+  Task136 implementation is authorized.
