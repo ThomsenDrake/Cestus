@@ -28329,3 +28329,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   network, unrelated external-system, fallback-write, `neo`, push, Wave 3,
   and pull-request actions remain unauthorized until their exact later plan
   gates and registry transitions.
+
+## RV-1-E-942 — Exact Task136 V4 authority candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T17:27:43Z
+- Exact immutable V4 authority candidate
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0`, exact parent Task 4 GREEN
+  `3b0770218538270b088ca7baaf59e15aeb42a867`, descends from permanent causal
+  RED `fa5cf3ead0d3886d8173bc67414202be1e29629e`, claim checkpoint
+  `f37afbf06ab7adc1d0ea3613c2e1c77032e44379`, authority merge
+  `327f9421ae604e4764d29033b6bda22fda3382df`, implementation authority
+  `0955f28f9115885fc8859b7b223f3d91cf77bf03`, and preserved V4 start
+  `96142632606668519b2198590bdb3ae87b367691`.
+- Scope from the authority merge to the candidate is exactly the six
+  authorized V4 paths:
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`, and
+  `scripts/check-software-factory-mission-state.mjs`. Package/product bytes
+  and this registry are unchanged from the authority merge in the candidate
+  tree.
+- Committed-byte admission passes focused assurance **20/20** and exact
+  contract markers `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`. V4 JSON SHA-256 is exact
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`;
+  assurance fingerprint is exact
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`.
+  Mission source fingerprint is exact
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`;
+  immutable-envelope fingerprint is exact
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+  Standalone typecheck, factory readiness, diff, ancestry, dependency, exact
+  scope, forbidden-path, and clean-state gates pass.
+- Repository mode executes all **28/28** released commands, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=28 commands=28`, and stops only with
+  `repository release closure incomplete: expected 29 records, found 28`.
+  This is the required unreleased-record-29 posture, not a product release.
+- The authority baseline and admitted candidate both retain inherited
+  non-green full-suite statuses `npm test=1` and `npm run verify=1`. The
+  exact occurrence-preserving comparison passes with **504 files =
+  484 passed + 20 failed** and **3,231 tests = 3,178 passed + 48 failed + 5
+  skipped**:
+  `TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-candidate`.
+  Candidate evidence hashes are
+  `195e1f6e96dd2715cb04b07584695cef95c6b2be83afae69c566469666583ba4`
+  for Vitest JSON,
+  `a9e3b866f761d40daf9236e9118c485fe48bdd8c70c1a6e1cfba3c5754980ea0`
+  for the npm-test log, and
+  `16029c11ca24f02c798817a3950f3c01bde9495daa22568225cf41bdc82413e3`
+  for the verify log.
+- A first full candidate observation is preserved separately and was not
+  used for admission. It retained both exit statuses and every file count,
+  but one timeout-sensitive
+  `check-resident-task-prerequisites` assertion completed in about four
+  seconds and passed where the authority observation exceeded Vitest's
+  five-second default and failed. Its **47-failure** JSON/log/verify hashes
+  are respectively
+  `0752b603678f37836b9f9eea9cd72ee53f658936478f9fdb53fd1ea3d79f8239`,
+  `66bbe52c1738085bc0711e13a95c5f4649670b94ad62eb226a81b2a55c75b86c`,
+  and
+  `90a026549d1f51eb2c87f1bb501e89d73a47fcb4ef9d617885229ae4f686bb97`.
+  The next exact rerun reproduced the baseline's timeout and passed the
+  fail-closed comparator; no repository byte changed between observations.
+- Completely fresh read-only scrutiny assignment
+  `/root/task136_v4_scrutiny_91ad4748` owns finite graph/source transfer,
+  corrected ownership, compatibility, raw-pin, baseline-adoption, migration,
+  mission-pin, historical-hash discrimination, no-generic-adoption,
+  no-product, history, and exact six-path review. Different completely fresh
+  black-box executability assignment
+  `/root/task136_v4_blackbox_91ad4748` owns independent committed-byte
+  `20/20`, markers, repository `28/28`, typecheck, readiness, exact
+  differential, scope, ancestry, dependency, protected-path, and clean-state
+  reproduction. Neither previously reviewed or implemented candidate bytes;
+  neither may mutate them.
+- Task136 V4 authority correction advances `implementing -> candidate ->
+  reviewing` for exact candidate `91ad4748`. Any changed candidate byte
+  invalidates both reviews and requires a new descendant plus completely
+  fresh pair. Strict product frontier remains **28 of 29**. This is an
+  assurance candidate, not approval, integration, Task136 product authority,
+  strict record 29, assurance calibration, publication, or product release.
