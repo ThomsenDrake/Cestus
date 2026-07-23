@@ -7,12 +7,15 @@ Design:
 
 Task: documentation-only Level-2 design freeze
 
-Branch: `codex/resident-agent-full-vision-program-watchdog-recovery`
+Branch: `codex/task-136-resident-full-vision-bounded-loop`
 
 Worker: Codex program coordinator
 
-Exact amended-design dispatch base:
-`1512cd7d76156842febf9fe1ca955bf2c05c22e2`
+Exact fresh-decision correction authority merge:
+`ea739b5140b00b9c4660267e89c36e8614b853b3`
+
+Preserved rejected Task12 checkpoint:
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`
 
 Preserved Task136 checkpoint:
 `72e1ee6624c582218995e3e075e2303998811834`
@@ -21,6 +24,7 @@ Owned files:
 
 - `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
 - `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`
+- `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`
 
 Authority:
 
@@ -29,10 +33,11 @@ Authority:
 - Superseding seven-seam amendment: `RV-1-E-932`
 - Superseding four-path interlock addendum: `RV-1-E-933`
 - Superseding zero-path loader/ABI addendum: `RV-1-E-934`
+- Fresh-decision ABI correction authorization: `RV-1-E-952`
 - The program owner approved preserving all 29 cards and applying a finite,
   source-specific producer correction directly to Task136 as strict record 29.
-- RV-1-E-933 and RV-1-E-934 require every later implementation authorization to state
-  exactly: “Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.”
+- RV-1-E-933, RV-1-E-934, and RV-1-E-952 require every later implementation
+  authorization to state exactly: “Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.”
 - This documentation claim does not itself authorize implementation.
 
 Bounded design result:
@@ -98,6 +103,25 @@ Bounded design result:
   the exact decision, approver, and approved-preview hash. Exactly one
   permanent claim may exist. Only a newly claimed in-memory one-shot permit
   can invoke an effect; a reread claimed stage never has a permit.
+- The internal frozen G object has exactly
+  `preparePlannedStepBindings`, `requestFreshAuthorized(locator)`,
+  `readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)`,
+  `executeFreshAuthorized`, and `rereadAndIssueFromLedger`. Its constructor
+  receives only the authenticated ledger/clock, opaque resident port,
+  W-private before/after-effect currentness closures, and trusted
+  tool-request-ID closure. G's default remains only the dispatcher-consumed
+  permit consumer; there is no public/named issuer, decision resolver, raw
+  callback, or wider default API.
+- `readFreshHumanDecision` accepts only the exact unconsumed same-instance
+  human-request brand, rereads one later independent durable approval bound to
+  its request, preview, and deadline with W revalidation, consumes that
+  transition, and returns a distinct same-instance human-approved brand. The
+  independent actor/path appends the decision; G only performs the exact
+  durable reread and never appends or synthesizes it.
+  `executeFreshAuthorized` accepts only a fresh ordinal-10 automatic-request
+  brand or that fresh human-approved brand. Every recovery/reread brand from
+  `rereadAndIssueFromLedger`, at every stage, is nonexecutable and can never
+  acquire or recreate a permit.
 - T120's canonical gateway-readback union remains structurally disjoint:
   automatic requested/claimed/completed/failed branches forbid all decision,
   approver, and approved-preview fields, while human branches require exactly
@@ -114,6 +138,15 @@ Bounded design result:
   without a receipt is sealed `effect-outcome-unknown`, suspends with its exact
   automatic or human gateway binding, permanently burns the original tool
   request, and permits reconciliation/replanning but never reexecution.
+- Positive dispatcher admissibility is executable, not structural: separate
+  real adapter-specific fixtures execute ordinals 2 through 7 and 9 through
+  10. Ordinals 2 through 6 and 9 through 10 prove both wholly new and wholly
+  idempotent-existing ledger evidence through exact `new-ledger-events` and
+  `idempotent-existing-ledger-events` modes; ordinal 7 proves only exact
+  `nonledger-projection-artifacts` with zero ledger delta; ordinals 0, 1, and
+  8 never produce a successful attestation, receipt, or terminal.
+  Forged-permit rejection or construction-only throwing fixtures cannot
+  satisfy this gate.
 - W's `reverifyAfterAwait` distinguishes current, recordable-stale, and
   unavailable authority. Recordable stale permits only durable suspension
   bookkeeping on the same freshly authenticated mount/ledger/store; complete
@@ -204,11 +237,47 @@ Independent design review history:
   summaries, the projection-only W diagnostic, four pinned interlock paths,
   and W-only resident checkpoint recovery. Completely fresh architecture and
   executability reviews are still required on the exact committed descendant.
+- Rejected Task12 checkpoint
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` is preserved because it left no
+  same-process operation that could advance an exact live human request
+  through an independent decision and proved only forged-permit rejection for
+  the catalog. RV-1-E-952 and this three-document descendant close exactly
+  that written ABI/oracle gap while preserving every ownership count, command,
+  V4 pin/fingerprint, seam, baseline, and unrelated approved behavior. Task12
+  GREEN remains limited to
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`.
+
+Fresh correction validation:
+
+- Exact authority HEAD before the edit was clean
+  `ea739b5140b00b9c4660267e89c36e8614b853b3`; it is the two-parent
+  history-preserving forward merge whose first parent is rejected checkpoint
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`.
+- `git diff --check` passes and the diff contains exactly this claim, the
+  approved design, and the implementation plan. No product source, product
+  test, Task136 product claim, registry, contract, mission, checker, assurance,
+  provider, route, runtime-activation, or unrelated path changed.
+- The unchanged V4 contract SHA-256 remains
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+  Mechanical contract inspection retains 29 cards, exactly 30 Task136 paths,
+  exactly 16 Task136 command tests, and exactly 11 compatibility records.
+- `npm run factory:check` passes. The mission-state suite passes **20/20**;
+  its source fingerprint remains
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`
+  and its immutable-envelope fingerprint remains
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- V4 assurance passes **20/20** and contract mode emits exactly
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.
 
 Validation required before commit:
 
 - `git diff --check`
-- exact two-file scope from amended-design dispatch base
+- exact three-file scope from
+  `ea739b5140b00b9c4660267e89c36e8614b853b3`
 - no unresolved design markers
 - `npm run factory:check`
 - `node --test scripts/check-software-factory-mission-state.test.mjs`
