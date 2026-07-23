@@ -28153,3 +28153,61 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   V4/product/claim/test/source mutation, product RED/GREEN, `neo`, push,
   Wave 3, provider, credential, network, external-system, and pull-request
   actions remain unauthorized.
+
+## RV-1-E-939 — Repaired Task136 implementation-plan candidate rejected; second bounded repair authorized
+
+- Recorded at: 2026-07-23T15:19:10Z
+- Both completely fresh read-only reviewers reject exact immutable plan
+  candidate `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`.
+  Architecture reviewer `/root/task136_plan_arch_review_v2_12f0309e` reports
+  one blocking clean-checker sequencing defect. Executability reviewer
+  `/root/task136_plan_exec_review_v2_12f0309e` independently reports four
+  blocking construction defects and one clean-state defect. Candidate
+  `12f0309e`, admission authority `209e9b3e`, both rejected reviews, rejected
+  predecessor `5487248b`, and RV-1-E-937 remain preserved. None is plan
+  approval, implementation authority, assurance, integration, strict record,
+  or product release.
+- The real repository adapter rejects every dirty checkout before parsing
+  release records. Task 18 nevertheless attempts repository `29/29` with an
+  uncommitted record-29 registry diff, and Task 19 attempts it with
+  uncommitted assurance test/claim bytes. Both must instead commit coherent
+  non-release candidates first, run repository mode from exact clean commits,
+  and preserve any failed attempt through a forward repair. Strict release
+  may follow only a clean committed record-candidate gate; a candidate or
+  checkpoint must never be described as product release.
+- Task 4 prescribes TypeScript-only `as const` syntax in the JavaScript
+  `.mjs` checker. Task 13 constructs `TaskOrchestratorSkipSummary` without its
+  required `runType`. Both literal constructions must become valid for their
+  exact target language and committed interfaces.
+- Task 17 and Task 18 assume shell arrays survive independent command blocks
+  and worktrees. That can silently omit all sixteen card tests or produce zero
+  record blobs. Every independently executable block must reconstruct its
+  exact test/path set locally, preferably from immutable contract data with
+  exact count/order assertions; no ambient shell state may be required.
+- The three candidate/integration full-suite differential promotions capture
+  statuses and hashes but leave comparison as prose. Each must include a
+  deterministic fail-closed command that compares exact status plus
+  failed/skipped file and test identities/counts, while allowing only the
+  source-defined pass increase. Every clean-state gate must assert empty
+  porcelain output; observational `git status --short` is insufficient.
+- Coordinator verification against exact Git objects confirms every finding:
+  `checkRepositoryTopology()` precedes registry parsing and defines clean as
+  empty `git status --porcelain --untracked-files=all`; Node syntax checking
+  rejects the proposed `.mjs` constants; the orchestrator summary extends a
+  boundary input requiring `taskId` and `runType`; the later array blocks have
+  no export or reconstruction; no command implements the stated
+  differentials; and the cited status observations exit successfully when
+  dirty.
+- One second bounded planning repair may change only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  It must correct all six defect groups above without changing the approved
+  design, frozen 30-path/16-test boundary, finite V4/product behavior,
+  V4-first order, review discipline, strict frontier, or Waves 3-5 handoff.
+  The repaired descendant requires another completely fresh independent
+  architecture/executability review pair.
+- Status returns Task136 implementation planning `reviewing -> implementing`
+  for this exact plan-only repair. No V4/product/claim/test/source mutation,
+  implementation authorization, integration, strict record 29, assurance
+  calibration, `neo`, push, Wave 3, provider, credential, network,
+  external-system, or pull-request action is authorized. Strict product
+  frontier remains **28 of 29**.
