@@ -329,9 +329,15 @@ describe("resident plan candidate provider", () => {
   it("returns deeply frozen exact initial and replan candidates through the sole parser boundary", async () => {
     const priorValidation = validateKnowledgeEvent(priorPlan);
     const observationValidation = validateKnowledgeEvent(observation);
-    const replayValidation = validateResidentLoopEventSequence(durableReplay.events);
     expect(priorValidation.success, JSON.stringify(priorValidation)).toBe(true);
     expect(observationValidation.success, JSON.stringify(observationValidation)).toBe(true);
+    if (!priorValidation.success || !observationValidation.success) {
+      throw new Error("canonical resident replay fixture is unavailable");
+    }
+    const replayValidation = validateResidentLoopEventSequence([
+      priorValidation.data,
+      observationValidation.data
+    ]);
     expect(replayValidation.success, JSON.stringify(replayValidation)).toBe(true);
     expect(Object.keys(durableReplay)).toEqual([
       "identity",

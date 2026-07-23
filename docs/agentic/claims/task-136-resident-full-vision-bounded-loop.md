@@ -608,3 +608,63 @@ fallback, unrelated path, or pull request. Task136 remains `implementing`.
 This repaired oracle is not Task11 source GREEN, a product candidate,
 approval, integration, strict record 29, assurance transition, publication,
 or release. The strict product frontier remains **28 of 29**.
+
+## RV-1-E-948 Post-Commit Type-Gap Rejection And Forward Correction
+
+The initial oracle repair commit
+`f8daa86516b695b84f1375f14fa08521b6f43b80` is preserved as rejected
+history. Its exact parent is authority merge
+`3949514139387f3008f001ea0070d7995181d40d`; it is not approved,
+review-ready, integrated, Task11 source GREEN, a product candidate, strict
+record 29, an assurance transition, publication, or a release.
+
+The first tool-wrapped standalone typecheck observation was incorrectly
+classified as an empty successful log. A fresh direct post-commit typecheck
+correctly exited `2` with `TS2345` at the call to
+`validateResidentLoopEventSequence`: the runtime-valid fixture array's
+inferred `type` discriminants had widened to `string`, so TypeScript could
+not prove it was `readonly KnowledgeEvent[]`. The runtime validators had
+already accepted both individual fixtures and their sequence. This was a
+test-only type-level validator-input gap, not a malformed event, weakened
+runtime check, source defect, or unrelated dependency failure.
+
+The forward correction keeps both independent
+`validateKnowledgeEvent` calls, asserts both results are successful, narrows
+those exact results, and passes their typed `data` values to
+`validateResidentLoopEventSequence`. It uses no cast, compatibility alias,
+weaker assertion, fixture substitution, source change, or other path.
+
+Fresh evidence from the corrected bytes is:
+
+- Focused C exited `1`: exactly 25/25 causal RED tests, with the same exact
+  failing-title list and classifications recorded above. The bound plan,
+  strict observation, and `P -> O` sequence controls all pass before the
+  unchanged legacy C call. Log SHA-256:
+  `ee3e9b09b5bf277ea559ddf242734714bf2fed1d5e5881cb79fd3d34b997f17c`.
+- The exact sixteen-file card exited `1`: 13 files failed + 3 passed; exactly
+  258 tests = 212 passed + 46 failed. The failures are the same 25 C titles
+  plus the same 21 unchanged authorized seams recorded above. Log SHA-256:
+  `9b7eb93da7e04ddaddd727325996abafb9f9ca82de3433fbbfb744d4164276d3`.
+- The exact released control command exited `0`: 10 files and all
+  **443/443** tests passed. Log SHA-256:
+  `7ad88d6a37e065372d9c84aeba5cdeed31d6231d1e48c8a8dc18c94297fc0878`.
+- Fresh standalone `npm run typecheck` exited `0` with `typecheck passed`.
+  Log SHA-256:
+  `88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+- The corrected C test SHA-256 is
+  `1d0d8ec525176dc0f47f91f2c6bf60f67a18d65f549345dc8eb23986efbc1701`.
+- The regenerated 13-source manifest remains
+  `c20f023f0fb209aa9dd4ef5869d3ef2ffe30dcc661c14bb3b2e446ba39597e4d`;
+  the absent bounded-loop source and all 12 existing source blobs equal
+  rejected parent `f8daa865`.
+- The regenerated other-15 RED test manifest remains
+  `d72d01e9dcf81a1c77552112d38596ae7ae60e43f5835d456bfdebb0558ae930`;
+  every other repaired RED test blob equals rejected parent `f8daa865`.
+
+The forward correction changes exactly
+`packages/agent/test/resident-plan-candidate-provider.test.ts` and this
+claim. It changes no product source, contract, plan, mission state, registry,
+provider, credential, runtime activation, route, network, fallback,
+unrelated path, or pull request. Task136 remains `implementing`; the strict
+product frontier remains **28 of 29**. A completely fresh focused reviewer
+must inspect the corrected bytes before Task11 source GREEN may resume.
