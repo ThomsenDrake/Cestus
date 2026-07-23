@@ -715,7 +715,7 @@ Implementation evidence:
   `node --test
   scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
   It exited `1` after exactly `20` top-level tests: `16` passed, `4` failed,
-  `0` skipped, `0` cancelled, and `0` todo.
+  `0` skipped, `0` cancelled, and `0` todo. <!-- agent-readiness-allow: exact Node test counter -->
 - The four failing titles and their first mismatches are exact:
   1. `verifies the 29-card topological graph, exact Task136 transfers, and
      prerequisites` — all seven approved source `transferToIds` projections
@@ -790,3 +790,35 @@ Implementation evidence:
   product/package bytes, provider behavior, credentials, network behavior,
   external systems, `neo`, and remote refs remain unchanged. This is an
   assurance authority transition, not a product release.
+
+## Task 5 Task136 mission-authority pin synchronization
+
+- The exact Task 4 parent is
+  `3b0770218538270b088ca7baaf59e15aeb42a867`. The executable/config delta is
+  exactly two fields: `mission.frozenAuthority.sha256` advances from
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`
+  to `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  and `expectedImmutableEnvelopeFingerprint` advances from
+  `sha256:0d6e437990b0320436e349d595ceb3445e71bc9c04c7f208b558d0c8f5bf91b3`
+  to
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+  Mission topology and mission-test bytes are unchanged.
+- Before the pin synchronization,
+  `node scripts/check-software-factory-mission-state.mjs --json` failed only
+  with `frozen authority digest changed`. From the synchronized bytes it exits
+  `0` with source fingerprint
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`
+  and immutable-envelope fingerprint
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- `node --test scripts/check-software-factory-mission-state.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed.
+  `npm run factory:check` emits `factory-readiness passed`.
+- Factory readiness initially identified the exact historical Node test
+  counter label `0 todo` as its case-insensitive unfinished marker. <!-- agent-readiness-allow: exact Node test counter --> The
+  coordinator-authorized same-line `agent-readiness-allow` annotation states
+  that it is an exact Node test counter. The original counter remains
+  byte-visible and its RED count and meaning are unchanged.
+- The V4 contract, assurance test and checker, registry, release records,
+  packages/product bytes, provider behavior, credentials, network behavior,
+  external systems, `neo`, and remote refs remain unchanged. This mechanical
+  pin synchronization is an assurance checkpoint, not a product release.
