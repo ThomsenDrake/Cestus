@@ -30,10 +30,18 @@ completely fresh review pair because caller-supplied dispatcher registrations
 could still self-attest implementation provenance, claimed recovery could not
 construct an exact durable result without risking reexecution, and the
 released task orchestrator could race W by generically releasing and
-reclaiming the new resident checkpoint. RV-1-E-933 and this descendant correct
-those findings without adding a producer seam: 22 transferred paths, five
-exact baseline-adopted paths, and a 30-path Task136 card. The strict frontier
-and all 29 card IDs/order remain unchanged.
+reclaiming the new resident checkpoint. Revisions
+`29826501dbad3650969cb3a45d1c4c933258489f` and
+`7ebf3097b3362e1c16ac6466004a608b6385098c` then preserved that architecture
+but failed fresh executability scrutiny: the first invented an unavailable
+orchestrator summary reason and left domain-evidence causation undefined; the
+second specified a loader forbidden by released repository policy, exposed no
+cycle-safe non-barrel runtime API or pre-request preview operation, omitted
+the automatic adapter/T120 bridge and unknown-result mapping, and did not
+freeze mounted-ledger identity. RV-1-E-934 and this descendant correct that
+construction without adding a producer seam or product path: 22 transferred
+paths, five exact baseline-adopted paths, and a 30-path Task136 card. The
+strict frontier and all 29 card IDs/order remain unchanged.
 
 ## Decision And Authority
 
@@ -49,6 +57,8 @@ The governing repository evidence is:
   `RV-1-E-932` at `6b2812683479c90f93e370b30baa9a76315b0d65`, and
   four-path interlock addendum `RV-1-E-933` at exact design base
   `fea8a7d267170d4a5216b7eb4aa64865dd18a3e4`;
+- zero-path loader/ABI addendum `RV-1-E-934` at exact revised-design base
+  `1512cd7d76156842febf9fe1ca955bf2c05c22e2`;
 - the clean, history-preserving Task136 checkpoint
   `72e1ee6624c582218995e3e075e2303998811834`;
 - strict record-28 integration
@@ -349,7 +359,121 @@ type ResidentResultEventV2 =
 
 The canonical V2 planned-step schema adds required `toolRequestId` and
 `executionCapabilityHash` fields. They are durable plan identity, not optional
-gateway output. The V2 store provides `appendPlan`, `appendObservation`,
+gateway output. The canonical V2 tool-step `gatewayReadbacks` field replaces
+its released always-human shape with this strict resident union:
+
+```ts
+type ResidentLoopV2GatewayReadbacks =
+  | {
+      readonly authorizationKind: "automatic-policy";
+      readonly stage: "requested";
+      readonly requestEventId: string;
+    }
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly stage: "requested";
+      readonly requestEventId: string;
+    }
+  | {
+      readonly authorizationKind: "automatic-policy";
+      readonly stage: "claimed";
+      readonly requestEventId: string;
+      readonly executionClaimEventId: string;
+    }
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly stage: "claimed";
+      readonly requestEventId: string;
+      readonly decisionEventId: string;
+      readonly approvedBy: string;
+      readonly approvedPreviewHash: `sha256:${string}`;
+      readonly executionClaimEventId: string;
+    }
+  | {
+      readonly authorizationKind: "automatic-policy";
+      readonly stage: "completed";
+      readonly requestEventId: string;
+      readonly executionClaimEventId: string;
+      readonly outcomeReceiptEventId: string;
+      readonly resultEventId: string;
+    }
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly stage: "completed";
+      readonly requestEventId: string;
+      readonly decisionEventId: string;
+      readonly approvedBy: string;
+      readonly approvedPreviewHash: `sha256:${string}`;
+      readonly executionClaimEventId: string;
+      readonly outcomeReceiptEventId: string;
+      readonly resultEventId: string;
+    }
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly stage: "denied";
+      readonly requestEventId: string;
+      readonly denialEventId: string;
+    }
+  | {
+      readonly authorizationKind: "automatic-policy";
+      readonly stage: "failed";
+      readonly failurePhase: "pre-claim";
+      readonly requestEventId: string;
+      readonly resultEventId: string;
+    }
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly stage: "failed";
+      readonly failurePhase: "pre-approval";
+      readonly requestEventId: string;
+      readonly resultEventId: string;
+    }
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly stage: "failed";
+      readonly failurePhase: "post-approval-pre-claim";
+      readonly requestEventId: string;
+      readonly decisionEventId: string;
+      readonly approvedBy: string;
+      readonly approvedPreviewHash: `sha256:${string}`;
+      readonly resultEventId: string;
+    }
+  | {
+      readonly authorizationKind: "automatic-policy";
+      readonly stage: "failed";
+      readonly failurePhase: "post-claim";
+      readonly requestEventId: string;
+      readonly executionClaimEventId: string;
+      readonly outcomeReceiptEventId: string;
+      readonly resultEventId: string;
+    }
+  | {
+      readonly authorizationKind: "human-approval";
+      readonly stage: "failed";
+      readonly failurePhase: "post-claim";
+      readonly requestEventId: string;
+      readonly decisionEventId: string;
+      readonly approvedBy: string;
+      readonly approvedPreviewHash: `sha256:${string}`;
+      readonly executionClaimEventId: string;
+      readonly outcomeReceiptEventId: string;
+      readonly resultEventId: string;
+    };
+```
+
+Automatic branches structurally forbid decision, approver, and
+approved-preview fields. Human `requested` also forbids them because approval
+does not yet exist. T120 does not persist the transient `human-approved` stage
+as a tool step: it records human `requested` while awaiting approval, then
+`claimed`, `completed`, or `failed` after G's next durable transition. Tool
+step state maps exactly as follows: `requested` accepts only stage
+`requested`; `suspended` accepts human `requested` for approval waiting or
+either `claimed` branch for `effect-outcome-unknown`; `executed` accepts only
+`completed`; `denied` accepts only human `denied`; and `failed` accepts only a
+matching failed branch. A decision ID is never fabricated for automatic
+policy, and a compatibility-only adapter field is never a T120 readback.
+
+The V2 store provides `appendPlan`, `appendObservation`,
 `appendToolStep`, `appendSuspension`, and `appendResult`; exact event-ID reads
 for every type; and `readReplay` for one exact task/attempt/run stream. Every
 append normalizes hostile input before I/O, parses the canonical V2 payload,
@@ -441,6 +565,15 @@ gateway ID. Automatic-policy execution never fabricates a suspension decision.
 A later human decision for an approval wait is a post-checkpoint recovery fact,
 not a field retroactively inserted into the immutable suspension.
 
+The same ontology correction adds `effect-outcome-unknown` to the general V2
+result-category enum and to the `resumable` permitted-category list. It is
+valid only when the immediately preceding suspension has that same category,
+the resume anchor matches that suspension, and the tool-step readback is the
+exact automatic or human `claimed` branch above with no receipt or terminal.
+It is invalid for `completed` or `failed`, cannot alias
+`approval-required`, and is the exact category W uses for the corresponding
+`R-resumable`.
+
 The ontology also adds one orchestration checkpoint kind,
 `resident-loop-suspension`, and one release reason,
 `resident-loop-suspended`. The checkpoint carries a strict
@@ -530,14 +663,33 @@ from ledger state without an in-memory recovery cache.
 ### G136-SC and G: package-owned execution and durable at-most-once recovery
 
 The transferred dispatcher source, not R, W, G, a structural caller, or the
-legacy scheduler, is the resident executor trust boundary. It adds one
-non-barrel factory:
+legacy scheduler, is the resident executor trust boundary. It adds one frozen
+resident-only default API:
 
 ```ts
-async function createPackageOwnedResidentDomainExecutionCapability(
-  input: ResidentDomainFactoryBindingsV1
-): Promise<OpaqueResidentDomainExecutionCapability>
+interface ResidentDomainExecutionApiV1 {
+  createPackageOwnedResidentDomainExecutionCapability(
+    input: ResidentDomainFactoryBindingsV1
+  ): Promise<OpaqueResidentDomainExecutionCapability>;
+  bindPackageOwnedResidentDomainExecutionPort(input: {
+    readonly capability: OpaqueResidentDomainExecutionCapability;
+    readonly mountedLedger: EventLedger;
+    readonly workspaceId: string;
+    readonly residentAgentId: string;
+    readonly taskId: string;
+  }): OpaqueResidentDomainExecutionPort;
+}
+
+const residentDomainExecutionApi: ResidentDomainExecutionApiV1;
+export default residentDomainExecutionApi;
 ```
+
+The default object is the module's only new resident runtime export. Existing
+named legacy dispatcher exports remain byte-compatible. JavaScript
+`export *` does not forward a default export, so the unchanged agent barrel
+does not expose either resident operation. W and the bounded tests import the
+default directly from `domain-execution-dispatcher.js`; no named resident
+issuer, binder, or resolver exists for the barrel to re-export.
 
 `ResidentDomainFactoryBindingsV1` is a closed discriminated union with exactly
 six variants: provider-byte-transfer, PRR-correspondence,
@@ -549,7 +701,17 @@ callback. Hostile accessors, inherited keys, extra keys, proxies, sparse
 arrays, and post-call mutation fail before a constructor or I/O runs.
 
 ```ts
-type ResidentDomainFactoryBindingsV1 =
+type ResidentLegacyStagingContextV1 =
+  CreateLegacyStagingAdapterInput & {
+    readonly ledger: EventLedger;
+    readonly residentAgentId: string;
+  };
+
+type ResidentDomainFactoryBindingsV1 = {
+  readonly workspaceId: string;
+  readonly residentAgentId: string;
+  readonly taskId: string;
+} & (
   | {
       readonly kind: "provider-byte-transfer";
       readonly context: ProviderByteTransferAdapterContext;
@@ -573,12 +735,19 @@ type ResidentDomainFactoryBindingsV1 =
     }
   | {
       readonly kind: "legacy-staging";
-      readonly context: CreateLegacyStagingAdapterInput;
-    };
+      readonly context: ResidentLegacyStagingContextV1;
+    }
+);
 ```
 
-The dispatcher owns a closed, source-ordered catalog with exact dynamic
-imports of these eleven existing package constructors:
+Every selected context must contain a present validated `EventLedger`; both
+destructive-repair contexts must reference the same one. Every context
+resident/task identity that it carries must equal the union's exact
+`residentAgentId`/`taskId`. The top-level workspace identity is retained for
+later W comparison and is not caller authority.
+
+The dispatcher uses literal static imports for the exact descriptors and these
+eleven existing package constructors:
 
 ```text
 createProviderByteTransferAdapter
@@ -594,7 +763,7 @@ createLegacyStagingApprovalAdapter
 createLegacyStagingExecutionAdapter
 ```
 
-Ordinals zero and one import from
+Ordinals zero and one statically import from
 `./adapters/provider-byte-transfer.js`; two and three from
 `./adapters/prr-correspondence.js`; four from
 `./adapters/accepted-graph-review.js`; five and six from
@@ -612,22 +781,84 @@ respectively, `provider-byte-transfer.adapter.v1`,
 `workspace-projection-rebuild.adapter.v1`,
 `blocked-canonical-repair.adapter.v1`,
 `legacy-staging-approval.adapter.v1`, and
-`legacy-staging-execution.adapter.v1`. The dynamic imports avoid an
-adapter-to-dispatcher runtime cycle; neither the imported modules nor callers
-provide those revisions.
+`legacy-staging-execution.adapter.v1`. Those adapter modules runtime-import the
+released dispatcher failure helper, so ESM evaluation order is normative: no
+module-level catalog constant, default-object initializer, hash initializer,
+or other top-level code may read an imported adapter descriptor or
+constructor. The frozen default object references dispatcher-local function
+declarations only. The factory assembles and validates the exact ordered
+catalog inside
+`createPackageOwnedResidentDomainExecutionCapability`, after module
+evaluation has completed. Neither the imported modules nor callers provide
+the revisions. No dynamic import, computed loader, `require`, evaluator, or
+loader-policy exemption is permitted.
 
 The dispatcher validates each constructed adapter through
 `createAgentDomainToolRegistry`, requires its imported canonical descriptor to
 equal the catalog entry, and instantiates exactly the one or two catalog
 ordinals named by the selected union variant. It copies and freezes those
-resolved functions and their validated binding ledger in a module-private
-WeakMap, and returns only an opaque capability. The private resident entry
-never exposes `executeApproved`. It exposes only a dispatcher-internal
-`invokeAndAttest` operation used through the existing dispatcher -> W -> G
-import chain. G supplies the exact freshly reread execution-claim event ID to
-that wrapper; the wrapper binds it to the selected catalog ordinal and
-one-shot invocation but does not add it to or forward it through the unchanged
+resolved functions, binding identities, and validated binding-ledger
+identities in a module-private WeakMap, and returns only an opaque capability.
+
+During W's one-shot composition,
+`bindPackageOwnedResidentDomainExecutionPort` accepts only that exact WeakMap
+member and requires every retained ledger identity to be `===` W's freshly
+authenticated mounted ledger. It also requires the retained
+workspace/resident/task tuple to equal W's mounted/current task tuple before
+returning an opaque port. Missing or foreign ledgers, different destructive
+context ledgers, substituted identities, and cross-task capabilities fail
+before preview, constructor I/O, request append, or effect.
+
+The private port never exposes `buildCurrentPreview`, `executeApproved`, an
+adapter, or a raw function. It provides exactly two branded operations to the
+prebound G closure:
+
+1. `rebuildPackageOwnedCurrentPreview` selects the exact retained catalog
+   entry from the locator, calls its package adapter's current-preview
+   operation, copies and reparses the returned preview, source events,
+   artifact hashes, provenance, locks, and freshness checks, and returns only
+   that frozen own-data result. G revalidates W before and after the await and
+   uses this exact result to append the request.
+2. `invokeAndAttest` accepts an opaque fresh-execution permit, not a claim ID.
+   G's module-private WeakMap issues the permit only in the same call frame in
+   which `executeFreshAuthorized` appends and rereads the permanent claim. The
+   permit binds the exact port, locator, request/decision branch, claim event,
+   catalog ordinal, current-preview result, and canonical resident invocation
+   input.
+
+The cross-module permit check is concrete and has no caller-supplied callback.
+`resident-loop-tool-gateway.ts` default-exports one frozen package-private
+permit-consumer object whose initializer references only its module-local
+function declaration. The unchanged wildcard agent barrel does not re-export
+that default. The dispatcher is the sole production direct importer. When the
+port receives `invokeAndAttest(permit, residentInvocationInput)`, its
+dispatcher-local implementation calls that exact consumer with the permit,
+the exact opaque port object, and the canonical input. The consumer requires
+the permit to be a live member of G's private WeakMap, requires every bound
+byte and the port identity to match, deletes it before returning the frozen
+claim binding, and rejects a second use. W merely passes the opaque dispatcher
+port into G's import-gated named constructor during its one-shot composition;
+neither the permit issuer, consumer, permit, nor raw port crosses the returned
+R/loop boundary. A capability plus a caller-supplied or reread claim ID can
+never invoke.
+
+The resident claim ID is not added to or forwarded through the unchanged
 `AgentApprovedToolExecutionInput` adapter ABI.
+
+Human invocation maps the exact approved G branch into the released adapter
+DTO: `approvedBy` and `approvedPreviewHash` come only from its durable
+human-approved readback. Automatic invocation is allowed only for catalog
+ordinal 10, `legacy.staging.execute`, whose canonical descriptor has
+`requiredApprovalClass: "none"` and whose released `executeApproved` ignores
+the DTO parameter. For that ordinal alone the wrapper constructs one frozen,
+non-durable compatibility DTO with `approvalClass: "none"`,
+`previewHash` and legacy `approvedPreviewHash` both equal to the exact current
+request preview hash, and legacy `approvedBy` equal to the fixed internal
+label `resident-automatic-policy`. The label is not a human actor or approval.
+The wrapper rejects this bridge for every other ordinal. The compatibility
+label and legacy-only `approvedPreviewHash` never enter a resident event, T120
+automatic readback, outcome envelope, or canonical resident invocation
+preimage.
 
 Immediately before invocation the wrapper snapshots the exact validated
 binding ledger. If the package adapter returns in the same call frame, the
@@ -635,7 +866,7 @@ wrapper copies the result, rereads that ledger, applies the catalog-specific
 admissibility table below, and returns a WeakMap-branded in-memory
 `ResidentDomainInvocationAttestationV1`. The attestation binds the execution
 claim ID, capability hash, catalog ordinal, implementation revision, exact
-approved-execution hash, exact copied result, pre/post ledger fingerprints,
+resident-invocation hash, exact copied result, pre/post ledger fingerprints,
 and exactly one evidence mode:
 `new-ledger-events`, `idempotent-existing-ledger-events`, or
 `nonledger-projection-artifacts`. It cannot be serialized, supplied by G, or
@@ -650,7 +881,7 @@ interface ResidentDomainInvocationAttestationV1 {
   readonly executionCapabilityHash: `sha256:${string}`;
   readonly catalogOrdinal: number;
   readonly implementationRevision: string;
-  readonly approvedExecutionHash: `sha256:${string}`;
+  readonly residentInvocationInputHash: `sha256:${string}`;
   readonly evidenceMode:
     | "new-ledger-events"
     | "idempotent-existing-ledger-events"
@@ -661,10 +892,14 @@ interface ResidentDomainInvocationAttestationV1 {
 }
 ```
 
-`approvedExecutionHash` is the lower-case SHA-256 of the complete copied
-approved-execution DTO under the design's canonical-JSON rules. Each ledger
-fingerprint is the same hash over the complete validated `readAll()` event
-array in ledger order; it is not an event count or caller-supplied cursor.
+`residentInvocationInputHash` is the lower-case SHA-256, under the design's
+canonical-JSON rules, of the complete claim-bound resident invocation input
+before translation to the released adapter DTO. Its automatic branch contains
+`authorizationKind: "automatic-policy"` and no decision, approver, or
+approved-preview field; its human branch contains the exact durable approval
+tuple. Each ledger fingerprint is the same hash over the complete validated
+`readAll()` event array in ledger order; it is not an event count or
+caller-supplied cursor.
 
 The exact success-admissibility table is:
 
@@ -720,12 +955,16 @@ or capability for the wrong selected family fails closed.
 The released `createAgentDomainExecutionDispatcher({ adapters })` remains
 byte-compatible for existing callers. Its structural registrations can never
 issue an `OpaqueResidentDomainExecutionCapability`, enter the resident
-WeakMap, satisfy the resident inspector, or contribute to the resident
-capability hash. The package-owned factory itself is the only issuer. It is
-non-barrel; R's trusted bootstrap input and direct bounded tests are the only
-record-29 consumers of a returned capability. Import-policy tests permit its
-inspector only along dispatcher -> W -> G and forbid any alternate issuer or
-barrel export.
+WeakMap, satisfy the resident binder, or contribute to the resident
+capability hash. The package-owned default API is the only issuer and binder.
+R's trusted bootstrap input and direct bounded tests are the only record-29
+consumers of a returned capability. Import-policy tests require W's exact
+direct dispatcher-default import for binding, the dispatcher's exact direct
+gateway-default import for permit consumption, direct test imports for
+construction, absence of both default resident APIs from
+`packages/agent/src/index.ts`, and no named, namespace, star, alternate, or
+dynamic resident import/re-export. The released Task137 authority-policy
+source and test remain unchanged.
 
 Before T120 appends the plan, G prepares and returns the stable tool step
 identity and hash that C/T120 bind. The exact logical locator is:
@@ -799,27 +1038,28 @@ human `human-approved` stage. It revalidates W currentness, appends and rereads
 the permanent claim, then creates a non-serializable, in-memory, one-shot
 execution permit bound to that exact claim and privately resolved catalog
 entry. Only that permit can call the dispatcher's private
-`invokeAndAttest(executionClaimEventId, approvedExecution)` operation, and it
-is consumed once. A stage reconstructed by `rereadAndIssueFromLedger` never
-has an execution permit: a reread `claimed` stage is
-observation/reconciliation-only and can never execute or reexecute the
-effect.
+`invokeAndAttest(permit, residentInvocationInput)` operation; the claim ID is
+read from the consumed permit rather than accepted as a separate string. A
+stage reconstructed by `rereadAndIssueFromLedger` never has an execution
+permit: a reread `claimed` stage is observation/reconciliation-only and can
+never execute or reexecute the effect.
 
 After the dispatcher returns its branded invocation attestation, G verifies
-its exact claim, capability, catalog ordinal, implementation revision, copied
-result, ledger fingerprints, and evidence mode; copies and normalizes the
-result once more; and appends/rereads
+its exact claim, capability, catalog ordinal, implementation revision,
+resident-invocation hash, copied result, ledger fingerprints, and evidence
+mode; copies and normalizes the result once more; and appends/rereads
 `agent.resident-domain.outcome-observed.v1`. That auxiliary durable receipt
 binds the locator, request and claim IDs, authorization branch, capability
-hash, catalog ordinal, implementation revision, evidence mode, normalized
-outcome disposition, pre/post ledger fingerprints, exact ordered domain event
-IDs, artifact hashes, read-model changes, result summary, and a canonical
-envelope hash computed with the same canonical-JSON/SHA-256 rules above. G
-rejects a structural or replayed attestation, a table-incompatible outcome,
-foreign or ambiguous evidence, or any byte mismatch. Empty event IDs are
-valid only for ordinal 7's exact nonledger projection-artifact branch; empty
-overall outcome evidence is never valid. Only after rereading the receipt may
-G append/reread `completed` or a post-claim `failed` terminal.
+hash, catalog ordinal, implementation revision, evidence mode,
+`residentInvocationInputHash`, normalized outcome disposition, pre/post
+ledger fingerprints, exact ordered domain event IDs, artifact hashes,
+read-model changes, result summary, and a canonical envelope hash computed
+with the same canonical-JSON/SHA-256 rules above. G rejects a structural or
+replayed attestation, a table-incompatible outcome, foreign or ambiguous
+evidence, or any byte mismatch. Empty event IDs are valid only for ordinal
+7's exact nonledger projection-artifact branch; empty overall outcome
+evidence is never valid. Only after rereading the receipt may G
+append/reread `completed` or a post-claim `failed` terminal.
 
 `denied` is pre-claim and human-only. A pre-claim `failed` terminal is allowed
 only with durable proof that execution did not start. A post-claim `failed`
@@ -838,11 +1078,15 @@ duplicate, gap, foreign event, changed canonical bytes, or second terminal.
 It can reissue request, human-approved, claimed, completed, denied, or failed
 readbacks. A receipt after a crash permits terminal finalization without an
 effect; a claim without a receipt yields only `effect-outcome-unknown`.
-Completed alone maps to the ontology V2 successful `gatewayReadback`; denied,
-failed, and unknown map to their exact T120 observation/result semantics and
-never fabricate completion. The original `toolRequestId` stays permanently
-burned. Recovery may reconcile, observe, or replan but never reexecute it.
-These guarantees are deliberately at-most-once, not exactly-once.
+Each issued readback maps only to the same authorization/stage branch in
+`ResidentLoopV2GatewayReadbacks`: completed supplies its exact claim, receipt,
+and terminal IDs; human denied supplies only its request and denial IDs;
+pre/post-claim failure supplies the matching strict failure phase; and unknown
+supplies the exact automatic or human `claimed` branch. Automatic readbacks
+never fabricate a decision, approver, or approved-preview field. The original
+`toolRequestId` stays permanently burned. Recovery may reconcile, observe, or
+replan but never reexecute it. These guarantees are deliberately at-most-once,
+not exactly-once.
 
 ### W: opaque mounted authority and resume
 
@@ -854,10 +1098,13 @@ authority, R calls the non-barrel, import-gated, one-shot
 domainExecution)`
 lookup. That lookup accepts only the exact issued wake-runtime identity plus
 the Core/P/H binding and an opaque capability issued by the G136-SC domain
-dispatcher. The mounted
-store privately constructs T120 from its authenticated ledger and constructs
-prebound G with that same ledger, the opaque dispatcher capability, and W-private
-reverify-before/after-effect closures. W also wraps the existing trusted
+dispatcher. The mounted store privately constructs T120 from its authenticated
+ledger, directly invokes the dispatcher default API's one-shot binder with
+that ledger and the exact mounted workspace/current resident/task tuple, and
+constructs prebound G with the returned opaque resident port plus W-private
+reverify-before/after-effect closures. Binding fails unless every retained
+adapter ledger is the same object as T120/W's authenticated ledger and every
+retained identity matches. W also wraps the existing trusted
 `createSafeId("reconciliation")` closure already held by the wake runtime in a
 G-only WeakMap capability. Each planned-step request ID is
 `toolreq_${sha256(canonical plan/ordinal binding plus fresh safe entropy)}`;
@@ -867,10 +1114,11 @@ capability never escape. This dependency is local-runtime W to agent G; no
 agent source imports local-runtime. The registrar returns only the issued
 T120, prebound G, W, and exact-hash H-reader capabilities. Core needs no change
 and R never injects T120, a ledger, a raw executor, or an event-reader into W.
-G receives append authority and may resolve the dispatcher capability only
-inside W's one-shot construction; neither R nor a loop caller receives the
-ledger, raw mounted store, runtime handle, mounted path, dispatcher issuer or
-inspector, resolved adapter, safe-ID closure, or replaceable callback.
+G receives append authority and the opaque package-owned preview/invocation
+port only inside W's one-shot construction; neither R nor a loop caller
+receives the ledger, raw mounted store, runtime handle, mounted path,
+dispatcher default API, resident port, resolved adapter, permit issuer or
+consumer, safe-ID closure, or replaceable callback.
 
 ```ts
 interface ResidentLoopMountedAuthorityPort {
@@ -942,7 +1190,8 @@ implement one monotone prefix state machine keyed by the exact locator:
    resident event ID;
 2. with the checkpoint and `S`, use T120 to append and reread `R-resumable`,
    whose resume anchor names `S.id` and repeats its deadline and next safe
-   action;
+   action; when `S.suspensionCategory` is `effect-outcome-unknown`, the result
+   category is also exactly `effect-outcome-unknown`;
 3. with the checkpoint, `S`, and `R-resumable`, append and reread the
    orchestration release naming the checkpoint with reason
    `resident-loop-suspended`, then relinquish the claim;
@@ -1104,20 +1353,25 @@ the post-loop H reader.
 R invokes W's one-shot private registrar only after those comparisons and
 passes the exact opaque dispatcher capability into that registrar. W
 constructs prebound G while it alone holds the authenticated ledger and W
-currentness closures; the dispatcher module's non-barrel inspector resolves
-the retained adapters only for that construction and never returns them to R.
-W then returns the issued T120/G/W/H capabilities. R constructs stateless C
-and the internal H projection port locally, then invokes the
+currentness closures; W's direct default dispatcher import binds the opaque
+resident port only after exact ledger/identity comparison and never returns
+the port or retained adapters to R. W then returns the issued T120/G/W/H
+capabilities. R constructs stateless C and the internal H projection port
+locally, then invokes the
 agent-owned, non-barrel `createResidentBoundedAgentLoopFromIssuedCapabilities`
 issuer from `bounded-agent-loop.ts`. Import-policy tests allow that issuer only
-from R; allow W to import only the named G constructor and the dispatcher
-capability inspector; require the opaque dispatcher issuer to exist only in the
-G136-SC-owned dispatcher module; and forbid every agent-to-local-runtime
-import, barrel export, raw adapter/function transfer, or alternate capability
-mint. The issuer freeze-brands the exact R-supplied capability identities
-once; there is no exported generic constructor or structural port-bag
-parameter, and every issued capability verifies its own WeakMap membership on
-use. The return value is only
+from R; allow W to import only the named G constructor plus the dispatcher
+default API; allow only the dispatcher to direct-import G's default
+permit-consumer API; allow the dispatcher default API's construction method
+only in direct bounded tests and its binder only from W; require no resident
+runtime name on the unchanged agent barrel; and forbid every alternate
+static/dynamic loader, named/namespace/barrel re-export,
+agent-to-local-runtime import, raw adapter/function transfer, or alternate
+capability mint. The issuer
+freeze-brands the exact R-supplied capability identities once; there is no
+exported generic constructor or structural port-bag parameter, and every
+issued capability verifies its own WeakMap membership on use. The return value
+is only
 `{ metadata, loop, stop }`; `loop` exposes `advance` and `resume`, and `stop`
 closes the retained composition. No public mint, raw handle, witness, store,
 ledger, reader, adapter, executor descriptor/function, provider body, or
@@ -1126,13 +1380,13 @@ caller-replaceable structural port bag is exported.
 Record 29 deliberately does not install this entrypoint into
 `defaultLocalAgentRuntimeFactory`, HTTP routes, operator status, or any other
 running default path. No current production file imports FC-Ports, those paths
-are outside RV-1-E-933 and the V4 graph, and the governing Task136 plan forbids
+are outside RV-1-E-934 and the V4 graph, and the governing Task136 plan forbids
 route/default-factory edits. The card's executability gate therefore means the
 exported composition entrypoint runs end-to-end against the real mounted
 fixture; it does not mean runtime activation. Any default/runtime call site is
 a later owner-authorized Wave task, never an implicit record-29 edit or claim.
-Import-policy tests permit the new direct imports only at R and the existing
-W/H source owners.
+Import-policy tests permit the new direct imports only at the exact
+dispatcher/G/W/R/H owners named above.
 
 Task136 receives one R-issued bundle. It performs bounded planning,
 observation, tool execution, replanning, approval suspension, and same-stream
@@ -1161,8 +1415,24 @@ The permanent RED matrix covers at least:
   impostor; changed/missing/reordered/duplicate catalog entries; descriptor/
   implementation-revision drift; function-stringification provenance; a
   legacy caller-registered dispatcher minting or satisfying a resident
-  capability; and any raw issuer/inspector/adapter/function outside the exact
-  dispatcher/W/G/R import chain;
+  capability; missing/optional/foreign retained ledgers, unequal destructive
+  ledgers, or a workspace/resident/task mismatch; any dynamic/computed loader,
+  `require`, evaluator, loader exemption, or module-initialization read of a
+  statically imported adapter value; a barrel-first/adapter-first import that
+  triggers TDZ or changes descriptors; a named/namespace/barrel resident
+  export or either default resident API appearing on
+  `packages/agent/src/index.ts`; any gateway permit-consumer importer other
+  than the dispatcher; and any raw issuer/binder/consumer/port/adapter/function
+  outside the exact direct dispatcher/W/G/R import chain;
+- dispatcher current-preview reconstruction with the wrong capability,
+  locator, catalog entry, task identity, preview, source events, artifacts,
+  provenance, locks, or freshness facts; preview mutation or raw adapter
+  escape; request append before preview readback or W post-await revalidation;
+  port binding before exact mounted-ledger identity; a capability plus claim
+  string invoking without the G-issued fresh permit; a permit bound to another
+  port, claim, locator, branch, ordinal, preview, or canonical invocation
+  input; a reread/replayed/copied permit; and invocation before atomic
+  one-shot permit consumption;
 - G a fabricated, swapped, stale, ABI-mismatched, implementation-mismatched,
   or hash-mismatched dispatcher capability; forged/self/stale/expired/denied/
   revoked/duplicate approval; `none` masquerading as human approval; a human
@@ -1170,6 +1440,18 @@ The permanent RED matrix covers at least:
   automatic stage carrying any of those fields or an approval event; request/
   claim causation drift; changed preview; reused authorization; duplicate
   permanent claim; claim-expiry reexecution; or a terminal stream;
+- the ordinal-10 automatic compatibility bridge used for any other ordinal,
+  used with an approval class other than `none`, carrying a preview mismatch,
+  accepting a caller actor label, or leaking its internal label/legacy
+  approved-preview field into a resident event, T120 readback, outcome
+  envelope, or resident invocation hash; a human invocation whose adapter DTO
+  does not derive both approval fields from the exact durable decision;
+- T120 automatic readbacks carrying any decision, approver, or approved
+  preview; human requested carrying a future decision; claimed/completed/
+  denied/failed stage fields missing or crossing authorization branches;
+  a state/stage mismatch; automatic denial; a post-claim failure without
+  claim/receipt/result IDs; or a compatibility field substituted for durable
+  gateway evidence;
 - G invalid `requested -> human-approved -> claimed ->
   outcome-observed -> completed` transitions, automatic flow that does not go
   directly from requested to claimed, denied/failed evidence fabricated as
@@ -1210,6 +1492,11 @@ The permanent RED matrix covers at least:
   `recordable-stale` capability used for planning/request/effect/continuation;
   recordable-stale issuance without the same freshly authenticated
   mount/ledger/store; and an `unavailable` result that claims durable evidence;
+- `effect-outcome-unknown` absent from the suspension enum, result enum, or
+  resumable mapping; used as completed/failed/approval-required; a claimed
+  tool-step readback with a receipt/terminal; a suspension/result category
+  mismatch; or an `R-resumable` anchor that differs from the exact unknown
+  suspension;
 - task-orchestrator active handling, cancellation, stale recovery, and
   projection each attempting a generic release or generation-plus-one reclaim
   after a same-claim `resident-loop-suspension`; recognition after the
