@@ -750,3 +750,43 @@ Implementation evidence:
   `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
   Contracts, checker, mission state, registry, packages, runtime, providers,
   credentials, network behavior, release records, and `neo` remain unchanged.
+
+## Task 4 finite Task136 producer-authority GREEN
+
+- The exact permanent RED parent is
+  `fa5cf3ead0d3886d8173bc67414202be1e29629e`. The approved V4 contract now
+  expresses only the seven named Task136 source-transfer groups, their exact
+  22 transferred paths, the exact 30-path Task136 scope, the 16-test command,
+  nine prerequisites, eleven finite historical compatibility entries, all 28
+  raw registry pins, and five exact candidate/integration/HEAD baseline
+  adoptions. It provides no generic or transitive transfer/adoption facility.
+- The checker uses explicit finite branches for the eleven compatibility
+  sources and the seven Task136 producers. Six legacy raw records retain
+  strict canonical-hash validation. The other five newly described historical
+  records remain bound by their exact compatibility constants and the 28
+  immutable raw registry pins. Canonical historical bytes use their recorded
+  `owned` dispositions; synthetic and current producer records use the
+  corrected static `transferred` dispositions. This distinction is selected
+  only by exact card ID plus exact canonical JSON SHA-256.
+- Before record 29, each transferred source path must still match its exact
+  candidate, integration, and current-HEAD blob. Once a valid Task136 record
+  exists, every transferred source path migrates to Task136 and Task136 must
+  own the exact 30-path scope with candidate/integration/current-HEAD equality.
+  Baseline adoption checks are the exact five approved paths and tuples, not a
+  reusable adoption mechanism.
+- From these intended GREEN bytes, `node --check
+  scripts/resident-agent/assurance/task136-bounded-assurance.mjs && node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed. Contract mode emits
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.
+- The V4 contract SHA-256 is exactly
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+  The release-graph plus compatibility assurance fingerprint is exactly
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`.
+  The Task 3 focused-test blob, mission pins, registry, release records,
+  product/package bytes, provider behavior, credentials, network behavior,
+  external systems, `neo`, and remote refs remain unchanged. This is an
+  assurance authority transition, not a product release.
