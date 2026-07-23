@@ -27754,3 +27754,105 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   program-owner review before implementation planning or any correction
   packet begins. Status remains Task136 producer reconciliation design
   `implementing`. This event is not a product release.
+
+## RV-1-E-933 — Task136 four-path Approach 1 interlock addendum authorized
+
+- Recorded at: 2026-07-23T12:13:31Z
+- The program owner explicitly approves the four-path Approach 1 interlock
+  addendum after fresh independent reviews rejected written-design candidate
+  `75da663651c90cf41eee208dba36e21028b75aa2`. That candidate and rejected
+  ancestors `40d507d549ea5127e9f2597fa8d150c8a4c3d904`,
+  `819d3b066ea6757d6a25163906b8803517b6480b`,
+  `e41a1504b7a0a2438770f567e5b08672ba0ed4f2`, and
+  `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` remain preserved as design
+  checkpoints. None is an approved candidate, integration, assurance, or
+  product release.
+- The reviews prove two remaining defects. First, caller-supplied dispatcher
+  registrations can still self-attest implementation provenance and a claimed
+  gateway prefix cannot reconstruct an exact outcome without risking effect
+  reexecution. Second, the released task orchestrator can interpret the new
+  resident suspension checkpoint as a stale generic claim, append a competing
+  release, and reclaim generation plus one before W finishes its durable
+  resident prefix. The corrected design must close both defects rather than
+  weaken the record-29 restart or at-most-once guarantees.
+- Exactly four additional, previously unowned orchestration paths are adopted
+  directly by Task136, in this order immediately before its claim path:
+  `packages/agent/src/task-orchestrator.ts`,
+  `packages/agent/test/task-orchestrator-claims.test.ts`,
+  `packages/agent/src/task-orchestrator-projection.ts`, and
+  `packages/agent/test/task-orchestrator-projection.test.ts`. V4 must pin their
+  exact common baseline at W1 candidate
+  `bd3b8ed3e287a6a598dfb246524e36ca2a345438`, W1 integration
+  `75de81f110b4f405f9ec064104bc2c2b4f79e223`, and pre-record-29 HEAD, with
+  blobs `72b11352c8a3c79237404257d676c1ef27fef5db`,
+  `12d68f0b407f8b6f867a232c496b63b064e489bb`,
+  `e4656da434f0ba48d670be085ba503dd7c51588b`, and
+  `6e9062b5c8e1a679612cf09dcb664dfe3bbeb9e7`, respectively. No released V4
+  owner, W1 ownership, prerequisite, transfer, raw-record change, or
+  compatibility entry is invented for these paths.
+- The seven producer seams and **22** transferred paths remain unchanged.
+  Baseline adoption increases from one path to exactly five. Task136 retains
+  exactly nine direct prerequisites and eleven source-ordered compatibility
+  entries, and becomes final owner of exactly **30** paths: **13** product
+  sources, **16** tests, and one claim. Its exact command appends the
+  task-orchestrator claims and projection tests after the existing fourteen
+  tests. All **29** card IDs/order, raw strict records **1-28**, Task136 as
+  strict record **29**, Task138-H bytes, and the strict frontier at **28 of
+  29** remain unchanged.
+- With that exact ordering, the prospective V4 JSON SHA-256 is
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  the prospective assurance fingerprint is
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`,
+  and the synchronized mission immutable-envelope fingerprint is
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- The corrected dispatcher design must add a resident-only factory whose
+  strict package-binding union selects a closed dispatcher-owned catalog of
+  exact dynamic imports and source-owned implementation revisions. The legacy
+  caller-registered dispatcher stays available to released callers but can
+  never mint or enter a resident execution capability. The stable capability
+  hash is derived only from the dispatcher ABI and exact ordered catalog
+  entries, never function stringification or caller-chosen identity.
+- The corrected resident gateway design must use resident-specific requested,
+  human-approved, execution-claimed, outcome-observed, completed, denied, and
+  failed durable events. Automatic and human authorization are structurally
+  disjoint; human approval binds the exact decision, approver, and approved
+  preview hash. Exactly one permanent claim may exist. Fresh execution is
+  possible only through a newly issued, in-memory, one-shot permit after the
+  durable claim. Rereading a claimed prefix never yields that permit and never
+  invokes an effect. Completion requires exact claim-caused domain evidence,
+  a canonical durable outcome receipt, and then completion. Any claim without
+  that receipt is sealed as `effect-outcome-unknown`; W records and suspends
+  that exact request/claim/capability binding for reconciliation and burns the
+  original tool request permanently. This is conservative at-most-once, not
+  exactly-once execution.
+- The four adopted orchestration paths must make a same-claim
+  `resident-loop-suspension` checkpoint a durable supersession in active,
+  cancellation-race, and stale-recovery paths. The orchestrator must neither
+  append a generic release nor reclaim it. Its projection must recognize that
+  checkpoint before expired-lease recovery and derive the existing blocked,
+  non-recoverable state with an explicit resident-loop diagnostic while
+  retaining the exact checkpoint. W alone completes checkpoint, resident
+  suspension, resident resumable result, and release. `suspendAndRelease`
+  creates state zero; restart recovery accepts only already durable states one
+  through four and never manufactures a checkpoint from an untrusted empty
+  locator.
+- The documentation-only design owner may now revise exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The revision must freeze the complete dispatcher provenance and durable
+  outcome protocol, exact G logical locator and authorization unions, W
+  unknown-outcome and prefix-recovery behavior, task-orchestrator interlock,
+  four baseline pins, 30-path scope, 16-test command, exact fingerprints,
+  negative-test ceiling, and implementation/admission sequence. It requires a
+  completely fresh independent architecture/executability review pair on one
+  exact committed descendant.
+- This event authorizes no product source/test, V4/checker/mission-state,
+  raw-record, Task136 RED, implementation-plan, integration, push, provider,
+  credential, network, external-system, pull-request, record-29, or Wave-3
+  mutation. The exact revised written design still requires explicit
+  program-owner approval at its fresh dual-reviewed commit before
+  implementation planning or any correction packet begins.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Status remains Task136 producer reconciliation design `implementing`. This
+  event is not a product release and does not advance the strict frontier.
