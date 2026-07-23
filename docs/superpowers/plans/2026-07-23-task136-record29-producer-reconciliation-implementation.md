@@ -314,61 +314,181 @@ Expected: one claim-only commit and clean state.
   Task136 card expansion, five baseline adoptions, record-29 migration, and
   all 28 raw prefix pins.
 
-- [ ] **Step 1: Add one finite correction corpus**
-
-Use `apply_patch` to add a `node:test` case named exactly:
-
-```js
-test("requires the finite Task136 producer reconciliation and record-29 migration", async () => {
-  const contract = await readContract();
-  assert.deepEqual(
-    Object.fromEntries(
-      ["T120-R", "C136-P", "G136-SC", "G136-R", "Task137B-W",
-        "CF1-HR", "Task136-FC-Ports"].map((id) => [
-          id,
-          contract.releaseGraph.find((card) => card.id === id)?.transferToIds
-        ])
-    ),
-    {
-      "T120-R": ["Task136"],
-      "C136-P": ["Task136"],
-      "G136-SC": ["G136-R", "Task136"],
-      "G136-R": ["Task136"],
-      "Task137B-W": ["CF1-HR", "Task139-PM", "Task136"],
-      "CF1-HR": ["Task122", "W1-123-BOOTSTRAP-HANDOFF", "Task136"],
-      "Task136-FC-Ports": ["Task136"]
-    }
-  );
-  const task136 = contract.releaseGraph.find((card) => card.id === "Task136");
-  assert.deepEqual(task136?.prerequisiteIds, [
-    "T120-R", "Task136-FC-Ports", "Task139-P2", "C136-P", "G136-R",
-    "Task137B-W", "Task138-H", "CF1-HR", "G136-SC"
-  ]);
-  assert.deepEqual(task136?.ownedPaths, task136OwnedPaths);
-  assert.equal(task136?.command, task136SixteenTestCommand);
-  assert.deepEqual(
-    contract.releaseCompatibility.entries.map((entry) => entry.cardId),
-    ["Task137A", "Task129-MFA", "Task135B", "T120-R", "Task137B-W",
-      "CF1-HR", "Task136-FC-Ports", "G136-SC", "G136-R", "C136-P",
-      "Task122"]
-  );
-  assert.deepEqual(contract.task136BaselineAdoptions, task136BaselineAdoptions);
-  assert.deepEqual(rawPrefixPins, exactRawPrefixPins1Through28);
-});
-```
-
-Use the real property/helper names already present in the assurance corpus.
-Define `task136OwnedPaths`, `task136SixteenTestCommand`,
-`task136BaselineAdoptions`, and `exactRawPrefixPins1Through28` as literal
-constants copied byte-for-byte from the approved design and Appendix A. The
-committed test also invokes the existing injected repository fixtures to prove
-pre-record-29 source-currentness and record-29 migration for every transferred
-or adopted path; no comment may stand in for an assertion.
+- [ ] **Step 1: Broaden the existing finite corpus against the real schema**
 
 Keep exactly twenty top-level `node:test` cases. Broaden the existing graph,
-corrected-ownership, compatibility, raw-pin, finite-mutation, and durable-claim
-anchors instead of adding an unbounded parallel corpus. Change the durable
-claim path from `task-136-v4-blocked-card-scope-correction.md` to
+corrected-ownership, compatibility, raw-pin, finite-mutation, current-prefix,
+and durable-claim tests; do not add a twenty-first test. Use the existing
+`loadV4Contract()`, `releaseRecordsFor`, `releaseRecordMarkdown`,
+`fakeRepositoryAdapter`, and exported `assurance.verifyTask136ReleasePrefix`
+helpers.
+
+The graph assertions use the exact committed schema:
+
+```js
+const contract = loadV4Contract();
+const cardsById = new Map(
+  contract.releaseGraph.cards.map((card) => [card.id, card])
+);
+assert.deepEqual(
+  Object.fromEntries(
+    ["T120-R", "C136-P", "G136-SC", "G136-R", "Task137B-W",
+      "CF1-HR", "Task136-FC-Ports"].map((id) => [
+        id,
+        cardsById.get(id)?.transferToIds
+      ])
+  ),
+  {
+    "T120-R": ["Task136"],
+    "C136-P": ["Task136"],
+    "G136-SC": ["G136-R", "Task136"],
+    "G136-R": ["Task136"],
+    "Task137B-W": ["CF1-HR", "Task139-PM", "Task136"],
+    "CF1-HR": ["Task122", "W1-123-BOOTSTRAP-HANDOFF", "Task136"],
+    "Task136-FC-Ports": ["Task136"]
+  }
+);
+const task136 = cardsById.get("Task136");
+assert.deepEqual(task136?.prerequisiteIds, [
+  "T120-R", "Task136-FC-Ports", "Task139-P2", "C136-P", "G136-R",
+  "Task137B-W", "Task138-H", "CF1-HR", "G136-SC"
+]);
+assert.deepEqual(
+  task136?.ownedPaths,
+  task136OwnedPaths.map((path) => ({ disposition: "owned", path }))
+);
+assert.equal(task136?.command, task136SixteenTestCommand);
+assert.deepEqual(
+  contract.releaseCompatibility.historicalRecords.map(
+    ({ cardId, canonicalJsonSha256 }) => [cardId, canonicalJsonSha256]
+  ),
+  [
+    ["Task137A", "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198"],
+    ["Task129-MFA", "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76"],
+    ["Task135B", "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409"],
+    ["T120-R", "bb2e2bcdd90d1036f0e0ad16719dcc99405ec3170691f115641649dc59b56830"],
+    ["Task137B-W", "833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29"],
+    ["CF1-HR", "d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12"],
+    ["Task136-FC-Ports", "d860a7ea14900431a361e95604d49efa6dbf824d8ccc85a06f27fe277698bc0d"],
+    ["G136-SC", "b7ec22083b3b8be5140b3a40b09dfa4e34c2e86f01fe15c3cc3453d16c77d0b0"],
+    ["G136-R", "ba3fb8927ec24348f405db53cd6cf200481cb979ca6ce4cbe1216b5ce635d9b8"],
+    ["C136-P", "2c8da3d4b61fb472232211be2bd8b994140e044b13fb1cc977e86a6171d4575a"],
+    ["Task122", "729d23c6c84c6ea33567a4b669c9ad960e830cf601a0d9ec5638308d3a360c0c"]
+  ]
+);
+assert.deepEqual(
+  contract.releaseCompatibility.historicalRecords.map(
+    ({ cardId, pathDispositions }) => [
+      cardId,
+      pathDispositions.map(({ path, recordDisposition }) => [
+        path,
+        recordDisposition
+      ])
+    ]
+  ),
+  exactTask136HistoricalPathDispositions
+);
+assert.deepEqual([...rawPrefixPins], exactRawPrefixPins1Through28);
+```
+
+Define `task136OwnedPaths`, `task136SixteenTestCommand`,
+`exactTask136HistoricalPathDispositions`, and
+`exactRawPrefixPins1Through28` as literal constants copied byte-for-byte from
+the approved design. Do not add a top-level contract key for baseline
+adoptions.
+
+Prove the five baseline adoptions through the existing injected repository
+fixture. The prospective finite checker validates these exact pre-record-29
+candidate/integration/HEAD tuples:
+
+```js
+const task136BaselineFixtureBlobs = [
+  {
+    candidateSha: "70814c1259871c5458a3578fae8a5c8281540377",
+    integrationSha: "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
+    path: "packages/agent/src/domain-execution-dispatcher.ts",
+    blobSha: "96b0ade273696b9ffcf497119f1943f128821a58"
+  },
+  ...[
+    ["packages/agent/src/task-orchestrator.ts",
+      "72b11352c8a3c79237404257d676c1ef27fef5db"],
+    ["packages/agent/test/task-orchestrator-claims.test.ts",
+      "12d68f0b407f8b6f867a232c496b63b064e489bb"],
+    ["packages/agent/src/task-orchestrator-projection.ts",
+      "e4656da434f0ba48d670be085ba503dd7c51588b"],
+    ["packages/agent/test/task-orchestrator-projection.test.ts",
+      "6e9062b5c8e1a679612cf09dcb664dfe3bbeb9e7"]
+  ].map(([path, blobSha]) => ({
+    candidateSha: "bd3b8ed3e287a6a598dfb246524e36ca2a345438",
+    integrationSha: "75de81f110b4f405f9ec064104bc2c2b4f79e223",
+    path,
+    blobSha
+  }))
+];
+```
+
+Extend `fakeRepositoryAdapter` in the RED test blob, not the checker, by
+seeding each fixture entry at `candidateSha`, `integrationSha`, and `HEAD`:
+
+```js
+for (const entry of task136BaselineFixtureBlobs) {
+  pathBlobByCommit.set(`${entry.candidateSha}:${entry.path}`, entry.blobSha);
+  pathBlobByCommit.set(`${entry.integrationSha}:${entry.path}`, entry.blobSha);
+  pathBlobByCommit.set(`HEAD:${entry.path}`, entry.blobSha);
+}
+```
+
+Then exercise every tuple:
+
+```js
+const beforeRecord29Records = releaseRecordsFor(contract).slice(0, 28);
+const beforeRecord29Registry = releaseRecordMarkdown(beforeRecord29Records);
+const baselineCases = [
+  ["70814c1259871c5458a3578fae8a5c8281540377",
+    "packages/agent/src/domain-execution-dispatcher.ts"],
+  ["253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
+    "packages/agent/src/domain-execution-dispatcher.ts"],
+  ["HEAD", "packages/agent/src/domain-execution-dispatcher.ts"],
+  ...[
+    "packages/agent/src/task-orchestrator.ts",
+    "packages/agent/test/task-orchestrator-claims.test.ts",
+    "packages/agent/src/task-orchestrator-projection.ts",
+    "packages/agent/test/task-orchestrator-projection.test.ts"
+  ].flatMap((path) => [
+    ["bd3b8ed3e287a6a598dfb246524e36ca2a345438", path],
+    ["75de81f110b4f405f9ec064104bc2c2b4f79e223", path],
+    ["HEAD", path]
+  ])
+];
+for (const [commitish, path] of baselineCases) {
+  const adapter = fakeRepositoryAdapter(beforeRecord29Records, {
+    blobMismatch: { commitish, path }
+  });
+  assert.throws(() => assurance.verifyTask136ReleasePrefix(contract, {
+    registryText: beforeRecord29Registry,
+    adapter
+  }));
+  assert.equal(adapter.commandCalls.length, 0);
+}
+```
+
+In the same existing current-prefix/migration tests, synthesize record 29 from
+`releaseRecordsFor(contract)`, require all 29 records, and for each of the 27
+transferred/adopted product paths inject a current-HEAD blob mismatch and
+require `blob mismatch: Task136:` followed by the literal path under test,
+with zero command calls. Standard release proof continues to require every
+Task136 candidate and integration blob. This creates no generic or transitive
+adoption facility.
+
+Expand the existing finite mutation table with literal cases that remove,
+reorder, add, or relabel each Task136 target, prerequisite, owned path,
+command argument, compatibility record/path/disposition, raw pin, baseline
+commit/blob/path, or record-29 migration target; every mutant must make
+`verifyStaticGraph`, contract mode, or
+`assurance.verifyTask136ReleasePrefix` throw before a command.
+
+Change the durable claim path from
+`task-136-v4-blocked-card-scope-correction.md` to
 `task-136-v4-task137b-authority-transfer.md` and require the new append-only
 checkpoint while preserving historical claim bytes.
 
@@ -768,18 +888,70 @@ ancestral.
 
 - [ ] **Step 3: Rerun integrated authority gates**
 
-Run Task 6 Steps 1–4 from the program worktree. Repository mode must still
-stop only at strict prefix 28/28. Verify Task138 bytes:
+Keep `v4_candidate_sha` immutable. Bind the distinct integration tree and run
+behavior gates without re-executing Task 6's candidate assignment or
+candidate-scope block:
 
 ```bash
+v4_integrated_tree_sha="$v4_integration_sha"
+test "$(git rev-parse "$v4_integrated_tree_sha^2")" = "$v4_candidate_sha"
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode contract
+npm run typecheck
+npm run factory:check
+set +e
+integrated_repository_output="$(
+  node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+    --mode repository 2>&1
+)"
+integrated_repository_status=$?
+set -e
+test "$integrated_repository_status" -eq 1
+printf '%s\n' "$integrated_repository_output" |
+  grep -F "TASK136_REPOSITORY_PREFIX_OK records=28 commands=28"
+printf '%s\n' "$integrated_repository_output" |
+  grep -F "repository release closure incomplete: expected 29 records, found 28"
+for path in \
+  docs/agentic/contracts/task136-bounded-assurance-v4.json \
+  scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs \
+  docs/agentic/claims/task-136-v4-task137b-authority-transfer.md \
+  docs/agentic/contracts/software-factory-mission-state.v1.json \
+  scripts/check-software-factory-mission-state.mjs
+do
+  test "$(git rev-parse "$v4_candidate_sha:$path")" = \
+    "$(git rev-parse "$v4_integrated_tree_sha:$path")"
+done
 git diff --quiet \
-  12d23a69047d58e14dd04c4f89daf3f8a528e8aa..HEAD -- \
+  12d23a69047d58e14dd04c4f89daf3f8a528e8aa.."$v4_integrated_tree_sha" -- \
   packages/local-runtime/src/agent-handoff-projection.ts \
   packages/local-runtime/test/agent-handoff-projection.test.ts \
   docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md
+git diff --check
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected: exit `0`.
+Capture fresh integrated logs without assigning any candidate variable:
+
+```bash
+set +e
+npm test 2>&1 | tee /tmp/task136-v4-record29-integrated-npm-test.log
+v4_integrated_test_status="${PIPESTATUS[0]}"
+npm run verify 2>&1 | tee /tmp/task136-v4-record29-integrated-verify.log
+v4_integrated_verify_status="${PIPESTATUS[0]}"
+set -e
+sha256sum \
+  /tmp/task136-v4-record29-integrated-npm-test.log \
+  /tmp/task136-v4-record29-integrated-verify.log
+```
+
+Compare them to the immutable Task 6 candidate logs by exact status and
+file/test/pass/fail/skip names/counts. Expected: `v4_candidate_sha` is
+unchanged, all six candidate blobs equal the integration tree, assurance is
+`20/20`, all four markers and strict `28/28` incomplete-29 behavior reproduce,
+typecheck/readiness/diff/clean gates pass, Task138 remains unchanged, and no
+new full-suite failure or skip appears.
 
 - [ ] **Step 4: Record V4 integration**
 
@@ -2236,20 +2408,76 @@ lineage ancestral, and no conflict/reconstruction.
 
 - [ ] **Step 3: Rerun integrated product gates before release**
 
-Run Task 17 Steps 1–6 from the program worktree using the exact integration
-tree. The product paths at integration must have the same blobs as the
-candidate:
+Keep `task136_candidate_sha` immutable and assert it still names the reviewed
+source-only GREEN. From the program integration tree, rerun only the exact
+card/producer/cross-boundary command blocks in Task 17 Steps 1–2, then run:
 
 ```bash
-for path in "${TASK136_OWNED_PATHS[@]}"; do
+task136_integrated_tree_sha="$task136_product_integration_sha"
+test "$task136_candidate_sha" = "$task136_r_green_sha"
+test "$(git rev-parse "$task136_integrated_tree_sha^2")" = \
+  "$task136_candidate_sha"
+npm run typecheck
+npm run factory:check
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode contract
+set +e
+integrated_product_repository_output="$(
+  node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+    --mode repository 2>&1
+)"
+integrated_product_repository_status=$?
+set -e
+test "$integrated_product_repository_status" -eq 1
+printf '%s\n' "$integrated_product_repository_output" |
+  grep -F "blob mismatch:"
+while IFS= read -r path; do
   test "$(git rev-parse "$task136_candidate_sha:$path")" = \
-    "$(git rev-parse "$task136_product_integration_sha:$path")"
-done
+    "$(git rev-parse "$task136_integrated_tree_sha:$path")"
+done < <(
+  node -e '
+    const contract = require("./docs/agentic/contracts/task136-bounded-assurance-v4.json");
+    const card = contract.releaseGraph.cards.find(({ id }) => id === "Task136");
+    for (const { path } of card.ownedPaths) console.log(path);
+  '
+)
+git diff --quiet "$task136_candidate_sha..$task136_integrated_tree_sha" -- \
+  packages/agent/src/index.ts \
+  packages/agent/src/scheduler-types.ts \
+  packages/agent/src/adapters \
+  packages/local-runtime/src/agent-runtime-factory.ts \
+  packages/local-runtime/src/agent-http-routes.ts \
+  packages/local-runtime/src/http-handler.ts \
+  packages/local-runtime/src/operator-status-providers.ts \
+  packages/local-runtime/src/server.ts \
+  packages/local-runtime/src/agent-handoff-projection.ts \
+  packages/local-runtime/test/agent-handoff-projection.test.ts \
+  docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md
+git diff --check
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected: all product gates reproduce. Repository mode still rejects only the
-changed pre-release source currentness because strict record 29 is not yet
-present.
+Capture new integrated logs without assigning any candidate variable:
+
+```bash
+set +e
+npm test 2>&1 | tee /tmp/task136-record29-integrated-npm-test.log
+task136_integrated_test_status="${PIPESTATUS[0]}"
+npm run verify 2>&1 | tee /tmp/task136-record29-integrated-verify.log
+task136_integrated_verify_status="${PIPESTATUS[0]}"
+set -e
+sha256sum \
+  /tmp/task136-record29-integrated-npm-test.log \
+  /tmp/task136-record29-integrated-verify.log
+```
+
+Compare them to Task 17 Step 6 by exact status and
+file/test/pass/fail/skip names/counts. Expected: the reviewed candidate SHA
+remains unchanged, all 30 candidate/integration blobs match, all product gates
+reproduce, forbidden/default/Task138 paths remain unchanged, and repository
+mode still rejects only changed pre-release source currentness because strict
+record 29 is not yet present.
 
 - [ ] **Step 4: Record integration**
 
@@ -2504,8 +2732,38 @@ test "$(git rev-parse "$record29_assurance_integration_sha^2")" = \
   "$record29_assurance_candidate_sha"
 ```
 
-Rerun Task 19 Step 5 gates from the program worktree, append one `integrated`
-event, then:
+Keep `record29_assurance_candidate_sha` immutable. Run integrated behavior
+gates without re-executing Step 5's candidate assignment or scope block:
+
+```bash
+record29_assurance_integrated_tree_sha="$record29_assurance_integration_sha"
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode contract
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode repository
+npm run typecheck
+npm run factory:check
+for path in \
+  docs/agentic/claims/task-136-v4-task137b-authority-transfer.md \
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+do
+  test "$(git rev-parse "$record29_assurance_candidate_sha:$path")" = \
+    "$(git rev-parse "$record29_assurance_integrated_tree_sha:$path")"
+done
+git diff --quiet \
+  "$record29_assurance_candidate_sha..$record29_assurance_integrated_tree_sha" -- \
+  docs/agentic/contracts \
+  scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  packages
+git diff --check
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+```
+
+Expected: exact reviewed candidate identity remains unchanged, both candidate
+blobs equal the integration tree, assurance is `20/20`, all four markers,
+repository `29/29`, typecheck/readiness/no-product/diff/clean gates reproduce.
+Then append one `integrated` event and commit:
 
 ```bash
 git add docs/agentic/resident-agent-full-vision-program-registry.md
