@@ -28915,3 +28915,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance transition, publication, or product release. `neo`,
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
+
+## RV-1-E-953 — Exact Task136 fresh-decision ABI candidate admitted to review
+
+- Recorded at: 2026-07-23T22:18:26Z
+- Exact candidate
+  `eb36b46edb19ff68fe3738093702b0a49f0eede2`, sole parent RV-1-E-952
+  authority merge `ea739b5140b00b9c4660267e89c36e8614b853b3`, changes exactly
+  the authorized design, design claim, and implementation plan. Rejected
+  Task12 checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`,
+  approved design `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`, reviewed plan,
+  all prior authority, and complete Task136 history remain ancestral.
+- Exact candidate blobs are design
+  `0517a652b5876ca8df327f3a5b0588482a94a9a7`, design claim
+  `41b90353a010b4f0de028a7d499a127e8e12a6f9`, and implementation plan
+  `d581a6d671e3fd7a656a6a1e370449b7c76b765a`. It freezes the five-operation
+  internal G ABI, exact same-instance human-decision transition, strict
+  nonexecutable recovery brands, W-private constructor composition, and
+  executable per-ordinal positive evidence matrix without changing product
+  scope or public exports.
+- Fresh candidate gates pass: exact three-path scope, diff-check, ancestry,
+  clean state, factory readiness, mission **20/20**, V4 assurance **20/20**,
+  exact V4 markers, and unchanged contract SHA/fingerprints. Frozen
+  invariants remain 29 cards, 30 Task136 paths, 13 sources, 16 tests, one
+  product claim, and 11 compatibility records.
+- Completely fresh architecture reviewer
+  `/root/task136_fresh_decision_arch_review_eb36` is assigned to inspect exact
+  design/plan consistency, trust boundaries, branding/at-most-once semantics,
+  import/default ABI, ownership/count/fingerprint preservation, and absence of
+  public or callback widening.
+- Different completely fresh executability reviewer
+  `/root/task136_fresh_decision_exec_review_eb36` is assigned to independently
+  prove the exact five-operation flow is implementable within the two Task12
+  sources and three owned tests using real ordinal-specific package fixtures,
+  including same-process independent human decisions, fresh/recovery
+  separation, evidence-mode coverage, loader order, and deterministic gates.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `eb36b46e`. Any changed candidate byte invalidates both reviews. Neither
+  reviewer may edit, merge, approve a different SHA, rely on the rejected
+  checkpoint as positive evidence, or describe this review transition as a
+  release.
+- Strict product frontier remains **28 of 29**. This is review admission, not
+  approval, integration, Task12 RED/source GREEN, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
