@@ -589,8 +589,40 @@ const agentTaskOrchestrationCheckpointKindSchema = z.enum([
   "prompt-bound",
   "runner-dispatching",
   "handoff-pending",
-  "blocked"
+  "blocked",
+  "resident-loop-suspension"
 ]);
+
+const residentLoopSuspensionInstructionSchema = z.object({
+  schemaVersion: z.literal("resident-loop-suspension-instruction.v1"),
+  residentAgentId: z.literal("agent_default"),
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  planRecordEventId: eventIdSchema,
+  finalObservationEventId: eventIdSchema,
+  suspensionCategory: z.enum([
+    "budget-exhausted",
+    "approval-required",
+    "authority-stale",
+    "context-stale",
+    "provider-unavailable",
+    "effect-outcome-unknown"
+  ]),
+  requestEventId: eventIdSchema.optional(),
+  resumptionDeadlineAt: z.string().datetime(),
+  nextSafeAction: secretSafeStringSchema.min(1),
+  orchestrationClaimEventId: eventIdSchema,
+  leaseClaimGeneration: z.number().int().positive(),
+  suspensionSemanticKey: contentHashSchema,
+  resultSemanticKey: contentHashSchema,
+  logicalLocator: z.record(z.string(), z.unknown()).optional(),
+  decisionEventId: eventIdSchema.optional(),
+  approvedBy: actorIdSchema.optional(),
+  approvedPreviewHash: contentHashSchema.optional(),
+  executionClaimEventId: eventIdSchema.optional(),
+  executionCapabilityHash: contentHashSchema.optional()
+}).strict();
 
 const agentTaskOrchestratorPromptBindingReceiptSchema = z.object({
   schemaVersion: z.literal("agent-task-orchestrator.prompt-binding-receipt.v1"),
@@ -643,8 +675,16 @@ const agentTaskOrchestrationCheckpointedPayloadSchema = z.object({
   promptArtifactHash: contentHashSchema.optional(),
   lockSnapshot: agentTaskOrchestrationLockSnapshotSchema.optional(),
   promptBindingReceipt: agentTaskOrchestratorPromptBindingReceiptSchema.optional(),
+  residentLoopSuspension: residentLoopSuspensionInstructionSchema.optional(),
   safeNextActions: agentSafeActionsSchema
 }).strict().superRefine((checkpoint, ctx) => {
+  if ((checkpoint.checkpointKind === "resident-loop-suspension") !== (checkpoint.residentLoopSuspension !== undefined)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["residentLoopSuspension"],
+      message: "only resident-loop-suspension checkpoints require the strict resident suspension instruction"
+    });
+  }
   if (checkpoint.checkpointKind !== "prompt-bound" && checkpoint.promptBindingReceipt !== undefined) {
     ctx.addIssue({
       code: "custom",
@@ -777,6 +817,7 @@ const agentProviderFeasibilityObservedPayloadSchema = z.object({
 
 const agentTaskOrchestrationReleaseReasonSchema = z.enum([
   "approval-suspended",
+  "resident-loop-suspended",
   "stale-recovered",
   "budget-blocked",
   "canceled-before-dispatch",
@@ -797,7 +838,10 @@ const agentTaskOrchestrationReleasedPayloadSchema = z.object({
   checkpointEventId: eventIdSchema.optional(),
   safeNextActions: agentSafeActionsSchema
 }).strict().superRefine((release, ctx) => {
-  if (release.releaseReason === "approval-suspended" && release.checkpointEventId === undefined) {
+  if (
+    (release.releaseReason === "approval-suspended" || release.releaseReason === "resident-loop-suspended") &&
+    release.checkpointEventId === undefined
+  ) {
     ctx.addIssue({
       code: "custom",
       path: ["checkpointEventId"],
@@ -1009,6 +1053,7 @@ const residentLoopV2ResultCategorySchema = z.enum([
   "tool-failed",
   "authority-stale",
   "context-stale",
+  "effect-outcome-unknown",
   "allowlist-mismatch",
   "provenance-missing",
   "secret-detected"
@@ -1225,6 +1270,8 @@ const residentLoopV2PlannedStepSchema = z.object({
   toolId: secretSafeStringSchema.min(3),
   toolVersion: secretSafeStringSchema.min(1),
   allowlistEntryHash: contentHashSchema,
+  toolRequestId: agentToolRequestIdSchema,
+  executionCapabilityHash: contentHashSchema,
   expectedSafeOutputClass: z.enum(["observation", "derivative", "proposal", "approval-request"]),
   prerequisiteStepOrdinals: z.array(z.number().int().positive())
 }).strict();
@@ -1341,11 +1388,127 @@ const agentResidentObservationRecordedV2PayloadSchema = residentLoopV2BindingSch
   modelInvocationEventId: eventIdSchema.optional()
 }).strict().superRefine((value, ctx) => addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx));
 
-const residentLoopV2GatewayReadbacksSchema = z.object({
+const residentLoopV2GatewayAutomaticRequestedSchema = z.object({
+  authorizationKind: z.literal("automatic-policy"),
+  stage: z.literal("requested"),
+  requestEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayHumanRequestedSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  stage: z.literal("requested"),
+  requestEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayAutomaticClaimedSchema = z.object({
+  authorizationKind: z.literal("automatic-policy"),
+  stage: z.literal("claimed"),
+  requestEventId: eventIdSchema,
+  executionClaimEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayHumanClaimedSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  stage: z.literal("claimed"),
   requestEventId: eventIdSchema,
   decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema,
+  executionClaimEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayAutomaticCompletedSchema = z.object({
+  authorizationKind: z.literal("automatic-policy"),
+  stage: z.literal("completed"),
+  requestEventId: eventIdSchema,
+  executionClaimEventId: eventIdSchema,
+  outcomeReceiptEventId: eventIdSchema,
   resultEventId: eventIdSchema
 }).strict();
+
+const residentLoopV2GatewayHumanCompletedSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  stage: z.literal("completed"),
+  requestEventId: eventIdSchema,
+  decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema,
+  executionClaimEventId: eventIdSchema,
+  outcomeReceiptEventId: eventIdSchema,
+  resultEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayHumanDeniedSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  stage: z.literal("denied"),
+  requestEventId: eventIdSchema,
+  denialEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayAutomaticPreClaimFailedSchema = z.object({
+  authorizationKind: z.literal("automatic-policy"),
+  stage: z.literal("failed"),
+  failurePhase: z.literal("pre-claim"),
+  requestEventId: eventIdSchema,
+  resultEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayHumanPreApprovalFailedSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  stage: z.literal("failed"),
+  failurePhase: z.literal("pre-approval"),
+  requestEventId: eventIdSchema,
+  resultEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayHumanPostApprovalFailedSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  stage: z.literal("failed"),
+  failurePhase: z.literal("post-approval-pre-claim"),
+  requestEventId: eventIdSchema,
+  decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema,
+  resultEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayAutomaticPostClaimFailedSchema = z.object({
+  authorizationKind: z.literal("automatic-policy"),
+  stage: z.literal("failed"),
+  failurePhase: z.literal("post-claim"),
+  requestEventId: eventIdSchema,
+  executionClaimEventId: eventIdSchema,
+  outcomeReceiptEventId: eventIdSchema,
+  resultEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayHumanPostClaimFailedSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  stage: z.literal("failed"),
+  failurePhase: z.literal("post-claim"),
+  requestEventId: eventIdSchema,
+  decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema,
+  executionClaimEventId: eventIdSchema,
+  outcomeReceiptEventId: eventIdSchema,
+  resultEventId: eventIdSchema
+}).strict();
+
+const residentLoopV2GatewayReadbacksSchema = z.union([
+  residentLoopV2GatewayAutomaticRequestedSchema,
+  residentLoopV2GatewayHumanRequestedSchema,
+  residentLoopV2GatewayAutomaticClaimedSchema,
+  residentLoopV2GatewayHumanClaimedSchema,
+  residentLoopV2GatewayAutomaticCompletedSchema,
+  residentLoopV2GatewayHumanCompletedSchema,
+  residentLoopV2GatewayHumanDeniedSchema,
+  residentLoopV2GatewayAutomaticPreClaimFailedSchema,
+  residentLoopV2GatewayHumanPreApprovalFailedSchema,
+  residentLoopV2GatewayHumanPostApprovalFailedSchema,
+  residentLoopV2GatewayAutomaticPostClaimFailedSchema,
+  residentLoopV2GatewayHumanPostClaimFailedSchema
+]);
 
 const agentResidentToolStepRecordedV2PayloadSchema = residentLoopV2BindingSchema.extend({
   schemaVersion: z.literal("resident-tool-step-record.v2"),
@@ -1364,15 +1527,89 @@ const agentResidentToolStepRecordedV2PayloadSchema = residentLoopV2BindingSchema
   gatewayReadbacks: residentLoopV2GatewayReadbacksSchema,
   inputArtifactHashes: z.array(contentHashSchema),
   resultArtifactHashes: z.array(contentHashSchema)
-}).strict().superRefine((value, ctx) => addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx));
+}).strict().superRefine((value, ctx) => {
+  addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx);
+  const stage = value.gatewayReadbacks.stage;
+  const stateMatches = (
+    (stage === "requested" && (
+      value.state === "requested" ||
+      (value.state === "suspended" && value.gatewayReadbacks.authorizationKind === "human-approval")
+    )) ||
+    (stage === "claimed" && value.state === "suspended") ||
+    (stage === "completed" && value.state === "executed") ||
+    (stage === "denied" && value.state === "denied") ||
+    (stage === "failed" && value.state === "failed")
+  );
+  if (!stateMatches) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["state"],
+      message: "resident tool-step state must match its exact gateway lifecycle stage"
+    });
+  }
+});
 
-const residentLoopV2CheckpointSchema = z.object({
-  checkpointEventId: eventIdSchema,
+const residentLoopGatewayLogicalLocatorV2Schema = z.object({
+  workspaceId: agentWorkspaceIdSchema,
+  residentAgentId: z.literal("agent_default"),
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
+  planRevision: z.number().int().nonnegative(),
+  stepOrdinal: z.number().int().positive(),
+  toolRequestId: agentToolRequestIdSchema,
+  toolId: secretSafeStringSchema.min(3),
+  toolVersion: secretSafeStringSchema.min(1),
+  executionCapabilityHash: contentHashSchema
+}).strict();
+
+const residentLoopV2AwaitingApprovalCheckpointSchema = z.object({
+  authorizationKind: z.literal("awaiting-human-approval"),
+  orchestrationCheckpointEventId: eventIdSchema,
   requestEventId: eventIdSchema,
-  decisionEventId: eventIdSchema,
   resumptionDeadlineAt: z.string().datetime(),
   nextSafeAction: secretSafeStringSchema.min(1)
 }).strict();
+
+const residentLoopV2OrdinaryCheckpointSchema = z.object({
+  authorizationKind: z.literal("not-applicable"),
+  orchestrationCheckpointEventId: eventIdSchema,
+  resumptionDeadlineAt: z.string().datetime(),
+  nextSafeAction: secretSafeStringSchema.min(1)
+}).strict();
+
+const residentLoopV2UnknownAutomaticCheckpointSchema = z.object({
+  authorizationKind: z.literal("effect-outcome-unknown-automatic"),
+  orchestrationCheckpointEventId: eventIdSchema,
+  logicalLocator: residentLoopGatewayLogicalLocatorV2Schema,
+  requestEventId: eventIdSchema,
+  executionClaimEventId: eventIdSchema,
+  executionCapabilityHash: contentHashSchema,
+  resumptionDeadlineAt: z.string().datetime(),
+  nextSafeAction: secretSafeStringSchema.min(1)
+}).strict();
+
+const residentLoopV2UnknownHumanCheckpointSchema = z.object({
+  authorizationKind: z.literal("effect-outcome-unknown-human"),
+  orchestrationCheckpointEventId: eventIdSchema,
+  logicalLocator: residentLoopGatewayLogicalLocatorV2Schema,
+  requestEventId: eventIdSchema,
+  decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema,
+  executionClaimEventId: eventIdSchema,
+  executionCapabilityHash: contentHashSchema,
+  resumptionDeadlineAt: z.string().datetime(),
+  nextSafeAction: secretSafeStringSchema.min(1)
+}).strict();
+
+const residentLoopV2CheckpointSchema = z.union([
+  residentLoopV2AwaitingApprovalCheckpointSchema,
+  residentLoopV2OrdinaryCheckpointSchema,
+  residentLoopV2UnknownAutomaticCheckpointSchema,
+  residentLoopV2UnknownHumanCheckpointSchema
+]);
 
 const agentResidentLoopSuspendedV2PayloadSchema = residentLoopV2BindingSchema.extend({
   schemaVersion: z.literal("resident-loop-suspension.v2"),
@@ -1380,11 +1617,56 @@ const agentResidentLoopSuspendedV2PayloadSchema = residentLoopV2BindingSchema.ex
   planRevision: z.number().int().nonnegative(),
   planReadback: residentLoopV2PlanReadbackSchema,
   finalObservationReadback: residentLoopV2FinalObservationReadbackSchema,
-  suspensionCategory: z.enum(["budget-exhausted", "approval-required", "authority-stale", "context-stale", "provider-unavailable"]),
+  suspensionCategory: z.enum([
+    "budget-exhausted",
+    "approval-required",
+    "authority-stale",
+    "context-stale",
+    "provider-unavailable",
+    "effect-outcome-unknown"
+  ]),
   checkpoint: residentLoopV2CheckpointSchema
 }).strict().superRefine((value, ctx) => {
   addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx);
   addResidentLoopV2FinalObservationReadbackIssues(value, value.finalObservationReadback, "finalObservationReadback", ctx);
+  if (value.causationId !== value.checkpoint.orchestrationCheckpointEventId) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["checkpoint", "orchestrationCheckpointEventId"],
+      message: "resident suspension must name its already durable orchestration checkpoint"
+    });
+  }
+  const kind = value.checkpoint.authorizationKind;
+  if (value.suspensionCategory === "approval-required" && kind !== "awaiting-human-approval") {
+    ctx.addIssue({ code: "custom", path: ["checkpoint"], message: "approval suspension requires awaiting-human-approval authority" });
+  } else if (
+    value.suspensionCategory === "effect-outcome-unknown" &&
+    kind !== "effect-outcome-unknown-automatic" &&
+    kind !== "effect-outcome-unknown-human"
+  ) {
+    ctx.addIssue({ code: "custom", path: ["checkpoint"], message: "unknown effect outcome requires its exact claimed gateway authority" });
+  } else if (
+    value.suspensionCategory !== "approval-required" &&
+    value.suspensionCategory !== "effect-outcome-unknown" &&
+    kind !== "not-applicable"
+  ) {
+    ctx.addIssue({ code: "custom", path: ["checkpoint"], message: "ordinary resident suspension requires not-applicable gateway authority" });
+  }
+  if (kind === "effect-outcome-unknown-automatic" || kind === "effect-outcome-unknown-human") {
+    const locator = value.checkpoint.logicalLocator;
+    for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+      if (locator[field] !== value[field]) {
+        ctx.addIssue({ code: "custom", path: ["checkpoint", "logicalLocator", field], message: "unknown effect locator must preserve loop identity" });
+      }
+    }
+    if (locator.executionCapabilityHash !== value.checkpoint.executionCapabilityHash) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["checkpoint", "executionCapabilityHash"],
+        message: "unknown effect checkpoint must preserve the locator capability hash"
+      });
+    }
+  }
 });
 
 const residentLoopV2HandoffDiagnosticCategorySchema = z.enum([
@@ -1477,7 +1759,8 @@ const residentLoopV2ResultCategoriesByOutcome = {
     "persistence-unconfirmed",
     "tool-failed",
     "authority-stale",
-    "context-stale"
+    "context-stale",
+    "effect-outcome-unknown"
   ]
 } as const;
 
@@ -1534,6 +1817,160 @@ const agentResidentLoopResultRecordedV2PayloadSchema = residentLoopV2BindingSche
     ctx.addIssue({ code: "custom", path: ["resumeAnchor"], message: "failed results cannot carry a resumable anchor" });
   }
 });
+
+const residentDomainAuthorizationSchema = z.union([
+  z.object({
+    authorizationKind: z.literal("automatic-policy")
+  }).strict(),
+  z.object({
+    authorizationKind: z.literal("human-approval"),
+    decisionEventId: eventIdSchema,
+    approvedBy: actorIdSchema,
+    approvedPreviewHash: contentHashSchema
+  }).strict()
+]);
+
+const residentDomainEventBindingSchema = z.object({
+  logicalLocator: residentLoopGatewayLogicalLocatorV2Schema,
+  executionCapabilityHash: contentHashSchema,
+  causationId: eventIdSchema,
+  correlationId: secretSafeStringSchema.min(3)
+}).strict().superRefine((value, ctx) => {
+  if (value.executionCapabilityHash !== value.logicalLocator.executionCapabilityHash) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["executionCapabilityHash"],
+      message: "resident domain event capability hash must equal its logical locator"
+    });
+  }
+});
+
+const agentResidentDomainRequestedPayloadSchema = residentDomainEventBindingSchema.extend({
+  schemaVersion: z.literal("resident-domain-requested.v1"),
+  authorizationKind: z.enum(["automatic-policy", "human-approval"]),
+  planRecordEventId: eventIdSchema,
+  previewHash: contentHashSchema,
+  allowlistEntryHash: contentHashSchema,
+  sideEffectClass: residentLoopV2ToolSideEffectClassSchema,
+  expectedSafeOutputClass: z.enum(["observation", "derivative", "proposal", "approval-request"]),
+  requiredApprovalClass: residentLoopV2ApprovalClassSchema,
+  sourceEventIds: z.array(eventIdSchema).min(1),
+  contextPackRefs: z.array(residentLoopV2ContextPackRefSchema).min(1),
+  inputArtifactHashes: z.array(contentHashSchema),
+  policy: residentLoopV2PolicySchema,
+  authority: residentLoopV2AuthoritySchema,
+  budget: residentLoopV2BudgetSchema
+}).strict();
+
+const agentResidentDomainHumanApprovedPayloadSchema = residentDomainEventBindingSchema.extend({
+  schemaVersion: z.literal("resident-domain-human-approved.v1"),
+  authorizationKind: z.literal("human-approval"),
+  requestEventId: eventIdSchema,
+  decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema
+}).strict();
+
+const agentResidentDomainExecutionClaimedPayloadSchema = residentDomainEventBindingSchema.extend({
+  schemaVersion: z.literal("resident-domain-execution-claimed.v1"),
+  requestEventId: eventIdSchema,
+  authorization: residentDomainAuthorizationSchema,
+  claimedAt: z.string().datetime()
+}).strict();
+
+const residentDomainOutcomeDispositionSchema = z.enum(["completed", "failed"]);
+const residentDomainEvidenceModeSchema = z.enum([
+  "new-ledger-events",
+  "idempotent-existing-ledger-events",
+  "nonledger-projection-artifacts"
+]);
+
+const agentResidentDomainOutcomeObservedPayloadSchema = residentDomainEventBindingSchema.extend({
+  schemaVersion: z.literal("resident-domain-outcome-observed.v1"),
+  requestEventId: eventIdSchema,
+  executionClaimEventId: eventIdSchema,
+  authorization: residentDomainAuthorizationSchema,
+  catalogOrdinal: z.number().int().nonnegative(),
+  implementationRevision: secretSafeStringSchema.min(1),
+  evidenceMode: residentDomainEvidenceModeSchema,
+  residentInvocationInputHash: contentHashSchema,
+  outcomeDisposition: residentDomainOutcomeDispositionSchema,
+  preInvocationLedgerFingerprint: contentHashSchema,
+  postInvocationLedgerFingerprint: contentHashSchema,
+  domainEventIds: z.array(eventIdSchema),
+  artifactHashes: z.array(contentHashSchema),
+  readModelChanges: z.array(secretSafeStringSchema.min(1)),
+  resultSummary: secretSafeTextSchema,
+  envelopeHash: contentHashSchema
+}).strict();
+
+const agentResidentDomainCompletedPayloadSchema = residentDomainEventBindingSchema.extend({
+  schemaVersion: z.literal("resident-domain-completed.v1"),
+  requestEventId: eventIdSchema,
+  executionClaimEventId: eventIdSchema,
+  outcomeReceiptEventId: eventIdSchema,
+  authorization: residentDomainAuthorizationSchema,
+  resultHash: contentHashSchema,
+  resultArtifactHashes: z.array(contentHashSchema)
+}).strict();
+
+const agentResidentDomainDeniedPayloadSchema = residentDomainEventBindingSchema.extend({
+  schemaVersion: z.literal("resident-domain-denied.v1"),
+  authorizationKind: z.literal("human-approval"),
+  requestEventId: eventIdSchema,
+  deniedBy: actorIdSchema,
+  denialReason: secretSafeTextSchema
+}).strict();
+
+const residentDomainAutomaticPreClaimFailureSchema = z.object({
+  authorizationKind: z.literal("automatic-policy"),
+  failurePhase: z.literal("pre-claim")
+}).strict();
+
+const residentDomainHumanPreApprovalFailureSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  failurePhase: z.literal("pre-approval")
+}).strict();
+
+const residentDomainHumanPostApprovalFailureSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  failurePhase: z.literal("post-approval-pre-claim"),
+  decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema
+}).strict();
+
+const residentDomainAutomaticPostClaimFailureSchema = z.object({
+  authorizationKind: z.literal("automatic-policy"),
+  failurePhase: z.literal("post-claim"),
+  executionClaimEventId: eventIdSchema,
+  outcomeReceiptEventId: eventIdSchema
+}).strict();
+
+const residentDomainHumanPostClaimFailureSchema = z.object({
+  authorizationKind: z.literal("human-approval"),
+  failurePhase: z.literal("post-claim"),
+  decisionEventId: eventIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: contentHashSchema,
+  executionClaimEventId: eventIdSchema,
+  outcomeReceiptEventId: eventIdSchema
+}).strict();
+
+const agentResidentDomainFailedPayloadSchema = residentDomainEventBindingSchema.extend({
+  schemaVersion: z.literal("resident-domain-failed.v1"),
+  requestEventId: eventIdSchema,
+  failure: z.union([
+    residentDomainAutomaticPreClaimFailureSchema,
+    residentDomainHumanPreApprovalFailureSchema,
+    residentDomainHumanPostApprovalFailureSchema,
+    residentDomainAutomaticPostClaimFailureSchema,
+    residentDomainHumanPostClaimFailureSchema
+  ]),
+  failureCategory: secretSafeStringSchema.min(1),
+  safeMessage: secretSafeTextSchema,
+  failureProofHash: contentHashSchema
+}).strict();
 
 const triggerIdSchema = agentSecretSafeIdSchema(/^trigger_[a-zA-Z0-9_-]+$/);
 const triggerRequestIdSchema = agentSecretSafeIdSchema(/^trq_[a-zA-Z0-9_-]+$/);
@@ -2902,6 +3339,13 @@ export const payloadSchemas = {
   "agent.resident-tool-step.recorded.v2": agentResidentToolStepRecordedV2PayloadSchema,
   "agent.resident-loop.suspended.v2": agentResidentLoopSuspendedV2PayloadSchema,
   "agent.resident-loop.result.recorded.v2": agentResidentLoopResultRecordedV2PayloadSchema,
+  "agent.resident-domain.requested.v1": agentResidentDomainRequestedPayloadSchema,
+  "agent.resident-domain.human-approved.v1": agentResidentDomainHumanApprovedPayloadSchema,
+  "agent.resident-domain.execution-claimed.v1": agentResidentDomainExecutionClaimedPayloadSchema,
+  "agent.resident-domain.outcome-observed.v1": agentResidentDomainOutcomeObservedPayloadSchema,
+  "agent.resident-domain.completed.v1": agentResidentDomainCompletedPayloadSchema,
+  "agent.resident-domain.denied.v1": agentResidentDomainDeniedPayloadSchema,
+  "agent.resident-domain.failed.v1": agentResidentDomainFailedPayloadSchema,
   "agent.wake.supervisor.lease.claimed.v1": residentWakeSupervisorLeaseClaimedPayloadSchema,
   "agent.wake.supervisor.pause.requested.v1": residentWakeSupervisorPauseRequestedPayloadSchema,
   "agent.wake.supervisor.paused.v1": residentWakeSupervisorPausedPayloadSchema,
@@ -3242,6 +3686,55 @@ export const eventContracts = {
     description: "Records a strict terminal or resumable resident-loop outcome with exact plan/observation and H lifecycle proof where completion is claimed.",
     agentGuidance: "A completed handoff-recorded result carries the complete H readback verbatim with exact identity, lifecycle, provenance, authority, and safe diagnostics. A resumable result carries only a durable resume anchor. Incomplete terminal-looking values fail closed.",
     invariants: ["completed results require verified complete H proof", "resumable results require a durable anchor", "results do not authorize external or graph effects"]
+  },
+  "agent.resident-domain.requested.v1": {
+    type: "agent.resident-domain.requested.v1",
+    version: 1,
+    description: "Records one isolated resident-domain request bound to a stable plan locator and current preview.",
+    agentGuidance: "Bind the exact plan record, logical locator, capability, policy, authority, budget, provenance, allowlist, preview, side-effect, output, and approval classes before any claim or effect.",
+    invariants: ["logical locator has no assigned event ID", "automatic and human authorization are explicit", "request does not authorize execution"]
+  },
+  "agent.resident-domain.human-approved.v1": {
+    type: "agent.resident-domain.human-approved.v1",
+    version: 1,
+    description: "Records the exact independent human approval readback for one resident-domain request.",
+    agentGuidance: "Bind the request, decision, approver, approved preview, locator, capability, causation, and correlation; do not synthesize this event for automatic policy.",
+    invariants: ["human approval is structurally distinct", "approved preview is content-addressed", "approval alone does not execute"]
+  },
+  "agent.resident-domain.execution-claimed.v1": {
+    type: "agent.resident-domain.execution-claimed.v1",
+    version: 1,
+    description: "Records the sole permanent resident-domain execution claim for one logical locator.",
+    agentGuidance: "Automatic claims name the request and human claims name the exact approval; process or lease expiry never permits a second claim.",
+    invariants: ["one permanent claim per locator", "authorization branch is exact", "claim is not completion evidence"]
+  },
+  "agent.resident-domain.outcome-observed.v1": {
+    type: "agent.resident-domain.outcome-observed.v1",
+    version: 1,
+    description: "Records the durable attested outcome receipt for one claimed resident-domain invocation.",
+    agentGuidance: "Bind the claim, catalog ordinal, implementation revision, evidence mode, invocation hash, pre/post ledger fingerprints, exact evidence, disposition, copied summary, and canonical envelope hash.",
+    invariants: ["receipt follows the permanent claim", "evidence mode and evidence are explicit", "a receipt never authorizes reexecution"]
+  },
+  "agent.resident-domain.completed.v1": {
+    type: "agent.resident-domain.completed.v1",
+    version: 1,
+    description: "Records resident-domain completion only after its exact durable outcome receipt.",
+    agentGuidance: "Bind the request, permanent claim, receipt, authorization branch, locator, capability, result hash, and result artifacts.",
+    invariants: ["completion requires a receipt", "completion is isolated from the generic tool stream", "automatic completion carries no human approval tuple"]
+  },
+  "agent.resident-domain.denied.v1": {
+    type: "agent.resident-domain.denied.v1",
+    version: 1,
+    description: "Records a human-only pre-claim denial of one resident-domain request.",
+    agentGuidance: "Bind the exact request and independent denying actor before any permanent claim or effect.",
+    invariants: ["denial is human-only", "denial precedes any claim", "denial is terminal for the request"]
+  },
+  "agent.resident-domain.failed.v1": {
+    type: "agent.resident-domain.failed.v1",
+    version: 1,
+    description: "Records a proven resident-domain failure in its exact pre-claim or post-receipt phase.",
+    agentGuidance: "Use pre-claim failure only with durable not-started proof and post-claim failure only with the exact outcome receipt; an exception or claim without receipt is not failure proof.",
+    invariants: ["failure phase is structurally exact", "post-claim failure requires a receipt", "claim without receipt remains effect-outcome-unknown"]
   },
   "agent.wake.supervisor.lease.claimed.v1": {
     type: "agent.wake.supervisor.lease.claimed.v1",
@@ -3912,6 +4405,15 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
     return `agent_resident_loop_${agentPayload.taskId}_${agentPayload.attemptId}_${agentPayload.runId}`;
   }
 
+  if (type.startsWith("agent.resident-domain.")) {
+    const locator = agentPayload.logicalLocator;
+    if (locator === null || typeof locator !== "object" || Array.isArray(locator)) return undefined;
+    const digest = createHash("sha256")
+      .update(canonicalResidentDomainJson(locator))
+      .digest("hex");
+    return `agent_resident_domain_${digest}`;
+  }
+
   if (type === "agent.trigger.requested.v1") {
     return `agent_trigger_${agentPayload.workspaceId}_${agentPayload.triggerId}`;
   }
@@ -4046,6 +4548,28 @@ function isResidentLoopEventType(type: KnowledgeEventType): boolean {
     type === "agent.resident-loop.result.recorded.v2";
 }
 
+function isResidentDomainEventType(type: KnowledgeEventType): boolean {
+  return type === "agent.resident-domain.requested.v1" ||
+    type === "agent.resident-domain.human-approved.v1" ||
+    type === "agent.resident-domain.execution-claimed.v1" ||
+    type === "agent.resident-domain.outcome-observed.v1" ||
+    type === "agent.resident-domain.completed.v1" ||
+    type === "agent.resident-domain.denied.v1" ||
+    type === "agent.resident-domain.failed.v1";
+}
+
+function canonicalResidentDomainJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalResidentDomainJson).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${canonicalResidentDomainJson(Reflect.get(value, key))}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
 function isTriggerEventType(type: KnowledgeEventType): boolean {
   return type === "agent.trigger.requested.v1";
 }
@@ -4075,7 +4599,10 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
     const payloadSchema = payloadSchemas[event.type] as z.ZodType<unknown>;
 
-    if ((isResidentLoopEventType(event.type) || isTriggerEventType(event.type)) && !isPlainOwnData(event.payload)) {
+    if (
+      (isResidentLoopEventType(event.type) || isResidentDomainEventType(event.type) || isTriggerEventType(event.type)) &&
+      !isPlainOwnData(event.payload)
+    ) {
       ctx.addIssue({
         code: "custom",
         message: "resident-agent payload must be plain own-data only",
@@ -4218,6 +4745,24 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
       }
     }
 
+    if (isResidentDomainEventType(event.type)) {
+      const residentDomainPayload = payload.data as Record<string, unknown>;
+      if (event.context.causationId !== residentDomainPayload.causationId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "resident-domain causation must match the event context",
+          path: ["context", "causationId"]
+        });
+      }
+      if (event.context.correlationId !== residentDomainPayload.correlationId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "resident-domain correlation must match the event context",
+          path: ["context", "correlationId"]
+        });
+      }
+    }
+
     if (isTriggerEventType(event.type)) {
       const triggerPayload = payload.data as PayloadByEventType["agent.trigger.requested.v1"];
       if (event.context.causationId !== triggerPayload.provenance.causationId) {
@@ -4258,7 +4803,7 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
   ] as const;
   const issues: string[] = [];
 
-  if (events.length < residentLoopV2Types.length) {
+  if (events.length === 0) {
     return { success: false, issues: ["resident-loop v2 replay is incomplete"] };
   }
   const plan = events[0];
@@ -4287,7 +4832,6 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
     "authority",
     "sourceEventIds",
     "contextPackRefs",
-    "causationId",
     "correlationId"
   ] as const;
   const sameBinding = (payload: Record<string, unknown>, label: string) => {
@@ -4343,13 +4887,20 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
   let priorRemaining: Record<string, number> | undefined;
   let activePlan: KnowledgeEvent | undefined;
   let finalObservation: KnowledgeEvent | undefined;
-  let suspension: KnowledgeEvent | undefined;
-  let result: KnowledgeEvent | undefined;
+  let activeToolStep: KnowledgeEvent | undefined;
+  let pendingSuspension: KnowledgeEvent | undefined;
+  let priorResumableResult: KnowledgeEvent | undefined;
+  let terminal = false;
   const plans: KnowledgeEvent[] = [];
   const executedStepOrdinals = new Set<number>();
+  const burnedToolRequestIds = new Set<string>();
 
   for (const [index, event] of events.entries()) {
     const payload = event.payload as Record<string, unknown>;
+    if (terminal) {
+      issues.push("nothing may follow a terminal resident-loop result");
+      continue;
+    }
     sameBinding(payload, `event ${index + 1}`);
     const budget = payload.budget as {
       ceilings?: Record<string, number>;
@@ -4389,6 +4940,9 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
     priorRemaining = remaining;
 
     if (event.type === "agent.resident-plan.recorded.v2") {
+      if (priorResumableResult !== undefined) {
+        issues.push("a resumable segment requires a causally linked recovery observation before replanning");
+      }
       const priorPlan = plans.at(-1);
       const priorPlanReadback = payload.priorPlanReadback as Record<string, unknown> | null | undefined;
       const replanObservationReadback = payload.replanObservationReadback as Record<string, unknown> | null | undefined;
@@ -4414,6 +4968,9 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
         if (finalObservation === undefined || replanObservationReadback?.observationEventId !== finalObservation.id) {
           issues.push("replan must bind the exact preceding durable observation event");
         }
+        if (events[index - 1]?.id !== finalObservation?.id || payload.causationId !== finalObservation?.id) {
+          issues.push("replan must be caused by the immediately preceding durable observation");
+        }
         for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
           if (replanObservationReadback?.[field] !== priorPlanPayload[field]) {
             issues.push(`replan observation readback must preserve preceding ${field}`);
@@ -4421,9 +4978,26 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
         }
         if (actionConsumption?.planRevisions !== 1) issues.push("each replan must consume exactly one plan-revision budget slot");
       }
+      const plannedSteps = Array.isArray(payload.steps) ? payload.steps : [];
+      const planToolRequestIds = new Set<string>();
+      for (const candidate of plannedSteps) {
+        if (candidate === null || typeof candidate !== "object") continue;
+        const toolRequestId = (candidate as Record<string, unknown>).toolRequestId;
+        if (typeof toolRequestId !== "string") continue;
+        if (planToolRequestIds.has(toolRequestId)) {
+          issues.push("one resident plan cannot repeat a stable tool request ID");
+        }
+        if (burnedToolRequestIds.has(toolRequestId)) {
+          issues.push("resident replans cannot regenerate an admitted tool request ID");
+        }
+        planToolRequestIds.add(toolRequestId);
+        burnedToolRequestIds.add(toolRequestId);
+      }
       plans.push(event);
       activePlan = event;
       finalObservation = undefined;
+      activeToolStep = undefined;
+      pendingSuspension = undefined;
       executedStepOrdinals.clear();
       continue;
     }
@@ -4435,7 +5009,30 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
     planReadbackMatches(payload, activePlan, `event ${index + 1}`);
 
     if (event.type === "agent.resident-observation.recorded.v2") {
+      if (priorResumableResult !== undefined) {
+        if (payload.kind !== "recovery" || payload.causationId !== priorResumableResult.id) {
+          issues.push("continuation after a resumable result requires its exact recovery observation");
+        }
+        priorResumableResult = undefined;
+        pendingSuspension = undefined;
+      }
+      const activePlanPayload = activePlan.payload as Record<string, unknown>;
+      const declaredStep = (Array.isArray(activePlanPayload.steps) ? activePlanPayload.steps : []).find((candidate) =>
+        candidate !== null &&
+        typeof candidate === "object" &&
+        (candidate as Record<string, unknown>).ordinal === payload.stepOrdinal
+      ) as Record<string, unknown> | undefined;
+      if (
+        payload.toolRequestId !== undefined &&
+        payload.toolRequestId !== declaredStep?.toolRequestId
+      ) {
+        issues.push("observation must preserve its declared stable tool request ID");
+      }
       finalObservation = event;
+      continue;
+    }
+    if (priorResumableResult !== undefined) {
+      issues.push("only a recovery observation may follow a resumable result");
       continue;
     }
     if (event.type === "agent.resident-tool-step.recorded.v2") {
@@ -4449,7 +5046,7 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
       if (declaredToolStep === undefined) {
         issues.push("tool step must reference a declared plan step ordinal");
       } else {
-        for (const field of ["toolId", "toolVersion", "allowlistEntryHash"] as const) {
+        for (const field of ["toolRequestId", "toolId", "toolVersion", "allowlistEntryHash"] as const) {
           if (payload[field] !== declaredToolStep[field]) {
             issues.push(`tool step must preserve the declared ${field}`);
           }
@@ -4464,22 +5061,79 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
         }
         if (payload.state === "executed") executedStepOrdinals.add(payload.stepOrdinal as number);
       }
+      activeToolStep = event;
       continue;
     }
     if (event.type === "agent.resident-loop.suspended.v2") {
-      if (index !== events.length - 2) issues.push("suspension must be the record immediately before the terminal or resumable result");
-      if (suspension !== undefined) issues.push("resident-loop v2 replay may contain only one suspension record");
+      if (events[index - 1]?.type !== "agent.resident-observation.recorded.v2") {
+        issues.push("suspension requires an immediately preceding final observation");
+      }
+      if (pendingSuspension !== undefined) {
+        issues.push("a resident segment may contain only one suspension record");
+      }
       observationReadbackMatches(payload, finalObservation, activePlan, "suspension");
       const checkpoint = payload.checkpoint as Record<string, unknown> | undefined;
-      if (checkpoint?.checkpointEventId !== event.id) issues.push("suspension must read back its exact durable checkpoint event");
-      suspension = event;
+      if (payload.causationId !== checkpoint?.orchestrationCheckpointEventId) {
+        issues.push("suspension must be caused by its durable orchestration checkpoint");
+      }
+      if (payload.suspensionCategory === "effect-outcome-unknown") {
+        const readback = (activeToolStep?.payload as Record<string, unknown> | undefined)?.gatewayReadbacks as Record<string, unknown> | undefined;
+        if (readback?.stage !== "claimed") {
+          issues.push("unknown effect outcome requires the exact claimed tool-step readback");
+        }
+        if (
+          readback?.requestEventId !== checkpoint?.requestEventId ||
+          readback?.executionClaimEventId !== checkpoint?.executionClaimEventId
+        ) {
+          issues.push("unknown effect checkpoint must preserve the claimed gateway IDs");
+        }
+      }
+      pendingSuspension = event;
       continue;
     }
     if (event.type === "agent.resident-loop.result.recorded.v2") {
-      if (index !== events.length - 1) issues.push("result must be the final resident-loop v2 record");
-      if (result !== undefined) issues.push("resident-loop v2 replay may contain only one result record");
-      if (suspension === undefined) issues.push("result must immediately follow a durable suspension record");
       observationReadbackMatches(payload, finalObservation, activePlan, "result");
+      if (payload.outcome === "resumable") {
+        if (events[index - 1]?.id !== pendingSuspension?.id) {
+          issues.push("resumable result must immediately follow its durable suspension");
+        }
+        const resumeAnchor = payload.resumeAnchor as Record<string, unknown> | undefined;
+        const suspensionPayload = pendingSuspension?.payload as Record<string, unknown> | undefined;
+        const checkpoint = suspensionPayload?.checkpoint as Record<string, unknown> | undefined;
+        if (resumeAnchor === undefined) {
+          issues.push("resumable result requires a durable resume anchor");
+        } else if (checkpoint === undefined) {
+          issues.push("resumable result requires its preceding suspension checkpoint");
+        } else {
+          if (resumeAnchor.checkpointEventId !== pendingSuspension?.id) {
+            issues.push("resumable result must bind the exact preceding suspension event ID");
+          }
+          if (resumeAnchor.resumptionDeadlineAt !== checkpoint.resumptionDeadlineAt) {
+            issues.push("resumable result must preserve the suspension resumption deadline");
+          }
+          if (resumeAnchor.nextSafeAction !== checkpoint.nextSafeAction) {
+            issues.push("resumable result must preserve the suspension next safe action");
+          }
+          if (payload.category !== suspensionPayload?.suspensionCategory) {
+            issues.push("resumable result category must equal its preceding suspension category");
+          }
+        }
+        if (payload.causationId !== pendingSuspension?.id) {
+          issues.push("resumable result must be caused by its exact suspension event");
+        }
+        priorResumableResult = event;
+        pendingSuspension = undefined;
+        continue;
+      }
+      if (pendingSuspension !== undefined) {
+        issues.push("terminal result cannot use a synthetic suspension");
+      }
+      if (events[index - 1]?.type !== "agent.resident-observation.recorded.v2") {
+        issues.push("terminal result requires an immediately preceding final observation");
+      }
+      if (payload.causationId !== finalObservation?.id) {
+        issues.push("terminal result must be caused by its exact final observation");
+      }
       if (payload.outcome === "completed") {
         const handoff = payload.handoffReadback as Record<string, unknown> | undefined;
         if (handoff?.outcome !== "verified") issues.push("completed result requires verified H readback");
@@ -4490,30 +5144,9 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
           issues.push("H handoff authority binding must equal the mounted authority");
         }
       }
-      if (payload.outcome === "resumable") {
-        const resumeAnchor = payload.resumeAnchor as Record<string, unknown> | undefined;
-        const checkpoint = suspension === undefined ? undefined : (suspension.payload as Record<string, unknown>).checkpoint as Record<string, unknown> | undefined;
-        if (resumeAnchor === undefined) {
-          issues.push("resumable result requires a durable resume anchor");
-        } else if (checkpoint === undefined) {
-          issues.push("resumable result requires its preceding suspension checkpoint");
-        } else {
-          if (resumeAnchor.checkpointEventId !== suspension?.id || resumeAnchor.checkpointEventId !== checkpoint.checkpointEventId) {
-            issues.push("resumable result must bind the exact preceding suspension checkpoint ID");
-          }
-          if (resumeAnchor.resumptionDeadlineAt !== checkpoint.resumptionDeadlineAt) {
-            issues.push("resumable result must preserve the suspension resumption deadline");
-          }
-          if (resumeAnchor.nextSafeAction !== checkpoint.nextSafeAction) {
-            issues.push("resumable result must preserve the suspension next safe action");
-          }
-        }
-      }
-      result = event;
+      terminal = true;
     }
   }
-  if (suspension === undefined) issues.push("resident-loop v2 replay requires one durable suspension record");
-  if (result === undefined) issues.push("resident-loop v2 replay requires one final result record");
   return issues.length === 0 ? { success: true } : { success: false, issues };
 }
 
