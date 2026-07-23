@@ -12,7 +12,7 @@ Branch: `codex/resident-agent-full-vision-program-watchdog-recovery`
 Worker: Codex program coordinator
 
 Exact amended-design dispatch base:
-`fea8a7d267170d4a5216b7eb4aa64865dd18a3e4`
+`1512cd7d76156842febf9fe1ca955bf2c05c22e2`
 
 Preserved Task136 checkpoint:
 `72e1ee6624c582218995e3e075e2303998811834`
@@ -28,9 +28,10 @@ Authority:
 - Original Approach-1 authorization: `RV-1-E-931`
 - Superseding seven-seam amendment: `RV-1-E-932`
 - Superseding four-path interlock addendum: `RV-1-E-933`
+- Superseding zero-path loader/ABI addendum: `RV-1-E-934`
 - The program owner approved preserving all 29 cards and applying a finite,
   source-specific producer correction directly to Task136 as strict record 29.
-- RV-1-E-933 requires every later implementation authorization to state
+- RV-1-E-933 and RV-1-E-934 require every later implementation authorization to state
   exactly: “Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.”
 - This documentation claim does not itself authorize implementation.
 
@@ -73,15 +74,36 @@ Bounded design result:
   claimed, outcome-observed, completed, denied, and failed events. Its exact
   workspace/resident/task/attempt/run/plan/step/tool locator has no
   ledger-assigned ID; it discovers exact durable IDs on reread.
-- The dispatcher owns exact dynamic imports, canonical descriptors, functions,
-  and source-owned implementation revisions in a closed catalog and private
-  WeakMap. Its hash is derived from the ABI plus ordered catalog, never caller
-  identity or function text. The legacy caller-registered dispatcher cannot
-  issue or satisfy a resident capability.
+- The dispatcher statically imports the exact canonical descriptors/functions
+  but reads them only when its resident factory lazily assembles the closed
+  catalog after ESM evaluation. No dynamic loader or policy exemption is
+  added. Its frozen default resident API is excluded from the unchanged agent
+  wildcard barrel and import-gated to exact direct consumers. Its hash is
+  derived from the ABI plus ordered catalog, never caller identity or function
+  text. The legacy caller-registered dispatcher cannot issue or satisfy a
+  resident capability.
+- The resident default API binds an opaque preview/invocation port only after
+  every retained adapter ledger is present, both destructive contexts share
+  it, and all retained ledgers are identity-equal to W's freshly authenticated
+  mounted ledger with matching workspace/resident/task identity. Its private
+  preview operation supplies G's exact pre-request facts; invocation requires
+  a fresh G-issued one-shot permit, not a capability plus claim string.
+- G's frozen package-private default permit consumer is excluded from the
+  unchanged wildcard barrel and direct-imported only by the dispatcher. It
+  atomically validates and consumes the permit against the exact opaque port,
+  claim, locator, branch, ordinal, preview, and canonical invocation input
+  before any adapter call; no caller-supplied callback or permit operation
+  escapes.
 - Automatic and human G states are structurally disjoint. Human approval binds
   the exact decision, approver, and approved-preview hash. Exactly one
   permanent claim may exist. Only a newly claimed in-memory one-shot permit
   can invoke an effect; a reread claimed stage never has a permit.
+- T120's canonical gateway-readback union remains structurally disjoint:
+  automatic requested/claimed/completed/failed branches forbid all decision,
+  approver, and approved-preview fields, while human branches require exactly
+  the fields valid at their durable stage. Only catalog ordinal 10 may use a
+  private `approvalClass: "none"` compatibility DTO for the unchanged adapter
+  ABI; its internal legacy fields never become durable approval evidence.
 - Completion or post-claim failure requires a canonical durable outcome
   receipt over an exact claim-bound dispatcher invocation attestation. The
   unchanged adapter ABI never receives the resident claim. The package wrapper
@@ -102,6 +124,11 @@ Bounded design result:
   recoverable prefix. A fresh process completes only the missing bookkeeping
   suffix, never duplicates a prefix or effect, and releases only after the
   resident pair is durable.
+- `effect-outcome-unknown` is present in the V2 suspension-category enum,
+  general result-category enum, and resumable-category mapping only. Its
+  `R-resumable` is anchored to the exact claimed automatic or human gateway
+  readback and can never be classified as completed, failed, or
+  approval-required.
 - `suspendAndRelease` alone may create prefix state zero from trusted current
   bytes. `recoverSuspensionPrefix` accepts only an already durable checkpoint
   locator at states one through four and uses the checkpoint instruction as
@@ -163,13 +190,20 @@ Independent design review history:
   W-specific tick-summary literal was outside the released skip-reason union
   and “claim-caused domain evidence” lacked an executable rule for the
   unchanged adapter ABI.
-- RV-1-E-933 and this history-preserving descendant address all findings with
-  the closed package catalog, claim-bound catalog-specific invocation
-  attestation, durable outcome receipt and unknown state, exact authorization
-  unions, unchanged `not-claimable` tick summaries, the projection-only W
-  diagnostic, four pinned interlock paths, and W-only resident checkpoint
-  recovery. Completely fresh architecture and executability reviews are still
-  required on the exact committed descendant.
+- `7ebf3097b3362e1c16ac6466004a608b6385098c` was rejected because its dynamic
+  imports violate released repository policy, any named resident API leaks
+  through the unchanged wildcard barrel, G lacks a package-owned pre-request
+  preview operation, automatic execution/T120 and unknown-result mappings are
+  incomplete, and resident ledger identity is not frozen.
+- RV-1-E-934 and this history-preserving descendant address all findings with
+  the lazy static closed catalog, default-only resident API, exact mounted
+  ledger identity, private preview and fresh-permit invocation operations,
+  strict automatic/human T120 unions, ordinal-10-only compatibility bridge,
+  complete unknown-result mapping, claim-bound catalog-specific invocation
+  attestation, durable outcome receipt, unchanged `not-claimable` tick
+  summaries, the projection-only W diagnostic, four pinned interlock paths,
+  and W-only resident checkpoint recovery. Completely fresh architecture and
+  executability reviews are still required on the exact committed descendant.
 
 Validation required before commit:
 
