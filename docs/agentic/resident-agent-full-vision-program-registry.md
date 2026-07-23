@@ -29018,3 +29018,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29, assurance transition, publication, or product release. `neo`, push,
   Wave 3, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-955 — Exact Task136 dual-context candidate admitted to fresh review
+
+- Recorded at: 2026-07-23T22:44:51Z
+- Exact candidate
+  `933498c2ee73a7b11dd481d1df13893aee45423e`, sole parent RV-1-E-954
+  authority merge `1c6b0866949761e56fce21411e83038b8a992365`, changes exactly
+  the authorized producer design, design claim, and implementation plan.
+  Rejected candidates `eb36b46edb19ff68fe3738093702b0a49f0eede2` and
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, approved design
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`, reviewed plan, all prior
+  authority, and complete Task136 RED/GREEN/review history remain ancestral.
+- Exact candidate blobs are design
+  `b2ab4e72c144ddf06882fc9e15ef86ed0e31c713`, design claim
+  `36d167ecf034bac30274dd53ceb9102c25a8c630`, and implementation plan
+  `8db77756ef32741e1532a99535b3e994e4721e06`. The six-variant dispatcher
+  binding union now requires independent PRR initial/follow-up and
+  export/report contexts, validates each independently, requires the same
+  exact ledger and matching workspace/resident/task tuple, and passes every
+  context unchanged to its exact released static constructor. Context
+  derivation, copy-and-rewrite, substitution, swapping, or cross-use is
+  forbidden.
+- Provider and legacy singular-context pairs, the destructive pair's separate
+  contexts, the five-operation internal G ABI, recovery nonexecutability,
+  W-private composition, exact per-ordinal positive evidence, product scope,
+  public exports, catalog order, counts, fingerprints, and V4 pins remain
+  frozen.
+- Fresh candidate gates pass: exact three-path scope and blob identity,
+  sole-parent and rejected-history ancestry, diff-check, clean state, factory
+  readiness, mission **20/20**, V4 assurance **20/20**, and all exact V4
+  markers. Frozen invariants remain 29 cards, 30 Task136 paths, 13 sources,
+  16 tests, one product claim, and 11 compatibility records.
+- Completely new architecture reviewer
+  `/root/task136_dual_context_arch_review_9334` is assigned to inspect exact
+  union/algorithm consistency, same-ledger and tuple enforcement, unchanged
+  constructor inputs, trust/import/W/T120/recovery boundaries, five-operation
+  G ABI preservation, and frozen counts/fingerprints.
+- Different completely new executability reviewer
+  `/root/task136_dual_context_exec_review_9334` is assigned to mechanically
+  trace separate released PRR initial/follow-up and export/report contexts,
+  legitimate shared provider/legacy contexts, the destructive pair,
+  executable evidence for ordinals 2-7 and 9-10, fail-closed ordinals 0/1/8,
+  exact two-source Task12 GREEN scope, loader cycles, and deterministic gates.
+  Neither prior `eb36b46e` reviewer nor the candidate author is eligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `933498c2`. Any changed candidate byte invalidates both reviews. Neither
+  reviewer may edit, merge, approve a different SHA, rely on either rejected
+  candidate as positive evidence, or describe this review transition as a
+  release.
+- Strict product frontier remains **28 of 29**. This is review admission, not
+  approval, integration, Task12 RED/source GREEN, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
