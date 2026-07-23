@@ -28272,3 +28272,60 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   V4/product/claim/test/source mutation, product RED/GREEN, `neo`, push,
   Wave 3, provider, credential, network, external-system, and pull-request
   actions remain unauthorized.
+
+## RV-1-E-941 — Task136 reviewed implementation plan approved; ordered implementation authorized
+
+- Recorded at: 2026-07-23T16:07:54Z
+- Completely fresh read-only architecture reviewer
+  `/root/task136_plan_arch_review_v3_c5df0231` returns `APPROVED` with no
+  P0-P3 finding for exact plan candidate
+  `c5df0231c82264a9bfde33dcfc7e68b61b37c93f`. It independently confirms the
+  approved seven-seam/four-path/zero-path architecture, finite six-file
+  V4-first correction, exact 30-path product boundary, permanent causal RED
+  and source-only GREEN order, immutable candidate/review bindings,
+  clean non-release record candidate, strict release/assurance separation,
+  publication equality, and repository-derived Wave-3–5 handoff.
+- Different completely fresh read-only executability reviewer
+  `/root/task136_plan_exec_review_v3_c5df0231` independently returns
+  `APPROVED` with no P0-P3 finding for the same candidate. It proves exact
+  **30 paths = 13 sources + 16 tests + one claim**, exact 16-test command,
+  all **68** Bash blocks and **8** Node programs, real package/schema/API/
+  worktree usage, occurrence-preserving SHA-bound differentials, exact
+  `28/28`, `29/29`, `17/20`, and `20/20` gates, parser heading, release
+  construction, ancestry, dependency, clean-state, and push-equality
+  executability.
+- The immutable reviewed plan is **3,798 lines / 150,971 bytes**, SHA-256
+  `db7efad2691ecaa54f3d08ea5c9256fca53d014121d91c8fa9e4e95f325f8f69`.
+  Its approved design authority is exact
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`. Rejected plan candidates
+  `5487248b0e1587075a5262c6edf7a43201d244ac` and
+  `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`, their rejected reviews, and
+  both forward repairs remain preserved and unapproved.
+- Task136 implementation planning advances `reviewing -> approved`.
+  Implementation advances to `implementing` under the exact 21-task plan.
+  The first executable packet is only the Level-3 V4 authority correction:
+  forward-merge this authority into the preserved V4 lineage, commit one
+  claim-only checkpoint, then permanent causal RED and minimal GREEN within
+  exactly:
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`, and
+  `scripts/check-software-factory-mission-state.mjs`.
+- The exact 30-path Task136 product packet is conditionally authorized only
+  after the six-file V4 candidate passes all plan gates, receives its own
+  completely fresh independent architecture/executability approvals, and is
+  history-preservingly integrated into program authority. Before that
+  integration no Task136 product source, test, or claim byte may change.
+  Product work must then preserve the existing Task136 lineage, commit one
+  permanent sixteen-test RED before all source GREEN commits, change only the
+  frozen 13 sources for GREEN, and obtain a new completely fresh dual review
+  before integration or strict record 29.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Strict product frontier remains **28 of 29**. This event is implementation
+  authority, not a V4 candidate, assurance integration, product integration,
+  strict record 29, publication, or product release. Provider, credential,
+  network, unrelated external-system, fallback-write, `neo`, push, Wave 3,
+  and pull-request actions remain unauthorized until their exact later plan
+  gates and registry transitions.
