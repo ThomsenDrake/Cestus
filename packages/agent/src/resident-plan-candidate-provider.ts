@@ -96,12 +96,14 @@ export function createResidentPlanCandidateProvider(): ResidentPlanCandidateProv
         const proposedPlan = requireRecord(envelope, "proposedPlan");
         const providerPosture = requireRecord(envelope, "providerPosture");
         const policyConstraints = requireRecord(envelope, "policyConstraints");
-        return parseResidentUntrustedPlanCandidate(Object.freeze({
+        const candidate = parseResidentUntrustedPlanCandidate(Object.freeze({
           kind: "initial",
           proposedPlan,
           providerPosture,
           policyConstraints
         }));
+        if (candidate.kind !== "initial") throw unavailable();
+        return candidate;
       } catch {
         throw unavailable();
       }
@@ -116,13 +118,15 @@ export function createResidentPlanCandidateProvider(): ResidentPlanCandidateProv
         const priorPlanReadback = requireRecord(envelope, "priorPlanReadback");
         const replanObservationReadback = requireRecord(envelope, "replanObservationReadback");
         const proposedPlan = requireRecord(envelope, "proposedPlan");
-        return parseResidentUntrustedPlanCandidate(Object.freeze({
+        const candidate = parseResidentUntrustedPlanCandidate(Object.freeze({
           kind: "replan",
           priorPlan,
           priorPlanReadback,
           replanObservationReadback,
           proposedPlan
         }));
+        if (candidate.kind !== "replan") throw unavailable();
+        return candidate;
       } catch {
         throw unavailable();
       }
