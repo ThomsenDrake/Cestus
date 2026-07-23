@@ -28002,3 +28002,47 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   carry the program's required implementation-authorization sentence.
 - The strict product frontier remains 28 of 29. This planning transition is
   not a product release and does not start Wave 3.
+
+## RV-1-E-936 — Task136 implementation-plan candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T14:54:42Z
+- Exact implementation-plan candidate
+  `5487248b0e1587075a5262c6edf7a43201d244ac`, sole parent planning authority
+  `050cb93fb971aaf142dbf0ca33a88a024cabca3c`, adds only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The immutable plan is **2,669 lines / 102,903 bytes**, SHA-256
+  `7d9a55d38ed789c396a7026c759ead6d97dcb2bd2cfd58aee80aae98c912d75c`.
+- The plan freezes 21 ordered tasks: the exact six-file Level-3 V4 authority
+  correction; permanent 20-test assurance RED; exact contract, checker, and
+  mission-pin GREEN; preserved Task136 authority merge; one permanent
+  16-test product RED; seven source-only GREEN seams totaling exactly
+  13 sources; one 30-path candidate and fresh dual review; strict
+  `task136-dispatch-release.v4` record 29 with nine prerequisite integrations
+  and 30 integration blobs; calibrated two-path record-29 assurance; `neo`
+  publication with local/tracking/remote SHA equality; and repository-derived
+  Wave 3 rehydration.
+- Fresh coordinator validation proves the frozen Task136 card list equals the
+  approved design byte-for-byte at **30 paths = 13 sources + 16 tests + one
+  claim**, the exact 16-test command and required fingerprints/markers are
+  present, task numbers are contiguous 1-21, and no unresolved implementation
+  placeholder exists. `git diff --check`, factory readiness, and mission-state
+  tests **20/20** pass from the exact clean candidate.
+- Completely fresh read-only architecture assignment
+  `/root/task136_plan_arch_review_5487` owns full approved-design coverage,
+  trust-boundary/ownership sequencing, review invalidation, no-fallback,
+  no-activation, release/assurance classification, and history preservation.
+  Different completely fresh read-only executability assignment
+  `/root/task136_plan_exec_review_5487` owns independent path/command/API,
+  RED/GREEN, shell-variable/ancestry, marker/hash, repository-prefix,
+  release-record, dependency, full-differential, and publication
+  executability. Both review only exact candidate `5487248b`; neither may
+  edit, commit, merge, push, use providers/credentials/network, or inspect a
+  moving substitute.
+- Status advances Task136 implementation planning `claimed -> candidate ->
+  reviewing`. This event is not plan approval, implementation authorization,
+  V4 correction, product integration, strict record 29, assurance transition,
+  publication, or product release. Any changed plan byte invalidates both
+  reviews and requires a new candidate and completely fresh pair.
+- Strict product frontier remains **28 of 29**. Task136 implementation, V4
+  mutation, product RED/GREEN, `neo`, push, Wave 3, provider, credential,
+  network, external-system, and pull-request actions remain unauthorized.
