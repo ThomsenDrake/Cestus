@@ -12,7 +12,7 @@ Branch: `codex/resident-agent-full-vision-program-watchdog-recovery`
 Worker: Codex program coordinator
 
 Exact amended-design dispatch base:
-`6b2812683479c90f93e370b30baa9a76315b0d65`
+`fea8a7d267170d4a5216b7eb4aa64865dd18a3e4`
 
 Preserved Task136 checkpoint:
 `72e1ee6624c582218995e3e075e2303998811834`
@@ -27,9 +27,10 @@ Authority:
 - Program registry: `docs/agentic/resident-agent-full-vision-program-registry.md`
 - Original Approach-1 authorization: `RV-1-E-931`
 - Superseding seven-seam amendment: `RV-1-E-932`
+- Superseding four-path interlock addendum: `RV-1-E-933`
 - The program owner approved preserving all 29 cards and applying a finite,
   source-specific producer correction directly to Task136 as strict record 29.
-- RV-1-E-932 requires every later implementation authorization to state
+- RV-1-E-933 requires every later implementation authorization to state
   exactly: “Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.”
 - This documentation claim does not itself authorize implementation.
 
@@ -43,31 +44,49 @@ Bounded design result:
   Task136 from exact G136-SC candidate/integration/current baseline blob
   `96b0ade273696b9ffcf497119f1943f128821a58`; no historical G136-SC source
   ownership is invented.
+- Four previously unowned task-orchestrator source/test paths are adopted
+  directly from W1 candidate
+  `bd3b8ed3e287a6a598dfb246524e36ca2a345438`, integration
+  `75de81f110b4f405f9ec064104bc2c2b4f79e223`, and current baseline blobs
+  `72b11352c8a3c79237404257d676c1ef27fef5db`,
+  `12d68f0b407f8b6f867a232c496b63b064e489bb`,
+  `e4656da434f0ba48d670be085ba503dd7c51588b`, and
+  `6e9062b5c8e1a679612cf09dcb664dfe3bbeb9e7`; no historical W1 ownership,
+  prerequisite, transfer, or compatibility entry is invented.
 - Task136 gains direct CF1-HR and G136-SC prerequisites and becomes the final
-  owner of exactly 26 paths: 11 sources, 14 tests, and one claim.
-- Task136's exact command contains all 14 tests. Release compatibility v2 has
+  owner of exactly 30 paths: 13 sources, 16 tests, and one claim.
+- Task136's exact command contains all 16 tests. Release compatibility v2 has
   exactly 11 source-ordered entries and adds G136-SC only for the historical
   dispatcher-test disposition `owned`.
 - The prospective V4 JSON SHA-256 is
-  `6085471123099150a4c0ead9a1315f0db2353432ea639cc274c31c60bd6d4c4f`,
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
   its assurance fingerprint is
-  `14f5e3118d478fdb8b76ae1627350942706a4a87b428b048c2e13249981904e4`,
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`,
   and the synchronized mission immutable-envelope fingerprint is
-  `sha256:f919da5f8543811786b94bb6821a4102fdf4d81713fda68c2972a208c389df20`.
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
 - Terminal completed/failed results require their exact final observation and
   durable T120 result reread without a synthetic suspension. Resumable results
   require an exact suspension/checkpoint/anchor and same-stream segmented
   replay.
-- C is typed, stateless, and untrusted. G accepts only an opaque
-  dispatcher-issued execution capability and uses a closed requested,
-  human-approved, claimed, completed state machine. Its logical locator has no
-  ledger-assigned ID; it discovers exact durable IDs on reread. Only completed
-  stages become ontology gateway readbacks, and claimed recovery never
-  reexecutes an effect.
-- The dispatcher owns adapter functions and implementation identities in a
-  private WeakMap and binds a stable `executionCapabilityHash` into plans,
-  gateway events, effects, completion, and restart reissuance. Callers cannot
-  supply raw executor functions or mint provenance from identity strings.
+- C is typed, stateless, and untrusted. G accepts only a package-owned
+  dispatcher capability and uses resident-specific requested, human-approved,
+  claimed, outcome-observed, completed, denied, and failed events. Its exact
+  workspace/resident/task/attempt/run/plan/step/tool locator has no
+  ledger-assigned ID; it discovers exact durable IDs on reread.
+- The dispatcher owns exact dynamic imports, canonical descriptors, functions,
+  and source-owned implementation revisions in a closed catalog and private
+  WeakMap. Its hash is derived from the ABI plus ordered catalog, never caller
+  identity or function text. The legacy caller-registered dispatcher cannot
+  issue or satisfy a resident capability.
+- Automatic and human G states are structurally disjoint. Human approval binds
+  the exact decision, approver, and approved-preview hash. Exactly one
+  permanent claim may exist. Only a newly claimed in-memory one-shot permit
+  can invoke an effect; a reread claimed stage never has a permit.
+- Completion or post-claim failure requires a canonical durable outcome
+  receipt over exact claim-caused domain evidence. A claim without a receipt
+  is sealed `effect-outcome-unknown`, suspends with its exact automatic or
+  human gateway binding, permanently burns the original tool request, and
+  permits reconciliation/replanning but never reexecution.
 - W's `reverifyAfterAwait` distinguishes current, recordable-stale, and
   unavailable authority. Recordable stale permits only durable suspension
   bookkeeping on the same freshly authenticated mount/ledger/store; complete
@@ -78,6 +97,15 @@ Bounded design result:
   recoverable prefix. A fresh process completes only the missing bookkeeping
   suffix, never duplicates a prefix or effect, and releases only after the
   resident pair is durable.
+- `suspendAndRelease` alone may create prefix state zero from trusted current
+  bytes. `recoverSuspensionPrefix` accepts only an already durable checkpoint
+  locator at states one through four and uses the checkpoint instruction as
+  the sole source for the suffix; it cannot manufacture a missing checkpoint.
+- The adopted task-orchestrator source treats the same-claim resident
+  checkpoint as W-owned durable supersession in active, cancellation, and
+  stale-recovery paths. Its projection recognizes that checkpoint before
+  expired-lease handling, retains it, and derives blocked/non-recoverable
+  resident-loop diagnostics without a generic release or reclaim.
 - H is an internal full-readback port. R alone exposes the concrete
   real-mounted library composition entrypoint and passes only the exact opaque
   dispatcher capability into W. Loop callers receive only `advance`/`resume`;
@@ -96,8 +124,8 @@ Prohibitions:
   system, pull request, or Wave-3 mutation is authorized by this claim.
 - No V5, new card, generic transfer language, local Task136 adapter, public
   authority issuer, compatibility fallback, synthetic suspension, narrowed H
-  readback, caller-minted executor provenance, or partial-prefix overwrite is
-  permitted.
+  readback, caller-minted executor provenance, claimed-effect retry, generic
+  resident-checkpoint recovery, or partial-prefix overwrite is permitted.
 - No claim that the record-29 library entrypoint is activated by the current
   default runtime, HTTP routes, or operator-status paths is permitted.
 - The written design requires explicit program-owner approval at its exact
@@ -118,11 +146,16 @@ Independent design review history:
   kind, executor functions remained caller-minted, G's staged readback and
   logical locator producer were incomplete, and authority-stale had no
   recordable transition.
-- RV-1-E-932 and this history-preserving descendant address those findings
-  with the exact seventh provenance seam, baseline adoption, staged gateway
-  ABI, recoverable W prefix, and recordable-stale suspension-only capability.
-  Completely fresh architecture and executability reviews are still required
-  on the exact committed descendant.
+- `75da663651c90cf41eee208dba36e21028b75aa2` was rejected because dispatcher
+  provenance remained caller-self-attested, claimed recovery could not
+  construct an exact result, denied/failed prefixes and the approved-preview
+  hash were incomplete, and the released task orchestrator could race W with
+  a generic stale release/reclaim.
+- RV-1-E-933 and this history-preserving descendant address those findings
+  with the closed package catalog, durable outcome receipt and unknown state,
+  exact authorization unions, four pinned interlock paths, and W-only
+  resident checkpoint recovery. Completely fresh architecture and
+  executability reviews are still required on the exact committed descendant.
 
 Validation required before commit:
 
