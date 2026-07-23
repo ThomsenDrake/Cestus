@@ -668,3 +668,136 @@ provider, credential, runtime activation, route, network, fallback,
 unrelated path, or pull request. Task136 remains `implementing`; the strict
 product frontier remains **28 of 29**. A completely fresh focused reviewer
 must inspect the corrected bytes before Task11 source GREEN may resume.
+
+## RV-1-E-951 Task12 Dispatcher-Oracle Repair Rejected Checkpoint
+
+Registry authority
+`6d2bb576f66c6244ccbc0df5210f6fbc2bd92c0f` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`6bb9a2336fcad7250ab7bfafe3b738757df429a0`. Its first parent is accepted
+Task11 GREEN correction
+`f89c0e4cb3edf7587c387897296806906685b363`; its second parent is the
+registry authority. The accepted Task11 checkpoint and all earlier
+claim/RED/GREEN/review/repair history remain ancestral.
+
+The mandated pre-repair command was:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exited `1`: all three files failed and exactly 25 tests = 17 passed + 8
+failed. Its complete log SHA-256 is
+`d84eb8d5110c200918baee940bdf38b252ef8e0dc984fcca971604b610cf54c4`.
+The rejected baseline three-test manifest SHA-256 is
+`0ddc874a6f8319f5c6fe9e2654820b17232f1453240171812fb396c765195df7`;
+its exact blobs were:
+
+- dispatcher test `191a9bc38f3804166d2354cf0f0e8dee65fadd35`;
+- gateway test `6c110862dcbcb618f45b66d50b86097e7cfc1e93`; and
+- loader test `b0e35fc723509b300f13d078fb0e2af6e86cfbf4`.
+
+That baseline is preserved as rejected history because all eight assertions
+were source-string/default-export checks or inert mutation tables rather than
+causal executable or AST oracles.
+
+The attempted repair replaces those assertions with real six-family
+construction fixtures, all eleven package adapter constructors, reflective
+dispatcher and G calls, canonical resident-domain fixture validation and
+causation checks, same-ledger package capability/port binding, actual
+ordinal-10 effect counting, one-shot/concurrent/cross-binding/recovery
+attempts, repository-wide TypeScript AST import/loader checks, and
+barrel-first/adapter-first package-factory executions with a planned
+fresh-module stable capability-hash comparison.
+
+It is nevertheless rejected under Approach 1/P1 for three exact reasons:
+
+1. The committed design requires `executeFreshAuthorized` to accept a newly
+   issued human-approved stage and forbids a stage reconstructed by recovery
+   reread from executing, but it commits no same-process operation or input
+   that advances the exact branded live human request through one independent
+   decision into that executable stage. Without that ABI, the test cannot
+   obtain a legitimate G-issued permit for human-only catalog rows.
+2. The attempted dispatcher's outcome test still presents a forged permit to
+   all eleven rows. That proves rejection only. Successful exact
+   admissibility remains unproved for ordinals 2 through 7 and 9 because the
+   current six-family fixtures are construction fixtures whose PRR,
+   accepted-graph, export/report, and legacy services deliberately throw.
+   Ordinal 7's projection mock is likewise not the complete approved
+   nonledger fixture. A source that implements only ordinal 10 could therefore
+   satisfy the attempted post-API assertions.
+3. The attempted `requestFreshAuthorized` operation and the direct-test
+   internal G composition input are inferred test-local call shapes, not
+   committed authority. They cannot be promoted into the implementation ABI
+   by a test-oracle repair checkpoint.
+
+A later append-only authority may close the missing seam by specifying a
+same-instance, exact-brand human-decision advance that accepts no locator,
+raw decision, callback, IDs, or structural DTO; rereads one matching
+independent decision; revalidates W; consumes the transition; and leaves a
+fresh instance with recovery-only nonexecutable brands. That correction is
+not authorized or implemented by this checkpoint.
+
+The exact three-file command rerun against these rejected checkpoint bytes
+exited `1`: all three files failed and exactly 25 tests = 17 passed + 8
+failed. The four dispatcher failures and three G failures currently stop at
+the absent approved dispatcher default API; the loader failure stops at the
+absent exact six-module static import map. The complete current log SHA-256
+is
+`8f00dd5ccf4a41340f0927a780574bca1c2323c3e9e5ea9e935b6479f1e914fa`.
+Those failures do not cure the missing post-API human/admissibility oracle.
+
+Fresh standalone `npm run typecheck` exited `0` with `typecheck passed`; its
+complete log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` exited `0` with `factory-readiness passed`; its
+complete log SHA-256 is
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+
+The rejected checkpoint test SHA-256 values are:
+
+- dispatcher
+  `cb11025f152fee54d0023446da13f833c95b7bebdf9fae11a94c4ba498b94d72`;
+- gateway
+  `63cf4cb65cadc0ebc9dc55e0cc5fc623be84bbe8bacb7306ffd7e12af35b4873`;
+  and
+- loader
+  `439cb77be5f4d154f0d0a808f4fc44aecac9f44786a8de340e140b5b577c027a`.
+
+Their exact Git blobs are respectively
+`4ed7a6db7dadb557ab1d8887ed333720857838d1`,
+`7d0c6de47d02e20ef3584d3c32e72049502b3d7d`, and
+`50443d4d10833567edd82effa5df69ab4c02cc30`; the three-entry manifest
+SHA-256 is
+`285813d3d9425c9ae46e0dcfeeb7c4141b0c6c866cafb7b883baec3daed8df61`.
+
+The regenerated 13-product-source manifest is byte-identical to exact
+authority merge `6bb9a233`; its SHA-256 remains
+`d1951cac8dd166cab1ed70667c79cf32e67f1cc4773f25979bfd4cac8240763e`.
+The not-yet-created bounded-loop source remains absent and both authorized
+Task12 sources remain unchanged at blobs
+`96b0ade273696b9ffcf497119f1943f128821a58` for the dispatcher and
+`1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe` for G. The regenerated other-13
+RED-test manifest is also byte-identical to `6bb9a233`; its SHA-256 remains
+`8515b625907f3ddebf67368bca5ada5cf1369e43fb447423ba4d5005cdba6ef0`.
+
+`git diff --check` passes. The exact checkpoint scope is only:
+
+```text
+packages/agent/test/domain-execution-dispatcher.test.ts
+packages/agent/test/resident-loop-tool-gateway.test.ts
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, contract, plan, mission state, program registry, provider,
+credential, runtime activation, route, network, fallback, unrelated path, or
+pull request changes. Exact authority merge `6bb9a233`, Task11 GREEN
+`f89c0e4c`, and all their ancestors remain ancestral. The atomic checkpoint
+commit is required to be clean immediately after creation.
+
+This is an append-only **rejected checkpoint**. It is not an approved or
+causal Task12 RED, Task12 source GREEN, a product candidate, approval,
+integration, strict record 29, assurance transition, publication, or product
+release. Task136 remains `implementing`; the strict product frontier remains
+**28 of 29**.
