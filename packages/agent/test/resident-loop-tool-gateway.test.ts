@@ -472,6 +472,104 @@ describe("resident-loop tool gateway", () => {
     expect(stream.filter((event) =>
       event.type === "agent.resident-domain.outcome-observed.v1"
     )).toHaveLength(1);
+
+    const human = await prepareResidentGatewayHarness({
+      authorizationKind: "human-approval",
+      suffix: "fresh-human"
+    });
+    const requestHuman = reflectedOperation(
+      human.gateway,
+      "requestFreshAuthorized"
+    );
+    const readFreshDecision = reflectedOperation(
+      human.gateway,
+      "readFreshHumanDecision"
+    );
+    const executeHuman = reflectedOperation(
+      human.gateway,
+      "executeFreshAuthorized"
+    );
+    const humanRequested = await Reflect.apply(
+      requestHuman,
+      human.gateway,
+      [human.locator]
+    );
+    const independentApproval = await appendIndependentResidentHumanApproval(
+      human.ledger,
+      human.locator,
+      "fresh-human"
+    );
+    const humanApproved = await Reflect.apply(
+      readFreshDecision,
+      human.gateway,
+      [humanRequested]
+    );
+    expect(humanApproved).toEqual(expect.objectContaining({
+      authorizationKind: "human-approval",
+      stage: "human-approved",
+      requestEventId: independentApproval.payload.requestEventId,
+      decisionEventId: independentApproval.payload.decisionEventId,
+      approvedBy: humanActor.id,
+      approvedPreviewHash: independentApproval.payload.approvedPreviewHash
+    }));
+    const humanCompleted = await Reflect.apply(
+      executeHuman,
+      human.gateway,
+      [humanApproved]
+    );
+    expect(humanCompleted).toEqual(expect.objectContaining({
+      authorizationKind: "human-approval",
+      stage: "completed"
+    }));
+    expect(human.effects.count).toBe(1);
+    await expect(Reflect.apply(
+      readFreshDecision,
+      human.gateway,
+      [humanRequested]
+    )).rejects.toThrow(/consum|fresh|issued|decision/i);
+
+    const recoveredHuman = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "human-approval",
+      terminal: "requested",
+      suffix: "reread-human-approved"
+    });
+    await appendIndependentResidentHumanApproval(
+      recoveredHuman.ledger,
+      recoveredHuman.locator,
+      "reread-human-approved"
+    );
+    const rereadHuman = reflectedOperation(
+      recoveredHuman.gateway,
+      "rereadAndIssueFromLedger"
+    );
+    const recoveryOnlyApproved = await Reflect.apply(
+      rereadHuman,
+      recoveredHuman.gateway,
+      [recoveredHuman.locator]
+    );
+    expect(recoveryOnlyApproved).toEqual(expect.objectContaining({
+      authorizationKind: "human-approval",
+      stage: "human-approved"
+    }));
+    const recoveredHumanReadDecision = reflectedOperation(
+      recoveredHuman.gateway,
+      "readFreshHumanDecision"
+    );
+    const recoveredHumanExecute = reflectedOperation(
+      recoveredHuman.gateway,
+      "executeFreshAuthorized"
+    );
+    await expect(Reflect.apply(
+      recoveredHumanReadDecision,
+      recoveredHuman.gateway,
+      [recoveryOnlyApproved]
+    )).rejects.toThrow(/fresh|recovery|reread|issued/i);
+    await expect(Reflect.apply(
+      recoveredHumanExecute,
+      recoveredHuman.gateway,
+      [recoveryOnlyApproved]
+    )).rejects.toThrow(/fresh|recovery|reread|permit|issued/i);
+    expect(recoveredHuman.effects.count).toBe(0);
   });
 
   it("seals claim-without-receipt as effect-outcome-unknown", async () => {
@@ -550,7 +648,7 @@ interface CanonicalResidentPrefix {
   readonly effects: { count: number };
   readonly composition: ResidentGatewayCompositionCounts;
   readonly preparedBinding: Readonly<Record<string, unknown>>;
-  readonly locator: Readonly<Record<string, unknown>>;
+  readonly locator: ResidentLogicalLocator;
   readonly events: readonly KnowledgeEvent[];
   readonly request: KnowledgeEvent;
   readonly decision?: KnowledgeEvent;
@@ -923,6 +1021,48 @@ async function prepareResidentGatewayHarness(input: {
     preparedBinding,
     locator
   };
+}
+
+async function appendIndependentResidentHumanApproval(
+  ledger: InMemoryEventLedger,
+  locator: ResidentLogicalLocator,
+  suffix: string
+): Promise<KnowledgeEventOf<"agent.resident-domain.human-approved.v1">> {
+  const streamId = residentDomainStreamId(locator);
+  const stream = await ledger.readStream(streamId);
+  const requested = stream.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.requested.v1"> =>
+      event.type === "agent.resident-domain.requested.v1"
+  );
+  if (requested === undefined) {
+    throw new Error("Fresh resident request was not durably appended.");
+  }
+  const approved = await ledger.append({
+    type: "agent.resident-domain.human-approved.v1",
+    version: 1,
+    streamId,
+    context: residentEventContext(
+      requested.id,
+      requested.payload.correlationId,
+      humanActor
+    ),
+    payload: {
+      schemaVersion: "resident-domain-human-approved.v1",
+      logicalLocator: locator,
+      executionCapabilityHash: locator.executionCapabilityHash,
+      causationId: requested.id,
+      correlationId: requested.payload.correlationId,
+      authorizationKind: "human-approval",
+      requestEventId: requested.id,
+      decisionEventId: `evt_independent_human_decision_${suffix}`,
+      approvedBy: humanActor.id,
+      approvedPreviewHash: requested.payload.previewHash
+    }
+  }, { expectedNextSequence: 2 });
+  if (approved.type !== "agent.resident-domain.human-approved.v1") {
+    throw new Error("Independent resident human approval was not appended.");
+  }
+  return approved;
 }
 
 async function appendCanonicalResidentDomainPrefix(input: {

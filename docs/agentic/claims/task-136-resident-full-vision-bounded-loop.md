@@ -801,3 +801,152 @@ causal Task12 RED, Task12 source GREEN, a product candidate, approval,
 integration, strict record 29, assurance transition, publication, or product
 release. Task136 remains `implementing`; the strict product frontier remains
 **28 of 29**.
+
+## RV-1-E-957 Task12 Causal-RED Oracle Repair
+
+Registry authority
+`51a338f36b99dcaed92959144991ab6dcff47454` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`2eca46733f784cc39c1c6787f5c862fe18a74d29`. Rejected Task12 checkpoint
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, rejected fresh-decision design
+`eb36b46edb19ff68fe3738093702b0a49f0eede2`, approved original design
+`d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`, approved dual-context
+descendant `933498c2ee73a7b11dd481d1df13893aee45423e`, permanent RED,
+Task10/Task11 GREENs, and all prior authority, repair, and review history
+remain ancestral and unchanged.
+
+The repaired dispatcher oracle has one canonical eleven-row catalog and one
+six-family real fixture matrix. It does not retain a second inert catalog or
+construction-only positive table. Before calling either absent Task12
+surface, it directly constructs and exercises every released adapter:
+
+- ordinals 0 and 1 fail closed without a ledger change;
+- PRR ordinals 2 and 3 use independently constructed initial and follow-up
+  contexts with distinct tool, message, request-state, and idempotency facts,
+  the same exact ledger, and the same exact
+  workspace/`agent_default`/task tuple;
+- ordinal 4 uses the released assertion and governance services;
+- export/report ordinals 5 and 6 use independently constructed export and
+  report contexts with distinct artifact kinds, IDs, inputs, and output
+  hashes, the same exact seeded ledger, and the same exact tuple;
+- ordinal 7 produces nonempty portable projection artifact hashes and its
+  exact read-model change with zero ledger delta;
+- ordinal 8 rejects at the released data-loss-risk boundary with zero ledger
+  delta; and
+- ordinals 9 and 10 append their exact released event types.
+
+Each admissible event-producing released adapter is invoked once for new
+events and again for the exact idempotent existing event IDs. The projection
+adapter proves its nonledger result separately. Safe negative controls reject
+swapped PRR and export/report contexts, cross-used tool-specific contexts,
+mismatched ledgers, and mismatched resident/task tuples. Every context is
+passed unchanged to its exact released constructor; no sibling context is
+spread, rewritten, or substituted.
+
+The end-to-end oracle then routes ordinals 2 through 7 and 9 through 10
+through the absent default dispatcher API and the internal G composition.
+It requires exact durable request, independent human decision for all
+human-only rows, permanent claim, invocation attestation, outcome receipt,
+and completion. Event-producing rows require both
+`new-ledger-events` and `idempotent-existing-ledger-events`; ordinal 7 alone
+requires `nonledger-projection-artifacts`; ordinals 0, 1, and 8 may produce
+no successful receipt or terminal. Forged-permit and automatic-ordinal
+controls remain rejection-only negatives and cannot substitute for these
+positive cases.
+
+The G oracle now exercises the exact same-process human sequence:
+`requestFreshAuthorized`, independent append of one exact bound durable human
+approval, `readFreshHumanDecision` with the same live unconsumed requested
+brand, then `executeFreshAuthorized`. It proves the effect and completion
+occur exactly once and that the consumed requested brand cannot be advanced
+again. A separately reconstructed durable requested-plus-approved prefix is
+returned only through `rereadAndIssueFromLedger`; both
+`readFreshHumanDecision` and `executeFreshAuthorized` reject that recovery
+stage with zero effect. Existing automatic, concurrent, foreign-instance,
+unknown-effect, and receipt-finalization controls remain.
+
+The loader oracle uses the TypeScript AST and repository source graph to
+require the exact six literal adapter module imports in frozen order, their
+exact constructors and descriptors, the dispatcher as the sole production
+default importer of G, no named/namespace/barrel/star/dynamic/evaluator/
+`require`/loader escape, no top-level imported-adapter reads, and no
+default-private resident ABI widening through the barrel. It freezes the
+Task12 definition scope to exactly
+`packages/agent/src/domain-execution-dispatcher.ts` and
+`packages/agent/src/resident-loop-tool-gateway.ts`, and retains
+barrel-first/adapter-first initialization checks.
+
+The fresh focused command was:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exited `1`: all three files failed and exactly 25 tests = 17 passed + 8
+failed. Four dispatcher tests and three G tests stop only at the absent
+Task12 default dispatcher API after the real released-fixture preflight
+passes. The loader test stops only at the absent exact six-module static
+import map. There is no construction, execution-DTO, event, context,
+projection, collection, dependency, type, or unrelated inherited failure.
+The non-fatal missing TypeScript source-map warning does not prevent
+collection. The complete focused log SHA-256 is
+`3b8bf5e60c4f802e1b53bab4d25cfa0eae49403194d85d0e2e3a4418c9de3d20`.
+
+The exact six released adapter control files exit `0`: 6 files and all
+**79/79** tests pass. Their complete log SHA-256 is
+`a046ea2b11caf0a402d654cfac1679ae9224b4e29627bbdc43cd659f729f2319`.
+Fresh standalone `npm run typecheck` exits `0` with `typecheck passed`; its
+log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` exits `0` with `factory-readiness passed`; its
+log SHA-256 is
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+The calibrated mission validator passes **20/20** and reports unchanged
+fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20** and contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The repaired test SHA-256 values are:
+
+- dispatcher
+  `e33dbc39a2a80febc6e80b0cad0fc3e283f00559fcb50435c093b74d2b801524`;
+- G
+  `053a9af87e8d3bdb2dce57c3a78d352cac083d1761e0e9f89da173df44cd1150`;
+  and
+- loader
+  `ff1ece3488adb3fc3774a2977c1133bd819164ffb00bf691cfe034c79a54ba6c`.
+
+Their exact Git blobs are respectively
+`6d911dd5b147c010c0fba2b36f1707bd67ca8ddf`,
+`6a1cd6cf6297356709fa0c59ed23e8d33e3a8133`, and
+`bf1338ce9fb85bb53e2cd2241c86b18de73adf6b`. Both authorized Task12 product
+sources remain unchanged at blobs
+`96b0ade273696b9ffcf497119f1943f128821a58` for the dispatcher and
+`1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe` for G.
+
+`git diff --check` passes. The exact checkpoint scope is only:
+
+```text
+packages/agent/test/domain-execution-dispatcher.test.ts
+packages/agent/test/resident-loop-tool-gateway.test.ts
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, contract, plan, mission state, program registry, provider,
+credential, runtime activation, route, network, fallback, unrelated path, or
+pull request changes. This exact four-path checkpoint requires a completely
+fresh focused review before either Task12 product source may change. Any
+changed test or claim byte invalidates that review.
+
+This is a review-ready causal-RED oracle checkpoint, not Task12 source GREEN,
+a product candidate, approval, integration, strict record 29, assurance
+transition, publication, or product release. Task136 remains `implementing`;
+the strict product frontier remains **28 of 29**.
