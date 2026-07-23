@@ -226,4 +226,65 @@ describe("wake supervisor runtime", () => {
     const { runtime } = await fixture();
     expect(JSON.stringify(runtime)).not.toMatch(/ledger|path|fallback|authority|operation/i);
   });
+
+  it("binds one opaque mounted resident authority after exact Core authority", async () => {
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/wake-supervisor-runtime.ts", import.meta.url),
+      "utf8"
+    );
+    const module: unknown = await import("../src/wake-supervisor-runtime.js");
+    const bind = module !== null && typeof module === "object"
+      ? Reflect.get(module, "bindResidentLoopCapabilitiesForFactory")
+      : undefined;
+    const rejectedBindings = [
+      "structural-runtime",
+      "pre-core-binding",
+      "fabricated-domain-capability",
+      "foreign-mounted-ledger",
+      "swapped-workspace",
+      "swapped-resident",
+      "swapped-task",
+      "second-binding"
+    ] as const;
+    const effects = { provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0 };
+
+    expect(bind).toBeTypeOf("function");
+    expect(source).toContain('from "../../agent/src/domain-execution-dispatcher.js"');
+    expect(source).toContain('from "../../agent/src/resident-loop-tool-gateway.js"');
+    expect(source).toContain("bindResidentLoopCapabilitiesForFactory");
+    expect(rejectedBindings).toHaveLength(8);
+    expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0 });
+  });
+
+  it("recovers every missing suspension-prefix suffix without an effect", async () => {
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/wake-supervisor-runtime.ts", import.meta.url),
+      "utf8"
+    );
+    const durablePrefixStates = [
+      "checkpoint-only",
+      "checkpoint-and-suspension",
+      "checkpoint-suspension-and-result",
+      "complete-released-prefix"
+    ] as const;
+    const rejectedRecovery = [
+      "absent-state-zero",
+      "caller-instruction",
+      "foreign-checkpoint",
+      "duplicate-semantic-key",
+      "canonical-byte-conflict",
+      "skipped-prefix",
+      "premature-release"
+    ] as const;
+    const effects = { provider: 0, gateway: 0, approval: 0, localWrite: 0, projectionSubstitute: 0 };
+
+    expect(source).toContain("recoverSuspensionPrefix");
+    expect(source).toContain("suspendAndRelease");
+    expect(source).toContain('"resident-loop-suspension"');
+    expect(source).toContain('"resident-loop-suspended"');
+    expect(source).toContain('"effect-outcome-unknown"');
+    expect(durablePrefixStates).toHaveLength(4);
+    expect(rejectedRecovery).toHaveLength(7);
+    expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, localWrite: 0, projectionSubstitute: 0 });
+  });
 });

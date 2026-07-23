@@ -1,8 +1,11 @@
 import type { ActorRef, KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createResidentPlanObservationStore } from "../src/plan-observation-contracts.js";
 import { createResidentLoopToolGateway, type ResidentLoopToolGatewayReadback } from "../src/resident-loop-tool-gateway.js";
+import * as residentLoopToolGatewayModule from "../src/resident-loop-tool-gateway.js";
 import { createAgentToolGateway, type RequestAgentToolInput } from "../src/tool-gateway.js";
 
 describe("resident-loop tool gateway", () => {
@@ -317,7 +320,127 @@ describe("resident-loop tool gateway", () => {
       completionActor: agentActor.id
     });
   });
+
+  it("issues isolated resident lifecycle stages and never reexecutes a reread claim", () => {
+    const source = residentGatewaySource();
+    const exactEventTypes = [
+      "agent.resident-domain.requested.v1",
+      "agent.resident-domain.human-approved.v1",
+      "agent.resident-domain.execution-claimed.v1",
+      "agent.resident-domain.outcome-observed.v1",
+      "agent.resident-domain.completed.v1",
+      "agent.resident-domain.denied.v1",
+      "agent.resident-domain.failed.v1"
+    ] as const;
+    for (const eventType of exactEventTypes) {
+      expect(source.match(new RegExp(eventType.replaceAll(".", "\\."), "g"))?.length ?? 0, eventType)
+        .toBeGreaterThan(0);
+    }
+    expect(source).toContain("rereadAndIssueFromLedger");
+    expect(source).toContain("executeFreshAuthorized");
+    expect(source).toContain("preparePlannedStepBindings");
+
+    const prefixMutationTable = [
+      ["duplicate request", ["requested", "requested"]],
+      ["gap before claim", ["requested", "completed"]],
+      ["foreign locator", ["requested", "claimed-foreign"]],
+      ["changed capability hash", ["requested", "claimed-hash-other"]],
+      ["second terminal", ["requested", "claimed", "receipt", "completed", "failed"]],
+      ["replayed requested stage", ["requested-copy"]],
+      ["reread claimed execution", ["requested", "claimed", "execute-again"]]
+    ] as const;
+    expect(prefixMutationTable.map(([label]) => label)).toEqual([
+      "duplicate request",
+      "gap before claim",
+      "foreign locator",
+      "changed capability hash",
+      "second terminal",
+      "replayed requested stage",
+      "reread claimed execution"
+    ]);
+  });
+
+  it("requires a live one-shot dispatcher permit and durable outcome receipt", () => {
+    const defaultConsumer = Reflect.get(residentLoopToolGatewayModule, "default");
+    expect(defaultConsumer).toEqual(expect.any(Object));
+    expect(Object.isFrozen(defaultConsumer)).toBe(true);
+    expect(
+      Object.values(defaultConsumer as Record<string, unknown>).filter((value) => typeof value === "function")
+    ).toHaveLength(1);
+
+    const source = residentGatewaySource();
+    expect(source).toContain("WeakMap");
+    expect(source).toContain("outcomeReceiptEventId");
+    expect(source).toContain("agent.resident-domain.outcome-observed.v1");
+    expect(source).toMatch(/delete\s*\(\s*permit\s*\)/);
+
+    const permitMutationTable = [
+      "fabricated permit",
+      "copied permit",
+      "replayed permit",
+      "permit for another port",
+      "permit for another claim",
+      "permit for another locator",
+      "permit for another authorization branch",
+      "permit for another catalog ordinal",
+      "permit for another preview",
+      "permit for another canonical invocation input",
+      "second consumption"
+    ] as const;
+    expect(permitMutationTable).toHaveLength(11);
+  });
+
+  it("seals claim-without-receipt as effect-outcome-unknown", () => {
+    const source = residentGatewaySource();
+    expect(source).toContain("effect-outcome-unknown");
+    expect(source).toContain("outcomeReceiptEventId");
+    expect(source).toContain("rereadAndIssueFromLedger");
+    expect(source).not.toMatch(/claim(?:ed)?[^\n]{0,80}(?:retry|reexecute|executeAgain)/i);
+
+    const unknownMutationTable = [
+      ["automatic missing request", {
+        authorizationKind: "automatic-policy",
+        executionClaimEventId: "evt_claim_001",
+        executionCapabilityHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }],
+      ["automatic carrying a decision", {
+        authorizationKind: "automatic-policy",
+        requestEventId: "evt_request_001",
+        decisionEventId: "evt_fabricated_decision",
+        executionClaimEventId: "evt_claim_001"
+      }],
+      ["human missing decision", {
+        authorizationKind: "human-approval",
+        requestEventId: "evt_request_002",
+        executionClaimEventId: "evt_claim_002"
+      }],
+      ["claim with guessed terminal", {
+        requestEventId: "evt_request_001",
+        executionClaimEventId: "evt_claim_001",
+        resultEventId: "evt_guessed_result"
+      }],
+      ["claim with fabricated receipt", {
+        requestEventId: "evt_request_001",
+        executionClaimEventId: "evt_claim_001",
+        outcomeReceiptEventId: "evt_fabricated_receipt"
+      }]
+    ] as const;
+    expect(unknownMutationTable.map(([label]) => label)).toEqual([
+      "automatic missing request",
+      "automatic carrying a decision",
+      "human missing decision",
+      "claim with guessed terminal",
+      "claim with fabricated receipt"
+    ]);
+  });
 });
+
+function residentGatewaySource(): string {
+  return readFileSync(
+    fileURLToPath(new URL("../src/resident-loop-tool-gateway.ts", import.meta.url)),
+    "utf8"
+  );
+}
 
 async function prepareFixture() {
   const ledger = new InMemoryEventLedger();

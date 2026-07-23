@@ -129,3 +129,76 @@ that exact tree with local Vitest `4.1.9`.
 Task136 remains `implementing`. This authority and claim checkpoint is not a
 product candidate, approval, integration, strict record 29, assurance-only
 transition, publication, or product release.
+
+## Permanent Task9 Causal RED
+
+The permanent product RED starts from exact clean claim checkpoint
+`5173887d6acd8a89cadb731f4a22a89782aac0b5`, whose sole parent is authority
+merge `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1`. The preserved Task136 base
+and integrated product authority remain ancestral through that merge.
+
+The exact card command was:
+
+```bash
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+```
+
+It exited `1` with 16 failed test files and exactly 255 tests = 228 passed +
+27 failed. Every pre-existing assertion in the sixteen files remained green.
+The 27 causal failing titles are:
+
+1. `stores strict automatic and human V2 gateway branches without fabricated approval`
+2. `replays segmented suspension/result prefixes and burns stable tool requests`
+3. `rebuilds repeated resumable segments and one terminal from ledger events only`
+4. `replans from copied durable replay with no latest-process cache`
+5. `issues isolated resident lifecycle stages and never reexecutes a reread claim`
+6. `requires a live one-shot dispatcher permit and durable outcome receipt`
+7. `seals claim-without-receipt as effect-outcome-unknown`
+8. `keeps the resident permit consumer default private to the dispatcher`
+9. `mints only closed-catalog package capabilities through the default API`
+10. `uses six literal static adapter modules and eleven constructors without initialization-order drift`
+11. `attests only the catalog-specific admissible domain outcome`
+12. `allows the ordinal-10 automatic compatibility bridge and no other ordinal`
+13. `validates strict automatic and human gateway readbacks`
+14. `validates effect-outcome-unknown suspension and segmented replay`
+15. `leaves same-claim resident suspension checkpoint ownership to W`
+16. `projects W-owned resident suspension as blocked and nonrecoverable`
+17. `binds one opaque mounted resident authority after exact Core authority`
+18. `recovers every missing suspension-prefix suffix without an effect`
+19. `consumes currentness and issues only bounded suspension-only authority`
+20. `allows only the dispatcher default and named gateway constructor import chain`
+21. `issues an internal exact-hash full-readback port without widening Task138 DTO`
+22. `runs createResidentBoundedAgentLoopFactory against the real mounted fixture`
+23. `rejects fabricated swapped stale and substituted dispatcher capabilities`
+24. `enforces the exact dispatcher G W H R static import graph with no runtime activation`
+25. `completes only from exact H full readback under all ten replayed budgets`
+26. `suspends approval and unknown outcomes through W and resumes from durable replay`
+27. `fails closed with zero fallback write or effect on every hostile boundary`
+
+Each failure is caused by an absent approved record-29 API or behavior:
+canonical V2 replay; stateless C; isolated G lifecycle, permit, receipt, and
+unknown-outcome handling; the closed dispatcher ABI/catalog; the W-owned
+orchestration interlock; mounted W authority and prefix recovery; the internal
+H full-readback port; or the R/bounded-loop composition. There were no syntax,
+fixture, invented-path, collection, dependency, or unrelated inherited test
+failures. The inherited non-fatal missing TypeScript source-map warning did
+not prevent collection. The complete local RED log SHA-256 is
+`151bc86619994e6911f51dcccdd1954da3a0c2baffc5ecc4bd59b7ef0ae43cf4`.
+
+The exact released-control command was:
+
+```bash
+npm test -- packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts
+```
+
+It exited `0`: 10 test files passed and all 443 tests passed. Its complete
+local log SHA-256 is
+`1ae6d17b3173c7a912cc04756ba2636bc3babe0b68b4ca2a0a14dd25bc6a06ed`.
+An additional standalone `npm run typecheck` syntax/type audit exited `0`
+with `typecheck passed`.
+
+The RED scope is exactly the frozen sixteen test paths plus this claim. It
+contains zero source, contract, mission-state, registry, provider, runtime
+activation, route, network, fallback, unrelated, or pull-request change. All
+later GREEN commits must preserve the sixteen committed RED test blobs
+byte-for-byte.

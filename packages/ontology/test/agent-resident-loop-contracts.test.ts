@@ -1292,4 +1292,311 @@ describe("resident loop ontology contracts v2", () => {
     expect(validateKnowledgeEvent({ ...plan, payload: payloadWithAccessor }).success).toBe(false);
     expect(accessorCalls).toBe(0);
   });
+
+  it("validates strict automatic and human gateway readbacks", () => {
+    const step = v2FixtureEvents()[2]!;
+    const automatic = [
+      ["requested", "requested", {
+        authorizationKind: "automatic-policy",
+        stage: "requested",
+        requestEventId: "evt_resident_domain_requested_001"
+      }],
+      ["claimed", "suspended", {
+        authorizationKind: "automatic-policy",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001"
+      }],
+      ["completed", "executed", {
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_completed_001"
+      }],
+      ["pre-claim failed", "failed", {
+        authorizationKind: "automatic-policy",
+        stage: "failed",
+        failurePhase: "pre-claim",
+        requestEventId: "evt_resident_domain_requested_001",
+        resultEventId: "evt_resident_domain_failed_001"
+      }],
+      ["post-claim failed", "failed", {
+        authorizationKind: "automatic-policy",
+        stage: "failed",
+        failurePhase: "post-claim",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_failed_001"
+      }]
+    ] as const;
+    const human = [
+      ["requested", "requested", {
+        authorizationKind: "human-approval",
+        stage: "requested",
+        requestEventId: "evt_resident_domain_requested_002"
+      }],
+      ["claimed", "suspended", {
+        authorizationKind: "human-approval",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        executionClaimEventId: "evt_resident_domain_claimed_002"
+      }],
+      ["completed", "executed", {
+        authorizationKind: "human-approval",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        executionClaimEventId: "evt_resident_domain_claimed_002",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_002",
+        resultEventId: "evt_resident_domain_completed_002"
+      }],
+      ["denied", "denied", {
+        authorizationKind: "human-approval",
+        stage: "denied",
+        requestEventId: "evt_resident_domain_requested_002",
+        denialEventId: "evt_resident_domain_denied_002"
+      }],
+      ["pre-approval failed", "failed", {
+        authorizationKind: "human-approval",
+        stage: "failed",
+        failurePhase: "pre-approval",
+        requestEventId: "evt_resident_domain_requested_002",
+        resultEventId: "evt_resident_domain_failed_002"
+      }],
+      ["post-approval-pre-claim failed", "failed", {
+        authorizationKind: "human-approval",
+        stage: "failed",
+        failurePhase: "post-approval-pre-claim",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        resultEventId: "evt_resident_domain_failed_002"
+      }],
+      ["post-claim failed", "failed", {
+        authorizationKind: "human-approval",
+        stage: "failed",
+        failurePhase: "post-claim",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        executionClaimEventId: "evt_resident_domain_claimed_002",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_002",
+        resultEventId: "evt_resident_domain_failed_002"
+      }]
+    ] as const;
+
+    for (const [label, state, gatewayReadbacks] of [...automatic, ...human]) {
+      const candidate = {
+        ...step,
+        payload: {
+          ...step.payload,
+          sideEffectClass: gatewayReadbacks.authorizationKind === "automatic-policy" ? "read-only" : "ledger-review",
+          requiredApprovalClass: gatewayReadbacks.authorizationKind === "automatic-policy" ? "none" : "ledger-review",
+          state,
+          gatewayReadbacks
+        }
+      };
+      expect(validateKnowledgeEvent(candidate).success, label).toBe(true);
+    }
+
+    const automaticRequested = automatic[0]![2];
+    const humanRequested = human[0]![2];
+    const invalid = [
+      ["automatic decision", { ...automaticRequested, decisionEventId: "evt_fabricated_decision" }],
+      ["automatic approver", { ...automaticRequested, approvedBy: "human_fabricated" }],
+      ["automatic approved preview", { ...automaticRequested, approvedPreviewHash: hash }],
+      ["human future decision", { ...humanRequested, decisionEventId: "evt_future_decision" }],
+      ["automatic denial", {
+        authorizationKind: "automatic-policy",
+        stage: "denied",
+        requestEventId: "evt_resident_domain_requested_001",
+        denialEventId: "evt_resident_domain_denied_001"
+      }],
+      ["claimed without claim", {
+        authorizationKind: "automatic-policy",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_001"
+      }],
+      ["completed without receipt", {
+        ...automatic[2]![2],
+        outcomeReceiptEventId: undefined
+      }],
+      ["human claimed without approval tuple", {
+        authorizationKind: "human-approval",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_002",
+        executionClaimEventId: "evt_resident_domain_claimed_002"
+      }],
+      ["compatibility approval substitute", {
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_completed_001",
+        approvedBy: "resident-automatic-policy"
+      }]
+    ] as const;
+    for (const [label, gatewayReadbacks] of invalid) {
+      expect(validateKnowledgeEvent({
+        ...step,
+        payload: { ...step.payload, state: gatewayReadbacks.stage === "denied" ? "denied" : "requested", gatewayReadbacks }
+      }).success, label).toBe(false);
+    }
+  });
+
+  it("validates effect-outcome-unknown suspension and segmented replay", () => {
+    const fixture = v2FixtureEvents();
+    const replay = [
+      {
+        ...fixture[0]!,
+        payload: {
+          ...fixture[0]!.payload,
+          steps: (fixture[0]!.payload.steps as Record<string, unknown>[]).map((step, index) => ({
+            ...step,
+            toolRequestId: `toolreq_${index + 1}`,
+            executionCapabilityHash: hash
+          }))
+        }
+      },
+      fixture[1]!,
+      {
+        ...fixture[2]!,
+        payload: {
+          ...fixture[2]!.payload,
+          state: "suspended",
+          gatewayReadbacks: {
+            authorizationKind: "automatic-policy",
+            stage: "claimed",
+            requestEventId: "evt_resident_domain_requested_001",
+            executionClaimEventId: "evt_resident_domain_claimed_001"
+          },
+          resultArtifactHashes: []
+        }
+      },
+      fixture[3]!,
+      fixture[4]!
+    ] as const;
+    const suspension = replay[3]!;
+    const result = replay[4]!;
+    const logicalLocator = {
+      workspaceId: v2Binding.workspaceId,
+      residentAgentId: v2Binding.residentAgentId,
+      taskId: v2Binding.taskId,
+      attemptId: v2Binding.attemptId,
+      runId: v2Binding.runId,
+      planId: "plan_001",
+      planRevision: 0,
+      stepOrdinal: 1,
+      toolRequestId: "toolreq_001",
+      toolId: "tool_read_workspace",
+      toolVersion: "1.0.0",
+      executionCapabilityHash: hash
+    };
+    const automaticCheckpoint = {
+      authorizationKind: "effect-outcome-unknown-automatic",
+      orchestrationCheckpointEventId: "evt_orchestration_resident_suspension_001",
+      logicalLocator,
+      requestEventId: "evt_resident_domain_requested_001",
+      executionClaimEventId: "evt_resident_domain_claimed_001",
+      executionCapabilityHash: hash,
+      resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
+      nextSafeAction: "reconcile-effect-outcome"
+    };
+    const unknownSuspension = {
+      ...suspension,
+      context: {
+        ...suspension.context,
+        causationId: automaticCheckpoint.orchestrationCheckpointEventId
+      },
+      payload: {
+        ...suspension.payload,
+        suspensionCategory: "effect-outcome-unknown",
+        checkpoint: automaticCheckpoint
+      }
+    };
+    const { handoffReadback: _handoffReadback, ...resultWithoutHandoff } = result.payload;
+    const unknownResult = {
+      ...result,
+      context: {
+        ...result.context,
+        causationId: suspension.id
+      },
+      payload: {
+        ...resultWithoutHandoff,
+        outcome: "resumable",
+        category: "effect-outcome-unknown",
+        resumeAnchor: {
+          checkpointEventId: suspension.id,
+          resumptionDeadlineAt: automaticCheckpoint.resumptionDeadlineAt,
+          nextSafeAction: automaticCheckpoint.nextSafeAction
+        }
+      }
+    };
+
+    expect(validateKnowledgeEvent(unknownSuspension).success).toBe(true);
+    expect(validateKnowledgeEvent(unknownResult).success).toBe(true);
+    expect(validateResidentLoopEventSequence([
+      ...replay.slice(0, 3),
+      unknownSuspension,
+      unknownResult
+    ] as never).success).toBe(true);
+
+    const invalid = [
+      ["unknown suspension with not-applicable authority", {
+        ...automaticCheckpoint,
+        authorizationKind: "not-applicable"
+      }],
+      ["unknown suspension missing claim", (() => {
+        const { executionClaimEventId: _executionClaimEventId, ...candidate } = automaticCheckpoint;
+        return candidate;
+      })()],
+      ["unknown suspension missing locator", (() => {
+        const { logicalLocator: _logicalLocator, ...candidate } = automaticCheckpoint;
+        return candidate;
+      })()],
+      ["unknown automatic suspension carrying decision", {
+        ...automaticCheckpoint,
+        decisionEventId: "evt_fabricated_decision"
+      }],
+      ["ordinary suspension carrying gateway ID", {
+        authorizationKind: "not-applicable",
+        orchestrationCheckpointEventId: "evt_orchestration_resident_suspension_001",
+        requestEventId: automaticCheckpoint.requestEventId,
+        resumptionDeadlineAt: automaticCheckpoint.resumptionDeadlineAt,
+        nextSafeAction: automaticCheckpoint.nextSafeAction
+      }]
+    ] as const;
+    for (const [label, checkpoint] of invalid) {
+      expect(validateKnowledgeEvent({
+        ...unknownSuspension,
+        payload: { ...unknownSuspension.payload, checkpoint }
+      }).success, label).toBe(false);
+    }
+
+    expect(validateResidentLoopEventSequence([
+      ...replay.slice(0, 3),
+      unknownSuspension,
+      {
+        ...unknownResult,
+        payload: {
+          ...unknownResult.payload,
+          resumeAnchor: {
+            ...(unknownResult.payload.resumeAnchor as Record<string, unknown>),
+            checkpointEventId: "evt_other_suspension"
+          }
+        }
+      }
+    ] as never).success).toBe(false);
+  });
 });
