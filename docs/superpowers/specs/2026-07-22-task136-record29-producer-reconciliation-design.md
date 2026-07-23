@@ -2,10 +2,12 @@
 
 **Date:** 2026-07-22
 
-**Status:** Approach 1 remains program-owner approved. RV-1-E-952 authorizes
-this exact written correction. This descendant requires completely fresh
-independent architecture and executability review before coordinator approval,
-history-preserving integration, or any further Task136 RED or source change.
+**Status:** Approach 1 remains program-owner approved. RV-1-E-954 authorizes
+this exact forward written correction after preserving and rejecting exact
+candidate `eb36b46edb19ff68fe3738093702b0a49f0eede2`. This descendant requires
+a completely new fresh independent architecture and executability review pair
+before coordinator approval, history-preserving integration, or any further
+Task136 RED or source change.
 
 **Revision note:** the first committed written revision at
 `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` failed independent design review
@@ -48,10 +50,18 @@ written ABI gap: the design named an executable human-approved stage but no
 same-process operation could advance the exact still-live human-request brand
 through a later independent durable decision, and its dispatcher oracle proved
 only forged-permit rejection rather than legitimate positive admissibility for
-catalog ordinals 2 through 7 and 9 through 10. RV-1-E-952 freezes the missing
+catalog ordinals 2 through 7 and 9 through 10. RV-1-E-952 froze the missing
 same-instance transition and real adapter-specific positive evidence without
-adding a path, seam, export, resolver, or callback. The strict frontier and
-all 29 card IDs/order remain unchanged.
+adding a path, seam, export, resolver, or callback. Exact descendant
+`eb36b46edb19ff68fe3738093702b0a49f0eede2` preserved those corrections and
+passed its fresh architecture review, but its different fresh executability
+review rejected it with one P1: the PRR and export/report factory variants
+still supplied one singular family context even though each of those families
+constructs two ordinal-specific adapters with different trusted bindings.
+RV-1-E-954 freezes the smallest correction: exact `initialContext` and
+`followUpContext` inputs for ordinals 2 and 3, and exact `exportContext` and
+`reportContext` inputs for ordinals 5 and 6. The strict frontier and all 29
+card IDs/order remain unchanged.
 
 ## Decision And Authority
 
@@ -73,6 +83,10 @@ The governing repository evidence is:
   Task12 checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`,
   forward-merged at
   `ea739b5140b00b9c4660267e89c36e8614b853b3`;
+- dual-context dispatcher correction authority `RV-1-E-954`, preserving
+  rejected exact candidate
+  `eb36b46edb19ff68fe3738093702b0a49f0eede2`, forward-merged at
+  `1c6b0866949761e56fce21411e83038b8a992365`;
 - the clean, history-preserving Task136 checkpoint
   `72e1ee6624c582218995e3e075e2303998811834`;
 - strict record-28 integration
@@ -708,11 +722,15 @@ issuer, binder, or resolver exists for the barrel to re-export.
 `ResidentDomainFactoryBindingsV1` is a closed discriminated union with exactly
 six variants: provider-byte-transfer, PRR-correspondence,
 accepted-graph-review, export-report, destructive-repair, and legacy-staging.
-Each variant accepts only the existing package adapter context for that family.
-It forbids an adapter object, descriptor, executor function, factory function,
-implementation name, implementation revision, identity string, or lookup
-callback. Hostile accessors, inherited keys, extra keys, proxies, sparse
-arrays, and post-call mutation fail before a constructor or I/O runs.
+Provider-byte-transfer, accepted-graph-review, and legacy-staging retain one
+existing package adapter context because each exact selected pair or singleton
+legitimately shares that binding. PRR-correspondence and export-report require
+two exact ordinal-specific contexts. Destructive-repair retains its two
+already separate contexts. No variant accepts any other context, adapter
+object, descriptor, executor function, factory function, implementation name,
+implementation revision, identity string, or lookup callback. Hostile
+accessors, inherited keys, extra keys, proxies, sparse arrays, and post-call
+mutation fail before a constructor or I/O runs.
 
 ```ts
 type ResidentLegacyStagingContextV1 =
@@ -732,7 +750,8 @@ type ResidentDomainFactoryBindingsV1 = {
     }
   | {
       readonly kind: "prr-correspondence";
-      readonly context: PrrCorrespondenceAdapterContext;
+      readonly initialContext: PrrCorrespondenceAdapterContext;
+      readonly followUpContext: PrrCorrespondenceAdapterContext;
     }
   | {
       readonly kind: "accepted-graph-review";
@@ -740,7 +759,8 @@ type ResidentDomainFactoryBindingsV1 = {
     }
   | {
       readonly kind: "export-report";
-      readonly context: ExportReportAdapterContext;
+      readonly exportContext: ExportReportAdapterContext;
+      readonly reportContext: ExportReportAdapterContext;
     }
   | {
       readonly kind: "destructive-repair";
@@ -754,11 +774,16 @@ type ResidentDomainFactoryBindingsV1 = {
 );
 ```
 
-Every selected context must contain a present validated `EventLedger`; both
-destructive-repair contexts must reference the same one. Every context
-resident/task identity that it carries must equal the union's exact
-`residentAgentId`/`taskId`. The top-level workspace identity is retained for
-later W comparison and is not caller authority.
+Every selected context must contain a present validated `EventLedger`.
+`initialContext` and `followUpContext` must reference the same exact ledger
+object; `exportContext` and `reportContext` must reference the same exact
+ledger object; and both destructive-repair contexts must continue to reference
+the same exact ledger object. Each context is validated independently, and
+every resident/task identity it carries must equal the union's exact
+`residentAgentId`/`taskId`. The union's one exact `workspaceId` plus those
+matching resident/task values forms the retained workspace/resident/task tuple
+for both contexts in either paired family. The top-level workspace identity is
+retained for later W comparison and is not caller authority.
 
 The dispatcher uses literal static imports for the exact descriptors and these
 eleven existing package constructors:
@@ -807,11 +832,23 @@ evaluation has completed. Neither the imported modules nor callers provide
 the revisions. No dynamic import, computed loader, `require`, evaluator, or
 loader-policy exemption is permitted.
 
+The dispatcher independently validates every supplied context and instantiates
+exactly the one or two catalog ordinals named by the selected union variant.
+For PRR it passes `initialContext` unchanged to
+`createPrrInitialSendExecutionAdapter` and `followUpContext` unchanged to
+`createPrrFollowUpExecutionAdapter`. For export/report it passes
+`exportContext` unchanged to `createExportGenerationAdapter` and
+`reportContext` unchanged to `createReportGenerationAdapter`. It never
+derives, spreads, copies-and-rewrites, substitutes, swaps, or cross-uses one
+context to construct the other ordinal. Provider and legacy continue to pass
+their singular context unchanged to both exact constructors;
+destructive-repair continues to pass its two already separate contexts to
+their respective constructors.
+
 The dispatcher validates each constructed adapter through
 `createAgentDomainToolRegistry`, requires its imported canonical descriptor to
-equal the catalog entry, and instantiates exactly the one or two catalog
-ordinals named by the selected union variant. It copies and freezes those
-resolved functions, binding identities, and validated binding-ledger
+equal the catalog entry, copies and freezes the resolved functions, binding
+identities, exact workspace/resident/task tuple, and validated binding-ledger
 identities in a module-private WeakMap, and returns only an opaque capability.
 
 During W's one-shot composition,
@@ -1473,8 +1510,12 @@ The permanent RED matrix covers at least:
   impostor; changed/missing/reordered/duplicate catalog entries; descriptor/
   implementation-revision drift; function-stringification provenance; a
   legacy caller-registered dispatcher minting or satisfying a resident
-  capability; missing/optional/foreign retained ledgers, unequal destructive
-  ledgers, or a workspace/resident/task mismatch; any dynamic/computed loader,
+  capability; missing/optional/foreign per-ordinal contexts or retained
+  ledgers; unequal PRR, export/report, or destructive paired ledgers; a
+  workspace/resident/task mismatch between either paired context and the
+  union; derivation, spread/copy-rewrite, substitution, swapping, or cross-use
+  of `initialContext`/`followUpContext` or
+  `exportContext`/`reportContext`; any dynamic/computed loader,
   `require`, evaluator, loader exemption, or module-initialization read of a
   statically imported adapter value; a barrel-first/adapter-first import that
   triggers TDZ or changes descriptors; a named/namespace/barrel resident
@@ -1536,14 +1577,20 @@ The permanent RED matrix covers at least:
   projection-artifact set, a wrong read-model change, or any ledger advance;
   and any adapter/source/DTO widening used to inject the resident claim;
 - executable positive package-owned fixtures for each exact catalog ordinal
-  2 through 7 and 9 through 10, using separate real adapter-family contexts
-  and services rather than construction-only throwers: ordinals 2 through 6
-  and 9 through 10 each prove both wholly `new-ledger-events` and wholly
+  2 through 7 and 9 through 10. Ordinals 2 and 3 use independently built real
+  `initialContext` and `followUpContext` values, and ordinals 5 and 6 use
+  independently built real `exportContext` and `reportContext` values; the
+  paired contexts share only their required exact ledger identity and matching
+  workspace/resident/task tuple and each is passed unchanged to its static
+  constructor. All selected contexts use real adapter-specific services rather
+  than construction-only throwers. Ordinals 2 through 6 and 9 through 10 each
+  prove both wholly `new-ledger-events` and wholly
   `idempotent-existing-ledger-events` evidence; ordinal 7 alone proves exact
   `nonledger-projection-artifacts` with zero ledger delta; and ordinals 0, 1,
   and 8 prove that no successful attestation, receipt, or terminal can exist.
-  Forged-permit rejection and construction-only fixtures are necessary
-  negatives but are never sufficient positive admissibility evidence;
+  Forged-permit rejection, one family context rewritten for another ordinal,
+  and construction-only fixtures are necessary negatives but are never
+  sufficient positive admissibility evidence;
 - G a structural/replayed invocation attestation, empty overall evidence,
   ordinal-7 empty events treated as an event-backed result, changed normalized
   result or envelope hash, or completion without the exact outcome receipt; a
