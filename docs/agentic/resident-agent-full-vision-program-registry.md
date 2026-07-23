@@ -28960,3 +28960,61 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
+
+- Recorded at: 2026-07-23T22:28:30Z
+- Exact reviewed candidate
+  `eb36b46edb19ff68fe3738093702b0a49f0eede2` is rejected and preserved.
+  Fresh architecture reviewer
+  `/root/task136_fresh_decision_arch_review_eb36` approved with no P0-P3
+  finding, but different fresh executability reviewer
+  `/root/task136_fresh_decision_exec_review_eb36` rejects with one P1. The
+  candidate is not approved, integrated, Task12 RED/source GREEN, record 29,
+  assurance transition, publication, or release.
+- The P1 is exact: `ResidentDomainFactoryBindingsV1` still gives the
+  `prr-correspondence` and `export-report` variants one singular `context`
+  each while their selected families must instantiate two distinct real
+  ordinal-specific adapters. Released PRR initial and follow-up contexts bind
+  different tool IDs, lifecycle/readback state, provider idempotency, and
+  message inputs. Released export and report contexts bind different tool
+  IDs, artifact kinds/IDs, governed inputs, and output hashes. Rewriting one
+  caller context inside the dispatcher, as the rejected checkpoint's local
+  construction helper does, invents trusted binding data and violates the
+  closed package-owned catalog boundary.
+- The smallest correction retains the six-variant union but replaces only
+  those two singular fields with exact per-ordinal inputs:
+  `prr-correspondence` requires `initialContext` for ordinal 2 and
+  `followUpContext` for ordinal 3; `export-report` requires `exportContext`
+  for ordinal 5 and `reportContext` for ordinal 6. The dispatcher validates
+  each context independently, requires both family contexts to retain the
+  same exact ledger object and matching workspace/resident/task tuple, and
+  supplies each context unchanged to its exact static constructor. It may not
+  derive, copy-and-rewrite, substitute, or cross-use either context.
+- Provider ordinals 0-1 and legacy ordinals 9-10 retain their singular
+  released context because each exact pair legitimately shares that family
+  binding. Destructive ordinals 7-8 retain their already separate projection
+  and canonical-repair contexts. No product path, constructor export, catalog
+  ordinal/order/revision/hash rule, event, permit, five-operation G ABI,
+  evidence mode, public API, or runtime activation changes.
+- One forward correction may change exactly the same three documentation
+  paths as RV-1-E-952: the Task136 producer design, its design claim, and the
+  implementation plan. It must update the strict union, dispatcher
+  construction algorithm, hostile cross-context tests, legitimate positive
+  fixture matrix, and Task12 steps while preserving rejected `eb36b46e` and
+  `b54281b0`, exact 30 product paths, 16-test command, seven seams, two-source
+  Task12 GREEN scope, all V4 pins/fingerprints, and unrelated approved
+  behavior.
+- The exact descendant requires a completely fresh architecture reviewer and
+  a different completely fresh executability reviewer. Neither prior
+  `eb36b46e` reviewer may approve changed bytes. Any further change invalidates
+  both new reviews. Only after both approve may coordinator approval and
+  history-preserving integration authorize another forward Task12 oracle
+  repair.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is bounded documentation correction authority, not product
+  source/test authority, an approved candidate, integration, strict record
+  29, assurance transition, publication, or product release. `neo`, push,
+  Wave 3, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
