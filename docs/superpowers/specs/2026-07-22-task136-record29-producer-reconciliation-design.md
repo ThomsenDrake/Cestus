@@ -458,13 +458,19 @@ task, attempt, retry generation, lease-claim generation, and strict instruction
 all equal the claim/run binding. In all three competing paths the active tick
 skips generic handling, the cancellation race does not append a generic
 release, and stale recovery does not append `stale-recovered` or a
-generation-plus-one claim. Each records only a safe
-`resident-loop-suspension-owned-by-w` skip/diagnostic. The adopted
+generation-plus-one claim. `task-orchestrator-types.ts` remains outside this
+card and its public summary union stays byte-for-byte unchanged: active,
+cancellation, and stale interlock hits each append one existing
+`TaskOrchestratorSkipSummary` with `reason: "not-claimable"`. That summary
+reason means only that generic orchestration cannot act; it is not the
+resident-specific diagnostic. The adopted
 `task-orchestrator-projection.ts` recognizes this checkpoint before its
 expired-lease branch and derives the existing `blocked` state with generic
-`recoverable: false`, an explicit resident-loop/W-owned diagnostic, and the
-exact checkpoint retained. `projection-types.ts` stays unchanged. Only W may
-append or recover the resident suffix and its exact resident release.
+`recoverable: false`, exact
+`diagnosticReason: "resident-loop-suspension-owned-by-w"`, and the exact
+checkpoint retained. Its existing diagnostic field is already `string`, so
+`projection-types.ts` also stays unchanged. Only W may append or recover the
+resident suffix and its exact resident release.
 
 The immediately following resumable result's
 `resumeAnchor.checkpointEventId` equals the reread suspension event ID; its
@@ -614,8 +620,91 @@ The dispatcher validates each constructed adapter through
 `createAgentDomainToolRegistry`, requires its imported canonical descriptor to
 equal the catalog entry, and instantiates exactly the one or two catalog
 ordinals named by the selected union variant. It copies and freezes those
-resolved functions in a
-module-private WeakMap, and returns only an opaque capability. The safe
+resolved functions and their validated binding ledger in a module-private
+WeakMap, and returns only an opaque capability. The private resident entry
+never exposes `executeApproved`. It exposes only a dispatcher-internal
+`invokeAndAttest` operation used through the existing dispatcher -> W -> G
+import chain. G supplies the exact freshly reread execution-claim event ID to
+that wrapper; the wrapper binds it to the selected catalog ordinal and
+one-shot invocation but does not add it to or forward it through the unchanged
+`AgentApprovedToolExecutionInput` adapter ABI.
+
+Immediately before invocation the wrapper snapshots the exact validated
+binding ledger. If the package adapter returns in the same call frame, the
+wrapper copies the result, rereads that ledger, applies the catalog-specific
+admissibility table below, and returns a WeakMap-branded in-memory
+`ResidentDomainInvocationAttestationV1`. The attestation binds the execution
+claim ID, capability hash, catalog ordinal, implementation revision, exact
+approved-execution hash, exact copied result, pre/post ledger fingerprints,
+and exactly one evidence mode:
+`new-ledger-events`, `idempotent-existing-ledger-events`, or
+`nonledger-projection-artifacts`. It cannot be serialized, supplied by G, or
+reconstructed after restart. A thrown exception, process loss, malformed
+result, failed ledger reread, or inadmissible result yields no attestation and
+therefore no outcome receipt.
+
+```ts
+interface ResidentDomainInvocationAttestationV1 {
+  readonly schemaVersion: "resident-domain-invocation-attestation.v1";
+  readonly executionClaimEventId: string;
+  readonly executionCapabilityHash: `sha256:${string}`;
+  readonly catalogOrdinal: number;
+  readonly implementationRevision: string;
+  readonly approvedExecutionHash: `sha256:${string}`;
+  readonly evidenceMode:
+    | "new-ledger-events"
+    | "idempotent-existing-ledger-events"
+    | "nonledger-projection-artifacts";
+  readonly preInvocationLedgerFingerprint: `sha256:${string}`;
+  readonly postInvocationLedgerFingerprint: `sha256:${string}`;
+  readonly result: AgentDomainExecutionResult;
+}
+```
+
+`approvedExecutionHash` is the lower-case SHA-256 of the complete copied
+approved-execution DTO under the design's canonical-JSON rules. Each ledger
+fingerprint is the same hash over the complete validated `readAll()` event
+array in ledger order; it is not an event count or caller-supplied cursor.
+
+The exact success-admissibility table is:
+
+| Catalog ordinal | Required successful evidence |
+| --- | --- |
+| 0, 1 | No successful result is admissible; both released provider execution adapters are fail-closed while their domain service is unavailable. |
+| 2 | Exactly one `prr.request.sent` event. |
+| 3 | Exactly one `prr.followup.sent` event. |
+| 4 | Exactly one `assertion.accepted` event. |
+| 5 | Exactly one `export.generated` event. |
+| 6 | Exactly one `report.generated` event. |
+| 7 | Exactly zero event IDs, no ledger change, one or more artifact hashes exactly equal in order to the approved preview's projection-artifact outputs, and exactly one `workspace-projection-artifacts` read-model change over those outputs. |
+| 8 | No successful result is admissible; blocked canonical repair must throw its released data-loss-risk failure. |
+| 9 | Exactly one `legacy.ontology.staging.approved` event. |
+| 10 | One or more `assertion.proposed` events in the exact selected-candidate order. |
+
+For every event-backed row, returned event IDs are nonempty and unique, every
+event is reread with the table's exact type and catalog-bound
+context/input/payload identity, and the full set is either wholly new or wholly
+preexisting. `new-ledger-events` requires every returned ID to be absent before
+invocation and the exact after-minus-before event set to equal the returned
+set. `idempotent-existing-ledger-events` requires every returned event and
+canonical byte to exist before invocation and no event to be added during the
+call. A mixed, partial, reordered, extra, foreign, generic-agent, or otherwise
+ambiguous set fails closed. Ordinal 7 alone may use
+`nonledger-projection-artifacts`; its approved preview and package-owned
+adapter already bind the exact expendable outputs, and the wrapper rejects an
+empty/mismatched output set or any ledger change.
+
+For this frozen adapter ABI, the RV-1-E-933 phrase “claim-caused domain
+evidence” has this exact operational meaning: the fresh permanent claim causes
+one package-owned dispatcher invocation and the wrapper attests that
+invocation's admissible domain outcome to that claim. Existing domain event
+causation remains domain-specific and is never required to equal the resident
+execution-claim ID. In the idempotent-existing mode, the claim causes the
+package-owned observation and attestation of the already matching outcome, not
+the original domain event. No adapter source, descriptor, scheduler type, or
+execution DTO changes.
+
+The safe
 `executionCapabilityHash` uses exact ABI literal
 `resident-domain-execution-dispatcher.v1`. Its preimage is UTF-8 canonical
 JSON, with recursively lexicographically ordered object keys, preserved array
@@ -709,21 +798,28 @@ whole prefix.
 human `human-approved` stage. It revalidates W currentness, appends and rereads
 the permanent claim, then creates a non-serializable, in-memory, one-shot
 execution permit bound to that exact claim and privately resolved catalog
-entry. Only that permit can invoke the effect, and it is consumed once. A
-stage reconstructed by `rereadAndIssueFromLedger` never has an execution
-permit: a reread `claimed` stage is observation/reconciliation-only and can
-never execute or reexecute the effect.
+entry. Only that permit can call the dispatcher's private
+`invokeAndAttest(executionClaimEventId, approvedExecution)` operation, and it
+is consumed once. A stage reconstructed by `rereadAndIssueFromLedger` never
+has an execution permit: a reread `claimed` stage is
+observation/reconciliation-only and can never execute or reexecute the
+effect.
 
-After an effect returns, G copies and normalizes its result, rereads the exact
-nonempty unique claim-caused domain evidence, and appends/rereads
+After the dispatcher returns its branded invocation attestation, G verifies
+its exact claim, capability, catalog ordinal, implementation revision, copied
+result, ledger fingerprints, and evidence mode; copies and normalizes the
+result once more; and appends/rereads
 `agent.resident-domain.outcome-observed.v1`. That auxiliary durable receipt
 binds the locator, request and claim IDs, authorization branch, capability
-hash, normalized outcome disposition, exact ordered domain event IDs,
-artifact hashes, read-model changes, result summary, and a canonical envelope
-hash computed with the same canonical-JSON/SHA-256 rules above. G rejects
-agent-authored, foreign, pre-claim, ambiguous, empty, or
-unproven evidence. Only after rereading the receipt may it append/reread
-`completed` or a post-claim `failed` terminal.
+hash, catalog ordinal, implementation revision, evidence mode, normalized
+outcome disposition, pre/post ledger fingerprints, exact ordered domain event
+IDs, artifact hashes, read-model changes, result summary, and a canonical
+envelope hash computed with the same canonical-JSON/SHA-256 rules above. G
+rejects a structural or replayed attestation, a table-incompatible outcome,
+foreign or ambiguous evidence, or any byte mismatch. Empty event IDs are
+valid only for ordinal 7's exact nonledger projection-artifact branch; empty
+overall outcome evidence is never valid. Only after rereading the receipt may
+G append/reread `completed` or a post-claim `failed` terminal.
 
 `denied` is pre-claim and human-only. A pre-claim `failed` terminal is allowed
 only with durable proof that execution did not start. A post-claim `failed`
@@ -1081,13 +1177,23 @@ The permanent RED matrix covers at least:
   missing workspace/resident/plan/step identity, zero/multiple assigned-ID
   discovery, wrong tool/version/capability hash, duplicate gateway reissuance,
   and a reconstructed claimed state that obtains an execution permit;
-- G empty, foreign, agent-authored, pre-claim, ambiguous, or non-claim-caused
-  domain evidence; changed normalized result or envelope hash; completion
-  without the exact outcome receipt; a pre-claim failure without durable
-  not-started proof; a post-claim failure without a proven receipt
-  disposition; an exception treated as proof; receipt recovery that invokes
-  the effect; claimed-without-receipt recovery that appends a guessed
-  terminal; reuse of the burned tool request; and any crash reexecution;
+- dispatcher invocation attestation with a wrong claim, capability, ordinal,
+  implementation revision, ledger fingerprint, evidence mode, or copied
+  result; any successful return for catalog ordinal 0, 1, or 8; wrong
+  event type/count/order/context; duplicate, mixed-new-and-existing, partial,
+  extra, foreign, generic-agent, or changed domain events; a supposedly new
+  event present before invocation; an idempotent-existing result with any
+  newly appended event; ordinal 7 carrying an event ID, an empty/mismatched
+  projection-artifact set, a wrong read-model change, or any ledger advance;
+  and any adapter/source/DTO widening used to inject the resident claim;
+- G a structural/replayed invocation attestation, empty overall evidence,
+  ordinal-7 empty events treated as an event-backed result, changed normalized
+  result or envelope hash, or completion without the exact outcome receipt; a
+  pre-claim failure without durable not-started proof; a post-claim failure
+  without a proven receipt disposition; an exception treated as proof;
+  receipt recovery that invokes the effect; claimed-without-receipt recovery
+  that appends a guessed terminal; reuse of the burned tool request; and any
+  crash reexecution;
 - W structural/copied/stale tokens or suspension capabilities, foreign or
   missing checkpoints/releases, wrong claim generation, expired deadline,
   cross-run anchor, unrecognized ledger advance, resident self-ID in a
@@ -1108,9 +1214,13 @@ The permanent RED matrix covers at least:
   projection each attempting a generic release or generation-plus-one reclaim
   after a same-claim `resident-loop-suspension`; recognition after the
   expired-lease branch; dropped checkpoint evidence; generic recoverable
-  projection state; and any nonresident checkpoint accidentally receiving the
-  interlock. GREEN controls prove ordinary active/cancelled/stale claims and
-  existing checkpoint kinds retain released behavior;
+  projection state; any interlock tick summary reason other than the existing
+  `not-claimable`; a projection diagnostic other than
+  `resident-loop-suspension-owned-by-w`; an attempted
+  `task-orchestrator-types.ts` or projection-types widening; and any
+  nonresident checkpoint accidentally receiving the interlock. GREEN controls
+  prove ordinary active/cancelled/stale claims and existing checkpoint kinds
+  retain released behavior;
 - H caller-supplied events/readers, cross-run/authority mismatch, non-completed
   state, selected-readback mismatch, missing terminal evidence, and any
   Task138 DTO widening;
