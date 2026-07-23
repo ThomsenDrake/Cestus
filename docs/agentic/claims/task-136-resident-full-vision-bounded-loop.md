@@ -431,3 +431,180 @@ unrelated test, or pull request. Task136 remains `implementing`. This repaired
 RED fixture checkpoint is not a product candidate, approval, integration,
 strict record 29, assurance-only transition, publication, or release. The
 strict product frontier remains **28 of 29**.
+
+## RV-1-E-948 Stateless-C Test-Oracle Repair RED
+
+The exact append-only repair authority is registry commit
+`8629dccd0b7bebf6c3f4d4bf8e7e46cf775baba5`. It was forward-merged into
+the Task136 lineage by exact clean two-parent authority merge
+`3949514139387f3008f001ea0070d7995181d40d`, whose first parent is Task10
+source GREEN `9d1eb9abcb0f9445d074cb81b47a35b8f2d05c79` and whose second parent is
+that registry authority. Permanent RED `1b99822ec532fc51866008c2fc52986775341573`,
+both strict-V2 fixture repairs and reviews, their integration, Task10 GREEN,
+and all earlier design, plan, authority, review, merge, and claim history
+remain ancestral.
+
+The repair resolves the exact prior test-oracle contradiction without a
+Task11 source edit. A fresh stateless C cannot compare a current provider
+model or a historical policy-constraint object against a prior plan,
+replay, and observation that contain neither fact. It also cannot reject a
+second nondurable initial candidate without forbidden process memory. The
+superseded fixture additionally used an unbound proposed plan as a canonical
+prior event, inserted plan-only keys into an observation, invented replay
+keys while omitting Task10's exact aggregate fields, retained stale
+causation and zero-action budgets, supplied both `plan` and `proposedPlan`,
+expected legacy output keys, and never required the sole parser boundary.
+
+The repaired oracle now:
+
+- requires and directly exercises
+  `parseResidentUntrustedPlanCandidate`;
+- requires exact `kind` / `proposedPlan` initial and replan values;
+- keeps each proposed step unbound while adding `toolRequestId` and
+  `executionCapabilityHash` only to the canonical durable prior plan event;
+- validates the bound prior plan and strict observation independently with
+  `validateKnowledgeEvent`, then validates their `P -> O` prefix with
+  `validateResidentLoopEventSequence` before invoking C;
+- carries only the seven Task10 replay fields `identity`, `events`, `plans`,
+  `observations`, `toolSteps`, `suspensions`, and `results`;
+- uses exact admission-to-plan, plan-to-observation, and
+  observation-to-replan causation with monotone nonzero budget actions;
+- sends every replan case through the complete prior-event, replay, and
+  observation tuple;
+- replaces provider/model and historical-constraint comparisons with
+  policy, authority, source, context, tool, output, budget, and replay
+  mutations provable from durable facts; and
+- proves repeated initial creation and restart replanning require no cache,
+  compatibility alias, heuristic, or hidden process binding.
+
+The fresh focused command was:
+
+```bash
+npm test -- packages/agent/test/resident-plan-candidate-provider.test.ts
+```
+
+It exited `1`: one test file failed and exactly 25 tests failed. The complete
+log SHA-256 is
+`b2613bfe15c8be7c361ce1dad45ef12b3321dfb8a832bf100bb47e6cb62e194e`.
+The exact failing titles are:
+
+1. `returns deeply frozen exact initial and replan candidates through the
+   sole parser boundary`
+2. `makes parseResidentUntrustedPlanCandidate the only exact structural
+   candidate boundary`
+3. `rejects mutable, hostile, secret-bearing, stale, or mismatched initial
+   data before producing output`
+4. `rejects invalid steps and every wider or substituted replan using only
+   durable facts`
+5. `rejects a numeric runMode`
+6. `rejects a runMode outside the released enum`
+7. `rejects a numeric correlationId`
+8. `rejects a scalar plan slot substituted with nested URL, DNS, IP, or
+   localhost material`
+9. `rejects a scalar provider-posture slot substituted with nested
+   authorization material`
+10. `requires the exact Task139-P2 provider-byte-transfer approval class`
+11. `rejects a replan whose policy and authority diverge from the durable
+    prior event`
+12. `rejects a replan whose consumed and remaining budget jump beyond
+    actionConsumption`
+13. `rejects provider-byte-transfer as an initial automatic action class`
+14. `rejects a non-canonical feasibility assessment timestamp`
+15. `rejects IDNA-dot IP material in a correlationId after WHATWG-equivalent
+    normalization`
+16. `rejects full-width IDNA-dot IP material in a correlationId after
+    WHATWG-equivalent normalization`
+17. `rejects an external-byte-transfer allowlist entry paired with none
+    approval`
+18. `rejects a stale authority and posture high-water behind ordered sources`
+19. `rejects ordered sources newer than bound authority high-water`
+20. `requires every allowlist approval class globally`
+21. `rejects an initial plan record with zero action consumption`
+22. `rejects an initial budget whose consumed totals do not match its action`
+23. `creates repeated initial candidates without process-local state or
+    hidden binding`
+24. `rejects an unreleased global approval class`
+25. `replans from copied durable replay with no latest-process cache`
+
+Every failure is causal against unchanged Task11 source blob
+`ed5c8d9f98b9c433099045f2ad2112b2ecdab74e`. The first test reaches the
+unchanged source only after all three independent canonical fixture controls
+pass. The second fails because the sole parser export is absent. Every
+remaining test first requires the valid exact initial or fresh-replan ABI
+before evaluating its negative mutation, so the unchanged legacy
+`schemaVersion` / `plan` envelope and process-local `latest` implementation
+fail at the positive API precondition rather than creating a false-positive
+negative. There is no syntax, collection, dependency, invented-path,
+malformed-event, malformed-replay, zero-action-budget, stale-causation,
+compatibility-alias, or unrelated inherited failure.
+
+The exact sixteen-file card command recorded above was rerun without changing
+its paths. It exited `1`: 13 files failed and 3 passed; exactly 258 tests =
+212 passed + 46 failed. The complete log SHA-256 is
+`fe784110ef305c2330f60446091938686ad00ea1659f3f0176b5c1195beafedc`.
+The 25 C failures are exactly the focused list above. The other 21 unchanged
+causal RED titles are:
+
+1. `projects W-owned resident suspension as blocked and nonrecoverable`
+2. `issues isolated resident lifecycle stages and never reexecutes a reread
+   claim`
+3. `requires a live one-shot dispatcher permit and durable outcome receipt`
+4. `seals claim-without-receipt as effect-outcome-unknown`
+5. `allows only the dispatcher default and named gateway constructor import
+   chain`
+6. `completes only from exact H full readback under all ten replayed budgets`
+7. `suspends approval and unknown outcomes through W and resumes from durable
+   replay`
+8. `fails closed with zero fallback write or effect on every hostile
+   boundary`
+9. `binds one opaque mounted resident authority after exact Core authority`
+10. `recovers every missing suspension-prefix suffix without an effect`
+11. `consumes currentness and issues only bounded suspension-only authority`
+12. `leaves same-claim resident suspension checkpoint ownership to W`
+13. `runs createResidentBoundedAgentLoopFactory against the real mounted
+    fixture`
+14. `rejects fabricated swapped stale and substituted dispatcher
+    capabilities`
+15. `mints only closed-catalog package capabilities through the default API`
+16. `uses six literal static adapter modules and eleven constructors without
+    initialization-order drift`
+17. `attests only the catalog-specific admissible domain outcome`
+18. `allows the ordinal-10 automatic compatibility bridge and no other
+    ordinal`
+19. `enforces the exact dispatcher G W H R static import graph with no
+    runtime activation`
+20. `keeps the resident permit consumer default private to the dispatcher`
+21. `issues an internal exact-hash full-readback port without widening
+    Task138 DTO`
+
+Those 21 failures retain their prior classifications against absent approved
+G, dispatcher, W, H, orchestrator-interlock, R, or bounded-loop
+source behavior. Task10's strict V2 sources and controls remain GREEN. The
+inherited non-fatal missing TypeScript source-map warning did not prevent
+collection.
+
+The exact released ten-file control command recorded above exited `0`: 10
+files and all **443/443** tests passed. Its complete log SHA-256 is
+`714e9219f5600e59f88610901ee9268f48913fbfc3560e9badd06ca73f003b48`.
+Fresh standalone `npm run typecheck` exited `0`; its empty successful log
+SHA-256 is
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+The repaired C test SHA-256 is
+`42ab2358d837ec0fede0547f4f4bbc0ef70a47d1ee9f84017e05a636f1b78ac9`.
+The 13-product-source manifest proves exact equality to authority merge
+`39495141`: the not-yet-created bounded-loop source remains absent and the
+other 12 source blobs are unchanged. Its SHA-256 is
+`c20f023f0fb209aa9dd4ef5869d3ef2ffe30dcc661c14bb3b2e446ba39597e4d`.
+The other 15 repaired RED test blobs are byte-identical to that same
+authority merge; their manifest SHA-256 is
+`d72d01e9dcf81a1c77552112d38596ae7ae60e43f5835d456bfdebb0558ae930`.
+
+The repair changes exactly
+`packages/agent/test/resident-plan-candidate-provider.test.ts` and this
+claim. It changes no product source, contract, plan, mission state, program
+registry, provider, credential, runtime activation, route, network,
+fallback, unrelated path, or pull request. Task136 remains `implementing`.
+This repaired oracle is not Task11 source GREEN, a product candidate,
+approval, integration, strict record 29, assurance transition, publication,
+or release. The strict product frontier remains **28 of 29**.
