@@ -27963,3 +27963,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   implementation planning or any correction packet begins.
 - Status remains Task136 producer reconciliation design `implementing`. This
   event is not a product release and does not advance the strict frontier.
+
+## RV-1-E-935 — Task136 reviewed design approved; implementation planning claimed
+
+- Recorded at: 2026-07-23T14:21:57Z
+- The program owner explicitly approves exact reviewed written-design
+  candidate `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` for implementation
+  planning. Its sole parent is the RV-1-E-934 authority commit
+  `1512cd7d76156842febf9fe1ca955bf2c05c22e2`; all rejected design ancestors
+  remain preserved and none becomes an approved candidate, integration,
+  assurance transition, or product release.
+- A completely fresh architecture reviewer and a different completely fresh
+  executability reviewer both approved that exact candidate with no findings.
+  The executability review independently proved the literal-static-import
+  ESM orders, default-only barrel exclusion, private one-shot permit
+  interlock, mounted-ledger identity binding, ordinal-10 compatibility bridge,
+  complete T120 automatic/human union, `effect-outcome-unknown` result
+  mapping, exact counts/fingerprints, typecheck, and repository strict prefix
+  `28/28` with only the expected unreleased record-29 closure.
+- The reviewed design is now `approved`. Task136 implementation planning is
+  `claimed` by the sole program coordinator. The planning owner may create
+  exactly
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The plan must freeze the separate V4-authority and Task136-product
+  worktrees, forward-only commit graph, permanent causal RED boundaries,
+  exact owned paths, test commands, review packets, integration order,
+  release-record construction, record-29 assurance transition, clean-state
+  gates, and pause/recovery procedure from the approved design.
+- The plan candidate requires a fresh independent architecture/executability
+  review pair before a later registry implementation authorization may cite
+  it. Any changed plan byte invalidates both plan reviews.
+- This event authorizes no assurance contract/checker/mission-state change,
+  product source/test/claim change, Task136 RED, worktree merge, integration,
+  strict release record, calibrated record-29 assurance transition, `neo`
+  merge, push, Wave-3 action, provider, credential, network, external-system,
+  or pull-request mutation. A later implementation authorization must cite
+  both the exact approved design SHA and the exact reviewed plan SHA and must
+  carry the program's required implementation-authorization sentence.
+- The strict product frontier remains 28 of 29. This planning transition is
+  not a product release and does not start Wave 3.
