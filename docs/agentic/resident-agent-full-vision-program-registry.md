@@ -29059,6 +29059,60 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-958 — Exact Task136 Task12 causal-RED repair admitted to focused review
+
+- Recorded at: 2026-07-23T23:44:27Z
+- Exact candidate
+  `fcb612e77ddeee905cc3dc2ff6163d362af10471`, sole parent RV-1-E-957
+  authority merge `2eca46733f784cc39c1c6787f5c862fe18a74d29`, changes exactly
+  the three authorized Task12 tests and Task136 product claim. Rejected
+  checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, rejected
+  written-design candidate `eb36b46edb19ff68fe3738093702b0a49f0eede2`,
+  approved corrected design `933498c2ee73a7b11dd481d1df13893aee45423e`,
+  and all prior RED/GREEN/review authority remain ancestral.
+- Exact candidate blobs are dispatcher test
+  `6d911dd5b147c010c0fba2b36f1707bd67ca8ddf`, G test
+  `6a1cd6cf6297356709fa0c59ed23e8d33e3a8133`, loader test
+  `bf1338ce9fb85bb53e2cd2241c86b18de73adf6b`, and product claim
+  `9c318c27644c00ff28994fb2ece36901c0295089`. The frozen Task12 source blobs
+  remain dispatcher `96b0ade273696b9ffcf497119f1943f128821a58` and G
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+- Focused execution reports exactly **25 tests = 17 passed + 8 causal RED
+  failures**: four dispatcher failures at the absent default resident
+  dispatcher API, three G failures at the absent default G API, and one
+  loader failure at the absent six literal static imports. Released fixtures
+  independently execute and validate every ordinal/mode required by
+  RV-1-E-957 before reaching those absences. No construction-only throw,
+  forged permit, rewritten sibling context, inert source-string table, or
+  fixture/type mismatch supplies the RED.
+- Candidate gates pass exact four-path scope, diff-check, ancestry, clean
+  state, standalone typecheck, six released adapter controls **79/79**,
+  factory readiness, mission **20/20**, V4 assurance **20/20**, and all four
+  exact V4 markers. Clean repository mode truthfully stops at the expected
+  in-progress Task136 current-blob mismatch for
+  `W1:packages/agent/test/task-orchestrator-claims.test.ts`; it does not emit
+  repository-prefix success or strict closure, and no such success is
+  claimed at this pre-record-29 RED checkpoint.
+- Completely fresh read-only focused reviewer
+  `/root/task136_task12_red_review_fcb6` is assigned exact candidate
+  `fcb612e7`. It must independently execute every released fixture and
+  end-to-end row; trace exact PRR/export dual contexts and negative controls;
+  prove the same-instance human decision and recovery nonexecution; inspect
+  the loader AST boundary; confirm exact eight-failure causality and
+  two-source freeze; determine from committed V4/plan authority whether the
+  reported pre-record-29 repository rejection is correct; and reproduce
+  focused, controls, typecheck, factory, mission, V4, scope, ancestry, and
+  clean gates.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `fcb612e7`. Any changed test or claim byte invalidates the review. The
+  reviewer may not edit, commit, merge, substitute another SHA, or describe
+  this RED review as source GREEN, integration, strict record 29, or release.
+- Strict product frontier remains **28 of 29**. This is causal-RED review
+  admission, not approval, Task12 source authorization, product candidate,
+  strict record 29, assurance transition, publication, or product release.
+  `neo`, push, Wave 3, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
+
 ## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
 
 - Recorded at: 2026-07-23T22:28:30Z
