@@ -28412,3 +28412,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   fresh pair. Strict product frontier remains **28 of 29**. This is an
   assurance candidate, not approval, integration, Task136 product authority,
   strict record 29, assurance calibration, publication, or product release.
+
+## RV-1-E-943 — Exact Task136 V4 authority candidate approved
+
+- Recorded at: 2026-07-23T17:38:24Z
+- Completely fresh read-only scrutiny reviewer
+  `/root/task136_v4_scrutiny_91ad4748` returns
+  `Scrutiny verdict: APPROVE` with no P0-P3 defect for exact immutable
+  candidate `91ad47489ce5506f91821dcf57b8fc0a2a1352a0`. It independently
+  verifies the exact six-path RED/GREEN/pin ancestry, seven finite source
+  groups, 22 direct transfers, five baseline adoptions, 30-path Task136
+  ownership, 16-test command, 11 compatibility entries, all 28 raw pins, 27
+  migrations, historical-hash discrimination, no generic or transitive
+  adoption, and no package/product/registry/Task138-H candidate delta.
+- Different completely fresh read-only black-box reviewer
+  `/root/task136_v4_blackbox_91ad4748` returns
+  `Black-box verdict: APPROVE` with no P0-P3 defect for the same exact SHA.
+  It independently reproduces assurance **20/20**, all four exact contract
+  markers, V4 and mission fingerprints, typecheck, factory readiness,
+  repository strict **28/28** plus only incomplete-record-29 closure, exact
+  scope/ancestry/dependencies/protected paths/clean state, and the
+  occurrence-preserving full differential. It retains `npm test=1` and
+  `npm run verify=1` as inherited non-green statuses rather than calling them
+  passing.
+- Both reviewers inspect RV-1-E-942's preserved first timeout-variance
+  observation and the exact admitted rerun. They confirm the first
+  observation differs only because one prerequisites assertion completed
+  before Vitest's five-second timeout, while the admitted rerun reproduces
+  the authority baseline's timeout and exact **504-file / 3,231-test**
+  identity/status multiset. Candidate bytes remained unchanged throughout
+  both reviews.
+- Task136 V4 authority correction advances `reviewing -> approved` for exact
+  candidate `91ad4748`. Only a history-preserving no-ff merge of that SHA,
+  followed by fresh integration-tree gates and an append-only integrated
+  event, is authorized next. Strict product frontier remains **28 of 29**.
+  This is assurance approval, not integration, Task136 product authority,
+  strict record 29, assurance calibration, publication, or product release.
