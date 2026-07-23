@@ -29113,6 +29113,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, push, Wave 3, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
 
+## RV-1-E-959 — Task136 Task12 causal-RED candidate rejected; five-point repair authorized
+
+- Recorded at: 2026-07-23T23:54:07Z
+- Completely fresh focused reviewer
+  `/root/task136_task12_red_review_fcb6` rejects exact candidate
+  `fcb612e77ddeee905cc3dc2ff6163d362af10471` with five P1 oracle defects.
+  The commit and its exact four blobs remain preserved as a rejected
+  causal-RED checkpoint; it is not approved, integrated, source GREEN,
+  strict record 29, assurance transition, publication, or release.
+- First, the loader helper counts every non-import identifier occurrence as a
+  Task12 definition. Task14's authorized W/store consumer call to
+  `bindPackageOwnedResidentDomainExecutionPort` would therefore be
+  misclassified as a third definition source and make the frozen final card
+  gate impossible. The repair must distinguish actual declarations/exports
+  from imports, property-access calls, and other consumers while continuing
+  to freeze the exact two Task12 definition sources.
+- Second, the recovery negative rereads only a recovery `human-approved`
+  stage after approval and passes that already-wrong stage to
+  `readFreshHumanDecision`. The repair must first reread the recovery-issued
+  human `requested` stage before approval, append the exact approval through
+  the independent actor/path, and prove the same live G instance cannot use
+  that recovery-request brand to advance or execute.
+- Third, ordinal rows 0/1/8 reject and omit an outcome receipt but do not
+  reject an independently fabricated successful completed terminal. The
+  repair must prove absence of every successful attestation, receipt, and
+  `agent.resident-domain.completed.v1` terminal for all three fail-closed
+  rows.
+- Fourth, the new resident G oracle omits the exact hostile human-decision
+  matrix. The repair must exercise zero, multiple, self-issued, stale or
+  expired, denied or revoked, and preview-mismatched decisions through
+  `readFreshHumanDecision`; older generic gateway coverage is not a
+  substitute for this new internal ABI.
+- Fifth, the loader oracle counts one default-export declaration but does not
+  freeze the default G object's exact sole permit-consumer operation. The
+  repair must reject any default object widened with another property or
+  operation while preserving default-only access and no public/named permit
+  issuer.
+- One forward correction may change exactly the same four RV-1-E-957 paths.
+  It must preserve `fcb612e7`, `b54281b0`, all reviewed design/plan history,
+  real released per-ordinal fixtures, exact eight-failure causality, source
+  blobs, counts, loader order, and every unrelated approved behavior. Update
+  the product claim with the rejection and corrected evidence. The exact
+  descendant requires a completely fresh focused reviewer; the `fcb612e7`
+  reviewer is ineligible for changed bytes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is bounded RED-oracle correction authority, not Task12 source
+  authorization, candidate approval, integration, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
 
 - Recorded at: 2026-07-23T22:28:30Z
