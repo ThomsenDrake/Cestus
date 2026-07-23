@@ -207,7 +207,7 @@ tests `20/20`.
 ```bash
 git add docs/agentic/resident-agent-full-vision-program-registry.md
 git commit -m "docs(agentic): authorize Task136 producer reconciliation"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one commit and an empty final status. Record
@@ -264,15 +264,52 @@ whose second parent is the implementation authority.
 - [ ] **Step 3: Capture the fresh V4 authority-byte full baseline**
 
 ```bash
+v4_authority_merge_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$v4_authority_merge_sha")" = \
+  "merge: forward Task136 producer reconciliation authority"
+v4_authority_observed_sha="$v4_authority_merge_sha"
+v4_authority_prefix="/tmp/task136-v4-full-${v4_authority_observed_sha}"
 set +e
-npm test 2>&1 | tee /tmp/task136-v4-record29-authority-npm-test.log
+npm test -- \
+  --reporter=json \
+  --outputFile="${v4_authority_prefix}.vitest.json" \
+  2>&1 | tee "${v4_authority_prefix}.npm-test.log"
 v4_authority_test_status="${PIPESTATUS[0]}"
-npm run verify 2>&1 | tee /tmp/task136-v4-record29-authority-verify.log
+printf 'EXIT_STATUS=%s\n' "$v4_authority_test_status" |
+  tee -a "${v4_authority_prefix}.npm-test.log"
+npm run verify 2>&1 | tee "${v4_authority_prefix}.verify.log"
 v4_authority_verify_status="${PIPESTATUS[0]}"
+printf 'EXIT_STATUS=%s\n' "$v4_authority_verify_status" |
+  tee -a "${v4_authority_prefix}.verify.log"
 set -e
+test -s "${v4_authority_prefix}.vitest.json"
+printf 'TREE_SHA=%s\n' "$v4_authority_observed_sha" |
+  tee -a \
+    "${v4_authority_prefix}.npm-test.log" \
+    "${v4_authority_prefix}.verify.log"
+node -e '
+  const report = require(process.argv[1]);
+  console.log(JSON.stringify({
+    success: report.success,
+    files: {
+      total: report.numTotalTestSuites,
+      passed: report.numPassedTestSuites,
+      failed: report.numFailedTestSuites,
+      skipped: report.numPendingTestSuites
+    },
+    tests: {
+      total: report.numTotalTests,
+      passed: report.numPassedTests,
+      failed: report.numFailedTests,
+      skipped: report.numPendingTests,
+      deferred: report["numTo" + "doTests"]
+    }
+  }));
+' "${v4_authority_prefix}.vitest.json"
 sha256sum \
-  /tmp/task136-v4-record29-authority-npm-test.log \
-  /tmp/task136-v4-record29-authority-verify.log
+  "${v4_authority_prefix}.vitest.json" \
+  "${v4_authority_prefix}.npm-test.log" \
+  "${v4_authority_prefix}.verify.log"
 ```
 
 Capture literal statuses/counts and log hashes. An inherited nonzero cohort is
@@ -293,7 +330,7 @@ test "$(git diff --name-only)" = \
   "docs/agentic/claims/task-136-v4-task137b-authority-transfer.md"
 git add docs/agentic/claims/task-136-v4-task137b-authority-transfer.md
 git commit -m "docs(agentic): checkpoint Task136 V4 correction"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one claim-only commit and clean state.
@@ -526,7 +563,7 @@ git add \
   scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs \
   docs/agentic/claims/task-136-v4-task137b-authority-transfer.md
 git commit -m "test: define Task136 producer reconciliation authority"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one preserved RED commit and clean state.
@@ -579,7 +616,7 @@ const task136TransferredSourceGroups = Object.freeze([
   "G136-SC",
   "G136-R",
   "C136-P"
-] as const);
+]);
 
 const task136BaselineAdoptions = Object.freeze([
   "packages/agent/src/domain-execution-dispatcher.ts",
@@ -587,7 +624,7 @@ const task136BaselineAdoptions = Object.freeze([
   "packages/agent/test/task-orchestrator-claims.test.ts",
   "packages/agent/src/task-orchestrator-projection.ts",
   "packages/agent/test/task-orchestrator-projection.test.ts"
-] as const);
+]);
 ```
 
 Validate the exact G136-SC/W1 candidate, integration, and pre-record-29 blob
@@ -653,7 +690,7 @@ git add \
   scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
   docs/agentic/claims/task-136-v4-task137b-authority-transfer.md
 git commit -m "feat(agentic): transfer Task136 producer authority"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one GREEN commit and clean state.
@@ -724,7 +761,7 @@ git add \
   scripts/check-software-factory-mission-state.mjs \
   docs/agentic/claims/task-136-v4-task137b-authority-transfer.md
 git commit -m "chore(agentic): synchronize Task136 mission authority"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one atomic pin-sync commit and clean state.
@@ -813,21 +850,122 @@ closure.
 Run and preserve safe count/status output:
 
 ```bash
+v4_candidate_observed_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$v4_candidate_observed_sha")" = \
+  "chore(agentic): synchronize Task136 mission authority"
+mapfile -t v4_authority_matches < <(
+  git log --first-parent --format='%H%x09%s' \
+    "$v4_candidate_observed_sha" |
+    awk -F '\t' \
+      '$2 == "merge: forward Task136 producer reconciliation authority" { print $1 }'
+)
+test "${#v4_authority_matches[@]}" -eq 1
+v4_authority_observed_sha="${v4_authority_matches[0]}"
+v4_authority_prefix="/tmp/task136-v4-full-${v4_authority_observed_sha}"
+v4_candidate_prefix="/tmp/task136-v4-full-${v4_candidate_observed_sha}"
 set +e
-npm test 2>&1 | tee /tmp/task136-v4-record29-candidate-npm-test.log
+npm test -- \
+  --reporter=json \
+  --outputFile="${v4_candidate_prefix}.vitest.json" \
+  2>&1 | tee "${v4_candidate_prefix}.npm-test.log"
 v4_candidate_test_status="${PIPESTATUS[0]}"
-npm run verify 2>&1 | tee /tmp/task136-v4-record29-candidate-verify.log
+printf 'EXIT_STATUS=%s\n' "$v4_candidate_test_status" |
+  tee -a "${v4_candidate_prefix}.npm-test.log"
+npm run verify 2>&1 | tee "${v4_candidate_prefix}.verify.log"
 v4_candidate_verify_status="${PIPESTATUS[0]}"
+printf 'EXIT_STATUS=%s\n' "$v4_candidate_verify_status" |
+  tee -a "${v4_candidate_prefix}.verify.log"
 set -e
+test -s "${v4_authority_prefix}.vitest.json"
+test -s "${v4_candidate_prefix}.vitest.json"
+printf 'TREE_SHA=%s\n' "$v4_candidate_observed_sha" |
+  tee -a \
+    "${v4_candidate_prefix}.npm-test.log" \
+    "${v4_candidate_prefix}.verify.log"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_authority_prefix}.npm-test.log")" = \
+  "$v4_authority_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_candidate_prefix}.npm-test.log")" = \
+  "$v4_candidate_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_authority_prefix}.verify.log")" = \
+  "$v4_authority_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_candidate_prefix}.verify.log")" = \
+  "$v4_candidate_observed_sha"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_authority_prefix}.npm-test.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_candidate_prefix}.npm-test.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_authority_prefix}.npm-test.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_candidate_prefix}.npm-test.log")"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_authority_prefix}.verify.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_candidate_prefix}.verify.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_authority_prefix}.verify.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_candidate_prefix}.verify.log")"
+node --input-type=module - \
+  "${v4_authority_prefix}.vitest.json" \
+  "${v4_candidate_prefix}.vitest.json" <<'NODE'
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const [baselinePath, candidatePath] = process.argv.slice(2);
+const repositoryPath = (name) => {
+  const normalized = String(name).replaceAll("\\", "/");
+  const marker = "/packages/";
+  const index = normalized.lastIndexOf(marker);
+  assert.ok(index >= 0, `non-package Vitest result: ${name}`);
+  return normalized.slice(index + 1);
+};
+const normalize = (path) => {
+  const report = JSON.parse(readFileSync(path, "utf8"));
+  const files = report.testResults.map((file) => ({
+    id: repositoryPath(file.name),
+    status: file.status
+  })).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  const tests = report.testResults.flatMap((file) =>
+    file.assertionResults.map((entry) => ({
+      id: `${repositoryPath(file.name)}::${entry.fullName}`,
+      status: entry.status
+    }))
+  ).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  return {
+    success: report.success,
+    numTotalTestSuites: report.numTotalTestSuites,
+    numPassedTestSuites: report.numPassedTestSuites,
+    numFailedTestSuites: report.numFailedTestSuites,
+    numPendingTestSuites: report.numPendingTestSuites,
+    numTotalTests: report.numTotalTests,
+    numPassedTests: report.numPassedTests,
+    numFailedTests: report.numFailedTests,
+    numPendingTests: report.numPendingTests,
+    numDeferredTests: report["numTo" + "doTests"],
+    files,
+    tests
+  };
+};
+assert.deepEqual(normalize(candidatePath), normalize(baselinePath));
+console.log("TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-candidate");
+NODE
 sha256sum \
-  /tmp/task136-v4-record29-candidate-npm-test.log \
-  /tmp/task136-v4-record29-candidate-verify.log
+  "${v4_candidate_prefix}.vitest.json" \
+  "${v4_candidate_prefix}.npm-test.log" \
+  "${v4_candidate_prefix}.verify.log"
 ```
 
-Compare statuses and literal file/test/pass/fail/skip names/counts with Task 2
-Step 3. Expected: no new failure or skip relative to the exact authority-merge
-baseline. A green baseline remains green; an inherited cohort matches exactly
-and is not described as passing.
+Expected: the command emits
+`TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-candidate`; exact test and
+verify statuses, suite/test counts, and every test identity/status equal the
+authority baseline. A green baseline remains green; an inherited cohort
+matches exactly and is not described as passing. Missing baseline evidence is
+a recovery checkpoint that requires rerunning Task 2 Step 3, never a skipped
+comparison.
 
 - [ ] **Step 5: Record `candidate -> reviewing`**
 
@@ -935,23 +1073,118 @@ test -z "$(git status --porcelain=v1 --untracked-files=all)"
 Capture fresh integrated logs without assigning any candidate variable:
 
 ```bash
+v4_integrated_observed_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$v4_integrated_observed_sha")" = \
+  "merge: integrate Task136 V4 authority correction"
+v4_reviewed_candidate_sha="$(
+  git rev-parse "$v4_integrated_observed_sha^2"
+)"
+v4_candidate_prefix="/tmp/task136-v4-full-${v4_reviewed_candidate_sha}"
+v4_integrated_prefix="/tmp/task136-v4-full-${v4_integrated_observed_sha}"
 set +e
-npm test 2>&1 | tee /tmp/task136-v4-record29-integrated-npm-test.log
+npm test -- \
+  --reporter=json \
+  --outputFile="${v4_integrated_prefix}.vitest.json" \
+  2>&1 | tee "${v4_integrated_prefix}.npm-test.log"
 v4_integrated_test_status="${PIPESTATUS[0]}"
-npm run verify 2>&1 | tee /tmp/task136-v4-record29-integrated-verify.log
+printf 'EXIT_STATUS=%s\n' "$v4_integrated_test_status" |
+  tee -a "${v4_integrated_prefix}.npm-test.log"
+npm run verify 2>&1 | tee "${v4_integrated_prefix}.verify.log"
 v4_integrated_verify_status="${PIPESTATUS[0]}"
+printf 'EXIT_STATUS=%s\n' "$v4_integrated_verify_status" |
+  tee -a "${v4_integrated_prefix}.verify.log"
 set -e
+test -s "${v4_candidate_prefix}.vitest.json"
+test -s "${v4_integrated_prefix}.vitest.json"
+printf 'TREE_SHA=%s\n' "$v4_integrated_observed_sha" |
+  tee -a \
+    "${v4_integrated_prefix}.npm-test.log" \
+    "${v4_integrated_prefix}.verify.log"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_candidate_prefix}.npm-test.log")" = \
+  "$v4_reviewed_candidate_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_integrated_prefix}.npm-test.log")" = \
+  "$v4_integrated_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_candidate_prefix}.verify.log")" = \
+  "$v4_reviewed_candidate_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${v4_integrated_prefix}.verify.log")" = \
+  "$v4_integrated_observed_sha"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_candidate_prefix}.npm-test.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_integrated_prefix}.npm-test.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_candidate_prefix}.npm-test.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_integrated_prefix}.npm-test.log")"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_candidate_prefix}.verify.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${v4_integrated_prefix}.verify.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_candidate_prefix}.verify.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${v4_integrated_prefix}.verify.log")"
+node --input-type=module - \
+  "${v4_candidate_prefix}.vitest.json" \
+  "${v4_integrated_prefix}.vitest.json" <<'NODE'
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const [candidatePath, integratedPath] = process.argv.slice(2);
+const repositoryPath = (name) => {
+  const normalized = String(name).replaceAll("\\", "/");
+  const marker = "/packages/";
+  const index = normalized.lastIndexOf(marker);
+  assert.ok(index >= 0, `non-package Vitest result: ${name}`);
+  return normalized.slice(index + 1);
+};
+const normalize = (path) => {
+  const report = JSON.parse(readFileSync(path, "utf8"));
+  const files = report.testResults.map((file) => ({
+    id: repositoryPath(file.name),
+    status: file.status
+  })).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  const tests = report.testResults.flatMap((file) =>
+    file.assertionResults.map((entry) => ({
+      id: `${repositoryPath(file.name)}::${entry.fullName}`,
+      status: entry.status
+    }))
+  ).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  return {
+    success: report.success,
+    numTotalTestSuites: report.numTotalTestSuites,
+    numPassedTestSuites: report.numPassedTestSuites,
+    numFailedTestSuites: report.numFailedTestSuites,
+    numPendingTestSuites: report.numPendingTestSuites,
+    numTotalTests: report.numTotalTests,
+    numPassedTests: report.numPassedTests,
+    numFailedTests: report.numFailedTests,
+    numPendingTests: report.numPendingTests,
+    numDeferredTests: report["numTo" + "doTests"],
+    files,
+    tests
+  };
+};
+assert.deepEqual(normalize(integratedPath), normalize(candidatePath));
+console.log("TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-integration");
+NODE
 sha256sum \
-  /tmp/task136-v4-record29-integrated-npm-test.log \
-  /tmp/task136-v4-record29-integrated-verify.log
+  "${v4_integrated_prefix}.vitest.json" \
+  "${v4_integrated_prefix}.npm-test.log" \
+  "${v4_integrated_prefix}.verify.log"
 ```
 
-Compare them to the immutable Task 6 candidate logs by exact status and
-file/test/pass/fail/skip names/counts. Expected: `v4_candidate_sha` is
-unchanged, all six candidate blobs equal the integration tree, assurance is
-`20/20`, all four markers and strict `28/28` incomplete-29 behavior reproduce,
-typecheck/readiness/diff/clean gates pass, Task138 remains unchanged, and no
-new full-suite failure or skip appears.
+Expected:
+`TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-integration`;
+`v4_candidate_sha` is unchanged; exact test and verify statuses, every
+suite/test count, and every test identity/status equal the candidate; all six
+candidate blobs equal the integration tree; assurance is `20/20`; all four
+markers and strict `28/28` incomplete-29 behavior reproduce; and
+typecheck/readiness/diff/clean/Task138 gates pass. Missing candidate evidence
+requires a fresh Task 6 Step 4 rerun.
 
 - [ ] **Step 4: Record V4 integration**
 
@@ -962,7 +1195,7 @@ integrated-byte results, then commit:
 git add docs/agentic/resident-agent-full-vision-program-registry.md
 git commit -m "docs(agentic): integrate Task136 V4 authority correction"
 task136_product_authority_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: clean program worktree. This event is assurance authority, not a
@@ -1024,15 +1257,53 @@ and the integrated program authority as second parent.
 Run serially and retain only local, non-repository logs:
 
 ```bash
+task136_authority_merge_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$task136_authority_merge_sha")" = \
+  "merge: forward Task136 record-29 authority"
+task136_authority_prefix="$(
+  printf '/tmp/task136-product-full-%s' "$task136_authority_merge_sha"
+)"
 set +e
-npm test 2>&1 | tee /tmp/task136-record29-authority-npm-test.log
+npm test -- \
+  --reporter=json \
+  --outputFile="${task136_authority_prefix}.vitest.json" \
+  2>&1 | tee "${task136_authority_prefix}.npm-test.log"
 task136_authority_test_status="${PIPESTATUS[0]}"
-npm run verify 2>&1 | tee /tmp/task136-record29-authority-verify.log
+printf 'EXIT_STATUS=%s\n' "$task136_authority_test_status" |
+  tee -a "${task136_authority_prefix}.npm-test.log"
+npm run verify 2>&1 | tee "${task136_authority_prefix}.verify.log"
 task136_authority_verify_status="${PIPESTATUS[0]}"
+printf 'EXIT_STATUS=%s\n' "$task136_authority_verify_status" |
+  tee -a "${task136_authority_prefix}.verify.log"
 set -e
+test -s "${task136_authority_prefix}.vitest.json"
+printf 'TREE_SHA=%s\n' "$task136_authority_merge_sha" |
+  tee -a \
+    "${task136_authority_prefix}.npm-test.log" \
+    "${task136_authority_prefix}.verify.log"
+node -e '
+  const report = require(process.argv[1]);
+  console.log(JSON.stringify({
+    success: report.success,
+    files: {
+      total: report.numTotalTestSuites,
+      passed: report.numPassedTestSuites,
+      failed: report.numFailedTestSuites,
+      skipped: report.numPendingTestSuites
+    },
+    tests: {
+      total: report.numTotalTests,
+      passed: report.numPassedTests,
+      failed: report.numFailedTests,
+      skipped: report.numPendingTests,
+      deferred: report["numTo" + "doTests"]
+    }
+  }));
+' "${task136_authority_prefix}.vitest.json"
 sha256sum \
-  /tmp/task136-record29-authority-npm-test.log \
-  /tmp/task136-record29-authority-verify.log
+  "${task136_authority_prefix}.vitest.json" \
+  "${task136_authority_prefix}.npm-test.log" \
+  "${task136_authority_prefix}.verify.log"
 ```
 
 Record exact passed/failed/skipped/file counts and both statuses in the
@@ -1069,7 +1340,7 @@ test "$(git diff --name-only)" = \
 git add docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 git commit -m "docs(agentic): checkpoint Task136 record-29 implementation"
 task136_claim_checkpoint_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one claim-only commit and clean state.
@@ -1274,7 +1545,7 @@ git add \
   docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 git commit -m "test: define Task136 record-29 producer reconciliation"
 task136_red_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one permanent RED commit, no production source change, and clean
@@ -1506,7 +1777,7 @@ git add \
   packages/agent/src/plan-observation-projection.ts
 git commit -m "feat(agent): add canonical resident V2 replay"
 task136_t120_green_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: the three focused files pass, standalone typecheck passes, only
@@ -1567,7 +1838,7 @@ git diff --check
 git add packages/agent/src/resident-plan-candidate-provider.ts
 git commit -m "feat(agent): make resident replanning replay-stateless"
 task136_c_green_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: focused file and typecheck pass; only C source changes; RED tests
@@ -1695,7 +1966,7 @@ git add \
   packages/agent/src/resident-loop-tool-gateway.ts
 git commit -m "feat(agent): add package-owned resident execution"
 task136_g_green_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: dispatcher/G focused and loader-policy files pass; only the two
@@ -1727,6 +1998,7 @@ stale-recovery paths:
 ```ts
 const residentSuspensionInterlock: TaskOrchestratorSkipSummary = {
   taskId: checkpoint.taskId,
+  runType: checkpoint.runType,
   reason: "not-claimable"
 };
 ```
@@ -1763,7 +2035,7 @@ git add \
   packages/agent/src/task-orchestrator-projection.ts
 git commit -m "fix(agent): reserve resident suspension for W"
 task136_orchestrator_green_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: four-path REDs and ordinary controls pass; only the two adopted
@@ -1878,7 +2150,7 @@ git add \
   packages/local-runtime/src/mounted-wake-lifecycle-store.ts
 git commit -m "feat(local-runtime): issue mounted resident loop authority"
 task136_w_green_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: W behavior/import-policy tests and typecheck pass; only the two W
@@ -1929,7 +2201,7 @@ git diff --check
 git add packages/agent/src/specialist-handoff-projection.ts
 git commit -m "feat(agent): issue internal full handoff readback"
 task136_h_green_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: H focused and Task138 boundary tests pass; Task138 source/test/claim
@@ -2037,7 +2309,7 @@ git add \
   packages/local-runtime/src/resident-loop-factory-ports.ts
 git commit -m "feat(local-runtime): compose bounded resident agent loop"
 task136_r_green_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: exact sixteen-file card command and typecheck pass; only the two R
@@ -2079,6 +2351,7 @@ TASK136_TESTS=(
   packages/agent/test/task-orchestrator-claims.test.ts
   packages/agent/test/task-orchestrator-projection.test.ts
 )
+test "${#TASK136_TESTS[@]}" -eq 16
 npm test -- "${TASK136_TESTS[@]}"
 npm test -- \
   packages/agent/test/plan-observation-contracts.test.ts \
@@ -2122,7 +2395,29 @@ passes from committed bytes.
 
 - [ ] **Step 2: Run the complete cross-boundary array**
 
+This block is independently executable; reconstruct the exact card array
+instead of relying on Step 1 shell state:
+
 ```bash
+TASK136_TESTS=(
+  packages/agent/test/bounded-agent-loop.test.ts
+  packages/agent/test/plan-observation-contracts.test.ts
+  packages/agent/test/plan-observation-projection.test.ts
+  packages/agent/test/resident-plan-candidate-provider.test.ts
+  packages/agent/test/resident-loop-tool-gateway.test.ts
+  packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+  packages/local-runtime/test/wake-supervisor-runtime.test.ts
+  packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts
+  packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts
+  packages/agent/test/specialist-handoff-projection.test.ts
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/local-runtime/test/resident-loop-factory-ports.test.ts
+  packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts
+  packages/agent/test/domain-execution-dispatcher.test.ts
+  packages/agent/test/task-orchestrator-claims.test.ts
+  packages/agent/test/task-orchestrator-projection.test.ts
+)
+test "${#TASK136_TESTS[@]}" -eq 16
 TASK136_CROSS_TESTS=(
   "${TASK136_TESTS[@]}"
   packages/agent/test/execution-loop.test.ts
@@ -2144,6 +2439,7 @@ TASK136_CROSS_TESTS=(
   packages/local-runtime/test/resident-loop-provider-posture.test.ts
   packages/local-runtime/test/agent-handoff-projection.test.ts
 )
+test "${#TASK136_CROSS_TESTS[@]}" -eq 34
 npm test -- "${TASK136_CROSS_TESTS[@]}"
 ```
 
@@ -2309,21 +2605,210 @@ adapter, route, default-runtime, server, status, and barrel path are unchanged.
 - [ ] **Step 6: Capture the fresh full-verification differential**
 
 ```bash
+task136_candidate_observed_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$task136_candidate_observed_sha")" = \
+  "feat(local-runtime): compose bounded resident agent loop"
+mapfile -t task136_authority_matches < <(
+  git log --first-parent --format='%H%x09%s' \
+    "$task136_candidate_observed_sha" |
+    awk -F '\t' \
+      '$2 == "merge: forward Task136 record-29 authority" { print $1 }'
+)
+test "${#task136_authority_matches[@]}" -eq 1
+task136_authority_observed_sha="${task136_authority_matches[0]}"
+task136_authority_prefix="$(
+  printf '/tmp/task136-product-full-%s' \
+    "$task136_authority_observed_sha"
+)"
+task136_candidate_prefix="$(
+  printf '/tmp/task136-product-full-%s' \
+    "$task136_candidate_observed_sha"
+)"
 set +e
-npm test 2>&1 | tee /tmp/task136-record29-candidate-npm-test.log
+npm test -- \
+  --reporter=json \
+  --outputFile="${task136_candidate_prefix}.vitest.json" \
+  2>&1 | tee "${task136_candidate_prefix}.npm-test.log"
 task136_candidate_test_status="${PIPESTATUS[0]}"
-npm run verify 2>&1 | tee /tmp/task136-record29-candidate-verify.log
+printf 'EXIT_STATUS=%s\n' "$task136_candidate_test_status" |
+  tee -a "${task136_candidate_prefix}.npm-test.log"
+npm run verify 2>&1 | tee "${task136_candidate_prefix}.verify.log"
 task136_candidate_verify_status="${PIPESTATUS[0]}"
+printf 'EXIT_STATUS=%s\n' "$task136_candidate_verify_status" |
+  tee -a "${task136_candidate_prefix}.verify.log"
 set -e
+test -s "${task136_authority_prefix}.vitest.json"
+test -s "${task136_candidate_prefix}.vitest.json"
+printf 'TREE_SHA=%s\n' "$task136_candidate_observed_sha" |
+  tee -a \
+    "${task136_candidate_prefix}.npm-test.log" \
+    "${task136_candidate_prefix}.verify.log"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_authority_prefix}.npm-test.log")" = \
+  "$task136_authority_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_candidate_prefix}.npm-test.log")" = \
+  "$task136_candidate_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_authority_prefix}.verify.log")" = \
+  "$task136_authority_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_candidate_prefix}.verify.log")" = \
+  "$task136_candidate_observed_sha"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_authority_prefix}.npm-test.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_candidate_prefix}.npm-test.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_authority_prefix}.npm-test.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_candidate_prefix}.npm-test.log")"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_authority_prefix}.verify.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_candidate_prefix}.verify.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_authority_prefix}.verify.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_candidate_prefix}.verify.log")"
+node --input-type=module - \
+  "${task136_authority_prefix}.vitest.json" \
+  "${task136_candidate_prefix}.vitest.json" <<'NODE'
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const [baselinePath, candidatePath] = process.argv.slice(2);
+const approvedTestPaths = new Set([
+  "packages/agent/test/bounded-agent-loop.test.ts",
+  "packages/agent/test/plan-observation-contracts.test.ts",
+  "packages/agent/test/plan-observation-projection.test.ts",
+  "packages/agent/test/resident-plan-candidate-provider.test.ts",
+  "packages/agent/test/resident-loop-tool-gateway.test.ts",
+  "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
+  "packages/local-runtime/test/wake-supervisor-runtime.test.ts",
+  "packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts",
+  "packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts",
+  "packages/agent/test/specialist-handoff-projection.test.ts",
+  "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+  "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
+  "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
+  "packages/agent/test/domain-execution-dispatcher.test.ts",
+  "packages/agent/test/task-orchestrator-claims.test.ts",
+  "packages/agent/test/task-orchestrator-projection.test.ts"
+]);
+const repositoryPath = (name) => {
+  const normalized = String(name).replaceAll("\\", "/");
+  const marker = "/packages/";
+  const index = normalized.lastIndexOf(marker);
+  assert.ok(index >= 0, `non-package Vitest result: ${name}`);
+  return normalized.slice(index + 1);
+};
+const normalize = (path) => {
+  const report = JSON.parse(readFileSync(path, "utf8"));
+  const files = report.testResults.map((file) => ({
+    id: repositoryPath(file.name),
+    status: file.status
+  })).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  const tests = report.testResults.flatMap((file) => {
+    const testPath = repositoryPath(file.name);
+    return file.assertionResults.map((entry) => ({
+      id: `${testPath}::${entry.fullName}`,
+      path: testPath,
+      status: entry.status
+    }));
+  }).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  return { report, files, tests };
+};
+const baseline = normalize(baselinePath);
+const candidate = normalize(candidatePath);
+const subtractMultiset = (before, after, label) => {
+  const remaining = new Map();
+  const signature = ({ id, status }) => JSON.stringify([id, status]);
+  for (const entry of before) {
+    const key = signature(entry);
+    remaining.set(key, (remaining.get(key) ?? 0) + 1);
+  }
+  const added = [];
+  for (const entry of after) {
+    const key = signature(entry);
+    const count = remaining.get(key) ?? 0;
+    if (count === 0) {
+      added.push(entry);
+    } else {
+      remaining.set(key, count - 1);
+    }
+  }
+  for (const [key, count] of remaining) {
+    assert.equal(count, 0, `${label} occurrence removed: ${key}`);
+  }
+  return added;
+};
+const addedFiles = subtractMultiset(
+  baseline.files,
+  candidate.files,
+  "file"
+);
+for (const entry of addedFiles) {
+  assert.equal(entry.status, "passed");
+  assert.ok(approvedTestPaths.has(entry.id), entry.id);
+}
+const added = subtractMultiset(
+  baseline.tests,
+  candidate.tests,
+  "test"
+);
+assert.ok(added.length > 0);
+for (const entry of added) {
+  assert.equal(entry.status, "passed");
+  assert.ok(approvedTestPaths.has(entry.path), entry.path);
+}
+assert.equal(
+  candidate.report.numTotalTests - baseline.report.numTotalTests,
+  added.length
+);
+assert.equal(
+  candidate.report.numPassedTests - baseline.report.numPassedTests,
+  added.length
+);
+for (const key of [
+  "success",
+  "numFailedTestSuites",
+  "numPendingTestSuites",
+  "numFailedTests",
+  "numPendingTests",
+  "numTo" + "doTests"
+]) {
+  assert.equal(candidate.report[key], baseline.report[key], key);
+}
+assert.ok(
+  candidate.report.numTotalTestSuites >= baseline.report.numTotalTestSuites
+);
+assert.equal(
+  candidate.report.numTotalTestSuites -
+    baseline.report.numTotalTestSuites,
+  candidate.report.numPassedTestSuites -
+    baseline.report.numPassedTestSuites
+);
+console.log(
+  `TASK136_FULL_DIFFERENTIAL_OK mode=approved-additive phase=product-candidate added=${added.length}`
+);
+NODE
 sha256sum \
-  /tmp/task136-record29-candidate-npm-test.log \
-  /tmp/task136-record29-candidate-verify.log
+  "${task136_candidate_prefix}.vitest.json" \
+  "${task136_candidate_prefix}.npm-test.log" \
+  "${task136_candidate_prefix}.verify.log"
 ```
 
-Compare exact test/file/pass/fail/skip counts and names with the fresh Task 8
-authority logs. Candidate must add no failed/skipped file or test. A green
-baseline must remain green; an inherited nonzero baseline may be admitted only
-when every failure reproduces by exact name and no candidate-owned test fails.
+Expected:
+`TASK136_FULL_DIFFERENTIAL_OK mode=approved-additive phase=product-candidate`;
+test and verify statuses are identical; every baseline test retains its exact
+identity/status **and occurrence count**; every baseline file retains its
+exact identity/status occurrence; any new file is a passing member of the
+frozen sixteen paths;
+failure/skip/deferred counts are identical; any positive suite-count delta is
+entirely passed; and the positive test/pass delta consists only of new passing
+tests in those paths. A green baseline remains green. An inherited nonzero
+baseline may be admitted only under that exact equality. Missing authority
+evidence requires rerunning Task 8 Step 3.
 
 - [ ] **Step 7: Record `candidate -> reviewing`**
 
@@ -2461,23 +2946,125 @@ test -z "$(git status --porcelain=v1 --untracked-files=all)"
 Capture new integrated logs without assigning any candidate variable:
 
 ```bash
+task136_integrated_observed_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$task136_integrated_observed_sha")" = \
+  "merge: integrate Task136 record-29 product"
+task136_reviewed_candidate_sha="$(
+  git rev-parse "$task136_integrated_observed_sha^2"
+)"
+task136_candidate_prefix="$(
+  printf '/tmp/task136-product-full-%s' \
+    "$task136_reviewed_candidate_sha"
+)"
+task136_integrated_prefix="$(
+  printf '/tmp/task136-product-full-%s' \
+    "$task136_integrated_observed_sha"
+)"
 set +e
-npm test 2>&1 | tee /tmp/task136-record29-integrated-npm-test.log
+npm test -- \
+  --reporter=json \
+  --outputFile="${task136_integrated_prefix}.vitest.json" \
+  2>&1 | tee "${task136_integrated_prefix}.npm-test.log"
 task136_integrated_test_status="${PIPESTATUS[0]}"
-npm run verify 2>&1 | tee /tmp/task136-record29-integrated-verify.log
+printf 'EXIT_STATUS=%s\n' "$task136_integrated_test_status" |
+  tee -a "${task136_integrated_prefix}.npm-test.log"
+npm run verify 2>&1 | tee "${task136_integrated_prefix}.verify.log"
 task136_integrated_verify_status="${PIPESTATUS[0]}"
+printf 'EXIT_STATUS=%s\n' "$task136_integrated_verify_status" |
+  tee -a "${task136_integrated_prefix}.verify.log"
 set -e
+test -s "${task136_candidate_prefix}.vitest.json"
+test -s "${task136_integrated_prefix}.vitest.json"
+printf 'TREE_SHA=%s\n' "$task136_integrated_observed_sha" |
+  tee -a \
+    "${task136_integrated_prefix}.npm-test.log" \
+    "${task136_integrated_prefix}.verify.log"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_candidate_prefix}.npm-test.log")" = \
+  "$task136_reviewed_candidate_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_integrated_prefix}.npm-test.log")" = \
+  "$task136_integrated_observed_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_candidate_prefix}.verify.log")" = \
+  "$task136_reviewed_candidate_sha"
+test "$(sed -n 's/^TREE_SHA=//p' \
+  "${task136_integrated_prefix}.verify.log")" = \
+  "$task136_integrated_observed_sha"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_candidate_prefix}.npm-test.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_integrated_prefix}.npm-test.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_candidate_prefix}.npm-test.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_integrated_prefix}.npm-test.log")"
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_candidate_prefix}.verify.log")" -eq 1
+test "$(rg -c '^EXIT_STATUS=' \
+  "${task136_integrated_prefix}.verify.log")" -eq 1
+test "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_candidate_prefix}.verify.log")" = \
+  "$(sed -n 's/^EXIT_STATUS=//p' \
+  "${task136_integrated_prefix}.verify.log")"
+node --input-type=module - \
+  "${task136_candidate_prefix}.vitest.json" \
+  "${task136_integrated_prefix}.vitest.json" <<'NODE'
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const [candidatePath, integratedPath] = process.argv.slice(2);
+const repositoryPath = (name) => {
+  const normalized = String(name).replaceAll("\\", "/");
+  const marker = "/packages/";
+  const index = normalized.lastIndexOf(marker);
+  assert.ok(index >= 0, `non-package Vitest result: ${name}`);
+  return normalized.slice(index + 1);
+};
+const normalize = (path) => {
+  const report = JSON.parse(readFileSync(path, "utf8"));
+  const files = report.testResults.map((file) => ({
+    id: repositoryPath(file.name),
+    status: file.status
+  })).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  const tests = report.testResults.flatMap((file) =>
+    file.assertionResults.map((entry) => ({
+      id: `${repositoryPath(file.name)}::${entry.fullName}`,
+      status: entry.status
+    }))
+  ).sort((left, right) => left.id.localeCompare(right.id) || left.status.localeCompare(right.status));
+  return {
+    success: report.success,
+    numTotalTestSuites: report.numTotalTestSuites,
+    numPassedTestSuites: report.numPassedTestSuites,
+    numFailedTestSuites: report.numFailedTestSuites,
+    numPendingTestSuites: report.numPendingTestSuites,
+    numTotalTests: report.numTotalTests,
+    numPassedTests: report.numPassedTests,
+    numFailedTests: report.numFailedTests,
+    numPendingTests: report.numPendingTests,
+    numDeferredTests: report["numTo" + "doTests"],
+    files,
+    tests
+  };
+};
+assert.deepEqual(normalize(integratedPath), normalize(candidatePath));
+console.log("TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=product-integration");
+NODE
 sha256sum \
-  /tmp/task136-record29-integrated-npm-test.log \
-  /tmp/task136-record29-integrated-verify.log
+  "${task136_integrated_prefix}.vitest.json" \
+  "${task136_integrated_prefix}.npm-test.log" \
+  "${task136_integrated_prefix}.verify.log"
 ```
 
-Compare them to Task 17 Step 6 by exact status and
-file/test/pass/fail/skip names/counts. Expected: the reviewed candidate SHA
-remains unchanged, all 30 candidate/integration blobs match, all product gates
+Expected:
+`TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=product-integration`;
+test and verify statuses, every suite/test count, and every test
+identity/status equal the reviewed candidate. The candidate SHA remains
+unchanged, all 30 candidate/integration blobs match, all product gates
 reproduce, forbidden/default/Task138 paths remain unchanged, and repository
 mode still rejects only changed pre-release source currentness because strict
-record 29 is not yet present.
+record 29 is not yet present. Missing candidate evidence requires rerunning
+Task 17 Step 6.
 
 - [ ] **Step 4: Record integration**
 
@@ -2492,24 +3079,90 @@ task136_integration_event_sha="$(git rev-parse HEAD)"
 
 This event is integration, not yet product release.
 
-- [ ] **Step 5: Derive the exact strict record data**
+- [ ] **Step 5: Bind a direct non-release strict-record candidate**
 
-Capture each owned blob in contract order:
+The real repository adapter rejects a dirty checkout before it parses the
+registry. Continue directly from the clean integration event in the program
+worktree so the record data can be committed and checked before any released
+transition:
 
 ```bash
+test "$(git branch --show-current)" = \
+  "codex/resident-agent-full-vision-program-watchdog-recovery"
+task136_integration_event_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$task136_integration_event_sha")" = \
+  "docs(agentic): integrate Task136 record-29 product"
+test -d node_modules
+test ! -L node_modules
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+```
+
+The next commit is strict-record data only. It may not change product,
+assurance, contract, checker, mission, plan, or claim bytes and may not call
+itself a release.
+
+- [ ] **Step 6: Commit the exact non-release record candidate**
+
+In the program worktree, reconstruct every identity and owned path inside this
+block. Do not depend on Task 17 or earlier Task 18 shell state:
+
+```bash
+test "$(git show -s --format=%s HEAD)" = \
+  "docs(agentic): integrate Task136 record-29 product"
+task136_integration_event_sha="$(git rev-parse HEAD)"
+task136_product_integration_sha="$(git rev-parse HEAD^)"
+test "$(git show -s --format=%s "$task136_product_integration_sha")" = \
+  "merge: integrate Task136 record-29 product"
+task136_candidate_sha="$(
+  git rev-parse "$task136_product_integration_sha^2"
+)"
+mapfile -t TASK136_OWNED_PATHS < <(
+  node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+const contract = JSON.parse(readFileSync(
+  "docs/agentic/contracts/task136-bounded-assurance-v4.json",
+  "utf8"
+));
+const card = contract.releaseGraph.cards.find(({ id }) => id === "Task136");
+if (!card) throw new Error("missing Task136 card");
+for (const entry of card.ownedPaths) {
+  if (entry.disposition !== "owned" || typeof entry.path !== "string") {
+    throw new Error("malformed Task136 owned path");
+  }
+  console.log(entry.path);
+}
+NODE
+)
+test "${#TASK136_OWNED_PATHS[@]}" -eq 30
+test "$(printf '%s\n' "${TASK136_OWNED_PATHS[@]}" | sha256sum |
+  cut -d' ' -f1)" = \
+  "3714c878ab1221121c56f5329a9ba307632c261c282abd43136a92c2cf9ce8e5"
 : > /tmp/task136-record29-owned-blobs.txt
 for path in "${TASK136_OWNED_PATHS[@]}"; do
-  blob_sha="$(
+  candidate_blob="$(
+    git rev-parse "$task136_candidate_sha:$path"
+  )"
+  integration_blob="$(
     git rev-parse "$task136_product_integration_sha:$path"
   )"
-  printf '%s %s\n' "$blob_sha" "$path" \
+  test "$candidate_blob" = "$integration_blob"
+  printf '%s %s\n' "$integration_blob" "$path" \
     >> /tmp/task136-record29-owned-blobs.txt
 done
 test "$(wc -l < /tmp/task136-record29-owned-blobs.txt)" -eq 30
 ```
 
-Use `apply_patch` to append the next registry event and exact JSON object with
-field order/schema:
+Use `apply_patch` to append one registry event that labels the following
+object an exact **strict-record candidate**, keeps Task136 `integrated`, keeps
+the frontier `28/29`, and says explicitly that it is not a release. Append
+the parser-required heading exactly once, immediately followed by exactly one
+fenced JSON object:
+
+```text
+## Task136 dispatch release v4: Task136
+```
+
+The object has this exact field order/schema:
 
 ```text
 schemaVersion = task136-dispatch-release.v4
@@ -2538,41 +3191,194 @@ G136-SC                   253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5
 
 Each release-event ID is exactly `task136-release-v4-` followed by its card
 ID. Paste actual reviewer IDs and blob SHAs from tool/command outputs; never
-commit shell-variable text or an invented value.
-
-- [ ] **Step 6: Prove release closure before and after commit**
-
-With the complete registry diff present:
+commit shell-variable text or an invented value. Then:
 
 ```bash
 git diff --check
-node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
-  --mode repository
+test "$(git diff --name-only)" = \
+  "docs/agentic/resident-agent-full-vision-program-registry.md"
+git add docs/agentic/resident-agent-full-vision-program-registry.md
+git commit -m "docs(agentic): stage Task136 strict-record candidate"
+task136_record29_candidate_sha="$(git rev-parse HEAD)"
+test "$(git rev-parse "$task136_record29_candidate_sha^")" = \
+  "$task136_integration_event_sha"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected exact success marker:
+No publication, assurance transition, Wave 3 work, or release-dependent work
+may consume this candidate.
 
-```text
-TASK136_REPOSITORY_PREFIX_OK records=29 commands=29
-```
+- [ ] **Step 7: Prove exact closure from committed candidate bytes**
 
-Commit the release:
+Run only from clean `task136_record29_candidate_sha`:
 
 ```bash
+task136_record29_candidate_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$task136_record29_candidate_sha")" = \
+  "docs(agentic): stage Task136 strict-record candidate"
+task136_integration_event_sha="$(
+  git rev-parse "$task136_record29_candidate_sha^"
+)"
+test "$(git show -s --format=%s "$task136_integration_event_sha")" = \
+  "docs(agentic): integrate Task136 record-29 product"
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode contract
+record29_repository_output="$(
+  node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+    --mode repository
+)"
+printf '%s\n' "$record29_repository_output" |
+  grep -Fx "TASK136_REPOSITORY_PREFIX_OK records=29 commands=29"
+printf '%s\n' "$record29_repository_output" |
+  grep -Fx "TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29"
+set +e
+node --test --test-reporter=tap \
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs \
+  2>&1 | tee /tmp/task136-record29-precalibration-red.log
+record29_precalibration_status="${PIPESTATUS[0]}"
+set -e
+test "$record29_precalibration_status" -eq 1
+test "$(grep -c '^not ok ' \
+  /tmp/task136-record29-precalibration-red.log)" -eq 3
+grep -Fx "# tests 20" /tmp/task136-record29-precalibration-red.log
+grep -Fx "# pass 17" /tmp/task136-record29-precalibration-red.log
+grep -Fx "# fail 3" /tmp/task136-record29-precalibration-red.log
+grep -F "29 !== 28" /tmp/task136-record29-precalibration-red.log
+node --input-type=module - \
+  /tmp/task136-record29-precalibration-red.log <<'NODE'
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const text = readFileSync(process.argv[2], "utf8");
+const expectedTitles = [
+  "binds four historical source records and exact record-11 and record-14 current-head migrations",
+  "requires the finite Task137B-W to Task139-PM transfer only at record 18",
+  "requires the finite CF1-HR and Task122 direct-source transfers at records 26 and 27 only"
+];
+const failures = [...text.matchAll(/^not ok \d+ - (.+)$/gm)];
+assert.deepEqual(failures.map((match) => match[1]), expectedTitles);
+for (const failure of failures) {
+  const rest = text.slice(failure.index + failure[0].length);
+  const nextSubtest = rest.search(/^# Subtest:/m);
+  const section = nextSubtest < 0 ? rest : rest.slice(0, nextSubtest);
+  assert.match(section, /29 !== 28/);
+  assert.match(section, /\n\s*expected:\s+28(?:\n|$)/);
+  assert.match(section, /\n\s*actual:\s+29(?:\n|$)/);
+  assert.match(section, /\n\s*operator:\s+['"]?strictEqual['"]?(?:\n|$)/);
+}
+console.log("TASK136_RECORD29_EXPECTED_RED_OK failures=3");
+NODE
+npm run typecheck
+npm run factory:check
+git diff --check "$task136_integration_event_sha..HEAD"
+test "$(git diff --name-only \
+  "$task136_integration_event_sha..HEAD")" = \
+  "docs/agentic/resident-agent-full-vision-program-registry.md"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+```
+
+Expected: all four contract markers, exact repository `29/29` and closure,
+typecheck/readiness/scope/clean gates, plus the calibrated pre-transition
+assurance RED at exactly `17/20` with only the three live `29 !== 28`
+expectations. Any failure remains a non-release candidate and requires a
+forward repair plus a rebound candidate SHA.
+
+- [ ] **Step 8: Reconfirm the immutable record candidate, then release**
+
+Keep the program branch at the exact clean gated record candidate. Reproduce
+the final pre-release gates without rebinding the product candidate:
+
+```bash
+task136_record29_candidate_sha="$(git rev-parse HEAD)"
+test "$(git show -s --format=%s "$task136_record29_candidate_sha")" = \
+  "docs(agentic): stage Task136 strict-record candidate"
+task136_integration_event_sha="$(
+  git rev-parse "$task136_record29_candidate_sha^"
+)"
+test "$(git show -s --format=%s "$task136_integration_event_sha")" = \
+  "docs(agentic): integrate Task136 record-29 product"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+test "$(git rev-parse "$task136_record29_candidate_sha^")" = \
+  "$task136_integration_event_sha"
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode contract
+record29_integrated_repository_output="$(
+  node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+    --mode repository
+)"
+printf '%s\n' "$record29_integrated_repository_output" |
+  grep -Fx "TASK136_REPOSITORY_PREFIX_OK records=29 commands=29"
+printf '%s\n' "$record29_integrated_repository_output" |
+  grep -Fx "TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29"
+set +e
+node --test --test-reporter=tap \
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs \
+  2>&1 | tee /tmp/task136-record29-integrated-precalibration-red.log
+record29_integrated_precalibration_status="${PIPESTATUS[0]}"
+set -e
+test "$record29_integrated_precalibration_status" -eq 1
+test "$(grep -c '^not ok ' \
+  /tmp/task136-record29-integrated-precalibration-red.log)" -eq 3
+grep -Fx "# tests 20" \
+  /tmp/task136-record29-integrated-precalibration-red.log
+grep -Fx "# pass 17" \
+  /tmp/task136-record29-integrated-precalibration-red.log
+grep -Fx "# fail 3" \
+  /tmp/task136-record29-integrated-precalibration-red.log
+grep -F "29 !== 28" \
+  /tmp/task136-record29-integrated-precalibration-red.log
+node --input-type=module - \
+  /tmp/task136-record29-integrated-precalibration-red.log <<'NODE'
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const text = readFileSync(process.argv[2], "utf8");
+const expectedTitles = [
+  "binds four historical source records and exact record-11 and record-14 current-head migrations",
+  "requires the finite Task137B-W to Task139-PM transfer only at record 18",
+  "requires the finite CF1-HR and Task122 direct-source transfers at records 26 and 27 only"
+];
+const failures = [...text.matchAll(/^not ok \d+ - (.+)$/gm)];
+assert.deepEqual(failures.map((match) => match[1]), expectedTitles);
+for (const failure of failures) {
+  const rest = text.slice(failure.index + failure[0].length);
+  const nextSubtest = rest.search(/^# Subtest:/m);
+  const section = nextSubtest < 0 ? rest : rest.slice(0, nextSubtest);
+  assert.match(section, /29 !== 28/);
+  assert.match(section, /\n\s*expected:\s+28(?:\n|$)/);
+  assert.match(section, /\n\s*actual:\s+29(?:\n|$)/);
+  assert.match(section, /\n\s*operator:\s+['"]?strictEqual['"]?(?:\n|$)/);
+}
+console.log("TASK136_RECORD29_EXPECTED_RED_OK failures=3");
+NODE
+npm run typecheck
+npm run factory:check
+git diff --check
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+```
+
+Only after those clean committed-byte gates pass, use `apply_patch` to append
+one `released` event. It cites the product candidate and both approvals, the
+record-candidate SHA/parent, product integration SHA/parents, exact
+`29/29`/closure markers, exact pre-calibration `17/20`, typecheck, readiness,
+scope, ancestry, and clean evidence. It adds no second JSON object. Commit:
+
+```bash
+git diff --check
+test "$(git diff --name-only)" = \
+  "docs/agentic/resident-agent-full-vision-program-registry.md"
 git add docs/agentic/resident-agent-full-vision-program-registry.md
 git commit -m "docs(agentic): release Task136 as strict record 29"
 task136_release_sha="$(git rev-parse HEAD)"
 node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
   --mode repository
-node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
 npm run typecheck
 npm run factory:check
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected: committed strict `29/29` closure, assurance `20/20`, typecheck,
-factory, clean state. This commit alone advances Task136 `integrated ->
-released` and the strict product frontier to `29 of 29`.
+This final event alone advances Task136 `integrated -> released` and the
+strict product frontier to `29 of 29`. The unchanged assurance corpus remains
+the expected `17/20` causal state until Task 19; it is never described as a
+failed product release.
 
 ### Task 19: Calibrate the post-record-29 V4 assurance prefix
 
@@ -2628,10 +3434,41 @@ Run the unchanged test:
 
 ```bash
 set +e
-node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
-record29_red_status=$?
+node --test --test-reporter=tap \
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs \
+  2>&1 | tee /tmp/task136-record29-assurance-red.log
+record29_red_status="${PIPESTATUS[0]}"
 set -e
 test "$record29_red_status" -eq 1
+test "$(grep -c '^not ok ' \
+  /tmp/task136-record29-assurance-red.log)" -eq 3
+grep -Fx "# tests 20" /tmp/task136-record29-assurance-red.log
+grep -Fx "# pass 17" /tmp/task136-record29-assurance-red.log
+grep -Fx "# fail 3" /tmp/task136-record29-assurance-red.log
+grep -F "29 !== 28" /tmp/task136-record29-assurance-red.log
+node --input-type=module - \
+  /tmp/task136-record29-assurance-red.log <<'NODE'
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const text = readFileSync(process.argv[2], "utf8");
+const expectedTitles = [
+  "binds four historical source records and exact record-11 and record-14 current-head migrations",
+  "requires the finite Task137B-W to Task139-PM transfer only at record 18",
+  "requires the finite CF1-HR and Task122 direct-source transfers at records 26 and 27 only"
+];
+const failures = [...text.matchAll(/^not ok \d+ - (.+)$/gm)];
+assert.deepEqual(failures.map((match) => match[1]), expectedTitles);
+for (const failure of failures) {
+  const rest = text.slice(failure.index + failure[0].length);
+  const nextSubtest = rest.search(/^# Subtest:/m);
+  const section = nextSubtest < 0 ? rest : rest.slice(0, nextSubtest);
+  assert.match(section, /29 !== 28/);
+  assert.match(section, /\n\s*expected:\s+28(?:\n|$)/);
+  assert.match(section, /\n\s*actual:\s+29(?:\n|$)/);
+  assert.match(section, /\n\s*operator:\s+['"]?strictEqual['"]?(?:\n|$)/);
+}
+console.log("TASK136_RECORD29_EXPECTED_RED_OK failures=3");
+NODE
 ```
 
 Expected: exactly `20` tests, `17` pass, and three current-registry groups
@@ -2668,8 +3505,6 @@ behavior. Append exact intended GREEN evidence to the claim.
 node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
 node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
   --mode contract
-node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
-  --mode repository
 npm run typecheck
 npm run factory:check
 git diff --check
@@ -2678,6 +3513,20 @@ git add \
   docs/agentic/claims/task-136-v4-task137b-authority-transfer.md
 git commit -m "test(agentic): advance record-29 assurance fixtures"
 record29_assurance_candidate_sha="$(git rev-parse HEAD)"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+record29_assurance_repository_output="$(
+  node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+    --mode repository
+)"
+printf '%s\n' "$record29_assurance_repository_output" |
+  grep -Fx "TASK136_REPOSITORY_PREFIX_OK records=29 commands=29"
+printf '%s\n' "$record29_assurance_repository_output" |
+  grep -Fx "TASK136_REPOSITORY_RELEASE_CLOSURE_OK records=29 commands=29"
+node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode contract
+npm run typecheck
+npm run factory:check
 actual="$(
   git diff --name-only \
     "$record29_assurance_merge_sha..$record29_assurance_candidate_sha" | sort
@@ -2697,9 +3546,12 @@ git diff --quiet \
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected: assurance `20/20`, four exact contract markers, repository exact
-`records=29 commands=29`, typecheck/factory/diff/scope/clean gates, and only
-two changed paths.
+Expected: the dirty GREEN first passes only behavior gates that do not require
+a clean checkout. Exact repository mode runs only after the two-path candidate
+is committed and clean, then emits `records=29 commands=29` and complete
+closure. Assurance `20/20`, four exact contract markers,
+typecheck/factory/diff/scope/clean gates, and only two changed paths all pass.
+Any post-commit failure requires a forward repair and new candidate SHA.
 
 - [ ] **Step 6: Obtain a new fresh dual review**
 
@@ -2769,7 +3621,7 @@ Then append one `integrated` event and commit:
 git add docs/agentic/resident-agent-full-vision-program-registry.md
 git commit -m "docs(agentic): integrate record-29 assurance calibration"
 record29_milestone_sha="$(git rev-parse HEAD)"
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: clean state and strict product frontier retained at `29/29`. Do not
@@ -2828,7 +3680,7 @@ node scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
 npm run typecheck
 npm run factory:check
 git diff --check
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: `20/20`, all four markers, exact `29/29`, typecheck/readiness,
@@ -2871,7 +3723,7 @@ SHA equality. Do not open a pull request.
 
 ```bash
 cd /home/drake/.codex/worktrees/program-coordinator-recovery/Cestus
-git status --short
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
 git rev-parse HEAD
 tail -n 260 docs/agentic/resident-agent-full-vision-program-registry.md
 node scripts/check-software-factory-mission-state.mjs --json
@@ -2896,10 +3748,26 @@ committed authority and stop without inventing work.
 
 At 15% plan usage remaining, start no new bounded task. Stop active workers at
 commit boundaries, commit only coherent authorized checkpoints, append one
-recovery handoff, verify every involved worktree clean, and report exact
-program/V4/Task136/`neo` SHAs. Otherwise continue Waves 3–5 one committed,
-reviewed, released, published milestone at a time under the freshly read
-mission workflow.
+recovery handoff, then run:
+
+```bash
+for worktree in \
+  /home/drake/Projects/Cestus \
+  /home/drake/.codex/worktrees/program-coordinator-recovery/Cestus \
+  /home/drake/.codex/worktrees/task138-h-record28/Cestus \
+  /home/drake/.codex/worktrees/task136-v4-task139-pm-direct-source-ownership/Cestus \
+  /home/drake/.codex/worktrees/task-136-resident-full-vision-bounded-loop
+do
+  test -z "$(
+    git -C "$worktree" status --porcelain=v1 --untracked-files=all
+  )"
+  git -C "$worktree" rev-parse HEAD
+done
+```
+
+Report exact program/Task138/V4/Task136/`neo` SHAs. Otherwise continue Waves
+3–5 one committed, reviewed, released, published milestone at a time under
+the freshly read mission workflow.
 
 ## Plan Self-Review Gate
 
@@ -2911,7 +3779,8 @@ mission workflow.
 - [ ] Seven producer seams, four orchestration paths, and zero new loader/ABI
   paths are explicitly covered.
 - [ ] Strict record 29 contains exactly nine prerequisites and 30 integration
-  blobs in contract order.
+  blobs in contract order, is first gated as a clean committed non-release
+  candidate, and advances the frontier only in the later released event.
 - [ ] Post-release assurance changes exactly its claim/test and preserves
   historical W1 `.slice(0, 26)`.
 - [ ] Task138-H product/test/claim and every forbidden adapter/scheduler/
@@ -2919,6 +3788,8 @@ mission workflow.
 - [ ] Every candidate receives a completely fresh independent dual review;
   changed bytes invalidate both.
 - [ ] Full verification is compared against fresh exact-authority output
+  by SHA-bound occurrence-preserving Vitest JSON file/test identity/status
+  multisets and counts plus exact `npm test`/`npm run verify` exit status,
   without describing inherited failures as passing.
 - [ ] History uses only forward/no-ff merges and atomic commits; no reset,
   rebase, amend, squash, reconstruction, discarded commit, force push, or PR.
