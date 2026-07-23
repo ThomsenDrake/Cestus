@@ -28644,3 +28644,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-948 — Task136 stateless-C test-oracle repair authorized before Task11 GREEN
+
+- Recorded at: 2026-07-23T20:02:18Z
+- Exact clean Task10 source GREEN
+  `9d1eb9abcb0f9445d074cb81b47a35b8f2d05c79` is preserved. Its exact parent
+  is integrated fixture authority
+  `ac03dce2c65eb446eed6cdf9aae3e637a6bd01f9`; it changes only the three
+  authorized ontology/T120 sources, passes its exact **92/92** focused tests
+  and typecheck, and preserves all 16 repaired RED test blobs. No Task11
+  source edit is retained.
+- Task11 stopped before editing because the frozen C test contains an
+  impossible fresh-process oracle and noncanonical durable fixtures. A fresh
+  stateless C cannot reject a changed current provider/model or compare a
+  historical policy-constraint object when canonical prior plan/replay/
+  observation events contain neither prior provider posture nor that
+  constraint snapshot. Such rejection would require the forbidden
+  process-local `latest` cache, a model-name heuristic, or a newly invented
+  trusted binding. Current provider/model/policy comparison remains owned by
+  R against exact Core/P/W readbacks after C's untrusted result is reparsed.
+- The same frozen test requires rejection of a second nondurable initial
+  candidate, directly depending on the forbidden cache. Its new fresh replay
+  also uses unbound plan steps as a canonical prior event, spreads plan-only
+  keys into an observation, invents replay fields while omitting Task10's
+  seven exact aggregate fields, carries stale causation/zero-action budget,
+  supplies both `plan` and `proposedPlan`, expects legacy
+  `schemaVersion`/`plan` outputs instead of exact `kind`/`proposedPlan`, and
+  does not require `parseResidentUntrustedPlanCandidate`.
+- This event supersedes only the byte freeze for
+  `packages/agent/test/resident-plan-candidate-provider.test.ts` and
+  authorizes one forward-only repair changing exactly that test and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`.
+  The repair must require the sole parser boundary; use exact initial/replan
+  candidate shapes; separate unbound proposed plans from canonical bound
+  prior plan events; construct exact observation events and Task10
+  seven-field replay aggregates with monotone nonzero budgets and exact
+  causation; rewire every replan test to the full durable tuple; replace
+  impossible provider/model and historical-constraint assertions with
+  mutations C can prove from durable facts; and prove repeated candidate
+  creation is stateless. It may add no compatibility alias, cache, heuristic,
+  hidden binding, source, contract, plan, mission, registry, provider,
+  activation, network, fallback, or unrelated path.
+- Preserve permanent RED `1b99822e`, both strict-V2 fixture repair candidates
+  and reviews, their integration, Task10 GREEN, and all prior history. Produce
+  a fresh causal RED against unchanged Task11 source; record exact
+  focused/card/control/typecheck/log-hash/manifest/scope/ancestry/clean
+  evidence in the claim; preserve the other 15 RED test blobs and all 13
+  product-source states; and obtain a completely fresh focused read-only
+  review before Task11 source GREEN resumes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 C-oracle repair is `implementing`. Strict product frontier remains
+  **28 of 29**. This is bounded test-oracle repair authority, not Task11
+  source GREEN, a product candidate, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
