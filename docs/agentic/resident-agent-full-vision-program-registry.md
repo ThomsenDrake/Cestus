@@ -28961,6 +28961,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-956 — Exact Task136 dual-context written design approved
+
+- Recorded at: 2026-07-23T23:01:46Z
+- Completely new read-only architecture reviewer
+  `/root/task136_dual_context_arch_review_9334` approves exact immutable
+  written-design candidate
+  `933498c2ee73a7b11dd481d1df13893aee45423e` with no P0-P3 finding. It
+  independently verifies the exact parent, three paths and blobs, six-variant
+  union, four ordinal-specific PRR/export contexts, independent validation,
+  exact same-ledger and matching tuple rules, unchanged static-constructor
+  passage, forbidden rewriting/cross-use, valid shared provider/legacy and
+  split destructive contexts, five-operation G ABI, recovery
+  nonexecutability, W/T120/import/trust boundaries, and unchanged public
+  surface.
+- Different completely new read-only executability reviewer
+  `/root/task136_dual_context_exec_review_9334` also approves that exact SHA
+  with no P0-P3 finding. Mechanical source tracing confirms the four
+  ordinal-specific contexts match released PRR/export constructors; the
+  corrected contract fits the exact two-source Task12 GREEN boundary; the
+  same-process five-operation human-decision flow is implementable; recovery
+  brands remain nonexecutable; real outcomes can prove ordinals 2-7 and 9-10
+  while 0/1/8 fail closed; and the literal static loader order remains
+  executable without barrel widening or dynamic loading.
+- Independent evidence passes standalone typecheck, all six released adapter
+  control files **79/79**, factory readiness, mission **20/20**, V4 assurance
+  **20/20**, all four exact V4 markers, V4 contract SHA, exact
+  path/card/source/test/claim/compatibility counts, candidate scope, ancestry,
+  blob identity, and clean-state checks. The review-authority merge changes
+  only the program registry and leaves every reviewed blob identical.
+- Task136 written-design correction advances `reviewing -> approved` for
+  exact `933498c2`. Only a history-preserving integration retaining that
+  exact candidate, followed by fresh integration-tree gates and a separate
+  append-only integration/resumption event, is authorized next. Any changed
+  design, design-claim, or plan byte invalidates both approvals.
+- Strict product frontier remains **28 of 29**. This is written-design
+  approval, not integration, Task12 test/source work, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
 
 - Recorded at: 2026-07-23T22:28:30Z
