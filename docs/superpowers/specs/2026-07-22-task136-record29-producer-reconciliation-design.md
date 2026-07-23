@@ -2,9 +2,10 @@
 
 **Date:** 2026-07-22
 
-**Status:** Approach 1 is program-owner approved. This exact written revision
-requires program-owner review before implementation planning or any assurance,
-mission-state, product, or Task136 RED change.
+**Status:** Approach 1 remains program-owner approved. RV-1-E-952 authorizes
+this exact written correction. This descendant requires completely fresh
+independent architecture and executability review before coordinator approval,
+history-preserving integration, or any further Task136 RED or source change.
 
 **Revision note:** the first committed written revision at
 `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` failed independent design review
@@ -38,10 +39,19 @@ orchestrator summary reason and left domain-evidence causation undefined; the
 second specified a loader forbidden by released repository policy, exposed no
 cycle-safe non-barrel runtime API or pre-request preview operation, omitted
 the automatic adapter/T120 bridge and unknown-result mapping, and did not
-freeze mounted-ledger identity. RV-1-E-934 and this descendant correct that
-construction without adding a producer seam or product path: 22 transferred
-paths, five exact baseline-adopted paths, and a 30-path Task136 card. The
-strict frontier and all 29 card IDs/order remain unchanged.
+freeze mounted-ledger identity. RV-1-E-934 and the reviewed design at
+`d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` corrected that construction
+without adding a producer seam or product path: 22 transferred paths, five
+exact baseline-adopted paths, and a 30-path Task136 card. Rejected Task12
+checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` then proved one remaining
+written ABI gap: the design named an executable human-approved stage but no
+same-process operation could advance the exact still-live human-request brand
+through a later independent durable decision, and its dispatcher oracle proved
+only forged-permit rejection rather than legitimate positive admissibility for
+catalog ordinals 2 through 7 and 9 through 10. RV-1-E-952 freezes the missing
+same-instance transition and real adapter-specific positive evidence without
+adding a path, seam, export, resolver, or callback. The strict frontier and
+all 29 card IDs/order remain unchanged.
 
 ## Decision And Authority
 
@@ -59,6 +69,10 @@ The governing repository evidence is:
   `fea8a7d267170d4a5216b7eb4aa64865dd18a3e4`;
 - zero-path loader/ABI addendum `RV-1-E-934` at exact revised-design base
   `1512cd7d76156842febf9fe1ca955bf2c05c22e2`;
+- fresh-decision ABI correction authority `RV-1-E-952`, preserving rejected
+  Task12 checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`,
+  forward-merged at
+  `ea739b5140b00b9c4660267e89c36e8614b853b3`;
 - the clean, history-preserving Task136 checkpoint
   `72e1ee6624c582218995e3e075e2303998811834`;
 - strict record-28 integration
@@ -1018,6 +1032,47 @@ require the exact `decisionEventId`, `approvedBy`, and
 `approvedPreviewHash`, and human denial terminates from requested without a
 claim. No combined branch has an optional `decisionEventId`.
 
+The import-gated internal G object has exactly these frozen operations:
+
+```text
+preparePlannedStepBindings
+requestFreshAuthorized(locator)
+readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)
+executeFreshAuthorized
+rereadAndIssueFromLedger
+```
+
+Its internal constructor composition accepts only the authenticated ledger
+and `now`, the opaque package-owned resident execution port, W-private
+before-effect and after-effect currentness closures, and the trusted
+tool-request-ID closure. The constructor accepts no raw adapter, executor,
+claim, attestation, decision, provider, lookup, fallback, public resolver, or
+caller-replaceable callback. It is non-barrel and import-gated to W. G's
+default export remains only the frozen package-private permit consumer, the
+dispatcher remains that default's sole production direct importer, and there
+is no public or named permit issuer, decision resolver, or raw execution
+callback.
+
+`requestFreshAuthorized(locator)` first rebuilds the package-owned current
+preview and revalidates W before and after that await, then appends and rereads
+the exact automatic or human resident request. Automatic request issuance is
+permitted only for catalog ordinal 10; every other executable ordinal requires
+the human branch. The returned request is branded to that exact live G
+instance and transition.
+
+`readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)` accepts
+only the exact unconsumed same-instance human-request brand. It revalidates W,
+rereads exactly one later independent durable human approval caused by that
+request and bound to its exact preview and unexpired deadline, revalidates W
+again, consumes the requested-to-approved transition, and returns a distinct
+same-instance `human-approved` brand. The independent actor/path appends the
+decision; G never appends or synthesizes it and only performs the exact durable
+reread. The method accepts no locator, raw decision, callback, decision or
+request ID, approval DTO, or caller-supplied permit.
+Reusing the request, supplying a copied or foreign-instance brand, or observing
+zero, multiple, stale, self, denied, revoked, mismatched-preview, or expired
+decisions fails closed without a claim or effect.
+
 Request append/reread binds the exact plan, locator, current preview and hash,
 policy allowlist, side-effect/output/approval classes, source/context/artifact
 provenance, authority, budgets, and capability hash. Human approval requires
@@ -1033,16 +1088,15 @@ post-claim failed names the receipt; and proven pre-claim failed names the
 request. Correlation, locator, and capability hash remain identical across the
 whole prefix.
 
-`executeFreshAuthorized` accepts only a newly issued automatic `requested` or
-human `human-approved` stage. It revalidates W currentness, appends and rereads
-the permanent claim, then creates a non-serializable, in-memory, one-shot
-execution permit bound to that exact claim and privately resolved catalog
-entry. Only that permit can call the dispatcher's private
+`executeFreshAuthorized` accepts only a fresh same-instance automatic
+`requested` brand for ordinal 10 or the fresh same-instance human
+`human-approved` brand returned by `readFreshHumanDecision`. It consumes that
+transition, revalidates W currentness, appends and rereads the permanent claim,
+then creates a non-serializable, in-memory, one-shot execution permit bound to
+that exact claim and privately resolved catalog entry. Only that permit can
+call the dispatcher's private
 `invokeAndAttest(permit, residentInvocationInput)` operation; the claim ID is
-read from the consumed permit rather than accepted as a separate string. A
-stage reconstructed by `rereadAndIssueFromLedger` never has an execution
-permit: a reread `claimed` stage is observation/reconciliation-only and can
-never execute or reexecute the effect.
+read from the consumed permit rather than accepted as a separate string.
 
 After the dispatcher returns its branded invocation attestation, G verifies
 its exact claim, capability, catalog ordinal, implementation revision,
@@ -1076,8 +1130,12 @@ approver, and approved-preview hash. That branch is never represented as
 `rereadAndIssueFromLedger(locator)` accepts exactly one valid prefix with no
 duplicate, gap, foreign event, changed canonical bytes, or second terminal.
 It can reissue request, human-approved, claimed, completed, denied, or failed
-readbacks. A receipt after a crash permits terminal finalization without an
-effect; a claim without a receipt yields only `effect-outcome-unknown`.
+readbacks, but every brand it returns is recovery/reread-only and
+nonexecutable, including a reread automatic request or human-approved stage.
+It never issues or recreates an execution permit and can never be passed to
+`readFreshHumanDecision` or `executeFreshAuthorized`. A receipt after a crash
+permits terminal finalization without an effect; a claim without a receipt
+yields only `effect-outcome-unknown`.
 Each issued readback maps only to the same authorization/stage branch in
 `ResidentLoopV2GatewayReadbacks`: completed supplies its exact claim, receipt,
 and terminal IDs; human denied supplies only its request and denial IDs;
@@ -1440,6 +1498,15 @@ The permanent RED matrix covers at least:
   automatic stage carrying any of those fields or an approval event; request/
   claim causation drift; changed preview; reused authorization; duplicate
   permanent claim; claim-expiry reexecution; or a terminal stream;
+- G construction with anything beyond the authenticated ledger/clock, opaque
+  resident port, W-private before/after-effect currentness closures, and
+  trusted tool-request-ID closure; a public or named permit issuer, decision
+  resolver, raw callback, or a default export wider than the dispatcher-only
+  permit consumer; a copied, replayed, recovery-issued, consumed, or
+  foreign-instance human-request/human-approved brand; zero, multiple, stale,
+  self, denied, revoked, preview-mismatched, or expired decisions; decision
+  read without W revalidation; automatic issuance for any ordinal other than
+  10; or any recovery/reread brand acquiring execution authority;
 - the ordinal-10 automatic compatibility bridge used for any other ordinal,
   used with an approval class other than `none`, carrying a preview mismatch,
   accepting a caller actor label, or leaking its internal label/legacy
@@ -1468,6 +1535,15 @@ The permanent RED matrix covers at least:
   newly appended event; ordinal 7 carrying an event ID, an empty/mismatched
   projection-artifact set, a wrong read-model change, or any ledger advance;
   and any adapter/source/DTO widening used to inject the resident claim;
+- executable positive package-owned fixtures for each exact catalog ordinal
+  2 through 7 and 9 through 10, using separate real adapter-family contexts
+  and services rather than construction-only throwers: ordinals 2 through 6
+  and 9 through 10 each prove both wholly `new-ledger-events` and wholly
+  `idempotent-existing-ledger-events` evidence; ordinal 7 alone proves exact
+  `nonledger-projection-artifacts` with zero ledger delta; and ordinals 0, 1,
+  and 8 prove that no successful attestation, receipt, or terminal can exist.
+  Forged-permit rejection and construction-only fixtures are necessary
+  negatives but are never sufficient positive admissibility evidence;
 - G a structural/replayed invocation attestation, empty overall evidence,
   ordinal-7 empty events treated as an event-backed result, changed normalized
   result or envelope hash, or completion without the exact outcome receipt; a

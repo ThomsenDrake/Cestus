@@ -23,6 +23,12 @@ contracts.
 
 - Approved design SHA:
   `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`.
+- RV-1-E-952 preserves rejected Task12 checkpoint
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` and authorizes only the
+  three-document fresh-decision ABI/oracle correction forward-merged at
+  `ea739b5140b00b9c4660267e89c36e8614b853b3`. No Task12 test or source work
+  resumes until this exact documentation descendant receives completely fresh
+  independent architecture and executability approval and is integrated.
 - Planning authority SHA:
   `050cb93f` is the RV-1-E-935 commit; use `git rev-parse 050cb93f` and record
   its full SHA before implementation authorization.
@@ -1448,6 +1454,19 @@ ledger append, projection substitute, fallback, local write, route, and
 default-runtime effect on the fail-closed branches. Do not condense distinct
 authorization branches into optional fields.
 
+The dispatcher/G tests must also prove legitimate positive package-owned
+execution for every catalog ordinal 2 through 7 and 9 through 10 with separate
+real adapter-specific contexts and services. For ordinals 2 through 6 and 9
+through 10, require one wholly `new-ledger-events` execution and one wholly
+`idempotent-existing-ledger-events` execution with the exact catalog event
+type/order/context. For ordinal 7, require exact
+`nonledger-projection-artifacts`, the exact read-model change, zero event IDs,
+and zero ledger delta.
+Ordinals 0, 1, and 8 must never produce a successful attestation, outcome
+receipt, or terminal. A fixture that only constructs an adapter that throws,
+or a table that only presents a forged permit and observes rejection, is not
+positive admissibility evidence.
+
 - [ ] **Step 2: Freeze import/loader and ABI negatives**
 
 The import-policy tests parse the real source and require:
@@ -1855,9 +1874,11 @@ remain byte-identical.
 
 **Interfaces:**
 
-- Consumes: six exact package adapter contexts, an authenticated mounted
-  ledger, W currentness closures, trusted safe-ID capability, and canonical
-  plan/locator bindings.
+- Consumes: six exact package adapter contexts and, for internal G
+  composition only, the authenticated ledger/clock, opaque package-owned
+  resident execution port, W-private before/after-effect currentness
+  closures, trusted tool-request-ID closure, and canonical plan/locator
+  bindings.
 - Produces: default-only opaque dispatcher capability/port, default-only G
   permit consumer, isolated durable resident gateway lifecycle, invocation
   attestation, outcome receipt, and at-most-once recovery.
@@ -1910,15 +1931,48 @@ sha256(canonical JSON {
 Store resolved identities/ledger bindings in a private WeakMap. Existing
 `createAgentDomainExecutionDispatcher({ adapters })` never enters it.
 
-- [ ] **Step 3: Add the private one-shot permit interlock**
+- [ ] **Step 3: Freeze G construction, fresh decisions, and the private permit interlock**
 
 Default-export from G one frozen permit-consumer object whose initializer
 references only a local function. The dispatcher is its sole production
-direct importer. G issues a WeakMap permit only after appending/rereading one
-permanent claim in the current `executeFreshAuthorized` frame. The consumer
+direct importer. The import-gated internal G constructor accepts exactly the
+authenticated ledger and `now`, opaque resident port, W-private before-effect
+and after-effect currentness closures, and trusted tool-request-ID closure. It
+accepts no raw adapter, executor, claim, attestation, decision, provider,
+lookup, fallback, public resolver, or caller-replaceable callback. There is no
+public or named permit issuer or decision resolver, and G's default export has
+no operation other than permit consumption.
+
+The constructed frozen G object has exactly these operations:
+
+```text
+preparePlannedStepBindings
+requestFreshAuthorized(locator)
+readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)
+executeFreshAuthorized
+rereadAndIssueFromLedger
+```
+
+`requestFreshAuthorized(locator)` performs package-owned preview rebuilding
+and W revalidation before and after the await, then appends/rereads the exact
+automatic or human request. Automatic issuance is valid only for catalog
+ordinal 10. `readFreshHumanDecision` accepts only that G instance's exact
+unconsumed live human-request brand, rereads one later independent durable
+approval bound to the exact request/preview/deadline with W revalidation,
+consumes the transition, and returns a distinct same-instance human-approved
+brand. The independent actor/path appends the decision; G only rereads it and
+never appends or synthesizes it. The method accepts no locator, raw decision,
+callback, ID, DTO, or permit.
+
+`executeFreshAuthorized` accepts only the fresh same-instance ordinal-10
+automatic-request brand or the fresh same-instance human-approved brand. It
+consumes that transition and issues a WeakMap permit only after
+appending/rereading one permanent claim in its current frame. The consumer
 requires exact port/locator/authorization branch/claim/catalog ordinal/current
 preview/canonical invocation input, deletes the permit before returning its
-binding, and rejects reuse. A reread `claimed` stage never obtains a permit.
+binding, and rejects reuse. Every stage returned by
+`rereadAndIssueFromLedger`, including requested and human-approved, is
+recovery/reread-only and nonexecutable; it never obtains or recreates a permit.
 
 - [ ] **Step 4: Attest evidence and persist the resident lifecycle**
 
@@ -1943,7 +1997,14 @@ interface ResidentDomainInvocationAttestationV1 {
 }
 ```
 
-Enforce the approved ordinal 0–10 admissibility table. Only ordinal 10 may
+Enforce the approved ordinal 0–10 admissibility table through separate real
+adapter-specific positive fixtures. Ordinals 2 through 6 and 9 through 10
+must each attest both wholly `new-ledger-events` evidence and wholly
+`idempotent-existing-ledger-events` evidence. Ordinal 7 alone must attest exact
+`nonledger-projection-artifacts` with zero ledger delta. Ordinals 0, 1, and 8
+must never yield a successful attestation, receipt, or terminal.
+Construction-only contexts that throw and forged-permit rejection are
+insufficient to satisfy these positive cases. Only ordinal 10 may
 construct the non-durable `approvalClass: "none"` compatibility DTO with
 equal preview hashes and internal actor label
 `resident-automatic-policy`; none of those compatibility-only fields enter
