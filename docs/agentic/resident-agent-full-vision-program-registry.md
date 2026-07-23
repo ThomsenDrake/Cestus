@@ -28844,3 +28844,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance transition, publication, or product release.
   `neo`, push, Wave 3, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-952 — Task136 fresh-decision ABI correction authorized
+
+- Recorded at: 2026-07-23T22:01:59Z
+- Exact rejected checkpoint
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, sole parent Task12 repair
+  authority merge `6bb9a2336fcad7250ab7bfafe3b738757df429a0`, preserves the three attempted
+  executable Task12 tests and Task136 claim. Its exact focused command is
+  **25 tests = 17 passed + 8 failed**; typecheck, factory readiness,
+  diff-check, four-path scope, product-source freeze, other-13-test freeze,
+  ancestry, and clean-state checks pass. It is rejected, not a causal RED,
+  source GREEN, product candidate, integration, record 29, assurance
+  transition, publication, or release.
+- The checkpoint and fresh read-only audit prove one committed ABI gap. The
+  approved design requires `executeFreshAuthorized` to accept a newly issued
+  human-approved stage and forbids every recovery/reread stage from executing,
+  but names no same-process operation that advances the exact still-live
+  branded human request through one independent durable decision. Inventing a
+  permit during `rereadAndIssueFromLedger` would violate at-most-once recovery;
+  accepting a raw decision, locator, callback, IDs, approval DTO, or caller
+  permit would violate the private interlock.
+- The smallest correction freezes these frozen-G object operations:
+  `requestFreshAuthorized(locator)` appends/rereads the exact automatic or
+  human resident request after package-owned preview and currentness checks;
+  `readFreshHumanDecision(requested)` accepts only the exact same-instance
+  branded human-requested stage, rereads one exact later independent durable
+  approval bound to its request/preview/deadline, consumes that transition,
+  and returns a distinct same-instance branded human-approved stage; and
+  `executeFreshAuthorized` accepts only a fresh automatic-requested or that
+  fresh human-approved brand. `rereadAndIssueFromLedger(locator)` remains
+  recovery-only in every process and every stage and can never acquire or
+  recreate an execution permit.
+- The internal constructor composition must bind only the authenticated
+  ledger/time source, opaque package-owned resident execution port, W-private
+  before/after-effect currentness closures, and W-private trusted
+  tool-request-ID closure. No raw adapter, executor, claim, attestation,
+  decision, provider, lookup, fallback, or public resolver is accepted. These
+  are internal frozen-object operations, not named exports. The G default
+  export remains only the package-private permit consumer and the dispatcher
+  remains its sole production direct importer.
+- The corrected RED plan must require legitimate package-owned execution for
+  exact catalog ordinals 2-7 and 9-10, with separate real bindings for PRR
+  initial/follow-up and export/report. Ordinals 2-6 and 9-10 must prove wholly
+  new and wholly existing idempotent event evidence; ordinal 7 must prove
+  only nonledger projection artifacts with zero ledger delta; ordinals 0, 1,
+  and 8 must never produce a successful attestation, receipt, or terminal.
+  Real released fixture states and services are required; construction-only
+  contexts that throw and forged-permit rejection do not satisfy
+  admissibility.
+- This event authorizes one forward documentation correction changing exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`,
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`,
+  and
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  It must preserve exact 30-path product ownership, 16-test command, V4
+  fingerprints/pins, seven seams, two-source Task12 GREEN scope, all prior
+  design/plan/review history, and every unrelated approved behavior.
+- The exact three-document descendant requires a completely fresh independent
+  architecture reviewer and different completely fresh executability reviewer
+  before coordinator approval and history-preserving integration. Only after
+  that integration may a new descendant repair the same three Task12 tests
+  and Task136 claim, preserve `b54281b0`, prove a causal RED, and obtain a
+  new focused review. No current or previous reviewer may approve changed
+  bytes it already authored or reviewed.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains **28 of
+  29**. This is bounded written-design/plan correction authority, not a
+  product-source/test authorization, approved candidate, integration, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
