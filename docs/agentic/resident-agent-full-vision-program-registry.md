@@ -28565,3 +28565,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   provider, credential, external-system, pull-request, and all other product
   actions remain unauthorized.
+
+## RV-1-E-946 — Exact Task136 strict-V2 fixture repair approved
+
+- Recorded at: 2026-07-23T19:26:23Z
+- Exact forward-only fixture-repair candidate
+  `1a5f5e246999560047811f9adc81a6ebdcc68061` preserves permanent RED
+  `1b99822ec532fc51866008c2fc52986775341573`, RV-1-E-945 authority merge
+  `3d185402c0a267280ffa36a3b3eeee8d854e6af8`, and rejected fixture candidate
+  `4b67f4e1df560bedaa22b41921da1e32478b914e` as ancestors. Its exact parent
+  is the rejected candidate; no reset, rebase, amend, reconstruction, force
+  operation, or discarded commit occurred.
+- The repair candidate changes exactly
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts` and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`. All 13
+  authorized product-source states remain unchanged, including the absent
+  not-yet-created bounded-loop source. The other 15 permanent RED test blobs
+  remain byte-identical to `1b99822e`; their manifest SHA-256 is
+  `9e79f16f229e528bd10bd124245bca05c07f6c5549e53879b43355dd4dbd6090`.
+- Completely fresh focused read-only reviewer
+  `/root/task136_fixture_review_1a5f5e24` returns `APPROVE` with no P0-P3
+  finding for the exact candidate. It independently proves the strict
+  segmented terminal/resumable grammar and final-observation
+  budgets/causation, non-vacuous gateway and prerequisite mutations, exact
+  ordinary/approval/automatic-unknown/human-unknown checkpoint branches,
+  absence of a compatibility lane, exact scope and ancestry, claim evidence,
+  source/test manifests, and clean state. The reviewer did not implement or
+  review any changed candidate byte and is ineligible for later changed
+  product-candidate approval.
+- Fresh focused ontology execution is exact **80 tests = 66 passed + 14
+  causal RED failures**. The exact sixteen-file card is **257 tests = 218
+  passed + 39 causal RED failures**; its log SHA-256 is
+  `66b1ffe40d10d645c0a1443f36623e5458d023c45bf4da796f59477da18f99b4`.
+  Released controls remain **443/443** green, standalone typecheck and diff
+  checks pass, and the worktree is clean.
+- Task136 fixture repair advances `implementing -> candidate -> reviewing ->
+  approved` for exact `1a5f5e24`. Only a history-preserving forward merge of
+  this approval into the existing Task136 lineage is authorized next. Any
+  changed fixture or claim byte invalidates this review and requires a new
+  descendant plus completely fresh focused review.
+- Strict product frontier remains **28 of 29**. This is fixture-repair
+  approval, not repair integration, source GREEN, a product candidate,
+  strict record 29, assurance transition, publication, or product release.
