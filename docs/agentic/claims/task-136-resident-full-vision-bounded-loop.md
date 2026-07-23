@@ -320,3 +320,114 @@ Task136 remains `implementing`. This fixture repair is not a product
 candidate, approval, integration, strict record 29, assurance-only
 transition, publication, or release. The strict product frontier remains
 **28 of 29**.
+
+## RV-1-E-945 Independent Review Rejection And Forward Fixture Repair RED
+
+Fresh independent review rejected fixture candidate
+`4b67f4e1df560bedaa22b41921da1e32478b914e`. That exact rejected commit and
+all earlier RED, GREEN, review, design, plan, authority, and merge history
+remain ancestral evidence. The forward repair starts from exact clean parent
+`4b67f4e1df560bedaa22b41921da1e32478b914e`; it uses no reset, rebase, amend,
+reconstruction, force operation, discarded commit, or source GREEN.
+
+The review found exactly three P1 fixture defects:
+
+1. The positive helpers did not implement exact grammar
+   `P0 X* (O S R-resumable O-recovery X*)* O R-terminal?` because they lacked
+   a post-tool final observation immediately before suspension or terminal
+   result.
+2. The gateway negative controls substituted mismatching tool-step states,
+   the ordinary checkpoint mutation used an unknown-outcome category, and the
+   missing-prerequisite replay changed ordinal without binding the exact
+   ordinal-2 stable tool request.
+3. The fixtures lacked direct positive and targeted negative coverage for the
+   exact ordinary `not-applicable` checkpoint and exact
+   `effect-outcome-unknown-human` checkpoint with its required durable
+   decision, approver, and approved-preview tuple.
+
+The repaired terminal helper is exactly `P O X O R-terminal`, and the
+approval helper is exactly `P O X O S R-resumable`. The inserted post-tool
+observation has its own budget consumption, exact plan/tool binding and
+tool-step causation; suspension/result budgets and final-observation
+readbacks advance from it. Every plan revision in the bounded replan helper
+likewise ends in a distinct post-tool observation; the next replan and final
+result bind that exact event. Index-dependent controls now locate causal
+observations by durable identity or use the corrected tuple position, and the
+ordinal-2 prerequisite control binds `toolreq_002` in both its tool step and
+post-tool observation.
+
+Gateway negative cases now preserve the exact lifecycle mapping:
+`requested -> requested`, `claimed -> suspended`, `completed -> executed`,
+`failed -> failed`, and `denied -> denied`. The ordinary gateway-ID mutation
+uses an `authority-stale` suspension with the otherwise exact
+`not-applicable` checkpoint. The automatic unknown-outcome fixture remains
+present. A distinct exact human unknown-outcome fixture binds the durable
+request, decision, approver, approved preview, permanent claim, logical
+locator, and capability hash; targeted omissions independently reject each
+required approval-tuple member. The existing awaiting-human approval branch
+remains present. No branch uses optional-field condensation, a compatibility
+lane, or a fabricated automatic decision.
+
+The fresh focused command was:
+
+```bash
+npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts
+```
+
+It exited `1`: 80 tests = 66 passed + 14 failed. The complete log SHA-256 is
+`4a09760edee2603647504b329b9917d2d95810381044fbca39496a413ac10070`.
+All negative controls pass. The 14 positive/positive-control failures are
+causal against the unchanged source's absent reviewed strict V2 API and
+sequence behavior:
+
+1. strict terminal/resumable family parsing;
+2. four-plan replay and the over-limit control;
+3. non-predecessor plan-ID reuse control;
+4. stale intervening observation control;
+5. final-observation budget control;
+6. tool-step budget control;
+7. result budget control;
+8. resumable checkpoint-anchor control;
+9. resumable deadline-anchor control;
+10. resumable next-action control;
+11. exact automatic/human gateway union;
+12. exact ordinary `not-applicable` checkpoint;
+13. exact automatic unknown-outcome checkpoint and segmented replay; and
+14. exact human unknown-outcome checkpoint and segmented replay.
+
+The exact sixteen-file card command recorded above was rerun without changing
+its paths. It exited `1`: 16 files failed and exactly 257 tests = 218 passed +
+39 failed. The complete log SHA-256 is
+`66b1ffe40d10d645c0a1443f36623e5458d023c45bf4da796f59477da18f99b4`.
+The 25 non-ontology failures remain byte-for-byte-source-equivalent to the
+original permanent RED classifications; the 14 ontology failures are the
+causal list immediately above. The inherited non-fatal missing TypeScript
+source-map warning did not prevent collection. No failure is caused by
+syntax, collection, dependency, an invented path, unrelated released
+behavior, or a fixture outside the reviewed strict V2 ABI.
+
+The exact released ten-file control command recorded above exited `0`: 10
+files and all 443 tests passed. Its complete log SHA-256 is
+`05f03442a31e250f9922502910332b220149711924807e110791038d45cfd41b`.
+Fresh standalone `npm run typecheck` exited `0` with `typecheck passed`; its
+complete log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+
+The freshly regenerated canonical source manifest proves all 13 authorized
+product-source states are identical to rejected parent `4b67f4e1`: the
+not-yet-created bounded-loop source remains absent and the other 12 source
+blobs are identical. Its SHA-256 remains
+`b0b4322354df7aafbfc4c5425247a0bda0797f2c5098371d37976a6176c6ffa3`.
+The other 15 permanent RED tests remain byte-identical to
+`1b99822ec532fc51866008c2fc52986775341573`; their freshly regenerated
+manifest SHA-256 remains
+`9e79f16f229e528bd10bd124245bca05c07f6c5549e53879b43355dd4dbd6090`.
+
+The repair scope is exactly
+`packages/ontology/test/agent-resident-loop-contracts.test.ts` and this claim.
+It changes no product source, contract authority, plan, mission state,
+program registry, provider, runtime activation, route, network, fallback,
+unrelated test, or pull request. Task136 remains `implementing`. This repaired
+RED fixture checkpoint is not a product candidate, approval, integration,
+strict record 29, assurance-only transition, publication, or release. The
+strict product frontier remains **28 of 29**.
