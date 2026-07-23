@@ -29001,6 +29001,64 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-957 — Task136 dual-context design integrated; Task12 oracle repair resumed
+
+- Recorded at: 2026-07-23T23:04:26Z
+- Approved exact written-design candidate
+  `933498c2ee73a7b11dd481d1df13893aee45423e` is preserved byte-for-byte in
+  history-preserving integration tree
+  `5d58a67cff8b06931d1a2efefec72bb2c3de8006`. Its reviewed three blobs remain
+  exact; RV-1-E-955 review admission and RV-1-E-956 approval were separately
+  forward-merged without changing them. Rejected candidates
+  `eb36b46edb19ff68fe3738093702b0a49f0eede2` and
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, approved original design
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`, permanent RED, Task10/Task11
+  GREENs, and all prior review history remain ancestral.
+- Fresh integration-tree gates pass exact candidate blob equality and
+  ancestry, clean state, `git diff --check`, factory readiness, standalone
+  typecheck, mission **20/20**, V4 assurance **20/20**, all four exact V4
+  markers, and contract SHA
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+  The fresh reviews also independently pass all six released adapter control
+  files **79/79**. Frozen counts and public/catalog/runtime boundaries remain
+  unchanged.
+- One new forward Task12 causal-RED repair may change exactly:
+  `packages/agent/test/domain-execution-dispatcher.test.ts`,
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`,
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`,
+  and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`.
+  It must preserve rejected `b54281b0` unchanged and make every new failure
+  causal to the absent exact Task12 default dispatcher/G APIs, never to an
+  inert source-string assertion, a construction-only throw, a fabricated
+  context, or test-local sibling-context rewriting.
+- The repaired oracle must use separate real released PRR initial/follow-up
+  and export/report contexts, retaining the same exact ledger and matching
+  workspace/resident/task tuple within each pair and passing each context
+  unchanged. It must prove real successful evidence for every admissible
+  ordinal: new and idempotent ledger evidence for 2-6 and 9-10, exact
+  nonledger projection evidence for 7, and no successful terminal for 0/1/8.
+  Safe negative controls must cover swapped, cross-used, mismatched-ledger,
+  and mismatched-tuple contexts without replacing the positive cases.
+- The human positive path must execute the exact same-process sequence:
+  `requestFreshAuthorized`, an independent actor/path appending the durable
+  bound approval, `readFreshHumanDecision` on the same live instance brand,
+  then `executeFreshAuthorized`. Every stage returned by
+  `rereadAndIssueFromLedger` remains nonexecutable. Loader controls must prove
+  literal static order, default-only access, no barrel widening, no dynamic
+  loading, and the frozen two-source Task12 GREEN scope.
+- The exact four-path RED-repair commit requires focused independent review
+  before either Task12 product source may change. Any changed test or claim
+  byte invalidates that review. No reviewer may author reviewed bytes or rely
+  on either rejected candidate as positive evidence.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This integration and bounded oracle-repair authorization are not a
+  Task12 source GREEN, product candidate, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
 
 - Recorded at: 2026-07-23T22:28:30Z
