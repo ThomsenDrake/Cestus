@@ -1,6 +1,29 @@
-import { type KnowledgeEvent, type KnowledgeEventOf } from "../../ontology/src/contracts.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import {
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
+import { AssertionService } from "../../ontology/src/assertion-service.js";
+import { GovernanceService } from "../../ontology/src/governance-service.js";
+import {
+  type AppendOptions,
+  type EventLedger,
+  InMemoryEventLedger
+} from "../../ontology/src/event-ledger.js";
+import { goldenGovernanceLedgerEvents } from "../../ontology/test/fixtures/golden-governance-ledger.js";
+import type {
+  AdapterCapabilities,
+  ApprovedMessageInput,
+  CorrespondenceAdapter,
+  SentMessageResult,
+  SyncResult
+} from "../../prr/src/correspondence-adapter.js";
+import { PrrCorrespondenceService } from "../../prr/src/correspondence-service.js";
+import { PrrLifecycleService } from "../../prr/src/lifecycle.js";
+import type { WorkspaceStats } from "../../workspace-ops/src/filesystem.js";
+import { resolveWorkspaceLayout } from "../../workspace-ops/src/layout.js";
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -21,7 +44,9 @@ import {
 } from "../src/adapters/legacy-staging.js";
 import {
   createPrrFollowUpExecutionAdapter,
-  createPrrInitialSendExecutionAdapter
+  createPrrInitialSendExecutionAdapter,
+  type PrrCorrespondenceAdapterContext,
+  type PrrCorrespondenceCurrentMessage
 } from "../src/adapters/prr-correspondence.js";
 import {
   createProviderByteTransferAdapter,
@@ -31,6 +56,7 @@ import { buildContextPackRef } from "../src/context-packs.js";
 import { buildPromptArtifact, promptArtifactAuditMetadata } from "../src/prompt-artifacts.js";
 import { createProviderCapabilityDescriptor } from "../src/provider-registry.js";
 import * as domainExecutionDispatcherModule from "../src/domain-execution-dispatcher.js";
+import { createResidentLoopToolGateway } from "../src/resident-loop-tool-gateway.js";
 import {
   agentDomainExecutionFailure,
   createAgentDomainExecutionDispatcher,
@@ -295,7 +321,7 @@ describe("agent domain execution dispatcher", () => {
   });
 
   it("mints only closed-catalog package capabilities through the default API", async () => {
-    const fixtures = residentFactoryFixtures();
+    const fixtures = await residentFactoryFixtures();
     expect(fixtures.map(({ kind, ordinals }) => [kind, ordinals])).toEqual([
       ["provider-byte-transfer", [0, 1]],
       ["prr-correspondence", [2, 3]],
@@ -306,6 +332,7 @@ describe("agent domain execution dispatcher", () => {
     ]);
     expect(fixtures.flatMap(constructFixtureAdapters).map((adapter) => adapter.descriptor.toolId))
       .toEqual(residentCatalogRows().map((row) => row.toolId));
+    await proveReleasedResidentFixtureEvidence(fixtures);
 
     const api = residentDomainApi(domainExecutionDispatcherModule);
     const issued: Array<{ fixture: ResidentFactoryFixture; capability: unknown; port: unknown }> = [];
@@ -395,6 +422,68 @@ describe("agent domain execution dispatcher", () => {
       }
     })).rejects.toThrow(/ledger|same|binding/i);
 
+    const prr = fixtures[1]!;
+    const initialContext = requiredBindingContext(prr, "initialContext");
+    const followUpContext = requiredBindingContext(prr, "followUpContext");
+    expect(initialContext).not.toBe(followUpContext);
+    expect(Reflect.get(initialContext, "ledger")).toBe(Reflect.get(followUpContext, "ledger"));
+    for (const binding of [
+      {
+        ...prr.binding,
+        initialContext: followUpContext,
+        followUpContext: initialContext
+      },
+      {
+        ...prr.binding,
+        followUpContext: {
+          ...followUpContext,
+          ledger: new InMemoryEventLedger()
+        }
+      },
+      {
+        ...prr.binding,
+        followUpContext: {
+          ...followUpContext,
+          taskId: "task_dispatcher_cross_used"
+        }
+      }
+    ]) {
+      await expect(api.create(binding)).rejects.toThrow(
+        /context|tool|ledger|same|resident|task|binding/i
+      );
+    }
+
+    const exportReport = fixtures[3]!;
+    const exportContext = requiredBindingContext(exportReport, "exportContext");
+    const reportContext = requiredBindingContext(exportReport, "reportContext");
+    expect(exportContext).not.toBe(reportContext);
+    expect(Reflect.get(exportContext, "ledger")).toBe(Reflect.get(reportContext, "ledger"));
+    for (const binding of [
+      {
+        ...exportReport.binding,
+        exportContext: reportContext,
+        reportContext: exportContext
+      },
+      {
+        ...exportReport.binding,
+        reportContext: {
+          ...reportContext,
+          ledger: new InMemoryEventLedger()
+        }
+      },
+      {
+        ...exportReport.binding,
+        reportContext: {
+          ...reportContext,
+          residentAgentId: "agent_dispatcher_cross_used"
+        }
+      }
+    ]) {
+      await expect(api.create(binding)).rejects.toThrow(
+        /context|tool|artifact|ledger|same|resident|task|binding/i
+      );
+    }
+
     const mutable = mutableResidentBinding(accepted.binding);
     const pendingCapability = api.create(mutable);
     mutable.workspaceId = "ws_dispatcher_mutated_after_call";
@@ -419,7 +508,7 @@ describe("agent domain execution dispatcher", () => {
       ts.ScriptKind.TS
     );
     const expectedImports = expectedResidentCatalogImports();
-    const factoryFixture = residentFactoryFixtures()[2]!;
+    const factoryFixture = (await residentFactoryFixtures())[2]!;
     const api = residentDomainApi(domainExecutionDispatcherModule);
 
     expect(staticNamedImports(sourceFile)).toEqual(expect.objectContaining(expectedImports));
@@ -478,38 +567,68 @@ describe("agent domain execution dispatcher", () => {
   });
 
   it("attests only the catalog-specific admissible domain outcome", async () => {
-    const fixtures = residentFactoryFixtures();
-    const api = residentDomainApi(domainExecutionDispatcherModule);
+    const fixtures = await residentFactoryFixtures();
     const rows = residentCatalogRows();
     const fixtureByKind = new Map(fixtures.map((fixture) => [fixture.kind, fixture]));
 
     for (const row of rows) {
       const fixture = fixtureByKind.get(row.kind)!;
-      const capability = await api.create(fixture.binding);
-      const port = api.bind({
-        capability,
-        mountedLedger: fixture.ledger,
-        workspaceId: fixture.workspaceId,
-        residentAgentId: fixture.residentAgentId,
-        taskId: fixture.taskId
-      });
-      const invokeAndAttest = requiredUnknownMethod(port, "invokeAndAttest");
-      const before = await fixture.ledger.readAll();
-      const invocation = residentInvocationFor(row, fixture);
+      if ([0, 1, 8].includes(row.ordinal)) {
+        const before = await fixture.ledger.readAll();
+        await expect(executeResidentCatalogRow(
+          fixture,
+          row,
+          `closed-${row.ordinal}`
+        )).rejects.toBeDefined();
+        const after = await fixture.ledger.readAll();
+        expect(after.some((event) =>
+          event.type === "agent.resident-domain.outcome-observed.v1" &&
+          Reflect.get(event.payload, "logicalLocator") !== undefined &&
+          Reflect.get(
+            Reflect.get(event.payload, "logicalLocator") as object,
+            "toolId"
+          ) === row.toolId
+        )).toBe(false);
+        expect(after.length).toBeGreaterThanOrEqual(before.length);
+        continue;
+      }
 
-      await expect(
-        Promise.resolve().then(() => Reflect.apply(invokeAndAttest, port, [
-          Object.freeze({ schemaVersion: "forged-resident-execution-permit.v1" }),
-          invocation
-        ]))
-      ).rejects.toThrow(/permit|issued|capability|authority/i);
-      expect(await fixture.ledger.readAll(), `ordinal ${row.ordinal}`).toEqual(before);
-      expect(invocation.authorizationKind).toBe(row.ordinal === 10 ? "automatic-policy" : "human-approval");
+      const first = await executeResidentCatalogRow(
+        fixture,
+        row,
+        `new-${row.ordinal}`
+      );
+      expect(first.receipt.payload).toMatchObject({
+        catalogOrdinal: row.ordinal,
+        implementationRevision: row.implementationRevision,
+        evidenceMode: row.ordinal === 7
+          ? "nonledger-projection-artifacts"
+          : "new-ledger-events"
+      });
+      expect(first.completed.payload.authorization).toMatchObject({
+        authorizationKind:
+          row.ordinal === 10 ? "automatic-policy" : "human-approval"
+      });
+
+      if (row.ordinal !== 7) {
+        const second = await executeResidentCatalogRow(
+          fixture,
+          row,
+          `existing-${row.ordinal}`
+        );
+        expect(second.receipt.payload).toMatchObject({
+          catalogOrdinal: row.ordinal,
+          implementationRevision: row.implementationRevision,
+          evidenceMode: "idempotent-existing-ledger-events"
+        });
+        expect(second.receipt.payload.domainEventIds)
+          .toEqual(first.receipt.payload.domainEventIds);
+      }
     }
   });
 
   it("allows the ordinal-10 automatic compatibility bridge and no other ordinal", async () => {
-    const fixtures = residentFactoryFixtures();
+    const fixtures = await residentFactoryFixtures();
     const api = residentDomainApi(domainExecutionDispatcherModule);
     const automatic = residentCatalogRows()[10]!;
     const legacy = fixtures[5]!;
@@ -566,9 +685,9 @@ interface ResidentFactoryFixture {
   readonly kind: ResidentFactoryKind;
   readonly ordinals: readonly number[];
   readonly binding: Record<string, unknown>;
-  readonly ledger: InMemoryEventLedger;
+  readonly ledger: EventLedger;
   readonly workspaceId: string;
-  readonly residentAgentId: string;
+  readonly residentAgentId: "agent_default";
   readonly taskId: string;
 }
 
@@ -576,6 +695,14 @@ interface UnknownResidentDomainApi {
   readonly create: (input: unknown) => Promise<unknown>;
   readonly bind: (input: unknown) => unknown;
 }
+
+type ResidentRequestedAppend = Extract<
+  AppendableKnowledgeEvent,
+  { readonly type: "agent.resident-domain.requested.v1" }
+>;
+type ResidentLogicalLocator =
+  ResidentRequestedAppend["payload"]["logicalLocator"];
+type ResidentBudget = ResidentRequestedAppend["payload"]["budget"];
 
 interface ResidentCatalogRow {
   readonly kind: ResidentFactoryKind;
@@ -643,27 +770,23 @@ function constructFixtureAdapters(fixture: ResidentFactoryFixture): readonly Age
       ];
     case "prr-correspondence":
       return [
-        createPrrInitialSendExecutionAdapter(context as never),
-        createPrrFollowUpExecutionAdapter({
-          ...asDataRecord(context),
-          toolId: "prr.follow-up.execute",
-          approvedMessage: {
-            ...asDataRecord(Reflect.get(asDataRecord(context), "approvedMessage")),
-            providerIdempotencyKey: "followup_prr_dispatcher_corr_dispatcher"
-          }
-        } as never)
+        createPrrInitialSendExecutionAdapter(
+          Reflect.get(fixture.binding, "initialContext") as never
+        ),
+        createPrrFollowUpExecutionAdapter(
+          Reflect.get(fixture.binding, "followUpContext") as never
+        )
       ];
     case "accepted-graph-review":
       return [createAcceptedGraphAssertionReviewAdapter(context as never)];
     case "export-report":
       return [
-        createExportGenerationAdapter(context as never),
-        createReportGenerationAdapter({
-          ...asDataRecord(context),
-          toolId: "governance.report.generate",
-          artifactKind: "report",
-          artifactId: "report_dispatcher_fixture"
-        } as never)
+        createExportGenerationAdapter(
+          Reflect.get(fixture.binding, "exportContext") as never
+        ),
+        createReportGenerationAdapter(
+          Reflect.get(fixture.binding, "reportContext") as never
+        )
       ];
     case "destructive-repair":
       return [
@@ -678,14 +801,427 @@ function constructFixtureAdapters(fixture: ResidentFactoryFixture): readonly Age
   }
 }
 
-function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
+async function proveReleasedResidentFixtureEvidence(
+  fixtures: readonly ResidentFactoryFixture[]
+): Promise<void> {
+  const rows = residentCatalogRows();
+  const fixtureByKind = new Map(fixtures.map((fixture) => [fixture.kind, fixture]));
+  const adapterByOrdinal = new Map<number, AgentDomainExecutionAdapter>();
+  for (const fixture of fixtures) {
+    const adapters = constructFixtureAdapters(fixture);
+    expect(adapters).toHaveLength(fixture.ordinals.length);
+    for (const [index, ordinal] of fixture.ordinals.entries()) {
+      adapterByOrdinal.set(ordinal, adapters[index]!);
+    }
+  }
+  const expectedEventType = new Map<number, KnowledgeEvent["type"]>([
+    [2, "prr.request.sent"],
+    [3, "prr.followup.sent"],
+    [4, "assertion.accepted"],
+    [5, "export.generated"],
+    [6, "report.generated"],
+    [9, "legacy.ontology.staging.approved"],
+    [10, "assertion.proposed"]
+  ]);
+
+  for (const row of rows) {
+    const fixture = fixtureByKind.get(row.kind)!;
+    const adapter = adapterByOrdinal.get(row.ordinal)!;
+    const previewInput = {
+      toolRequestId: `toolreq_dispatcher_preflight_${row.ordinal}`,
+      toolId: row.toolId,
+      toolVersion: row.toolVersion,
+      runId: `run_dispatcher_preflight_${row.ordinal}`,
+      taskId: fixture.taskId,
+      requestedPreviewHash: hash("0")
+    };
+    const before = await fixture.ledger.readAll();
+    if ([0, 1].includes(row.ordinal)) {
+      await expect(
+        Promise.resolve(adapter.buildCurrentPreview(previewInput))
+      ).rejects.toBeDefined();
+      expect(await fixture.ledger.readAll()).toEqual(before);
+      continue;
+    }
+    const current = await adapter.buildCurrentPreview(previewInput);
+    const previewHash = hashAgentToolPreview(current.preview);
+    const execution = {
+      toolRequestId: previewInput.toolRequestId,
+      toolId: previewInput.toolId,
+      toolVersion: previewInput.toolVersion,
+      runId: previewInput.runId,
+      taskId: previewInput.taskId,
+      sideEffectClass: adapter.descriptor.sideEffectClass,
+      approvalClass: adapter.descriptor.requiredApprovalClass,
+      previewHash,
+      approvedPreviewHash: previewHash,
+      approvedBy: humanActor.id,
+      sourceEventIds: current.sourceEventIds,
+      inputArtifactHashes: current.inputArtifactHashes,
+      provenanceRefs: current.provenanceRefs
+    };
+    if (row.ordinal === 8) {
+      await expect(adapter.executeApproved(execution)).rejects.toMatchObject({
+        category: expect.stringMatching(
+          row.ordinal === 8 ? /data-loss-risk/i : /domain-gate-failed/i
+        )
+      });
+      expect(await fixture.ledger.readAll()).toEqual(before);
+      continue;
+    }
+
+    const first = await adapter.executeApproved(execution);
+    const afterFirst = await fixture.ledger.readAll();
+    if (row.ordinal === 7) {
+      expect(first.eventIds).toEqual([]);
+      expect(first.artifactHashes.length).toBeGreaterThan(0);
+      expect(first.readModelChanges).toEqual([
+        expect.objectContaining({
+          projectionName: "workspace-projection-artifacts"
+        })
+      ]);
+      expect(afterFirst).toEqual(before);
+      continue;
+    }
+
+    const eventType = expectedEventType.get(row.ordinal);
+    expect(eventType).toBeDefined();
+    expect(first.eventIds.length).toBeGreaterThan(0);
+    const newEvents = afterFirst.filter(
+      (event) => !before.some((candidate) => candidate.id === event.id)
+    );
+    expect(newEvents.map((event) => event.id)).toEqual(first.eventIds);
+    expect(newEvents.every((event) => event.type === eventType)).toBe(true);
+
+    const second = await adapter.executeApproved(execution);
+    expect(second.eventIds).toEqual(first.eventIds);
+    expect(await fixture.ledger.readAll()).toEqual(afterFirst);
+  }
+}
+
+interface ResidentCatalogExecutionEvidence {
+  readonly receipt: KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
+  readonly completed: KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+}
+
+async function executeResidentCatalogRow(
+  fixture: ResidentFactoryFixture,
+  row: ResidentCatalogRow,
+  suffix: string
+): Promise<ResidentCatalogExecutionEvidence> {
+  const residentApi = residentDomainApi(domainExecutionDispatcherModule);
+  const capability = await residentApi.create(fixture.binding);
+  const port = residentApi.bind({
+    capability,
+    mountedLedger: fixture.ledger,
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId
+  });
+  const gateway = Reflect.apply(createResidentLoopToolGateway, undefined, [{
+    ledger: fixture.ledger,
+    now: fixedNow,
+    residentDomainExecutionPort: port,
+    async reverifyBeforeEffect() {
+      return Object.freeze({ kind: "current" });
+    },
+    async reverifyAfterEffect() {
+      return Object.freeze({ kind: "current" });
+    },
+    createTrustedToolRequestId() {
+      return `toolreq_dispatcher_${suffix}`;
+    }
+  }]);
+  if (typeof gateway !== "object" || gateway === null) {
+    throw new Error("Task12 resident G constructor returned no object.");
+  }
+  const prepare = requiredUnknownMethod(gateway, "preparePlannedStepBindings");
+  const planId = `plan_dispatcher_${suffix}`;
+  const attemptId =
+    "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const runId = `run_dispatcher_${suffix}`;
+  const prepared = await Reflect.apply(prepare, gateway, [{
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    steps: [{
+      ordinal: 1,
+      toolId: row.toolId,
+      toolVersion: row.toolVersion
+    }]
+  }]);
+  if (!Array.isArray(prepared) || prepared.length !== 1) {
+    throw new Error("Task12 resident G did not prepare exactly one binding.");
+  }
+  const preparedBinding = asDataRecord(prepared[0]);
+  const toolRequestId = Reflect.get(preparedBinding, "toolRequestId");
+  const executionCapabilityHash = Reflect.get(
+    preparedBinding,
+    "executionCapabilityHash"
+  );
+  if (
+    typeof toolRequestId !== "string" ||
+    typeof executionCapabilityHash !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(executionCapabilityHash)
+  ) {
+    throw new Error("Task12 resident G returned a malformed prepared binding.");
+  }
+  const events = await fixture.ledger.readAll();
+  const source = events[0];
+  if (source === undefined) {
+    throw new Error("Resident catalog fixture lacks durable plan provenance.");
+  }
+  const locator: ResidentLogicalLocator = Object.freeze({
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    stepOrdinal: 1,
+    toolRequestId,
+    toolId: row.toolId,
+    toolVersion: row.toolVersion,
+    executionCapabilityHash: executionCapabilityHash as `sha256:${string}`
+  });
+  const plan = await appendResidentCatalogPlan(
+    fixture.ledger,
+    source,
+    locator,
+    suffix
+  );
+  const requestFresh = requiredUnknownMethod(
+    gateway,
+    "requestFreshAuthorized"
+  );
+  const requested = await Reflect.apply(requestFresh, gateway, [locator]);
+  let executable = requested;
+  if (row.ordinal !== 10) {
+    await appendResidentCatalogHumanApproval(
+      fixture.ledger,
+      locator,
+      plan,
+      suffix
+    );
+    const readFreshHumanDecision = requiredUnknownMethod(
+      gateway,
+      "readFreshHumanDecision"
+    );
+    executable = await Reflect.apply(
+      readFreshHumanDecision,
+      gateway,
+      [requested]
+    );
+  }
+  const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
+  await Reflect.apply(execute, gateway, [executable]);
+  const stream = await fixture.ledger.readStream(
+    residentCatalogStreamId(locator)
+  );
+  const receipt = stream.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1"> =>
+      event.type === "agent.resident-domain.outcome-observed.v1"
+  );
+  const completed = stream.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.completed.v1"> =>
+      event.type === "agent.resident-domain.completed.v1"
+  );
+  if (receipt === undefined || completed === undefined) {
+    throw new Error("Task12 resident G returned without durable receipt and completion.");
+  }
+  return { receipt, completed };
+}
+
+async function appendResidentCatalogPlan(
+  ledger: EventLedger,
+  source: KnowledgeEvent,
+  locator: ResidentLogicalLocator,
+  suffix: string
+): Promise<KnowledgeEvent> {
+  const budget = residentCatalogBudget();
+  const planInput: Extract<
+    AppendableKnowledgeEvent,
+    { readonly type: "agent.resident-plan.recorded.v2" }
+  > = {
+    type: "agent.resident-plan.recorded.v2",
+    version: 1,
+    streamId:
+      `agent_resident_loop_${locator.taskId}_${locator.attemptId}_${locator.runId}`,
+    context: {
+      actor: schedulerActor,
+      occurredAt: fixedNow(),
+      causationId: source.id,
+      correlationId: `corr_dispatcher_${suffix}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      schemaVersion: "resident-plan-record.v2",
+      residentAgentId: locator.residentAgentId,
+      workspaceId: locator.workspaceId,
+      taskId: locator.taskId,
+      attemptId: locator.attemptId,
+      runId: locator.runId,
+      runMode: "evidence-triage",
+      workflowDescriptor: {
+        workflowDescriptorId: "workflow_evidence_triage",
+        workflowDescriptorVersion: "v1",
+        workflowDescriptorHash: hash("8")
+      },
+      policy: {
+        policyId: "agent_policy_dispatcher",
+        policyVersion: "policy_dispatcher_v1",
+        policyHash: hash("e")
+      },
+      authority: {
+        workspaceIdentityHash: hash("1"),
+        mountGeneration: "mount_dispatcher",
+        ledgerStoreIdentity: "ledger_dispatcher",
+        artifactStoreIdentity: "artifact_dispatcher",
+        ledgerHighWaterEventId: source.id,
+        policyHash: hash("e"),
+        activeLocksHash: hash("2")
+      },
+      sourceEventIds: [source.id],
+      contextPackRefs: [{
+        contextPackId: "context_pack_dispatcher",
+        contentHash: hash("d")
+      }],
+      budget,
+      causationId: source.id,
+      correlationId: `corr_dispatcher_${suffix}`,
+      planId: locator.planId,
+      planRevision: locator.planRevision,
+      priorPlanReadback: null,
+      replanObservationReadback: null,
+      steps: [{
+        ordinal: locator.stepOrdinal,
+        purpose: "Execute one exact package-owned resident catalog row.",
+        toolId: locator.toolId,
+        toolVersion: locator.toolVersion,
+        allowlistEntryHash: hash("c"),
+        expectedSafeOutputClass: "proposal",
+        prerequisiteStepOrdinals: [],
+        toolRequestId: locator.toolRequestId,
+        executionCapabilityHash: locator.executionCapabilityHash
+      }]
+    }
+  };
+  return ledger.append(planInput);
+}
+
+async function appendResidentCatalogHumanApproval(
+  ledger: EventLedger,
+  locator: ResidentLogicalLocator,
+  _plan: KnowledgeEvent,
+  suffix: string
+): Promise<void> {
+  const streamId = residentCatalogStreamId(locator);
+  const stream = await ledger.readStream(streamId);
+  const requested = stream.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.requested.v1"> =>
+      event.type === "agent.resident-domain.requested.v1"
+  );
+  if (requested === undefined) {
+    throw new Error("Task12 resident G failed to append the fresh request.");
+  }
+  const approvalInput: Extract<
+    AppendableKnowledgeEvent,
+    { readonly type: "agent.resident-domain.human-approved.v1" }
+  > = {
+    type: "agent.resident-domain.human-approved.v1",
+    version: 1,
+    streamId,
+    context: {
+      actor: humanActor,
+      occurredAt: fixedNow(),
+      causationId: requested.id,
+      correlationId: requested.payload.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      schemaVersion: "resident-domain-human-approved.v1",
+      logicalLocator: locator,
+      executionCapabilityHash: locator.executionCapabilityHash,
+      causationId: requested.id,
+      correlationId: requested.payload.correlationId,
+      authorizationKind: "human-approval",
+      requestEventId: requested.id,
+      decisionEventId: `evt_dispatcher_independent_decision_${suffix}`,
+      approvedBy: humanActor.id,
+      approvedPreviewHash: requested.payload.previewHash
+    }
+  };
+  await ledger.append(approvalInput, { expectedNextSequence: 2 });
+}
+
+function residentCatalogStreamId(
+  locator: ResidentLogicalLocator
+): string {
+  return `agent_resident_domain_${createHash("sha256")
+    .update(canonicalResidentJson(locator))
+    .digest("hex")}`;
+}
+
+function canonicalResidentJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalResidentJson).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${canonicalResidentJson(Reflect.get(value, key))}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function residentCatalogBudget(): ResidentBudget {
+  const ceilings = {
+    planRevisions: 3,
+    observationRecords: 16,
+    toolSteps: 12,
+    providerInvocations: 3,
+    providerRequestBytes: 1048576,
+    providerResponseBytes: 1048576,
+    contextBytes: 1048576,
+    derivativeArtifactBytes: 16777216,
+    activeExecutionMs: 900000,
+    approvalSuspensionMs: 86400000
+  };
+  const zeroes = {
+    planRevisions: 0,
+    observationRecords: 0,
+    toolSteps: 0,
+    providerInvocations: 0,
+    providerRequestBytes: 0,
+    providerResponseBytes: 0,
+    contextBytes: 0,
+    derivativeArtifactBytes: 0,
+    activeExecutionMs: 0,
+    approvalSuspensionMs: 0
+  };
+  return {
+    ceilings,
+    consumed: { ...zeroes, contextBytes: 1 },
+    remaining: { ...ceilings, contextBytes: ceilings.contextBytes - 1 },
+    actionConsumption: { ...zeroes, contextBytes: 1 }
+  };
+}
+
+async function residentFactoryFixtures(): Promise<readonly ResidentFactoryFixture[]> {
   const workspaceId = "ws_dispatcher_catalog";
-  const residentAgentId = "agent_dispatcher_catalog";
+  const residentAgentId = "agent_default";
   const taskId = "task_dispatcher_catalog";
   const providerLedger = new InMemoryEventLedger();
   const prrLedger = new InMemoryEventLedger();
   const acceptedGraphLedger = new InMemoryEventLedger();
-  const exportLedger = new InMemoryEventLedger();
+  const exportLedger = new SeededLedger(goldenGovernanceLedgerEvents);
   const destructiveLedger = new InMemoryEventLedger();
   const legacyLedger = new InMemoryEventLedger();
   const providerEvidenceHash = hash("1");
@@ -816,106 +1352,20 @@ function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
     }),
     readPromptArtifactAudit: async () => providerPromptAudit
   };
-  const prrMessage = {
-    from: "investigator@example.org",
-    to: ["records@example.gov"],
-    cc: [],
-    subject: "Dispatcher fixture request",
-    subjectHash: hash("5"),
-    bodyHash: hash("6"),
-    renderedBodyHash: hash("7"),
-    attachments: [],
-    requiresLegalConfirmation: false,
-    providerIdempotencyKey: "send_prr_dispatcher_corr_dispatcher"
-  };
-  const prrCapabilities = {
-    provider: "gmail" as const,
-    canSend: true,
-    canSync: true,
-    canFetchAttachments: true,
-    credentialMode: "cestus-oauth" as const
-  };
-  const prrContext = {
-    ledger: prrLedger,
-    correspondenceService: {
-      async sendInitialRequest() {
-        throw new Error("dispatcher fixture does not execute PRR sends");
-      },
-      async sendFollowUp() {
-        throw new Error("dispatcher fixture does not execute PRR sends");
-      }
-    },
-    domainActor: humanActor,
-    residentAgentId,
-    taskId,
-    toolId: "prr.initial-send.execute",
-    prrRequestId: "prr_dispatcher",
-    correspondenceId: "corr_dispatcher",
-    provider: "gmail",
-    messageSourceEventId: "evt_dispatcher_prr_created",
-    approvedMessage: prrMessage,
-    approvedRequestState: {
-      requestCreatedEventId: "evt_dispatcher_prr_created",
-      status: "draft",
-      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
-      confirmedStalling: false
-    },
-    approvedProviderCapabilities: prrCapabilities,
-    readCurrentMessage: async () => ({
-      from: prrMessage.from,
-      to: [...prrMessage.to],
-      cc: [...prrMessage.cc],
-      subject: prrMessage.subject,
-      body: "Fixture body.",
-      renderedBody: "Fixture body.",
-      attachments: [],
-      requiresLegalConfirmation: false
-    }),
-    readProviderCapabilities: async () => prrCapabilities
-  };
-  const acceptedGraphContext = {
-    ledger: acceptedGraphLedger,
-    assertionService: {
-      async accept() {
-        throw new Error("dispatcher fixture does not accept graph state");
-      }
-    },
-    reviewer: humanActor,
-    residentAgentId,
-    taskId,
-    assertionId: "as_dispatcher_fixture",
-    proposalEventId: "evt_dispatcher_assertion_proposed",
-    evidenceId: "ev_dispatcher_assertion",
-    evidenceEventId: "evt_dispatcher_assertion_evidence",
-    evidenceContentHash: hash("8"),
-    reviewerRationaleDraft: "The fixture binds one reviewed assertion.",
-    ontologyPackVersions: { core: "0.1.0" }
-  };
-  const exportContext = {
-    ledger: exportLedger,
-    governanceService: {
-      async recordExportGenerated() {
-        throw new Error("dispatcher fixture does not generate exports");
-      },
-      async recordReportGenerated() {
-        throw new Error("dispatcher fixture does not generate reports");
-      }
-    },
-    actor: humanActor,
-    residentAgentId,
-    taskId,
-    toolId: "governance.export.generate",
-    artifactKind: "export",
-    artifactId: "exp_dispatcher_fixture",
-    requestedEvidenceIds: ["ev_dispatcher_export"],
-    includedEvidenceIds: ["ev_dispatcher_export"],
-    includedContentHashes: [hash("8")],
-    sensitiveOptIns: [],
-    defaultPublicSafeOnly: true,
-    policy: { policyId: "gov_policy_dispatcher", version: "0.1.0" },
-    causationEventId: "evt_dispatcher_export_causation",
-    outputArtifactHash: hash("9")
-  };
+  const { initialContext, followUpContext } =
+    await prepareDispatcherPrrContexts(prrLedger, residentAgentId, taskId);
+  const acceptedGraphContext =
+    await prepareDispatcherAcceptedGraphContext(
+      acceptedGraphLedger,
+      residentAgentId,
+      taskId
+    );
+  const { exportContext, reportContext } =
+    prepareDispatcherGovernanceContexts(
+      exportLedger,
+      residentAgentId,
+      taskId
+    );
   const repairAction = {
     actionId: "action_dispatcher_projection",
     kind: "rebuild-projection",
@@ -925,43 +1375,23 @@ function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
     mutatesCanonicalState: false,
     allowedNextCommands: ["projection rebuild-readiness", "projection rebuild"]
   };
+  const projectionFileSystem = new DispatcherProjectionFileSystem(
+    "/workspace/dispatcher-fixture",
+    workspaceId
+  );
+  const projectionLayout = await resolveWorkspaceLayout({
+    rootPath: "/workspace/dispatcher-fixture",
+    expectedWorkspaceId: workspaceId
+  }, projectionFileSystem);
   const projectionContext = {
     ledger: destructiveLedger,
     domainActor: humanActor,
     residentAgentId,
     taskId,
     toolId: "workspace.projection-rebuild.execute",
-    layout: {
-      status: "ready",
-      rootPath: "/workspace/dispatcher-fixture",
-      workspace: {
-        workspaceId,
-        label: "Dispatcher fixture workspace",
-        manifestVersion: 1,
-        rootUri: "file:///workspace/dispatcher-fixture",
-        layoutContractVersion: "portable-workspace-layout.v1"
-      },
-      layout: {
-        rootPath: "/workspace/dispatcher-fixture",
-        manifestPath: "/workspace/dispatcher-fixture/cestus-workspace.json"
-      },
-      diagnostics: []
-    },
-    workspaceFileSystem: {
-      async exists() { return true; },
-      async readText() { return "{}"; },
-      async stat() { return { kind: "file", sizeBytes: 2 }; },
-      async list() { return []; },
-      async realpath(path: string) { return path; },
-      async availableBytes() { return 1_000_000; }
-    },
-    projectionFileSystem: {
-      async exists() { return true; },
-      async writeText() {},
-      async remove() {},
-      async promoteDirectory() {},
-      async availableBytes() { return 1_000_000; }
-    },
+    layout: projectionLayout,
+    workspaceFileSystem: projectionFileSystem,
+    projectionFileSystem,
     eventReader: { async readAll() { return []; } },
     builder: { projectionName: "graph", async build() { return { "projection.json": "{}" }; } },
     projectionName: "graph",
@@ -1022,6 +1452,8 @@ function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
     }],
     readinessDiagnosticsHash: hash("c")
   };
+  let legacyApproval: KnowledgeEvent | undefined;
+  let legacyProposal: KnowledgeEvent | undefined;
   const legacyContext = {
     runtime: {
       async stagingPreview() {
@@ -1042,22 +1474,114 @@ function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
         };
       },
       async approveStaging() {
-        throw new Error("dispatcher fixture does not approve legacy staging");
+        legacyApproval ??= await legacyLedger.append({
+          type: "legacy.ontology.staging.approved",
+          version: 1,
+          streamId:
+            "legacy_staging_src_dispatcher_legacy_scan_dispatcher_legacy_legacy_stage_dispatcher_legacy",
+          context: {
+            actor: humanActor,
+            occurredAt: fixedNow(),
+            correlationId: "corr_dispatcher_legacy_approval",
+            coreVersion: "0.1.0",
+            packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+          },
+          payload: {
+            stagingBatchId: "legacy_stage_dispatcher_legacy",
+            legacyReportId: "legacy_report_dispatcher",
+            sourceCollectionId: "src_dispatcher_legacy",
+            scanBatchId: "scan_dispatcher_legacy",
+            reportHash: hash("d"),
+            candidateSetHash: hash("e"),
+            approvedBy: humanActor.id,
+            approvedAt: fixedNow(),
+            approvedAssertionCandidateIds: ["legacy_candidate_dispatcher"]
+          }
+        });
+        return {
+          ok: true as const,
+          command: "legacy approve-staging",
+          sourceCollectionId: "src_dispatcher_legacy",
+          scanBatchId: "scan_dispatcher_legacy",
+          eventIds: [legacyApproval.id],
+          nextActions: [],
+          legacyReportId: "legacy_report_dispatcher",
+          stagingBatchId: "legacy_stage_dispatcher_legacy",
+          reportHash: hash("d"),
+          candidateSetHash: hash("e"),
+          approvedAssertionCandidateIds: ["legacy_candidate_dispatcher"]
+        };
       },
       async stageApproved() {
-        throw new Error("dispatcher fixture does not execute legacy staging");
+        legacyProposal ??= await legacyLedger.append({
+          type: "assertion.proposed",
+          version: 1,
+          streamId: "assertion_as_dispatcher_legacy",
+          context: {
+            actor: schedulerActor,
+            occurredAt: fixedNow(),
+            correlationId: "corr_dispatcher_legacy_proposal",
+            coreVersion: "0.1.0",
+            packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+          },
+          payload: {
+            assertionId: "as_dispatcher_legacy",
+            evidenceId: "ev_dispatcher_legacy",
+            predicate: "legacy.dispatcher.fixture",
+            object: "legacy_candidate_dispatcher",
+            confidence: 0.8,
+            reviewState: "proposed"
+          }
+        });
+        return {
+          ok: true as const,
+          command: "legacy stage",
+          sourceCollectionId: "src_dispatcher_legacy",
+          scanBatchId: "scan_dispatcher_legacy",
+          eventIds: [legacyProposal.id],
+          nextActions: [],
+          legacyReportId: "legacy_report_dispatcher",
+          stagingBatchId: "legacy_stage_dispatcher_legacy",
+          proposedAssertionIds: ["as_dispatcher_legacy"]
+        };
       }
     },
     ledger: legacyLedger,
     residentAgentId,
     sourceCollectionId: "src_dispatcher_legacy",
     scanBatchId: "scan_dispatcher_legacy",
-    stagingBatchId: "stage_dispatcher_legacy",
+    stagingBatchId: "legacy_stage_dispatcher_legacy",
     legacyReportId: "legacy_report_dispatcher",
     reportHash: hash("d"),
     candidateSetHash: hash("e"),
     selectedCandidateIds: ["legacy_candidate_dispatcher"]
   };
+  for (const [label, ledger] of [
+    ["destructive", destructiveLedger],
+    ["legacy", legacyLedger]
+  ] as const) {
+    if ((await ledger.readAll()).length === 0) {
+      await ledger.append({
+        type: "evidence.ingested",
+        version: 1,
+        streamId: `evidence_ev_dispatcher_${label}_source`,
+        context: {
+          actor: schedulerActor,
+          occurredAt: fixedNow(),
+          correlationId: `corr_dispatcher_${label}_source`,
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        },
+        payload: {
+          evidenceId: `ev_dispatcher_${label}_source`,
+          source: { kind: "file", label: `${label}-source.txt` },
+          contentHash: label === "destructive" ? hash("b") : hash("c"),
+          mediaType: "text/plain",
+          sizeBytes: 1
+        }
+      });
+    }
+  }
 
   return [
     fixture("provider-byte-transfer", [0, 1], providerLedger, {
@@ -1072,7 +1596,8 @@ function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
       workspaceId,
       residentAgentId,
       taskId,
-      context: prrContext
+      initialContext,
+      followUpContext
     }),
     fixture("accepted-graph-review", [4], acceptedGraphLedger, {
       kind: "accepted-graph-review",
@@ -1086,7 +1611,8 @@ function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
       workspaceId,
       residentAgentId,
       taskId,
-      context: exportContext
+      exportContext,
+      reportContext
     }),
     fixture("destructive-repair", [7, 8], destructiveLedger, {
       kind: "destructive-repair",
@@ -1108,10 +1634,412 @@ function residentFactoryFixtures(): readonly ResidentFactoryFixture[] {
   function fixture(
     kind: ResidentFactoryKind,
     ordinals: readonly number[],
-    ledger: InMemoryEventLedger,
+    ledger: EventLedger,
     binding: Record<string, unknown>
   ): ResidentFactoryFixture {
     return { kind, ordinals, ledger, binding, workspaceId, residentAgentId, taskId };
+  }
+}
+
+function requiredBindingContext(
+  fixture: ResidentFactoryFixture,
+  key: string
+): Record<string, unknown> {
+  const value = Reflect.get(fixture.binding, key);
+  if (typeof value !== "object" || value === null) {
+    throw new Error(`Resident fixture ${fixture.kind} is missing ${key}.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+async function prepareDispatcherPrrContexts(
+  ledger: InMemoryEventLedger,
+  residentAgentId: string,
+  taskId: string
+): Promise<{
+  readonly initialContext: PrrCorrespondenceAdapterContext;
+  readonly followUpContext: PrrCorrespondenceAdapterContext;
+}> {
+  const lifecycle = new PrrLifecycleService({ ledger, actor: humanActor });
+  const transport = new DispatcherCorrespondenceAdapter();
+  const service = new PrrCorrespondenceService({
+    ledger,
+    actor: humanActor,
+    adapters: { gmail: transport }
+  });
+  const initialCreated = await lifecycle.createRequest({
+    prrRequestId: "prr_dispatcher_initial",
+    jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+    agency: { name: "Initial Agency", email: "records@example.gov" },
+    requester: { name: "Investigator", email: "investigator@example.org" },
+    requestText: "Provide the initial dispatcher fixture records."
+  });
+  const followCreated = await lifecycle.createRequest({
+    prrRequestId: "prr_dispatcher_followup",
+    jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+    agency: { name: "Follow-up Agency", email: "records@example.gov" },
+    requester: { name: "Investigator", email: "investigator@example.org" },
+    requestText: "Provide the follow-up dispatcher fixture records."
+  });
+  const followInitial = await service.sendInitialRequest({
+    prrRequestId: "prr_dispatcher_followup",
+    correspondenceId: "corr_dispatcher_followup_initial",
+    provider: "gmail",
+    from: "investigator@example.org",
+    to: ["records@example.gov"],
+    subject: "Dispatcher fixture request",
+    body: "Provide the follow-up dispatcher fixture records.",
+    approvedBy: humanActor.id
+  });
+  const followSubject = "Follow-up on dispatcher fixture request";
+  const followBody = "Please provide a status update for the dispatcher fixture records.";
+  const followDraft = await ledger.append({
+    type: "prr.followup.drafted",
+    version: 1,
+    streamId: "prr_dispatcher_followup",
+    context: {
+      actor: humanActor,
+      occurredAt: fixedNow(),
+      causationId: followInitial.id,
+      correlationId: followInitial.context.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      prrRequestId: "prr_dispatcher_followup",
+      correspondenceId: "corr_dispatcher_followup",
+      subject: followSubject,
+      bodyHash: hashText(followBody),
+      citedRules: []
+    }
+  });
+  const capabilities: AdapterCapabilities = {
+    provider: "gmail",
+    canSend: true,
+    canSync: true,
+    canFetchAttachments: true,
+    credentialMode: "cestus-oauth"
+  };
+  return {
+    initialContext: contextFor({
+      toolId: "prr.initial-send.execute",
+      prrRequestId: "prr_dispatcher_initial",
+      correspondenceId: "corr_dispatcher_initial",
+      sourceEventId: initialCreated.id,
+      requestCreatedEventId: initialCreated.id,
+      status: "draft",
+      subject: "Dispatcher fixture request",
+      body: "Provide the initial dispatcher fixture records.",
+      providerIdempotencyKey:
+        "send_prr_dispatcher_initial_corr_dispatcher_initial"
+    }),
+    followUpContext: contextFor({
+      toolId: "prr.follow-up.execute",
+      prrRequestId: "prr_dispatcher_followup",
+      correspondenceId: "corr_dispatcher_followup",
+      sourceEventId: followDraft.id,
+      requestCreatedEventId: followCreated.id,
+      status: "sent",
+      initialSentEventId: followInitial.id,
+      subject: followSubject,
+      body: followBody,
+      providerIdempotencyKey:
+        "followup_prr_dispatcher_followup_corr_dispatcher_followup"
+    })
+  };
+
+  function contextFor(input: {
+    readonly toolId: "prr.initial-send.execute" | "prr.follow-up.execute";
+    readonly prrRequestId: string;
+    readonly correspondenceId: string;
+    readonly sourceEventId: string;
+    readonly requestCreatedEventId: string;
+    readonly status: "draft" | "sent";
+    readonly initialSentEventId?: string;
+    readonly subject: string;
+    readonly body: string;
+    readonly providerIdempotencyKey: string;
+  }): PrrCorrespondenceAdapterContext {
+    const message: PrrCorrespondenceCurrentMessage = {
+      from: "investigator@example.org",
+      to: ["records@example.gov"],
+      cc: [],
+      subject: input.subject,
+      body: input.body,
+      renderedBody: input.body,
+      attachments: [],
+      requiresLegalConfirmation: false
+    };
+    return {
+      ledger,
+      correspondenceService: service,
+      domainActor: humanActor,
+      residentAgentId,
+      taskId,
+      toolId: input.toolId,
+      prrRequestId: input.prrRequestId,
+      correspondenceId: input.correspondenceId,
+      provider: "gmail",
+      messageSourceEventId: input.sourceEventId,
+      approvedMessage: {
+        from: message.from,
+        to: [...message.to],
+        cc: [...message.cc],
+        subject: message.subject,
+        subjectHash: hashText(message.subject),
+        bodyHash: hashText(message.body),
+        renderedBodyHash: hashText(message.renderedBody),
+        attachments: [],
+        requiresLegalConfirmation: false,
+        providerIdempotencyKey: input.providerIdempotencyKey
+      },
+      approvedRequestState: {
+        requestCreatedEventId: input.requestCreatedEventId,
+        status: input.status,
+        jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+        confirmedStalling: false,
+        ...(input.initialSentEventId === undefined
+          ? {}
+          : { initialSentEventId: input.initialSentEventId })
+      },
+      approvedProviderCapabilities: capabilities,
+      readCurrentMessage: async () => message,
+      readProviderCapabilities: async () => capabilities
+    };
+  }
+}
+
+async function prepareDispatcherAcceptedGraphContext(
+  ledger: InMemoryEventLedger,
+  residentAgentId: string,
+  taskId: string
+): Promise<Record<string, unknown>> {
+  const service = new AssertionService({ ledger });
+  const evidence = await ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: "evidence_ev_dispatcher_assertion",
+    context: {
+      actor: schedulerActor,
+      occurredAt: fixedNow(),
+      correlationId: "corr_dispatcher_assertion",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_dispatcher_assertion",
+      source: { kind: "file", label: "dispatcher-assertion.pdf" },
+      contentHash: hash("8"),
+      mediaType: "application/pdf",
+      sizeBytes: 128
+    }
+  });
+  const proposal = await service.propose({
+    assertionId: "as_dispatcher_fixture",
+    evidenceId: "ev_dispatcher_assertion",
+    subjectRef: "ent_dispatcher_agency",
+    predicate: "agency.name",
+    object: "Dispatcher Fixture Agency",
+    confidence: 0.95,
+    actor: schedulerActor
+  });
+  return {
+    ledger,
+    assertionService: service,
+    reviewer: humanActor,
+    residentAgentId,
+    taskId,
+    assertionId: "as_dispatcher_fixture",
+    proposalEventId: proposal.id,
+    evidenceId: "ev_dispatcher_assertion",
+    evidenceEventId: evidence.id,
+    evidenceContentHash: hash("8"),
+    reviewerRationaleDraft: "The fixture binds one reviewed assertion.",
+    ontologyPackVersions: { core: "0.1.0" }
+  };
+}
+
+function prepareDispatcherGovernanceContexts(
+  ledger: SeededLedger,
+  residentAgentId: string,
+  taskId: string
+): {
+  readonly exportContext: Record<string, unknown>;
+  readonly reportContext: Record<string, unknown>;
+} {
+  const governanceService = new GovernanceService({ ledger, actor: humanActor });
+  const common = {
+    ledger,
+    governanceService,
+    actor: humanActor,
+    residentAgentId,
+    taskId,
+    requestedEvidenceIds: ["ev_source_public"],
+    includedEvidenceIds: ["ev_source_public"],
+    includedContentHashes: [hash("1")],
+    sensitiveOptIns: [],
+    defaultPublicSafeOnly: true,
+    policy: { policyId: "gov_policy_default", version: "0.2.0" },
+    causationEventId: "evt_review_governance_public"
+  };
+  return {
+    exportContext: {
+      ...common,
+      toolId: "governance.export.generate",
+      artifactKind: "export",
+      artifactId: "exp_dispatcher_fixture",
+      outputArtifactHash: hash("9")
+    },
+    reportContext: {
+      ...common,
+      toolId: "governance.report.generate",
+      artifactKind: "report",
+      artifactId: "report_dispatcher_fixture",
+      outputArtifactHash: hash("a")
+    }
+  };
+}
+
+class DispatcherCorrespondenceAdapter implements CorrespondenceAdapter {
+  private readonly sentByIdempotency = new Map<string, SentMessageResult>();
+
+  async capabilities(): Promise<AdapterCapabilities> {
+    return {
+      provider: "gmail",
+      canSend: true,
+      canSync: true,
+      canFetchAttachments: true,
+      credentialMode: "cestus-oauth"
+    };
+  }
+
+  async sendApprovedMessage(input: ApprovedMessageInput): Promise<SentMessageResult> {
+    const existing = this.sentByIdempotency.get(input.idempotencyKey);
+    if (existing !== undefined) return existing;
+    const digest = createHash("sha256").update(input.idempotencyKey).digest("hex");
+    const result: SentMessageResult = {
+      provider: "gmail",
+      providerMessageId: `msg_${digest.slice(0, 24)}`,
+      providerThreadId: `thread_${digest.slice(0, 24)}`,
+      sentAt: fixedNow(),
+      rawMetadata: { transport: "dispatcher-fixture" }
+    };
+    this.sentByIdempotency.set(input.idempotencyKey, result);
+    return result;
+  }
+
+  async syncSince(): Promise<SyncResult> {
+    return { checkpoint: "dispatcher-fixture", messages: [] };
+  }
+}
+
+class SeededLedger implements EventLedger {
+  private readonly appended = new InMemoryEventLedger();
+  private readonly seeded: KnowledgeEvent[];
+
+  constructor(events: readonly KnowledgeEvent[]) {
+    this.seeded = structuredClone([...events]);
+  }
+
+  append(
+    event: AppendableKnowledgeEvent,
+    options?: AppendOptions
+  ): Promise<KnowledgeEvent> {
+    return this.appended.append(event, options);
+  }
+
+  async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+    return [
+      ...structuredClone(this.seeded.filter((event) => event.streamId === streamId)),
+      ...await this.appended.readStream(streamId)
+    ];
+  }
+
+  async readAll(): Promise<KnowledgeEvent[]> {
+    return [...structuredClone(this.seeded), ...await this.appended.readAll()];
+  }
+}
+
+class DispatcherProjectionFileSystem {
+  private readonly files = new Map<string, string>();
+  private readonly directories = new Set<string>();
+
+  constructor(rootPath: string, workspaceId: string) {
+    this.directories.add(rootPath);
+    this.files.set(`${rootPath}/cestus-workspace.json`, JSON.stringify({
+      version: 1,
+      layoutVersion: 1,
+      workspaceId,
+      label: "Dispatcher fixture workspace",
+      createdAt: fixedNow(),
+      createdBy: "dispatcher-fixture",
+      coreVersion: "0.1.0"
+    }));
+    this.directories.add(`${rootPath}/ledger`);
+    this.files.set(`${rootPath}/ledger/ontology.sqlite`, "sqlite");
+    for (const directory of [
+      "blobs",
+      "derivatives",
+      "jobs",
+      "projections",
+      "cache",
+      "config"
+    ]) {
+      this.directories.add(`${rootPath}/${directory}`);
+    }
+  }
+
+  async exists(path: string): Promise<boolean> {
+    return this.files.has(path) || this.directories.has(path);
+  }
+
+  async readText(path: string): Promise<string> {
+    const value = this.files.get(path);
+    if (value === undefined) throw new Error("Missing dispatcher fixture file.");
+    return value;
+  }
+
+  async stat(path: string): Promise<WorkspaceStats> {
+    if (this.directories.has(path)) return { kind: "directory", sizeBytes: 0 };
+    const value = this.files.get(path);
+    if (value !== undefined) {
+      return { kind: "file", sizeBytes: Buffer.byteLength(value) };
+    }
+    throw new Error("Missing dispatcher fixture path.");
+  }
+
+  async lstat(path: string): Promise<WorkspaceStats> {
+    return this.stat(path);
+  }
+
+  async list(): Promise<readonly string[]> {
+    return [];
+  }
+
+  async realpath(path: string): Promise<string> {
+    return path;
+  }
+
+  async availableBytes(): Promise<number> {
+    return 1_000_000;
+  }
+
+  async writeText(path: string, content: string): Promise<void> {
+    this.files.set(path, content);
+  }
+
+  async remove(path: string): Promise<void> {
+    this.files.delete(path);
+    this.directories.delete(path);
+  }
+
+  async promoteDirectory(from: string, to: string): Promise<void> {
+    this.directories.add(to);
+    for (const [path, content] of [...this.files.entries()]) {
+      if (path.startsWith(`${from}/`)) {
+        this.files.set(`${to}${path.slice(from.length)}`, content);
+      }
+    }
   }
 }
 
@@ -1315,6 +2243,10 @@ function dispatcherSource(): string {
 
 function hash(fill: string): `sha256:${string}` {
   return `sha256:${fill.repeat(64).slice(0, 64)}`;
+}
+
+function hashText(value: string): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
 const domainDescriptor: AgentDomainToolDescriptor = Object.freeze({

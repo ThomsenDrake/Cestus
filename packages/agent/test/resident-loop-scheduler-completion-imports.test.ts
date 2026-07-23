@@ -82,6 +82,10 @@ describe("resident-loop scheduler completion import boundary", () => {
 
     expect(exactNamedValueImports(dispatcherRecord.sourceFile, expectedAdapterImports))
       .toEqual(Object.fromEntries(expectedAdapterImports));
+    expect(staticResidentAdapterModuleOrder(
+      dispatcherRecord.sourceFile,
+      expectedAdapterImports
+    )).toEqual([...expectedAdapterImports.keys()]);
     expect(exactGatewayDefaultImports(sources)).toEqual([{
       sourcePath: "packages/agent/src/domain-execution-dispatcher.ts",
       localName: expect.stringMatching(/^[A-Za-z_$][A-Za-z0-9_$]*$/)
@@ -89,6 +93,10 @@ describe("resident-loop scheduler completion import boundary", () => {
     expect(defaultExports(gatewayRecord.sourceFile)).toHaveLength(1);
     expect(protectedResidentTransfers(sources)).toEqual([]);
     expect(protectedLoaderTransfers(sources)).toEqual([]);
+    expect(task12ResidentDefinitionSources(sources)).toEqual([
+      "packages/agent/src/domain-execution-dispatcher.ts",
+      "packages/agent/src/resident-loop-tool-gateway.ts"
+    ]);
     expect(topLevelAdapterReads(dispatcherRecord.sourceFile, expectedAdapterImports))
       .toEqual([]);
     expect(indexRecord.text).not.toMatch(
@@ -256,6 +264,51 @@ function exactNamedValueImports(
     );
   }
   return Object.fromEntries(found);
+}
+
+function staticResidentAdapterModuleOrder(
+  sourceFile: ts.SourceFile,
+  expected: ReadonlyMap<string, readonly string[]>
+): readonly string[] {
+  return sourceFile.statements.flatMap((statement) =>
+    ts.isImportDeclaration(statement) &&
+    ts.isStringLiteral(statement.moduleSpecifier) &&
+    expected.has(statement.moduleSpecifier.text)
+      ? [statement.moduleSpecifier.text]
+      : []
+  );
+}
+
+function task12ResidentDefinitionSources(
+  sources: readonly SourceRecord[]
+): readonly string[] {
+  const protectedDefinitions = new Set([
+    "createPackageOwnedResidentDomainExecutionCapability",
+    "bindPackageOwnedResidentDomainExecutionPort",
+    "consumeResidentDomainExecutionPermit",
+    "preparePlannedStepBindings",
+    "requestFreshAuthorized",
+    "readFreshHumanDecision",
+    "executeFreshAuthorized",
+    "rereadAndIssueFromLedger"
+  ]);
+  return sources.flatMap(({ sourcePath, sourceFile }) => {
+    let found = false;
+    visit(sourceFile);
+    return found ? [sourcePath] : [];
+
+    function visit(node: ts.Node): void {
+      if (
+        ts.isIdentifier(node) &&
+        protectedDefinitions.has(node.text) &&
+        !isImportBinding(node) &&
+        !hasTypeNodeAncestor(node, sourceFile)
+      ) {
+        found = true;
+      }
+      ts.forEachChild(node, visit);
+    }
+  }).sort();
 }
 
 function exactGatewayDefaultImports(
