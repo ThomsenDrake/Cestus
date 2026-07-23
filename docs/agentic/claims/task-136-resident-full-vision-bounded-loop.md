@@ -202,3 +202,121 @@ contains zero source, contract, mission-state, registry, provider, runtime
 activation, route, network, fallback, unrelated, or pull-request change. All
 later GREEN commits must preserve the sixteen committed RED test blobs
 byte-for-byte.
+
+## RV-1-E-945 Strict-V2 Fixture Repair RED
+
+The append-only repair authority is exact history-preserving merge
+`3d185402c0a267280ffa36a3b3eeee8d854e6af8`. Its first parent is the
+permanent Task9 RED
+`1b99822ec532fc51866008c2fc52986775341573`; its second parent is registry
+authorization `d22c6182e87159fbdc9310644edd2e9011ee3134`. The permanent RED,
+claim checkpoint, product authority merge, reviewed design and plan, V4
+authority, and every earlier Task136 commit remain ancestral. The repair uses
+no reset, rebase, amend, reconstruction, or discarded commit.
+
+The inherited ontology fixture is mechanically aligned with the reviewed
+strict V2 ABI:
+
+- every planned step carries one stable `toolRequestId` and the exact
+  `executionCapabilityHash`;
+- the completed tool-step fixture uses the exact automatic-policy completed
+  branch with request, permanent claim, durable outcome receipt, and result;
+- the approval suspension uses `awaiting-human-approval`, the already durable
+  orchestration checkpoint and request, and no future resident self-ID,
+  decision, approver, or approval hash;
+- terminal replay ends directly in its completed result, while a separate
+  approval-resumable replay contains the exact suspension/result pair;
+- multi-plan fixtures allocate distinct stable request IDs to every step; and
+- dependent positive and causal controls use the corresponding terminal or
+  resumable helper. All prior negative mutation labels/assertions and all V1
+  controls remain present.
+
+The fresh exact card command was:
+
+```bash
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+```
+
+It exited `1`: 16 test files failed and exactly 255 tests = 218 passed + 37
+failed. The complete log SHA-256 is
+`a9765f839cda5b330aa3229a8937319475915b50433f69568958bd153dd0c26a`.
+The inherited non-fatal missing TypeScript source-map warning did not prevent
+collection.
+
+The exact 25 non-ontology failures are unchanged from the original permanent
+RED list above: items 1-12 and 15-27. Each retains its original causal
+classification against the absent approved C, G, dispatcher, W, H,
+orchestrator-interlock, R, or bounded-loop source API/behavior. The repaired
+ontology fixture exposes these 12 additional/current Task10 failures:
+
+1. `preserves accepted v1 replay while requiring strict v2 terminal and
+   resumable families` — strict planned-step bindings and strict event shapes
+   are absent.
+2. `replays durable budget progression through a fourth plan record and
+   rejects an over-limit revision` — strict planned-step parsing and terminal
+   replay grammar are absent.
+3. `rejects a later replan that reuses an earlier non-predecessor plan ID` —
+   its positive strict-plan parser control is absent before the negative
+   mutation.
+4. `rejects a third plan that carries forward an observation from before the
+   intervening plan` — its positive strict-plan parser control is absent
+   before the causal mutation.
+5. `rejects a v2 replay with missing observation budget consumption` — its
+   positive terminal replay control is absent before the budget mutation.
+6. `rejects a v2 replay with missing tool step budget consumption` — its
+   positive terminal replay control is absent before the budget mutation.
+7. `rejects a v2 replay with missing result budget consumption` — its
+   positive terminal replay control is absent before the budget mutation.
+8. `rejects a resumable result anchored to an unrelated suspension
+   checkpoint` — its positive strict approval-resumable replay control is
+   absent before the anchor mutation.
+9. `rejects a resumable result anchored to an unrelated suspension deadline`
+   — its positive strict approval-resumable replay control is absent before
+   the anchor mutation.
+10. `rejects a resumable result anchored to an unrelated suspension next
+    action` — its positive strict approval-resumable replay control is absent
+    before the anchor mutation.
+11. `validates strict automatic and human gateway readbacks` — the disjoint
+    automatic/human gateway union is absent.
+12. `validates effect-outcome-unknown suspension and segmented replay` — the
+    unknown-outcome category, category-dependent checkpoint, and segmented
+    replay grammar are absent.
+
+No failure is caused by syntax, collection, dependency, invented path,
+unrelated inherited behavior, or a fixture shape outside the approved Task10
+ABI. The unchanged source therefore remains a causal RED: the 12 ontology
+failures become GREEN only when the three authorized Task10 sources implement
+the reviewed strict API and behavior. The original Task9 evidence and log hash
+`151bc86619994e6911f51dcccdd1954da3a0c2baffc5ecc4bd59b7ef0ae43cf4`
+remain historical truth and are not replaced by this observation.
+
+The fresh released-control command was:
+
+```bash
+npm test -- packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/resident-loop-scheduler-completion.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts
+```
+
+It exited `0`: 10 test files and all 443 tests passed. The complete log
+SHA-256 is
+`4803b4fac40793772bc52ff4a2e85bb7ae5b8f4f77abdceb3c655690100fe4cc`.
+Fresh standalone `npm run typecheck` exited `0` with `typecheck passed`; its
+complete log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+
+The source-byte manifest proves all 13 authorized product-source states are
+unchanged from `3d185402`: the not-yet-created bounded-loop source remains
+absent and the other 12 source blobs are identical. Its SHA-256 is
+`b0b4322354df7aafbfc4c5425247a0bda0797f2c5098371d37976a6176c6ffa3`.
+The other 15 permanent RED test blobs are byte-identical to
+`1b99822ec532fc51866008c2fc52986775341573`; that manifest SHA-256 is
+`9e79f16f229e528bd10bd124245bca05c07f6c5549e53879b43355dd4dbd6090`.
+The repair scope is exactly
+`packages/ontology/test/agent-resident-loop-contracts.test.ts` and this claim.
+It changes no source, contract, plan, mission state, registry, provider,
+runtime activation, route, network, fallback, unrelated path, or pull
+request.
+
+Task136 remains `implementing`. This fixture repair is not a product
+candidate, approval, integration, strict record 29, assurance-only
+transition, publication, or release. The strict product frontier remains
+**28 of 29**.
