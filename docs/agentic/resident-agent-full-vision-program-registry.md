@@ -28098,3 +28098,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   calibration, `neo`, push, Wave 3, provider, credential, network,
   external-system, or pull-request action is authorized. Strict product
   frontier remains **28 of 29**.
+
+## RV-1-E-938 — Repaired Task136 implementation-plan candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T15:10:22Z
+- Exact repaired implementation-plan candidate
+  `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`, sole parent repair authority
+  `528d1bdd4996c300b84fd1780b5a4ff115964f01`, changes only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The immutable plan is **2,927 lines / 113,542 bytes**, SHA-256
+  `a40cbf45426814551b51ea29704f1509d31f6bd6e8ab4fa0577cfc63994a5d39`.
+  Rejected plan `5487248b0e1587075a5262c6edf7a43201d244ac`,
+  its admission, both rejected reviews, and RV-1-E-937 remain preserved
+  unchanged as planning history.
+- The repair replaces every nonexistent V4 example with the committed
+  `loadV4Contract()`, `releaseGraph.cards`, and
+  `releaseCompatibility.historicalRecords` schema. It proves the five
+  baseline adoptions only through finite injected repository fixtures at
+  their exact candidate, integration, current-HEAD, and blob identities;
+  expands the existing twenty-test mutation/current-prefix corpus rather than
+  adding a top-level adoption field or generic facility; and requires literal
+  record-29 migration failures before any command.
+- The repair binds each V4, product, and post-record-29 assurance candidate
+  exactly once. Separate integration-tree variables now drive explicit
+  behavior-only assurance, typecheck, readiness, repository-prefix,
+  full-differential, blob-equality, forbidden-path, ancestry, diff, and
+  clean-state reruns without rebinding or substituting a reviewed candidate.
+- Fresh coordinator validation proves the approved design's frozen Task136
+  list still matches byte-for-byte at **30 paths = 13 sources + 16 tests +
+  one claim**, the exact 16-test command and fingerprints/markers remain
+  present, all 21 tasks remain ordered, exactly three candidate bindings and
+  three distinct integration-tree bindings exist, all **64** shell blocks
+  pass `bash -n`, and no unresolved implementation placeholder exists.
+  `git diff --check`, factory readiness, and mission-state tests **20/20**
+  pass from the exact clean candidate.
+- Completely fresh read-only architecture assignment
+  `/root/task136_plan_arch_review_v2_12f0309e` owns approved-design coverage,
+  finite seven-seam/four-path/zero-path architecture, trust boundaries,
+  immutable-candidate integration sequencing, no-fallback behavior, review
+  invalidation, strict-release/assurance classification, and history
+  preservation. Different completely fresh read-only executability assignment
+  `/root/task136_plan_exec_review_v2_12f0309e` owns independent
+  path/command/API, real-schema fixture, RED/GREEN, shell-variable/ancestry,
+  exact marker/hash, repository-prefix, differential, record-29, publication,
+  and clean-state executability. Neither previously reviewed any byte of this
+  candidate.
+- Status advances Task136 implementation planning `implementing -> candidate
+  -> reviewing`. This event is not plan approval, implementation
+  authorization, V4 correction, product integration, strict record 29,
+  assurance transition, publication, or product release. Any changed plan
+  byte invalidates both reviews and requires another exact descendant and
+  completely fresh pair.
+- Strict product frontier remains **28 of 29**. Task136 implementation,
+  V4/product/claim/test/source mutation, product RED/GREEN, `neo`, push,
+  Wave 3, provider, credential, network, external-system, and pull-request
+  actions remain unauthorized.
