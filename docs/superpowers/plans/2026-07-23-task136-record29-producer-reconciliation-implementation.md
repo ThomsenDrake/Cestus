@@ -23,12 +23,15 @@ contracts.
 
 - Approved design SHA:
   `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`.
-- RV-1-E-952 preserves rejected Task12 checkpoint
-  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` and authorizes only the
-  three-document fresh-decision ABI/oracle correction forward-merged at
-  `ea739b5140b00b9c4660267e89c36e8614b853b3`. No Task12 test or source work
-  resumes until this exact documentation descendant receives completely fresh
-  independent architecture and executability approval and is integrated.
+- RV-1-E-954 preserves rejected Task12 checkpoint
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` and rejected fresh-decision
+  candidate `eb36b46edb19ff68fe3738093702b0a49f0eede2`, and authorizes only
+  the three-document dual-context dispatcher correction forward-merged at
+  `1c6b0866949761e56fce21411e83038b8a992365`. No Task12 test or source work
+  resumes until this exact documentation descendant receives approval from a
+  completely new fresh independent architecture reviewer and a different
+  completely new fresh independent executability reviewer and is integrated.
+  Neither prior `eb36b46e` reviewer is eligible.
 - Planning authority SHA:
   `050cb93f` is the RV-1-E-935 commit; use `git rev-parse 050cb93f` and record
   its full SHA before implementation authorization.
@@ -1418,6 +1421,7 @@ resident-loop-scheduler-completion-imports.test.ts
 domain-execution-dispatcher.test.ts
   "mints only closed-catalog package capabilities through the default API"
   "uses six literal static adapter modules and eleven constructors without initialization-order drift"
+  "requires exact per-ordinal contexts and rejects rewritten or crossed family bindings"
   "attests only the catalog-specific admissible domain outcome"
   "allows the ordinal-10 automatic compatibility bridge and no other ordinal"
 agent-resident-loop-contracts.test.ts
@@ -1456,7 +1460,16 @@ authorization branches into optional fields.
 
 The dispatcher/G tests must also prove legitimate positive package-owned
 execution for every catalog ordinal 2 through 7 and 9 through 10 with separate
-real adapter-specific contexts and services. For ordinals 2 through 6 and 9
+real adapter-specific contexts and services. PRR supplies independently valid
+`initialContext` and `followUpContext` fixtures for ordinals 2 and 3;
+export/report supplies independently valid `exportContext` and
+`reportContext` fixtures for ordinals 5 and 6. Each pair must share the same
+exact ledger object and matching workspace/resident/task tuple, while
+retaining the exact distinct ordinal-specific tool IDs, lifecycle/readback or
+governed artifact inputs, idempotency data, and service bindings. Each context
+must be passed unchanged to its exact static constructor; deriving,
+spread/copy-rewriting, substituting, swapping, or cross-using the other
+context must fail before constructor I/O. For ordinals 2 through 6 and 9
 through 10, require one wholly `new-ledger-events` execution and one wholly
 `idempotent-existing-ledger-events` execution with the exact catalog event
 type/order/context. For ordinal 7, require exact
@@ -1464,8 +1477,9 @@ type/order/context. For ordinal 7, require exact
 and zero ledger delta.
 Ordinals 0, 1, and 8 must never produce a successful attestation, outcome
 receipt, or terminal. A fixture that only constructs an adapter that throws,
-or a table that only presents a forged permit and observes rejection, is not
-positive admissibility evidence.
+a family fixture that rewrites one context for the other ordinal, or a table
+that only presents a forged permit and observes rejection, is not positive
+admissibility evidence.
 
 - [ ] **Step 2: Freeze import/loader and ABI negatives**
 
@@ -1874,11 +1888,15 @@ remain byte-identical.
 
 **Interfaces:**
 
-- Consumes: six exact package adapter contexts and, for internal G
-  composition only, the authenticated ledger/clock, opaque package-owned
-  resident execution port, W-private before/after-effect currentness
-  closures, trusted tool-request-ID closure, and canonical plan/locator
-  bindings.
+- Consumes: six exact package adapter binding variants. Provider and legacy
+  retain one legitimate shared family context; accepted-graph retains one
+  context; PRR requires exact `initialContext` and `followUpContext`;
+  export/report requires exact `exportContext` and `reportContext`; and
+  destructive-repair retains its separate projection and canonical-repair
+  contexts. For internal G composition only, it also consumes the
+  authenticated ledger/clock, opaque package-owned resident execution port,
+  W-private before/after-effect currentness closures, trusted tool-request-ID
+  closure, and canonical plan/locator bindings.
 - Produces: default-only opaque dispatcher capability/port, default-only G
   permit consumer, isolated durable resident gateway lifecycle, invocation
   attestation, outcome receipt, and at-most-once recovery.
@@ -1911,6 +1929,24 @@ export-report, destructive-repair, and legacy-staging. It accepts no adapter,
 descriptor, executor/factory function, implementation/revision/identity
 string, or lookup callback.
 
+The exact context fields are:
+
+```text
+provider-byte-transfer: context
+prr-correspondence: initialContext (ordinal 2), followUpContext (ordinal 3)
+accepted-graph-review: context
+export-report: exportContext (ordinal 5), reportContext (ordinal 6)
+destructive-repair: projectionContext (ordinal 7), canonicalRepairContext (ordinal 8)
+legacy-staging: context
+```
+
+Validate every context independently. Both PRR contexts must reference the
+same exact ledger object, both export/report contexts must reference the same
+exact ledger object, and the existing destructive pair must continue to do so.
+Each context's resident/task identity must equal the union's exact values; the
+union's one exact workspace value plus those matches freezes the same
+workspace/resident/task tuple for the pair.
+
 - [ ] **Step 2: Build the lazy closed catalog with literal static imports**
 
 Use eleven source-owned catalog entries and implementation revisions inside
@@ -1930,6 +1966,15 @@ sha256(canonical JSON {
 
 Store resolved identities/ledger bindings in a private WeakMap. Existing
 `createAgentDomainExecutionDispatcher({ adapters })` never enters it.
+
+For PRR, call `createPrrInitialSendExecutionAdapter(initialContext)` and
+`createPrrFollowUpExecutionAdapter(followUpContext)`. For export/report, call
+`createExportGenerationAdapter(exportContext)` and
+`createReportGenerationAdapter(reportContext)`. Pass each exact supplied
+context unchanged. Never derive, spread, copy-and-rewrite, substitute, swap,
+or cross-use one ordinal's context to construct another. Provider and legacy
+retain their singular shared context; destructive-repair retains its two
+separate contexts.
 
 - [ ] **Step 3: Freeze G construction, fresh decisions, and the private permit interlock**
 
@@ -1998,13 +2043,19 @@ interface ResidentDomainInvocationAttestationV1 {
 ```
 
 Enforce the approved ordinal 0–10 admissibility table through separate real
-adapter-specific positive fixtures. Ordinals 2 through 6 and 9 through 10
-must each attest both wholly `new-ledger-events` evidence and wholly
+adapter-specific positive fixtures. Ordinals 2 and 3 must execute against
+their independently valid `initialContext` and `followUpContext`; ordinals 5
+and 6 must execute against their independently valid `exportContext` and
+`reportContext`. The pair shares only its exact ledger identity and matching
+workspace/resident/task tuple, and every context is passed unchanged to its
+exact static constructor. Ordinals 2 through 6 and 9 through 10 must each
+attest both wholly `new-ledger-events` evidence and wholly
 `idempotent-existing-ledger-events` evidence. Ordinal 7 alone must attest exact
 `nonledger-projection-artifacts` with zero ledger delta. Ordinals 0, 1, and 8
 must never yield a successful attestation, receipt, or terminal.
-Construction-only contexts that throw and forged-permit rejection are
-insufficient to satisfy these positive cases. Only ordinal 10 may
+Construction-only contexts that throw, a rewritten family context, and
+forged-permit rejection are insufficient to satisfy these positive cases.
+Only ordinal 10 may
 construct the non-durable `approvalClass: "none"` compatibility DTO with
 equal preview hashes and internal actor label
 `resident-automatic-policy`; none of those compatibility-only fields enter

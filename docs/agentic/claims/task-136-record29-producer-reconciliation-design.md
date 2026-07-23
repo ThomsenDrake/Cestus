@@ -1,6 +1,6 @@
 # Task136 Record-29 Producer Reconciliation Design Claim
 
-Status: awaiting fresh independent dual review
+Status: awaiting a completely new fresh independent dual review pair
 
 Design:
 `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
@@ -11,8 +11,11 @@ Branch: `codex/task-136-resident-full-vision-bounded-loop`
 
 Worker: Codex program coordinator
 
-Exact fresh-decision correction authority merge:
-`ea739b5140b00b9c4660267e89c36e8614b853b3`
+Exact dual-context correction authority merge:
+`1c6b0866949761e56fce21411e83038b8a992365`
+
+Preserved rejected fresh-decision candidate:
+`eb36b46edb19ff68fe3738093702b0a49f0eede2`
 
 Preserved rejected Task12 checkpoint:
 `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`
@@ -34,10 +37,11 @@ Authority:
 - Superseding four-path interlock addendum: `RV-1-E-933`
 - Superseding zero-path loader/ABI addendum: `RV-1-E-934`
 - Fresh-decision ABI correction authorization: `RV-1-E-952`
+- Dual-context dispatcher correction authorization: `RV-1-E-954`
 - The program owner approved preserving all 29 cards and applying a finite,
   source-specific producer correction directly to Task136 as strict record 29.
-- RV-1-E-933, RV-1-E-934, and RV-1-E-952 require every later implementation
-  authorization to state exactly: “Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.”
+- RV-1-E-933, RV-1-E-934, RV-1-E-952, and RV-1-E-954 require every later
+  implementation authorization to state exactly: “Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.”
 - This documentation claim does not itself authorize implementation.
 
 Bounded design result:
@@ -88,11 +92,21 @@ Bounded design result:
   text. The legacy caller-registered dispatcher cannot issue or satisfy a
   resident capability.
 - The resident default API binds an opaque preview/invocation port only after
-  every retained adapter ledger is present, both destructive contexts share
-  it, and all retained ledgers are identity-equal to W's freshly authenticated
-  mounted ledger with matching workspace/resident/task identity. Its private
-  preview operation supplies G's exact pre-request facts; invocation requires
-  a fresh G-issued one-shot permit, not a capability plus claim string.
+  every retained adapter ledger is present; PRR `initialContext` and
+  `followUpContext`, export/report `exportContext` and `reportContext`, and
+  both destructive contexts each share their pair's exact ledger object; and
+  all retained ledgers are identity-equal to W's freshly authenticated mounted
+  ledger with the exact matching workspace/resident/task tuple. Provider and
+  legacy retain their legitimate singular context, while destructive retains
+  its already separate contexts. Its private preview operation supplies G's
+  exact pre-request facts; invocation requires a fresh G-issued one-shot
+  permit, not a capability plus claim string.
+- The dispatcher validates both contexts in each PRR or export/report pair
+  independently and passes each unchanged to its exact static constructor:
+  `initialContext` only to ordinal 2, `followUpContext` only to ordinal 3,
+  `exportContext` only to ordinal 5, and `reportContext` only to ordinal 6.
+  Derivation, spread/copy-rewrite, substitution, swapping, or cross-use is
+  forbidden and covered by hostile tests.
 - G's frozen package-private default permit consumer is excluded from the
   unchanged wildcard barrel and direct-imported only by the dispatcher. It
   atomically validates and consumes the permit against the exact opaque port,
@@ -140,13 +154,18 @@ Bounded design result:
   request, and permits reconciliation/replanning but never reexecution.
 - Positive dispatcher admissibility is executable, not structural: separate
   real adapter-specific fixtures execute ordinals 2 through 7 and 9 through
-  10. Ordinals 2 through 6 and 9 through 10 prove both wholly new and wholly
-  idempotent-existing ledger evidence through exact `new-ledger-events` and
-  `idempotent-existing-ledger-events` modes; ordinal 7 proves only exact
-  `nonledger-projection-artifacts` with zero ledger delta; ordinals 0, 1, and
-  8 never produce a successful attestation, receipt, or terminal.
-  Forged-permit rejection or construction-only throwing fixtures cannot
-  satisfy this gate.
+  10. PRR ordinals 2 and 3 use independently valid `initialContext` and
+  `followUpContext` fixtures; export/report ordinals 5 and 6 use independently
+  valid `exportContext` and `reportContext` fixtures. The paired fixtures share
+  the exact ledger identity and matching workspace/resident/task tuple but
+  retain their distinct tool IDs, lifecycle/readback or governed artifact
+  inputs, and service bindings. Ordinals 2 through 6 and 9 through 10 prove
+  both wholly new and wholly idempotent-existing ledger evidence through exact
+  `new-ledger-events` and `idempotent-existing-ledger-events` modes; ordinal 7
+  proves only exact `nonledger-projection-artifacts` with zero ledger delta;
+  ordinals 0, 1, and 8 never produce a successful attestation, receipt, or
+  terminal. A rewritten family context, forged-permit rejection, or
+  construction-only throwing fixture cannot satisfy this gate.
 - W's `reverifyAfterAwait` distinguishes current, recordable-stale, and
   unavailable authority. Recordable stale permits only durable suspension
   bookkeeping on the same freshly authenticated mount/ledger/store; complete
@@ -228,15 +247,17 @@ Independent design review history:
   through the unchanged wildcard barrel, G lacks a package-owned pre-request
   preview operation, automatic execution/T120 and unknown-result mappings are
   incomplete, and resident ledger identity is not frozen.
-- RV-1-E-934 and this history-preserving descendant address all findings with
-  the lazy static closed catalog, default-only resident API, exact mounted
-  ledger identity, private preview and fresh-permit invocation operations,
+- RV-1-E-934, RV-1-E-952, RV-1-E-954, and this history-preserving descendant
+  address the accumulated findings with the lazy static closed catalog,
+  default-only resident API, exact mounted ledger identity, private preview
+  and fresh-permit invocation operations,
   strict automatic/human T120 unions, ordinal-10-only compatibility bridge,
   complete unknown-result mapping, claim-bound catalog-specific invocation
   attestation, durable outcome receipt, unchanged `not-claimable` tick
   summaries, the projection-only W diagnostic, four pinned interlock paths,
-  and W-only resident checkpoint recovery. Completely fresh architecture and
-  executability reviews are still required on the exact committed descendant.
+  and W-only resident checkpoint recovery. A completely new fresh architecture
+  and executability review pair is still required on the exact committed
+  descendant.
 - Rejected Task12 checkpoint
   `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` is preserved because it left no
   same-process operation that could advance an exact live human request
@@ -247,13 +268,28 @@ Independent design review history:
   GREEN remains limited to
   `packages/agent/src/domain-execution-dispatcher.ts` and
   `packages/agent/src/resident-loop-tool-gateway.ts`.
+- Exact fresh-decision candidate
+  `eb36b46edb19ff68fe3738093702b0a49f0eede2` is preserved and rejected.
+  Fresh architecture reviewer
+  `/root/task136_fresh_decision_arch_review_eb36` approved it with no P0-P3
+  finding, while different fresh executability reviewer
+  `/root/task136_fresh_decision_exec_review_eb36` rejected it with one exact
+  P1: its `prr-correspondence` and `export-report` union variants still exposed
+  one singular context even though each selected family constructs two
+  ordinal-specific adapters. RV-1-E-954 and this forward three-document
+  descendant correct only that P1 with four exact fields, independent
+  validation, same-ledger and tuple interlocks, unchanged static-constructor
+  passage, hostile cross-use tests, and real per-ordinal positive fixtures.
+  Neither prior `eb36b46e` reviewer is eligible to approve these changed
+  bytes.
 
 Fresh correction validation:
 
 - Exact authority HEAD before the edit was clean
-  `ea739b5140b00b9c4660267e89c36e8614b853b3`; it is the two-parent
-  history-preserving forward merge whose first parent is rejected checkpoint
-  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`.
+  `1c6b0866949761e56fce21411e83038b8a992365`; it is the two-parent
+  history-preserving forward merge whose first parent preserves exact rejected
+  candidate `eb36b46edb19ff68fe3738093702b0a49f0eede2` and whose second-parent
+  authority lineage records RV-1-E-954.
 - `git diff --check` passes and the diff contains exactly this claim, the
   approved design, and the implementation plan. No product source, product
   test, Task136 product claim, registry, contract, mission, checker, assurance,
@@ -277,7 +313,7 @@ Validation required before commit:
 
 - `git diff --check`
 - exact three-file scope from
-  `ea739b5140b00b9c4660267e89c36e8614b853b3`
+  `1c6b0866949761e56fce21411e83038b8a992365`
 - no unresolved design markers
 - `npm run factory:check`
 - `node --test scripts/check-software-factory-mission-state.test.mjs`
