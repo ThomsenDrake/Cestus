@@ -28448,3 +28448,62 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   event, is authorized next. Strict product frontier remains **28 of 29**.
   This is assurance approval, not integration, Task136 product authority,
   strict record 29, assurance calibration, publication, or product release.
+
+## RV-1-E-944 — Task136 V4 authority correction integrated; product packet authorized
+
+- Recorded at: 2026-07-23T17:49:48Z
+- Approved exact V4 candidate
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0` was history-preservingly
+  integrated as merge
+  `bf392124e556b60781b374579f09c7dfe19918a9`. Its exact first parent is
+  approval `3227e93d038773ab16f9efcfa742ba7cda5aa046`; its exact second parent is
+  the reviewed candidate. Permanent RED `fa5cf3ea`, GREEN `3b077021`, pin
+  synchronization `91ad4748`, RV-1-E-942 admission, RV-1-E-943 approval, and
+  all earlier V4 history remain ancestral and unchanged.
+- Fresh integration-tree gates pass assurance **20/20**, all four exact
+  contract markers, standalone typecheck, factory readiness, diff and clean
+  state. Repository mode executes all **28/28** released command cards,
+  emits `TASK136_REPOSITORY_PREFIX_OK records=28 commands=28`, and stops only
+  with `repository release closure incomplete: expected 29 records, found
+  28`. All six integrated V4 blobs equal the reviewed candidate blobs
+  exactly; Task138-H's released source, test, and claim blobs remain
+  unchanged from integration `12d23a69`.
+- Integration full-suite statuses remain inherited and non-green:
+  `npm test=1` and `npm run verify=1`. The exact candidate/integration JSON
+  comparison passes at **504 files = 484 passed + 20 failed** and **3,231
+  tests = 3,178 passed + 48 failed + 5 skipped**, emitting
+  `TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-integration`. Integrated
+  evidence hashes are
+  `e3a8695377595b189b40c8aa363b7849df21c2bb3e3127306f7ba0e6c05fc4f9`
+  for Vitest JSON,
+  `ccbb2e4bce7986dd99068fdb8a14a019bda49687caed5815e570fc0f56e0d988`
+  for the npm-test log, and
+  `ddd24c7480c1d59c02834c872c496af9ea7f857b7eefd2ac3d6fae68f28ac266`
+  for the verify log.
+- The first integration JSON observation is preserved separately and not
+  used for integration admission. It reports the same documented
+  timeout-sensitive prerequisites assertion as passed, producing 47 rather
+  than 48 failures while every other identity/status remains equal. Its
+  JSON/npm-test/verify hashes are respectively
+  `f99526b289a7cb99cc6d4a2b807a03b77306fe2b59d863c4ee58bb10ba3924f4`,
+  `fade19c48917ca70d90063ed01954600e6c733bc1ca5ab71b9b6aad5db726a42`,
+  and
+  `63bd2a943ee6460133912df1b8c869c37afe428f1cc40d9b0169e88026190ecf`.
+  The exact rerun reproduced the candidate JSON cohort and passed the
+  fail-closed comparator without any repository-byte change.
+- Task136 V4 authority correction advances `approved -> integrated`. This
+  event is integrated assurance authority and is **not** a product release,
+  strict record 29, post-record assurance calibration, `neo` publication, or
+  Wave-3 activation. Strict product frontier remains **28 of 29**.
+- The condition in RV-1-E-941 is now satisfied. The exact next packet is
+  Task136 product implementation under approved design
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` and plan
+  `c5df0231c82264a9bfde33dcfc7e68b61b37c93f`: forward-merge this integrated
+  authority into preserved Task136 lineage
+  `72e1ee6624c582218995e3e075e2303998811834`, commit the permanent exact
+  sixteen-test RED before changing any source, then apply the seven ordered
+  source-only GREEN seams within the frozen **30 paths = 13 sources + 16
+  tests + one claim**. No other product, adapter, scheduler, barrel,
+  provider, credential, network, external-system, fallback-write, `neo`,
+  push, Wave-3, or pull-request change is authorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
