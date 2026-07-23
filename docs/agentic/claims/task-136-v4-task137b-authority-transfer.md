@@ -658,3 +658,167 @@ Implementation evidence:
   repository strict 28/28 plus only incomplete-29 closure, standalone
   typecheck, factory, diff/scope/ancestry/dependency/clean, and no-product-byte
   gates.
+
+## RV-1-E-941 Task136 V4 correction authority checkpoint
+
+- Exact implementation authority
+  `0955f28f9115885fc8859b7b223f3d91cf77bf03` was history-preservingly
+  forward-merged into the clean V4 GREEN lineage as
+  `327f9421ae604e4764d29033b6bda22fda3382df`. The merge has exactly two
+  parents: preserved V4 first parent
+  `96142632606668519b2198590bdb3ae87b367691` and implementation-authority
+  second parent `0955f28f9115885fc8859b7b223f3d91cf77bf03`.
+- Before the merge, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`
+  exited `0` with exactly `20` tests, `20` passed, and `0` failed. The
+  prospective six-file V4 correction ceiling is exactly:
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`, and
+  `scripts/check-software-factory-mission-state.mjs`.
+- The prospective V4 JSON SHA-256 remains exactly
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  the prospective V4 assurance fingerprint remains exactly
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`,
+  and the synchronized mission immutable-envelope fingerprint remains
+  exactly
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- The fresh full baseline is bound to exact tree
+  `327f9421ae604e4764d29033b6bda22fda3382df`. `npm test -- --reporter=json
+  --outputFile=/tmp/task136-v4-full-327f9421ae604e4764d29033b6bda22fda3382df.vitest.json`
+  exited `1`; its JSON reports `success=false`, file counts
+  `total=504`, `passed=484`, `failed=20`, `skipped=0`, and test counts
+  `total=3231`, `passed=3178`, `failed=48`, `skipped=5`, `deferred=0`.
+  `npm run verify` also exited `1` after standalone typecheck passed and the
+  inherited test cohort failed. These nonzero results are the exact
+  candidate-differential baseline and are not passing gates.
+- Baseline SHA-256 values are
+  `c8fd4c43c6eb7a29755b83edf65004254ceb52ff49f840c972885f885426e566`
+  for the Vitest JSON,
+  `cbf1cb3317cc9581f976a2cd27a2f4c1745aecf2b00650a59e93f46bc9dc40a4`
+  for the npm-test log, and
+  `15125944a80d1f605487560f1dd13e28603a7b72335baf53a2d1c081177008f3`
+  for the verify log. Each log carries exact
+  `TREE_SHA=327f9421ae604e4764d29033b6bda22fda3382df`.
+- This is an authority/checkpoint transition, not a product release. No
+  Task136 product/package byte may change before the exact six-file V4
+  candidate is complete, independently approved, and integrated. This
+  checkpoint authorizes no registry, release-record, `neo`, push, provider,
+  credential, network, external-system, fallback-write, or product change.
+
+## Task 3 permanent Task136 producer-reconciliation causal RED
+
+- Starting authority checkpoint:
+  `f37afbf06ab7adc1d0ea3613c2e1c77032e44379`. The focused command was
+  `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  It exited `1` after exactly `20` top-level tests: `16` passed, `4` failed,
+  `0` skipped, `0` cancelled, and `0` todo. <!-- agent-readiness-allow: exact Node test counter -->
+- The four failing titles and their first mismatches are exact:
+  1. `verifies the 29-card topological graph, exact Task136 transfers, and
+     prerequisites` — all seven approved source `transferToIds` projections
+     first differ because the record-28 contract omits `Task136`.
+  2. `requires corrected producer ownership and exact Task136 scope and
+     command` — the first CF1-HR mismatch reports the four Task136 handoff and
+     ontology paths as `owned` rather than `transferred`.
+  3. `requires frozen v4 compatibility branches and all 28 raw prefix pins` —
+     the first compatibility mismatch reports the current six records rather
+     than the approved eleven-record sequence.
+  4. `rejects finite Task136 graph, compatibility, baseline, raw-pin, and
+     record-29 migration mutations` — the first mismatch is current
+     fingerprint
+     `3af58aba85ea68137462d2054072e4e3ce3a2a8146ad3be8ee400b103375feb7`
+     rather than approved
+     `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`.
+- The other `16` top-level tests are green, including immutable V1-V3 and all
+  28 raw release pins, composition and ABI corpora, command cards, strict
+  release-record parsing, repository evidence, historical record-11/14/18/
+  26/27 migrations, the preserved W1 `.slice(0, 26)` fixture, and the
+  RV-1-E-941 durable authority checkpoint.
+- The RED test now contains the approved literal 30-path Task136 scope,
+  16-test command, seven finite source-transfer groups, eleven historical
+  compatibility entries and dispositions, all 28 raw pins, five exact
+  candidate/integration/HEAD baseline adoptions, all 27 record-29
+  transferred/adopted current-HEAD migrations, and candidate/integration
+  mismatch proof for every Task136 path. Baseline and record-29 mutants require
+  zero release-command calls.
+- No product byte changed. The exact Task 3 working diff from
+  `f37afbf06ab7adc1d0ea3613c2e1c77032e44379` is limited to this append-only
+  claim and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Contracts, checker, mission state, registry, packages, runtime, providers,
+  credentials, network behavior, release records, and `neo` remain unchanged.
+
+## Task 4 finite Task136 producer-authority GREEN
+
+- The exact permanent RED parent is
+  `fa5cf3ead0d3886d8173bc67414202be1e29629e`. The approved V4 contract now
+  expresses only the seven named Task136 source-transfer groups, their exact
+  22 transferred paths, the exact 30-path Task136 scope, the 16-test command,
+  nine prerequisites, eleven finite historical compatibility entries, all 28
+  raw registry pins, and five exact candidate/integration/HEAD baseline
+  adoptions. It provides no generic or transitive transfer/adoption facility.
+- The checker uses explicit finite branches for the eleven compatibility
+  sources and the seven Task136 producers. Six legacy raw records retain
+  strict canonical-hash validation. The other five newly described historical
+  records remain bound by their exact compatibility constants and the 28
+  immutable raw registry pins. Canonical historical bytes use their recorded
+  `owned` dispositions; synthetic and current producer records use the
+  corrected static `transferred` dispositions. This distinction is selected
+  only by exact card ID plus exact canonical JSON SHA-256.
+- Before record 29, each transferred source path must still match its exact
+  candidate, integration, and current-HEAD blob. Once a valid Task136 record
+  exists, every transferred source path migrates to Task136 and Task136 must
+  own the exact 30-path scope with candidate/integration/current-HEAD equality.
+  Baseline adoption checks are the exact five approved paths and tuples, not a
+  reusable adoption mechanism.
+- From these intended GREEN bytes, `node --check
+  scripts/resident-agent/assurance/task136-bounded-assurance.mjs && node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed. Contract mode emits
+  `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`.
+- The V4 contract SHA-256 is exactly
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+  The release-graph plus compatibility assurance fingerprint is exactly
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`.
+  The Task 3 focused-test blob, mission pins, registry, release records,
+  product/package bytes, provider behavior, credentials, network behavior,
+  external systems, `neo`, and remote refs remain unchanged. This is an
+  assurance authority transition, not a product release.
+
+## Task 5 Task136 mission-authority pin synchronization
+
+- The exact Task 4 parent is
+  `3b0770218538270b088ca7baaf59e15aeb42a867`. The executable/config delta is
+  exactly two fields: `mission.frozenAuthority.sha256` advances from
+  `ec2ff7d4b3aee00e507de0e6c9a468bde4a65c34c115dd17447b7857c49d7354`
+  to `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  and `expectedImmutableEnvelopeFingerprint` advances from
+  `sha256:0d6e437990b0320436e349d595ceb3445e71bc9c04c7f208b558d0c8f5bf91b3`
+  to
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+  Mission topology and mission-test bytes are unchanged.
+- Before the pin synchronization,
+  `node scripts/check-software-factory-mission-state.mjs --json` failed only
+  with `frozen authority digest changed`. From the synchronized bytes it exits
+  `0` with source fingerprint
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`
+  and immutable-envelope fingerprint
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- `node --test scripts/check-software-factory-mission-state.test.mjs` exits
+  `0` with exactly `20` tests, `20` passed, and `0` failed.
+  `npm run factory:check` emits `factory-readiness passed`.
+- Factory readiness initially identified the exact historical Node test
+  counter label `0 todo` as its case-insensitive unfinished marker. <!-- agent-readiness-allow: exact Node test counter --> The
+  coordinator-authorized same-line `agent-readiness-allow` annotation states
+  that it is an exact Node test counter. The original counter remains
+  byte-visible and its RED count and meaning are unchanged.
+- The V4 contract, assurance test and checker, registry, release records,
+  packages/product bytes, provider behavior, credentials, network behavior,
+  external systems, `neo`, and remote refs remain unchanged. This mechanical
+  pin synchronization is an assurance checkpoint, not a product release.

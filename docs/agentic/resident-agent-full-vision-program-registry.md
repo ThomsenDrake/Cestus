@@ -27649,3 +27649,861 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3, use providers/credentials/external systems, or open a pull request.
 - The strict product frontier remains **28 of 29**. This implementation
   admission is not a product release.
+
+## RV-1-E-931 — Task136 record-29 producer-reconciliation design authorized
+
+- Recorded at: 2026-07-22T20:53:23Z
+- The program owner explicitly approves the 29-card-preserving finite V4
+  direct-source correction after the clean pre-RED schema/API audit. The
+  existing Task136 implementation owner is stopped without source, test, or
+  claim edits at exact clean history-preserving checkpoint
+  `72e1ee6624c582218995e3e075e2303998811834`; its Task120 pre-RED evidence and
+  both authority merges remain preserved. Strict frontier stays **28 of 29**.
+- One documentation-only Level-2 design owner may add exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The design must enumerate a finite source-and-target-specific V4 transfer
+  set for the T120-R, C136-P, G136-R, Task137B-W, CF1-HR, and
+  Task136-FC-Ports producer seams; preserve all **29** card IDs/order and raw
+  records **1–28**; keep Task136 as strict record **29**; and define exact
+  causal RED/GREEN, ownership, review, migration, mission-state-pin, and
+  repository-prefix gates.
+- The design must resolve the released ontology/plan contradiction without a
+  synthetic successful suspension: suspension remains required for resumable
+  outcomes, while completed/failed terminal results must carry their exact
+  final observation and durable terminal readback without inventing a
+  resumable category. It must also require a canonical V2 store/readback,
+  typed candidate boundary, prebound G execution/approval capability, opaque
+  W suspend/reclaim/reverify capability, internal H full-readback projection,
+  and R-owned composition. Task138's browser DTO remains narrow and unchanged.
+- This authority permits no product source/test edit, V4/checker/mission-state
+  edit, raw-record mutation, V5, new card, compatibility fallback, public
+  authority issuer, provider/credential/network/external effect, Task136 RED,
+  integration, push, pull request, or Wave-3 work. The written design requires
+  explicit program-owner review before an implementation plan or correction
+  packet begins. Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Status advances Task136 producer reconciliation design `claimed ->
+  implementing`. This is not a product release and does not approve or release
+  Task136.
+
+## RV-1-E-932 — Task136 seven-seam Approach 1 design amendment authorized
+
+- Recorded at: 2026-07-22T23:22:54Z
+- The program owner explicitly approves the review-mandated seven-seam
+  Approach 1 amendment. Rejected written-design candidate
+  `40d507d549ea5127e9f2597fa8d150c8a4c3d904` and its rejected ancestors
+  `819d3b066ea6757d6a25163906b8803517b6480b`,
+  `e41a1504b7a0a2438770f567e5b08672ba0ed4f2`, and
+  `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` remain preserved. They are
+  design checkpoints, not approved candidates, integrations, assurances, or
+  product releases.
+- Fresh independent architecture and executability reviews of `40d507d5`
+  prove that the six-seam/21-path RV-1-E-931 ceiling cannot establish
+  authoritative executor provenance: G, W, or R can brand caller-supplied
+  functions but cannot prove that they came from the registered domain
+  dispatcher. The same reviews require an exact staged G readback union, a
+  G-owned logical locator, idempotent recovery after every durable suspension
+  prefix, a checkpoint kind the existing task orchestrator cannot release,
+  and a W-owned stale-authority recording capability.
+- The finite correction adds exactly one source seam, `G136-SC`. Its released
+  test `packages/agent/test/domain-execution-dispatcher.test.ts` transfers to
+  Task136. The previously unowned
+  `packages/agent/src/domain-execution-dispatcher.ts` is adopted directly by
+  Task136 from one exact pinned baseline; it is not retroactively attributed
+  to G136-SC and no raw release record changes. The source and test are
+  byte-identical at G136-SC candidate
+  `70814c1259871c5458a3578fae8a5c8281540377` and integration
+  `253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5`, with blobs
+  `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `bd9df733d7ab8f915269624168524ac48bc64621`, respectively.
+- G136-SC's exact raw record remains pinned at SHA-256
+  `1576cf80cb9cc2184a12f60db44abda79e7d3b0f375f10310b1e88fe28812574`
+  and canonical JSON SHA-256
+  `b7ec22083b3b8be5140b3a40b09dfa4e34c2e86f01fe15c3cc3453d16c77d0b0`.
+  Its target array becomes `G136-R`, then `Task136`; its historical dispatcher
+  test remains recorded as `owned`. Task136 adds G136-SC as its final direct
+  prerequisite and appends the dispatcher source/test immediately before its
+  claim path and the dispatcher test to its exact command.
+- The resulting bounded design has exactly seven producer seams, **22**
+  transferred paths, one exact baseline-adopted source, and **26** Task136
+  paths: **11** product sources, **14** tests, and one claim. It preserves all
+  **29** card IDs/order, raw strict records **1-28**, Task136 as strict record
+  **29**, Task138-H bytes, and the strict product frontier at **28 of 29**.
+  With the exact ordering authorized here, prospective values are V4 JSON
+  SHA-256 `6085471123099150a4c0ead9a1315f0db2353432ea639cc274c31c60bd6d4c4f`,
+  assurance fingerprint
+  `14f5e3118d478fdb8b76ae1627350942706a4a87b428b048c2e13249981904e4`,
+  and mission immutable-envelope fingerprint
+  `sha256:f919da5f8543811786b94bb6821a4102fdf4d81713fda68c2972a208c389df20`.
+- The documentation-only design owner may now revise exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The revision must specify the opaque dispatcher-issued capability and stable
+  implementation identity; G's requested, human-approved, claimed, and
+  completed stages; durable logical discovery; W's exact read-or-reuse prefix
+  recovery including release-before-return; the new resident-only
+  orchestration checkpoint discriminator; and recordable-stale versus wholly
+  unavailable authority outcomes. It then requires a completely fresh
+  independent architecture/executability review pair.
+- This amendment authorizes no product source/test, V4/checker/mission-state,
+  raw-record, Task136 RED, implementation-plan, integration, push, provider,
+  credential, network, external-system, pull-request, record-29, or Wave-3
+  mutation. The exact revised written design still requires explicit
+  program-owner review before implementation planning or any correction
+  packet begins. Status remains Task136 producer reconciliation design
+  `implementing`. This event is not a product release.
+
+## RV-1-E-933 — Task136 four-path Approach 1 interlock addendum authorized
+
+- Recorded at: 2026-07-23T12:13:31Z
+- The program owner explicitly approves the four-path Approach 1 interlock
+  addendum after fresh independent reviews rejected written-design candidate
+  `75da663651c90cf41eee208dba36e21028b75aa2`. That candidate and rejected
+  ancestors `40d507d549ea5127e9f2597fa8d150c8a4c3d904`,
+  `819d3b066ea6757d6a25163906b8803517b6480b`,
+  `e41a1504b7a0a2438770f567e5b08672ba0ed4f2`, and
+  `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` remain preserved as design
+  checkpoints. None is an approved candidate, integration, assurance, or
+  product release.
+- The reviews prove two remaining defects. First, caller-supplied dispatcher
+  registrations can still self-attest implementation provenance and a claimed
+  gateway prefix cannot reconstruct an exact outcome without risking effect
+  reexecution. Second, the released task orchestrator can interpret the new
+  resident suspension checkpoint as a stale generic claim, append a competing
+  release, and reclaim generation plus one before W finishes its durable
+  resident prefix. The corrected design must close both defects rather than
+  weaken the record-29 restart or at-most-once guarantees.
+- Exactly four additional, previously unowned orchestration paths are adopted
+  directly by Task136, in this order immediately before its claim path:
+  `packages/agent/src/task-orchestrator.ts`,
+  `packages/agent/test/task-orchestrator-claims.test.ts`,
+  `packages/agent/src/task-orchestrator-projection.ts`, and
+  `packages/agent/test/task-orchestrator-projection.test.ts`. V4 must pin their
+  exact common baseline at W1 candidate
+  `bd3b8ed3e287a6a598dfb246524e36ca2a345438`, W1 integration
+  `75de81f110b4f405f9ec064104bc2c2b4f79e223`, and pre-record-29 HEAD, with
+  blobs `72b11352c8a3c79237404257d676c1ef27fef5db`,
+  `12d68f0b407f8b6f867a232c496b63b064e489bb`,
+  `e4656da434f0ba48d670be085ba503dd7c51588b`, and
+  `6e9062b5c8e1a679612cf09dcb664dfe3bbeb9e7`, respectively. No released V4
+  owner, W1 ownership, prerequisite, transfer, raw-record change, or
+  compatibility entry is invented for these paths.
+- The seven producer seams and **22** transferred paths remain unchanged.
+  Baseline adoption increases from one path to exactly five. Task136 retains
+  exactly nine direct prerequisites and eleven source-ordered compatibility
+  entries, and becomes final owner of exactly **30** paths: **13** product
+  sources, **16** tests, and one claim. Its exact command appends the
+  task-orchestrator claims and projection tests after the existing fourteen
+  tests. All **29** card IDs/order, raw strict records **1-28**, Task136 as
+  strict record **29**, Task138-H bytes, and the strict frontier at **28 of
+  29** remain unchanged.
+- With that exact ordering, the prospective V4 JSON SHA-256 is
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  the prospective assurance fingerprint is
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`,
+  and the synchronized mission immutable-envelope fingerprint is
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- The corrected dispatcher design must add a resident-only factory whose
+  strict package-binding union selects a closed dispatcher-owned catalog of
+  exact dynamic imports and source-owned implementation revisions. The legacy
+  caller-registered dispatcher stays available to released callers but can
+  never mint or enter a resident execution capability. The stable capability
+  hash is derived only from the dispatcher ABI and exact ordered catalog
+  entries, never function stringification or caller-chosen identity.
+- The corrected resident gateway design must use resident-specific requested,
+  human-approved, execution-claimed, outcome-observed, completed, denied, and
+  failed durable events. Automatic and human authorization are structurally
+  disjoint; human approval binds the exact decision, approver, and approved
+  preview hash. Exactly one permanent claim may exist. Fresh execution is
+  possible only through a newly issued, in-memory, one-shot permit after the
+  durable claim. Rereading a claimed prefix never yields that permit and never
+  invokes an effect. Completion requires exact claim-caused domain evidence,
+  a canonical durable outcome receipt, and then completion. Any claim without
+  that receipt is sealed as `effect-outcome-unknown`; W records and suspends
+  that exact request/claim/capability binding for reconciliation and burns the
+  original tool request permanently. This is conservative at-most-once, not
+  exactly-once execution.
+- The four adopted orchestration paths must make a same-claim
+  `resident-loop-suspension` checkpoint a durable supersession in active,
+  cancellation-race, and stale-recovery paths. The orchestrator must neither
+  append a generic release nor reclaim it. Its projection must recognize that
+  checkpoint before expired-lease recovery and derive the existing blocked,
+  non-recoverable state with an explicit resident-loop diagnostic while
+  retaining the exact checkpoint. W alone completes checkpoint, resident
+  suspension, resident resumable result, and release. `suspendAndRelease`
+  creates state zero; restart recovery accepts only already durable states one
+  through four and never manufactures a checkpoint from an untrusted empty
+  locator.
+- The documentation-only design owner may now revise exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The revision must freeze the complete dispatcher provenance and durable
+  outcome protocol, exact G logical locator and authorization unions, W
+  unknown-outcome and prefix-recovery behavior, task-orchestrator interlock,
+  four baseline pins, 30-path scope, 16-test command, exact fingerprints,
+  negative-test ceiling, and implementation/admission sequence. It requires a
+  completely fresh independent architecture/executability review pair on one
+  exact committed descendant.
+- This event authorizes no product source/test, V4/checker/mission-state,
+  raw-record, Task136 RED, implementation-plan, integration, push, provider,
+  credential, network, external-system, pull-request, record-29, or Wave-3
+  mutation. The exact revised written design still requires explicit
+  program-owner approval at its fresh dual-reviewed commit before
+  implementation planning or any correction packet begins.
+  Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Status remains Task136 producer reconciliation design `implementing`. This
+  event is not a product release and does not advance the strict frontier.
+
+## RV-1-E-934 — Task136 zero-path Approach 1 loader/ABI addendum authorized
+
+- Recorded at: 2026-07-23T13:27:45Z
+- The program owner explicitly approves the zero-path Approach 1 loader/ABI
+  addendum after completely fresh architecture and executability reviews
+  rejected written-design candidate
+  `7ebf3097b3362e1c16ac6466004a608b6385098c`. That candidate and rejected
+  ancestors `29826501dbad3650969cb3a45d1c4c933258489f`,
+  `75da663651c90cf41eee208dba36e21028b75aa2`,
+  `40d507d549ea5127e9f2597fa8d150c8a4c3d904`,
+  `819d3b066ea6757d6a25163906b8803517b6480b`,
+  `e41a1504b7a0a2438770f567e5b08672ba0ed4f2`, and
+  `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` remain preserved as design
+  checkpoints. None is an approved candidate, integration, assurance, or
+  product release.
+- The reviews prove six construction defects without changing the intended
+  product boundary. The released repository import policy rejects the
+  RV-1-E-933 literal dynamic imports; the unchanged agent wildcard barrel
+  would re-export any named resident factory or inspector; G has no private
+  current-preview operation before request append; automatic policy lacks an
+  exact bridge to the released human-shaped adapter DTO and a
+  decision-free T120 readback; `effect-outcome-unknown` lacks a resumable
+  result-category mapping; and resident legacy staging does not explicitly
+  require the ledger identity needed by the attestation protocol.
+- This addendum supersedes only RV-1-E-933's loader/export and incomplete ABI
+  construction. The dispatcher uses literal **static imports** of the exact
+  eleven already named package constructors and descriptors. Because those
+  adapter modules runtime-import the dispatcher helper, no imported adapter
+  descriptor, constructor, or catalog entry may be read during dispatcher
+  module initialization. The exact closed ordered catalog is assembled only
+  inside the resident factory after ESM module evaluation. The frozen
+  dispatcher default export may reference only dispatcher-local functions at
+  module initialization. No dynamic import, computed loader, `require`,
+  evaluator, or loader-policy exemption is added.
+- `domain-execution-dispatcher.ts` default-exports one frozen resident-only API
+  object. The unchanged
+  `export * from "./domain-execution-dispatcher.js"` barrel does not re-export
+  that default. The already owned Task136 import-policy tests must require the
+  exact production direct importers, forbid a named or barrel re-export,
+  prove the agent barrel exposes no resident issuer/inspector, and reject any
+  alternate loader or import path. No `packages/agent/src/index.ts` or released
+  Task137 authority-policy edit is authorized.
+- The resident API's WeakMap-backed port exposes only package-owned current
+  preview rebuilding and a claim-bound, one-shot invocation/attestation
+  operation. The first operation returns the exact copied current preview,
+  sources, artifacts, provenance, locks, and freshness facts needed before G
+  appends a request. The second requires the exact fresh claim-bound execution
+  permit; a capability plus caller-supplied claim ID is insufficient. No
+  adapter, executor, raw function, descriptor bag, structural port, reusable
+  permit, or caller-constructed attestation escapes.
+- Every resident factory binding must contain a present validated `EventLedger`.
+  In particular the resident legacy-staging variant refines
+  `CreateLegacyStagingAdapterInput` to require its ledger before construction.
+  Both destructive-repair contexts and every other selected context must bind
+  the same ledger identity and matching workspace/resident/task identity.
+  Before W issues the private G port it compares every retained ledger by
+  object identity with W's freshly authenticated mounted ledger. A missing,
+  foreign, substituted, or cross-identity context fails before preview,
+  constructor I/O, request append, or effect.
+- Automatic and human authorization remain structurally disjoint in durable G
+  events and canonical T120 gateway readbacks. Only catalog ordinal 10,
+  `legacy.staging.execute`, may use a frozen package-private compatibility
+  bridge to the unchanged `AgentApprovedToolExecutionInput`. Its approval
+  class is exactly `none`; its compatibility preview hash is the current
+  request preview hash; its internal actor label has no human or durable
+  approval meaning; and none of those compatibility-only fields may enter a
+  resident event or T120 automatic readback. Every other ordinal rejects that
+  bridge. The corrected design must freeze the complete automatic/human
+  T120 readback unions rather than fabricate an automatic decision event.
+- The ontology V2 suspension/result contract adds
+  `effect-outcome-unknown` exactly to the suspension-category enum, general
+  result-category enum, and `resumable` permitted-category list. Its resumable
+  result remains anchored to the already frozen automatic or human unknown
+  checkpoint binding, and cannot be classified as failed, completed, or
+  approval-required.
+- The seven producer seams, 22 transferred paths, five baseline adoptions,
+  nine direct prerequisites, eleven source-ordered compatibility entries, and
+  Task136's exact 30 paths (**13** product sources, **16** tests, and one
+  claim) remain unchanged. The exact 16-test command, all 29 card IDs/order,
+  raw strict records 1-28, Task136 as strict record 29, Task138-H bytes, and
+  the strict frontier at 28 of 29 also remain unchanged. The prospective V4
+  JSON SHA-256 remains
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  assurance fingerprint remains
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`,
+  and synchronized mission immutable-envelope fingerprint remains
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- The documentation-only design owner may now revise exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The revision must incorporate every construction above, preserve the
+  previously frozen dispatcher evidence table, durable outcome receipt,
+  at-most-once unknown-effect recovery, W prefix protocol, four-path
+  orchestrator interlock, counts, pins, fingerprints, and negative-test
+  ceiling, and obtain a completely fresh independent
+  architecture/executability review pair on one exact committed descendant.
+- This event authorizes no product source/test, adapter source, scheduler type,
+  barrel source, released import-policy source/test, V4/checker/mission-state,
+  raw-record, Task136 RED, implementation-plan, integration, push, provider,
+  credential, network, external-system, pull-request, record-29, or Wave-3
+  mutation. The exact revised written design still requires explicit
+  program-owner approval at its fresh dual-reviewed commit before
+  implementation planning or any correction packet begins.
+- Status remains Task136 producer reconciliation design `implementing`. This
+  event is not a product release and does not advance the strict frontier.
+
+## RV-1-E-935 — Task136 reviewed design approved; implementation planning claimed
+
+- Recorded at: 2026-07-23T14:21:57Z
+- The program owner explicitly approves exact reviewed written-design
+  candidate `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` for implementation
+  planning. Its sole parent is the RV-1-E-934 authority commit
+  `1512cd7d76156842febf9fe1ca955bf2c05c22e2`; all rejected design ancestors
+  remain preserved and none becomes an approved candidate, integration,
+  assurance transition, or product release.
+- A completely fresh architecture reviewer and a different completely fresh
+  executability reviewer both approved that exact candidate with no findings.
+  The executability review independently proved the literal-static-import
+  ESM orders, default-only barrel exclusion, private one-shot permit
+  interlock, mounted-ledger identity binding, ordinal-10 compatibility bridge,
+  complete T120 automatic/human union, `effect-outcome-unknown` result
+  mapping, exact counts/fingerprints, typecheck, and repository strict prefix
+  `28/28` with only the expected unreleased record-29 closure.
+- The reviewed design is now `approved`. Task136 implementation planning is
+  `claimed` by the sole program coordinator. The planning owner may create
+  exactly
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The plan must freeze the separate V4-authority and Task136-product
+  worktrees, forward-only commit graph, permanent causal RED boundaries,
+  exact owned paths, test commands, review packets, integration order,
+  release-record construction, record-29 assurance transition, clean-state
+  gates, and pause/recovery procedure from the approved design.
+- The plan candidate requires a fresh independent architecture/executability
+  review pair before a later registry implementation authorization may cite
+  it. Any changed plan byte invalidates both plan reviews.
+- This event authorizes no assurance contract/checker/mission-state change,
+  product source/test/claim change, Task136 RED, worktree merge, integration,
+  strict release record, calibrated record-29 assurance transition, `neo`
+  merge, push, Wave-3 action, provider, credential, network, external-system,
+  or pull-request mutation. A later implementation authorization must cite
+  both the exact approved design SHA and the exact reviewed plan SHA and must
+  carry the program's required implementation-authorization sentence.
+- The strict product frontier remains 28 of 29. This planning transition is
+  not a product release and does not start Wave 3.
+
+## RV-1-E-936 — Task136 implementation-plan candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T14:54:42Z
+- Exact implementation-plan candidate
+  `5487248b0e1587075a5262c6edf7a43201d244ac`, sole parent planning authority
+  `050cb93fb971aaf142dbf0ca33a88a024cabca3c`, adds only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The immutable plan is **2,669 lines / 102,903 bytes**, SHA-256
+  `7d9a55d38ed789c396a7026c759ead6d97dcb2bd2cfd58aee80aae98c912d75c`.
+- The plan freezes 21 ordered tasks: the exact six-file Level-3 V4 authority
+  correction; permanent 20-test assurance RED; exact contract, checker, and
+  mission-pin GREEN; preserved Task136 authority merge; one permanent
+  16-test product RED; seven source-only GREEN seams totaling exactly
+  13 sources; one 30-path candidate and fresh dual review; strict
+  `task136-dispatch-release.v4` record 29 with nine prerequisite integrations
+  and 30 integration blobs; calibrated two-path record-29 assurance; `neo`
+  publication with local/tracking/remote SHA equality; and repository-derived
+  Wave 3 rehydration.
+- Fresh coordinator validation proves the frozen Task136 card list equals the
+  approved design byte-for-byte at **30 paths = 13 sources + 16 tests + one
+  claim**, the exact 16-test command and required fingerprints/markers are
+  present, task numbers are contiguous 1-21, and no unresolved implementation
+  placeholder exists. `git diff --check`, factory readiness, and mission-state
+  tests **20/20** pass from the exact clean candidate.
+- Completely fresh read-only architecture assignment
+  `/root/task136_plan_arch_review_5487` owns full approved-design coverage,
+  trust-boundary/ownership sequencing, review invalidation, no-fallback,
+  no-activation, release/assurance classification, and history preservation.
+  Different completely fresh read-only executability assignment
+  `/root/task136_plan_exec_review_5487` owns independent path/command/API,
+  RED/GREEN, shell-variable/ancestry, marker/hash, repository-prefix,
+  release-record, dependency, full-differential, and publication
+  executability. Both review only exact candidate `5487248b`; neither may
+  edit, commit, merge, push, use providers/credentials/network, or inspect a
+  moving substitute.
+- Status advances Task136 implementation planning `claimed -> candidate ->
+  reviewing`. This event is not plan approval, implementation authorization,
+  V4 correction, product integration, strict record 29, assurance transition,
+  publication, or product release. Any changed plan byte invalidates both
+  reviews and requires a new candidate and completely fresh pair.
+- Strict product frontier remains **28 of 29**. Task136 implementation, V4
+  mutation, product RED/GREEN, `neo`, push, Wave 3, provider, credential,
+  network, external-system, and pull-request actions remain unauthorized.
+
+## RV-1-E-937 — Task136 implementation-plan candidate rejected; bounded repair authorized
+
+- Recorded at: 2026-07-23T15:00:21Z
+- Both completely fresh read-only reviewers reject exact immutable plan
+  candidate `5487248b0e1587075a5262c6edf7a43201d244ac`. Architecture reviewer
+  `/root/task136_plan_arch_review_5487` and executability reviewer
+  `/root/task136_plan_exec_review_5487` independently report the same two
+  blocking defects. Candidate `5487248b` and admission authority `5648d28d`
+  remain preserved as rejected planning history; neither is plan approval,
+  implementation authority, assurance, integration, strict record, or
+  product release.
+- First, the candidate's illustrative V4 RED uses nonexistent
+  `readContract()`, treats `releaseGraph` as an array, reads nonexistent
+  `releaseCompatibility.entries`, and invents top-level
+  `task136BaselineAdoptions`. The committed schema instead uses
+  `loadV4Contract()`, `releaseGraph.cards`, and
+  `releaseCompatibility.historicalRecords`; its exact top-level-key validator
+  forbids the invented property. Baseline-adoption proof belongs only in the
+  finite checker and injected repository fixtures. Implemented literally,
+  the proposed RED would fail for harness/schema error rather than the absent
+  authorized reconciliation.
+- Second, each integrated rerun invokes a candidate-binding step from a later
+  program `HEAD`. That reassigns `v4_candidate_sha` or
+  `task136_candidate_sha` to an unreviewed integration merge, breaks exact
+  candidate scope/ancestry gates with later registry bytes, makes
+  candidate/integration equality tautological, and could write an unreviewed
+  integration SHA into strict record 29. Reviewed candidate identities must
+  remain immutable; integrated trees require distinct variables and
+  behavior-only reruns.
+- Coordinator verification against exact Git objects confirms both findings:
+  V4 top-level keys are exactly `schemaVersion`, `authority`,
+  `releaseCompatibility`, `releaseGraph`, `compositionGrammar`, and
+  `compositionCorpus`; `releaseGraph.cards` and
+  `releaseCompatibility.historicalRecords` are the real arrays; the assurance
+  test defines `loadV4Contract`; and every cited integrated rerun reaches a
+  candidate assignment from `git rev-parse HEAD`.
+- One bounded planning repair may change only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  It must replace the V4 RED pseudocode with concrete real-schema assertions
+  and finite checker-fixture expectations without adding a contract adoption
+  field. It must keep reviewed candidate SHAs immutable and define separate
+  integration-tree behavior, blob-equality, repository, differential, and
+  clean-state reruns that never repeat candidate binding/scope assignments.
+  The repaired descendant requires a completely fresh independent
+  architecture/executability review pair.
+- Status returns Task136 implementation planning `reviewing -> implementing`
+  for this exact repair. No V4/product/claim/test/source mutation,
+  implementation authorization, integration, strict record 29, assurance
+  calibration, `neo`, push, Wave 3, provider, credential, network,
+  external-system, or pull-request action is authorized. Strict product
+  frontier remains **28 of 29**.
+
+## RV-1-E-938 — Repaired Task136 implementation-plan candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T15:10:22Z
+- Exact repaired implementation-plan candidate
+  `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`, sole parent repair authority
+  `528d1bdd4996c300b84fd1780b5a4ff115964f01`, changes only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The immutable plan is **2,927 lines / 113,542 bytes**, SHA-256
+  `a40cbf45426814551b51ea29704f1509d31f6bd6e8ab4fa0577cfc63994a5d39`.
+  Rejected plan `5487248b0e1587075a5262c6edf7a43201d244ac`,
+  its admission, both rejected reviews, and RV-1-E-937 remain preserved
+  unchanged as planning history.
+- The repair replaces every nonexistent V4 example with the committed
+  `loadV4Contract()`, `releaseGraph.cards`, and
+  `releaseCompatibility.historicalRecords` schema. It proves the five
+  baseline adoptions only through finite injected repository fixtures at
+  their exact candidate, integration, current-HEAD, and blob identities;
+  expands the existing twenty-test mutation/current-prefix corpus rather than
+  adding a top-level adoption field or generic facility; and requires literal
+  record-29 migration failures before any command.
+- The repair binds each V4, product, and post-record-29 assurance candidate
+  exactly once. Separate integration-tree variables now drive explicit
+  behavior-only assurance, typecheck, readiness, repository-prefix,
+  full-differential, blob-equality, forbidden-path, ancestry, diff, and
+  clean-state reruns without rebinding or substituting a reviewed candidate.
+- Fresh coordinator validation proves the approved design's frozen Task136
+  list still matches byte-for-byte at **30 paths = 13 sources + 16 tests +
+  one claim**, the exact 16-test command and fingerprints/markers remain
+  present, all 21 tasks remain ordered, exactly three candidate bindings and
+  three distinct integration-tree bindings exist, all **64** shell blocks
+  pass `bash -n`, and no unresolved implementation placeholder exists.
+  `git diff --check`, factory readiness, and mission-state tests **20/20**
+  pass from the exact clean candidate.
+- Completely fresh read-only architecture assignment
+  `/root/task136_plan_arch_review_v2_12f0309e` owns approved-design coverage,
+  finite seven-seam/four-path/zero-path architecture, trust boundaries,
+  immutable-candidate integration sequencing, no-fallback behavior, review
+  invalidation, strict-release/assurance classification, and history
+  preservation. Different completely fresh read-only executability assignment
+  `/root/task136_plan_exec_review_v2_12f0309e` owns independent
+  path/command/API, real-schema fixture, RED/GREEN, shell-variable/ancestry,
+  exact marker/hash, repository-prefix, differential, record-29, publication,
+  and clean-state executability. Neither previously reviewed any byte of this
+  candidate.
+- Status advances Task136 implementation planning `implementing -> candidate
+  -> reviewing`. This event is not plan approval, implementation
+  authorization, V4 correction, product integration, strict record 29,
+  assurance transition, publication, or product release. Any changed plan
+  byte invalidates both reviews and requires another exact descendant and
+  completely fresh pair.
+- Strict product frontier remains **28 of 29**. Task136 implementation,
+  V4/product/claim/test/source mutation, product RED/GREEN, `neo`, push,
+  Wave 3, provider, credential, network, external-system, and pull-request
+  actions remain unauthorized.
+
+## RV-1-E-939 — Repaired Task136 implementation-plan candidate rejected; second bounded repair authorized
+
+- Recorded at: 2026-07-23T15:19:10Z
+- Both completely fresh read-only reviewers reject exact immutable plan
+  candidate `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`.
+  Architecture reviewer `/root/task136_plan_arch_review_v2_12f0309e` reports
+  one blocking clean-checker sequencing defect. Executability reviewer
+  `/root/task136_plan_exec_review_v2_12f0309e` independently reports four
+  blocking construction defects and one clean-state defect. Candidate
+  `12f0309e`, admission authority `209e9b3e`, both rejected reviews, rejected
+  predecessor `5487248b`, and RV-1-E-937 remain preserved. None is plan
+  approval, implementation authority, assurance, integration, strict record,
+  or product release.
+- The real repository adapter rejects every dirty checkout before parsing
+  release records. Task 18 nevertheless attempts repository `29/29` with an
+  uncommitted record-29 registry diff, and Task 19 attempts it with
+  uncommitted assurance test/claim bytes. Both must instead commit coherent
+  non-release candidates first, run repository mode from exact clean commits,
+  and preserve any failed attempt through a forward repair. Strict release
+  may follow only a clean committed record-candidate gate; a candidate or
+  checkpoint must never be described as product release.
+- Task 4 prescribes TypeScript-only `as const` syntax in the JavaScript
+  `.mjs` checker. Task 13 constructs `TaskOrchestratorSkipSummary` without its
+  required `runType`. Both literal constructions must become valid for their
+  exact target language and committed interfaces.
+- Task 17 and Task 18 assume shell arrays survive independent command blocks
+  and worktrees. That can silently omit all sixteen card tests or produce zero
+  record blobs. Every independently executable block must reconstruct its
+  exact test/path set locally, preferably from immutable contract data with
+  exact count/order assertions; no ambient shell state may be required.
+- The three candidate/integration full-suite differential promotions capture
+  statuses and hashes but leave comparison as prose. Each must include a
+  deterministic fail-closed command that compares exact status plus
+  failed/skipped file and test identities/counts, while allowing only the
+  source-defined pass increase. Every clean-state gate must assert empty
+  porcelain output; observational `git status --short` is insufficient.
+- Coordinator verification against exact Git objects confirms every finding:
+  `checkRepositoryTopology()` precedes registry parsing and defines clean as
+  empty `git status --porcelain --untracked-files=all`; Node syntax checking
+  rejects the proposed `.mjs` constants; the orchestrator summary extends a
+  boundary input requiring `taskId` and `runType`; the later array blocks have
+  no export or reconstruction; no command implements the stated
+  differentials; and the cited status observations exit successfully when
+  dirty.
+- One second bounded planning repair may change only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  It must correct all six defect groups above without changing the approved
+  design, frozen 30-path/16-test boundary, finite V4/product behavior,
+  V4-first order, review discipline, strict frontier, or Waves 3-5 handoff.
+  The repaired descendant requires another completely fresh independent
+  architecture/executability review pair.
+- Status returns Task136 implementation planning `reviewing -> implementing`
+  for this exact plan-only repair. No V4/product/claim/test/source mutation,
+  implementation authorization, integration, strict record 29, assurance
+  calibration, `neo`, push, Wave 3, provider, credential, network,
+  external-system, or pull-request action is authorized. Strict product
+  frontier remains **28 of 29**.
+
+## RV-1-E-940 — Hardened Task136 implementation-plan candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T15:55:39Z
+- Exact hardened implementation-plan candidate
+  `c5df0231c82264a9bfde33dcfc7e68b61b37c93f`, sole parent second-repair
+  authority `c9af703635286d84be40dd846481cd02595e5833`, changes only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The immutable plan is **3,798 lines / 150,971 bytes**, SHA-256
+  `db7efad2691ecaa54f3d08ea5c9256fca53d014121d91c8fa9e4e95f325f8f69`.
+  Rejected candidates `5487248b0e1587075a5262c6edf7a43201d244ac`
+  and `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`, their admissions,
+  rejection verdicts, and repair authorities remain unchanged.
+- Every JavaScript checker example now uses valid `.mjs` syntax, the
+  orchestration interlock supplies exact `taskId` and `runType`, and each
+  independent card/cross-boundary/record block reconstructs and count-checks
+  its complete 16-test or 30-path set without ambient array state. The frozen
+  design order hashes and exact 16-test command remain unchanged.
+- Every V4 and product full-suite baseline/candidate/integration capture is
+  bound to its exact Git tree, persists Vitest JSON and both command statuses,
+  and executes a fail-closed occurrence-preserving file/test
+  identity-and-status multiset comparison. Exact V4/integration phases permit
+  no inventory drift; product candidate growth permits only new passing
+  occurrences in the frozen sixteen test paths. Existing duplicate test names
+  remain distinct occurrences rather than collapsing into a map.
+- Task136 record 29 is first appended under the parser's exact single heading
+  as a committed clean **non-release candidate** while product status remains
+  `integrated` and frontier remains `28/29`. Clean repository mode must prove
+  both `29/29` markers before a separate later `released` event advances the
+  product frontier. Each pre-calibration RED gate binds exactly the three
+  current-prefix test titles and each test's `actual 29`, `expected 28`,
+  strict-equality diagnostic. Task19 likewise commits its two-path candidate
+  before repository mode.
+- Fresh coordinator validation proves **21** ordered tasks, exact **30 paths =
+  13 sources + 16 tests + one claim**, exactly three immutable candidate
+  bindings, the exact card command, real schema/API names, exact record
+  heading, three exact RED parsers, and no unfinished marker. All **68** shell
+  blocks pass `bash -n`; all **8** inline Node programs pass syntax checking;
+  exact differential smoke accepts equality and rejects missing product
+  growth. `git diff --check`, factory readiness, and mission-state tests
+  **20/20** pass from the exact clean candidate.
+- The prior rejection pair served only as repair consultants and is
+  ineligible to approve changed bytes. Completely fresh read-only architecture
+  assignment `/root/task136_plan_arch_review_v3_c5df0231` owns full
+  approved-design/trust-boundary coverage, V4-first and record-candidate
+  lifecycle, strict release/assurance classification, no-fallback/
+  no-activation, and Wave-3–5 handoff. Different completely fresh read-only
+  executability assignment `/root/task136_plan_exec_review_v3_c5df0231` owns
+  literal API/path/command, RED/GREEN, self-contained state, differential,
+  parser, marker, record construction, ancestry, dependency, clean-state, and
+  publication reproducibility. Neither may mutate or review a moving
+  substitute.
+- Status advances Task136 implementation planning `implementing -> candidate
+  -> reviewing`. This is not plan approval, implementation authorization, V4
+  correction, product integration, strict record 29, assurance transition,
+  publication, or product release. Any changed plan byte invalidates both
+  reviews and requires another exact descendant and completely fresh pair.
+- Strict product frontier remains **28 of 29**. Task136 implementation,
+  V4/product/claim/test/source mutation, product RED/GREEN, `neo`, push,
+  Wave 3, provider, credential, network, external-system, and pull-request
+  actions remain unauthorized.
+
+## RV-1-E-941 — Task136 reviewed implementation plan approved; ordered implementation authorized
+
+- Recorded at: 2026-07-23T16:07:54Z
+- Completely fresh read-only architecture reviewer
+  `/root/task136_plan_arch_review_v3_c5df0231` returns `APPROVED` with no
+  P0-P3 finding for exact plan candidate
+  `c5df0231c82264a9bfde33dcfc7e68b61b37c93f`. It independently confirms the
+  approved seven-seam/four-path/zero-path architecture, finite six-file
+  V4-first correction, exact 30-path product boundary, permanent causal RED
+  and source-only GREEN order, immutable candidate/review bindings,
+  clean non-release record candidate, strict release/assurance separation,
+  publication equality, and repository-derived Wave-3–5 handoff.
+- Different completely fresh read-only executability reviewer
+  `/root/task136_plan_exec_review_v3_c5df0231` independently returns
+  `APPROVED` with no P0-P3 finding for the same candidate. It proves exact
+  **30 paths = 13 sources + 16 tests + one claim**, exact 16-test command,
+  all **68** Bash blocks and **8** Node programs, real package/schema/API/
+  worktree usage, occurrence-preserving SHA-bound differentials, exact
+  `28/28`, `29/29`, `17/20`, and `20/20` gates, parser heading, release
+  construction, ancestry, dependency, clean-state, and push-equality
+  executability.
+- The immutable reviewed plan is **3,798 lines / 150,971 bytes**, SHA-256
+  `db7efad2691ecaa54f3d08ea5c9256fca53d014121d91c8fa9e4e95f325f8f69`.
+  Its approved design authority is exact
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`. Rejected plan candidates
+  `5487248b0e1587075a5262c6edf7a43201d244ac` and
+  `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`, their rejected reviews, and
+  both forward repairs remain preserved and unapproved.
+- Task136 implementation planning advances `reviewing -> approved`.
+  Implementation advances to `implementing` under the exact 21-task plan.
+  The first executable packet is only the Level-3 V4 authority correction:
+  forward-merge this authority into the preserved V4 lineage, commit one
+  claim-only checkpoint, then permanent causal RED and minimal GREEN within
+  exactly:
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`, and
+  `scripts/check-software-factory-mission-state.mjs`.
+- The exact 30-path Task136 product packet is conditionally authorized only
+  after the six-file V4 candidate passes all plan gates, receives its own
+  completely fresh independent architecture/executability approvals, and is
+  history-preservingly integrated into program authority. Before that
+  integration no Task136 product source, test, or claim byte may change.
+  Product work must then preserve the existing Task136 lineage, commit one
+  permanent sixteen-test RED before all source GREEN commits, change only the
+  frozen 13 sources for GREEN, and obtain a new completely fresh dual review
+  before integration or strict record 29.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Strict product frontier remains **28 of 29**. This event is implementation
+  authority, not a V4 candidate, assurance integration, product integration,
+  strict record 29, publication, or product release. Provider, credential,
+  network, unrelated external-system, fallback-write, `neo`, push, Wave 3,
+  and pull-request actions remain unauthorized until their exact later plan
+  gates and registry transitions.
+
+## RV-1-E-942 — Exact Task136 V4 authority candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T17:27:43Z
+- Exact immutable V4 authority candidate
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0`, exact parent Task 4 GREEN
+  `3b0770218538270b088ca7baaf59e15aeb42a867`, descends from permanent causal
+  RED `fa5cf3ead0d3886d8173bc67414202be1e29629e`, claim checkpoint
+  `f37afbf06ab7adc1d0ea3613c2e1c77032e44379`, authority merge
+  `327f9421ae604e4764d29033b6bda22fda3382df`, implementation authority
+  `0955f28f9115885fc8859b7b223f3d91cf77bf03`, and preserved V4 start
+  `96142632606668519b2198590bdb3ae87b367691`.
+- Scope from the authority merge to the candidate is exactly the six
+  authorized V4 paths:
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`, and
+  `scripts/check-software-factory-mission-state.mjs`. Package/product bytes
+  and this registry are unchanged from the authority merge in the candidate
+  tree.
+- Committed-byte admission passes focused assurance **20/20** and exact
+  contract markers `TASK136_RELEASE_GRAPH_OK records=29`,
+  `TASK136_COMPOSITION_CORPUS_OK green=1 red=20`,
+  `TASK136_COMMAND_CARDS_OK cards=29`, and
+  `TASK136_ABI_CORPUS_OK green=1 red=15`. V4 JSON SHA-256 is exact
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`;
+  assurance fingerprint is exact
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`.
+  Mission source fingerprint is exact
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`;
+  immutable-envelope fingerprint is exact
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+  Standalone typecheck, factory readiness, diff, ancestry, dependency, exact
+  scope, forbidden-path, and clean-state gates pass.
+- Repository mode executes all **28/28** released commands, emits
+  `TASK136_REPOSITORY_PREFIX_OK records=28 commands=28`, and stops only with
+  `repository release closure incomplete: expected 29 records, found 28`.
+  This is the required unreleased-record-29 posture, not a product release.
+- The authority baseline and admitted candidate both retain inherited
+  non-green full-suite statuses `npm test=1` and `npm run verify=1`. The
+  exact occurrence-preserving comparison passes with **504 files =
+  484 passed + 20 failed** and **3,231 tests = 3,178 passed + 48 failed + 5
+  skipped**:
+  `TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-candidate`.
+  Candidate evidence hashes are
+  `195e1f6e96dd2715cb04b07584695cef95c6b2be83afae69c566469666583ba4`
+  for Vitest JSON,
+  `a9e3b866f761d40daf9236e9118c485fe48bdd8c70c1a6e1cfba3c5754980ea0`
+  for the npm-test log, and
+  `16029c11ca24f02c798817a3950f3c01bde9495daa22568225cf41bdc82413e3`
+  for the verify log.
+- A first full candidate observation is preserved separately and was not
+  used for admission. It retained both exit statuses and every file count,
+  but one timeout-sensitive
+  `check-resident-task-prerequisites` assertion completed in about four
+  seconds and passed where the authority observation exceeded Vitest's
+  five-second default and failed. Its **47-failure** JSON/log/verify hashes
+  are respectively
+  `0752b603678f37836b9f9eea9cd72ee53f658936478f9fdb53fd1ea3d79f8239`,
+  `66bbe52c1738085bc0711e13a95c5f4649670b94ad62eb226a81b2a55c75b86c`,
+  and
+  `90a026549d1f51eb2c87f1bb501e89d73a47fcb4ef9d617885229ae4f686bb97`.
+  The next exact rerun reproduced the baseline's timeout and passed the
+  fail-closed comparator; no repository byte changed between observations.
+- Completely fresh read-only scrutiny assignment
+  `/root/task136_v4_scrutiny_91ad4748` owns finite graph/source transfer,
+  corrected ownership, compatibility, raw-pin, baseline-adoption, migration,
+  mission-pin, historical-hash discrimination, no-generic-adoption,
+  no-product, history, and exact six-path review. Different completely fresh
+  black-box executability assignment
+  `/root/task136_v4_blackbox_91ad4748` owns independent committed-byte
+  `20/20`, markers, repository `28/28`, typecheck, readiness, exact
+  differential, scope, ancestry, dependency, protected-path, and clean-state
+  reproduction. Neither previously reviewed or implemented candidate bytes;
+  neither may mutate them.
+- Task136 V4 authority correction advances `implementing -> candidate ->
+  reviewing` for exact candidate `91ad4748`. Any changed candidate byte
+  invalidates both reviews and requires a new descendant plus completely
+  fresh pair. Strict product frontier remains **28 of 29**. This is an
+  assurance candidate, not approval, integration, Task136 product authority,
+  strict record 29, assurance calibration, publication, or product release.
+
+## RV-1-E-943 — Exact Task136 V4 authority candidate approved
+
+- Recorded at: 2026-07-23T17:38:24Z
+- Completely fresh read-only scrutiny reviewer
+  `/root/task136_v4_scrutiny_91ad4748` returns
+  `Scrutiny verdict: APPROVE` with no P0-P3 defect for exact immutable
+  candidate `91ad47489ce5506f91821dcf57b8fc0a2a1352a0`. It independently
+  verifies the exact six-path RED/GREEN/pin ancestry, seven finite source
+  groups, 22 direct transfers, five baseline adoptions, 30-path Task136
+  ownership, 16-test command, 11 compatibility entries, all 28 raw pins, 27
+  migrations, historical-hash discrimination, no generic or transitive
+  adoption, and no package/product/registry/Task138-H candidate delta.
+- Different completely fresh read-only black-box reviewer
+  `/root/task136_v4_blackbox_91ad4748` returns
+  `Black-box verdict: APPROVE` with no P0-P3 defect for the same exact SHA.
+  It independently reproduces assurance **20/20**, all four exact contract
+  markers, V4 and mission fingerprints, typecheck, factory readiness,
+  repository strict **28/28** plus only incomplete-record-29 closure, exact
+  scope/ancestry/dependencies/protected paths/clean state, and the
+  occurrence-preserving full differential. It retains `npm test=1` and
+  `npm run verify=1` as inherited non-green statuses rather than calling them
+  passing.
+- Both reviewers inspect RV-1-E-942's preserved first timeout-variance
+  observation and the exact admitted rerun. They confirm the first
+  observation differs only because one prerequisites assertion completed
+  before Vitest's five-second timeout, while the admitted rerun reproduces
+  the authority baseline's timeout and exact **504-file / 3,231-test**
+  identity/status multiset. Candidate bytes remained unchanged throughout
+  both reviews.
+- Task136 V4 authority correction advances `reviewing -> approved` for exact
+  candidate `91ad4748`. Only a history-preserving no-ff merge of that SHA,
+  followed by fresh integration-tree gates and an append-only integrated
+  event, is authorized next. Strict product frontier remains **28 of 29**.
+  This is assurance approval, not integration, Task136 product authority,
+  strict record 29, assurance calibration, publication, or product release.
+
+## RV-1-E-944 — Task136 V4 authority correction integrated; product packet authorized
+
+- Recorded at: 2026-07-23T17:49:48Z
+- Approved exact V4 candidate
+  `91ad47489ce5506f91821dcf57b8fc0a2a1352a0` was history-preservingly
+  integrated as merge
+  `bf392124e556b60781b374579f09c7dfe19918a9`. Its exact first parent is
+  approval `3227e93d038773ab16f9efcfa742ba7cda5aa046`; its exact second parent is
+  the reviewed candidate. Permanent RED `fa5cf3ea`, GREEN `3b077021`, pin
+  synchronization `91ad4748`, RV-1-E-942 admission, RV-1-E-943 approval, and
+  all earlier V4 history remain ancestral and unchanged.
+- Fresh integration-tree gates pass assurance **20/20**, all four exact
+  contract markers, standalone typecheck, factory readiness, diff and clean
+  state. Repository mode executes all **28/28** released command cards,
+  emits `TASK136_REPOSITORY_PREFIX_OK records=28 commands=28`, and stops only
+  with `repository release closure incomplete: expected 29 records, found
+  28`. All six integrated V4 blobs equal the reviewed candidate blobs
+  exactly; Task138-H's released source, test, and claim blobs remain
+  unchanged from integration `12d23a69`.
+- Integration full-suite statuses remain inherited and non-green:
+  `npm test=1` and `npm run verify=1`. The exact candidate/integration JSON
+  comparison passes at **504 files = 484 passed + 20 failed** and **3,231
+  tests = 3,178 passed + 48 failed + 5 skipped**, emitting
+  `TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=v4-integration`. Integrated
+  evidence hashes are
+  `e3a8695377595b189b40c8aa363b7849df21c2bb3e3127306f7ba0e6c05fc4f9`
+  for Vitest JSON,
+  `ccbb2e4bce7986dd99068fdb8a14a019bda49687caed5815e570fc0f56e0d988`
+  for the npm-test log, and
+  `ddd24c7480c1d59c02834c872c496af9ea7f857b7eefd2ac3d6fae68f28ac266`
+  for the verify log.
+- The first integration JSON observation is preserved separately and not
+  used for integration admission. It reports the same documented
+  timeout-sensitive prerequisites assertion as passed, producing 47 rather
+  than 48 failures while every other identity/status remains equal. Its
+  JSON/npm-test/verify hashes are respectively
+  `f99526b289a7cb99cc6d4a2b807a03b77306fe2b59d863c4ee58bb10ba3924f4`,
+  `fade19c48917ca70d90063ed01954600e6c733bc1ca5ab71b9b6aad5db726a42`,
+  and
+  `63bd2a943ee6460133912df1b8c869c37afe428f1cc40d9b0169e88026190ecf`.
+  The exact rerun reproduced the candidate JSON cohort and passed the
+  fail-closed comparator without any repository-byte change.
+- Task136 V4 authority correction advances `approved -> integrated`. This
+  event is integrated assurance authority and is **not** a product release,
+  strict record 29, post-record assurance calibration, `neo` publication, or
+  Wave-3 activation. Strict product frontier remains **28 of 29**.
+- The condition in RV-1-E-941 is now satisfied. The exact next packet is
+  Task136 product implementation under approved design
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` and plan
+  `c5df0231c82264a9bfde33dcfc7e68b61b37c93f`: forward-merge this integrated
+  authority into preserved Task136 lineage
+  `72e1ee6624c582218995e3e075e2303998811834`, commit the permanent exact
+  sixteen-test RED before changing any source, then apply the seven ordered
+  source-only GREEN seams within the frozen **30 paths = 13 sources + 16
+  tests + one claim**. No other product, adapter, scheduler, barrel,
+  provider, credential, network, external-system, fallback-write, `neo`,
+  push, Wave-3, or pull-request change is authorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
