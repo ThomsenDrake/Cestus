@@ -28699,3 +28699,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   source GREEN, a product candidate, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-949 — Exact Task136 stateless-C oracle repair approved
+
+- Recorded at: 2026-07-23T20:35:17Z
+- Exact forward correction
+  `37bfddc9a887da43c29d6407e7172e71d1e206b5` preserves rejected initial
+  oracle commit `f8daa86516b695b84f1375f14fa08521b6f43b80` as its exact parent and
+  RV-1-E-948 authority merge
+  `3949514139387f3008f001ea0070d7995181d40d` as an ancestor. Permanent RED,
+  both earlier fixture repairs/reviews/integrations, Task10 GREEN, and every
+  prior Task136 design/plan/V4/product authority remain ancestral.
+- The candidate changes exactly
+  `packages/agent/test/resident-plan-candidate-provider.test.ts` and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`.
+  It requires the sole parser boundary and exact candidate shapes; separates
+  unbound proposals from canonical bound durable events; uses an exact
+  observation and Task10 seven-field replay with monotone nonzero budgets and
+  causation; rewires every replan through the full durable tuple; tests only
+  mutations provable from durable facts; and proves repeated candidate
+  creation and restart require no process cache. Trusted current
+  provider/model/policy comparison remains with R/Task136.
+- The rejected parent is retained because its runtime-valid replay array
+  widened TypeScript discriminants and failed direct typecheck with `TS2345`.
+  The exact forward correction preserves both runtime event validations,
+  narrows their successful `data`, and passes those typed canonical values to
+  the sequence validator. It uses no cast, weaker assertion, compatibility
+  alias, heuristic, cache, or hidden binding.
+- Completely fresh focused read-only reviewer
+  `/root/task136_c_oracle_review_37bfddc9` returns `APPROVE` with no P0-P3
+  finding for the exact corrected candidate. It independently reproduces
+  focused **25/25 causal RED**, the exact card's **258 tests = 212 passed +
+  46 causal failures**, released controls **443/443**, passing standalone
+  typecheck, exact scope/ancestry/manifests/claim evidence, and clean state.
+  All 13 source states and the other 15 RED test blobs remain unchanged.
+- Task136 C-oracle repair advances `implementing -> candidate -> reviewing ->
+  approved` for exact `37bfddc9`. Only a history-preserving forward merge of
+  this approval into the existing Task136 lineage is authorized next. Any
+  changed oracle or claim byte invalidates this review and requires another
+  descendant plus completely fresh focused review.
+- Strict product frontier remains **28 of 29**. This is C-oracle repair
+  approval, not integration, Task11 GREEN, a product candidate, strict record
+  29, assurance transition, publication, or product release.
