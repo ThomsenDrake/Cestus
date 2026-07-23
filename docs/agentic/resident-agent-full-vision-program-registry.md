@@ -27856,3 +27856,110 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
 - Status remains Task136 producer reconciliation design `implementing`. This
   event is not a product release and does not advance the strict frontier.
+
+## RV-1-E-934 — Task136 zero-path Approach 1 loader/ABI addendum authorized
+
+- Recorded at: 2026-07-23T13:27:45Z
+- The program owner explicitly approves the zero-path Approach 1 loader/ABI
+  addendum after completely fresh architecture and executability reviews
+  rejected written-design candidate
+  `7ebf3097b3362e1c16ac6466004a608b6385098c`. That candidate and rejected
+  ancestors `29826501dbad3650969cb3a45d1c4c933258489f`,
+  `75da663651c90cf41eee208dba36e21028b75aa2`,
+  `40d507d549ea5127e9f2597fa8d150c8a4c3d904`,
+  `819d3b066ea6757d6a25163906b8803517b6480b`,
+  `e41a1504b7a0a2438770f567e5b08672ba0ed4f2`, and
+  `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` remain preserved as design
+  checkpoints. None is an approved candidate, integration, assurance, or
+  product release.
+- The reviews prove six construction defects without changing the intended
+  product boundary. The released repository import policy rejects the
+  RV-1-E-933 literal dynamic imports; the unchanged agent wildcard barrel
+  would re-export any named resident factory or inspector; G has no private
+  current-preview operation before request append; automatic policy lacks an
+  exact bridge to the released human-shaped adapter DTO and a
+  decision-free T120 readback; `effect-outcome-unknown` lacks a resumable
+  result-category mapping; and resident legacy staging does not explicitly
+  require the ledger identity needed by the attestation protocol.
+- This addendum supersedes only RV-1-E-933's loader/export and incomplete ABI
+  construction. The dispatcher uses literal **static imports** of the exact
+  eleven already named package constructors and descriptors. Because those
+  adapter modules runtime-import the dispatcher helper, no imported adapter
+  descriptor, constructor, or catalog entry may be read during dispatcher
+  module initialization. The exact closed ordered catalog is assembled only
+  inside the resident factory after ESM module evaluation. The frozen
+  dispatcher default export may reference only dispatcher-local functions at
+  module initialization. No dynamic import, computed loader, `require`,
+  evaluator, or loader-policy exemption is added.
+- `domain-execution-dispatcher.ts` default-exports one frozen resident-only API
+  object. The unchanged
+  `export * from "./domain-execution-dispatcher.js"` barrel does not re-export
+  that default. The already owned Task136 import-policy tests must require the
+  exact production direct importers, forbid a named or barrel re-export,
+  prove the agent barrel exposes no resident issuer/inspector, and reject any
+  alternate loader or import path. No `packages/agent/src/index.ts` or released
+  Task137 authority-policy edit is authorized.
+- The resident API's WeakMap-backed port exposes only package-owned current
+  preview rebuilding and a claim-bound, one-shot invocation/attestation
+  operation. The first operation returns the exact copied current preview,
+  sources, artifacts, provenance, locks, and freshness facts needed before G
+  appends a request. The second requires the exact fresh claim-bound execution
+  permit; a capability plus caller-supplied claim ID is insufficient. No
+  adapter, executor, raw function, descriptor bag, structural port, reusable
+  permit, or caller-constructed attestation escapes.
+- Every resident factory binding must contain a present validated `EventLedger`.
+  In particular the resident legacy-staging variant refines
+  `CreateLegacyStagingAdapterInput` to require its ledger before construction.
+  Both destructive-repair contexts and every other selected context must bind
+  the same ledger identity and matching workspace/resident/task identity.
+  Before W issues the private G port it compares every retained ledger by
+  object identity with W's freshly authenticated mounted ledger. A missing,
+  foreign, substituted, or cross-identity context fails before preview,
+  constructor I/O, request append, or effect.
+- Automatic and human authorization remain structurally disjoint in durable G
+  events and canonical T120 gateway readbacks. Only catalog ordinal 10,
+  `legacy.staging.execute`, may use a frozen package-private compatibility
+  bridge to the unchanged `AgentApprovedToolExecutionInput`. Its approval
+  class is exactly `none`; its compatibility preview hash is the current
+  request preview hash; its internal actor label has no human or durable
+  approval meaning; and none of those compatibility-only fields may enter a
+  resident event or T120 automatic readback. Every other ordinal rejects that
+  bridge. The corrected design must freeze the complete automatic/human
+  T120 readback unions rather than fabricate an automatic decision event.
+- The ontology V2 suspension/result contract adds
+  `effect-outcome-unknown` exactly to the suspension-category enum, general
+  result-category enum, and `resumable` permitted-category list. Its resumable
+  result remains anchored to the already frozen automatic or human unknown
+  checkpoint binding, and cannot be classified as failed, completed, or
+  approval-required.
+- The seven producer seams, 22 transferred paths, five baseline adoptions,
+  nine direct prerequisites, eleven source-ordered compatibility entries, and
+  Task136's exact 30 paths (**13** product sources, **16** tests, and one
+  claim) remain unchanged. The exact 16-test command, all 29 card IDs/order,
+  raw strict records 1-28, Task136 as strict record 29, Task138-H bytes, and
+  the strict frontier at 28 of 29 also remain unchanged. The prospective V4
+  JSON SHA-256 remains
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  assurance fingerprint remains
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`,
+  and synchronized mission immutable-envelope fingerprint remains
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- The documentation-only design owner may now revise exactly
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`.
+  The revision must incorporate every construction above, preserve the
+  previously frozen dispatcher evidence table, durable outcome receipt,
+  at-most-once unknown-effect recovery, W prefix protocol, four-path
+  orchestrator interlock, counts, pins, fingerprints, and negative-test
+  ceiling, and obtain a completely fresh independent
+  architecture/executability review pair on one exact committed descendant.
+- This event authorizes no product source/test, adapter source, scheduler type,
+  barrel source, released import-policy source/test, V4/checker/mission-state,
+  raw-record, Task136 RED, implementation-plan, integration, push, provider,
+  credential, network, external-system, pull-request, record-29, or Wave-3
+  mutation. The exact revised written design still requires explicit
+  program-owner approval at its fresh dual-reviewed commit before
+  implementation planning or any correction packet begins.
+- Status remains Task136 producer reconciliation design `implementing`. This
+  event is not a product release and does not advance the strict frontier.
