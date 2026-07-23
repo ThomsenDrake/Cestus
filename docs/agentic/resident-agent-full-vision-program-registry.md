@@ -28211,3 +28211,64 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   calibration, `neo`, push, Wave 3, provider, credential, network,
   external-system, or pull-request action is authorized. Strict product
   frontier remains **28 of 29**.
+
+## RV-1-E-940 — Hardened Task136 implementation-plan candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-23T15:55:39Z
+- Exact hardened implementation-plan candidate
+  `c5df0231c82264a9bfde33dcfc7e68b61b37c93f`, sole parent second-repair
+  authority `c9af703635286d84be40dd846481cd02595e5833`, changes only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  The immutable plan is **3,798 lines / 150,971 bytes**, SHA-256
+  `db7efad2691ecaa54f3d08ea5c9256fca53d014121d91c8fa9e4e95f325f8f69`.
+  Rejected candidates `5487248b0e1587075a5262c6edf7a43201d244ac`
+  and `12f0309e3b0d9972609a8c2b52087dc5e53a03e1`, their admissions,
+  rejection verdicts, and repair authorities remain unchanged.
+- Every JavaScript checker example now uses valid `.mjs` syntax, the
+  orchestration interlock supplies exact `taskId` and `runType`, and each
+  independent card/cross-boundary/record block reconstructs and count-checks
+  its complete 16-test or 30-path set without ambient array state. The frozen
+  design order hashes and exact 16-test command remain unchanged.
+- Every V4 and product full-suite baseline/candidate/integration capture is
+  bound to its exact Git tree, persists Vitest JSON and both command statuses,
+  and executes a fail-closed occurrence-preserving file/test
+  identity-and-status multiset comparison. Exact V4/integration phases permit
+  no inventory drift; product candidate growth permits only new passing
+  occurrences in the frozen sixteen test paths. Existing duplicate test names
+  remain distinct occurrences rather than collapsing into a map.
+- Task136 record 29 is first appended under the parser's exact single heading
+  as a committed clean **non-release candidate** while product status remains
+  `integrated` and frontier remains `28/29`. Clean repository mode must prove
+  both `29/29` markers before a separate later `released` event advances the
+  product frontier. Each pre-calibration RED gate binds exactly the three
+  current-prefix test titles and each test's `actual 29`, `expected 28`,
+  strict-equality diagnostic. Task19 likewise commits its two-path candidate
+  before repository mode.
+- Fresh coordinator validation proves **21** ordered tasks, exact **30 paths =
+  13 sources + 16 tests + one claim**, exactly three immutable candidate
+  bindings, the exact card command, real schema/API names, exact record
+  heading, three exact RED parsers, and no unfinished marker. All **68** shell
+  blocks pass `bash -n`; all **8** inline Node programs pass syntax checking;
+  exact differential smoke accepts equality and rejects missing product
+  growth. `git diff --check`, factory readiness, and mission-state tests
+  **20/20** pass from the exact clean candidate.
+- The prior rejection pair served only as repair consultants and is
+  ineligible to approve changed bytes. Completely fresh read-only architecture
+  assignment `/root/task136_plan_arch_review_v3_c5df0231` owns full
+  approved-design/trust-boundary coverage, V4-first and record-candidate
+  lifecycle, strict release/assurance classification, no-fallback/
+  no-activation, and Wave-3–5 handoff. Different completely fresh read-only
+  executability assignment `/root/task136_plan_exec_review_v3_c5df0231` owns
+  literal API/path/command, RED/GREEN, self-contained state, differential,
+  parser, marker, record construction, ancestry, dependency, clean-state, and
+  publication reproducibility. Neither may mutate or review a moving
+  substitute.
+- Status advances Task136 implementation planning `implementing -> candidate
+  -> reviewing`. This is not plan approval, implementation authorization, V4
+  correction, product integration, strict record 29, assurance transition,
+  publication, or product release. Any changed plan byte invalidates both
+  reviews and requires another exact descendant and completely fresh pair.
+- Strict product frontier remains **28 of 29**. Task136 implementation,
+  V4/product/claim/test/source mutation, product RED/GREEN, `neo`, push,
+  Wave 3, provider, credential, network, external-system, and pull-request
+  actions remain unauthorized.
