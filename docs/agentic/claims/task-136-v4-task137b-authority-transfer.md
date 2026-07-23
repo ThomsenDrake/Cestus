@@ -658,3 +658,52 @@ Implementation evidence:
   repository strict 28/28 plus only incomplete-29 closure, standalone
   typecheck, factory, diff/scope/ancestry/dependency/clean, and no-product-byte
   gates.
+
+## RV-1-E-941 Task136 V4 correction authority checkpoint
+
+- Exact implementation authority
+  `0955f28f9115885fc8859b7b223f3d91cf77bf03` was history-preservingly
+  forward-merged into the clean V4 GREEN lineage as
+  `327f9421ae604e4764d29033b6bda22fda3382df`. The merge has exactly two
+  parents: preserved V4 first parent
+  `96142632606668519b2198590bdb3ae87b367691` and implementation-authority
+  second parent `0955f28f9115885fc8859b7b223f3d91cf77bf03`.
+- Before the merge, `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`
+  exited `0` with exactly `20` tests, `20` passed, and `0` failed. The
+  prospective six-file V4 correction ceiling is exactly:
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`, and
+  `scripts/check-software-factory-mission-state.mjs`.
+- The prospective V4 JSON SHA-256 remains exactly
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`,
+  the prospective V4 assurance fingerprint remains exactly
+  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`,
+  and the synchronized mission immutable-envelope fingerprint remains
+  exactly
+  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+- The fresh full baseline is bound to exact tree
+  `327f9421ae604e4764d29033b6bda22fda3382df`. `npm test -- --reporter=json
+  --outputFile=/tmp/task136-v4-full-327f9421ae604e4764d29033b6bda22fda3382df.vitest.json`
+  exited `1`; its JSON reports `success=false`, file counts
+  `total=504`, `passed=484`, `failed=20`, `skipped=0`, and test counts
+  `total=3231`, `passed=3178`, `failed=48`, `skipped=5`, `deferred=0`.
+  `npm run verify` also exited `1` after standalone typecheck passed and the
+  inherited test cohort failed. These nonzero results are the exact
+  candidate-differential baseline and are not passing gates.
+- Baseline SHA-256 values are
+  `c8fd4c43c6eb7a29755b83edf65004254ceb52ff49f840c972885f885426e566`
+  for the Vitest JSON,
+  `cbf1cb3317cc9581f976a2cd27a2f4c1745aecf2b00650a59e93f46bc9dc40a4`
+  for the npm-test log, and
+  `15125944a80d1f605487560f1dd13e28603a7b72335baf53a2d1c081177008f3`
+  for the verify log. Each log carries exact
+  `TREE_SHA=327f9421ae604e4764d29033b6bda22fda3382df`.
+- This is an authority/checkpoint transition, not a product release. No
+  Task136 product/package byte may change before the exact six-file V4
+  candidate is complete, independently approved, and integrated. This
+  checkpoint authorizes no registry, release-record, `neo`, push, provider,
+  credential, network, external-system, fallback-write, or product change.
