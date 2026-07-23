@@ -28607,3 +28607,40 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Strict product frontier remains **28 of 29**. This is fixture-repair
   approval, not repair integration, source GREEN, a product candidate,
   strict record 29, assurance transition, publication, or product release.
+
+## RV-1-E-947 — Task136 strict-V2 fixture repair integrated; Task10 resumed
+
+- Recorded at: 2026-07-23T19:27:22Z
+- Exact approved fixture repair
+  `1a5f5e246999560047811f9adc81a6ebdcc68061` and RV-1-E-946 approval
+  `12a3a718e864fc4cc4066e098547677ed8a7565c` were history-preservingly
+  combined in Task136 lineage merge
+  `4c4614dbf975b7bd8639fd32c890e55c3c0e5571`. Its exact first parent is the
+  approved repair and its exact second parent is the approval event.
+  Permanent RED `1b99822e`, rejected repair `4b67f4e1`, all three review
+  findings, their forward repair, and every earlier product/V4/design/plan
+  authority remain ancestral and unchanged.
+- The integrated repair tree retains exactly the repaired ontology test and
+  append-only Task136 claim delta plus program-registry authority. All 13
+  product-source states and the other 15 permanent RED test blobs remain
+  unchanged. Exact focused/full/control/typecheck/diff/manifest evidence from
+  RV-1-E-946 remains applicable because the merge changes only this registry.
+- Task136 fixture repair advances `approved -> integrated`. Task10 source
+  GREEN resumes from exact clean merge `4c4614db` and may change only
+  `packages/ontology/src/contracts.ts`,
+  `packages/agent/src/plan-observation-contracts.ts`, and
+  `packages/agent/src/plan-observation-projection.ts`. It must implement the
+  approved strict V2 event/checkpoint unions, durable append/read/replay
+  operations, and segmented grammar; preserve V1 behavior, the repaired
+  ontology test blob, and the other 15 RED test blobs; pass the exact three
+  focused tests, standalone typecheck, diff, scope, blob, ancestry, and clean
+  gates; and commit one atomic source-only GREEN. Runtime compatibility
+  widening, source/test substitution, fallback, or any other path is
+  forbidden.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains **28 of
+  29**. This is fixture-repair integration and bounded Task10 implementation
+  authority, not a product candidate, strict record 29, assurance-only
+  transition, publication, or product release. `neo`, push, Wave 3,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
