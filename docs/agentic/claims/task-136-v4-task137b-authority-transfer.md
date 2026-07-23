@@ -707,3 +707,46 @@ Implementation evidence:
   candidate is complete, independently approved, and integrated. This
   checkpoint authorizes no registry, release-record, `neo`, push, provider,
   credential, network, external-system, fallback-write, or product change.
+
+## Task 3 permanent Task136 producer-reconciliation causal RED
+
+- Starting authority checkpoint:
+  `f37afbf06ab7adc1d0ea3613c2e1c77032e44379`. The focused command was
+  `node --test
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  It exited `1` after exactly `20` top-level tests: `16` passed, `4` failed,
+  `0` skipped, `0` cancelled, and `0` todo.
+- The four failing titles and their first mismatches are exact:
+  1. `verifies the 29-card topological graph, exact Task136 transfers, and
+     prerequisites` — all seven approved source `transferToIds` projections
+     first differ because the record-28 contract omits `Task136`.
+  2. `requires corrected producer ownership and exact Task136 scope and
+     command` — the first CF1-HR mismatch reports the four Task136 handoff and
+     ontology paths as `owned` rather than `transferred`.
+  3. `requires frozen v4 compatibility branches and all 28 raw prefix pins` —
+     the first compatibility mismatch reports the current six records rather
+     than the approved eleven-record sequence.
+  4. `rejects finite Task136 graph, compatibility, baseline, raw-pin, and
+     record-29 migration mutations` — the first mismatch is current
+     fingerprint
+     `3af58aba85ea68137462d2054072e4e3ce3a2a8146ad3be8ee400b103375feb7`
+     rather than approved
+     `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`.
+- The other `16` top-level tests are green, including immutable V1-V3 and all
+  28 raw release pins, composition and ABI corpora, command cards, strict
+  release-record parsing, repository evidence, historical record-11/14/18/
+  26/27 migrations, the preserved W1 `.slice(0, 26)` fixture, and the
+  RV-1-E-941 durable authority checkpoint.
+- The RED test now contains the approved literal 30-path Task136 scope,
+  16-test command, seven finite source-transfer groups, eleven historical
+  compatibility entries and dispositions, all 28 raw pins, five exact
+  candidate/integration/HEAD baseline adoptions, all 27 record-29
+  transferred/adopted current-HEAD migrations, and candidate/integration
+  mismatch proof for every Task136 path. Baseline and record-29 mutants require
+  zero release-command calls.
+- No product byte changed. The exact Task 3 working diff from
+  `f37afbf06ab7adc1d0ea3613c2e1c77032e44379` is limited to this append-only
+  claim and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Contracts, checker, mission state, registry, packages, runtime, providers,
+  credentials, network behavior, release records, and `neo` remain unchanged.
