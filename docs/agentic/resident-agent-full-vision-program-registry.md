@@ -28507,3 +28507,61 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   provider, credential, network, external-system, fallback-write, `neo`,
   push, Wave-3, or pull-request change is authorized.
 - Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+
+## RV-1-E-945 — Task136 strict-V2 fixture repair authorized before source GREEN
+
+- Recorded at: 2026-07-23T18:35:05Z
+- Exact permanent product RED
+  `1b99822ec532fc51866008c2fc52986775341573` is preserved and remains the
+  historical causal RED for the exact 27 Task9 behavior/API titles. Its sole
+  parent is clean claim checkpoint
+  `5173887d6acd8a89cadb731f4a22a89782aac0b5`; product authority merge
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1` and every prior Task136
+  design, plan, V4, RED, GREEN, review, and authority commit remain
+  ancestral. No commit may be reset, rebased, amended, reconstructed, or
+  discarded.
+- Task10 stopped before retaining any source edit because the pre-Task9
+  shared V2 ontology fixture still encodes four superseded shapes: planned
+  steps omit `toolRequestId` and `executionCapabilityHash`; the tool-step
+  readback uses the released always-human request/decision/result tuple; the
+  suspension checkpoint persists its future ledger-assigned self-ID and a
+  future decision; and a completed terminal is placed after a synthetic
+  suspension. Approved design
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` instead requires the strict
+  automatic/human union, durable plan bindings, no future self-ID, and
+  segmented replay in which only resumable results immediately follow a
+  suspension.
+- Git ancestry proves the conflicting fixture and its positive assertions
+  predate Task9; `1b99822e` added the two mandated ontology contract tests
+  after that inherited fixture without mechanically migrating it. Accepting
+  both forms in production would create an undocumented compatibility lane,
+  weaken exact-key validation, and violate the reviewed design. The
+  implementation worktree was restored to exact clean `1b99822e`; no partial
+  source byte is retained.
+- This event supersedes only the ontology-test byte-freeze statements in the
+  reviewed plan and Task136 claim. It authorizes one forward-only fixture
+  repair commit changing exactly
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts` and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`.
+  The repair must add the two durable planned-step bindings, replace the
+  obsolete gateway and checkpoint shapes, split resumable and terminal
+  replay fixtures, remove synthetic terminal suspension, assign distinct
+  stable request IDs across multi-plan fixtures, and redirect only the
+  dependent positive/causal controls. It may add no runtime compatibility,
+  new behavior, source, contract, plan, mission, registry, provider,
+  activation, network, fallback, or unrelated path.
+- Forward-merge this authority into the existing Task136 lineage with
+  `1b99822e` as first-parent ancestry, then produce a fresh causal RED against
+  unchanged sources. Preserve all original RED evidence as historical truth,
+  record exact new failure/pass counts and log hashes in the claim, prove
+  exact two-path scope and clean state, and obtain one fresh focused
+  read-only fixture review before resuming Task10. After that approval, the
+  repaired ontology test blob and the other fifteen original RED test blobs
+  are immutable through all GREEN seams.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 fixture repair remains `implementing`. Strict product frontier
+  remains **28 of 29**. This is bounded test-fixture repair authority, not a
+  product candidate, approval, integration, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  provider, credential, external-system, pull-request, and all other product
+  actions remain unauthorized.
