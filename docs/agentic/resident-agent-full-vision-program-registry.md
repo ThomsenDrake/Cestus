@@ -28741,3 +28741,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Strict product frontier remains **28 of 29**. This is C-oracle repair
   approval, not integration, Task11 GREEN, a product candidate, strict record
   29, assurance transition, publication, or product release.
+
+## RV-1-E-950 — Task136 stateless-C oracle repair integrated; Task11 resumed
+
+- Recorded at: 2026-07-23T20:41:00Z
+- History-preserving merge
+  `39ac1d58ab16827ed1aa7a16dd2d9e4ecee35633` integrates exact approved
+  stateless-C oracle repair
+  `37bfddc9a887da43c29d6407e7172e71d1e206b5` and RV-1-E-949 approval
+  `686638623edfcf0e2ee6042f4368ef4604df8a2d` into the existing Task136
+  product lineage. Its first parent is exact reviewed repair
+  `37bfddc9a887da43c29d6407e7172e71d1e206b5`; all rejected candidates,
+  reviews, prior repairs, permanent RED, Task10 GREEN, and earlier authority
+  remain ancestral.
+- The approved repair is now the frozen Task11 oracle. Task11 may change only
+  `packages/agent/src/resident-plan-candidate-provider.ts`. It must implement
+  exact initial and replan candidate shapes, export
+  `parseResidentUntrustedPlanCandidate` as the sole untrusted-result parser,
+  and remain stateless across repeated candidate creation. Replanning must
+  derive solely from the canonical durable prior plan event, observation,
+  seven-field replay, mounted-authority state, budget, and causation supplied
+  by the caller; it may add no `latest` cache, compatibility alias,
+  model-name heuristic, hidden trusted binding, provider integration,
+  activation, fallback, or unrelated source.
+- Current provider/model/policy trust comparison remains owned by R/Task136
+  against exact Core/P/W readbacks after C's result is reparsed. Task11 must
+  satisfy the repaired focused **25/25** test, standalone typecheck,
+  source/test/claim scope, ancestry, all 16 repaired RED-test blob freezes,
+  and clean-state checks before an atomic GREEN commit. Task12 and later
+  source seams remain unauthorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing` at Task11. Strict product frontier remains
+  **28 of 29**. This is repair integration and bounded Task11 implementation
+  authority, not a product candidate, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
