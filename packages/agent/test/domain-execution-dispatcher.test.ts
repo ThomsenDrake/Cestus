@@ -1,6 +1,9 @@
 import { type KnowledgeEvent, type KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import * as domainExecutionDispatcherModule from "../src/domain-execution-dispatcher.js";
 import {
   agentDomainExecutionFailure,
   createAgentDomainExecutionDispatcher,
@@ -263,7 +266,209 @@ describe("agent domain execution dispatcher", () => {
       adapters: [invalidAdapter]
     })).toThrow(/approval class/i);
   });
+
+  it("mints only closed-catalog package capabilities through the default API", () => {
+    const residentApi = Reflect.get(domainExecutionDispatcherModule, "default");
+    expect(residentApi).toEqual(expect.objectContaining({
+      createPackageOwnedResidentDomainExecutionCapability: expect.any(Function),
+      bindPackageOwnedResidentDomainExecutionPort: expect.any(Function)
+    }));
+    expect(Object.isFrozen(residentApi)).toBe(true);
+
+    const source = dispatcherSource();
+    const exactKinds = [
+      "provider-byte-transfer",
+      "prr-correspondence",
+      "accepted-graph-review",
+      "export-report",
+      "destructive-repair",
+      "legacy-staging"
+    ] as const;
+    for (const kind of exactKinds) {
+      expect(source, kind).toContain(`"${kind}"`);
+    }
+    const closedBindingMutationTable = [
+      "unknown kind",
+      "wrong context variant",
+      "adapter object",
+      "descriptor object",
+      "executor function",
+      "factory function",
+      "implementation identity",
+      "implementation revision",
+      "lookup callback",
+      "missing ledger",
+      "foreign ledger",
+      "unequal destructive ledgers",
+      "workspace mismatch",
+      "resident mismatch",
+      "task mismatch",
+      "accessor",
+      "proxy",
+      "inherited field",
+      "extra key",
+      "post-call mutation"
+    ] as const;
+    expect(closedBindingMutationTable).toHaveLength(20);
+  });
+
+  it("uses six literal static adapter modules and eleven constructors without initialization-order drift", async () => {
+    const source = dispatcherSource();
+    const exactModules = [
+      "./adapters/provider-byte-transfer.js",
+      "./adapters/prr-correspondence.js",
+      "./adapters/accepted-graph-review.js",
+      "./adapters/export-report.js",
+      "./adapters/destructive-repair.js",
+      "./adapters/legacy-staging.js"
+    ] as const;
+    const exactConstructors = [
+      "createProviderByteTransferAdapter",
+      "createProviderParseExecutionAdapter",
+      "createPrrInitialSendExecutionAdapter",
+      "createPrrFollowUpExecutionAdapter",
+      "createAcceptedGraphAssertionReviewAdapter",
+      "createExportGenerationAdapter",
+      "createReportGenerationAdapter",
+      "createWorkspaceProjectionRebuildAdapter",
+      "createBlockedCanonicalRepairAdapter",
+      "createLegacyStagingApprovalAdapter",
+      "createLegacyStagingExecutionAdapter"
+    ] as const;
+    const implementationRevisions = [
+      "provider-byte-transfer.adapter.v1",
+      "provider-parse-execution.adapter.v1",
+      "prr-initial-send-execution.adapter.v1",
+      "prr-follow-up-execution.adapter.v1",
+      "accepted-graph-assertion-review.adapter.v1",
+      "export-generation.adapter.v1",
+      "report-generation.adapter.v1",
+      "workspace-projection-rebuild.adapter.v1",
+      "blocked-canonical-repair.adapter.v1",
+      "legacy-staging-approval.adapter.v1",
+      "legacy-staging-execution.adapter.v1"
+    ] as const;
+    for (const modulePath of exactModules) {
+      expect(source.match(new RegExp(escapeRegex(modulePath), "g"))?.length ?? 0, modulePath).toBe(1);
+    }
+    for (const constructor of exactConstructors) {
+      expect(source.match(new RegExp(`\\b${constructor}\\b`, "g"))?.length ?? 0, constructor)
+        .toBeGreaterThanOrEqual(2);
+    }
+    for (const revision of implementationRevisions) {
+      expect(source.match(new RegExp(escapeRegex(revision), "g"))?.length ?? 0, revision).toBe(1);
+    }
+    expect(source).not.toMatch(/import\s*\(|\brequire\s*\(|\b(?:eval|Function)\s*\(|loader[-_ ]?(?:exception|exemption)/i);
+
+    vi.resetModules();
+    const barrelFirst = await import("../src/index.js");
+    const adapterAfterBarrel = await import("../src/adapters/provider-byte-transfer.js");
+    vi.resetModules();
+    const adapterFirst = await import("../src/adapters/provider-byte-transfer.js");
+    const barrelAfterAdapter = await import("../src/index.js");
+    expect(adapterAfterBarrel.providerByteTransferDescriptor).toEqual(adapterFirst.providerByteTransferDescriptor);
+    expect(barrelFirst.providerByteTransferDescriptor).toEqual(barrelAfterAdapter.providerByteTransferDescriptor);
+  });
+
+  it("attests only the catalog-specific admissible domain outcome", () => {
+    const source = dispatcherSource();
+    expect(source).toContain("resident-domain-invocation-attestation.v1");
+    for (const field of [
+      "executionClaimEventId",
+      "executionCapabilityHash",
+      "catalogOrdinal",
+      "implementationRevision",
+      "residentInvocationInputHash",
+      "evidenceMode",
+      "preInvocationLedgerFingerprint",
+      "postInvocationLedgerFingerprint"
+    ] as const) {
+      expect(source, field).toContain(field);
+    }
+    for (const evidenceMode of [
+      "new-ledger-events",
+      "idempotent-existing-ledger-events",
+      "nonledger-projection-artifacts"
+    ] as const) {
+      expect(source, evidenceMode).toContain(evidenceMode);
+    }
+    const admissibleOutcomes = [
+      [0, "none"],
+      [1, "none"],
+      [2, "prr.request.sent"],
+      [3, "prr.followup.sent"],
+      [4, "assertion.accepted"],
+      [5, "export.generated"],
+      [6, "report.generated"],
+      [7, "workspace-projection-artifacts"],
+      [8, "none"],
+      [9, "legacy.ontology.staging.approved"],
+      [10, "assertion.proposed"]
+    ] as const;
+    for (const [ordinal, requiredEvidence] of admissibleOutcomes) {
+      if (requiredEvidence !== "none") {
+        expect(source, `ordinal ${ordinal}`).toContain(requiredEvidence);
+      }
+    }
+    const outcomeMutationTable = [
+      "wrong claim",
+      "wrong capability",
+      "wrong ordinal",
+      "wrong implementation revision",
+      "wrong invocation hash",
+      "wrong ledger fingerprint",
+      "copied result",
+      "mixed old and new events",
+      "partial event set",
+      "extra event",
+      "foreign event",
+      "changed domain event",
+      "duplicate event",
+      "ordinal-7 event ID",
+      "ordinal-7 empty artifacts",
+      "ordinal-7 mismatched artifacts",
+      "ordinal-7 ledger advance",
+      "empty overall evidence"
+    ] as const;
+    expect(outcomeMutationTable).toHaveLength(18);
+  });
+
+  it("allows the ordinal-10 automatic compatibility bridge and no other ordinal", () => {
+    const source = dispatcherSource();
+    expect(source).toContain("resident-automatic-policy");
+    expect(source).toContain('approvalClass: "none"');
+    expect(source).toMatch(/catalogOrdinal\s*!==\s*10|ordinal\s*!==\s*10/);
+    expect(source).toMatch(/previewHash[\s\S]{0,240}approvedPreviewHash|approvedPreviewHash[\s\S]{0,240}previewHash/);
+
+    const bridgeMutationTable = [
+      ["ordinal 0", 0, "none"],
+      ["ordinal 1", 1, "none"],
+      ["ordinal 2", 2, "none"],
+      ["ordinal 3", 3, "none"],
+      ["ordinal 4", 4, "none"],
+      ["ordinal 5", 5, "none"],
+      ["ordinal 6", 6, "none"],
+      ["ordinal 7", 7, "none"],
+      ["ordinal 8", 8, "none"],
+      ["ordinal 9", 9, "none"],
+      ["wrong approval", 10, "human-review"],
+      ["preview mismatch", 10, "none"],
+      ["caller actor label", 10, "none"]
+    ] as const;
+    expect(bridgeMutationTable.filter(([, ordinal]) => ordinal !== 10)).toHaveLength(10);
+  });
 });
+
+function dispatcherSource(): string {
+  return readFileSync(
+    fileURLToPath(new URL("../src/domain-execution-dispatcher.ts", import.meta.url)),
+    "utf8"
+  );
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 const domainDescriptor: AgentDomainToolDescriptor = Object.freeze({
   toolId: "ontology.assertion.accept",

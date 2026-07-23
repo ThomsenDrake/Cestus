@@ -467,6 +467,31 @@ describe("resident task orchestrator claims", () => {
     expect(summary.sideEffectsScheduled).toEqual([]);
     expect(Object.values(probes).flatMap((probe) => Object.values(probe)).every((fn) => fn.mock.calls.length === 0)).toBe(true);
   });
+
+  it("leaves same-claim resident suspension checkpoint ownership to W", async () => {
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/task-orchestrator.ts", import.meta.url),
+      "utf8"
+    );
+    const interlockPaths = [
+      "active-claim",
+      "cancellation-after-claim",
+      "stale-lease-recovery"
+    ] as const;
+    const forbiddenGenericEffects = {
+      release: vi.fn(),
+      staleRecovery: vi.fn(),
+      nextGenerationClaim: vi.fn(),
+      provider: vi.fn(),
+      gateway: vi.fn()
+    };
+
+    expect(source).toContain('"resident-loop-suspension"');
+    expect(source).toContain("residentLoopSuspension");
+    expect(source).toContain('reason: "not-claimable"');
+    expect(interlockPaths).toHaveLength(3);
+    expect(Object.values(forbiddenGenericEffects).every((probe) => probe.mock.calls.length === 0)).toBe(true);
+  });
 });
 
 const defaultBudgets: TaskOrchestratorBudgets = Object.freeze({

@@ -451,6 +451,97 @@ describe("resident plan candidate provider", () => {
     const unreleasedApproval = deepFreeze({ ...constraints, requiredApprovalClasses: [...constraints.requiredApprovalClasses, "unreleased-approval"] });
     await expect(provider.createInitialCandidate(deepFreeze({ plan: initialPlan, providerPosture: posture, policyConstraints: unreleasedApproval }))).rejects.toThrow(/plan candidate/i);
   });
+
+  it("replans from copied durable replay with no latest-process cache", async () => {
+    const priorPlan = deepFreeze({
+      id: priorPlanReadback.planRecordEventId,
+      type: "agent.resident-plan.recorded.v2",
+      version: 1,
+      streamId: "agent_resident_loop_task_c136_p_attempt_c136_p_run_c136_p",
+      sequence: 1,
+      context: {
+        actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
+        occurredAt: "2026-07-19T00:00:00.000Z",
+        causationId: initialPlan.causationId,
+        correlationId: initialPlan.correlationId,
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: initialPlan
+    });
+    const replanObservation = deepFreeze({
+      id: observation.observationEventId,
+      type: "agent.resident-observation.recorded.v2",
+      version: 1,
+      streamId: priorPlan.streamId,
+      sequence: 2,
+      context: priorPlan.context,
+      payload: {
+        ...initialPlan,
+        schemaVersion: "resident-observation-record.v2",
+        observationId: "observation_c136_p_initial",
+        planReadback: priorPlanReadback,
+        stepOrdinal: 1,
+        kind: "tool-result",
+        safeSummary: "Copied durable replay observation.",
+        artifactHashes: [hash("4")],
+        toolRequestId: "toolreq_c136_p_1",
+        modelInvocationEventId: "evt_invocation_c136_p"
+      }
+    });
+    const durableReplay = deepFreeze({
+      schemaVersion: "resident-loop-replay.v2",
+      identity: {
+        workspaceId: initialPlan.workspaceId,
+        residentAgentId: initialPlan.residentAgentId,
+        taskId: initialPlan.taskId,
+        attemptId: initialPlan.attemptId,
+        runId: initialPlan.runId
+      },
+      events: [priorPlan, replanObservation],
+      currentPlan: priorPlan,
+      finalObservation: replanObservation,
+      terminalResult: null
+    });
+    const freshProvider = (await candidateApi()).createResidentPlanCandidateProvider();
+    const input = deepFreeze({
+      plan: replan,
+      proposedPlan: replan,
+      providerPosture: posture,
+      policyConstraints: constraints,
+      priorPlan,
+      priorPlanReadback: durableReplay,
+      replanObservationReadback: replanObservation
+    });
+
+    await expect(freshProvider.createReplanCandidate(input)).resolves.toMatchObject({
+      schemaVersion: "resident-replan-candidate.v1"
+    });
+
+    const mutations = [
+      ["wider tool version", { ...replan, steps: [{ ...replan.steps[0], toolVersion: "2.0.0" }] }],
+      ["wider output class", { ...replan, steps: [{ ...replan.steps[0], expectedSafeOutputClass: "proposal" }] }],
+      ["wider source set", { ...replan, sourceEventIds: [...replan.sourceEventIds, "evt_source_003"] }],
+      ["wider context set", { ...replan, contextPackRefs: [...replan.contextPackRefs, { contextPackId: "context_pack_other", contentHash: hash("9") }] }],
+      ["changed provider model", replan],
+      ["changed budget", { ...replan, budget: budget(2, 0, 1) }]
+    ] as const;
+
+    for (const [label, proposedPlan] of mutations) {
+      const candidate = deepFreeze({
+        ...input,
+        proposedPlan,
+        plan: proposedPlan,
+        ...(label === "changed provider model"
+          ? { providerPosture: { ...posture, selection: { ...posture.selection, modelId: "model_other" } } }
+          : {})
+      });
+      await expect(
+        (await candidateApi()).createResidentPlanCandidateProvider().createReplanCandidate(candidate),
+        label
+      ).rejects.toThrow(/plan candidate/i);
+    }
+  });
 });
 
 async function candidateApi(): Promise<ResidentPlanCandidateProviderApi> {

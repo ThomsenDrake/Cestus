@@ -612,6 +612,31 @@ describe("buildTaskOrchestratorProjection", () => {
       diagnosticReason: "duplicate-active-attempt"
     });
   });
+
+  it("projects W-owned resident suspension as blocked and nonrecoverable", async () => {
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/task-orchestrator-projection.ts", import.meta.url),
+      "utf8"
+    );
+    const exactBindingMutations = [
+      "task",
+      "attempt",
+      "retry-generation",
+      "lease-claim-generation",
+      "causation",
+      "resident-suspension-instruction",
+      "nonresident-checkpoint-kind"
+    ] as const;
+    const residentRecognition = source.indexOf("resident-loop-suspension");
+    const expiredLeaseHandling = source.indexOf("leaseExpiresAt");
+
+    expect(residentRecognition).toBeGreaterThanOrEqual(0);
+    expect(expiredLeaseHandling).toBeGreaterThan(residentRecognition);
+    expect(source).toContain('"resident-loop-suspension-owned-by-w"');
+    expect(source).toContain("recoverable: false");
+    expect(source).toContain("checkpoint");
+    expect(exactBindingMutations).toHaveLength(7);
+  });
 });
 
 type LedgerEvent = KnowledgeEvent & {
