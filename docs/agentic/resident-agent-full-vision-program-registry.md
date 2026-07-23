@@ -28776,3 +28776,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   authority, not a product candidate, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-951 — Task136 Task11 GREEN accepted; Task12 oracle repair authorized
+
+- Recorded at: 2026-07-23T21:00:20Z
+- Task11 implementation checkpoint
+  `5c25a719b8cec0e6979149728e084d259693d69c` is preserved because a fresh
+  committed-byte typecheck found `TS2322` at its two factory return sites
+  after its focused **25/25** tests passed. Exact forward correction
+  `f89c0e4cb3edf7587c387897296806906685b363` retains that checkpoint as its
+  parent and adds only explicit `kind` discriminant narrowing. It uses no
+  cast, weaker parser, compatibility alias, cache, heuristic, hidden binding,
+  or other path.
+- Fresh coordinator reproduction against exact `f89c0e4c` passes focused
+  **25/25**, direct standalone typecheck, diff-check, exact one-source scope,
+  parent/authority ancestry, all 16 repaired RED-test blob freezes, and clean
+  state. Task11's stateless C source GREEN is accepted in the existing
+  Task136 lineage. Task12 source work did not begin.
+- Fresh read-only preflight `/root/task136_task12_preflight_audit`, based on
+  committed authority merge `79e867d80c64784d1e005e9c14b8082df3e83217`,
+  rejects Task12 source GREEN authorization. The exact three-file Task12
+  command is **25 tests = 17 passed + 8 failed**, but all eight new failures
+  are noncausal default/export/source-string assertions or inert mutation
+  tables. They do not execute closed-catalog provenance, restart-stable
+  capability hashing, ordinal admissibility, resident lifecycle persistence,
+  one-shot permits, claim-without-receipt unknown recovery, receipt terminal
+  recovery, legacy-path isolation, or the loader/sole-importer interlock.
+- A second read-only blueprint
+  `/root/task136_task12_oracle_repair_blueprint` confirms the smallest repair
+  requires exactly:
+  `packages/agent/test/domain-execution-dispatcher.test.ts`,
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`,
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`,
+  and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`.
+  No third product source is required: canonical resident-domain events and
+  all six adapter-family constructors, descriptors, contexts, ledgers, and
+  validators already exist.
+- The repair must replace dead-string and inert-table assertions with
+  executable parameterized fixtures for all six binding variants and eleven
+  catalog ordinals; hostile structural elevation and cross-binding cases;
+  fresh-module stable-hash and old-capability rejection; exact outcome
+  admissibility; one-shot/concurrent permit rejection; canonical automatic
+  and human resident-prefix readback; fresh-instance claim-without-receipt
+  `effect-outcome-unknown` with zero effect; receipt-without-terminal
+  effect-free completion; legacy callback isolation; and a repository-wide
+  AST import/loader/sole-importer scan plus actual package-factory invocation
+  under both barrel-first and adapter-first loading.
+- Every repaired event fixture must pass the released canonical event
+  validator and exact prefix/causation assertions. Ordinals 0, 1, and 8 must
+  remain non-successful; ordinal 7 is nonledger projection evidence; no
+  permit or capability may escape, survive module reset, or be promoted from
+  the legacy structural dispatcher. The repair may add no public test hook,
+  source, adapter, contract, plan, mission, registry, provider, activation,
+  fallback, credential, network, or unrelated path.
+- Preserve `f89c0e4c`, the rejected noncausal eight-test state, permanent RED,
+  all prior fixture/oracle repairs and reviews, and complete ancestry. Produce
+  a fresh causal Task12 RED against unchanged dispatcher/G sources; record
+  exact focused/card/control/typecheck/log-hash/manifest/scope/ancestry/clean
+  evidence in the claim; preserve the other 13 RED test blobs and all
+  product-source states; and obtain a completely fresh focused read-only
+  review before Task12 source GREEN resumes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains **28 of
+  29**. This is a Task11 implementation checkpoint plus bounded Task12
+  test-oracle repair authority, not Task12 source GREEN, a product candidate,
+  strict record 29, assurance transition, publication, or product release.
+  `neo`, push, Wave 3, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
