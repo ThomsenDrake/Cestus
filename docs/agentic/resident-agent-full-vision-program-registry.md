@@ -28046,3 +28046,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Strict product frontier remains **28 of 29**. Task136 implementation, V4
   mutation, product RED/GREEN, `neo`, push, Wave 3, provider, credential,
   network, external-system, and pull-request actions remain unauthorized.
+
+## RV-1-E-937 — Task136 implementation-plan candidate rejected; bounded repair authorized
+
+- Recorded at: 2026-07-23T15:00:21Z
+- Both completely fresh read-only reviewers reject exact immutable plan
+  candidate `5487248b0e1587075a5262c6edf7a43201d244ac`. Architecture reviewer
+  `/root/task136_plan_arch_review_5487` and executability reviewer
+  `/root/task136_plan_exec_review_5487` independently report the same two
+  blocking defects. Candidate `5487248b` and admission authority `5648d28d`
+  remain preserved as rejected planning history; neither is plan approval,
+  implementation authority, assurance, integration, strict record, or
+  product release.
+- First, the candidate's illustrative V4 RED uses nonexistent
+  `readContract()`, treats `releaseGraph` as an array, reads nonexistent
+  `releaseCompatibility.entries`, and invents top-level
+  `task136BaselineAdoptions`. The committed schema instead uses
+  `loadV4Contract()`, `releaseGraph.cards`, and
+  `releaseCompatibility.historicalRecords`; its exact top-level-key validator
+  forbids the invented property. Baseline-adoption proof belongs only in the
+  finite checker and injected repository fixtures. Implemented literally,
+  the proposed RED would fail for harness/schema error rather than the absent
+  authorized reconciliation.
+- Second, each integrated rerun invokes a candidate-binding step from a later
+  program `HEAD`. That reassigns `v4_candidate_sha` or
+  `task136_candidate_sha` to an unreviewed integration merge, breaks exact
+  candidate scope/ancestry gates with later registry bytes, makes
+  candidate/integration equality tautological, and could write an unreviewed
+  integration SHA into strict record 29. Reviewed candidate identities must
+  remain immutable; integrated trees require distinct variables and
+  behavior-only reruns.
+- Coordinator verification against exact Git objects confirms both findings:
+  V4 top-level keys are exactly `schemaVersion`, `authority`,
+  `releaseCompatibility`, `releaseGraph`, `compositionGrammar`, and
+  `compositionCorpus`; `releaseGraph.cards` and
+  `releaseCompatibility.historicalRecords` are the real arrays; the assurance
+  test defines `loadV4Contract`; and every cited integrated rerun reaches a
+  candidate assignment from `git rev-parse HEAD`.
+- One bounded planning repair may change only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  It must replace the V4 RED pseudocode with concrete real-schema assertions
+  and finite checker-fixture expectations without adding a contract adoption
+  field. It must keep reviewed candidate SHAs immutable and define separate
+  integration-tree behavior, blob-equality, repository, differential, and
+  clean-state reruns that never repeat candidate binding/scope assignments.
+  The repaired descendant requires a completely fresh independent
+  architecture/executability review pair.
+- Status returns Task136 implementation planning `reviewing -> implementing`
+  for this exact repair. No V4/product/claim/test/source mutation,
+  implementation authorization, integration, strict record 29, assurance
+  calibration, `neo`, push, Wave 3, provider, credential, network,
+  external-system, or pull-request action is authorized. Strict product
+  frontier remains **28 of 29**.
