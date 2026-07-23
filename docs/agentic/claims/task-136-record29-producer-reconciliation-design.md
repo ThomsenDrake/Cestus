@@ -1,6 +1,6 @@
 # Task136 Record-29 Producer Reconciliation Design Claim
 
-Status: awaiting exact written-design owner review
+Status: awaiting fresh independent dual review
 
 Design:
 `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
@@ -83,10 +83,15 @@ Bounded design result:
   permanent claim may exist. Only a newly claimed in-memory one-shot permit
   can invoke an effect; a reread claimed stage never has a permit.
 - Completion or post-claim failure requires a canonical durable outcome
-  receipt over exact claim-caused domain evidence. A claim without a receipt
-  is sealed `effect-outcome-unknown`, suspends with its exact automatic or
-  human gateway binding, permanently burns the original tool request, and
-  permits reconciliation/replanning but never reexecution.
+  receipt over an exact claim-bound dispatcher invocation attestation. The
+  unchanged adapter ABI never receives the resident claim. The package wrapper
+  classifies exact catalog-specific outcomes as wholly new ledger events,
+  wholly idempotent-existing ledger events, or, for workspace projection
+  rebuild alone, exact nonledger projection artifacts; fail-closed provider
+  execution and blocked canonical repair can never return success. A claim
+  without a receipt is sealed `effect-outcome-unknown`, suspends with its exact
+  automatic or human gateway binding, permanently burns the original tool
+  request, and permits reconciliation/replanning but never reexecution.
 - W's `reverifyAfterAwait` distinguishes current, recordable-stale, and
   unavailable authority. Recordable stale permits only durable suspension
   bookkeeping on the same freshly authenticated mount/ledger/store; complete
@@ -103,9 +108,12 @@ Bounded design result:
   the sole source for the suffix; it cannot manufacture a missing checkpoint.
 - The adopted task-orchestrator source treats the same-claim resident
   checkpoint as W-owned durable supersession in active, cancellation, and
-  stale-recovery paths. Its projection recognizes that checkpoint before
-  expired-lease handling, retains it, and derives blocked/non-recoverable
-  resident-loop diagnostics without a generic release or reclaim.
+  stale-recovery paths. Each tick interlock uses the already released
+  `not-claimable` skip-summary reason; no orchestrator summary type changes.
+  Its projection recognizes that checkpoint before expired-lease handling,
+  retains it, and derives blocked/non-recoverable
+  `resident-loop-suspension-owned-by-w` diagnostics without a generic release
+  or reclaim.
 - H is an internal full-readback port. R alone exposes the concrete
   real-mounted library composition entrypoint and passes only the exact opaque
   dispatcher capability into W. Loop callers receive only `advance`/`resume`;
@@ -151,11 +159,17 @@ Independent design review history:
   construct an exact result, denied/failed prefixes and the approved-preview
   hash were incomplete, and the released task orchestrator could race W with
   a generic stale release/reclaim.
-- RV-1-E-933 and this history-preserving descendant address those findings
-  with the closed package catalog, durable outcome receipt and unknown state,
-  exact authorization unions, four pinned interlock paths, and W-only
-  resident checkpoint recovery. Completely fresh architecture and
-  executability reviews are still required on the exact committed descendant.
+- `29826501dbad3650969cb3a45d1c4c933258489f` was rejected because the proposed
+  W-specific tick-summary literal was outside the released skip-reason union
+  and “claim-caused domain evidence” lacked an executable rule for the
+  unchanged adapter ABI.
+- RV-1-E-933 and this history-preserving descendant address all findings with
+  the closed package catalog, claim-bound catalog-specific invocation
+  attestation, durable outcome receipt and unknown state, exact authorization
+  unions, unchanged `not-claimable` tick summaries, the projection-only W
+  diagnostic, four pinned interlock paths, and W-only resident checkpoint
+  recovery. Completely fresh architecture and executability reviews are still
+  required on the exact committed descendant.
 
 Validation required before commit:
 
