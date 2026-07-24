@@ -1,5 +1,10 @@
+import { createHash } from "node:crypto";
 import { isProxy } from "node:util/types";
-import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import type {
+  AppendableKnowledgeEvent,
+  KnowledgeEvent,
+  KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { residentLoopStreamId } from "./plan-observation-contracts.js";
 import type { AgentApprovalClass } from "./permission-policy.js";
@@ -10,6 +15,7 @@ import {
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import {
   createAgentToolGateway,
+  hashAgentToolPreview,
   type AgentToolReadModelChange,
   type AgentToolResult,
   type AgentToolPreview
@@ -30,6 +36,10 @@ const residentGatewayActor = Object.freeze({ id: "agent_default", kind: "agent" 
 export interface ResidentLoopToolGatewayInput {
   readonly ledger: EventLedger;
   readonly now: () => string;
+  readonly residentDomainExecutionPort?: unknown;
+  readonly reverifyBeforeEffect?: () => Promise<unknown>;
+  readonly reverifyAfterEffect?: () => Promise<unknown>;
+  readonly createTrustedToolRequestId?: () => string;
 }
 
 export interface ResidentLoopToolRequestInput {
@@ -74,7 +84,23 @@ export interface ResidentLoopToolGatewayReadback {
   readonly resultEvidenceEventIds?: readonly string[];
 }
 
-export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInput) {
+export interface ResidentLoopToolGateway {
+  requestAndReadback(value: ResidentLoopToolRequestInput): Promise<ResidentLoopToolGatewayReadback>;
+  readRequest(value: ResidentLoopToolGatewayReadback): Promise<ResidentLoopToolGatewayReadback>;
+  readDecision(value: ResidentLoopToolGatewayReadback): Promise<ResidentLoopToolGatewayReadback>;
+  executeAndReadback(
+    value: ResidentLoopToolGatewayReadback,
+    execute: (readback: ResidentLoopToolGatewayReadback) => Promise<AgentToolResult>
+  ): Promise<ResidentLoopToolGatewayReadback>;
+  readResult(value: ResidentLoopToolGatewayReadback): Promise<ResidentLoopToolGatewayReadback>;
+}
+
+export function createResidentLoopToolGateway(
+  input: ResidentLoopToolGatewayInput
+): ResidentLoopToolGateway {
+  if (input.residentDomainExecutionPort !== undefined) {
+    return createResidentDomainGateway(input) as unknown as ResidentLoopToolGateway;
+  }
   const completionAdapter = createResidentLoopSchedulerCompletionAdapter({ ledger: input.ledger });
   const gateway = createAgentToolGateway({ ledger: input.ledger, actor: residentGatewayActor, now: input.now });
 
@@ -174,6 +200,1021 @@ export function createResidentLoopToolGateway(input: ResidentLoopToolGatewayInpu
       ));
     }
   });
+}
+
+type ResidentPlanV2Event = KnowledgeEventOf<"agent.resident-plan.recorded.v2">;
+type ResidentRequestedEvent = KnowledgeEventOf<"agent.resident-domain.requested.v1">;
+type ResidentHumanApprovedEvent = KnowledgeEventOf<"agent.resident-domain.human-approved.v1">;
+type ResidentClaimedEvent = KnowledgeEventOf<"agent.resident-domain.execution-claimed.v1">;
+type ResidentOutcomeEvent = KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
+type ResidentCompletedEvent = KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+
+interface ResidentPortDescriptor {
+  readonly toolId: string;
+  readonly toolVersion: string;
+  readonly sideEffectClass: string;
+  readonly requiredApprovalClass: string;
+}
+
+interface ResidentPortPreview {
+  readonly catalogOrdinal: number;
+  readonly executionCapabilityHash: string;
+  readonly implementationRevision: string;
+  readonly descriptor: ResidentPortDescriptor;
+  readonly currentPreview: {
+    readonly preview: AgentToolPreview;
+    readonly sourceEventIds: readonly string[];
+    readonly inputArtifactHashes: readonly string[];
+    readonly provenanceRefs: readonly string[];
+    readonly activeLocks: readonly unknown[];
+    readonly freshnessChecks: readonly {
+      readonly ok: boolean;
+    }[];
+  };
+}
+
+interface ResidentLiveStage {
+  readonly owner: object;
+  readonly stage: "requested" | "human-approved";
+  readonly locator: Readonly<Record<string, unknown>>;
+  readonly plan: ResidentPlanV2Event;
+  readonly request: ResidentRequestedEvent;
+  readonly portPreview: ResidentPortPreview;
+  readonly approval?: ResidentHumanApprovedEvent;
+}
+
+interface ResidentPermitState {
+  readonly port: object;
+  readonly input: object;
+  readonly catalogOrdinal: number;
+}
+
+const issuedResidentLiveStages = new WeakMap<object, ResidentLiveStage>();
+const issuedResidentPermits = new WeakMap<object, ResidentPermitState>();
+
+function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): object {
+  const ledger = input.ledger;
+  const port = requireResidentGatewayObject(
+    input.residentDomainExecutionPort,
+    "resident domain execution port"
+  );
+  const beforeEffect = requireResidentGatewayFunction(
+    input.reverifyBeforeEffect,
+    "resident before-effect reverification"
+  );
+  const afterEffect = requireResidentGatewayFunction(
+    input.reverifyAfterEffect,
+    "resident after-effect reverification"
+  );
+  const createTrustedId = requireResidentGatewayFunction(
+    input.createTrustedToolRequestId,
+    "resident trusted tool-request ID factory"
+  );
+  if (typeof input.now !== "function" || isProxy(input.now)) {
+    throw new Error("Resident domain gateway requires a non-proxy clock.");
+  }
+  const owner = Object.freeze({});
+
+  async function preparePlannedStepBindings(value: unknown): Promise<readonly object[]> {
+    const plan = residentGatewayRecord(value, "resident planned-step binding input");
+    rejectResidentGatewayUnknown(plan, [
+      "workspaceId",
+      "residentAgentId",
+      "taskId",
+      "attemptId",
+      "runId",
+      "planId",
+      "planRevision",
+      "steps"
+    ], "resident planned-step binding input");
+    const identity = {
+      workspaceId: residentGatewayString(plan.workspaceId, "resident workspace ID"),
+      residentAgentId: residentGatewayString(plan.residentAgentId, "resident agent ID"),
+      taskId: residentGatewayString(plan.taskId, "resident task ID"),
+      attemptId: residentGatewayString(plan.attemptId, "resident attempt ID"),
+      runId: residentGatewayString(plan.runId, "resident run ID"),
+      planId: residentGatewayString(plan.planId, "resident plan ID"),
+      planRevision: residentGatewayNonnegativeInteger(plan.planRevision, "resident plan revision")
+    };
+    const steps = residentGatewayArray(plan.steps, "resident planned steps");
+    const seenIds = new Set<string>();
+    const bindings: object[] = [];
+    for (const rawStep of steps) {
+      const step = residentGatewayRecord(rawStep, "resident planned step");
+      rejectResidentGatewayUnknown(
+        step,
+        ["ordinal", "toolId", "toolVersion"],
+        "resident planned step"
+      );
+      const ordinal = residentGatewayNonnegativeInteger(step.ordinal, "resident step ordinal");
+      const toolId = residentGatewayString(step.toolId, "resident tool ID");
+      const toolVersion = residentGatewayString(step.toolVersion, "resident tool version");
+      const selected = await callResidentPort(port, {
+        phase: "binding",
+        toolId,
+        toolVersion
+      });
+      const selectedRecord = residentGatewayRecord(selected, "resident port binding response");
+      const toolRequestId = Reflect.apply(createTrustedId, undefined, []);
+      if (
+        typeof toolRequestId !== "string" ||
+        !toolRequestId.startsWith("toolreq_") ||
+        seenIds.has(toolRequestId)
+      ) {
+        throw new Error("Resident trusted tool-request ID factory returned a noncanonical or duplicate ID.");
+      }
+      seenIds.add(toolRequestId);
+      const executionCapabilityHash = residentGatewayHashString(
+        selectedRecord.executionCapabilityHash,
+        "resident execution capability hash"
+      );
+      bindings.push(Object.freeze({
+        ...identity,
+        ordinal,
+        toolRequestId,
+        toolId,
+        toolVersion,
+        executionCapabilityHash
+      }));
+    }
+    return Object.freeze(bindings);
+  }
+
+  async function requestFreshAuthorized(value: unknown): Promise<object> {
+    const locator = copyResidentLogicalLocator(value);
+    const plan = await requireResidentPlan(ledger, locator);
+    const portPreview = await requireResidentPortPreview(port, locator);
+    if (portPreview.executionCapabilityHash !== locator.executionCapabilityHash) {
+      throw new Error("Resident execution port capability hash does not match the durable logical locator.");
+    }
+    await requireCurrentResidentReverification(beforeEffect);
+    const step = requireResidentPlanStep(plan, locator);
+    const previewHash = hashAgentToolPreview(portPreview.currentPreview.preview);
+    const authorizationKind =
+      portPreview.catalogOrdinal === 10 ? "automatic-policy" : "human-approval";
+    const correlationId = plan.payload.correlationId;
+    const requestInput: Extract<
+      AppendableKnowledgeEvent,
+      { readonly type: "agent.resident-domain.requested.v1" }
+    > = {
+      type: "agent.resident-domain.requested.v1",
+      version: 1,
+      streamId: residentGatewayDomainStreamId(locator),
+      context: residentGatewayEventContext(
+        plan.id,
+        correlationId,
+        input.now()
+      ),
+      payload: {
+        schemaVersion: "resident-domain-requested.v1",
+        logicalLocator: locator as never,
+        executionCapabilityHash: locator.executionCapabilityHash as `sha256:${string}`,
+        causationId: plan.id,
+        correlationId,
+        authorizationKind,
+        planRecordEventId: plan.id,
+        previewHash,
+        allowlistEntryHash: step.allowlistEntryHash,
+        sideEffectClass: portPreview.descriptor.sideEffectClass as never,
+        expectedSafeOutputClass: step.expectedSafeOutputClass,
+        requiredApprovalClass: portPreview.descriptor.requiredApprovalClass as never,
+        sourceEventIds: [...plan.payload.sourceEventIds],
+        contextPackRefs: [...plan.payload.contextPackRefs],
+        inputArtifactHashes: [...portPreview.currentPreview.inputArtifactHashes] as `sha256:${string}`[],
+        policy: plan.payload.policy,
+        authority: plan.payload.authority,
+        budget: plan.payload.budget
+      }
+    };
+    const request = await ledger.append(requestInput, { expectedNextSequence: 1 });
+    if (request.type !== "agent.resident-domain.requested.v1") {
+      throw new Error("Resident durable request append returned the wrong event family.");
+    }
+    return issueResidentLiveStage({
+      owner,
+      stage: "requested",
+      locator,
+      plan,
+      request,
+      portPreview
+    });
+  }
+
+  async function readFreshHumanDecision(value: unknown): Promise<object> {
+    const live = requireResidentLiveStage(value, owner, "requested");
+    issuedResidentLiveStages.delete(value as object);
+    if (live.request.payload.authorizationKind !== "human-approval") {
+      throw new Error("Resident human decision read requires a human-approval request.");
+    }
+    const stream = await ledger.readStream(
+      residentGatewayDomainStreamId(live.locator)
+    );
+    const approvals = stream.filter(
+      (event): event is ResidentHumanApprovedEvent =>
+        event.type === "agent.resident-domain.human-approved.v1"
+    );
+    const denials = stream.filter((event) =>
+      event.type === "agent.resident-domain.denied.v1"
+    );
+    if (denials.length > 0) {
+      throw new Error("Resident human decision is denied, revoked, or terminal.");
+    }
+    if (approvals.length !== 1) {
+      throw new Error("Resident human decision requires exactly one durable approval.");
+    }
+    const approval = approvals[0]!;
+    const requestTime = Date.parse(live.request.context.occurredAt);
+    const approvalTime = Date.parse(approval.context.occurredAt);
+    const deadline =
+      requestTime + live.plan.payload.budget.ceilings.approvalSuspensionMs;
+    if (
+      approval.payload.requestEventId !== live.request.id ||
+      approval.payload.executionCapabilityHash !==
+        live.request.payload.executionCapabilityHash ||
+      residentGatewayCanonicalJson(approval.payload.logicalLocator) !==
+        residentGatewayCanonicalJson(live.locator) ||
+      approval.context.causationId !== live.request.id ||
+      approval.payload.causationId !== live.request.id ||
+      approval.payload.correlationId !== live.request.payload.correlationId ||
+      approval.context.actor.kind !== "human" ||
+      approval.context.actor.id !== approval.payload.approvedBy ||
+      approval.payload.approvedBy === residentGatewayActor.id ||
+      approval.payload.approvedPreviewHash !== live.request.payload.previewHash
+    ) {
+      throw new Error("Resident human approval is not exact, independent, or preview-matched.");
+    }
+    if (
+      !Number.isFinite(approvalTime) ||
+      approvalTime < requestTime
+    ) {
+      throw new Error("Resident human approval is stale relative to its request.");
+    }
+    if (Date.parse(input.now()) > deadline) {
+      throw new Error("Resident human approval deadline expired before execution.");
+    }
+    await requireCurrentResidentReverification(beforeEffect);
+    return issueResidentLiveStage({
+      ...live,
+      stage: "human-approved",
+      approval
+    });
+  }
+
+  async function executeFreshAuthorized(value: unknown): Promise<object> {
+    const live = requireResidentLiveStage(value, owner);
+    const automatic =
+      live.request.payload.authorizationKind === "automatic-policy";
+    if (
+      (automatic && live.stage !== "requested") ||
+      (!automatic && live.stage !== "human-approved")
+    ) {
+      throw new Error("Resident execution requires the exact fresh authorized stage.");
+    }
+    issuedResidentLiveStages.delete(value as object);
+    await requireCurrentResidentReverification(beforeEffect);
+    const authorization = automatic
+      ? Object.freeze({ authorizationKind: "automatic-policy" as const })
+      : Object.freeze({
+          authorizationKind: "human-approval" as const,
+          decisionEventId: live.approval!.payload.decisionEventId,
+          approvedBy: live.approval!.payload.approvedBy,
+          approvedPreviewHash: live.approval!.payload.approvedPreviewHash
+        });
+    const causationId = live.approval?.id ?? live.request.id;
+    const streamId = residentGatewayDomainStreamId(live.locator);
+    const currentStream = await ledger.readStream(streamId);
+    const claimInput: Extract<
+      AppendableKnowledgeEvent,
+      { readonly type: "agent.resident-domain.execution-claimed.v1" }
+    > = {
+      type: "agent.resident-domain.execution-claimed.v1",
+      version: 1,
+      streamId,
+      context: residentGatewayEventContext(
+        causationId,
+        live.request.payload.correlationId,
+        input.now()
+      ),
+      payload: {
+        schemaVersion: "resident-domain-execution-claimed.v1",
+        logicalLocator: live.locator as never,
+        executionCapabilityHash:
+          live.request.payload.executionCapabilityHash,
+        causationId,
+        correlationId: live.request.payload.correlationId,
+        requestEventId: live.request.id,
+        authorization,
+        claimedAt: input.now()
+      }
+    };
+    const claim = await ledger.append(claimInput, {
+      expectedNextSequence: currentStream.length + 1
+    });
+    if (claim.type !== "agent.resident-domain.execution-claimed.v1") {
+      throw new Error("Resident execution claim append returned the wrong event family.");
+    }
+    const canonicalResidentInvocationInput = Object.freeze({
+      authorizationKind: live.request.payload.authorizationKind,
+      logicalLocator: live.locator,
+      requestEventId: live.request.id,
+      executionClaimEventId: claim.id,
+      authorization,
+      previewHash: live.request.payload.previewHash,
+      approvedPreviewHash:
+        live.approval?.payload.approvedPreviewHash ??
+        live.request.payload.previewHash,
+      approvedBy:
+        live.approval?.payload.approvedBy ?? "resident-automatic-policy",
+      currentPreview: live.portPreview.currentPreview
+    });
+    const permit = mintResidentPermit(
+      port,
+      canonicalResidentInvocationInput,
+      live.portPreview.catalogOrdinal
+    );
+    const attestation = await invokeResidentPort(
+      port,
+      permit,
+      canonicalResidentInvocationInput
+    );
+    await requireCurrentResidentReverification(afterEffect);
+    const envelope = residentGatewayRecord(
+      attestation,
+      "resident package execution attestation"
+    );
+    if (
+      envelope.requestEventId !== live.request.id ||
+      envelope.executionClaimEventId !== claim.id ||
+      envelope.executionCapabilityHash !==
+        live.request.payload.executionCapabilityHash ||
+      envelope.catalogOrdinal !== live.portPreview.catalogOrdinal ||
+      envelope.outcomeDisposition !== "completed"
+    ) {
+      throw new Error("Resident package execution attestation does not match its request and claim.");
+    }
+    const envelopeHash = residentGatewayHash(envelope);
+    const receipt = await appendResidentGatewayEvent(ledger, {
+      type: "agent.resident-domain.outcome-observed.v1",
+      version: 1,
+      streamId,
+      context: residentGatewayEventContext(
+        claim.id,
+        live.request.payload.correlationId,
+        input.now()
+      ),
+      payload: {
+        schemaVersion: "resident-domain-outcome-observed.v1",
+        causationId: claim.id,
+        correlationId: live.request.payload.correlationId,
+        ...envelope,
+        envelopeHash
+      }
+    }, currentStream.length + 2);
+    if (receipt.type !== "agent.resident-domain.outcome-observed.v1") {
+      throw new Error("Resident outcome receipt append returned the wrong event family.");
+    }
+    const artifactHashes = residentGatewayStringArray(
+      envelope.artifactHashes,
+      "resident result artifact hashes"
+    );
+    const completed = await appendResidentCompletion(
+      ledger,
+      live.locator,
+      live.request,
+      claim,
+      receipt,
+      authorization,
+      envelopeHash,
+      artifactHashes,
+      currentStream.length + 3,
+      input.now()
+    );
+    return Object.freeze({
+      authorizationKind: live.request.payload.authorizationKind,
+      stage: "completed",
+      logicalLocator: live.locator,
+      executionCapabilityHash:
+        live.request.payload.executionCapabilityHash,
+      requestEventId: live.request.id,
+      ...(live.approval === undefined
+        ? {}
+        : {
+            decisionEventId: live.approval.payload.decisionEventId,
+            approvedBy: live.approval.payload.approvedBy,
+            approvedPreviewHash:
+              live.approval.payload.approvedPreviewHash
+          }),
+      executionClaimEventId: claim.id,
+      outcomeReceiptEventId: receipt.id,
+      resultEventId: completed.id
+    });
+  }
+
+  async function rereadAndIssueFromLedger(value: unknown): Promise<object> {
+    const locator = copyResidentLogicalLocator(value);
+    const plan = await requireResidentPlan(ledger, locator);
+    const selected = residentGatewayRecord(await callResidentPort(port, {
+      phase: "binding",
+      toolId: locator.toolId,
+      toolVersion: locator.toolVersion
+    }), "resident recovery port binding");
+    if (selected.executionCapabilityHash !== locator.executionCapabilityHash) {
+      throw new Error("Resident recovery locator does not match the mounted execution port.");
+    }
+    const streamId = residentGatewayDomainStreamId(locator);
+    const stream = await ledger.readStream(streamId);
+    const requests = stream.filter(
+      (event): event is ResidentRequestedEvent =>
+        event.type === "agent.resident-domain.requested.v1"
+    );
+    if (requests.length !== 1) {
+      throw new Error("Resident recovery requires exactly one canonical durable request.");
+    }
+    const request = requests[0]!;
+    if (
+      request.payload.planRecordEventId !== plan.id ||
+      request.payload.executionCapabilityHash !==
+        locator.executionCapabilityHash ||
+      residentGatewayCanonicalJson(request.payload.logicalLocator) !==
+        residentGatewayCanonicalJson(locator)
+    ) {
+      throw new Error("Resident recovery request does not match its plan and logical locator.");
+    }
+    const approvals = stream.filter(
+      (event): event is ResidentHumanApprovedEvent =>
+        event.type === "agent.resident-domain.human-approved.v1"
+    );
+    const claims = stream.filter(
+      (event): event is ResidentClaimedEvent =>
+        event.type === "agent.resident-domain.execution-claimed.v1"
+    );
+    const receipts = stream.filter(
+      (event): event is ResidentOutcomeEvent =>
+        event.type === "agent.resident-domain.outcome-observed.v1"
+    );
+    const completions = stream.filter(
+      (event): event is ResidentCompletedEvent =>
+        event.type === "agent.resident-domain.completed.v1"
+    );
+    if (
+      approvals.length > 1 ||
+      claims.length > 1 ||
+      receipts.length > 1 ||
+      completions.length > 1
+    ) {
+      throw new Error("Resident recovery stream has a noncanonical multiple-event lifecycle.");
+    }
+    const approval = approvals[0];
+    const claim = claims[0];
+    const receipt = receipts[0];
+    let completed = completions[0];
+    if (completed !== undefined) {
+      return residentRecoveryReadback(
+        request,
+        locator,
+        approval,
+        claim,
+        receipt,
+        completed
+      );
+    }
+    if (receipt !== undefined) {
+      if (claim === undefined) {
+        throw new Error("Resident recovery outcome receipt has no execution claim.");
+      }
+      completed = await appendResidentCompletion(
+        ledger,
+        locator,
+        request,
+        claim,
+        receipt,
+        receipt.payload.authorization,
+        residentGatewayHashString(
+          receipt.payload.envelopeHash,
+          "resident recovery envelope hash"
+        ),
+        receipt.payload.artifactHashes,
+        stream.length + 1,
+        input.now()
+      );
+      return residentRecoveryReadback(
+        request,
+        locator,
+        approval,
+        claim,
+        receipt,
+        completed
+      );
+    }
+    if (claim !== undefined) {
+      return Object.freeze({
+        ...residentRecoveryBase(request, locator, approval),
+        stage: "claimed",
+        category: "effect-outcome-unknown",
+        executionClaimEventId: claim.id
+      });
+    }
+    if (request.payload.authorizationKind === "human-approval" && approval !== undefined) {
+      return Object.freeze({
+        ...residentRecoveryBase(request, locator, approval),
+        stage: "human-approved"
+      });
+    }
+    return Object.freeze({
+      ...residentRecoveryBase(request, locator, approval),
+      stage: "requested"
+    });
+  }
+
+  return Object.freeze({
+    preparePlannedStepBindings,
+    requestFreshAuthorized,
+    readFreshHumanDecision,
+    executeFreshAuthorized,
+    rereadAndIssueFromLedger
+  });
+}
+
+function issueResidentLiveStage(input: ResidentLiveStage): object {
+  const issued = Object.freeze({
+    authorizationKind: input.request.payload.authorizationKind,
+    stage: input.stage,
+    logicalLocator: input.locator,
+    executionCapabilityHash:
+      input.request.payload.executionCapabilityHash,
+    requestEventId: input.request.id,
+    ...(input.approval === undefined
+      ? {}
+      : {
+          decisionEventId: input.approval.payload.decisionEventId,
+          approvedBy: input.approval.payload.approvedBy,
+          approvedPreviewHash: input.approval.payload.approvedPreviewHash
+        })
+  });
+  issuedResidentLiveStages.set(issued, input);
+  return issued;
+}
+
+function requireResidentLiveStage(
+  value: unknown,
+  owner: object,
+  expectedStage?: ResidentLiveStage["stage"]
+): ResidentLiveStage {
+  if (value === null || typeof value !== "object" || isProxy(value)) {
+    throw new Error("Resident execution requires a fresh issued permit stage.");
+  }
+  const live = issuedResidentLiveStages.get(value);
+  if (live === undefined) {
+    throw new Error("Resident execution stage was not freshly issued or was already consumed.");
+  }
+  if (live.owner !== owner) {
+    throw new Error("Resident execution stage belongs to a foreign gateway binding or port.");
+  }
+  if (expectedStage !== undefined && live.stage !== expectedStage) {
+    throw new Error("Resident execution stage does not match the required fresh decision stage.");
+  }
+  return live;
+}
+
+function mintResidentPermit(
+  port: object,
+  input: object,
+  catalogOrdinal: number
+): object {
+  const permit = Object.freeze({});
+  issuedResidentPermits.set(permit, Object.freeze({
+    port,
+    input,
+    catalogOrdinal
+  }));
+  return permit;
+}
+
+async function callResidentPort(port: object, command: object): Promise<unknown> {
+  const operation = Reflect.get(port, "prepareResidentDomainExecution");
+  if (typeof operation !== "function" || isProxy(operation)) {
+    throw new Error("Resident execution port does not expose its package-owned preparation operation.");
+  }
+  return await Reflect.apply(operation, port, [command]);
+}
+
+async function invokeResidentPort(
+  port: object,
+  permit: object,
+  input: object
+): Promise<unknown> {
+  const operation = Reflect.get(port, "invokeAndAttest");
+  if (typeof operation !== "function" || isProxy(operation)) {
+    throw new Error("Resident execution port does not expose its package-owned invocation operation.");
+  }
+  return await Reflect.apply(operation, port, [permit, input]);
+}
+
+async function requireResidentPortPreview(
+  port: object,
+  locator: Readonly<Record<string, unknown>>
+): Promise<ResidentPortPreview> {
+  const raw = await callResidentPort(port, {
+    phase: "preview",
+    logicalLocator: locator
+  });
+  const response = residentGatewayRecord(raw, "resident execution port preview response");
+  const descriptor = residentGatewayRecord(
+    response.descriptor,
+    "resident execution port descriptor"
+  );
+  const current = residentGatewayRecord(
+    response.currentPreview,
+    "resident current preview response"
+  );
+  const preview = requireResidentGatewayObject(
+    current.preview,
+    "resident current tool preview"
+  ) as AgentToolPreview;
+  return {
+    catalogOrdinal: residentGatewayNonnegativeInteger(
+      response.catalogOrdinal,
+      "resident catalog ordinal"
+    ),
+    executionCapabilityHash: residentGatewayHashString(
+      response.executionCapabilityHash,
+      "resident execution capability hash"
+    ),
+    implementationRevision: residentGatewayString(
+      response.implementationRevision,
+      "resident implementation revision"
+    ),
+    descriptor: {
+      toolId: residentGatewayString(descriptor.toolId, "resident descriptor tool ID"),
+      toolVersion: residentGatewayString(descriptor.toolVersion, "resident descriptor tool version"),
+      sideEffectClass: residentGatewayString(
+        descriptor.sideEffectClass,
+        "resident descriptor side-effect class"
+      ),
+      requiredApprovalClass: residentGatewayString(
+        descriptor.requiredApprovalClass,
+        "resident descriptor approval class"
+      )
+    },
+    currentPreview: {
+      preview,
+      sourceEventIds: residentGatewayStringArray(
+        current.sourceEventIds,
+        "resident current source event IDs"
+      ),
+      inputArtifactHashes: residentGatewayStringArray(
+        current.inputArtifactHashes,
+        "resident current input artifact hashes"
+      ),
+      provenanceRefs: residentGatewayStringArray(
+        current.provenanceRefs,
+        "resident current provenance refs"
+      ),
+      activeLocks: residentGatewayArray(
+        current.activeLocks,
+        "resident current active locks"
+      ),
+      freshnessChecks: residentGatewayArray(
+        current.freshnessChecks,
+        "resident current freshness checks"
+      ).map((value) => {
+        const check = residentGatewayRecord(value, "resident freshness check");
+        return { ok: check.ok === true };
+      })
+    }
+  };
+}
+
+async function requireResidentPlan(
+  ledger: EventLedger,
+  locator: Readonly<Record<string, unknown>>
+): Promise<ResidentPlanV2Event> {
+  const stream = await ledger.readStream(
+    `agent_resident_loop_${locator.taskId}_${locator.attemptId}_${locator.runId}`
+  );
+  const plans = stream.filter(
+    (event): event is ResidentPlanV2Event =>
+      event.type === "agent.resident-plan.recorded.v2" &&
+      event.payload.workspaceId === locator.workspaceId &&
+      event.payload.residentAgentId === locator.residentAgentId &&
+      event.payload.taskId === locator.taskId &&
+      event.payload.attemptId === locator.attemptId &&
+      event.payload.runId === locator.runId &&
+      event.payload.planId === locator.planId &&
+      event.payload.planRevision === locator.planRevision
+  );
+  if (plans.length !== 1) {
+    throw new Error("Resident logical locator requires one exact durable V2 plan.");
+  }
+  const plan = plans[0]!;
+  requireResidentPlanStep(plan, locator);
+  return plan;
+}
+
+function requireResidentPlanStep(
+  plan: ResidentPlanV2Event,
+  locator: Readonly<Record<string, unknown>>
+): ResidentPlanV2Event["payload"]["steps"][number] {
+  const steps = plan.payload.steps.filter((step) =>
+    step.ordinal === locator.stepOrdinal &&
+    step.toolRequestId === locator.toolRequestId &&
+    step.toolId === locator.toolId &&
+    step.toolVersion === locator.toolVersion &&
+    step.executionCapabilityHash === locator.executionCapabilityHash
+  );
+  if (steps.length !== 1) {
+    throw new Error("Resident logical locator does not match one exact durable plan step.");
+  }
+  return steps[0]!;
+}
+
+function copyResidentLogicalLocator(value: unknown): Readonly<Record<string, unknown>> & {
+  readonly workspaceId: string;
+  readonly residentAgentId: string;
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly planId: string;
+  readonly planRevision: number;
+  readonly stepOrdinal: number;
+  readonly toolRequestId: string;
+  readonly toolId: string;
+  readonly toolVersion: string;
+  readonly executionCapabilityHash: `sha256:${string}`;
+} {
+  const locator = residentGatewayRecord(value, "resident logical locator");
+  rejectResidentGatewayUnknown(locator, [
+    "workspaceId",
+    "residentAgentId",
+    "taskId",
+    "attemptId",
+    "runId",
+    "planId",
+    "planRevision",
+    "stepOrdinal",
+    "toolRequestId",
+    "toolId",
+    "toolVersion",
+    "executionCapabilityHash"
+  ], "resident logical locator");
+  return Object.freeze({
+    workspaceId: residentGatewayString(locator.workspaceId, "resident workspace ID"),
+    residentAgentId: residentGatewayString(locator.residentAgentId, "resident agent ID"),
+    taskId: residentGatewayString(locator.taskId, "resident task ID"),
+    attemptId: residentGatewayString(locator.attemptId, "resident attempt ID"),
+    runId: residentGatewayString(locator.runId, "resident run ID"),
+    planId: residentGatewayString(locator.planId, "resident plan ID"),
+    planRevision: residentGatewayNonnegativeInteger(locator.planRevision, "resident plan revision"),
+    stepOrdinal: residentGatewayNonnegativeInteger(locator.stepOrdinal, "resident step ordinal"),
+    toolRequestId: residentGatewayString(locator.toolRequestId, "resident tool request ID"),
+    toolId: residentGatewayString(locator.toolId, "resident tool ID"),
+    toolVersion: residentGatewayString(locator.toolVersion, "resident tool version"),
+    executionCapabilityHash: residentGatewayHashString(
+      locator.executionCapabilityHash,
+      "resident execution capability hash"
+    )
+  });
+}
+
+async function appendResidentCompletion(
+  ledger: EventLedger,
+  locator: Readonly<Record<string, unknown>>,
+  request: ResidentRequestedEvent,
+  claim: ResidentClaimedEvent,
+  receipt: ResidentOutcomeEvent,
+  authorization: ResidentClaimedEvent["payload"]["authorization"],
+  resultHash: `sha256:${string}`,
+  artifactHashes: readonly string[],
+  expectedNextSequence: number,
+  occurredAt: string
+): Promise<ResidentCompletedEvent> {
+  const completed = await appendResidentGatewayEvent(ledger, {
+    type: "agent.resident-domain.completed.v1",
+    version: 1,
+    streamId: residentGatewayDomainStreamId(locator),
+    context: residentGatewayEventContext(
+      receipt.id,
+      request.payload.correlationId,
+      occurredAt
+    ),
+    payload: {
+      schemaVersion: "resident-domain-completed.v1",
+      logicalLocator: locator,
+      executionCapabilityHash: request.payload.executionCapabilityHash,
+      causationId: receipt.id,
+      correlationId: request.payload.correlationId,
+      requestEventId: request.id,
+      executionClaimEventId: claim.id,
+      outcomeReceiptEventId: receipt.id,
+      authorization,
+      resultHash,
+      resultArtifactHashes: artifactHashes
+    }
+  }, expectedNextSequence);
+  if (completed.type !== "agent.resident-domain.completed.v1") {
+    throw new Error("Resident completion append returned the wrong event family.");
+  }
+  return completed;
+}
+
+function residentRecoveryReadback(
+  request: ResidentRequestedEvent,
+  locator: Readonly<Record<string, unknown>>,
+  approval: ResidentHumanApprovedEvent | undefined,
+  claim: ResidentClaimedEvent | undefined,
+  receipt: ResidentOutcomeEvent | undefined,
+  completed: ResidentCompletedEvent
+): object {
+  return Object.freeze({
+    ...residentRecoveryBase(request, locator, approval),
+    stage: "completed",
+    ...(claim === undefined ? {} : { executionClaimEventId: claim.id }),
+    ...(receipt === undefined ? {} : { outcomeReceiptEventId: receipt.id }),
+    resultEventId: completed.id
+  });
+}
+
+function residentRecoveryBase(
+  request: ResidentRequestedEvent,
+  locator: Readonly<Record<string, unknown>>,
+  approval?: ResidentHumanApprovedEvent
+): object {
+  return {
+    authorizationKind: request.payload.authorizationKind,
+    logicalLocator: locator,
+    executionCapabilityHash: request.payload.executionCapabilityHash,
+    requestEventId: request.id,
+    ...(approval === undefined
+      ? {}
+      : {
+          decisionEventId: approval.payload.decisionEventId,
+          approvedBy: approval.payload.approvedBy,
+          approvedPreviewHash: approval.payload.approvedPreviewHash
+        })
+  };
+}
+
+async function appendResidentGatewayEvent(
+  ledger: EventLedger,
+  event: unknown,
+  expectedNextSequence: number
+): Promise<KnowledgeEvent> {
+  return await ledger.append(
+    event as AppendableKnowledgeEvent,
+    { expectedNextSequence }
+  );
+}
+
+async function requireCurrentResidentReverification(
+  operation: (...args: readonly unknown[]) => unknown
+): Promise<void> {
+  const result = await Reflect.apply(operation, undefined, []);
+  const record = residentGatewayRecord(
+    result,
+    "resident execution reverification result"
+  );
+  if (record.kind !== "current") {
+    throw new Error("Resident execution reverification is no longer current.");
+  }
+}
+
+function residentGatewayEventContext(
+  causationId: string,
+  correlationId: string,
+  occurredAt: string
+) {
+  return {
+    actor: residentGatewayActor,
+    occurredAt,
+    causationId,
+    correlationId,
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  };
+}
+
+function residentGatewayDomainStreamId(
+  locator: Readonly<Record<string, unknown>>
+): string {
+  return `agent_resident_domain_${createHash("sha256")
+    .update(residentGatewayCanonicalJson(locator))
+    .digest("hex")}`;
+}
+
+function residentGatewayRecord(value: unknown, label: string): Record<string, unknown> {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    isProxy(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype ||
+    Object.getOwnPropertySymbols(value).length > 0
+  ) {
+    throw new Error(`${label} must be a non-proxy plain object.`);
+  }
+  const entries: [string, unknown][] = [];
+  for (const key of Object.getOwnPropertyNames(value).sort()) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (
+      descriptor === undefined ||
+      !("value" in descriptor) ||
+      !descriptor.enumerable ||
+      unsafeKeys.has(key)
+    ) {
+      throw new Error(`${label} must contain only enumerable own data properties.`);
+    }
+    entries.push([key, descriptor.value]);
+  }
+  return Object.fromEntries(entries);
+}
+
+function residentGatewayArray(value: unknown, label: string): readonly unknown[] {
+  if (!Array.isArray(value) || isProxy(value)) {
+    throw new Error(`${label} must be a non-proxy array.`);
+  }
+  return Object.freeze([...value]);
+}
+
+function residentGatewayStringArray(value: unknown, label: string): readonly string[] {
+  const values = residentGatewayArray(value, label);
+  if (values.some((item) => typeof item !== "string" || item.length === 0)) {
+    throw new Error(`${label} must contain canonical strings.`);
+  }
+  const strings = values as readonly string[];
+  return Object.freeze([...strings]);
+}
+
+function requireResidentGatewayObject(value: unknown, label: string): object {
+  if (value === null || typeof value !== "object" || isProxy(value)) {
+    throw new Error(`${label} must be a non-proxy object.`);
+  }
+  return value;
+}
+
+function requireResidentGatewayFunction(
+  value: unknown,
+  label: string
+): (...args: readonly unknown[]) => unknown {
+  if (typeof value !== "function" || isProxy(value)) {
+    throw new Error(`${label} must be a non-proxy function.`);
+  }
+  return value as (...args: readonly unknown[]) => unknown;
+}
+
+function residentGatewayString(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${label} must be canonical.`);
+  }
+  assertAgentSecretSafeText(value, label);
+  return value;
+}
+
+function residentGatewayHashString(
+  value: unknown,
+  label: string
+): `sha256:${string}` {
+  const text = residentGatewayString(value, label);
+  if (!/^sha256:[a-f0-9]{64}$/.test(text)) {
+    throw new Error(`${label} must be a canonical SHA-256 value.`);
+  }
+  return text as `sha256:${string}`;
+}
+
+function residentGatewayNonnegativeInteger(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${label} must be a nonnegative integer.`);
+  }
+  return value;
+}
+
+function rejectResidentGatewayUnknown(
+  record: Record<string, unknown>,
+  allowed: readonly string[],
+  label: string
+): void {
+  if (Object.keys(record).some((key) => !allowed.includes(key))) {
+    throw new Error(`${label} contains an unsupported field.`);
+  }
+}
+
+function residentGatewayHash(value: unknown): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update(residentGatewayCanonicalJson(value))
+    .digest("hex")}`;
+}
+
+function residentGatewayCanonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(residentGatewayCanonicalJson).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${residentGatewayCanonicalJson(
+        Reflect.get(value, key)
+      )}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 type RequestSnapshot = Readonly<ResidentLoopToolRequestInput>;
@@ -599,3 +1640,32 @@ function requiredClaimEventId(value: ResidentLoopToolGatewayReadback): string {
 function toolRequestStreamId(toolRequestId: string): string {
   return `agent_tool_request_${toolRequestId}`;
 }
+
+function consumeResidentDomainExecutionPermit(
+  permit: unknown,
+  port: unknown,
+  input: unknown
+): ResidentPermitState {
+  if (
+    permit === null ||
+    typeof permit !== "object" ||
+    isProxy(permit)
+  ) {
+    throw new Error("Resident execution permit must be a live issued object.");
+  }
+  const binding = issuedResidentPermits.get(permit);
+  if (binding === undefined) {
+    throw new Error("Resident execution permit was not issued or was already consumed.");
+  }
+  issuedResidentPermits.delete(permit);
+  if (binding.port !== port || binding.input !== input) {
+    throw new Error("Resident execution permit does not match its exact port and invocation binding.");
+  }
+  return binding;
+}
+
+const residentDomainExecutionPermitConsumer = Object.freeze({
+  consumeResidentDomainExecutionPermit
+});
+
+export default residentDomainExecutionPermitConsumer;
