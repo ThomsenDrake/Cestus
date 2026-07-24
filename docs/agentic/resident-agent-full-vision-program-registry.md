@@ -31195,3 +31195,80 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance transition, publication, or product release. `neo`, push, Wave
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-996 — Identity-intrinsic corrected Task136 RED admitted to fresh review
+
+- Recorded at: 2026-07-24T16:59:52Z
+- Exact corrected test-only candidate
+  `2e1c5fdc4389a58fcd4d591d1ee1bd05c3ff1712`, tree
+  `d627aa73f44bd34b0f739d4ce27e9a4b03930dd4`, has sole parent E-995
+  repair-authority merge
+  `ca1e261f74bc0a886953336c998c3b76dd106060` and changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`.
+- Exact current test blobs are dispatcher
+  `20447d70281257c44ace4dfe69f21bdbefe4fc66` and gateway
+  `6e720ce896176362256aa09ca0566def9bef2257`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- The replay sentinel is installed while the legitimate frozen attestation
+  is first created. That exact proxy identity is returned by the real
+  package-owned port, survives the first legitimate receipt/completion, is
+  then observed and reused unchanged. Frozen source performs four
+  request/claim mismatch inspections where private consumed-identity
+  rejection requires zero.
+- The otherwise-complete unbranded shape is intrinsically proxied before
+  return on the same construction-time instrumented ledger object. Frozen
+  source performs three request/claim mismatch inspections where
+  private-brand rejection requires zero; outcome/completion append-attempt
+  count remains zero. Error-message checks are secondary to both intrinsic
+  counters.
+- Proxy traps cover direct get, descriptor lookup, membership, and
+  enumeration with invariant-preserving `Reflect` delegation. The
+  `node:util/types` proxy check delegates unchanged for every value except
+  exact sentinel identities in a private test WeakSet, so existing
+  forged-proxy controls remain active.
+- Focused execution establishes exact signature
+  **48 = 28 passed + 20 independently source-causal failures**: dispatcher
+  **18 = 11 passed + 7 failed**, gateway
+  **28 = 15 passed + 13 failed**, and frozen loader **2/2** green. There is
+  no fixture, API, collection, dependency, or type failure.
+- Independent coordinator reproduction matches focused **28/20**, isolated
+  unbranded **3 != 0** and replay **4 != 0** primary counters, loader
+  **2/2**, released adapters **79/79**, standalone typecheck, factory,
+  mission **20/20**, V4 assurance **20/20**, all four exact markers,
+  complete two-test net scope, all frozen blobs, E-994 checkpoint,
+  original/amended E-991 siblings, all named ancestry, dependency-free diff,
+  `git diff --check`, and clean state. Repository mode exits `1`, stops first
+  at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Completely fresh read-only focused reviewer
+  `/root/task136_e996_red_review_2e1c` is assigned exact immutable candidate
+  `2e1c5fdc`. It must inspect the complete corrected two-test bytes, all
+  E-985 through E-995 defects/repairs and preserved sibling/recovery
+  topology, relevant frozen sources/contracts, and full review package
+  `.superpowers/sdd/review-6755e7ed..2e1c5fdc.diff`. It must specifically
+  attack proxy invariants, mock scope, first-consumption identity, counter
+  reset timing, direct-access/destructuring/reflection bypasses, downstream
+  append and relabeled-error counterexamples, plus every earlier oracle.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte. Every prior corrected-byte reviewer, both test authors, and all
+  changed-byte analysts are ineligible. This reviewer may not edit, commit,
+  merge, substitute another SHA, approve changed bytes, authorize source, or
+  describe this transition as product candidacy or release. Any changed
+  candidate byte invalidates review.
+- Rejected and non-admitted candidates/checkpoints, original and amended
+  siblings, approved design, dual-context descendant, reviewed plan, source
+  checkpoint, every fixture adaptation, and all rejection, review, recovery,
+  and authority commits remain ancestral and unchanged.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `2e1c5fdc`. Strict product frontier remains **28 of 29**. This is
+  corrected test-only RED review admission, not approval, integration,
+  source GREEN, Task136 product candidacy, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
