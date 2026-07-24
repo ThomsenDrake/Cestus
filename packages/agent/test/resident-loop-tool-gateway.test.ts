@@ -904,7 +904,18 @@ describe("resident-loop tool gateway", () => {
         beforeKind: "current",
         afterKind: "current",
         outcome: "fulfilled",
-        trace: ["W:before", "preview:start", "preview:end", "W:after"],
+        trace: [
+          "W:before",
+          "preview:start",
+          "preview:end",
+          "W:after",
+          "W:before",
+          "W:after",
+          "W:before",
+          "W:after",
+          "W:before",
+          "W:after"
+        ],
         residentEventTypes: ["agent.resident-domain.requested.v1"],
         effects: 0
       },
@@ -922,6 +933,80 @@ describe("resident-loop tool gateway", () => {
         outcome: "rejected",
         trace: ["W:before", "preview:start", "preview:end", "W:after"],
         residentEventTypes: [],
+        effects: 0
+      }
+    ]);
+  });
+
+  it("rejects a live request stage when W becomes stale during durable request publication", async () => {
+    const results = await Promise.all([
+      runRequestPublicationRevalidationCase("append"),
+      runRequestPublicationRevalidationCase("stream-reread"),
+      runRequestPublicationRevalidationCase("global-reread")
+    ]);
+
+    expect(results).toEqual([
+      {
+        boundary: "append",
+        requestOutcome: "rejected",
+        executionOutcome: "not-issued",
+        trace: [
+          "W:before:1",
+          "preview:start",
+          "preview:end",
+          "W:after:1",
+          "W:before:2",
+          "request:append:start",
+          "request:append:end",
+          "W:after:2"
+        ],
+        residentEventTypes: ["agent.resident-domain.requested.v1"],
+        effects: 0
+      },
+      {
+        boundary: "stream-reread",
+        requestOutcome: "rejected",
+        executionOutcome: "not-issued",
+        trace: [
+          "W:before:1",
+          "preview:start",
+          "preview:end",
+          "W:after:1",
+          "W:before:2",
+          "request:append:start",
+          "request:append:end",
+          "W:after:2",
+          "W:before:3",
+          "request:stream:start",
+          "request:stream:end",
+          "W:after:3"
+        ],
+        residentEventTypes: ["agent.resident-domain.requested.v1"],
+        effects: 0
+      },
+      {
+        boundary: "global-reread",
+        requestOutcome: "rejected",
+        executionOutcome: "not-issued",
+        trace: [
+          "W:before:1",
+          "preview:start",
+          "preview:end",
+          "W:after:1",
+          "W:before:2",
+          "request:append:start",
+          "request:append:end",
+          "W:after:2",
+          "W:before:3",
+          "request:stream:start",
+          "request:stream:end",
+          "W:after:3",
+          "W:before:4",
+          "request:all:start",
+          "request:all:end",
+          "W:after:4"
+        ],
+        residentEventTypes: ["agent.resident-domain.requested.v1"],
         effects: 0
       }
     ]);
@@ -1428,6 +1513,10 @@ interface ResidentGatewayHarness {
 }
 
 type ResidentCurrentnessKind = "current" | "stale";
+type ResidentRequestPublicationBoundary =
+  | "append"
+  | "stream-reread"
+  | "global-reread";
 
 interface ResidentGatewayHarnessInstrumentation {
   readonly createLedger?: () => InMemoryEventLedger;
@@ -3285,6 +3374,137 @@ async function runPackagePreviewRevalidationCase(
     beforeKind,
     afterKind,
     outcome,
+    trace,
+    residentEventTypes: residentEvents.map((event) => event.type),
+    effects: harness.effects.count
+  };
+}
+
+async function runRequestPublicationRevalidationCase(
+  boundary: ResidentRequestPublicationBoundary
+) {
+  const trace: string[] = [];
+  let requestActive = false;
+  let beforeCalls = 0;
+  let afterCalls = 0;
+  const staleAfterCall = {
+    append: 2,
+    "stream-reread": 3,
+    "global-reread": 4
+  }[boundary];
+  const harness = await prepareResidentGatewayHarness({
+    authorizationKind: "automatic-policy",
+    suffix: `request-publication-${boundary}`,
+    instrumentation: {
+      createLedger() {
+        return new class extends InMemoryEventLedger {
+          override async append(
+            event: AppendableKnowledgeEvent,
+            options?: Parameters<EventLedger["append"]>[1]
+          ) {
+            const isRequest =
+              requestActive &&
+              event.type === "agent.resident-domain.requested.v1";
+            if (isRequest) {
+              trace.push("request:append:start");
+            }
+            const appended = await super.append(event, options);
+            if (isRequest) {
+              trace.push("request:append:end");
+            }
+            return appended;
+          }
+
+          override async readStream(streamId: string) {
+            const isRequestReread =
+              requestActive &&
+              streamId.startsWith("agent_resident_domain_");
+            if (isRequestReread) {
+              trace.push("request:stream:start");
+            }
+            const events = await super.readStream(streamId);
+            if (isRequestReread) {
+              trace.push("request:stream:end");
+            }
+            return events;
+          }
+
+          override async readAll() {
+            const isRequestReread =
+              requestActive &&
+              afterCalls >= 1;
+            if (isRequestReread) {
+              trace.push("request:all:start");
+            }
+            const events = await super.readAll();
+            if (isRequestReread) {
+              trace.push("request:all:end");
+            }
+            return events;
+          }
+        }();
+      },
+      async onPackagePreview() {
+        if (requestActive) {
+          trace.push("preview:start");
+        }
+        await Promise.resolve();
+        if (requestActive) {
+          trace.push("preview:end");
+        }
+      },
+      async reverifyBeforeEffect() {
+        if (!requestActive) {
+          return Object.freeze({ kind: "current" });
+        }
+        beforeCalls += 1;
+        trace.push(`W:before:${beforeCalls}`);
+        return Object.freeze({ kind: "current" });
+      },
+      async reverifyAfterEffect() {
+        if (!requestActive) {
+          return Object.freeze({ kind: "current" });
+        }
+        afterCalls += 1;
+        trace.push(`W:after:${afterCalls}`);
+        return Object.freeze({
+          kind: afterCalls === staleAfterCall ? "stale" : "current"
+        });
+      }
+    }
+  });
+  const request = reflectedOperation(
+    harness.gateway,
+    "requestFreshAuthorized"
+  );
+  const execute = reflectedOperation(
+    harness.gateway,
+    "executeFreshAuthorized"
+  );
+  let requested: unknown;
+  requestActive = true;
+  const requestOutcome = await settledOutcome(async () => {
+    requested = await Reflect.apply(
+      request,
+      harness.gateway,
+      [harness.locator]
+    );
+  });
+  requestActive = false;
+  const executionOutcome = requested === undefined
+    ? "not-issued"
+    : await settledOutcome(() => Reflect.apply(
+        execute,
+        harness.gateway,
+        [requested]
+      ));
+  const residentEvents = await harness.ledger.readStream(
+    residentDomainStreamId(harness.locator)
+  );
+  return {
+    boundary,
+    requestOutcome,
+    executionOutcome,
     trace,
     residentEventTypes: residentEvents.map((event) => event.type),
     effects: harness.effects.count
