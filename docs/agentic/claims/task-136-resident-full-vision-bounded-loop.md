@@ -1768,3 +1768,112 @@ Task12 source authorization or GREEN, a product candidate approval,
 integration, strict record 29, assurance transition, publication, or product
 release. Task136 remains `implementing`; the strict product frontier remains
 **28 of 29**.
+
+## RV-1-E-974 Task12 Exact Call-Symbol Loader-Oracle Closure
+
+Exact RV-1-E-974 authority
+`e0e0cb6f83de64e235cdb20d363a637278e040c7` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`ebc6bb2d0a890b240b2117756974eb0970c17e0b`. Its first parent is
+`d3cdc19688eb10af3450da460c80084a5e7e7747`; its second parent is that
+exact registry authority. Rejected lexical-provenance candidate
+`60f17f5ba7489a85ffd2c65da9638a7f83e8a595`, plus rejected candidates
+`31a017b4ad17b1ee427244f53fe9c2f797666586`,
+`976104381ad94f1d1551c0ac4075b9118f4d4016`,
+`a1ed492fc71e0d98ccf7a7d96d5e314a64ecb0e2`,
+`84b9f6a8599e9596ce42f3078fc017a0fe487862`,
+`fc580fc110d4e97863c1793e145eb41d8013332a`,
+`9f33e0b9309be0bf62054833816833c932233819`,
+`fcb612e77ddeee905cc3dc2ff6163d362af10471`, and
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, remain immutable ancestors.
+Every earlier authority, design, permanent RED, GREEN, repair, review, and
+claim commit is preserved without reset, rebase, amend, reconstruction, or
+discarded history.
+
+The exact dispatcher permit-call predicate no longer compares receiver text
+with the default-import local name. The existing per-source TypeScript
+checker and gateway-root provenance now expose the unique value-default
+import symbol. A permit call is admitted only when its receiver resolves to
+that exact root symbol; the existing property/call shape and complete
+tracked-reference census remain unchanged. A same-text receiver bound as a
+parameter, function-local variable, nested-function parameter, or
+namespace-local variable is therefore distinct and rejected even when the
+real gateway default import remains otherwise unused.
+
+Four direct controls cover the fresh reviewer's exact shadowed-parameter
+counterexample plus local, nested, and namespace same-text receivers. Each
+failed before the correction with no violation and now fails closed at the
+dispatcher path. The same-text shadowed unrelated dynamic-record control
+remains accepted, as does the unique immutable alias calibration. Every
+RV-1-E-972 lexical value-flow case, RV-1-E-970 binding and dispatcher
+identity census, fresh-record census, calibrated normalization proof, and
+released legacy compatibility matrix continues to execute unchanged.
+
+The final focused command is:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1`: all three files fail and exactly **25 = 17 passed + 8 causal
+RED failures**. Every call-symbol unsafe and preserved safe control executes
+successfully before the loader stops only at the absent exact six-module
+Task12 map. Four dispatcher and three G tests stop only at the absent Task12
+default API. There is no construction, event, context, execution-DTO,
+collection, dependency, type, oracle-control, or unrelated inherited
+failure. The non-fatal missing TypeScript source-map warning does not prevent
+collection. The complete focused log SHA-256 is
+`0a8cc9e0aad78131bd136810d7a6767e3a89e763b7f592d83bb3673fdd5a4bb3`.
+
+The exact six released adapter controls pass **79/79** with log SHA-256
+`4df341a54e589bf1a8f2c77d9f5c11fdcdc4c9be51865e4ec44dfb0ba4dcbc3c`.
+Fresh standalone `npm run typecheck` passes with log SHA-256
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` passes with log SHA-256
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+The calibrated mission validator passes **20/20**, and the direct validator
+reports unchanged fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20**. Contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The V4 contract remains SHA-256
+`81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+The corrected loader SHA-256 is
+`1a3759163c9bd8304626e4d2893133cfdda1b7a6e1d84c5441738b2650c539b9`;
+its exact Git blob is `53e8d267008bdd8b6c5a77551ed90f446982eeff`.
+Frozen dispatcher and G tests remain exact at blobs
+`846f0bb1e62719fb10b0af179b6d35c59633f733` and
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`. Both Task12 product sources
+remain exact at dispatcher blob
+`96b0ade273696b9ffcf497119f1943f128821a58` and G blob
+`1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+The exact correction scope is only:
+
+```text
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, dispatcher/G test, contract, plan, mission state, program
+registry, provider, credential, runtime activation, route, network,
+fallback, unrelated path, dependency, or pull request changes. Clean
+repository mode must retain the actual pre-record-29 W1 current-blob
+mismatch and must not emit repository-prefix or release-closure success.
+The exact two-path descendant requires a completely fresh focused reviewer;
+the reviewer of `60f17f5b` and every earlier RED reviewer, candidate author,
+or model analyst is ineligible. Any changed test or claim byte invalidates
+that review.
+
+This is a review-ready exact call-symbol loader-oracle correction, not
+Task12 source authorization or GREEN, a product candidate approval,
+integration, strict record 29, assurance transition, publication, or product
+release. Task136 remains `implementing`; the strict product frontier remains
+**28 of 29**.
