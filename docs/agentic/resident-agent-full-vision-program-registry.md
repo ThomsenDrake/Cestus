@@ -29309,6 +29309,61 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product release. `neo`, push, Wave 3, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-969 — Calibrated Task136 loader closure admitted to fresh review
+
+- Recorded at: 2026-07-24T03:21:38Z
+- Exact candidate `976104381ad94f1d1551c0ac4075b9118f4d4016`,
+  sole parent RV-1-E-968 authority merge
+  `0991a3e0d200362f4616ff770f6eff118b9df69b`, changes exactly the loader
+  test and Task136 claim. Exact tree is
+  `345f70254c5306549641c9ba6d976ca0d210eaef`; loader blob is
+  `f3e61182a8ec135b3354eb88b822c08e28485a30` and claim blob is
+  `b4a83209430166ac0585537d76b5a791f3243f7a`.
+- Dispatcher/G test blobs remain exact
+  `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`; Task12 source blobs remain
+  exact `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`. Rejected `a1ed492f`,
+  `84b9f6a8`, `fc580fc1`, `9f33e0b9`, `fcb612e7`, and `b54281b0` plus
+  normalization calibration RV-1-E-968 remain ancestral.
+- The dispatcher transfer census validates all released legacy named/type and
+  non-default star compatibility while permitting the new default resident
+  API exactly once at Task14 W with its exact binder call. Fourteen alternate
+  default, named-default, namespace, protected-name, re-export, side-effect,
+  or other transfer/access controls fail closed.
+- Gateway-default provenance is tracked through admitted aliases; the exact
+  dispatcher property call is the sole permit-consumer access, and unresolved
+  element reads/calls including substituted-template keys fail. Unrelated
+  dynamic data-record reads retain their separate safe classification.
+- Whole-module normalization analysis proves the exact frozen G
+  `dataRecord` construction, descriptor-copy discipline, four closed
+  module-local validation/copy call sites, and data-only consumption. Twelve
+  local escape controls and eight returned-record authority/export/capture/
+  store/pass/prototype/default/permit controls fail; the already-sound owner
+  computed duplicate remains rejected.
+- Fresh gates report exact focused **25 = 17 passed + 8 causal RED
+  failures**, released controls **79/79**, typecheck, factory readiness,
+  mission **20/20**, V4 assurance **20/20**, and all exact markers. Exact
+  two-path scope, frozen blobs, ancestry, diff, and clean state pass.
+  Repository mode truthfully stops at the pre-record-29 W1 current-blob
+  mismatch; no prefix or closure success is claimed.
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_9761` is assigned exact `97610438`. It
+  must independently verify dispatcher legacy/default transfer census,
+  gateway alias provenance and dynamic-key rejection, exact frozen and
+  synthetic normalization call graphs, all escape/authority counterexamples,
+  preserved protected-mention/default-G/resident controls, causal split, and
+  deterministic gates. Every prior reviewer, analyst, and author is
+  ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `97610438`. Changed bytes invalidate review. No source authorization follows
+  without explicit later approval/integration authority.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-965 — Fail-closed loader candidate rejected; protected-mention model authorized
 
 - Recorded at: 2026-07-24T01:31:11Z
