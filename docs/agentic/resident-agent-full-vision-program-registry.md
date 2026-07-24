@@ -32086,3 +32086,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1009 — Recovery-budget handoff at exact Task12 source review
+
+- Recorded at: 2026-07-24T20:41:56Z
+- The coordinator reached the ratified recovery-budget stop threshold after
+  admitting exact Task12 source candidate
+  `d0531b15489d3dbc94c23ce2ab4fc1235666d1d6`, tree
+  `9c4b1206de685accc4d9a61f0fb1b91581244bf5`, beneath clean review-authority
+  merge `9170d63ef0646d7f21c623ccd0aed349b90a7b59`.
+- Completely fresh read-only reviewer
+  `/root/task136_e1008_task12_source_review` was interrupted at a safe
+  read-only boundary before any verdict. It made no repository change,
+  approval, rejection, integration, Task13 authorization, product claim, or
+  release claim. Exact candidate bytes remain immutable; the same assignment
+  may resume against them or a completely fresh replacement may perform the
+  full E-1008 review.
+- Exact candidate source blobs remain dispatcher
+  `30e4a3ea4eea197f5f3881359a12b909210177ab` and gateway
+  `41740d5d608284f8fea78285f1c2e00d99dfd2a9`. Exact frozen blobs remain
+  dispatcher test `0eaf2fe609de31657acfedde1e2630cbacedbcdc`,
+  gateway test `6e720ce896176362256aa09ca0566def9bef2257`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- Durable completed evidence is E-1008 focused **48/48**, Task12 boundary
+  **98/98**, gateway/loader **30/30**, cross-boundary **443/443**, adapters
+  **79/79**, typecheck, UI build, factory, mission **20/20**, V4 **20/20**,
+  four markers, exact calibrated differential, scope/freezes/ancestry/
+  dependencies/diff/clean gates, and repository's sole first stop at the
+  dispatcher blob mismatch. The later loader-timeout variance observation
+  remains explicitly non-passing evidence.
+- Resume first by completing and recording a completely fresh exact-candidate
+  Task12 source verdict. If approved, integrate Task12 append-only and only
+  then separately authorize Task13's two orchestrator sources from the
+  committed plan. Tasks13 through 18, strict product record 29, calibrated
+  post-record-29 assurance, and Waves 3 through 5 remain unstarted.
+- Strict product frontier remains **28 of 29**. Task136 remains `reviewing`
+  only for exact Task12 source candidate `d0531b15`; it has no Task136 product
+  candidate. Strict record 29 does not exist. No checkpoint, test-only
+  candidate, assurance transition, or this handoff is a product release.
+- This handoff grants no new implementation, integration, publication,
+  `neo`, push, Wave 3, credential, provider, external-system, pull-request,
+  or unrelated authority. Preserve all history and resume forward-only from
+  the exact SHAs recorded here.
