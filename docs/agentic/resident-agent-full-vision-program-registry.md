@@ -31272,3 +31272,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-997 — Exact `2e1c5fdc` rejected; frozen attestation-shape repair authorized
+
+- Recorded at: 2026-07-24T17:20:30Z
+- Completely fresh read-only focused reviewer
+  `/root/task136_e996_red_review_2e1c` rejects exact candidate
+  `2e1c5fdc4389a58fcd4d591d1ee1bd05c3ff1712`, tree
+  `d627aa73f44bd34b0f739d4ce27e9a4b03930dd4`, and no other candidate.
+  Review occurred against history-preserving authority merge
+  `d697b162bef7a6e3389e5ced71c2e2c6ad38579c`; no candidate byte or
+  repository state changed.
+- The reviewer independently reproduced focused
+  **48 = 28 passed + 20 source-causal failures**, isolated unbranded
+  **3 != 0** and replay **4 != 0** primary counters, loader **2/2**,
+  released adapters **79/79**, typecheck, factory, mission **20/20**, V4
+  assurance **20/20**, four exact markers, repository first stop, scope,
+  freezes, sibling/recovery ancestry, dependency-free diff, review package,
+  diff, and clean-state gates.
+- The E-995 identity-intrinsic proxy repair is sound: exact construction-time
+  identities, first consumption, post-consumption reset, same-object replay,
+  invariant-preserving traps, narrowly scoped proxy transparency, and
+  direct/descriptor/membership/enumeration/destructuring coverage satisfy
+  E-994 and E-995.
+- Rejection is mandatory because the invocation oracle requires
+  `logicalLocator`, `requestEventId`, and `authorization` on the dispatcher
+  attestation. The frozen approved dispatcher interface contains exactly ten
+  fields:
+  `schemaVersion`, `executionClaimEventId`,
+  `executionCapabilityHash`, `catalogOrdinal`,
+  `implementationRevision`, `residentInvocationInputHash`, `evidenceMode`,
+  `preInvocationLedgerFingerprint`, `postInvocationLedgerFingerprint`, and
+  `result`.
+- Locator, request, and authorization facts are G-owned durable outcome
+  receipt facts derived from its live request/approval/claim state. A
+  conforming dispatcher returning the exact ten-field branded attestation
+  would fail the candidate oracle, forcing source widening and duplicated
+  gateway facts contrary to the approved design and Task12 plan.
+- A narrower forward test-only repair is authorized in exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`. It must assert
+  the issued attestation's exact ten own keys and complete exact values,
+  including claim, capability, catalog/revision, canonical invocation hash,
+  evidence mode, both fingerprints, and complete copied released result.
+  It must assert absence of locator, request, authorization, or any other
+  extra field.
+- The exact G receipt and completion must remain independently bound to
+  durable request, optional approval, claim, locator, capability,
+  authorization, invocation hash, attestation/result evidence, receipt
+  identity, and causation/context chains. Do not derive expected receipt
+  facts from the attestation or another output under test.
+- Preserve dispatcher-test intrinsic brand/replay sentinels, gateway-test
+  blob `6e720ce896176362256aa09ca0566def9bef2257`, both Task12 sources, loader,
+  claim, ontology, Task14 runtime, all earlier exact assertions, both E-991
+  siblings, all recovery and checkpoint commits, and every authority commit.
+  The forward descendant must rerun and report the exact focused signature
+  and every E-996 gate before one new atomic forward commit; it may not amend
+  any ancestor.
+- A completely fresh read-only reviewer is required for the exact descendant.
+  All prior corrected-byte reviewers, authors, and changed-byte analysts are
+  ineligible to approve it. Source work remains unauthorized until corrected
+  RED approval is recorded and integrated, followed by separate explicit
+  source-correction authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejection and frozen-interface oracle repair
+  authority, not corrected-RED approval/integration, source GREEN, Task136
+  product candidacy, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
