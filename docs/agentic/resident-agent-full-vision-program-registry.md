@@ -31135,3 +31135,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidacy, strict record 29, assurance transition, publication, or product
   release. `neo`, push, Wave 3, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-995 — E-994 checkpoint not admitted; identity-intrinsic sentinel repair authorized
+
+- Recorded at: 2026-07-24T16:41:10Z
+- E-994 implementer created exact atomic test-only checkpoint
+  `3f44aff02e695a233c97e66593479dd1bb765f37`, tree
+  `f7badc232add8f801097da61d076f0509b9b21e0`, with sole parent E-994
+  authority merge
+  `21ce5df43bf57911796f1b43395b5cf180b84eb7`. It changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`, whose blob is
+  `ee1bc9aa7701594fa112fe56ded50b22ad40755d`.
+- The checkpoint preserves focused
+  **48 = 28 passed + 20 source-causal failures**, loader **2/2**, released
+  adapters **79/79**, typecheck, factory, mission **20/20**, V4 assurance
+  **20/20**, exact markers, repository first stop, scope, freezes, ancestry,
+  dependency-free diff, diff, and clean-state gates. It was committed once
+  without amend, rebase, reset, squash, force operation, cherry-pick,
+  discard, merge, push, or pull request.
+- Coordinator pre-admission self-review does not admit the checkpoint. Its
+  structural-mismatch sentinel spies on global
+  `Object.getOwnPropertyDescriptor` only after the replay object was first
+  issued and consumed. An implementation that performs direct property
+  access or destructuring can bypass the counter, relabel the same mismatch
+  error, and pass without a brand or consumption guard.
+- The construction-time instrumented exact ledger and zero terminal-append
+  assertion are sound and must remain. A narrower forward repair is
+  authorized in exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts` to replace the
+  bypassable global method spy with identity-intrinsic instrumentation.
+- For replay, install the sentinel/proxy while the legitimate attestation
+  object is first created so that this exact instrumented identity is issued,
+  branded by a correct implementation, consumed by the first execution, and
+  reused unchanged by the second. Reset observation only after first
+  consumption. The second rejection must occur before any `get`,
+  descriptor, membership, enumeration, or destructuring access that can
+  evaluate request/claim mismatch.
+- For complete-unbranded, install equivalent intrinsic instrumentation when
+  the otherwise-complete attestation-shaped value is constructed and return
+  that exact unbranded identity. Private-brand rejection must precede all
+  structural mismatch inspection and all outcome/terminal append attempts.
+  Direct access, destructuring, or alternate reflection APIs must not evade
+  either causal oracle.
+- Gateway-test blob
+  `6e720ce896176362256aa09ca0566def9bef2257`, both Task12 sources, loader,
+  Task136 claim, ontology, Task14 wake runtime, every existing test
+  assertion, both E-991 sibling commits, and all earlier history remain
+  frozen and ancestral. The forward descendant must rerun and report every
+  E-994 focused and cross-boundary gate before one new atomic commit. It may
+  never amend `3f44aff0`.
+- A completely fresh read-only reviewer is required only after a later exact
+  descendant is admitted. Every previous corrected-byte reviewer and analyst
+  is ineligible to approve changed bytes. Source work remains unauthorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is checkpoint non-admission and identity-intrinsic
+  test-oracle repair authority, not corrected-RED admission/approval,
+  integration, source GREEN, Task136 product candidacy, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
