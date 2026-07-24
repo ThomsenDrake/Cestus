@@ -29215,6 +29215,40 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-978 — Exact Task136 Task12 causal RED approved
+
+- Recorded at: 2026-07-24T05:24:47Z
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_3f92` approves exact immutable causal-RED
+  candidate `3f9207ba95655029ace0764e349e7f3a2763a620` with no P0-P3
+  finding. Exact parent, tree, two-path scope, blobs, frozen dispatcher/G
+  tests and sources, rejected ancestry, dependency-free diff, and clean state
+  match RV-1-E-977.
+- The reviewer independently verifies the unique gateway import receiver
+  symbol, direct nonoptional access/call, exact three ordered nonspread
+  permit/opaque-port/canonical-input binding symbols, every unsafe and safe
+  tuple control, full lexical provenance, Task14/dispatcher/gateway transfer
+  censuses, protected-mention/default-G/prototype/callable invariants,
+  calibrated normalization and escape matrix, real dual-context resident
+  fixtures, human/recovery/hostile-decision and fail-closed terminal paths,
+  loader order, default-only access, and exact two-source definition boundary.
+- Independent gates reproduce focused **25 = 17 passed + 8 causal RED
+  failures**, released adapter controls **79/79**, typecheck, factory
+  readiness, mission **20/20**, V4 assurance **20/20**, all four exact
+  markers, contract SHA, scope/freeze/ancestry/dependency/diff/clean checks,
+  and repository rejection only at the required pre-record-29 W1 current-blob
+  mismatch with no prefix/closure success.
+- Task136 Task12 causal RED advances `reviewing -> approved` for exact
+  `3f9207ba`. Only a history-preserving integration retaining those exact test
+  and claim blobs, followed by fresh integration-tree gates and a separate
+  append-only source-GREEN authorization, is allowed next. Any changed test or
+  claim byte invalidates this approval.
+- Strict product frontier remains **28 of 29**. This is causal-RED approval,
+  not integration, Task12 source GREEN, product candidate, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
 
 - Recorded at: 2026-07-24T04:58:14Z
