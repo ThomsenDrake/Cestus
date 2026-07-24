@@ -30824,3 +30824,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidacy, strict record 29, assurance transition, publication, or product
   release. `neo`, push, Wave 3, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-990 — Final corrected Task136 source-closure RED admitted to fresh review
+
+- Recorded at: 2026-07-24T15:21:34Z
+- Exact final corrected test-only candidate
+  `363193f0c261153b9649f71dbc32aac6b6cbf07f`, tree
+  `1bda2a6caec2ab9e62228f133bb23a802ea6c069`, has sole parent E-989
+  repair-authority merge
+  `ed3d50eee9453ec8169e1e4101e677dcc079d68b`. Its parent-relative diff
+  changes exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`; the complete
+  corrected oracle remains exactly the dispatcher and gateway tests
+  authorized since E-985.
+- Exact current test blobs are dispatcher
+  `bee084b81af7b74946051c296cf58b813af6f618` and gateway
+  `6e720ce896176362256aa09ca0566def9bef2257`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- The E-989 repair exact-asserts the fresh automatic and human requested
+  readbacks before consumption, exact-asserts the one fulfilled automatic
+  completed object including complete own-key absence, and binds request,
+  claim, receipt, and result identifiers to the corresponding exact durable
+  events. Recovery completion is likewise bound to its newly appended exact
+  durable completed event rather than copied from the readback under test.
+- Focused execution establishes exact signature
+  **48 = 28 passed + 20 independently source-causal failures**: dispatcher
+  **18 = 11 passed + 7 failed**, gateway
+  **28 = 15 passed + 13 failed**, and frozen loader **2/2** green. There is
+  no fixture, API, collection, dependency, or type failure.
+- Independent coordinator reproduction matches focused **28/20**, loader
+  **2/2**, released adapters **79/79**, standalone typecheck, factory,
+  mission **20/20**, V4 assurance **20/20**, all four exact markers, exact
+  one-path parent-relative scope, complete two-test review scope, frozen
+  blobs, ancestry, dependency-free diff, `git diff --check`, and clean state.
+  Repository mode exits `1`, stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Completely fresh read-only focused reviewer
+  `/root/task136_e990_red_review_3631` is assigned exact immutable candidate
+  `363193f0`. It must inspect the complete current corrected two-test bytes,
+  the full review package
+  `.superpowers/sdd/review-6755e7ed..363193f0.diff`, all E-985 through E-989
+  defect repairs, and relevant frozen sources and contracts. It must attack
+  weak-implementation counterexamples, classify every RED failure, and
+  independently reproduce every focused and cross-boundary gate.
+- The assigned reviewer has not authored, reviewed, or analyzed any earlier
+  changed test byte. Both previous corrected-byte reviewers and every
+  changed-byte author or analyst are ineligible. This reviewer may not edit,
+  commit, merge, substitute another SHA, approve changed bytes, authorize
+  source, or describe this transition as product candidacy or release. Any
+  changed candidate byte invalidates review.
+- Rejected candidates `f0845800`, `c6d75787`, `ae200ddf`, and `0cc48416`,
+  source checkpoint `ed5a1bb9`, approved design and dual-context descendant,
+  reviewed plan, every fixture adaptation, and all rejection, review, and
+  authority commits remain ancestral and unchanged.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `363193f0`. Strict product frontier remains **28 of 29**. This is corrected
+  test-only RED review admission, not approval, integration, source GREEN,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
