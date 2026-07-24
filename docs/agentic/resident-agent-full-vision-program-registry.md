@@ -31828,3 +31828,51 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidacy, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1005 — Exact `9f9d0ae3` ordinal-4 oracle approved
+
+- Recorded at: 2026-07-24T19:45:44Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1004_ordinal4_test_review` approves exact test-only candidate
+  `9f9d0ae3eecad30cf3124faa2470a52bb07a1483`, tree
+  `263d37c60aa64b1e650e498de7a70fd7eaabd112`, and no other candidate.
+  Review occurred against clean history-preserving E-1004 authority merge
+  `00c65542079912f84d5c87625095274b59f1f465`; no candidate byte or source
+  working byte changed.
+- Findings are none. Both ordinal-4 sites use distinct real pre-acceptance
+  fixtures and ledgers. Exact proposed/accepted event, lane-specific context,
+  payload, count/order, result, and read-model identity are asserted without
+  cross-ledger opaque-ID comparison, mock, catch, normalization, skipped
+  assertion, adapter weakening, or source/DTO widening.
+- Resident new/idempotent evidence, exact ten-field attestation and same-call
+  result-copy proof, intrinsic brand/replay probes, invocation-hash
+  independence, complete lifecycle/readback/evidence rules, target recovery,
+  W currentness, loader policy, and every E-1001 causal assertion remain
+  intact.
+- The reviewer independently reproduced frozen-source focused
+  **48 = 28 passed + 20 independently source-causal failures**, loader
+  **2/2**, and released adapters **79/79**. A disposable overlay of exact test
+  blob `0eaf2fe609de31657acfedde1e2630cbacedbcdc` with untouched paused source
+  blobs dispatcher `30e4a3eae31a0ea10dbd1d8b6cc8de7486088cbc`
+  and gateway `41740d5dc33603713687419b0463fdfc9f438c87`
+  passes focused **48/48**; the paused source worktree remains unchanged.
+- Typecheck, factory, mission **20/20**, V4 assurance **20/20**, and all four
+  exact markers pass. Repository mode stops exactly at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`;
+  no repository-prefix or release-closure success is emitted.
+- Candidate identity, one-test **128/4** scope, dependencies, all frozen
+  blobs, named ancestry and recovery topology, both diff checks, and clean
+  review state are exact.
+- One history-preserving integration merge of clean review lineage
+  `00c65542079912f84d5c87625095274b59f1f465` into the existing Task136
+  lineage is authorized. It must preserve exact test blob
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, retain the paused two-source
+  working bytes unchanged, and record exact integration before source work
+  may receive separate resume authority.
+- Task136 advances `reviewing -> approved` for the exact verifier-recovery
+  test. Strict product frontier remains **28 of 29**. This is test approval
+  authority, not integration, source resumption, Task12 source candidacy,
+  Task13 authority, Task136 product candidacy, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
