@@ -29259,6 +29259,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-962 — Hardened Task136 loader oracle admitted to fresh focused review
+
+- Recorded at: 2026-07-24T00:44:52Z
+- Exact candidate `fc580fc110d4e97863c1793e145eb41d8013332a`,
+  sole parent RV-1-E-961 authority merge
+  `8a8b1b7809c38616cba68eebc562a3523323c5da`, changes exactly the loader
+  test and Task136 product claim. Exact tree is
+  `c477850c60b9907bf88c4605fb709ac6364b9654`; loader blob is
+  `355814990eb1a6bdff392bfa76c4110de196084b` and claim blob is
+  `37cceeff6e88ec11eefa4fb8246f28258b28a8f3`.
+- Dispatcher/G test blobs remain exact
+  `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`; Task12 source blobs remain
+  exact `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`. Rejected `9f33e0b9`,
+  `fcb612e7`, and `b54281b0` plus all authority/design/review history remain
+  ancestral.
+- The static default-G analysis now rejects extra literal, resolved-computed,
+  unresolved-computed, and symbol keys. Runtime validation uses
+  `Reflect.ownKeys` with exact frozen key, descriptor, and callable checks,
+  and direct controls reject extra string, symbol, accessor, and
+  noncallable-data properties.
+- One shared static-key resolver and definition classifier now cover function
+  and value declarations; class methods, fields, and accessors; object
+  methods, properties, and accessors; later assignments; string-literal and
+  resolved-computed names; and unresolved dynamic members. Independent
+  controls retain exclusions for imports, re-exports, type-only uses, aliases,
+  property calls, and Task14's authorized binder consumer.
+- Fresh gates report exact focused **25 = 17 passed + 8 causal RED
+  failures**, released adapter controls **79/79**, typecheck, factory
+  readiness, mission **20/20**, V4 assurance **20/20**, and all exact markers.
+  Exact two-path scope, frozen blobs, ancestry, diff, and clean state pass.
+  Repository mode truthfully stops at the pre-record-29 W1 current-blob
+  mismatch; no prefix or closure success is claimed.
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_fc58` is assigned exact `fc580fc1`.
+  It must independently attack every static/runtime widening form, verify
+  future Task14 consumer compatibility, recheck all preserved five-point
+  controls and complete released fixture matrix, reproduce exact causal RED
+  and deterministic gates, and determine repository posture from committed
+  authority. Both prior RED reviewers and the author are ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `fc580fc1`. Changed bytes invalidate the review. No source authorization
+  follows without an explicit later approval/integration event.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
 
 - Recorded at: 2026-07-23T22:28:30Z
