@@ -750,8 +750,14 @@ describe("agent domain execution dispatcher", () => {
       )
     ]);
 
-    expectExactResidentInvocationInputHash(automatic);
-    expectExactResidentInvocationInputHash(human);
+    expectExactResidentInvocationInputHash(
+      automatic,
+      residentCatalogRows()[10]!
+    );
+    expectExactResidentInvocationInputHash(
+      human,
+      residentCatalogRows()[7]!
+    );
   });
 
   it("enforces the exact per-ordinal resident invocation evidence table", async () => {
@@ -803,7 +809,7 @@ describe("agent domain execution dispatcher", () => {
           : "new-ledger-events"
       );
       expectExactResidentCatalogLifecycle(first, row);
-      expectExactResidentInvocationInputHash(first);
+      expectExactResidentInvocationInputHash(first, row);
       if (row.ordinal === 7) {
         const preview = asDataRecord(
           Reflect.get(asDataRecord(first.currentPreview), "preview")
@@ -857,7 +863,7 @@ describe("agent domain execution dispatcher", () => {
       expect(second.receipt.payload.domainEventIds)
         .toEqual(first.receipt.payload.domainEventIds);
       expectExactResidentCatalogLifecycle(second, row);
-      expectExactResidentInvocationInputHash(second);
+      expectExactResidentInvocationInputHash(second, row);
       tableFacts.push({
         ordinal: row.ordinal,
         outcome: "completed",
@@ -1341,10 +1347,51 @@ interface ResidentCatalogExecutionEvidence {
   readonly invocationInput?: Readonly<Record<string, unknown>>;
 }
 
+type ResidentCatalogLifecycleType =
+  | "agent.resident-domain.requested.v1"
+  | "agent.resident-domain.human-approved.v1"
+  | "agent.resident-domain.execution-claimed.v1"
+  | "agent.resident-domain.outcome-observed.v1"
+  | "agent.resident-domain.completed.v1";
+
+type ResidentCatalogAuthorization =
+  KnowledgeEventOf<
+    "agent.resident-domain.execution-claimed.v1"
+  >["payload"]["authorization"];
+
+interface ResidentCatalogDurableLifecycle {
+  readonly request:
+    KnowledgeEventOf<"agent.resident-domain.requested.v1">;
+  readonly approval?:
+    KnowledgeEventOf<"agent.resident-domain.human-approved.v1">;
+  readonly claim:
+    KnowledgeEventOf<"agent.resident-domain.execution-claimed.v1">;
+  readonly receipt:
+    KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
+  readonly completed:
+    KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+  readonly authorization: ResidentCatalogAuthorization;
+}
+
+function requiredExactResidentCatalogEvent<
+  T extends ResidentCatalogLifecycleType
+>(
+  events: readonly KnowledgeEvent[],
+  type: T
+): KnowledgeEventOf<T> {
+  const matches = events.filter(
+    (event): event is KnowledgeEventOf<T> => event.type === type
+  );
+  if (matches.length !== 1) {
+    throw new Error(`Resident catalog requires exactly one durable ${type}.`);
+  }
+  return matches[0]!;
+}
+
 function expectExactResidentCatalogLifecycle(
   evidence: ResidentCatalogExecutionEvidence,
   row: ResidentCatalogRow
-): void {
+): ResidentCatalogDurableLifecycle {
   const expectedTypes = row.ordinal === 10
     ? [
         "agent.resident-domain.requested.v1",
@@ -1363,15 +1410,113 @@ function expectExactResidentCatalogLifecycle(
     .toEqual(expectedTypes);
   expect(evidence.residentEvents.map(({ sequence }) => sequence))
     .toEqual(expectedTypes.map((_, index) => index + 1));
-  const request = evidence.residentEvents[0];
-  if (
-    request === undefined ||
-    request.type !== "agent.resident-domain.requested.v1"
-  ) {
-    throw new Error("Resident catalog lifecycle lacks its exact request.");
+  const request = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.requested.v1"
+  );
+  const claim = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.execution-claimed.v1"
+  );
+  const receipt = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.outcome-observed.v1"
+  );
+  const completed = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.completed.v1"
+  );
+  const approvals = evidence.residentEvents.filter(
+    (
+      event
+    ): event is KnowledgeEventOf<"agent.resident-domain.human-approved.v1"> =>
+      event.type === "agent.resident-domain.human-approved.v1"
+  );
+  expect(approvals).toHaveLength(row.ordinal === 10 ? 0 : 1);
+  const approval = approvals[0];
+  if (row.ordinal !== 10 && approval === undefined) {
+    throw new Error("Resident human catalog lifecycle lacks its exact approval.");
   }
+  const authorization: ResidentCatalogAuthorization = approval === undefined
+    ? { authorizationKind: "automatic-policy" }
+    : {
+        authorizationKind: approval.payload.authorizationKind,
+        decisionEventId: approval.payload.decisionEventId,
+        approvedBy: approval.payload.approvedBy,
+        approvedPreviewHash: approval.payload.approvedPreviewHash
+      };
+
+  expect(evidence.receipt).toBe(receipt);
+  expect(evidence.completed).toBe(completed);
+  expect(request.payload.schemaVersion).toBe("resident-domain-requested.v1");
+  expect(request.payload.authorizationKind).toBe(
+    approval === undefined ? "automatic-policy" : "human-approval"
+  );
+  expect(request.payload.logicalLocator.toolId).toBe(row.toolId);
+  expect(request.payload.logicalLocator.toolVersion).toBe(row.toolVersion);
+  expect(request.payload.executionCapabilityHash)
+    .toBe(request.payload.logicalLocator.executionCapabilityHash);
+  expect(request.context.causationId).toBe(request.payload.causationId);
+  expect(request.context.correlationId).toBe(request.payload.correlationId);
+
+  if (approval !== undefined) {
+    expect(approval.payload.schemaVersion)
+      .toBe("resident-domain-human-approved.v1");
+    expect(approval.payload.requestEventId).toBe(request.id);
+    expect(approval.payload.approvedBy).toBe(approval.context.actor.id);
+    expect(approval.payload.approvedPreviewHash)
+      .toBe(request.payload.previewHash);
+  }
+
+  const claimCausationId = approval?.id ?? request.id;
+  expect(claim.payload.schemaVersion)
+    .toBe("resident-domain-execution-claimed.v1");
+  expect(claim.payload.requestEventId).toBe(request.id);
+  expect(claim.payload.authorization).toEqual(authorization);
+  expect(Object.keys(claim.payload.authorization)).toEqual(
+    approval === undefined
+      ? ["authorizationKind"]
+      : [
+          "authorizationKind",
+          "decisionEventId",
+          "approvedBy",
+          "approvedPreviewHash"
+        ]
+  );
+  expect(claim.payload.causationId).toBe(claimCausationId);
+  expect(claim.context.causationId).toBe(claimCausationId);
+
+  expect(receipt.payload.schemaVersion)
+    .toBe("resident-domain-outcome-observed.v1");
+  expect(receipt.payload.requestEventId).toBe(request.id);
+  expect(receipt.payload.executionClaimEventId).toBe(claim.id);
+  expect(receipt.payload.authorization).toEqual(authorization);
+  expect(receipt.payload.causationId).toBe(claim.id);
+  expect(receipt.context.causationId).toBe(claim.id);
+
+  expect(completed.payload.schemaVersion).toBe("resident-domain-completed.v1");
+  expect(completed.payload.requestEventId).toBe(request.id);
+  expect(completed.payload.executionClaimEventId).toBe(claim.id);
+  expect(completed.payload.outcomeReceiptEventId).toBe(receipt.id);
+  expect(completed.payload.authorization).toEqual(authorization);
+  expect(completed.payload.causationId).toBe(receipt.id);
+  expect(completed.context.causationId).toBe(receipt.id);
+
   for (let index = 0; index < evidence.residentEvents.length; index += 1) {
     const event = evidence.residentEvents[index]!;
+    const eventPayload = asDataRecord(event.payload);
+    expect(event.streamId).toBe(request.streamId);
+    expect(eventPayload.logicalLocator)
+      .toEqual(request.payload.logicalLocator);
+    expect(eventPayload.executionCapabilityHash)
+      .toBe(request.payload.executionCapabilityHash);
+    expect(eventPayload.correlationId)
+      .toBe(request.payload.correlationId);
+    expect(eventPayload.causationId).toBe(
+      index === 0
+        ? request.payload.causationId
+        : evidence.residentEvents[index - 1]?.id
+    );
     expect(event.context).toEqual({
       actor: event.type === "agent.resident-domain.human-approved.v1"
         ? humanActor
@@ -1389,40 +1534,35 @@ function expectExactResidentCatalogLifecycle(
       packVersions: { core: "0.1.0", agent: "0.1.0" }
     });
   }
-  expect(evidence.completed.payload.requestEventId)
-    .toBe(evidence.residentEvents[0]?.id);
-  expect(evidence.completed.payload.executionClaimEventId)
-    .toBe(evidence.receipt.payload.executionClaimEventId);
-  expect(evidence.completed.payload.outcomeReceiptEventId)
-    .toBe(evidence.receipt.id);
-  expect(evidence.completed.payload.logicalLocator)
-    .toEqual(evidence.receipt.payload.logicalLocator);
-  expect(evidence.completed.payload.executionCapabilityHash)
-    .toBe(evidence.receipt.payload.executionCapabilityHash);
+  return {
+    request,
+    ...(approval === undefined ? {} : { approval }),
+    claim,
+    receipt,
+    completed,
+    authorization
+  };
 }
 
 function expectExactResidentInvocationInputHash(
-  evidence: ResidentCatalogExecutionEvidence
+  evidence: ResidentCatalogExecutionEvidence,
+  row: ResidentCatalogRow
 ): void {
-  const request = evidence.residentEvents.find(
-    (event): event is KnowledgeEventOf<"agent.resident-domain.requested.v1"> =>
-      event.type === "agent.resident-domain.requested.v1"
-  );
-  if (request === undefined) {
-    throw new Error("Resident catalog evidence lacks its exact request.");
-  }
+  const lifecycle = expectExactResidentCatalogLifecycle(evidence, row);
   if (evidence.invocationInput === undefined) {
     throw new Error("Resident catalog evidence lacks its runtime invocation input.");
   }
-  const authorization = evidence.receipt.payload.authorization;
+  if (evidence.issuedAttestation === undefined) {
+    throw new Error("Resident catalog evidence lacks its issued attestation.");
+  }
+  const authorization = lifecycle.authorization;
   const base = {
-    authorizationKind: request.payload.authorizationKind,
-    logicalLocator: request.payload.logicalLocator,
-    requestEventId: request.id,
-    executionClaimEventId:
-      evidence.receipt.payload.executionClaimEventId,
+    authorizationKind: authorization.authorizationKind,
+    logicalLocator: lifecycle.request.payload.logicalLocator,
+    requestEventId: lifecycle.request.id,
+    executionClaimEventId: lifecycle.claim.id,
     authorization,
-    previewHash: request.payload.previewHash
+    previewHash: lifecycle.request.payload.previewHash
   };
   const expected = authorization.authorizationKind === "human-approval"
     ? {
@@ -1459,8 +1599,72 @@ function expectExactResidentInvocationInputHash(
           "currentPreview"
         ]
   );
-  expect(evidence.receipt.payload.residentInvocationInputHash).toBe(
-    residentTestHash(expected)
+  const invocationInputHash = residentTestHash(expected);
+  const attestation = evidence.issuedAttestation;
+  expect(attestation.logicalLocator)
+    .toEqual(lifecycle.request.payload.logicalLocator);
+  expect(attestation.executionCapabilityHash)
+    .toBe(lifecycle.request.payload.executionCapabilityHash);
+  expect(attestation.requestEventId).toBe(lifecycle.request.id);
+  expect(attestation.executionClaimEventId).toBe(lifecycle.claim.id);
+  expect(attestation.authorization).toEqual(authorization);
+  expect(Object.keys(asDataRecord(attestation.authorization))).toEqual(
+    authorization.authorizationKind === "human-approval"
+      ? [
+          "authorizationKind",
+          "decisionEventId",
+          "approvedBy",
+          "approvedPreviewHash"
+        ]
+      : ["authorizationKind"]
+  );
+  expect(attestation.catalogOrdinal).toBe(row.ordinal);
+  expect(attestation.implementationRevision).toBe(row.implementationRevision);
+  expect(attestation.residentInvocationInputHash).toBe(invocationInputHash);
+
+  expect(lifecycle.receipt.payload.logicalLocator)
+    .toEqual(lifecycle.request.payload.logicalLocator);
+  expect(lifecycle.receipt.payload.executionCapabilityHash)
+    .toBe(lifecycle.request.payload.executionCapabilityHash);
+  expect(lifecycle.receipt.payload.requestEventId).toBe(lifecycle.request.id);
+  expect(lifecycle.receipt.payload.executionClaimEventId)
+    .toBe(lifecycle.claim.id);
+  expect(lifecycle.receipt.payload.authorization).toEqual(authorization);
+  expect(Object.keys(lifecycle.receipt.payload.authorization)).toEqual(
+    authorization.authorizationKind === "human-approval"
+      ? [
+          "authorizationKind",
+          "decisionEventId",
+          "approvedBy",
+          "approvedPreviewHash"
+        ]
+      : ["authorizationKind"]
+  );
+  expect(lifecycle.receipt.payload.catalogOrdinal).toBe(row.ordinal);
+  expect(lifecycle.receipt.payload.implementationRevision)
+    .toBe(row.implementationRevision);
+  expect(lifecycle.receipt.payload.residentInvocationInputHash)
+    .toBe(invocationInputHash);
+
+  expect(lifecycle.completed.payload.logicalLocator)
+    .toEqual(lifecycle.request.payload.logicalLocator);
+  expect(lifecycle.completed.payload.executionCapabilityHash)
+    .toBe(lifecycle.request.payload.executionCapabilityHash);
+  expect(lifecycle.completed.payload.requestEventId).toBe(lifecycle.request.id);
+  expect(lifecycle.completed.payload.executionClaimEventId)
+    .toBe(lifecycle.claim.id);
+  expect(lifecycle.completed.payload.outcomeReceiptEventId)
+    .toBe(lifecycle.receipt.id);
+  expect(lifecycle.completed.payload.authorization).toEqual(authorization);
+  expect(Object.keys(lifecycle.completed.payload.authorization)).toEqual(
+    authorization.authorizationKind === "human-approval"
+      ? [
+          "authorizationKind",
+          "decisionEventId",
+          "approvedBy",
+          "approvedPreviewHash"
+        ]
+      : ["authorizationKind"]
   );
 }
 
@@ -2047,7 +2251,7 @@ async function executeResidentCatalogRow(
   return {
     receipt,
     completed,
-    currentPreview: invocationInput?.currentPreview ?? currentPreview,
+    currentPreview,
     residentEvents: stream,
     ...(issuedAttestation === undefined ? {} : { issuedAttestation }),
     ...(invocationInput === undefined ? {} : { invocationInput })
