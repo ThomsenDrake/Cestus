@@ -29215,6 +29215,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-961 — Corrected Task136 RED rejected; two-point loader repair authorized
+
+- Recorded at: 2026-07-24T00:24:06Z
+- Completely fresh reviewer `/root/task136_task12_red_review_9f33` rejects
+  exact candidate `9f33e0b9309be0bf62054833816833c932233819`
+  with two P1 loader-oracle defects. That commit, prior rejected
+  `fcb612e77ddeee905cc3dc2ff6163d362af10471` and `b54281b0`, and all
+  original/corrected design, RED/GREEN, and review history remain preserved.
+  None is approved, integrated, source GREEN, strict record 29, or release.
+- First, the default-G sole-operation oracle drops computed property names
+  and uses `Object.keys`, which ignores symbols. A frozen default containing
+  the required permit consumer plus a symbol-keyed issuer therefore passes
+  both static and runtime checks. The correction must conservatively reject
+  computed or unresolved own-operation names and use `Reflect.ownKeys` plus
+  exact descriptor/callable/frozen checks so no string, symbol, accessor, or
+  data property can widen the sole permit-consumer object.
+- Second, the definition classifier recognizes only selected declarations.
+  Real protected-operation definitions expressed as TypeScript class fields,
+  later callable assignments, computed or string-literal object methods, or
+  equivalent value-producing shapes can escape the exact two-source freeze.
+  The correction must classify every static spelling of the protected
+  operations across declarations, properties, assignments, accessors, class
+  members, and computed/literal names; reject unresolved dynamic definitions;
+  and continue to exclude imports, re-exports, aliases, type-only uses, and
+  genuine consumer/property calls including Task14's authorized binder call.
+- One forward correction may modify exactly
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`
+  and
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`.
+  Dispatcher/G test blobs and both Task12 source blobs must remain exact.
+  Direct counterfactual controls must cover a symbol-keyed issuer, computed
+  names, class fields, later assignments, string-literal methods, accessors,
+  and consumer/import/type/re-export exclusions without changing the exact
+  focused **17 passed + 8 causal RED** boundary.
+- The exact two-path descendant requires a completely fresh focused reviewer;
+  both prior RED reviewers and every candidate author are ineligible. Changed
+  bytes invalidate that review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is loader-oracle correction authority, not source authorization,
+  candidate approval, integration, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
 
 - Recorded at: 2026-07-23T22:28:30Z
