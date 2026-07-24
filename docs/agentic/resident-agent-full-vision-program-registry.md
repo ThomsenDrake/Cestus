@@ -29259,6 +29259,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
 
+## RV-1-E-973 — Task136 lexical-provenance RED admitted to fresh review
+
+- Recorded at: 2026-07-24T04:27:24Z
+- Exact candidate `60f17f5ba7489a85ffd2c65da9638a7f83e8a595`,
+  sole parent RV-1-E-972 authority merge
+  `c3de8f95524c3c15d7f53794aea3b3c2ca248249`, changes exactly the loader
+  test and Task136 claim. Exact tree is
+  `ac651f000bcb256372d74ad3f21a03d05a84df7a`; loader blob is
+  `1e03766e9c29fa8caf4b7ee4f68c144da25af09c` and claim blob is
+  `6e3d84fca59121830c31d7368eef33642821845e`. Delta is loader **+348/-43**
+  and claim **+114/-0**, with no dependency change.
+- Dispatcher/G test blobs remain exact
+  `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`; Task12 sources remain exact
+  `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`. Rejected `31a017b4`,
+  `97610438`, `a1ed492f`, `84b9f6a8`, `fc580fc1`, `9f33e0b9`,
+  `fcb612e7`, and `b54281b0` remain ancestral.
+- Gateway-default provenance now uses TypeScript lexical symbol identity,
+  not textual names. The exact default import is the root; a direct immutable
+  alias is tracked only with unique initializer and complete reference
+  classification. Mutable/assigned/default-parameter/conditional/logical/
+  sequence/compound identities, shadowing, nested capture, return/pass/store,
+  object transfer, and every unrecognized value flow reject. Every tracked
+  binding pattern remains governed; a same-text shadowed unrelated record and
+  safe unrelated dynamic records remain accepted.
+- All prior Task14 identity census, dispatcher transfer, gateway binding,
+  protected-mention/default-G/prototype/callable, calibrated normalization,
+  resident dual-context/human/recovery/terminal, and loader-order matrices
+  execute before the intended source stop. Fresh gates report exact focused
+  **25 = 17 passed + 8 causal RED failures**, released controls **79/79**,
+  typecheck, factory readiness, mission **20/20**, V4 assurance **20/20**,
+  and all exact markers. Exact scope/freeze/ancestry/dependency/diff/clean
+  checks pass. Repository mode truthfully stops at the pre-record-29 W1
+  current-blob mismatch.
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_60f1` is assigned exact `60f17f5b`. It
+  must independently verify lexical binding and every unsafe/safe provenance
+  control, all preserved matrices/fixtures, exact causal split, and
+  deterministic gates. Every prior reviewer, analyst, and author is
+  ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `60f17f5b`. Changed bytes invalidate review. No source authorization follows
+  without explicit later approval/integration authority.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-970 — Calibrated loader candidate rejected; identity census closure authorized
 
 - Recorded at: 2026-07-24T03:33:25Z
