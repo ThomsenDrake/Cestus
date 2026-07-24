@@ -575,20 +575,31 @@ describe("agent domain execution dispatcher", () => {
       const fixture = fixtureByKind.get(row.kind)!;
       if ([0, 1, 8].includes(row.ordinal)) {
         const before = await fixture.ledger.readAll();
-        await expect(executeResidentCatalogRow(
-          fixture,
-          row,
-          `closed-${row.ordinal}`
-        )).rejects.toBeDefined();
+        let successfulAttestation: ResidentCatalogExecutionEvidence | undefined;
+        let rejection: unknown;
+        try {
+          successfulAttestation = await executeResidentCatalogRow(
+            fixture,
+            row,
+            `closed-${row.ordinal}`
+          );
+        } catch (error) {
+          rejection = error;
+          // The exact package-owned adapter rejection is the admissible path.
+        }
+        expect(rejection).toBeDefined();
+        expect(successfulAttestation).toBeUndefined();
         const after = await fixture.ledger.readAll();
-        expect(after.some((event) =>
-          event.type === "agent.resident-domain.outcome-observed.v1" &&
-          Reflect.get(event.payload, "logicalLocator") !== undefined &&
-          Reflect.get(
-            Reflect.get(event.payload, "logicalLocator") as object,
-            "toolId"
-          ) === row.toolId
-        )).toBe(false);
+        expect(successfulResidentEventsForTool(after, row.toolId)).toEqual([]);
+        expect(successfulResidentEventsForTool([
+          ...after,
+          {
+            type: "agent.resident-domain.completed.v1",
+            payload: { logicalLocator: { toolId: row.toolId } }
+          }
+        ], row.toolId)).toEqual([
+          "agent.resident-domain.completed.v1"
+        ]);
         expect(after.length).toBeGreaterThanOrEqual(before.length);
         continue;
       }
@@ -902,6 +913,33 @@ async function proveReleasedResidentFixtureEvidence(
 interface ResidentCatalogExecutionEvidence {
   readonly receipt: KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
   readonly completed: KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+}
+
+function successfulResidentEventsForTool(
+  events: readonly unknown[],
+  toolId: string
+): readonly string[] {
+  return events.flatMap((value) => {
+    if (typeof value !== "object" || value === null) {
+      return [];
+    }
+    const type = Reflect.get(value, "type");
+    if (
+      type !== "agent.resident-domain.outcome-observed.v1" &&
+      type !== "agent.resident-domain.completed.v1"
+    ) {
+      return [];
+    }
+    const payload = Reflect.get(value, "payload");
+    const locator = typeof payload === "object" && payload !== null
+      ? Reflect.get(payload, "logicalLocator")
+      : undefined;
+    return typeof locator === "object" &&
+      locator !== null &&
+      Reflect.get(locator, "toolId") === toolId
+      ? [type]
+      : [];
+  });
 }
 
 async function executeResidentCatalogRow(
