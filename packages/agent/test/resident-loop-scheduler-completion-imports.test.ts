@@ -103,12 +103,23 @@ describe("resident-loop scheduler completion import boundary", () => {
         permitConsumerOccurrences: 3,
         violations: []
       });
+    expect(closedDataRecordNormalizationAnalysis(gatewayRecord)).toEqual({
+      writes: 1,
+      violations: []
+    });
     for (const control of mentionControls.unsafe) {
-      expect(
+      expect.soft(
         task12ProtectedMentionAnalysis(control.sources).violations,
         control.name
       ).toEqual(control.violations);
     }
+    for (const control of dispatcherTransferControls()) {
+      expect.soft(
+        protectedResidentTransfers(control.sources),
+        control.name
+      ).toEqual(control.violations);
+    }
+    expect(protectedResidentTransfers(sources)).toEqual([]);
     for (const control of gatewayDefaultStaticControls()) {
       expect(
         exactGatewayDefaultStaticAnalysis(control.source.sourceFile).violations,
@@ -164,7 +175,6 @@ describe("resident-loop scheduler completion import boundary", () => {
       gatewayRecord.sourceFile
     );
     expect(gatewayStatic.violations).toEqual([]);
-    expect(protectedResidentTransfers(sources)).toEqual([]);
     expect(protectedLoaderTransfers(sources)).toEqual([]);
     expect(task12ProtectedMentionAnalysis(sources)).toEqual({
       definitionSources: [
@@ -422,6 +432,7 @@ function task12ProtectedMentionAnalysis(
   for (const record of sources) {
     const { sourcePath, sourceFile } = record;
     const protectedHosts = protectedHostNames(sourceFile, protectedNames);
+    const gatewayDefaultHosts = gatewayDefaultHostNames(sourceFile);
     const ownerHasDefinition = sourceContainsOwnedDefinition(
       record,
       protectedNames
@@ -461,6 +472,19 @@ function task12ProtectedMentionAnalysis(
         ) {
           violations.add(sourcePath);
         }
+      }
+      if (
+        (
+          ts.isPropertyAccessExpression(node) ||
+          ts.isElementAccessExpression(node)
+        ) &&
+        expressionResolvesProtectedHost(
+          node.expression,
+          gatewayDefaultHosts
+        ) &&
+        !isExactDispatcherGatewayAccess(node, record)
+      ) {
+        violations.add(sourcePath);
       }
       if (ts.isCallExpression(node)) {
         inspectMutationCall(
@@ -899,6 +923,14 @@ function isExactDispatcherPermitCall(
   ) === node.parent.expression.text;
 }
 
+function isExactDispatcherGatewayAccess(
+  node: ts.PropertyAccessExpression | ts.ElementAccessExpression,
+  record: SourceRecord
+): boolean {
+  return ts.isPropertyAccessExpression(node) &&
+    isExactDispatcherPermitCall(node.name, record);
+}
+
 function isExactTask14BinderCall(
   node: ts.Node,
   record: SourceRecord
@@ -952,7 +984,11 @@ function protectedMentionControls(): ProtectedMentionControls {
     "packages/agent/src/resident-loop-tool-gateway.ts";
   const task14Path =
     "packages/local-runtime/src/wake-supervisor-runtime.ts";
-  const base = (gatewayExtra = "", dispatcherExtra = ""): readonly SourceRecord[] => [
+  const base = (
+    gatewayExtra = "",
+    dispatcherExtra = "",
+    normalizationEscape = ""
+  ): readonly SourceRecord[] => [
     sourceRecordFromText(dispatcherPath, [
       "import gatewayDefault from './resident-loop-tool-gateway.js';",
       "function createPackageOwnedResidentDomainExecutionCapability() {}",
@@ -992,8 +1028,49 @@ function protectedMentionControls(): ProtectedMentionControls {
       "const record = Object.create(null) as Record<string, unknown>;",
       "declare const recordKey: string;",
       "record[recordKey] = undefined;",
+      "void record[recordKey];",
+      "Reflect.ownKeys(record);",
       "const { [recordKey]: dynamicRead } = gateway;",
       "void dynamicRead;",
+      "function dataRecord(value: unknown, label: string) {",
+      "  if (value === null || typeof value !== 'object' || Array.isArray(value) ||",
+      "      isProxy(value) ||",
+      "      Object.getPrototypeOf(value) !== Object.prototype ||",
+      "      Object.getOwnPropertySymbols(value).length > 0) {",
+      "    throw new Error(label);",
+      "  }",
+      "  const record = Object.create(null) as Record<string, unknown>;",
+      "  for (const key of Object.getOwnPropertyNames(value).sort()) {",
+      "    const descriptor = Object.getOwnPropertyDescriptor(value, key);",
+      "    if (unsafeKeys.has(key) || descriptor === undefined ||",
+      "        !('value' in descriptor) || !descriptor.enumerable) {",
+      "      throw new Error(label);",
+      "    }",
+      "    record[key] = descriptor.value;",
+      "  }",
+      "  return record;",
+      "}",
+      "function copyOne(value: unknown) {",
+      "  const recordOne = dataRecord(value, 'one');",
+      "  rejectUnknown(recordOne, ['value'], 'one');",
+      `  ${normalizationEscape}`,
+      "  return Object.freeze({ value: recordOne.value });",
+      "}",
+      "function copyTwo(value: unknown) {",
+      "  const recordTwo = dataRecord(value, 'two');",
+      "  rejectUnknown(recordTwo, ['value'], 'two');",
+      "  return Object.freeze({ value: recordTwo.value });",
+      "}",
+      "function copyThree(value: unknown) {",
+      "  const recordThree = dataRecord(value, 'three');",
+      "  rejectUnknown(recordThree, ['value'], 'three');",
+      "  return Object.freeze({ value: recordThree.value });",
+      "}",
+      "function copyFour(value: unknown) {",
+      "  const recordFour = dataRecord(value, 'four');",
+      "  rejectUnknown(recordFour, ['value'], 'four');",
+      "  return Object.freeze({ value: recordFour.value });",
+      "}",
       gatewayExtra
     ].join("\n")),
     sourceRecordFromText(task14Path, [
@@ -1103,6 +1180,14 @@ function protectedMentionControls(): ProtectedMentionControls {
       violations: [gatewayPath]
     },
     {
+      name: "resolved computed owner duplicate",
+      sources: base([
+        "const duplicateOperation = 'executeFreshAuthorized' as const;",
+        "class DuplicateOwnerDefinition { [duplicateOperation]() {} }"
+      ].join("\n")),
+      violations: [gatewayPath]
+    },
+    {
       name: "unresolved owner-source binding default",
       sources: base([
         "declare const dynamicBinding: string;",
@@ -1123,12 +1208,275 @@ function protectedMentionControls(): ProtectedMentionControls {
       name: "unrecognized protected-host mutation",
       sources: base("mutate(gateway);"),
       violations: [gatewayPath]
-    }
+    },
+    {
+      name: "substituted-template gateway alias call",
+      sources: base("", [
+        "const dynamicGateway = gatewayDefault;",
+        "dynamicGateway[`consumeResident${'DomainExecutionPermit'}`](",
+        "  permit, port, input",
+        ");"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    ...freshRecordEscapeControls(base, gatewayPath),
+    ...closedNormalizationEscapeControls(base, gatewayPath)
   ];
   return {
     safeSources: base(),
     unsafe
   };
+}
+
+function freshRecordEscapeControls(
+  base: (
+    gatewayExtra?: string,
+    dispatcherExtra?: string,
+    normalizationEscape?: string
+  ) =>
+    readonly SourceRecord[],
+  gatewayPath: string
+): readonly {
+  readonly name: string;
+  readonly sources: readonly SourceRecord[];
+  readonly violations: readonly string[];
+}[] {
+  const control = (name: string, escape: string) => ({
+    name: `fresh record ${name}`,
+    sources: base([
+      "function normalizeFreshRecord() {",
+      "  const freshRecord = Object.create(null) as Record<string, unknown>;",
+      "  declare const dynamicKey: string;",
+      "  freshRecord[dynamicKey] = undefined;",
+      `  ${escape}`,
+      "}"
+    ].join("\n")),
+    violations: [gatewayPath]
+  });
+  return [
+    control("return escape", "return freshRecord;"),
+    control("yield escape", "function* leak() { yield freshRecord; } void leak;"),
+    control("outward assignment escape", "outwardRecord = freshRecord;"),
+    control("property store escape", "holder.record = freshRecord;"),
+    control("call argument escape", "consumeRecord(freshRecord);"),
+    control("closure capture escape", "const capture = () => freshRecord;"),
+    control("identity alias escape", "const alias = freshRecord; void alias;"),
+    control("authority graph escape", "authorityGraph.add(freshRecord);"),
+    control("export graph escape", "exportTable.normalized = freshRecord;"),
+    control(
+      "prototype escape",
+      "Object.setPrototypeOf(normalizedOutput, freshRecord);"
+    ),
+    control(
+      "default graph escape",
+      "defaultGraph.set('gateway', freshRecord);"
+    ),
+    control(
+      "permit graph escape",
+      "permitGraph.set('permit', freshRecord);"
+    )
+  ];
+}
+
+function closedNormalizationEscapeControls(
+  base: (
+    gatewayExtra?: string,
+    dispatcherExtra?: string,
+    normalizationEscape?: string
+  ) => readonly SourceRecord[],
+  gatewayPath: string
+): readonly {
+  readonly name: string;
+  readonly sources: readonly SourceRecord[];
+  readonly violations: readonly string[];
+}[] {
+  const control = (name: string, escape: string) => ({
+    name: `closed normalization ${name}`,
+    sources: base("", "", escape),
+    violations: [gatewayPath]
+  });
+  const exported = base().map((record) =>
+    record.sourcePath === gatewayPath
+      ? sourceRecordFromText(
+          record.sourcePath,
+          record.text.replace(
+            "function copyOne(value: unknown)",
+            "export function copyOne(value: unknown)"
+          )
+        )
+      : record
+  );
+  return [
+    control("authority escape", "authorityGraph.add(recordOne);"),
+    {
+      name: "closed normalization exported operation escape",
+      sources: exported,
+      violations: [gatewayPath]
+    },
+    control("capture escape", "captureGraph.push(() => recordOne);"),
+    control("store escape", "holder.record = recordOne;"),
+    control("pass escape", "consumeRecord(recordOne);"),
+    control(
+      "prototype escape",
+      "Object.setPrototypeOf(normalizedOutput, recordOne);"
+    ),
+    control("default escape", "defaultGraph.set('gateway', recordOne);"),
+    control("permit escape", "permitGraph.set('permit', recordOne);")
+  ];
+}
+
+interface DispatcherTransferControl {
+  readonly name: string;
+  readonly sources: readonly SourceRecord[];
+  readonly violations: readonly string[];
+}
+
+function dispatcherTransferControls(): readonly DispatcherTransferControl[] {
+  const task14Path =
+    "packages/local-runtime/src/wake-supervisor-runtime.ts";
+  const exactTask14 = sourceRecordFromText(task14Path, [
+    "import dispatcherDefault from " +
+      "'../../agent/src/domain-execution-dispatcher.js';",
+    "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);"
+  ].join("\n"));
+  const splitLegacy = [
+    "accepted-graph-review",
+    "destructive-repair",
+    "export-report",
+    "legacy-staging",
+    "prr-correspondence"
+  ].map((name) => sourceRecordFromText(
+    `packages/agent/src/adapters/${name}.ts`,
+    [
+      "import type { AgentDomainExecutionAdapter } " +
+        "from '../domain-execution-dispatcher.js';",
+      "import { agentDomainExecutionFailure } " +
+        "from '../domain-execution-dispatcher.js';",
+      "void agentDomainExecutionFailure;",
+      "type Adapter = AgentDomainExecutionAdapter<unknown>;",
+      "export type { Adapter };"
+    ].join("\n")
+  ));
+  const combinedLegacy = sourceRecordFromText(
+    "packages/agent/src/adapters/provider-byte-transfer.ts",
+    [
+      "import { agentDomainExecutionFailure,",
+      "  type AgentDomainExecutionAdapter",
+      "} from '../domain-execution-dispatcher.js';",
+      "void agentDomainExecutionFailure;",
+      "type Adapter = AgentDomainExecutionAdapter<unknown>;",
+      "export type { Adapter };"
+    ].join("\n")
+  );
+  const safeStar = sourceRecordFromText(
+    "packages/agent/src/index.ts",
+    "export * from './domain-execution-dispatcher.js';"
+  );
+  const unsafe = (
+    name: string,
+    sourcePath: string,
+    text: string
+  ): DispatcherTransferControl => ({
+    name,
+    sources: [
+      exactTask14,
+      sourceRecordFromText(sourcePath, text)
+    ],
+    violations: [`${sourcePath}: alternate dispatcher transfer`]
+  });
+  return [
+    {
+      name: "exact Task14 dispatcher default and legacy non-default transfers",
+      sources: [exactTask14, ...splitLegacy, combinedLegacy, safeStar],
+      violations: []
+    },
+    unsafe(
+      "additional default import",
+      "unsafe-dispatcher-default.ts",
+      "import alternate from './domain-execution-dispatcher.js'; void alternate;"
+    ),
+    {
+      name: "duplicate Task14 default import",
+      sources: [
+        sourceRecordFromText(task14Path, [
+          "import first from " +
+            "'../../agent/src/domain-execution-dispatcher.js';",
+          "import second from " +
+            "'../../agent/src/domain-execution-dispatcher.js';",
+          "first.bindPackageOwnedResidentDomainExecutionPort(binding);",
+          "void second;"
+        ].join("\n"))
+      ],
+      violations: [`${task14Path}: alternate dispatcher transfer`]
+    },
+    unsafe(
+      "named default import",
+      "unsafe-dispatcher-named-default.ts",
+      "import { default as alternate } from " +
+        "'./domain-execution-dispatcher.js'; void alternate;"
+    ),
+    unsafe(
+      "namespace import",
+      "unsafe-dispatcher-namespace.ts",
+      "import * as dispatcher from './domain-execution-dispatcher.js'; " +
+        "void dispatcher;"
+    ),
+    unsafe(
+      "protected named import",
+      "unsafe-dispatcher-named.ts",
+      "import { createPackageOwnedResidentDomainExecutionCapability } " +
+        "from './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "default plus named import",
+      "unsafe-dispatcher-combined.ts",
+      "import alternate, { agentDomainExecutionFailure } " +
+        "from './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "type-only default import",
+      "unsafe-dispatcher-type-default.ts",
+      "import type alternate from './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "side-effect import",
+      "unsafe-dispatcher-side-effect.ts",
+      "import './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "import-equals transfer",
+      "unsafe-dispatcher-import-equals.ts",
+      "import alternate = require('./domain-execution-dispatcher.js');"
+    ),
+    unsafe(
+      "default re-export",
+      "unsafe-dispatcher-default-export.ts",
+      "export { default } from './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "aliased default re-export",
+      "unsafe-dispatcher-aliased-default-export.ts",
+      "export { default as residentDispatcher } " +
+        "from './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "protected named re-export",
+      "unsafe-dispatcher-named-export.ts",
+      "export { bindPackageOwnedResidentDomainExecutionPort } " +
+        "from './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "namespace re-export",
+      "unsafe-dispatcher-namespace-export.ts",
+      "export * as residentDispatcher " +
+        "from './domain-execution-dispatcher.js';"
+    ),
+    unsafe(
+      "alternate star re-export",
+      "unsafe-dispatcher-star-export.ts",
+      "export * from './domain-execution-dispatcher.js';"
+    )
+  ];
 }
 
 function protectedMentionSafeReadSources(): readonly SourceRecord[] {
@@ -1237,6 +1585,56 @@ function protectedHostNames(
       changed = true;
     }
     ts.forEachChild(node, visitAliases);
+  }
+}
+
+function gatewayDefaultHostNames(
+  sourceFile: ts.SourceFile
+): ReadonlySet<string> {
+  const hosts = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isImportDeclaration(statement) &&
+      statement.importClause?.name !== undefined &&
+      statement.importClause.isTypeOnly === false &&
+      statement.importClause.namedBindings === undefined &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      (
+        statement.moduleSpecifier.text ===
+          "./resident-loop-tool-gateway.js" ||
+        statement.moduleSpecifier.text.endsWith(
+          "/resident-loop-tool-gateway.js"
+        )
+      )
+    ) {
+      hosts.add(statement.importClause.name.text);
+    }
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    visit(sourceFile);
+  }
+  return hosts;
+
+  function visit(node: ts.Node): void {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer !== undefined &&
+      uniqueConstDeclaration(sourceFile, node.name.text) === node
+    ) {
+      const initializer = unwrapStaticExpression(node.initializer);
+      if (
+        ts.isIdentifier(initializer) &&
+        hosts.has(initializer.text) &&
+        !hosts.has(node.name.text)
+      ) {
+        hosts.add(node.name.text);
+        changed = true;
+      }
+    }
+    ts.forEachChild(node, visit);
   }
 }
 
@@ -1440,18 +1838,518 @@ function isFreshNullPrototypeRecordWrite(
     return false;
   }
   const receiver = unwrapStaticExpression(node.expression) as ts.Identifier;
-  const declaration = uniqueConstDeclaration(sourceFile, receiver.text);
+  const declaration = uniqueLocalConstDeclaration(sourceFile, receiver);
   if (declaration?.initializer === undefined) {
     return false;
   }
   const initializer = unwrapStaticExpression(declaration.initializer);
-  return ts.isCallExpression(initializer) &&
+  const exactFresh = ts.isCallExpression(initializer) &&
     ts.isPropertyAccessExpression(initializer.expression) &&
     ts.isIdentifier(initializer.expression.expression) &&
     initializer.expression.expression.text === "Object" &&
     initializer.expression.name.text === "create" &&
     initializer.arguments.length === 1 &&
-    initializer.arguments[0]!.kind === ts.SyntaxKind.NullKeyword;
+    initializer.arguments[0]!.kind === ts.SyntaxKind.NullKeyword &&
+    (
+      hasOnlyLocalNormalizationReferences(declaration, sourceFile) ||
+      isClosedModuleNormalizationRecord(declaration, sourceFile)
+    );
+  return exactFresh;
+}
+
+function closedDataRecordNormalizationAnalysis(
+  record: SourceRecord
+): {
+  readonly writes: number;
+  readonly violations: readonly string[];
+} {
+  let writes = 0;
+  const violations: string[] = [];
+  visit(record.sourceFile);
+  return { writes, violations };
+
+  function visit(node: ts.Node): void {
+    if (
+      ts.isElementAccessExpression(node) &&
+      isWriteSemanticCarrier(node) &&
+      ts.isIdentifier(unwrapStaticExpression(node.expression))
+    ) {
+      const receiver = unwrapStaticExpression(node.expression) as ts.Identifier;
+      const declaration = uniqueLocalConstDeclaration(
+        record.sourceFile,
+        receiver
+      );
+      const helper = declaration === undefined
+        ? undefined
+        : enclosingFunctionLike(declaration);
+      if (
+        helper !== undefined &&
+        ts.isFunctionDeclaration(helper) &&
+        helper.name?.text === "dataRecord"
+      ) {
+        writes += 1;
+        if (!isFreshNullPrototypeRecordWrite(node, record.sourceFile)) {
+          violations.push(`${record.sourcePath}: open normalization graph`);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+}
+
+function hasOnlyLocalNormalizationReferences(
+  declaration: ts.VariableDeclaration,
+  sourceFile: ts.SourceFile
+): boolean {
+  if (!ts.isIdentifier(declaration.name)) {
+    return false;
+  }
+  const localName = declaration.name.text;
+  const scope = lexicalScope(declaration);
+  const localDeclarations = identifierReferences(
+    sourceFile,
+    localName
+  ).filter((reference) =>
+    semanticTs.isDeclarationName(reference) &&
+    lexicalScope(reference) === scope
+  );
+  if (
+    localDeclarations.length !== 1 ||
+    localDeclarations[0] !== declaration.name
+  ) {
+    return false;
+  }
+  return identifierReferences(sourceFile, localName)
+    .every((reference) => {
+      const referenceScope = lexicalScope(reference);
+      if (
+        referenceScope !== scope &&
+        (
+          !scopeContains(scope, referenceScope) ||
+          scopeChainDeclaresName(
+            referenceScope,
+            scope,
+            localName
+          )
+        )
+      ) {
+        return true;
+      }
+      if (
+        reference === declaration.name ||
+        isNonReferencePropertyName(reference)
+      ) {
+        return true;
+      }
+      if (referenceScope !== scope) {
+        return false;
+      }
+      if (
+        (
+          ts.isElementAccessExpression(reference.parent) ||
+          ts.isPropertyAccessExpression(reference.parent)
+        ) &&
+        reference.parent.expression === reference &&
+        !(
+          ts.isCallExpression(reference.parent.parent) &&
+          reference.parent.parent.expression === reference.parent
+        )
+      ) {
+        return true;
+      }
+      return isAdmittedNormalizationInspection(reference);
+    });
+}
+
+function uniqueLocalConstDeclaration(
+  sourceFile: ts.SourceFile,
+  reference: ts.Identifier
+): ts.VariableDeclaration | undefined {
+  const scope = lexicalScope(reference);
+  const declarations = identifierReferences(sourceFile, reference.text)
+    .filter((candidate) =>
+      semanticTs.isDeclarationName(candidate) &&
+      lexicalScope(candidate) === scope
+    );
+  if (declarations.length !== 1) {
+    return undefined;
+  }
+  const declaration = declarations[0]!.parent;
+  return ts.isVariableDeclaration(declaration) &&
+    declaration.name === declarations[0] &&
+    ts.isVariableDeclarationList(declaration.parent) &&
+    (declaration.parent.flags & ts.NodeFlags.Const) !== 0
+    ? declaration
+    : undefined;
+}
+
+function lexicalScope(node: ts.Node): ts.Node {
+  return enclosingFunctionLike(node) ?? node.getSourceFile();
+}
+
+function scopeContains(outer: ts.Node, inner: ts.Node): boolean {
+  for (
+    let current: ts.Node | undefined = inner;
+    current !== undefined;
+    current = current.parent
+  ) {
+    if (current === outer) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function scopeChainDeclaresName(
+  inner: ts.Node,
+  outer: ts.Node,
+  name: string
+): boolean {
+  let current: ts.Node | undefined = inner;
+  while (current !== undefined && current !== outer) {
+    if (
+      identifierReferences(current.getSourceFile(), name).some((candidate) =>
+        semanticTs.isDeclarationName(candidate) &&
+        lexicalScope(candidate) === current
+      )
+    ) {
+      return true;
+    }
+    const parent = current.parent;
+    if (parent === undefined) {
+      break;
+    }
+    current = enclosingFunctionLike(parent);
+    if (current === undefined && ts.isSourceFile(outer)) {
+      current = outer;
+    }
+  }
+  return false;
+}
+
+function isAdmittedNormalizationInspection(
+  reference: ts.Identifier
+): boolean {
+  const call = reference.parent;
+  if (
+    !ts.isCallExpression(call) ||
+    call.arguments[0] !== reference ||
+    !ts.isPropertyAccessExpression(call.expression) ||
+    !ts.isIdentifier(call.expression.expression)
+  ) {
+    return false;
+  }
+  return (
+    call.expression.expression.text === "Reflect" &&
+    call.expression.name.text === "ownKeys"
+  ) || (
+    call.expression.expression.text === "Object" &&
+    [
+      "entries",
+      "getOwnPropertyDescriptors",
+      "getOwnPropertyNames",
+      "getOwnPropertySymbols",
+      "keys",
+      "values"
+    ].includes(call.expression.name.text)
+  );
+}
+
+function isClosedModuleNormalizationRecord(
+  declaration: ts.VariableDeclaration,
+  sourceFile: ts.SourceFile
+): boolean {
+  if (
+    !ts.isIdentifier(declaration.name) ||
+    declaration.name.text !== "record"
+  ) {
+    return false;
+  }
+  const helper = enclosingFunctionLike(declaration);
+  if (
+    helper === undefined ||
+    !ts.isFunctionDeclaration(helper) ||
+    helper.name?.text !== "dataRecord" ||
+    helper.body === undefined ||
+    !hasExactDataRecordDiscipline(helper, declaration, sourceFile)
+  ) {
+    return false;
+  }
+  const helperReferences = identifierReferences(sourceFile, "dataRecord")
+    .filter((reference) => !isNonReferencePropertyName(reference));
+  const calls: ts.CallExpression[] = [];
+  for (const reference of helperReferences) {
+    if (reference === helper.name) {
+      continue;
+    }
+    if (
+      !ts.isCallExpression(reference.parent) ||
+      reference.parent.expression !== reference
+    ) {
+      return false;
+    }
+    calls.push(reference.parent);
+  }
+  return calls.length === 4 &&
+    calls.every((call) => isClosedNormalizationCallSite(call, sourceFile));
+}
+
+function hasExactDataRecordDiscipline(
+  helper: ts.FunctionDeclaration,
+  declaration: ts.VariableDeclaration,
+  sourceFile: ts.SourceFile
+): boolean {
+  if (
+    helper.parameters.length !== 2 ||
+    !ts.isIdentifier(helper.parameters[0]!.name) ||
+    helper.parameters[0]!.name.text !== "value" ||
+    !ts.isIdentifier(helper.parameters[1]!.name) ||
+    helper.parameters[1]!.name.text !== "label"
+  ) {
+    return false;
+  }
+  const references = identifierReferences(
+    helper.getSourceFile(),
+    (declaration.name as ts.Identifier).text
+  ).filter((reference) =>
+    enclosingFunctionLike(reference) === helper &&
+    !isNonReferencePropertyName(reference)
+  );
+  const returns = references.filter((reference) =>
+    ts.isReturnStatement(reference.parent) &&
+    reference.parent.expression === reference
+  );
+  const writes = references.filter((reference) =>
+    ts.isElementAccessExpression(reference.parent) &&
+    reference.parent.expression === reference &&
+    isWriteSemanticCarrier(reference.parent)
+  );
+  if (
+    references.length !== 3 ||
+    references[0] !== declaration.name ||
+    returns.length !== 1 ||
+    writes.length !== 1
+  ) {
+    return false;
+  }
+  const body = helper.body!.getText(sourceFile);
+  return /\bvalue\s*===\s*null\b/.test(body) &&
+    /typeof\s+value\s*!==\s*["']object["']/.test(body) &&
+    /Array\.isArray\s*\(\s*value\s*\)/.test(body) &&
+    /Object\.getPrototypeOf\s*\(\s*value\s*\)\s*!==\s*Object\.prototype/.test(body) &&
+    /Object\.getOwnPropertySymbols\s*\(\s*value\s*\)\.length\s*>\s*0/.test(body) &&
+    /\bisProxy\s*\(\s*value\s*\)/.test(body) &&
+    /Object\.getOwnPropertyNames\s*\(\s*value\s*\)\.sort\s*\(\s*\)/.test(body) &&
+    /Object\.getOwnPropertyDescriptor\s*\(\s*value\s*,\s*key\s*\)/.test(body) &&
+    /\bunsafeKeys\.has\s*\(\s*key\s*\)/.test(body) &&
+    /!\s*\(\s*["']value["']\s+in\s+descriptor\s*\)/.test(body) &&
+    /!\s*descriptor\.enumerable/.test(body) &&
+    /\brecord\s*\[\s*key\s*\]\s*=\s*descriptor\.value/.test(body);
+}
+
+function isClosedNormalizationCallSite(
+  call: ts.CallExpression,
+  sourceFile: ts.SourceFile
+): boolean {
+  const declaration = call.parent;
+  if (
+    !ts.isVariableDeclaration(declaration) ||
+    declaration.initializer !== call ||
+    !ts.isIdentifier(declaration.name) ||
+    !ts.isVariableDeclarationList(declaration.parent) ||
+    (declaration.parent.flags & ts.NodeFlags.Const) === 0
+  ) {
+    return false;
+  }
+  const localName = declaration.name.text;
+  const scope = enclosingFunctionLike(declaration);
+  const outer = outermostFunctionDeclaration(scope);
+  if (
+    scope === undefined ||
+    outer === undefined ||
+    outer.name === undefined ||
+    !outer.name.text.startsWith("copy") ||
+    outer.modifiers?.some((modifier) =>
+      modifier.kind === ts.SyntaxKind.ExportKeyword ||
+      modifier.kind === ts.SyntaxKind.DefaultKeyword
+    ) ||
+    !containsObjectFreezeCall(scope)
+  ) {
+    return false;
+  }
+  const references = identifierReferences(sourceFile, localName)
+    .filter((reference) =>
+      referenceBelongsToScope(
+        reference,
+        scope,
+        localName
+      ) &&
+      !isNonReferencePropertyName(reference)
+    );
+  const declarations = references.filter((reference) =>
+    semanticTs.isDeclarationName(reference)
+  );
+  return declarations.length === 1 &&
+    declarations[0] === declaration.name &&
+    references.every((reference) => {
+      if (reference === declaration.name) {
+        return true;
+      }
+      if (
+        (
+          ts.isPropertyAccessExpression(reference.parent) ||
+          ts.isElementAccessExpression(reference.parent)
+        ) &&
+        reference.parent.expression === reference &&
+        !isWriteSemanticCarrier(reference.parent) &&
+        isAdmittedClosedNormalizationRead(reference.parent)
+      ) {
+        return true;
+      }
+      return ts.isCallExpression(reference.parent) &&
+        reference.parent.arguments[0] === reference &&
+        ts.isIdentifier(reference.parent.expression) &&
+        reference.parent.expression.text === "rejectUnknown";
+    });
+}
+
+function isAdmittedClosedNormalizationRead(
+  access: ts.PropertyAccessExpression | ts.ElementAccessExpression
+): boolean {
+  for (
+    let current: ts.Node | undefined = access;
+    current !== undefined && !ts.isStatement(current);
+    current = current.parent
+  ) {
+    if (ts.isCallExpression(current)) {
+      if (
+        ts.isIdentifier(current.expression) &&
+        [
+          "copyReadModelChanges",
+          "copyStringArray",
+          "dataRecord",
+          "safeString"
+        ].includes(current.expression.text)
+      ) {
+        return true;
+      }
+      if (
+        ts.isPropertyAccessExpression(current.expression) &&
+        ts.isIdentifier(current.expression.expression) &&
+        current.expression.expression.text === "Object" &&
+        current.expression.name.text === "freeze"
+      ) {
+        return true;
+      }
+    }
+    if (
+      ts.isBinaryExpression(current) &&
+      (
+        current.operatorToken.kind ===
+          ts.SyntaxKind.EqualsEqualsEqualsToken ||
+        current.operatorToken.kind ===
+          ts.SyntaxKind.ExclamationEqualsEqualsToken
+      ) &&
+      (
+        ts.isIdentifier(current.left) &&
+        current.left.text === "undefined" ||
+        ts.isIdentifier(current.right) &&
+        current.right.text === "undefined"
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function referenceBelongsToScope(
+  reference: ts.Identifier,
+  scope: ts.Node,
+  name: string
+): boolean {
+  const referenceScope = lexicalScope(reference);
+  return referenceScope === scope || (
+    scopeContains(scope, referenceScope) &&
+    !scopeChainDeclaresName(referenceScope, scope, name)
+  );
+}
+
+function enclosingFunctionLike(
+  node: ts.Node
+): ts.FunctionLikeDeclaration | undefined {
+  for (
+    let current: ts.Node | undefined = node.parent;
+    current !== undefined;
+    current = current.parent
+  ) {
+    if (
+      ts.isFunctionDeclaration(current) ||
+      ts.isFunctionExpression(current) ||
+      ts.isArrowFunction(current) ||
+      ts.isMethodDeclaration(current) ||
+      ts.isGetAccessorDeclaration(current) ||
+      ts.isSetAccessorDeclaration(current) ||
+      ts.isConstructorDeclaration(current)
+    ) {
+      return current;
+    }
+  }
+  return undefined;
+}
+
+function outermostFunctionDeclaration(
+  node: ts.Node | undefined
+): ts.FunctionDeclaration | undefined {
+  let result: ts.FunctionDeclaration | undefined;
+  for (
+    let current = node;
+    current !== undefined && !ts.isSourceFile(current);
+    current = current.parent
+  ) {
+    if (ts.isFunctionDeclaration(current)) {
+      result = current;
+    }
+  }
+  return result;
+}
+
+function containsObjectFreezeCall(node: ts.Node): boolean {
+  let found = false;
+  visit(node);
+  return found;
+
+  function visit(current: ts.Node): void {
+    if (
+      ts.isCallExpression(current) &&
+      ts.isPropertyAccessExpression(current.expression) &&
+      ts.isIdentifier(current.expression.expression) &&
+      current.expression.expression.text === "Object" &&
+      current.expression.name.text === "freeze"
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(current, visit);
+  }
+}
+
+function isNonReferencePropertyName(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  return (
+    ts.isPropertyAccessExpression(parent) &&
+    parent.name === node
+  ) || (
+    (
+      ts.isPropertyAssignment(parent) ||
+      ts.isMethodDeclaration(parent) ||
+      ts.isPropertyDeclaration(parent) ||
+      ts.isPropertySignature(parent) ||
+      ts.isMethodSignature(parent)
+    ) &&
+    parent.name === node &&
+    !ts.isComputedPropertyName(parent.name)
+  );
 }
 
 function isAllowedStaticKeyAliasLiteral(
@@ -2514,10 +3412,182 @@ function expectPrototypeMutationRejected(
   )).toBe(true);
 }
 
+const releasedDispatcherImportSignatures =
+  new Map<string, readonly string[]>([
+    [
+      "packages/agent/src/adapters/accepted-graph-review.ts",
+      [
+        "type:type:AgentDomainExecutionAdapter",
+        "value:value:agentDomainExecutionFailure"
+      ]
+    ],
+    [
+      "packages/agent/src/adapters/destructive-repair.ts",
+      [
+        "type:type:AgentDomainExecutionAdapter",
+        "value:value:agentDomainExecutionFailure"
+      ]
+    ],
+    [
+      "packages/agent/src/adapters/export-report.ts",
+      [
+        "type:type:AgentDomainExecutionAdapter",
+        "value:value:agentDomainExecutionFailure"
+      ]
+    ],
+    [
+      "packages/agent/src/adapters/legacy-staging.ts",
+      [
+        "type:type:AgentDomainExecutionAdapter",
+        "value:value:agentDomainExecutionFailure"
+      ]
+    ],
+    [
+      "packages/agent/src/adapters/provider-byte-transfer.ts",
+      [
+        "value:type:AgentDomainExecutionAdapter,value:agentDomainExecutionFailure"
+      ]
+    ],
+    [
+      "packages/agent/src/adapters/prr-correspondence.ts",
+      [
+        "type:type:AgentDomainExecutionAdapter",
+        "value:value:agentDomainExecutionFailure"
+      ]
+    ]
+  ]);
+
+function dispatcherTransferViolations(
+  sources: readonly SourceRecord[]
+): readonly string[] {
+  const violations = new Set<string>();
+  const task14Path =
+    "packages/local-runtime/src/wake-supervisor-runtime.ts";
+  for (const record of sources) {
+    const imports: ts.ImportDeclaration[] = [];
+    for (const statement of record.sourceFile.statements) {
+      if (
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isDispatcherModuleSpecifier(statement.moduleSpecifier.text)
+      ) {
+        imports.push(statement);
+      } else if (
+        ts.isImportEqualsDeclaration(statement) &&
+        ts.isExternalModuleReference(statement.moduleReference) &&
+        statement.moduleReference.expression !== undefined &&
+        ts.isStringLiteral(statement.moduleReference.expression) &&
+        isDispatcherModuleSpecifier(
+          statement.moduleReference.expression.text
+        )
+      ) {
+        reject(record.sourcePath);
+      } else if (
+        ts.isExportDeclaration(statement) &&
+        statement.moduleSpecifier !== undefined &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isDispatcherModuleSpecifier(statement.moduleSpecifier.text) &&
+        !(
+          record.sourcePath === "packages/agent/src/index.ts" &&
+          statement.moduleSpecifier.text ===
+            "./domain-execution-dispatcher.js" &&
+          statement.exportClause === undefined &&
+          statement.isTypeOnly === false &&
+          statement.attributes === undefined
+        )
+      ) {
+        reject(record.sourcePath);
+      }
+    }
+
+    if (imports.length === 0) {
+      continue;
+    }
+    if (record.sourcePath === task14Path) {
+      const exactImport = imports.length === 1 &&
+        isExactTask14DispatcherImport(imports[0]!);
+      if (!exactImport || exactTask14BinderCallCount(record) !== 1) {
+        reject(record.sourcePath);
+      }
+      continue;
+    }
+    const expected = releasedDispatcherImportSignatures.get(
+      record.sourcePath
+    );
+    const actual = imports.map(dispatcherImportSignature).sort();
+    if (
+      expected === undefined ||
+      actual.length !== expected.length ||
+      actual.some((signature, index) => signature !== expected[index])
+    ) {
+      reject(record.sourcePath);
+    }
+  }
+  return [...violations].sort();
+
+  function reject(sourcePath: string): void {
+    violations.add(`${sourcePath}: alternate dispatcher transfer`);
+  }
+}
+
+function isDispatcherModuleSpecifier(specifier: string): boolean {
+  return specifier === "./domain-execution-dispatcher.js" ||
+    specifier.endsWith("/domain-execution-dispatcher.js");
+}
+
+function isExactTask14DispatcherImport(
+  declaration: ts.ImportDeclaration
+): boolean {
+  return ts.isStringLiteral(declaration.moduleSpecifier) &&
+    declaration.moduleSpecifier.text ===
+      "../../agent/src/domain-execution-dispatcher.js" &&
+    declaration.importClause !== undefined &&
+    declaration.importClause.isTypeOnly === false &&
+    declaration.importClause.name !== undefined &&
+    declaration.importClause.namedBindings === undefined &&
+    declaration.attributes === undefined;
+}
+
+function exactTask14BinderCallCount(record: SourceRecord): number {
+  let count = 0;
+  visit(record.sourceFile);
+  return count;
+
+  function visit(node: ts.Node): void {
+    if (isExactTask14BinderCall(node, record)) {
+      count += 1;
+    }
+    ts.forEachChild(node, visit);
+  }
+}
+
+function dispatcherImportSignature(
+  declaration: ts.ImportDeclaration
+): string {
+  const clause = declaration.importClause;
+  if (
+    clause === undefined ||
+    clause.name !== undefined ||
+    clause.namedBindings === undefined ||
+    !ts.isNamedImports(clause.namedBindings) ||
+    declaration.attributes !== undefined
+  ) {
+    return "alternate";
+  }
+  const elements = clause.namedBindings.elements.map((element) => {
+    const imported = element.propertyName?.text ?? element.name.text;
+    const local = element.name.text === imported
+      ? imported
+      : `${imported}->${element.name.text}`;
+    return `${clause.isTypeOnly || element.isTypeOnly ? "type" : "value"}:${local}`;
+  }).sort();
+  return `${clause.isTypeOnly ? "type" : "value"}:${elements.join(",")}`;
+}
+
 function protectedResidentTransfers(
   sources: readonly SourceRecord[]
 ): readonly string[] {
-  const violations: string[] = [];
+  const violations = [...dispatcherTransferViolations(sources)];
   const protectedNames = new Set([
     "createPackageOwnedResidentDomainExecutionCapability",
     "bindPackageOwnedResidentDomainExecutionPort",
@@ -2533,6 +3603,9 @@ function protectedResidentTransfers(
       if (ts.isImportDeclaration(statement) &&
         ts.isStringLiteral(statement.moduleSpecifier)) {
         const specifier = statement.moduleSpecifier.text;
+        if (isDispatcherModuleSpecifier(specifier)) {
+          continue;
+        }
         const clause = statement.importClause;
         const gatewayImport =
           specifier === "./resident-loop-tool-gateway.js" ||
@@ -2568,6 +3641,13 @@ function protectedResidentTransfers(
         }
       }
       if (ts.isExportDeclaration(statement)) {
+        if (
+          statement.moduleSpecifier !== undefined &&
+          ts.isStringLiteral(statement.moduleSpecifier) &&
+          isDispatcherModuleSpecifier(statement.moduleSpecifier.text)
+        ) {
+          continue;
+        }
         if (statement.moduleSpecifier !== undefined &&
           ts.isStringLiteral(statement.moduleSpecifier) &&
           (statement.moduleSpecifier.text === "./resident-loop-tool-gateway.js" ||
