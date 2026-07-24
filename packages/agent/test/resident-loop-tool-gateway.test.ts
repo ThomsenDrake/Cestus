@@ -383,7 +383,10 @@ describe("resident-loop tool gateway", () => {
       authorizationKind: "human-approval",
       stage: "completed",
       requestEventId: human.request.id,
-      decisionEventId: human.decision?.id,
+      decisionEventId: Reflect.get(
+        human.decision?.payload ?? {},
+        "decisionEventId"
+      ),
       executionClaimEventId: requiredPrefixEvent(human.claim, "claim").id,
       outcomeReceiptEventId: human.receipt?.id,
       resultEventId: human.terminal?.id
@@ -830,7 +833,7 @@ function residentLegacyContext(
   const assertionId = `as_legacy_${createHash("sha256").update([
     "src_gateway_legacy",
     "scan_gateway_legacy",
-    `stage_gateway_${suffix}`,
+    `legacy_stage_gateway_${suffix}`,
     candidateSetHash,
     candidateId
   ].join(":")).digest("hex")}`;
@@ -858,10 +861,10 @@ function residentLegacyContext(
         type: "legacy.ontology.staging.approved",
         version: 1,
         streamId:
-          `legacy_staging_src_gateway_legacy_scan_gateway_legacy_stage_gateway_${suffix}`,
+          `legacy_staging_src_gateway_legacy_scan_gateway_legacy_legacy_stage_gateway_${suffix}`,
         context: residentEventContext(source.id, `corr_gateway_approval_${suffix}`, humanActor),
         payload: {
-          stagingBatchId: `stage_gateway_${suffix}`,
+          stagingBatchId: `legacy_stage_gateway_${suffix}`,
           legacyReportId: `legacy_report_gateway_${suffix}`,
           sourceCollectionId: "src_gateway_legacy",
           scanBatchId: "scan_gateway_legacy",
@@ -880,7 +883,7 @@ function residentLegacyContext(
         eventIds: [approved.id],
         nextActions: [],
         legacyReportId: `legacy_report_gateway_${suffix}`,
-        stagingBatchId: `stage_gateway_${suffix}`,
+        stagingBatchId: `legacy_stage_gateway_${suffix}`,
         reportHash,
         candidateSetHash,
         approvedAssertionCandidateIds: [candidateId]
@@ -910,7 +913,7 @@ function residentLegacyContext(
         eventIds: [proposed.id],
         nextActions: [],
         legacyReportId: `legacy_report_gateway_${suffix}`,
-        stagingBatchId: `stage_gateway_${suffix}`,
+        stagingBatchId: `legacy_stage_gateway_${suffix}`,
         proposedAssertionIds: [assertionId]
       };
     }
@@ -921,7 +924,7 @@ function residentLegacyContext(
     residentAgentId: "agent_default",
     sourceCollectionId: "src_gateway_legacy",
     scanBatchId: "scan_gateway_legacy",
-    stagingBatchId: `stage_gateway_${suffix}`,
+    stagingBatchId: `legacy_stage_gateway_${suffix}`,
     legacyReportId: `legacy_report_gateway_${suffix}`,
     reportHash,
     candidateSetHash,
@@ -1685,14 +1688,14 @@ async function appendLegacyStagingApproval(
     type: "legacy.ontology.staging.approved",
     version: 1,
     streamId:
-      `legacy_staging_src_gateway_legacy_scan_gateway_legacy_stage_gateway_${suffix}`,
+      `legacy_staging_src_gateway_legacy_scan_gateway_legacy_legacy_stage_gateway_${suffix}`,
     context: residentEventContext(
       `evt_gateway_request_${suffix}`,
       `corr_gateway_domain_${suffix}`,
       humanActor
     ),
     payload: {
-      stagingBatchId: `stage_gateway_${suffix}`,
+      stagingBatchId: `legacy_stage_gateway_${suffix}`,
       legacyReportId: `legacy_report_gateway_${suffix}`,
       sourceCollectionId: "src_gateway_legacy",
       scanBatchId: "scan_gateway_legacy",
