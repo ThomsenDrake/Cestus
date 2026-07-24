@@ -29215,6 +29215,53 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-970 — Calibrated loader candidate rejected; identity census closure authorized
+
+- Recorded at: 2026-07-24T03:33:25Z
+- Completely fresh reviewer `/root/task136_task12_red_review_9761` rejects
+  exact candidate `976104381ad94f1d1551c0ac4075b9118f4d4016` with two P1
+  loader-oracle defects. That commit, rejected `a1ed492f`, `84b9f6a8`,
+  `fc580fc1`, `9f33e0b9`, `fcb612e7`, and `b54281b0`, plus all prior
+  calibration/authority/review history remain immutable and ancestral. None
+  is source GREEN, approved, integrated, strict record 29, or release.
+- Task14's exact dispatcher default import and one exact binder call are
+  proven, but the imported local's remaining references are not censused.
+  `export default dispatcherDefault` and local
+  `export { dispatcherDefault }` therefore pass. The correction must require
+  a complete binding-reference census: the imported local may occur only at
+  its import binding and as the direct receiver of the sole exact binder call.
+  Alias, destructure, property read other than the binder, call other than the
+  binder, local/default export, return, yield, capture, store, pass, outward
+  assignment, re-export, or any other transfer/use fails.
+- Gateway-default provenance tracks identifier aliases and property/element
+  accesses but ignores an unresolved computed binding without a default. A
+  substituted-template destructuring extraction can therefore create and
+  call a second permit-consumer alias. The correction must traverse every
+  binding pattern sourced from the gateway default or its aliases. Any
+  unresolved computed destructuring fails immediately; any resolved
+  extraction of the permit consumer, whether identifier, object/array/rest/
+  nested/default/renamed binding, must fail. The exact dispatcher direct
+  property call remains the sole admitted consumer; unrelated dynamic record
+  destructuring remains outside the gateway host graph.
+- One forward correction may modify exactly the loader test and Task136
+  claim. All other test/source blobs remain exact. Add independent controls
+  for default/local export and every Task14 identity escape/use, substituted
+  and resolved computed gateway destructuring, nested/rest/default/renamed
+  extraction, and safe unrelated dynamic records. Preserve dispatcher legacy
+  compatibility, calibrated normalization proof, all prior matrices, exact
+  focused **17 passed + 8 causal RED**, deterministic gates, and truthful
+  repository posture.
+- The exact descendant requires a completely fresh focused reviewer. Every
+  previous reviewer, analyst, and author is ineligible. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is identity-census loader-oracle correction authority, not
+  Task12 source authorization, candidate approval, integration, strict record
+  29, assurance transition, publication, or product release. `neo`, push,
+  Wave 3, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
+
 ## RV-1-E-967 — Protected-mention candidate rejected; three-point closure authorized
 
 - Recorded at: 2026-07-24T02:42:54Z
