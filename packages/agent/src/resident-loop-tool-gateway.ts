@@ -210,6 +210,8 @@ type ResidentOutcomeEvent = KnowledgeEventOf<"agent.resident-domain.outcome-obse
 type ResidentCompletedEvent = KnowledgeEventOf<"agent.resident-domain.completed.v1">;
 type ResidentDeniedEvent = KnowledgeEventOf<"agent.resident-domain.denied.v1">;
 type ResidentFailedEvent = KnowledgeEventOf<"agent.resident-domain.failed.v1">;
+type ResidentLogicalLocator =
+  ResidentRequestedEvent["payload"]["logicalLocator"];
 
 interface ResidentPortDescriptor {
   readonly toolId: string;
@@ -236,7 +238,7 @@ interface ResidentPortPreview {
 interface ResidentLiveStage {
   readonly owner: object;
   readonly stage: "requested" | "human-approved";
-  readonly locator: Readonly<Record<string, unknown>>;
+  readonly locator: ResidentLogicalLocator;
   readonly plan: ResidentPlanV2Event;
   readonly request: ResidentRequestedEvent;
   readonly portPreview: ResidentPortPreview;
@@ -381,9 +383,11 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
   async function requestFreshAuthorized(value: unknown): Promise<object> {
     const locator = copyResidentLogicalLocator(value);
     const plan = await requireResidentPlan(ledger, locator);
-    await requireCurrentResidentReverification(beforeEffect);
-    const portPreview = await requireResidentPortPreview(port, locator);
-    await requireCurrentResidentReverification(afterEffect);
+    const portPreview = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => requireResidentPortPreview(port, locator)
+    );
     if (portPreview.executionCapabilityHash !== locator.executionCapabilityHash) {
       throw new Error("Resident execution port capability hash does not match the durable logical locator.");
     }
@@ -425,10 +429,19 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
         budget: plan.payload.budget
       }
     };
-    const request = await ledger.append(requestInput, { expectedNextSequence: 1 });
-    if (request.type !== "agent.resident-domain.requested.v1") {
-      throw new Error("Resident durable request append returned the wrong event family.");
-    }
+    const request = await appendAndRereadResidentLifecycleEvent(
+      ledger,
+      requestInput,
+      1,
+      locator,
+      plan,
+      portPreview.catalogOrdinal,
+      portPreview.implementationRevision,
+      beforeEffect,
+      afterEffect,
+      input.now(),
+      false
+    );
     return issueResidentLiveStage({
       owner,
       stage: "requested",
@@ -445,54 +458,44 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
     if (live.request.payload.authorizationKind !== "human-approval") {
       throw new Error("Resident human decision read requires a human-approval request.");
     }
-    await requireCurrentResidentReverification(beforeEffect);
-    const stream = await ledger.readStream(
-      residentGatewayDomainStreamId(live.locator)
+    const stream = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => ledger.readStream(residentGatewayDomainStreamId(live.locator))
     );
-    await requireCurrentResidentReverification(afterEffect);
-    const approvals = stream.filter(
-      (event): event is ResidentHumanApprovedEvent =>
-        event.type === "agent.resident-domain.human-approved.v1"
+    const trustedCurrentTime = input.now();
+    const prefix = validateResidentRecoveryPrefix(
+      stream,
+      live.locator,
+      live.plan,
+      live.portPreview.catalogOrdinal,
+      live.portPreview.implementationRevision,
+      undefined,
+      trustedCurrentTime
     );
-    const denials = stream.filter((event) =>
-      event.type === "agent.resident-domain.denied.v1"
-    );
-    if (denials.length > 0) {
+    if (
+      residentGatewayCanonicalJson(prefix.request) !==
+        residentGatewayCanonicalJson(live.request)
+    ) {
+      throw new Error("Resident human decision request changed from its exact durable prefix.");
+    }
+    if (prefix.denial !== undefined || prefix.failure !== undefined) {
       throw new Error("Resident human decision is denied, revoked, or terminal.");
     }
-    if (approvals.length !== 1) {
+    if (
+      prefix.approval === undefined ||
+      prefix.claim !== undefined ||
+      prefix.receipt !== undefined ||
+      prefix.completed !== undefined
+    ) {
       throw new Error("Resident human decision requires exactly one durable approval.");
     }
-    const approval = approvals[0]!;
-    const requestTime = Date.parse(live.request.context.occurredAt);
-    const approvalTime = Date.parse(approval.context.occurredAt);
-    const deadline =
-      requestTime + live.plan.payload.budget.ceilings.approvalSuspensionMs;
-    if (
-      approval.payload.requestEventId !== live.request.id ||
-      approval.payload.executionCapabilityHash !==
-        live.request.payload.executionCapabilityHash ||
-      residentGatewayCanonicalJson(approval.payload.logicalLocator) !==
-        residentGatewayCanonicalJson(live.locator) ||
-      approval.context.causationId !== live.request.id ||
-      approval.payload.causationId !== live.request.id ||
-      approval.payload.correlationId !== live.request.payload.correlationId ||
-      approval.context.actor.kind !== "human" ||
-      approval.context.actor.id !== approval.payload.approvedBy ||
-      approval.payload.approvedBy === residentGatewayActor.id ||
-      approval.payload.approvedPreviewHash !== live.request.payload.previewHash
-    ) {
-      throw new Error("Resident human approval is not exact, independent, or preview-matched.");
-    }
-    if (
-      !Number.isFinite(approvalTime) ||
-      approvalTime < requestTime
-    ) {
-      throw new Error("Resident human approval is stale relative to its request.");
-    }
-    if (Date.parse(input.now()) > deadline) {
-      throw new Error("Resident human approval deadline expired before execution.");
-    }
+    const approval = prefix.approval;
+    assertResidentLiveApprovalDeadline(
+      live.request,
+      live.plan,
+      trustedCurrentTime
+    );
     return issueResidentLiveStage({
       ...live,
       stage: "human-approved",
@@ -511,7 +514,6 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       throw new Error("Resident execution requires the exact fresh authorized stage.");
     }
     issuedResidentLiveStages.delete(value as object);
-    await requireCurrentResidentReverification(beforeEffect);
     const authorization = automatic
       ? Object.freeze({ authorizationKind: "automatic-policy" as const })
       : Object.freeze({
@@ -522,7 +524,26 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
         });
     const causationId = live.approval?.id ?? live.request.id;
     const streamId = residentGatewayDomainStreamId(live.locator);
-    const currentStream = await ledger.readStream(streamId);
+    const currentStream = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => ledger.readStream(streamId)
+    );
+    const trustedCurrentTime = input.now();
+    const currentPrefix = validateResidentRecoveryPrefix(
+      currentStream,
+      live.locator,
+      live.plan,
+      live.portPreview.catalogOrdinal,
+      live.portPreview.implementationRevision,
+      undefined,
+      trustedCurrentTime
+    );
+    assertFreshResidentExecutionPrefix(
+      currentPrefix,
+      live,
+      trustedCurrentTime
+    );
     const claimInput: Extract<
       AppendableKnowledgeEvent,
       { readonly type: "agent.resident-domain.execution-claimed.v1" }
@@ -547,12 +568,18 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
         claimedAt: input.now()
       }
     };
-    const claim = await ledger.append(claimInput, {
-      expectedNextSequence: currentStream.length + 1
-    });
-    if (claim.type !== "agent.resident-domain.execution-claimed.v1") {
-      throw new Error("Resident execution claim append returned the wrong event family.");
-    }
+    const claim = await appendAndRereadResidentLifecycleEvent(
+      ledger,
+      claimInput,
+      currentStream.length + 1,
+      live.locator,
+      live.plan,
+      live.portPreview.catalogOrdinal,
+      live.portPreview.implementationRevision,
+      beforeEffect,
+      afterEffect,
+      input.now()
+    );
     const canonicalResidentInvocationBase = {
       authorizationKind: live.request.payload.authorizationKind,
       logicalLocator: live.locator,
@@ -579,20 +606,49 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       canonicalResidentInvocationInput,
       live.portPreview.catalogOrdinal
     );
-    const attestation = await invokeResidentPort(
-      port,
-      permit,
-      canonicalResidentInvocationInput
+    const attestation = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => invokeResidentPort(
+        port,
+        permit,
+        canonicalResidentInvocationInput
+      )
     );
-    await requireCurrentResidentReverification(afterEffect);
     const envelope = consumeResidentDomainInvocationAttestation(
       attestation,
       live,
       claim,
       canonicalResidentInvocationInput
     );
-    const envelopeHash = residentGatewayHash(envelope);
-    const receipt = await appendResidentGatewayEvent(ledger, {
+    const outcomeEnvelope = {
+      logicalLocator: live.locator,
+      executionCapabilityHash:
+        live.request.payload.executionCapabilityHash,
+      requestEventId: live.request.id,
+      executionClaimEventId: claim.id,
+      authorization,
+      catalogOrdinal: envelope.catalogOrdinal,
+      implementationRevision: envelope.implementationRevision,
+      evidenceMode: envelope.evidenceMode,
+      residentInvocationInputHash: envelope.residentInvocationInputHash,
+      outcomeDisposition: "completed" as const,
+      preInvocationLedgerFingerprint:
+        envelope.preInvocationLedgerFingerprint,
+      postInvocationLedgerFingerprint:
+        envelope.postInvocationLedgerFingerprint,
+      domainEventIds: [...envelope.result.eventIds],
+      artifactHashes: [...envelope.result.artifactHashes],
+      readModelChanges: envelope.result.readModelChanges.map(
+        (change) => change.projectionName
+      ),
+      resultSummary: envelope.result.resultSummary
+    };
+    const envelopeHash = residentGatewayHash(outcomeEnvelope);
+    const receiptInput: Extract<
+      AppendableKnowledgeEvent,
+      { readonly type: "agent.resident-domain.outcome-observed.v1" }
+    > = {
       type: "agent.resident-domain.outcome-observed.v1",
       version: 1,
       streamId,
@@ -605,33 +661,22 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
         schemaVersion: "resident-domain-outcome-observed.v1",
         causationId: claim.id,
         correlationId: live.request.payload.correlationId,
-        logicalLocator: live.locator,
-        executionCapabilityHash:
-          live.request.payload.executionCapabilityHash,
-        requestEventId: live.request.id,
-        executionClaimEventId: claim.id,
-        authorization,
-        catalogOrdinal: envelope.catalogOrdinal,
-        implementationRevision: envelope.implementationRevision,
-        evidenceMode: envelope.evidenceMode,
-        residentInvocationInputHash: envelope.residentInvocationInputHash,
-        outcomeDisposition: "completed",
-        preInvocationLedgerFingerprint:
-          envelope.preInvocationLedgerFingerprint,
-        postInvocationLedgerFingerprint:
-          envelope.postInvocationLedgerFingerprint,
-        domainEventIds: envelope.result.eventIds,
-        artifactHashes: envelope.result.artifactHashes,
-        readModelChanges: envelope.result.readModelChanges.map(
-          (change) => change.projectionName
-        ),
-        resultSummary: envelope.result.resultSummary,
+        ...outcomeEnvelope,
         envelopeHash
       }
-    }, currentStream.length + 2);
-    if (receipt.type !== "agent.resident-domain.outcome-observed.v1") {
-      throw new Error("Resident outcome receipt append returned the wrong event family.");
-    }
+    };
+    const receipt = await appendAndRereadResidentLifecycleEvent(
+      ledger,
+      receiptInput,
+      currentStream.length + 2,
+      live.locator,
+      live.plan,
+      live.portPreview.catalogOrdinal,
+      live.portPreview.implementationRevision,
+      beforeEffect,
+      afterEffect,
+      input.now()
+    );
     const artifactHashes = residentGatewayStringArray(
       envelope.result.artifactHashes,
       "resident result artifact hashes"
@@ -646,6 +691,12 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       envelopeHash,
       artifactHashes,
       currentStream.length + 3,
+      input.now(),
+      live.plan,
+      live.portPreview.catalogOrdinal,
+      live.portPreview.implementationRevision,
+      beforeEffect,
+      afterEffect,
       input.now()
     );
     return Object.freeze({
@@ -671,25 +722,41 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
 
   async function rereadAndIssueFromLedger(value: unknown): Promise<object> {
     const locator = copyResidentLogicalLocator(value);
-    const plan = await requireResidentPlan(ledger, locator);
-    const selected = residentGatewayRecord(await callResidentPort(port, {
-      phase: "binding",
-      toolId: locator.toolId,
-      toolVersion: locator.toolVersion
-    }), "resident recovery port binding");
-    if (selected.executionCapabilityHash !== locator.executionCapabilityHash) {
+    const plan = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => requireResidentPlan(ledger, locator)
+    );
+    const portPreview = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => requireResidentPortPreview(port, locator)
+    );
+    if (
+      portPreview.executionCapabilityHash !==
+        locator.executionCapabilityHash
+    ) {
       throw new Error("Resident recovery locator does not match the mounted execution port.");
     }
     const streamId = residentGatewayDomainStreamId(locator);
-    const stream = await ledger.readStream(streamId);
+    const stream = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => ledger.readStream(streamId)
+    );
+    const allEvents = await awaitResidentCurrent(
+      beforeEffect,
+      afterEffect,
+      () => ledger.readAll()
+    );
     const prefix = validateResidentRecoveryPrefix(
       stream,
       locator,
       plan,
-      residentGatewayNonnegativeInteger(
-        selected.catalogOrdinal,
-        "resident recovery catalog ordinal"
-      )
+      portPreview.catalogOrdinal,
+      portPreview.implementationRevision,
+      allEvents,
+      input.now()
     );
     const {
       request,
@@ -743,6 +810,32 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       if (claim === undefined) {
         throw new Error("Resident recovery outcome receipt has no execution claim.");
       }
+      if (receipt.payload.outcomeDisposition === "failed") {
+        const failed = await appendResidentPostClaimFailure(
+          ledger,
+          locator,
+          request,
+          approval,
+          claim,
+          receipt,
+          stream.length + 1,
+          input.now(),
+          plan,
+          portPreview.catalogOrdinal,
+          portPreview.implementationRevision,
+          beforeEffect,
+          afterEffect,
+          input.now()
+        );
+        return residentRecoveryFailureReadback(
+          request,
+          locator,
+          approval,
+          claim,
+          receipt,
+          failed
+        );
+      }
       completed = await appendResidentCompletion(
         ledger,
         locator,
@@ -756,6 +849,12 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
         ),
         receipt.payload.artifactHashes,
         stream.length + 1,
+        input.now(),
+        plan,
+        portPreview.catalogOrdinal,
+        portPreview.implementationRevision,
+        beforeEffect,
+        afterEffect,
         input.now()
       );
       return residentRecoveryReadback(
@@ -835,6 +934,42 @@ function requireResidentLiveStage(
     throw new Error("Resident execution stage does not match the required fresh decision stage.");
   }
   return live;
+}
+
+function assertFreshResidentExecutionPrefix(
+  prefix: ValidatedResidentRecoveryPrefix,
+  live: ResidentLiveStage,
+  trustedCurrentTime: string
+): void {
+  if (
+    residentGatewayCanonicalJson(prefix.request) !==
+      residentGatewayCanonicalJson(live.request) ||
+    (
+      live.approval === undefined
+        ? prefix.approval !== undefined
+        : (
+            prefix.approval === undefined ||
+            residentGatewayCanonicalJson(prefix.approval) !==
+              residentGatewayCanonicalJson(live.approval)
+          )
+    ) ||
+    prefix.claim !== undefined ||
+    prefix.receipt !== undefined ||
+    prefix.completed !== undefined ||
+    prefix.denial !== undefined ||
+    prefix.failure !== undefined
+  ) {
+    throw new Error(
+      "Resident fresh execution requires the exact unclaimed canonical lifecycle prefix."
+    );
+  }
+  if (live.approval !== undefined) {
+    assertResidentLiveApprovalDeadline(
+      live.request,
+      live.plan,
+      trustedCurrentTime
+    );
+  }
 }
 
 function mintResidentPermit(
@@ -1170,7 +1305,10 @@ function validateResidentRecoveryPrefix(
   stream: readonly KnowledgeEvent[],
   locator: Readonly<Record<string, unknown>>,
   plan: ResidentPlanV2Event,
-  catalogOrdinal: number
+  catalogOrdinal: number,
+  implementationRevision: string,
+  allEvents: readonly KnowledgeEvent[] | undefined,
+  trustedCurrentTime: string
 ): ValidatedResidentRecoveryPrefix {
   if (
     stream.length === 0 ||
@@ -1181,6 +1319,7 @@ function validateResidentRecoveryPrefix(
   const request = stream[0];
   const correlationId = request.payload.correlationId;
   const authorizationKind = request.payload.authorizationKind;
+  const step = requireResidentPlanStep(plan, locator);
   if (
     request.payload.planRecordEventId !== plan.id ||
     request.payload.executionCapabilityHash !==
@@ -1189,7 +1328,25 @@ function validateResidentRecoveryPrefix(
       residentGatewayCanonicalJson(locator) ||
     request.payload.causationId !== plan.id ||
     request.context.causationId !== plan.id ||
-    request.context.correlationId !== correlationId ||
+    request.payload.correlationId !== plan.payload.correlationId ||
+    request.context.correlationId !== plan.payload.correlationId ||
+    request.context.actor.kind !== "agent" ||
+    request.context.actor.id !== residentGatewayActor.id ||
+    !Number.isFinite(Date.parse(request.context.occurredAt)) ||
+    request.payload.allowlistEntryHash !== step.allowlistEntryHash ||
+    request.payload.expectedSafeOutputClass !== step.expectedSafeOutputClass ||
+    !sameStrings(request.payload.sourceEventIds, plan.payload.sourceEventIds) ||
+    residentGatewayCanonicalJson(request.payload.contextPackRefs) !==
+      residentGatewayCanonicalJson(plan.payload.contextPackRefs) ||
+    residentGatewayCanonicalJson(request.payload.policy) !==
+      residentGatewayCanonicalJson(plan.payload.policy) ||
+    residentGatewayCanonicalJson(request.payload.authority) !==
+      residentGatewayCanonicalJson(plan.payload.authority) ||
+    residentGatewayCanonicalJson(request.payload.budget) !==
+      residentGatewayCanonicalJson(plan.payload.budget) ||
+    (authorizationKind === "automatic-policy"
+      ? request.payload.requiredApprovalClass !== "none"
+      : request.payload.requiredApprovalClass === "none") ||
     (authorizationKind === "automatic-policy") !== (catalogOrdinal === 10)
   ) {
     throw new Error("Resident recovery request does not match its plan, locator, catalog, or causation.");
@@ -1241,10 +1398,17 @@ function validateResidentRecoveryPrefix(
           event.payload.authorizationKind !== "human-approval" ||
           event.payload.approvedPreviewHash !== request.payload.previewHash ||
           event.payload.approvedBy !== event.context.actor.id ||
-          event.context.actor.kind !== "human"
+          event.context.actor.kind !== "human" ||
+          event.context.actor.id === residentGatewayActor.id
         ) {
           throw new Error("Resident recovery human approval does not match its canonical request.");
         }
+        assertResidentApprovalChronology(
+          request,
+          event,
+          plan,
+          trustedCurrentTime
+        );
         approval = event;
         stage = "human-approved";
         break;
@@ -1290,6 +1454,13 @@ function validateResidentRecoveryPrefix(
         ) {
           throw new Error("Resident recovery outcome receipt does not match its canonical claim.");
         }
+        validateResidentOutcomeReceipt(
+          event,
+          claim,
+          catalogOrdinal,
+          implementationRevision,
+          allEvents
+        );
         receipt = event;
         stage = "receipted";
         break;
@@ -1302,7 +1473,12 @@ function validateResidentRecoveryPrefix(
           event.payload.requestEventId !== request.id ||
           event.payload.executionClaimEventId !== claim.id ||
           event.payload.outcomeReceiptEventId !== receipt.id ||
+          receipt.payload.outcomeDisposition !== "completed" ||
           event.payload.resultHash !== receipt.payload.envelopeHash ||
+          !sameStrings(
+            event.payload.resultArtifactHashes,
+            receipt.payload.artifactHashes
+          ) ||
           residentGatewayCanonicalJson(event.payload.authorization) !==
             residentGatewayCanonicalJson(claim.payload.authorization)
         ) {
@@ -1320,7 +1496,7 @@ function validateResidentRecoveryPrefix(
           event.payload.deniedBy !== event.context.actor.id ||
           event.context.actor.kind !== "human"
         ) {
-          throw new Error("Resident recovery denial does not match its exact human request.");
+          throw new Error("Resident recovery denied decision does not match its exact human request.");
         }
         denial = event;
         stage = "terminal";
@@ -1341,7 +1517,8 @@ function validateResidentRecoveryPrefix(
           (phase === "post-claim" &&
             stage === "receipted" &&
             claim !== undefined &&
-            receipt !== undefined);
+            receipt !== undefined &&
+            receipt.payload.outcomeDisposition === "failed");
         if (!validStage || event.payload.requestEventId !== request.id) {
           throw new Error("Resident recovery failure is outside its canonical lifecycle phase.");
         }
@@ -1365,6 +1542,15 @@ function validateResidentRecoveryPrefix(
           )
         ) {
           throw new Error("Resident recovery post-claim failure has foreign receipt evidence.");
+        }
+        if (
+          event.payload.failureProofHash !==
+            residentGatewayHash({
+              requestEventId: request.id,
+              failure: event.payload.failure
+            })
+        ) {
+          throw new Error("Resident recovery failure proof hash is not canonical.");
         }
         failure = event;
         stage = "terminal";
@@ -1398,20 +1584,190 @@ function validateResidentRecoveryPrefix(
   };
 }
 
-function copyResidentLogicalLocator(value: unknown): Readonly<Record<string, unknown>> & {
-  readonly workspaceId: string;
-  readonly residentAgentId: string;
-  readonly taskId: string;
-  readonly attemptId: string;
-  readonly runId: string;
-  readonly planId: string;
-  readonly planRevision: number;
-  readonly stepOrdinal: number;
-  readonly toolRequestId: string;
-  readonly toolId: string;
-  readonly toolVersion: string;
-  readonly executionCapabilityHash: `sha256:${string}`;
-} {
+function assertResidentApprovalChronology(
+  request: ResidentRequestedEvent,
+  approval: ResidentHumanApprovedEvent,
+  plan: ResidentPlanV2Event,
+  trustedCurrentTime: string
+): void {
+  const requestTime = Date.parse(request.context.occurredAt);
+  const approvalTime = Date.parse(approval.context.occurredAt);
+  const currentTime = Date.parse(trustedCurrentTime);
+  const deadline =
+    requestTime + plan.payload.budget.ceilings.approvalSuspensionMs;
+  if (
+    !Number.isFinite(requestTime) ||
+    !Number.isFinite(approvalTime) ||
+    !Number.isFinite(currentTime) ||
+    approvalTime < requestTime ||
+    approvalTime > deadline ||
+    approvalTime > currentTime
+  ) {
+    throw new Error(
+      "Resident human approval chronology must be request <= approval <= deadline and approval <= trusted current time."
+    );
+  }
+}
+
+function assertResidentLiveApprovalDeadline(
+  request: ResidentRequestedEvent,
+  plan: ResidentPlanV2Event,
+  trustedCurrentTime: string
+): void {
+  const requestTime = Date.parse(request.context.occurredAt);
+  const currentTime = Date.parse(trustedCurrentTime);
+  const deadline =
+    requestTime + plan.payload.budget.ceilings.approvalSuspensionMs;
+  if (
+    !Number.isFinite(requestTime) ||
+    !Number.isFinite(currentTime) ||
+    currentTime > deadline
+  ) {
+    throw new Error("Resident human approval deadline expired before execution.");
+  }
+}
+
+function validateResidentOutcomeReceipt(
+  receipt: ResidentOutcomeEvent,
+  claim: ResidentClaimedEvent,
+  catalogOrdinal: number,
+  implementationRevision: string,
+  allEvents: readonly KnowledgeEvent[] | undefined
+): void {
+  if (
+    allEvents === undefined ||
+    ![2, 3, 4, 5, 6, 7, 9, 10].includes(catalogOrdinal) ||
+    receipt.payload.catalogOrdinal !== catalogOrdinal ||
+    receipt.payload.implementationRevision !== implementationRevision ||
+    new Set(receipt.payload.domainEventIds).size !==
+      receipt.payload.domainEventIds.length ||
+    new Set(receipt.payload.artifactHashes).size !==
+      receipt.payload.artifactHashes.length ||
+    new Set(receipt.payload.readModelChanges).size !==
+      receipt.payload.readModelChanges.length ||
+    receipt.payload.readModelChanges.length === 0
+  ) {
+    throw new Error(
+      "Resident recovery receipt has incomplete catalog, revision, or domain output evidence."
+    );
+  }
+  const envelope = {
+    logicalLocator: receipt.payload.logicalLocator,
+    executionCapabilityHash: receipt.payload.executionCapabilityHash,
+    requestEventId: receipt.payload.requestEventId,
+    executionClaimEventId: receipt.payload.executionClaimEventId,
+    authorization: receipt.payload.authorization,
+    catalogOrdinal: receipt.payload.catalogOrdinal,
+    implementationRevision: receipt.payload.implementationRevision,
+    evidenceMode: receipt.payload.evidenceMode,
+    residentInvocationInputHash: receipt.payload.residentInvocationInputHash,
+    outcomeDisposition: receipt.payload.outcomeDisposition,
+    preInvocationLedgerFingerprint:
+      receipt.payload.preInvocationLedgerFingerprint,
+    postInvocationLedgerFingerprint:
+      receipt.payload.postInvocationLedgerFingerprint,
+    domainEventIds: receipt.payload.domainEventIds,
+    artifactHashes: receipt.payload.artifactHashes,
+    readModelChanges: receipt.payload.readModelChanges,
+    resultSummary: receipt.payload.resultSummary
+  };
+  if (receipt.payload.envelopeHash !== residentGatewayHash(envelope)) {
+    throw new Error(
+      "Resident recovery receipt envelope hash does not cover its exact evidence and outcome."
+    );
+  }
+  const receiptIndex = allEvents.findIndex((event) => event.id === receipt.id);
+  const claimIndex = allEvents.findIndex((event) => event.id === claim.id);
+  if (
+    receiptIndex < 0 ||
+    claimIndex < 0 ||
+    claimIndex >= receiptIndex
+  ) {
+    throw new Error("Resident recovery receipt is not ordered after its exact claim.");
+  }
+  const beforeReceipt = allEvents.slice(0, receiptIndex);
+  const expectedEventType = new Map<number, string>([
+    [2, "prr.request.sent"],
+    [3, "prr.followup.sent"],
+    [4, "assertion.accepted"],
+    [5, "export.generated"],
+    [6, "report.generated"],
+    [9, "legacy.ontology.staging.approved"],
+    [10, "assertion.proposed"]
+  ]).get(catalogOrdinal);
+  const selectedEvents = receipt.payload.domainEventIds.map((eventId) =>
+    allEvents.find((event) => event.id === eventId)
+  );
+  if (
+    selectedEvents.some((event) => event === undefined) ||
+    (
+      expectedEventType !== undefined &&
+      selectedEvents.some((event) => event?.type !== expectedEventType)
+    )
+  ) {
+    throw new Error(
+      "Resident recovery receipt domain event evidence is absent or outside its catalog family."
+    );
+  }
+
+  switch (receipt.payload.evidenceMode) {
+    case "new-ledger-events": {
+      const firstDomainIndex = allEvents.findIndex(
+        (event) => event.id === receipt.payload.domainEventIds[0]
+      );
+      const newEvents = allEvents.slice(firstDomainIndex, receiptIndex);
+      if (
+        catalogOrdinal === 7 ||
+        receipt.payload.domainEventIds.length === 0 ||
+        firstDomainIndex <= claimIndex ||
+        !sameStrings(
+          newEvents.map((event) => event.id),
+          receipt.payload.domainEventIds
+        ) ||
+        receipt.payload.preInvocationLedgerFingerprint !==
+          residentGatewayHash(allEvents.slice(0, firstDomainIndex)) ||
+        receipt.payload.postInvocationLedgerFingerprint !==
+          residentGatewayHash(beforeReceipt)
+      ) {
+        throw new Error(
+          "Resident recovery receipt does not prove exact new-ledger-event evidence."
+        );
+      }
+      break;
+    }
+    case "idempotent-existing-ledger-events": {
+      const fingerprint = residentGatewayHash(beforeReceipt);
+      if (
+        catalogOrdinal === 7 ||
+        receipt.payload.domainEventIds.length === 0 ||
+        receipt.payload.preInvocationLedgerFingerprint !== fingerprint ||
+        receipt.payload.postInvocationLedgerFingerprint !== fingerprint
+      ) {
+        throw new Error(
+          "Resident recovery receipt does not prove exact idempotent ledger evidence."
+        );
+      }
+      break;
+    }
+    case "nonledger-projection-artifacts": {
+      const fingerprint = residentGatewayHash(beforeReceipt);
+      if (
+        catalogOrdinal !== 7 ||
+        receipt.payload.domainEventIds.length !== 0 ||
+        receipt.payload.artifactHashes.length === 0 ||
+        receipt.payload.preInvocationLedgerFingerprint !== fingerprint ||
+        receipt.payload.postInvocationLedgerFingerprint !== fingerprint
+      ) {
+        throw new Error(
+          "Resident recovery receipt does not prove exact nonledger projection evidence."
+        );
+      }
+      break;
+    }
+  }
+}
+
+function copyResidentLogicalLocator(value: unknown): ResidentLogicalLocator {
   const locator = residentGatewayRecord(value, "resident logical locator");
   rejectResidentGatewayUnknown(locator, [
     "workspaceId",
@@ -1427,9 +1783,16 @@ function copyResidentLogicalLocator(value: unknown): Readonly<Record<string, unk
     "toolVersion",
     "executionCapabilityHash"
   ], "resident logical locator");
+  const residentAgentId = residentGatewayString(
+    locator.residentAgentId,
+    "resident agent ID"
+  );
+  if (residentAgentId !== "agent_default") {
+    throw new Error("Resident logical locator requires the canonical resident agent.");
+  }
   return Object.freeze({
     workspaceId: residentGatewayString(locator.workspaceId, "resident workspace ID"),
-    residentAgentId: residentGatewayString(locator.residentAgentId, "resident agent ID"),
+    residentAgentId,
     taskId: residentGatewayString(locator.taskId, "resident task ID"),
     attemptId: residentGatewayString(locator.attemptId, "resident attempt ID"),
     runId: residentGatewayString(locator.runId, "resident run ID"),
@@ -1448,7 +1811,7 @@ function copyResidentLogicalLocator(value: unknown): Readonly<Record<string, unk
 
 async function appendResidentCompletion(
   ledger: EventLedger,
-  locator: Readonly<Record<string, unknown>>,
+  locator: ResidentLogicalLocator,
   request: ResidentRequestedEvent,
   claim: ResidentClaimedEvent,
   receipt: ResidentOutcomeEvent,
@@ -1456,9 +1819,21 @@ async function appendResidentCompletion(
   resultHash: `sha256:${string}`,
   artifactHashes: readonly string[],
   expectedNextSequence: number,
-  occurredAt: string
+  occurredAt: string,
+  plan: ResidentPlanV2Event,
+  catalogOrdinal: number,
+  implementationRevision: string,
+  beforeEffect: (...args: readonly unknown[]) => unknown,
+  afterEffect: (...args: readonly unknown[]) => unknown,
+  trustedCurrentTime: string
 ): Promise<ResidentCompletedEvent> {
-  const completed = await appendResidentGatewayEvent(ledger, {
+  if (receipt.payload.outcomeDisposition !== "completed") {
+    throw new Error("Resident completion requires an exact completed outcome receipt.");
+  }
+  const completedInput: Extract<
+    AppendableKnowledgeEvent,
+    { readonly type: "agent.resident-domain.completed.v1" }
+  > = {
     type: "agent.resident-domain.completed.v1",
     version: 1,
     streamId: residentGatewayDomainStreamId(locator),
@@ -1478,13 +1853,99 @@ async function appendResidentCompletion(
       outcomeReceiptEventId: receipt.id,
       authorization,
       resultHash,
-      resultArtifactHashes: artifactHashes
+      resultArtifactHashes: [...artifactHashes]
     }
-  }, expectedNextSequence);
-  if (completed.type !== "agent.resident-domain.completed.v1") {
-    throw new Error("Resident completion append returned the wrong event family.");
+  };
+  return await appendAndRereadResidentLifecycleEvent(
+    ledger,
+    completedInput,
+    expectedNextSequence,
+    locator,
+    plan,
+    catalogOrdinal,
+    implementationRevision,
+    beforeEffect,
+    afterEffect,
+    trustedCurrentTime
+  );
+}
+
+async function appendResidentPostClaimFailure(
+  ledger: EventLedger,
+  locator: ResidentLogicalLocator,
+  request: ResidentRequestedEvent,
+  approval: ResidentHumanApprovedEvent | undefined,
+  claim: ResidentClaimedEvent,
+  receipt: ResidentOutcomeEvent,
+  expectedNextSequence: number,
+  occurredAt: string,
+  plan: ResidentPlanV2Event,
+  catalogOrdinal: number,
+  implementationRevision: string,
+  beforeEffect: (...args: readonly unknown[]) => unknown,
+  afterEffect: (...args: readonly unknown[]) => unknown,
+  trustedCurrentTime: string
+): Promise<ResidentFailedEvent> {
+  if (receipt.payload.outcomeDisposition !== "failed") {
+    throw new Error("Resident post-claim failure requires an exact failed outcome receipt.");
   }
-  return completed;
+  const failure = approval === undefined
+    ? {
+        authorizationKind: "automatic-policy" as const,
+        failurePhase: "post-claim" as const,
+        executionClaimEventId: claim.id,
+        outcomeReceiptEventId: receipt.id
+      }
+    : {
+        authorizationKind: "human-approval" as const,
+        failurePhase: "post-claim" as const,
+        decisionEventId: approval.payload.decisionEventId,
+        approvedBy: approval.payload.approvedBy,
+        approvedPreviewHash: approval.payload.approvedPreviewHash,
+        executionClaimEventId: claim.id,
+        outcomeReceiptEventId: receipt.id
+      };
+  const failureInput: Extract<
+    AppendableKnowledgeEvent,
+    { readonly type: "agent.resident-domain.failed.v1" }
+  > = {
+    type: "agent.resident-domain.failed.v1",
+    version: 1,
+    streamId: residentGatewayDomainStreamId(locator),
+    context: residentGatewayEventContext(
+      receipt.id,
+      request.payload.correlationId,
+      occurredAt
+    ),
+    payload: {
+      schemaVersion: "resident-domain-failed.v1",
+      logicalLocator: locator as never,
+      executionCapabilityHash: request.payload.executionCapabilityHash,
+      causationId: receipt.id,
+      correlationId: request.payload.correlationId,
+      requestEventId: request.id,
+      failure,
+      failureCategory: "resident-domain-effect-failed",
+      safeMessage:
+        "The exact resident-domain invocation has a durable failed outcome receipt.",
+      failureProofHash: residentGatewayHash({
+        requestEventId: request.id,
+        failure
+      })
+    }
+  };
+  return await appendAndRereadResidentLifecycleEvent(
+    ledger,
+    failureInput,
+    expectedNextSequence,
+    locator,
+    plan,
+    catalogOrdinal,
+    implementationRevision,
+    beforeEffect,
+    afterEffect,
+    trustedCurrentTime
+  );
 }
 
 function residentRecoveryReadback(
@@ -1501,6 +1962,24 @@ function residentRecoveryReadback(
     ...(claim === undefined ? {} : { executionClaimEventId: claim.id }),
     ...(receipt === undefined ? {} : { outcomeReceiptEventId: receipt.id }),
     resultEventId: completed.id
+  });
+}
+
+function residentRecoveryFailureReadback(
+  request: ResidentRequestedEvent,
+  locator: Readonly<Record<string, unknown>>,
+  approval: ResidentHumanApprovedEvent | undefined,
+  claim: ResidentClaimedEvent,
+  receipt: ResidentOutcomeEvent,
+  failed: ResidentFailedEvent
+): object {
+  return Object.freeze({
+    ...residentRecoveryBase(request, locator, approval),
+    stage: "failed",
+    failurePhase: "post-claim",
+    executionClaimEventId: claim.id,
+    outcomeReceiptEventId: receipt.id,
+    resultEventId: failed.id
   });
 }
 
@@ -1524,15 +2003,109 @@ function residentRecoveryBase(
   };
 }
 
-async function appendResidentGatewayEvent(
+type ResidentLifecycleEventType =
+  | "agent.resident-domain.requested.v1"
+  | "agent.resident-domain.execution-claimed.v1"
+  | "agent.resident-domain.outcome-observed.v1"
+  | "agent.resident-domain.completed.v1"
+  | "agent.resident-domain.failed.v1";
+
+async function appendAndRereadResidentLifecycleEvent<
+  T extends ResidentLifecycleEventType
+>(
   ledger: EventLedger,
-  event: unknown,
-  expectedNextSequence: number
-): Promise<KnowledgeEvent> {
-  return await ledger.append(
-    event as AppendableKnowledgeEvent,
-    { expectedNextSequence }
+  event: AppendableKnowledgeEvent<T>,
+  expectedNextSequence: number,
+  locator: Readonly<Record<string, unknown>>,
+  plan: ResidentPlanV2Event,
+  catalogOrdinal: number,
+  implementationRevision: string,
+  beforeEffect: (...args: readonly unknown[]) => unknown,
+  afterEffect: (...args: readonly unknown[]) => unknown,
+  trustedCurrentTime: string,
+  revalidateAroundAwait = true
+): Promise<KnowledgeEventOf<T>> {
+  const appended = await awaitResidentCurrentIfRequired(
+    revalidateAroundAwait,
+    beforeEffect,
+    afterEffect,
+    () => ledger.append(event, { expectedNextSequence })
   );
+  const stream = await awaitResidentCurrentIfRequired(
+    revalidateAroundAwait,
+    beforeEffect,
+    afterEffect,
+    () => ledger.readStream(residentGatewayDomainStreamId(locator))
+  );
+  const allEvents = await awaitResidentCurrentIfRequired(
+    revalidateAroundAwait,
+    beforeEffect,
+    afterEffect,
+    () => ledger.readAll()
+  );
+  validateResidentRecoveryPrefix(
+    stream,
+    locator,
+    plan,
+    catalogOrdinal,
+    implementationRevision,
+    allEvents,
+    trustedCurrentTime
+  );
+  const durable = stream.find((candidate) => candidate.id === appended.id);
+  if (
+    appended.type !== event.type ||
+    durable === undefined ||
+    durable.type !== event.type ||
+    residentGatewayCanonicalJson(durable) !==
+      residentGatewayCanonicalJson(appended)
+  ) {
+    throw new Error(
+      "Resident lifecycle append return does not match its exact durable assigned identity and canonical bytes."
+    );
+  }
+  const {
+    id: _durableId,
+    sequence: _durableSequence,
+    ...durableInput
+  } = durable;
+  if (
+    residentGatewayCanonicalJson(durableInput) !==
+      residentGatewayCanonicalJson(event)
+  ) {
+    throw new Error(
+      "Resident lifecycle durable reread does not match the exact canonical append input."
+    );
+  }
+  return durable as KnowledgeEventOf<T>;
+}
+
+async function awaitResidentCurrentIfRequired<T>(
+  required: boolean,
+  beforeEffect: (...args: readonly unknown[]) => unknown,
+  afterEffect: (...args: readonly unknown[]) => unknown,
+  operation: () => Promise<T>
+): Promise<T> {
+  return required
+    ? await awaitResidentCurrent(beforeEffect, afterEffect, operation)
+    : await operation();
+}
+
+async function awaitResidentCurrent<T>(
+  beforeEffect: (...args: readonly unknown[]) => unknown,
+  afterEffect: (...args: readonly unknown[]) => unknown,
+  operation: () => Promise<T>
+): Promise<T> {
+  await requireCurrentResidentReverification(beforeEffect);
+  let result: T;
+  try {
+    result = await operation();
+  } catch (error) {
+    await requireCurrentResidentReverification(afterEffect);
+    throw error;
+  }
+  await requireCurrentResidentReverification(afterEffect);
+  return result;
 }
 
 async function requireCurrentResidentReverification(
