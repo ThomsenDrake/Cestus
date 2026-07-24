@@ -31677,3 +31677,202 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance transition, publication, or product release. `neo`, push,
   Wave 3, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1003 — Ordinal-4 released-control fixture defect; forward test repair authorized
+
+- Recorded at: 2026-07-24T18:58:38Z
+- Task12 implementer `/root/task136_e1002_task12_green` reproduced the
+  integrated causal RED **48 = 28 passed + 20 failed** before source edits.
+  Its in-scope two-source repair then reached focused
+  **48 = 46 passed + 2 failed** twice: gateway **28/28** and loader **2/2**
+  pass, while dispatcher is **16/18**. No source candidate was committed,
+  admitted, reviewed, approved, integrated, published, or released.
+- Both residual failures have one exact out-of-source cause in frozen
+  dispatcher-test helper `executeReleasedResidentAdapter`. After the required
+  ordinal-4 resident execution appends the exact `assertion.accepted` event,
+  the helper constructs a second released adapter on the same fixture and
+  ledger, rebuilds its now-accepted preview, and forwards all three current
+  source event IDs. The frozen released adapter correctly requires the exact
+  originally approved proposal/evidence pair and rejects the added acceptance
+  ID before its idempotent acceptance branch; its preview-hash check would
+  independently reject the reconstructed accepted preview against the
+  approved proposed preview.
+- The throw occurs in the direct test-helper-to-released-adapter control,
+  outside both authorized Task12 sources and after the resident invocation
+  already succeeded. It is a fixture/oracle sequencing defect, not a missing
+  dispatcher/G behavior. The approved design explicitly requires ordinal 4
+  to prove both new and idempotent-existing evidence and explicitly forbids
+  adapter source, descriptor, or execution-DTO widening. Therefore changing
+  `packages/agent/src/adapters/accepted-graph-review.ts` or weakening its
+  released validation is forbidden.
+- Task12 source work is paused at the coordinator recovery checkpoint. The
+  uncommitted working repair changes only
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`, with no untracked file;
+  it is not a candidate and must remain untouched while the oracle repair is
+  authored and reviewed. No source commit, stash, revert, reset, or discard
+  is authorized.
+- A narrower forward test-only repair is authorized in exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`, on a clean
+  task-scoped descendant of E-1002. Preserve the resident invocation and its
+  required same-ledger acceptance. Repair only the independent released
+  ordinal-4 control so it executes from an independently real
+  pre-acceptance fixture/ledger or captures its exact released result before
+  the resident effect. It must continue using the real released constructor,
+  exact package context, real adapter, exact proposed approval preview, and
+  complete result/domain-event assertions; it may not mock, normalize,
+  suppress, catch, or weaken the released adapter.
+- The corrected test must preserve every approved E-1001 causal assertion,
+  all intrinsic brand/replay and same-call-copy probes, every other released
+  control, the full new/idempotent/nonledger table, loader policy, gateway
+  test blob, and all frozen package/API behavior. It must first reproduce the
+  exact frozen-source **28/20** causal signature and then prove the paused
+  in-scope source repair closes all **48/48** focused tests without any
+  fixture/API/type failure.
+- Preserve frozen gateway-test blob
+  `6e720ce896176362256aa09ca0566def9bef2257`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, both starting source blobs
+  `925977aee795810c80f8777bdab655a08110b045` and
+  `f9aa90ebfd705353f835efceaee273b75d0e3060` in the clean test branch,
+  ontology `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`, every earlier candidate blob,
+  and all ancestry.
+- Produce one exact forward one-test candidate after focused causality,
+  loader, released-adapter, typecheck, factory, mission **20/20**, V4
+  assurance **20/20**, marker, repository-first-stop, scope, freeze,
+  ancestry, dependency, diff, and clean-state gates. A completely fresh
+  independent read-only reviewer must approve its exact bytes before it may
+  be integrated and source work separately resumed. Every earlier changed
+  test-byte reviewer and author is ineligible to approve it.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is verifier-recovery and one-test correction authority,
+  not a source candidate, Task12 GREEN, Task13 authority, Task136 product
+  candidacy, strict record 29, assurance transition, publication, or product
+  release. `neo`, push, Wave 3, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
+
+## RV-1-E-1004 — Ordinal-4 fixture-corrected Task136 oracle admitted to fresh review
+
+- Recorded at: 2026-07-24T19:33:05Z
+- Exact forward test-only candidate
+  `9f9d0ae3eecad30cf3124faa2470a52bb07a1483`, tree
+  `263d37c60aa64b1e650e498de7a70fd7eaabd112`, has sole parent E-1003
+  authority merge `361d98bc2fc7ce1c2f33bbf1f0200815fbe18a0c`
+  and changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`,
+  **128 insertions and 4 deletions**. Exact new dispatcher-test blob is
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`.
+- Both affected ordinal-4 call sites retain the resident execution on its
+  exact mounted fixture/ledger but run the post-effect independent released
+  control on a distinct fully real pre-acceptance fixture/ledger. Both lanes
+  use the exact package context, literal released constructor, real released
+  adapter, exact proposed approval preview, and real assertion service.
+  Neither lane catches, normalizes, mocks, suppresses, or weakens adapter
+  validation.
+- Because event IDs and event contexts are legitimate package-owned outputs
+  of their respective ledgers, the candidate does not compare opaque IDs
+  across ledgers. Instead it proves exactly one `assertion.accepted` event
+  per lane, complete lane-specific ID/order/type/version/stream/sequence/
+  actor/time/causation/correlation/version/payload identity, and complete
+  exact result event/artifact/read-model/summary identity. Every non-ordinal-4
+  released-control comparison remains unchanged.
+- Before editing, the author reproduced frozen-source focused
+  **48 = 28 passed + 20 independently source-causal failures**. Final exact
+  candidate with frozen sources retains that same signature: dispatcher
+  **18 = 11 passed + 7 failed**, gateway
+  **28 = 15 passed + 13 failed**, loader **2/2**. There is no fixture,
+  collection, API, dependency, or type failure and no new failure category.
+- A disposable isolated overlay of this exact test blob with the untouched
+  paused E-1002 two-source repair proves focused **48/48**: dispatcher
+  **18/18**, gateway **28/28**, loader **2/2**. The original source worktree
+  remains untouched with exactly its two authorized uncommitted source
+  modifications; no source candidate exists.
+- Author and coordinator reproduction also pass released adapters **79/79**,
+  standalone typecheck, factory, mission **20/20**, V4 assurance **20/20**,
+  and all four exact contract markers. Exact-candidate repository mode exits
+  `1`, stops first and only after those markers at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Scope is one test; dependencies are unchanged; both diff checks pass; the
+  candidate worktree is clean. Frozen blobs remain gateway test
+  `6e720ce896176362256aa09ca0566def9bef2257`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`. All named design, plan,
+  candidate, sibling, recovery, approval, integration, and authority ancestry
+  remains exact.
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1004_ordinal4_test_review` is assigned exact immutable
+  candidate `9f9d0ae3`. It must inspect the complete current dispatcher and
+  gateway test bytes, E-1001 through E-1003 authority and the approved
+  design/Task12 plan, and attack distinct-fixture independence, real released
+  adapter use, proposed-versus-accepted preview semantics, exact per-lane
+  event/result identity, retained ordinal-4 resident new/idempotent evidence,
+  invocation-hash independence, overlay validity, and every previously
+  approved causal assertion.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte or the paused source repair. Every earlier author, reviewer, and
+  changed-byte analyst is ineligible. It may not edit, commit, merge,
+  substitute another SHA, approve changed bytes, authorize source resumption,
+  or describe this transition as source GREEN, product candidacy, or release.
+  Changed candidate bytes invalidate review.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  test-only candidate `9f9d0ae3`. Strict product frontier remains
+  **28 of 29**. This is verifier-recovery test admission, not approval,
+  integration, source resumption, Task12 GREEN, Task13 authority, Task136
+  product candidacy, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1005 — Exact `9f9d0ae3` ordinal-4 oracle approved
+
+- Recorded at: 2026-07-24T19:45:44Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1004_ordinal4_test_review` approves exact test-only candidate
+  `9f9d0ae3eecad30cf3124faa2470a52bb07a1483`, tree
+  `263d37c60aa64b1e650e498de7a70fd7eaabd112`, and no other candidate.
+  Review occurred against clean history-preserving E-1004 authority merge
+  `00c65542079912f84d5c87625095274b59f1f465`; no candidate byte or source
+  working byte changed.
+- Findings are none. Both ordinal-4 sites use distinct real pre-acceptance
+  fixtures and ledgers. Exact proposed/accepted event, lane-specific context,
+  payload, count/order, result, and read-model identity are asserted without
+  cross-ledger opaque-ID comparison, mock, catch, normalization, skipped
+  assertion, adapter weakening, or source/DTO widening.
+- Resident new/idempotent evidence, exact ten-field attestation and same-call
+  result-copy proof, intrinsic brand/replay probes, invocation-hash
+  independence, complete lifecycle/readback/evidence rules, target recovery,
+  W currentness, loader policy, and every E-1001 causal assertion remain
+  intact.
+- The reviewer independently reproduced frozen-source focused
+  **48 = 28 passed + 20 independently source-causal failures**, loader
+  **2/2**, and released adapters **79/79**. A disposable overlay of exact test
+  blob `0eaf2fe609de31657acfedde1e2630cbacedbcdc` with untouched paused source
+  blobs dispatcher `30e4a3eae31a0ea10dbd1d8b6cc8de7486088cbc`
+  and gateway `41740d5dc33603713687419b0463fdfc9f438c87`
+  passes focused **48/48**; the paused source worktree remains unchanged.
+- Typecheck, factory, mission **20/20**, V4 assurance **20/20**, and all four
+  exact markers pass. Repository mode stops exactly at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`;
+  no repository-prefix or release-closure success is emitted.
+- Candidate identity, one-test **128/4** scope, dependencies, all frozen
+  blobs, named ancestry and recovery topology, both diff checks, and clean
+  review state are exact.
+- One history-preserving integration merge of clean review lineage
+  `00c65542079912f84d5c87625095274b59f1f465` into the existing Task136
+  lineage is authorized. It must preserve exact test blob
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, retain the paused two-source
+  working bytes unchanged, and record exact integration before source work
+  may receive separate resume authority.
+- Task136 advances `reviewing -> approved` for the exact verifier-recovery
+  test. Strict product frontier remains **28 of 29**. This is test approval
+  authority, not integration, source resumption, Task12 source candidacy,
+  Task13 authority, Task136 product candidacy, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
