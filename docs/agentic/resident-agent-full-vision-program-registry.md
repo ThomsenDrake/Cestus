@@ -29249,6 +29249,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-979 — Task136 Task12 causal RED integrated; two-source GREEN authorized
+
+- Recorded at: 2026-07-24T05:28:06Z
+- Approved exact causal-RED candidate
+  `3f9207ba95655029ace0764e349e7f3a2763a620` is preserved byte-for-byte in
+  history-preserving integration tree
+  `bfed7ccc3942f48520f9932e0a49c1d08c00086a`. RV-1-E-977 review
+  admission and RV-1-E-978 approval were separately forward-merged without
+  changing its three tests or product claim. Every rejected oracle/design
+  candidate and all permanent RED/Task10/Task11 GREEN history remain
+  ancestral.
+- Fresh integration-tree gates pass exact reviewed blob identity and ancestry,
+  clean state, focused **25 = 17 passed + 8 causal RED failures**, released
+  adapter controls **79/79**, typecheck, factory readiness, mission **20/20**,
+  V4 assurance **20/20**, all four exact markers, and contract SHA
+  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+- Task136 Task12 causal RED advances `approved -> integrated`. One atomic
+  source GREEN may modify exactly
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. The integrated test
+  blobs must remain exact dispatcher
+  `846f0bb1e62719fb10b0af179b6d35c59633f733`, G
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`, and loader
+  `f8df9ae8e4f5a8506e84cb20fc207783c69cce21`; the product claim blob
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1` also remains frozen during
+  source work.
+- The source implementation must satisfy exact corrected design and Task12
+  plan: six closed factory variants with per-ordinal PRR/export contexts;
+  literal six-module/eleven-constructor lazy catalog; default-only opaque
+  dispatcher capability/port; default-only sole G permit consumer; exact
+  five-operation internal G object; same-instance fresh human-decision flow;
+  ordinal-10-only automatic path; nonexecutable recovery stages; one-shot
+  claim/permit/receipt and unknown-outcome recovery; real evidence for
+  ordinals 2-7 and 9-10; fail-closed 0/1/8; no barrel/public/caller catalog,
+  adapter, callback, provider, or fallback widening.
+- Source owner `/root/task136_task12_source_green` is assigned the exact
+  two-source scope. It must use the integrated causal RED, preserve every test
+  and claim byte, run focused GREEN, released controls, typecheck, factory,
+  mission/V4, loader/import/order, scope/ancestry/dependency/diff/clean and
+  actual repository-posture checks, then commit one exact descendant. That
+  commit requires a completely fresh focused reviewer before integration or
+  Task13 begins.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is causal-RED integration and two-source GREEN authority, not a
+  source candidate approval, Task136 product candidate, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
 
 - Recorded at: 2026-07-24T04:58:14Z
