@@ -29380,6 +29380,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-982 — Exact Task136 Task12 aggregate GREEN admitted to fresh focused review
+
+- Recorded at: 2026-07-24T06:18:10Z
+- Exact aggregate candidate
+  `0cc48416dc368c8d737c50a3b5308655e6ca51f3`, tree
+  `2d0c6033f7d3a450171df6a0e9681296686a8d17`, sole parent
+  RV-1-E-981 authority merge
+  `2b9ee4365b369d167e927af1adf24cc7050b8d88`, preserves source checkpoint
+  `ed5a1bb932e149de9915e4aefd3663125e80ed03` and every prior
+  RED/GREEN/review/rejection/authority commit.
+- Exact source blobs are dispatcher
+  `925977aee795810c80f8777bdab655a08110b045` and G
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`. Exact repaired test blobs are
+  gateway `ede14c06fb618d2314aa1063f840a1f4e0e9a67b` and loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`. The approved dispatcher test
+  remains `846f0bb1e62719fb10b0af179b6d35c59633f733` and the product claim
+  remains `49074087ae30d06f4d16d5e29fbe8935781d0fa1`.
+- Candidate gates pass exact Task12 focused **25/25**, six released adapter
+  controls **79/79**, standalone typecheck, factory readiness, mission
+  **20/20**, V4 assurance **20/20**, all four exact V4 markers, exact
+  two-source plus two-repaired-test scope, source/test/claim freeze,
+  ancestry, dependency, diff, and clean-state checks. Fresh coordinator
+  reproduction independently confirms the exact default focused command
+  **25/25** without a custom CLI timeout. Repository mode remains truthfully
+  blocked only at the required pre-record-29 W1 current-blob mismatch; no
+  prefix or closure success is claimed.
+- Completely fresh-to-these-bytes read-only focused reviewer
+  `/root/task136_zero_path_exec_review_d475` is assigned exact `0cc48416`.
+  The reviewer confirms it has neither authored nor reviewed any candidate
+  byte. It must inspect the actual two-source implementation against the
+  approved corrected design, trace package-owned catalog/context/ledger
+  identity and opaque capability/permit boundaries, verify all five G
+  operations and at-most-once lifecycle/recovery modes, scrutinize the two
+  fixture corrections against schema and task order, reproduce focused and
+  cross-boundary controls, and rerun typecheck, factory, mission, V4,
+  markers, scope/freeze/ancestry/dependency/clean and actual repository
+  posture gates.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `0cc48416`. Changed bytes invalidate the review. The reviewer may not edit,
+  commit, merge, substitute another SHA, or authorize Task13.
+- Strict product frontier remains **28 of 29**. This is Task12 review
+  admission, not approval, integration, Task136 product candidacy, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
 
 - Recorded at: 2026-07-24T04:58:14Z
