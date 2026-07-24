@@ -29351,6 +29351,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-981 — Task136 Task12 loader harness timeout calibrated
+
+- Recorded at: 2026-07-24T06:09:04Z
+- After only the RV-1-E-980 gateway-identifier/assertion consistency repair
+  and zero-or-one Task14 binder census correction, the exact default Task12
+  command reaches focused **25 = 24 passed + 1 harness timeout**. The sole
+  failure is the repository-wide AST/import-order test at
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts:47`;
+  its assertions complete successfully in approximately 10-16 seconds under
+  the same current tree, but Vitest's inherited default ceiling is 5 seconds.
+  The same unchanged test passes **2/2** with a 30-second CLI ceiling.
+- One mechanical forward adjustment is authorized in the already-owned loader
+  test path: add literal `30_000` as the existing async test's per-test timeout
+  argument. No assertion, traversal, safe/hostile control, import, product
+  source, ontology, claim, design, plan, Task14 source, global test
+  configuration, or command may change. The exact plan command without a
+  custom CLI option must then pass **25/25**.
+- Preserve the causal 22/25 and 24/25 evidence and every source checkpoint.
+  The fixture owner must rerun the exact focused command, released adapter
+  controls, typecheck, factory readiness, mission **20/20**, V4 assurance
+  **20/20**, markers, scope/freeze/ancestry/dependency/diff/clean checks, and
+  actual repository posture before committing the exact two-test repair.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains **28 of
+  29**. This is deterministic harness calibration, not Task12 approval,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
 
 - Recorded at: 2026-07-24T04:58:14Z
