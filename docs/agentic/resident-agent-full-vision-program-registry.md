@@ -30681,3 +30681,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidacy, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-988 — Forward-corrected Task136 source-closure RED admitted to fresh review
+
+- Recorded at: 2026-07-24T14:35:58Z
+- Exact forward-corrected test-only candidate
+  `f08458007ad014803bda968e032c3c8e433f6e3f`, tree
+  `c885d472f56c0a55d057551d3b6e8a5e74cb8fdd`, has sole parent E-987
+  repair-authority merge
+  `dd5ecb411f912620bd7f17233fa5018d20281a58` and changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts` and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. Rejected
+  candidates `c6d75787b9a12605892c9209b1716b0003497572`,
+  `ae200ddff9c251027f4af81b87fc3d68fc3f4e45`, and
+  `0cc48416dc368c8d737c50a3b5308655e6ca51f3`, source checkpoint
+  `ed5a1bb932e149de9915e4aefd3663125e80ed03`, and every earlier design,
+  plan, RED, GREEN, fixture, rejection, review, and authority commit remain
+  ancestral and unchanged.
+- Exact test blobs are dispatcher
+  `bee084b81af7b74946051c296cf58b813af6f618` and gateway
+  `2f79ed52c822408a25c1ae5007314d2d849889c5`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, rejected dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, rejected gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- The forward repair performs one legitimate first execution, captures its
+  exact issued-and-consumed attestation identity, and reuses that same object
+  in a distinct second execution whose expected rejection is
+  replay/consumed-specific. Missing-field, complete-unbranded, and replay
+  negatives are independent. Automatic canonical input excludes both
+  human-only approval fields while human input binds exact durable approval
+  facts.
+- For ordinals 2 through 6 and 9 through 10, the corrected oracle compares
+  complete ordered released results and complete domain event identities,
+  including full context and payload. Ordinal 7 binds its complete rich
+  result, ordered artifact IDs/hashes, read-model change, rebuild/projection
+  IDs, and copied attestation result to the approved preview. Resident
+  readbacks use exact branch-specific whole-object shapes; no resident
+  readback subset matcher remains.
+- Focused execution establishes a new exact signature:
+  **48 tests = 28 passed + 20 source-causal failures**, comprising dispatcher
+  **18 = 11 passed + 7 failed**, gateway
+  **28 = 15 passed + 13 failed**, and frozen loader **2/2** green. There is
+  no fixture, API, collection, or type failure. The failures independently
+  cover missing-field, unbranded, consumed-replay, live attestation
+  schema/result, accepted-preview, automatic-input, full invocation/evidence,
+  denied recovery, ten hostile prefixes, and both W timing boundaries.
+- Independent coordinator reproduction matches focused **28/20**, loader
+  **2/2**, released adapters **79/79**, standalone typecheck, factory,
+  mission **20/20**, V4 assurance **20/20**, all four exact markers, exact
+  two-path scope, dependency-free diff, frozen blobs, ancestry,
+  `git diff --check`, and clean state. Clean repository mode exits `1`,
+  stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Completely fresh read-only focused reviewer
+  `/root/task136_e988_red_review_f084` is assigned exact immutable candidate
+  `f0845800`. It must inspect the complete current two-test delta and all four
+  E-987 repairs; independently verify real first-consumption plus same-object
+  replay, branch-exact canonical inputs, complete domain event/result and
+  ordinal-7 preview identity, and zero resident-readback subset assertions;
+  attack weak-implementation counterexamples; classify every failure as
+  source-causal; and reproduce focused, loader, adapter, typecheck, factory,
+  mission, V4, marker, repository-posture, scope, freeze, ancestry,
+  dependency, diff, and clean-state gates.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte. The `c6d75787` reviewer and every other previous changed-byte
+  reviewer or analyst are ineligible. This reviewer may not edit, commit,
+  merge, substitute another SHA, approve changed bytes, authorize source, or
+  describe this review transition as product candidacy or release. Any
+  changed candidate byte invalidates the review.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `f0845800`. Strict product frontier remains **28 of 29**. This is
+  forward-corrected test-only RED review admission, not approval,
+  integration, source GREEN, Task136 product candidacy, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
