@@ -31065,3 +31065,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance transition, publication, or product release. `neo`, push, Wave
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-994 — Exact `5cf53186` rejected; brand/replay causal-isolation repair authorized
+
+- Recorded at: 2026-07-24T16:19:40Z
+- Completely fresh read-only focused reviewer
+  `/root/task136_e993_red_review_5cf5` rejects exact lineage-preserved
+  candidate `5cf531868d4c7790e39c3fd6e25c1e6d2ca1698d`, tree
+  `02475ef98298f2220e3242867b70ccd57b847343`, and no other candidate.
+  Review occurred against history-preserving authority merge
+  `2060fbf9d300098636d3ba2d5de9a3545dde281f`; no candidate byte or
+  repository state changed.
+- The reviewer independently reproduced focused
+  **48 = 28 passed + 20 source-causal failures**, loader **2/2**, released
+  adapters **79/79**, standalone typecheck, factory, mission **20/20**, V4
+  assurance **20/20**, all four exact markers, complete two-test scope,
+  frozen blobs, sibling preservation, named ancestry, dependency-free diff,
+  diff, and clean-state gates. Repository mode exits `1`, stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Rejection is mandatory because the consumed-replay case reuses the exact
+  consumed object in a distinct execution but the frozen source rejects it
+  through request/claim identity mismatch. The oracle distinguishes the
+  intended missing consumption guard only with an error-message regex.
+  Relabeling the mismatch error as replay/consumed therefore passes without
+  implementing a consumption guard.
+- The otherwise-complete unbranded value likewise currently reaches an
+  attempted outcome append and ledger schema rejection because attestation
+  schema/result fields are invalid receipt-payload extras in the frozen
+  source path. Catching and relabeling that alternate schema error as a
+  brand error passes without enforcing the private brand.
+- A narrower forward test-only repair is authorized in exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`. A completely new
+  test implementer must be used; the removed E-991 author is ineligible.
+  Gateway-test blob
+  `6e720ce896176362256aa09ca0566def9bef2257`, both Task12 source blobs,
+  loader, Task136 claim, ontology, Task14 wake runtime, all fixture
+  adaptations, controls, and every previously valid assertion remain frozen.
+- The complete-unbranded negative must be shape-complete and independently
+  prove rejection occurs at the private-brand boundary before any outcome
+  or terminal append attempt. Instrument the same exact ledger object from
+  construction time; do not replace it with a wrapper after identity
+  binding. An error-text-only rethrow of downstream schema failure must
+  fail the oracle.
+- The replay negative must reuse the exact legitimate issued-and-consumed
+  attestation object and independently prove the second rejection occurs
+  before structural request/claim mismatch evaluation. Capture-time
+  instrumentation of the exact object or an equivalently strong
+  identity-preserving behavioral oracle is permitted; a proxy becomes the
+  exact issued/consumed object only if installed while that object is first
+  created, never substituted after binding. Merely changing alternate-guard
+  error text must fail.
+- Missing fields, missing brand, and consumed replay remain three independent
+  negatives. The descendant must report its newly executed exact focused
+  signature with every failure independently source-causal and no fixture,
+  API, collection, dependency, or type failure. All focused, loader,
+  released adapter, typecheck, factory, mission **20/20**, V4 **20/20**,
+  marker, truthful repository first-stop, scope, freeze, sibling/ancestry,
+  dependency, diff, and clean-state gates remain mandatory.
+- A completely fresh read-only reviewer is required for the exact descendant.
+  Every prior corrected-byte reviewer, the removed author, and every
+  changed-byte analyst are ineligible. Neither Task12 source may change
+  before corrected RED approval is recorded and integrated forward, followed
+  by separate explicit source-correction authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejection and one-test causal-oracle repair authority,
+  not corrected-RED approval/integration, source GREEN, Task136 product
+  candidacy, strict record 29, assurance transition, publication, or product
+  release. `neo`, push, Wave 3, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
