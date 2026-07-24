@@ -486,6 +486,14 @@ function task12ProtectedMentionAnalysis(
       ) {
         violations.add(sourcePath);
       }
+      if (
+        isGatewayDefaultBindingPatternSource(
+          node,
+          gatewayDefaultHosts
+        )
+      ) {
+        violations.add(sourcePath);
+      }
       if (ts.isCallExpression(node)) {
         inspectMutationCall(
           node,
@@ -1032,6 +1040,10 @@ function protectedMentionControls(): ProtectedMentionControls {
       "Reflect.ownKeys(record);",
       "const { [recordKey]: dynamicRead } = gateway;",
       "void dynamicRead;",
+      "const unrelatedRecord = Object.create(null);",
+      "declare const unrelatedKey: string;",
+      "const { [unrelatedKey]: unrelatedValue } = unrelatedRecord;",
+      "void unrelatedValue;",
       "function dataRecord(value: unknown, label: string) {",
       "  if (value === null || typeof value !== 'object' || Array.isArray(value) ||",
       "      isProxy(value) ||",
@@ -1219,6 +1231,93 @@ function protectedMentionControls(): ProtectedMentionControls {
       ].join("\n")),
       violations: [dispatcherPath]
     },
+    {
+      name: "gateway default direct binding extraction",
+      sources: base("", [
+        "const { consumeResidentDomainExecutionPermit } = gatewayDefault;",
+        "void consumeResidentDomainExecutionPermit;"
+      ].join("\n")),
+      violations: [dispatcherPath, gatewayPath]
+    },
+    {
+      name: "gateway default renamed binding extraction",
+      sources: base("", [
+        "const { consumeResidentDomainExecutionPermit: invoke } =",
+        "  gatewayDefault;",
+        "void invoke;"
+      ].join("\n")),
+      violations: [dispatcherPath, gatewayPath]
+    },
+    {
+      name: "gateway default resolved computed binding extraction",
+      sources: base("", [
+        "const permitKey = 'consumeResidentDomainExecutionPermit' as const;",
+        "const { [permitKey]: invoke } = gatewayDefault;",
+        "void invoke;"
+      ].join("\n")),
+      violations: [dispatcherPath, gatewayPath]
+    },
+    {
+      name: "gateway default unresolved computed binding extraction",
+      sources: base("", [
+        "const suffix = 'DomainExecutionPermit';",
+        "const { [`consumeResident${suffix}`]: invoke } = gatewayDefault;",
+        "invoke(permit, port, input);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default array binding extraction",
+      sources: base("", [
+        "const [invoke] = gatewayDefault;",
+        "void invoke;"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default nested binding extraction",
+      sources: base("", [
+        "const nestedPermitKey =",
+        "  'consumeResidentDomainExecutionPermit' as const;",
+        "const { nested: { [nestedPermitKey]: invoke } } = gatewayDefault;",
+        "void invoke;"
+      ].join("\n")),
+      violations: [dispatcherPath, gatewayPath]
+    },
+    {
+      name: "gateway default rest binding extraction",
+      sources: base("", [
+        "const { ...permitConsumer } = gatewayDefault;",
+        "void permitConsumer;"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default binding initializer extraction",
+      sources: base("", [
+        "const [invoke = fallback] = gatewayDefault;",
+        "void invoke;"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default alias binding extraction",
+      sources: base("", [
+        "const dynamicGateway = gatewayDefault;",
+        "const [invoke] = dynamicGateway;",
+        "void invoke;"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default parameter binding extraction",
+      sources: base("", [
+        "function inspect([invoke] = gatewayDefault) {",
+        "  void invoke;",
+        "}"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
     ...freshRecordEscapeControls(base, gatewayPath),
     ...closedNormalizationEscapeControls(base, gatewayPath)
   ];
@@ -1384,6 +1483,21 @@ function dispatcherTransferControls(): readonly DispatcherTransferControl[] {
     ],
     violations: [`${sourcePath}: alternate dispatcher transfer`]
   });
+  const unsafeTask14Identity = (
+    name: string,
+    extra: string
+  ): DispatcherTransferControl => ({
+    name,
+    sources: [
+      sourceRecordFromText(task14Path, [
+        "import dispatcherDefault from " +
+          "'../../agent/src/domain-execution-dispatcher.js';",
+        "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);",
+        extra
+      ].join("\n"))
+    ],
+    violations: [`${task14Path}: alternate dispatcher transfer`]
+  });
   return [
     {
       name: "exact Task14 dispatcher default and legacy non-default transfers",
@@ -1409,6 +1523,63 @@ function dispatcherTransferControls(): readonly DispatcherTransferControl[] {
       ],
       violations: [`${task14Path}: alternate dispatcher transfer`]
     },
+    unsafeTask14Identity(
+      "Task14 dispatcher default export escape",
+      "export default dispatcherDefault;"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher local export escape",
+      "export { dispatcherDefault };"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher aliased re-export escape",
+      "export { dispatcherDefault as default };"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher alias escape",
+      "const alias = dispatcherDefault; void alias;"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher destructuring escape",
+      "const { bindPackageOwnedResidentDomainExecutionPort: bind } = " +
+        "dispatcherDefault; void bind;"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher other-property escape",
+      "void dispatcherDefault.otherOperation;"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher other-call escape",
+      "dispatcherDefault.otherOperation();"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher return escape",
+      "function exposeDispatcher() { return dispatcherDefault; }"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher yield escape",
+      "function* exposeDispatcher() { yield dispatcherDefault; }"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher capture escape",
+      "const exposeDispatcher = () => dispatcherDefault;"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher store escape",
+      "holder.dispatcher = dispatcherDefault;"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher pass escape",
+      "consumeDispatcher(dispatcherDefault);"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher outward-assignment escape",
+      "outwardDispatcher = dispatcherDefault;"
+    ),
+    unsafeTask14Identity(
+      "Task14 dispatcher miscellaneous-use escape",
+      "void dispatcherDefault;"
+    ),
     unsafe(
       "named default import",
       "unsafe-dispatcher-named-default.ts",
@@ -1636,6 +1807,52 @@ function gatewayDefaultHostNames(
     }
     ts.forEachChild(node, visit);
   }
+}
+
+function isGatewayDefaultBindingPatternSource(
+  node: ts.Node,
+  gatewayDefaultHosts: ReadonlySet<string>
+): boolean {
+  if (
+    ts.isVariableDeclaration(node) &&
+    isBindingPattern(node.name)
+  ) {
+    const loop = ts.isVariableDeclarationList(node.parent) &&
+      node.parent.declarations.length === 1 &&
+      node.parent.declarations[0] === node &&
+      (
+        ts.isForInStatement(node.parent.parent) ||
+        ts.isForOfStatement(node.parent.parent)
+      )
+      ? node.parent.parent
+      : undefined;
+    return expressionResolvesProtectedHost(
+      node.initializer ?? loop?.expression,
+      gatewayDefaultHosts
+    );
+  }
+  if (
+    ts.isParameter(node) &&
+    isBindingPattern(node.name) &&
+    expressionResolvesProtectedHost(
+      node.initializer,
+      gatewayDefaultHosts
+    )
+  ) {
+    return true;
+  }
+  return ts.isBindingElement(node) &&
+    node.initializer !== undefined &&
+    expressionResolvesProtectedHost(
+      node.initializer,
+      gatewayDefaultHosts
+    );
+}
+
+function isBindingPattern(
+  node: ts.BindingName
+): node is ts.ObjectBindingPattern | ts.ArrayBindingPattern {
+  return ts.isObjectBindingPattern(node) || ts.isArrayBindingPattern(node);
 }
 
 function expressionContainsProtectedObjectMember(
@@ -3504,9 +3721,13 @@ function dispatcherTransferViolations(
       continue;
     }
     if (record.sourcePath === task14Path) {
-      const exactImport = imports.length === 1 &&
-        isExactTask14DispatcherImport(imports[0]!);
-      if (!exactImport || exactTask14BinderCallCount(record) !== 1) {
+      const declaration = imports.length === 1 ? imports[0] : undefined;
+      if (
+        declaration === undefined ||
+        !isExactTask14DispatcherImport(declaration) ||
+        exactTask14BinderCallCount(record) !== 1 ||
+        !hasExactTask14DispatcherBindingCensus(record, declaration)
+      ) {
         reject(record.sourcePath);
       }
       continue;
@@ -3559,6 +3780,27 @@ function exactTask14BinderCallCount(record: SourceRecord): number {
     }
     ts.forEachChild(node, visit);
   }
+}
+
+function hasExactTask14DispatcherBindingCensus(
+  record: SourceRecord,
+  declaration: ts.ImportDeclaration
+): boolean {
+  const local = declaration.importClause?.name;
+  if (local === undefined) {
+    return false;
+  }
+  const references = identifierReferences(
+    record.sourceFile,
+    local.text
+  ).filter((reference) => !isNonReferencePropertyName(reference));
+  return references.length === 2 &&
+    references.filter((reference) => reference === local).length === 1 &&
+    references.filter((reference) =>
+      ts.isPropertyAccessExpression(reference.parent) &&
+      reference.parent.expression === reference &&
+      isExactTask14BinderCall(reference.parent.name, record)
+    ).length === 1;
 }
 
 function dispatcherImportSignature(
