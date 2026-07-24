@@ -1086,3 +1086,114 @@ This is a review-ready forward causal-RED correction, not Task12 source
 authorization or GREEN, a product candidate, approval, integration, strict
 record 29, assurance transition, publication, or product release. Task136
 remains `implementing`; the strict product frontier remains **28 of 29**.
+
+## RV-1-E-961 Task12 Two-Point Loader-Oracle Correction
+
+Exact RV-1-E-961 authority
+`83d148d6fc56b46d1b7632096b0a3f678e8d8448` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`8a8b1b7809c38616cba68eebc562a3523323c5da`. Its first parent is
+`2c7bae6705aa8515c5a247fccdc60fa74b0a1e4c`; its second parent is that exact
+registry authority. Rejected candidates
+`9f33e0b9309be0bf62054833816833c932233819`,
+`fcb612e77ddeee905cc3dc2ff6163d362af10471`, and
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, plus every approved design,
+permanent RED, GREEN, repair, and review ancestor, remain preserved and
+unchanged.
+
+The default-G ceiling now uses one conservative AST analysis for the default
+`Object.freeze` literal. It reports every statically spelled own operation
+name, rejects any computed or unresolved name, rejects symbol keys and
+spreads, and rejects accessor or statically noncallable data properties.
+Direct controls prove the exact sole consumer is accepted while an added
+string issuer, a statically resolved computed issuer, a symbol-keyed issuer,
+and an unresolved computed operation are detected. Both real import orders
+then inspect the runtime default with `Reflect.ownKeys` and its exact own
+descriptor. The object must be frozen and contain exactly one enumerable,
+nonconfigurable, nonwritable data property named
+`consumeResidentDomainExecutionPermit` whose value is callable. Independent
+runtime controls reject string and symbol widening, an accessor, and
+noncallable data without invoking an accessor.
+
+The protected-definition freeze now classifies emitted value definitions
+across function and value declarations, class methods and fields, object
+methods and properties, class and object accessors, and later identifier,
+property, or element assignments. Literal names and statically resolvable
+computed string names are matched; unresolved dynamic definition names are
+reported separately and fail the production exact-source assertion. Eleven
+independent positive fixture files prove each required declaration/member/
+assignment family rather than allowing one recognized shape to mask another.
+Additional controls prove imports, re-exports, type-only and ambient
+declarations, consumer aliases, consumer/property calls, and Task14's
+authorized dispatcher-binder call do not create a definition source.
+Known symbol expressions such as existing `[Symbol.iterator]` members are
+statically non-string and cannot alias a protected string operation. The
+production definition set remains exactly the dispatcher and G sources with
+no unresolved definition source.
+
+The fresh focused command is:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1`: all three files fail and exactly 25 tests = 17 passed + 8
+causal RED failures. All new loader counterfactuals execute successfully.
+Four dispatcher tests and three G tests stop only at the absent Task12
+default dispatcher API; the loader stops only at the absent exact six-module
+static import map. There is no construction, event, context, execution-DTO,
+collection, dependency, type, oracle-control, or unrelated inherited
+failure. The non-fatal missing TypeScript source-map warning does not prevent
+collection. The complete focused log SHA-256 is
+`4caa82b09f379d5d3a805c3d7775785d2fcec30b64be8c0470fa4975729101d3`.
+
+The exact six released adapter controls exit `0`: 6 files and all **79/79**
+tests pass. Their complete log SHA-256 is
+`4bd4f680ff98e9aac8cb2db529a2c3b860e5f35d7164c6045a4c2c78696d958f`.
+Fresh standalone `npm run typecheck`
+exits `0` with `typecheck passed`; its complete log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` exits `0`
+with `factory-readiness passed`; its complete log SHA-256 is
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+
+The calibrated mission validator passes **20/20** with unchanged fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20** and contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The corrected loader test SHA-256 is
+`7ed97baa3003244e8aa5623d5851f6a4ff0c9dccd12bc8198c2b8f9aa0c40253`;
+its exact Git blob is `355814990eb1a6bdff392bfa76c4110de196084b`.
+Frozen dispatcher and G tests remain exact at
+blobs `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`. Both Task12 sources remain
+exact at dispatcher blob `96b0ade273696b9ffcf497119f1943f128821a58`
+and G blob `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+`git diff --check` passes. The exact correction scope is only:
+
+```text
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, dispatcher/G test, contract, plan, mission state, program
+registry, provider, credential, runtime activation, route, network, fallback,
+unrelated path, or pull request changes. Repository mode must retain the
+actual pre-record-29 W1 mismatch and may not claim prefix or release closure.
+The exact two-path descendant requires a completely fresh focused reviewer;
+both prior RED reviewers and every candidate author are ineligible. Any
+changed test or claim byte invalidates that review.
+
+This is a review-ready two-point forward loader-oracle correction, not Task12
+source authorization or GREEN, a product candidate, approval, integration,
+strict record 29, assurance transition, publication, or product release.
+Task136 remains `implementing`; the strict product frontier remains **28 of
+29**.
