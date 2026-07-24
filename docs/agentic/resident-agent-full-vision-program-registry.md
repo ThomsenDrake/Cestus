@@ -31411,3 +31411,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-999 — Exact `68293fbb` rejected; result-copy provenance repair authorized
+
+- Recorded at: 2026-07-24T18:02:15Z
+- Completely fresh read-only focused reviewer
+  `/root/task136_e998_red_review_6829` rejects exact candidate
+  `68293fbb7894607c7ae4160c8a52e8d21f4fc1c7`, tree
+  `8a10b916a9497822572889ecd5c142d71b76cb6b`, and no other candidate.
+  Review occurred against history-preserving authority merge
+  `c59393ca445875f15f9db2d79bc46a077ed233bc`; no candidate byte or
+  repository state changed.
+- The reviewer independently reproduced focused
+  **48 = 28 passed + 20 source-causal failures**, isolated intrinsic
+  counters **3 != 0** and **4 != 0**, loader **2/2**, released adapters
+  **79/79**, typecheck, factory, mission **20/20**, V4 assurance **20/20**,
+  four markers, repository first stop, scope, freezes, sibling/recovery
+  ancestry, dependency-free diff, review package, diff, and clean-state
+  gates.
+- Exact ten-field attestation shape, hidden/symbol-extra rejection,
+  independent fingerprint preimages, G-owned lifecycle separation, and
+  intrinsic proxy semantics are sound and must remain unchanged.
+- Rejection is mandatory because the current `Object.freeze` observer assigns
+  and may overwrite the expected copied result for every four-key
+  result-shaped freeze. Its identity assertion proves only that the
+  attestation used the last matching freeze, not that the dispatcher copied
+  the same-call adapter-returned result.
+- A nonconforming dispatcher can freeze the adapter's original result in
+  place and put that same object into an otherwise exact branded ten-field
+  attestation. Current capture, identity, own-key, and separately executed
+  content assertions all pass although no dispatcher copy occurred. A later
+  unrelated lookalike freeze can also overwrite the capture and reject a
+  conforming implementation.
+- A narrower forward test-only repair is authorized in exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`. It must capture
+  the exact raw result returned by the real released adapter during the same
+  dispatcher invocation at an unambiguous package-adapter construction or
+  execution boundary, then prove the branded attestation's exact result is
+  a distinct copied identity with complete equal content and exact nested
+  key/order/value rules. No later freeze or unrelated lookalike may
+  overwrite either identity.
+- A test-only module-boundary wrapper may be used only if it delegates to the
+  real released static constructor and exact adapter, preserves descriptor,
+  context, ledger, invocation input, result, and error behavior, and is
+  installed before the dedicated dispatcher module instance is evaluated.
+  It may observe only the exact same-call `executeApproved` return and must
+  be completely restored. This is not caller injection into the production
+  API or catalog; loader and released-adapter controls remain mandatory.
+- The exact ten-field attestation assertion must continue deriving
+  claim/capability/catalog/revision/hash/mode/fingerprints independently and
+  must keep G receipt/completion facts separate. The complete-unbranded and
+  replay intrinsic identities/counters, every earlier event/evidence/
+  readback/W/target-stream assertion, gateway-test blob
+  `6e720ce896176362256aa09ca0566def9bef2257`, both Task12 sources, loader,
+  claim, ontology, Task14 runtime, and all history remain frozen.
+- The forward descendant must rerun and report the exact focused signature
+  and every E-998 gate before one new atomic forward commit. It may not amend
+  any ancestor. A completely fresh read-only reviewer is required after
+  admission; every previous reviewer, author, and changed-byte analyst is
+  ineligible to approve it. Source work remains unauthorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejection and test-only result-provenance repair
+  authority, not corrected-RED approval/integration, source GREEN, Task136
+  product candidacy, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
