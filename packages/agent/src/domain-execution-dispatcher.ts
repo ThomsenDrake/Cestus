@@ -159,13 +159,14 @@ interface ResidentPortCommand {
 }
 
 interface ResidentInvocation {
+  readonly authorizationKind: "automatic-policy" | "human-approval";
   readonly logicalLocator: Readonly<Record<string, unknown>>;
   readonly requestEventId: string;
   readonly executionClaimEventId: string;
   readonly authorization: Readonly<Record<string, unknown>>;
   readonly previewHash: string;
-  readonly approvedPreviewHash: string;
-  readonly approvedBy: string;
+  readonly approvedPreviewHash?: string;
+  readonly approvedBy?: string;
   readonly currentPreview: AgentApprovedToolPreviewResult;
 }
 
@@ -173,6 +174,7 @@ interface ResidentPermitBinding {
   readonly port: object;
   readonly input: object;
   readonly catalogOrdinal: number;
+  issueResidentDomainInvocationAttestation(attestation: object): object;
 }
 
 const packageResidentCapabilities = new WeakMap<object, ResidentCapabilityState>();
@@ -372,7 +374,7 @@ function bindPackageOwnedResidentDomainExecutionPort(input: unknown): object {
         residentString(locator.toolId, "resident tool ID"),
         residentString(locator.toolVersion, "resident tool version")
       );
-      const rebuiltPreview = await entry.adapter.buildCurrentPreview({
+      const currentPreview = await entry.adapter.buildCurrentPreview({
         toolRequestId: residentString(locator.toolRequestId, "resident tool request ID"),
         toolId: entry.descriptor.toolId,
         toolVersion: entry.descriptor.toolVersion,
@@ -380,11 +382,6 @@ function bindPackageOwnedResidentDomainExecutionPort(input: unknown): object {
         taskId: state.taskId,
         requestedPreviewHash: residentHash(locator)
       });
-      const currentPreview = await normalizeResidentIdempotentPreview(
-        entry,
-        rebuiltPreview,
-        state.ledger
-      );
       return Object.freeze({
         catalogOrdinal: entry.ordinal,
         executionCapabilityHash: state.capabilityHash,
@@ -418,10 +415,80 @@ function bindPackageOwnedResidentDomainExecutionPort(input: unknown): object {
       if (permitBinding.catalogOrdinal !== entry.ordinal) {
         throw new Error("Resident execution permit catalog ordinal does not match the selected tool.");
       }
-      const automatic = Reflect.get(invocation.authorization, "authorizationKind") === "automatic-policy";
+      const authorization = residentDataRecord(
+        invocation.authorization,
+        "resident invocation authorization"
+      );
+      const automatic = invocation.authorizationKind === "automatic-policy";
+      const expectedInvocationKeys = automatic
+        ? [
+            "authorizationKind",
+            "logicalLocator",
+            "requestEventId",
+            "executionClaimEventId",
+            "authorization",
+            "previewHash",
+            "currentPreview"
+          ]
+        : [
+            "authorizationKind",
+            "logicalLocator",
+            "requestEventId",
+            "executionClaimEventId",
+            "authorization",
+            "previewHash",
+            "approvedPreviewHash",
+            "approvedBy",
+            "currentPreview"
+          ];
+      const invocationRecord = residentDataRecord(
+        canonicalResidentInvocationInput,
+        "canonical resident invocation input"
+      );
+      rejectResidentUnknown(
+        invocationRecord,
+        expectedInvocationKeys,
+        "canonical resident invocation input"
+      );
+      if (
+        Object.keys(invocationRecord).length !== expectedInvocationKeys.length ||
+        invocation.authorizationKind !== authorization.authorizationKind
+      ) {
+        throw new Error("Canonical resident invocation input does not match its authorization branch.");
+      }
       if (automatic !== (entry.ordinal === 10)) {
         throw new Error("Resident execution authorization does not match the catalog approval boundary.");
       }
+      if (
+        automatic
+          ? Object.keys(authorization).length !== 1
+          : (
+              Object.keys(authorization).length !== 4 ||
+              invocation.approvedBy !== authorization.approvedBy ||
+              invocation.approvedPreviewHash !== authorization.approvedPreviewHash
+            )
+      ) {
+        throw new Error("Resident execution authorization does not contain the exact durable approval tuple.");
+      }
+      const adapterPreview = await normalizeResidentIdempotentPreview(
+        entry,
+        invocation.currentPreview,
+        state.ledger
+      );
+      const adapterPreviewHash =
+        entry.ordinal === 4 &&
+        Reflect.get(invocation.currentPreview.preview, "currentReviewState") === "accepted"
+          ? residentHash(adapterPreview.preview)
+          : residentString(invocation.previewHash, "resident preview hash");
+      const approvedPreviewHash = automatic
+        ? adapterPreviewHash
+        : residentString(
+            entry.ordinal === 4 ? adapterPreviewHash : invocation.approvedPreviewHash,
+            "resident approved preview hash"
+          );
+      const approvedBy = automatic
+        ? "resident-automatic-policy"
+        : residentString(invocation.approvedBy, "resident approver");
       const beforeEvents = await state.ledger.readAll();
       const result = await entry.adapter.executeApproved({
         toolRequestId: residentString(locator.toolRequestId, "resident tool request ID"),
@@ -431,23 +498,22 @@ function bindPackageOwnedResidentDomainExecutionPort(input: unknown): object {
         taskId: state.taskId,
         sideEffectClass: entry.descriptor.sideEffectClass,
         approvalClass: entry.descriptor.requiredApprovalClass,
-        previewHash: residentString(invocation.previewHash, "resident preview hash"),
-        approvedPreviewHash: residentString(invocation.approvedPreviewHash, "resident approved preview hash"),
-        approvedBy: residentString(invocation.approvedBy, "resident approver"),
-        sourceEventIds: entry.ordinal === 4
-          ? invocation.currentPreview.sourceEventIds.slice(0, 2)
-          : invocation.currentPreview.sourceEventIds,
-        inputArtifactHashes: invocation.currentPreview.inputArtifactHashes,
-        provenanceRefs: invocation.currentPreview.provenanceRefs
+        previewHash: approvedPreviewHash,
+        approvedPreviewHash,
+        approvedBy,
+        sourceEventIds: adapterPreview.sourceEventIds,
+        inputArtifactHashes: adapterPreview.inputArtifactHashes,
+        provenanceRefs: adapterPreview.provenanceRefs
       });
       const afterEvents = await state.ledger.readAll();
-      return attestResidentDomainResult(
+      const attestation = attestResidentDomainResult(
         entry,
         invocation,
         result,
         beforeEvents,
         afterEvents
       );
+      return permitBinding.issueResidentDomainInvocationAttestation(attestation);
     }
   });
   return residentDomainExecutionPort;
@@ -561,8 +627,12 @@ function attestResidentDomainResult(
   beforeEvents: readonly unknown[],
   afterEvents: readonly unknown[]
 ): Readonly<Record<string, unknown>> {
-  const eventIds = residentUniqueStrings(result.eventIds, "resident domain event ID");
-  const artifactHashes = residentUniqueStrings(result.artifactHashes, "resident artifact hash");
+  if ([0, 1, 8].includes(entry.ordinal)) {
+    throw new Error("Resident catalog ordinal cannot produce a successful invocation attestation.");
+  }
+  const copiedResult = copyResidentDomainResult(result);
+  const eventIds = copiedResult.eventIds;
+  const artifactHashes = copiedResult.artifactHashes;
   const addedEvents = afterEvents.filter((event) =>
     !beforeEvents.some((candidate) =>
       Reflect.get(candidate as object, "id") === Reflect.get(event as object, "id")
@@ -570,24 +640,48 @@ function attestResidentDomainResult(
   );
   let evidenceMode: "new-ledger-events" | "idempotent-existing-ledger-events" | "nonledger-projection-artifacts";
   if (entry.ordinal === 7) {
+    const preview = residentDataRecord(
+      invocation.currentPreview.preview,
+      "resident projection approved preview"
+    );
+    const expectedOutputs = residentArray(
+      preview.expectedArtifactOutputs,
+      "resident projection approved artifact outputs"
+    );
+    const expectedArtifactHashes = expectedOutputs.map((output) =>
+      residentString(
+        residentDataRecord(
+          output,
+          "resident projection approved artifact output"
+        ).artifactHash,
+        "resident projection approved artifact hash"
+      )
+    );
     if (
       eventIds.length !== 0 ||
       addedEvents.length !== 0 ||
       artifactHashes.length === 0 ||
-      result.readModelChanges.length !== 1 ||
-      result.readModelChanges[0]?.projectionName !== "workspace-projection-artifacts"
+      !residentSameStrings(artifactHashes, expectedArtifactHashes) ||
+      copiedResult.readModelChanges.length !== 1 ||
+      copiedResult.readModelChanges[0]?.projectionName !== "workspace-projection-artifacts"
     ) {
       throw new Error("Resident projection execution returned inadmissible non-ledger evidence.");
     }
     evidenceMode = "nonledger-projection-artifacts";
   } else {
-    if (eventIds.length === 0) {
-      throw new Error("Resident domain execution returned no durable domain event evidence.");
+    const expectedCount = entry.ordinal === 10 ? undefined : 1;
+    if (
+      eventIds.length === 0 ||
+      (expectedCount !== undefined && eventIds.length !== expectedCount)
+    ) {
+      throw new Error("Resident domain execution returned the wrong catalog event count.");
     }
-    const selectedEvents = afterEvents.filter((event) =>
-      eventIds.includes(String(Reflect.get(event as object, "id")))
+    const selectedEvents = eventIds.map((eventId) =>
+      afterEvents.find((event) =>
+        Reflect.get(event as object, "id") === eventId
+      )
     );
-    if (selectedEvents.length !== eventIds.length) {
+    if (selectedEvents.some((event) => event === undefined)) {
       throw new Error("Resident domain execution event evidence is absent from the mounted ledger.");
     }
     const expectedType = residentExpectedEventType(entry.ordinal);
@@ -596,6 +690,23 @@ function attestResidentDomainResult(
       selectedEvents.some((event) => Reflect.get(event as object, "type") !== expectedType)
     ) {
       throw new Error("Resident domain execution returned evidence outside its catalog event family.");
+    }
+    if (entry.ordinal === 10) {
+      const selectedCandidateIds = residentArray(
+        Reflect.get(invocation.currentPreview.preview, "selectedCandidateIds"),
+        "resident legacy selected candidates"
+      ).map((candidateId) =>
+        residentString(candidateId, "resident legacy selected candidate ID")
+      );
+      const proposedObjects = selectedEvents.map((event) =>
+        residentString(
+          Reflect.get(Reflect.get(event as object, "payload"), "object"),
+          "resident legacy proposed candidate ID"
+        )
+      );
+      if (!residentSameStrings(proposedObjects, selectedCandidateIds)) {
+        throw new Error("Resident legacy candidate evidence is outside the exact selected-candidate order.");
+      }
     }
     const addedIds = addedEvents.map((event) => String(Reflect.get(event as object, "id")));
     if (residentSameStrings(addedIds, eventIds)) {
@@ -609,27 +720,70 @@ function attestResidentDomainResult(
     }
   }
   return Object.freeze({
-    logicalLocator: invocation.logicalLocator,
-    executionCapabilityHash: Reflect.get(invocation.logicalLocator, "executionCapabilityHash"),
-    requestEventId: invocation.requestEventId,
+    schemaVersion: "resident-domain-invocation-attestation.v1",
     executionClaimEventId: invocation.executionClaimEventId,
-    authorization: invocation.authorization,
+    executionCapabilityHash: Reflect.get(invocation.logicalLocator, "executionCapabilityHash"),
     catalogOrdinal: entry.ordinal,
     implementationRevision: entry.implementationRevision,
+    residentInvocationInputHash: residentHash(invocation),
     evidenceMode,
-    residentInvocationInputHash: residentHash({
-      logicalLocator: invocation.logicalLocator,
-      requestEventId: invocation.requestEventId,
-      executionClaimEventId: invocation.executionClaimEventId,
-      authorization: invocation.authorization
-    }),
-    outcomeDisposition: "completed",
     preInvocationLedgerFingerprint: residentHash(beforeEvents),
     postInvocationLedgerFingerprint: residentHash(afterEvents),
-    domainEventIds: eventIds,
-    artifactHashes,
-    readModelChanges: Object.freeze(result.readModelChanges.map((change) => change.projectionName)),
-    resultSummary: result.resultSummary
+    result: copiedResult
+  });
+}
+
+function copyResidentDomainResult(
+  value: AgentDomainExecutionResult
+): AgentDomainExecutionResult {
+  const result = residentDataRecord(value, "resident domain execution result");
+  rejectResidentUnknown(
+    result,
+    ["eventIds", "artifactHashes", "readModelChanges", "resultSummary"],
+    "resident domain execution result"
+  );
+  if (Object.keys(result).length !== 4) {
+    throw new Error("Resident domain execution result must contain the exact four result fields.");
+  }
+  const readModelChanges = residentArray(
+    result.readModelChanges,
+    "resident domain read-model changes"
+  ).map((value) => {
+    const change = residentDataRecord(value, "resident domain read-model change");
+    rejectResidentUnknown(
+      change,
+      ["projectionName", "change", "relatedIds"],
+      "resident domain read-model change"
+    );
+    const relatedIds = change.relatedIds === undefined
+      ? undefined
+      : residentUniqueStrings(
+          change.relatedIds as readonly string[],
+          "resident domain related ID"
+        );
+    return Object.freeze({
+      projectionName: residentString(
+        change.projectionName,
+        "resident domain projection name"
+      ),
+      change: residentString(change.change, "resident domain projection change"),
+      ...(relatedIds === undefined ? {} : { relatedIds })
+    });
+  });
+  return Object.freeze({
+    eventIds: residentUniqueStrings(
+      result.eventIds as readonly string[],
+      "resident domain event ID"
+    ),
+    artifactHashes: residentUniqueStrings(
+      result.artifactHashes as readonly string[],
+      "resident artifact hash"
+    ) as readonly `sha256:${string}`[],
+    readModelChanges: Object.freeze(readModelChanges),
+    resultSummary: residentString(
+      result.resultSummary,
+      "resident domain result summary"
+    )
   });
 }
 
@@ -781,6 +935,13 @@ function residentUniqueStrings(value: readonly string[], label: string): readonl
   }
   if (new Set(value).size !== value.length) {
     throw new Error(`${label} list must not contain duplicates.`);
+  }
+  return Object.freeze([...value]);
+}
+
+function residentArray(value: unknown, label: string): readonly unknown[] {
+  if (!Array.isArray(value) || isProxy(value)) {
+    throw new Error(`${label} must be a non-proxy array.`);
   }
   return Object.freeze([...value]);
 }
