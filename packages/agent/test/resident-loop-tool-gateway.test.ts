@@ -435,6 +435,314 @@ describe("resident-loop tool gateway", () => {
     expect(human.effects.count).toBe(0);
   });
 
+  it("refuses a fresh execution when the exact stream already has its permanent claim", async () => {
+    const harness = await prepareResidentGatewayHarness({
+      authorizationKind: "automatic-policy",
+      suffix: "fresh-already-claimed"
+    });
+    const requestFresh = reflectedOperation(
+      harness.gateway,
+      "requestFreshAuthorized"
+    );
+    const executeFresh = reflectedOperation(
+      harness.gateway,
+      "executeFreshAuthorized"
+    );
+    const requested = await Reflect.apply(
+      requestFresh,
+      harness.gateway,
+      [harness.locator]
+    );
+    const request = requiredResidentGatewayEvent(
+      await harness.ledger.readStream(residentDomainStreamId(harness.locator)),
+      "agent.resident-domain.requested.v1"
+    );
+    const existingClaim = await appendFreshResidentExecutionClaim(
+      harness.ledger,
+      harness.locator,
+      request
+    );
+
+    const execution = await settledResidentRecovery(() => Reflect.apply(
+      executeFresh,
+      harness.gateway,
+      [requested]
+    ));
+    const stream = await harness.ledger.readStream(
+      residentDomainStreamId(harness.locator)
+    );
+
+    expect({
+      ...execution,
+      residentEventTypes: stream.map((event) => event.type),
+      claimIds: stream
+        .filter((event) =>
+          event.type === "agent.resident-domain.execution-claimed.v1"
+        )
+        .map((event) => event.id),
+      effects: harness.effects.count
+    }).toEqual({
+      outcome: "rejected",
+      message: expect.stringMatching(/claim|canonical|prefix|terminal/i),
+      residentEventTypes: [
+        "agent.resident-domain.requested.v1",
+        "agent.resident-domain.execution-claimed.v1"
+      ],
+      claimIds: [existingClaim.id],
+      effects: 0
+    });
+  });
+
+  it("rereads every assigned lifecycle identity instead of trusting substituted append returns", async () => {
+    const cases = [
+      {
+        target: "agent.resident-domain.requested.v1",
+        expectedEventTypes: ["agent.resident-domain.requested.v1"],
+        expectedEffects: 0
+      },
+      {
+        target: "agent.resident-domain.execution-claimed.v1",
+        expectedEventTypes: [
+          "agent.resident-domain.requested.v1",
+          "agent.resident-domain.execution-claimed.v1"
+        ],
+        expectedEffects: 0
+      },
+      {
+        target: "agent.resident-domain.outcome-observed.v1",
+        expectedEventTypes: [
+          "agent.resident-domain.requested.v1",
+          "agent.resident-domain.execution-claimed.v1",
+          "agent.resident-domain.outcome-observed.v1"
+        ],
+        expectedEffects: 1
+      },
+      {
+        target: "agent.resident-domain.completed.v1",
+        expectedEventTypes: [
+          "agent.resident-domain.requested.v1",
+          "agent.resident-domain.execution-claimed.v1",
+          "agent.resident-domain.outcome-observed.v1",
+          "agent.resident-domain.completed.v1"
+        ],
+        expectedEffects: 1
+      }
+    ] as const;
+
+    const results = [];
+    for (const [index, entry] of cases.entries()) {
+      let ledger:
+        | SubstitutingResidentAppendLedger
+        | undefined;
+      const harness = await prepareResidentGatewayHarness({
+        authorizationKind: "automatic-policy",
+        suffix: `substituted-append-${index}`,
+        instrumentation: {
+          createLedger() {
+            ledger = new SubstitutingResidentAppendLedger(entry.target);
+            return ledger;
+          }
+        }
+      });
+      if (ledger === undefined) {
+        throw new Error("Substituted-append fixture did not create its ledger.");
+      }
+      const requestFresh = reflectedOperation(
+        harness.gateway,
+        "requestFreshAuthorized"
+      );
+      const executeFresh = reflectedOperation(
+        harness.gateway,
+        "executeFreshAuthorized"
+      );
+      const operation = async () => {
+        const requested = await Reflect.apply(
+          requestFresh,
+          harness.gateway,
+          [harness.locator]
+        );
+        return await Reflect.apply(
+          executeFresh,
+          harness.gateway,
+          [requested]
+        );
+      };
+      const outcome = await settledResidentRecovery(operation);
+      const stream = await harness.ledger.readStream(
+        residentDomainStreamId(harness.locator)
+      );
+      expectOntologyValidResidentEvents(ledger.substitutedReturns);
+      results.push({
+        target: entry.target,
+        ...outcome,
+        residentEventTypes: stream.map((event) => event.type),
+        substitutedReturnCount: ledger.substitutedReturns.length,
+        durableUsedSubstitutedReturn: ledger.substitutedReturns.some(
+          (substituted) => stream.some((event) => event.id === substituted.id)
+        ),
+        effects: harness.effects.count
+      });
+    }
+
+    expect(results).toEqual(cases.map((entry) => ({
+      target: entry.target,
+      outcome: "rejected",
+      message: expect.stringMatching(/append|assigned|canonical|durable|identity|prefix|reread/i),
+      residentEventTypes: entry.expectedEventTypes,
+      substitutedReturnCount: 1,
+      durableUsedSubstitutedReturn: false,
+      effects: entry.expectedEffects
+    })));
+  });
+
+  it("maps a complete failed recovery receipt only to the proven post-claim failure", async () => {
+    const failedReceipt = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "automatic-policy",
+      terminal: "receipt",
+      suffix: "failed-receipt-only",
+      receiptDisposition: "failed"
+    });
+    expectCanonicalResidentDomainPrefix(failedReceipt.events);
+    const readFailedReceipt = reflectedOperation(
+      failedReceipt.gateway,
+      "rereadAndIssueFromLedger"
+    );
+    const failed = await Reflect.apply(
+      readFailedReceipt,
+      failedReceipt.gateway,
+      [failedReceipt.locator]
+    );
+    const failedStream = await failedReceipt.ledger.readStream(
+      residentDomainStreamId(failedReceipt.locator)
+    );
+    const failedTerminal = failedStream.find(
+      (event) => event.type === "agent.resident-domain.failed.v1"
+    );
+    expect({
+      readback: failed,
+      terminalType: failedStream.at(-1)?.type,
+      terminalCausationId: failedTerminal?.context.causationId,
+      terminalFailure: failedTerminal?.payload.failure,
+      hasCompleted: failedStream.some((event) =>
+        event.type === "agent.resident-domain.completed.v1"
+      ),
+      effects: failedReceipt.effects.count
+    }).toEqual({
+      readback: {
+        authorizationKind: "automatic-policy",
+        stage: "failed",
+        logicalLocator: failedReceipt.locator,
+        executionCapabilityHash:
+          failedReceipt.locator.executionCapabilityHash,
+        requestEventId: failedReceipt.request.id,
+        failurePhase: "post-claim",
+        executionClaimEventId:
+          requiredPrefixEvent(failedReceipt.claim, "claim").id,
+        outcomeReceiptEventId:
+          requiredPrefixEvent(failedReceipt.receipt, "receipt").id,
+        resultEventId: expect.stringMatching(/^evt_[a-zA-Z0-9_-]+$/)
+      },
+      terminalType: "agent.resident-domain.failed.v1",
+      terminalCausationId: failedReceipt.receipt?.id,
+      terminalFailure: {
+          authorizationKind: "automatic-policy",
+          failurePhase: "post-claim",
+          executionClaimEventId:
+            requiredPrefixEvent(failedReceipt.claim, "claim").id,
+          outcomeReceiptEventId:
+            requiredPrefixEvent(failedReceipt.receipt, "receipt").id
+      },
+      hasCompleted: false,
+      effects: 0
+    });
+  });
+
+  it("rejects an incomplete recovery receipt instead of terminalizing it as completed", async () => {
+    const incompleteReceipt = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "automatic-policy",
+      terminal: "receipt",
+      suffix: "incomplete-receipt-only",
+      receiptEnvelopeHash:
+        "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    });
+    expectOntologyValidResidentEvents(incompleteReceipt.events);
+    const readIncompleteReceipt = reflectedOperation(
+      incompleteReceipt.gateway,
+      "rereadAndIssueFromLedger"
+    );
+    const incomplete = await settledResidentRecovery(() => Reflect.apply(
+      readIncompleteReceipt,
+      incompleteReceipt.gateway,
+      [incompleteReceipt.locator]
+    ));
+    const incompleteStream = await incompleteReceipt.ledger.readStream(
+      residentDomainStreamId(incompleteReceipt.locator)
+    );
+    expect({
+      ...incomplete,
+      residentEventTypes: incompleteStream.map((event) => event.type),
+      effects: incompleteReceipt.effects.count
+    }).toEqual({
+      outcome: "rejected",
+      message: expect.stringMatching(/complete|envelope|evidence|fingerprint|hash|receipt/i),
+      residentEventTypes: [
+        "agent.resident-domain.requested.v1",
+        "agent.resident-domain.execution-claimed.v1",
+        "agent.resident-domain.outcome-observed.v1"
+      ],
+      effects: 0
+    });
+  });
+
+  it("rejects human approvals after their deadline or the trusted current time", async () => {
+    const cases = [
+      {
+        suffix: "approval-after-deadline",
+        occurredAt: "2026-07-20T12:00:00.001Z"
+      },
+      {
+        suffix: "approval-after-current-time",
+        occurredAt: "2026-07-19T12:00:01.000Z"
+      }
+    ] as const;
+    const results = [];
+
+    for (const entry of cases) {
+      const decision = await prepareLiveHumanDecisionCase(entry.suffix);
+      await appendResidentHumanApproval(
+        decision.harness.ledger,
+        decision.harness.locator,
+        entry.suffix,
+        { occurredAt: entry.occurredAt }
+      );
+      const outcome = await settledResidentRecovery(() => Reflect.apply(
+        decision.readDecision,
+        decision.harness.gateway,
+        [decision.requested]
+      ));
+      const stream = await decision.harness.ledger.readStream(
+        residentDomainStreamId(decision.harness.locator)
+      );
+      results.push({
+        suffix: entry.suffix,
+        ...outcome,
+        residentEventTypes: stream.map((event) => event.type),
+        effects: decision.harness.effects.count
+      });
+    }
+
+    expect(results).toEqual(cases.map((entry) => ({
+      suffix: entry.suffix,
+      outcome: "rejected",
+      message: expect.stringMatching(/approval|chronology|current|deadline|future|stale/i),
+      residentEventTypes: [
+        "agent.resident-domain.requested.v1",
+        "agent.resident-domain.human-approved.v1"
+      ],
+      effects: 0
+    })));
+  });
+
   it("reissues only exact completed denied failed and unknown resident prefixes", async () => {
     const cases = [
       {
@@ -1152,6 +1460,45 @@ class TargetStreamHostileResidentLedger extends InMemoryEventLedger {
   }
 }
 
+type ResidentLifecycleAppendType =
+  | "agent.resident-domain.requested.v1"
+  | "agent.resident-domain.execution-claimed.v1"
+  | "agent.resident-domain.outcome-observed.v1"
+  | "agent.resident-domain.completed.v1";
+
+class SubstitutingResidentAppendLedger extends InMemoryEventLedger {
+  readonly substitutedReturns: KnowledgeEvent[] = [];
+
+  constructor(private readonly target: ResidentLifecycleAppendType) {
+    super();
+  }
+
+  override async append(
+    event: AppendableKnowledgeEvent,
+    options?: Parameters<EventLedger["append"]>[1]
+  ): Promise<KnowledgeEvent> {
+    const durable = await super.append(event, options);
+    if (
+      durable.type !== this.target ||
+      this.substitutedReturns.length > 0
+    ) {
+      return durable;
+    }
+    const substituted = structuredClone({
+      ...durable,
+      id: "evt_substituted_resident_append_1"
+    }) as KnowledgeEvent;
+    const validation = validateKnowledgeEvent(substituted);
+    if (!validation.success) {
+      throw new Error(
+        `Substituted resident append return is not schema-valid: ${validation.error.message}`
+      );
+    }
+    this.substitutedReturns.push(substituted);
+    return structuredClone(substituted);
+  }
+}
+
 interface UnknownResidentDomainApi {
   readonly create: (input: unknown) => Promise<unknown>;
   readonly bind: (input: unknown) => unknown;
@@ -1288,6 +1635,7 @@ function requiredResidentGatewayEvent<
     | "agent.resident-domain.execution-claimed.v1"
     | "agent.resident-domain.outcome-observed.v1"
     | "agent.resident-domain.completed.v1"
+    | "agent.resident-domain.failed.v1"
 >(
   events: readonly KnowledgeEvent[],
   type: T
@@ -1645,6 +1993,38 @@ async function appendResidentHumanApproval(
   return approved;
 }
 
+async function appendFreshResidentExecutionClaim(
+  ledger: InMemoryEventLedger,
+  locator: ResidentLogicalLocator,
+  request: ResidentRequestedEvent
+): Promise<ResidentClaimedEvent> {
+  const claim = await ledger.append({
+    type: "agent.resident-domain.execution-claimed.v1",
+    version: 1,
+    streamId: residentDomainStreamId(locator),
+    context: residentEventContext(
+      request.id,
+      request.payload.correlationId
+    ),
+    payload: {
+      schemaVersion: "resident-domain-execution-claimed.v1",
+      logicalLocator: locator,
+      executionCapabilityHash: locator.executionCapabilityHash,
+      causationId: request.id,
+      correlationId: request.payload.correlationId,
+      requestEventId: request.id,
+      authorization: {
+        authorizationKind: "automatic-policy"
+      },
+      claimedAt: fixedNow()
+    }
+  }, { expectedNextSequence: 2 });
+  if (claim.type !== "agent.resident-domain.execution-claimed.v1") {
+    throw new Error("Fresh resident claim fixture appended the wrong event type.");
+  }
+  return claim;
+}
+
 async function appendResidentHumanDenial(
   ledger: InMemoryEventLedger,
   locator: ResidentLogicalLocator,
@@ -1877,6 +2257,8 @@ async function appendCanonicalResidentDomainPrefix(input: {
   readonly terminal: ResidentPrefixTerminal;
   readonly suffix?: string;
   readonly createLedger?: () => InMemoryEventLedger;
+  readonly receiptDisposition?: "completed" | "failed";
+  readonly receiptEnvelopeHash?: `sha256:${string}`;
 }): Promise<CanonicalResidentPrefix> {
   const suffix = input.suffix ?? "canonical";
   const harness = await prepareResidentGatewayHarness({
@@ -2174,10 +2556,10 @@ async function appendCanonicalResidentDomainPrefix(input: {
       executionClaimEventId: claim.id,
       authorization
     }),
-    outcomeDisposition:
-      input.terminal === "post-claim-failed"
+    outcomeDisposition: input.receiptDisposition ??
+      (input.terminal === "post-claim-failed"
         ? "failed" as const
-        : "completed" as const,
+        : "completed" as const),
     preInvocationLedgerFingerprint,
     postInvocationLedgerFingerprint,
     domainEventIds: [domainEvent.id],
@@ -2198,7 +2580,8 @@ async function appendCanonicalResidentDomainPrefix(input: {
       causationId: claim.id,
       correlationId,
       ...receiptEnvelope,
-      envelopeHash: hashCanonical(receiptEnvelope)
+      envelopeHash:
+        input.receiptEnvelopeHash ?? hashCanonical(receiptEnvelope)
     }
   };
   const receipt = await ledger.append(receiptInput, {
