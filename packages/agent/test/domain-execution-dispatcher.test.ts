@@ -678,20 +678,48 @@ describe("agent domain execution dispatcher", () => {
       ({ ordinal }) => ![0, 1, 8].includes(ordinal)
     )) {
       const fixture = fixtureByKind.get(row.kind)!;
+      const releasedFixture = row.ordinal === 4
+        ? (await residentFactoryFixtures())[2]!
+        : fixture;
+      const residentStartedAt = new Date().toISOString();
       const resident = await executeResidentCatalogRow(
         fixture,
         row,
         `attested-runtime-${row.ordinal}`,
         true
       );
+      const residentFinishedAt = new Date().toISOString();
+      const releasedStartedAt = new Date().toISOString();
       const released = await executeReleasedResidentAdapter(
-        fixture,
+        releasedFixture,
         row,
         `released-runtime-${row.ordinal}`
       );
+      const releasedFinishedAt = new Date().toISOString();
       const attestation = resident.issuedAttestation;
       if (attestation === undefined) {
         throw new Error(`Catalog ordinal ${row.ordinal} issued no attestation.`);
+      }
+      if (row.ordinal === 4) {
+        expect(releasedFixture.ledger).not.toBe(fixture.ledger);
+        const residentResult = expectExactAcceptedGraphControl(
+          fixture,
+          resident.issuedResult,
+          resident.receipt.payload.domainEventIds.map((eventId) =>
+            resident.postInvocationLedgerEvents.find(
+              (event) => event.id === eventId
+            )
+          ),
+          { startedAt: residentStartedAt, finishedAt: residentFinishedAt }
+        );
+        expectExactAcceptedGraphControl(
+          releasedFixture,
+          released.result,
+          released.domainEvents,
+          { startedAt: releasedStartedAt, finishedAt: releasedFinishedAt }
+        );
+        expectExactResidentInvocationInputHash(resident, row, residentResult);
+        continue;
       }
       expect(resident.receipt.payload.domainEventIds, `ordinal ${row.ordinal}`)
         .toEqual(released.result.eventIds);
@@ -865,24 +893,52 @@ describe("agent domain execution dispatcher", () => {
         continue;
       }
 
+      const releasedFixture = row.ordinal === 4
+        ? (await residentFactoryFixtures())[2]!
+        : fixture;
+      const firstStartedAt = new Date().toISOString();
       const first = await executeResidentCatalogRow(
         fixture,
         row,
         `evidence-table-new-${row.ordinal}`,
         true
       );
+      const firstFinishedAt = new Date().toISOString();
+      const releasedStartedAt = new Date().toISOString();
       const released = await executeReleasedResidentAdapter(
-        fixture,
+        releasedFixture,
         row,
         `evidence-table-released-${row.ordinal}`
       );
+      const releasedFinishedAt = new Date().toISOString();
+      const exactReleasedResult = row.ordinal === 4
+        ? expectExactAcceptedGraphControl(
+            fixture,
+            first.issuedResult,
+            first.receipt.payload.domainEventIds.map((eventId) =>
+              first.postInvocationLedgerEvents.find(
+                (event) => event.id === eventId
+              )
+            ),
+            { startedAt: firstStartedAt, finishedAt: firstFinishedAt }
+          )
+        : released.result;
+      if (row.ordinal === 4) {
+        expect(releasedFixture.ledger).not.toBe(fixture.ledger);
+        expectExactAcceptedGraphControl(
+          releasedFixture,
+          released.result,
+          released.domainEvents,
+          { startedAt: releasedStartedAt, finishedAt: releasedFinishedAt }
+        );
+      }
       expect(first.receipt.payload.evidenceMode).toBe(
         row.ordinal === 7
           ? "nonledger-projection-artifacts"
           : "new-ledger-events"
       );
       expectExactResidentCatalogLifecycle(first, row);
-      expectExactResidentInvocationInputHash(first, row, released.result);
+      expectExactResidentInvocationInputHash(first, row, exactReleasedResult);
       if (row.ordinal === 7) {
         const preview = asDataRecord(
           Reflect.get(asDataRecord(first.currentPreview), "preview")
@@ -936,7 +992,7 @@ describe("agent domain execution dispatcher", () => {
       expect(second.receipt.payload.domainEventIds)
         .toEqual(first.receipt.payload.domainEventIds);
       expectExactResidentCatalogLifecycle(second, row);
-      expectExactResidentInvocationInputHash(second, row, released.result);
+      expectExactResidentInvocationInputHash(second, row, exactReleasedResult);
       tableFacts.push({
         ordinal: row.ordinal,
         outcome: "completed",
@@ -1423,6 +1479,74 @@ interface ReleasedResidentAdapterEvidence {
     ReturnType<AgentDomainExecutionAdapter["executeApproved"]>
   >;
   readonly domainEvents: readonly KnowledgeEvent[];
+}
+
+interface AcceptedGraphExecutionWindow {
+  readonly startedAt: string;
+  readonly finishedAt: string;
+}
+
+function expectExactAcceptedGraphControl(
+  fixture: ResidentFactoryFixture,
+  result: unknown,
+  domainEvents: readonly (KnowledgeEvent | undefined)[],
+  executionWindow: AcceptedGraphExecutionWindow
+): ReleasedResidentAdapterEvidence["result"] {
+  if (result === undefined) {
+    throw new Error("Accepted-graph control lacks its exact issued result.");
+  }
+  const context = requiredBindingContext(fixture, "context");
+  const assertionId = String(Reflect.get(context, "assertionId"));
+  const proposalEventId = String(Reflect.get(context, "proposalEventId"));
+  const evidenceId = String(Reflect.get(context, "evidenceId"));
+  const reviewerRationaleDraft = String(
+    Reflect.get(context, "reviewerRationaleDraft")
+  );
+  const accepted = domainEvents[0];
+  if (accepted?.type !== "assertion.accepted") {
+    throw new Error(
+      "Accepted-graph control lacks its exact assertion.accepted event."
+    );
+  }
+  const occurredAt = accepted.context.occurredAt;
+  expect(new Date(occurredAt).toISOString()).toBe(occurredAt);
+  expect(Date.parse(occurredAt))
+    .toBeGreaterThanOrEqual(Date.parse(executionWindow.startedAt));
+  expect(Date.parse(occurredAt))
+    .toBeLessThanOrEqual(Date.parse(executionWindow.finishedAt));
+  expect(domainEvents).toEqual([{
+    id: accepted.id,
+    type: "assertion.accepted",
+    version: 1,
+    streamId: `assertion_${assertionId}`,
+    sequence: 2,
+    context: {
+      actor: humanActor,
+      occurredAt,
+      causationId: proposalEventId,
+      correlationId: `corr_${assertionId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      assertionId,
+      acceptedBy: humanActor.id,
+      rationale: reviewerRationaleDraft
+    }
+  }]);
+  const expected = {
+    eventIds: [accepted.id],
+    artifactHashes: [],
+    readModelChanges: [{
+      projectionName: "ontology-graph",
+      change: `accepted assertion ${assertionId}`,
+      relatedIds: [assertionId, evidenceId]
+    }],
+    resultSummary:
+      "The human-reviewed assertion was accepted through the ontology assertion service."
+  };
+  expect(result).toEqual(expected);
+  return expected;
 }
 
 async function executeReleasedResidentAdapter(
