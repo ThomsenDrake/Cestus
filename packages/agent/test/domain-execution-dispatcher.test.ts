@@ -651,6 +651,29 @@ describe("agent domain execution dispatcher", () => {
       fixtures.map((fixture) => [fixture.kind, fixture])
     );
 
+    const copyRow = residentCatalogRows()[7]!;
+    const copyFixture = fixtureByKind.get(copyRow.kind)!;
+    const sameInvocation = await executeResidentCatalogRowWithRawResult(
+      copyFixture,
+      copyRow,
+      "attested-runtime-same-invocation-copy"
+    );
+    const independentReleased = await executeReleasedResidentAdapter(
+      copyFixture,
+      copyRow,
+      "released-runtime-same-invocation-copy"
+    );
+    expectExactResidentSameInvocationResultCopy(
+      sameInvocation.evidence,
+      sameInvocation.rawResult,
+      independentReleased.result
+    );
+    expectExactResidentInvocationInputHash(
+      sameInvocation.evidence,
+      copyRow,
+      independentReleased.result
+    );
+
     for (const row of residentCatalogRows().filter(
       ({ ordinal }) => ![0, 1, 8].includes(ordinal)
     )) {
@@ -1815,6 +1838,88 @@ function expectExactResidentInvocationInputHash(
   );
 }
 
+function expectExactResidentSameInvocationResultCopy(
+  evidence: ResidentCatalogExecutionEvidence,
+  rawResult: ReleasedResidentAdapterEvidence["result"],
+  independentReleasedResult: ReleasedResidentAdapterEvidence["result"]
+): void {
+  if (evidence.issuedResult === undefined) {
+    throw new Error("Resident catalog evidence lacks its exact issued result.");
+  }
+  const copiedResult = evidence.issuedResult;
+  const rawResultRecord = asDataRecord(rawResult);
+  const resultKeys = [
+    "eventIds",
+    "artifactHashes",
+    "readModelChanges",
+    "resultSummary"
+  ];
+  expect(copiedResult).not.toBe(rawResult);
+  expect(Reflect.ownKeys(copiedResult)).toEqual(resultKeys);
+  expect(Reflect.ownKeys(rawResultRecord)).toEqual(resultKeys);
+  expect(copiedResult).toEqual(rawResult);
+  expect(copiedResult).toEqual(independentReleasedResult);
+
+  for (const key of ["eventIds", "artifactHashes"] as const) {
+    const copied = Reflect.get(copiedResult, key);
+    const raw = Reflect.get(rawResultRecord, key);
+    if (!Array.isArray(copied) || !Array.isArray(raw)) {
+      throw new Error(`Resident copied result lacks exact ${key}.`);
+    }
+    const arrayKeys = [
+      ...raw.map((_, index) => String(index)),
+      "length"
+    ];
+    expect(copied).not.toBe(raw);
+    expect(Reflect.ownKeys(copied)).toEqual(arrayKeys);
+    expect(Reflect.ownKeys(raw)).toEqual(arrayKeys);
+    expect(copied).toEqual(raw);
+  }
+
+  const copiedChanges = Reflect.get(copiedResult, "readModelChanges");
+  const rawChanges = Reflect.get(rawResultRecord, "readModelChanges");
+  if (!Array.isArray(copiedChanges) || !Array.isArray(rawChanges)) {
+    throw new Error("Resident copied result lacks exact read-model changes.");
+  }
+  const changeArrayKeys = [
+    ...rawChanges.map((_, index) => String(index)),
+    "length"
+  ];
+  expect(copiedChanges).not.toBe(rawChanges);
+  expect(Reflect.ownKeys(copiedChanges)).toEqual(changeArrayKeys);
+  expect(Reflect.ownKeys(rawChanges)).toEqual(changeArrayKeys);
+  expect(copiedChanges).toEqual(rawChanges);
+  for (let index = 0; index < rawChanges.length; index += 1) {
+    const copiedChange = asDataRecord(copiedChanges[index]);
+    const rawChange = asDataRecord(rawChanges[index]);
+    expect(copiedChange).not.toBe(rawChange);
+    expect(Reflect.ownKeys(copiedChange)).toEqual([
+      "projectionName",
+      "change",
+      "relatedIds"
+    ]);
+    expect(Reflect.ownKeys(rawChange)).toEqual([
+      "projectionName",
+      "change",
+      "relatedIds"
+    ]);
+    expect(copiedChange).toEqual(rawChange);
+    const copiedRelatedIds = Reflect.get(copiedChange, "relatedIds");
+    const rawRelatedIds = Reflect.get(rawChange, "relatedIds");
+    if (!Array.isArray(copiedRelatedIds) || !Array.isArray(rawRelatedIds)) {
+      throw new Error("Resident copied result lacks exact related IDs.");
+    }
+    const relatedIdKeys = [
+      ...rawRelatedIds.map((_, relatedIndex) => String(relatedIndex)),
+      "length"
+    ];
+    expect(copiedRelatedIds).not.toBe(rawRelatedIds);
+    expect(Reflect.ownKeys(copiedRelatedIds)).toEqual(relatedIdKeys);
+    expect(Reflect.ownKeys(rawRelatedIds)).toEqual(relatedIdKeys);
+    expect(copiedRelatedIds).toEqual(rawRelatedIds);
+  }
+}
+
 async function foreignLegacyApprovalFixture(): Promise<{
   readonly fixture: ResidentFactoryFixture;
 }> {
@@ -2265,13 +2370,123 @@ async function prepareStructuralResidentAttestationAttempt(
   };
 }
 
+interface ResidentCatalogExecutionRuntime {
+  readonly dispatcherModule?: object;
+  readonly gatewayFactory?: typeof createResidentLoopToolGateway;
+}
+
+interface SameInvocationResultEvidence {
+  readonly evidence: ResidentCatalogExecutionEvidence;
+  readonly rawResult: ReleasedResidentAdapterEvidence["result"];
+}
+
+async function executeResidentCatalogRowWithRawResult(
+  fixture: ResidentFactoryFixture,
+  row: ResidentCatalogRow,
+  suffix: string
+): Promise<SameInvocationResultEvidence> {
+  if (row.ordinal !== 7) {
+    throw new Error("Same-invocation result capture requires catalog ordinal 7.");
+  }
+  const expectedToolRequestId = `toolreq_dispatcher_${suffix}`;
+  let constructorCount = 0;
+  let executionCount = 0;
+  let rawResult: ReleasedResidentAdapterEvidence["result"] | undefined;
+  vi.resetModules();
+  vi.doMock("../src/adapters/destructive-repair.js", async (importOriginal) => {
+    const actual = await importOriginal<
+      typeof import("../src/adapters/destructive-repair.js")
+    >();
+    return {
+      ...actual,
+      createWorkspaceProjectionRebuildAdapter(
+        input: Parameters<
+          typeof actual.createWorkspaceProjectionRebuildAdapter
+        >[0]
+      ) {
+        constructorCount += 1;
+        const realAdapter =
+          actual.createWorkspaceProjectionRebuildAdapter(input);
+        if (realAdapter.descriptor !== actual.workspaceProjectionRebuildDescriptor) {
+          throw new Error(
+            "Dedicated result capture lost the exact released descriptor."
+          );
+        }
+        return Object.freeze({
+          descriptor: realAdapter.descriptor,
+          buildCurrentPreview(
+            previewInput: Parameters<
+              AgentDomainExecutionAdapter["buildCurrentPreview"]
+            >[0]
+          ) {
+            return realAdapter.buildCurrentPreview(previewInput);
+          },
+          executeApproved(
+            executionInput: Parameters<
+              AgentDomainExecutionAdapter["executeApproved"]
+            >[0]
+          ) {
+            const returned = realAdapter.executeApproved(executionInput);
+            if (executionInput.toolRequestId !== expectedToolRequestId) {
+              return returned;
+            }
+            executionCount += 1;
+            return Promise.resolve(returned).then((result) => {
+              if (rawResult !== undefined) {
+                throw new Error(
+                  "Dedicated result capture observed the same invocation twice."
+                );
+              }
+              rawResult = result;
+              return result;
+            });
+          }
+        } satisfies AgentDomainExecutionAdapter);
+      }
+    };
+  });
+
+  try {
+    const [dedicatedDispatcher, dedicatedGateway] = await Promise.all([
+      import("../src/domain-execution-dispatcher.js"),
+      import("../src/resident-loop-tool-gateway.js")
+    ]);
+    const evidence = await executeResidentCatalogRow(
+      fixture,
+      row,
+      suffix,
+      true,
+      {
+        dispatcherModule: dedicatedDispatcher,
+        gatewayFactory: dedicatedGateway.createResidentLoopToolGateway
+      }
+    );
+    if (
+      constructorCount !== 1 ||
+      executionCount !== 1 ||
+      rawResult === undefined
+    ) {
+      throw new Error(
+        "Dedicated result capture did not observe one exact released adapter call."
+      );
+    }
+    return { evidence, rawResult };
+  } finally {
+    vi.doUnmock("../src/adapters/destructive-repair.js");
+    vi.resetModules();
+  }
+}
+
 async function executeResidentCatalogRow(
   fixture: ResidentFactoryFixture,
   row: ResidentCatalogRow,
   suffix: string,
-  captureIssuedAttestation = false
+  captureIssuedAttestation = false,
+  runtime: ResidentCatalogExecutionRuntime = {}
 ): Promise<ResidentCatalogExecutionEvidence> {
-  const residentApi = residentDomainApi(domainExecutionDispatcherModule);
+  const residentApi = residentDomainApi(
+    runtime.dispatcherModule ?? domainExecutionDispatcherModule
+  );
   const capability = await residentApi.create(fixture.binding);
   const port = residentApi.bind({
     capability,
@@ -2280,20 +2495,24 @@ async function executeResidentCatalogRow(
     residentAgentId: fixture.residentAgentId,
     taskId: fixture.taskId
   });
-  const gateway = Reflect.apply(createResidentLoopToolGateway, undefined, [{
-    ledger: fixture.ledger,
-    now: fixedNow,
-    residentDomainExecutionPort: port,
-    async reverifyBeforeEffect() {
-      return Object.freeze({ kind: "current" });
-    },
-    async reverifyAfterEffect() {
-      return Object.freeze({ kind: "current" });
-    },
-    createTrustedToolRequestId() {
-      return `toolreq_dispatcher_${suffix}`;
-    }
-  }]);
+  const gateway = Reflect.apply(
+    runtime.gatewayFactory ?? createResidentLoopToolGateway,
+    undefined,
+    [{
+      ledger: fixture.ledger,
+      now: fixedNow,
+      residentDomainExecutionPort: port,
+      async reverifyBeforeEffect() {
+        return Object.freeze({ kind: "current" });
+      },
+      async reverifyAfterEffect() {
+        return Object.freeze({ kind: "current" });
+      },
+      createTrustedToolRequestId() {
+        return `toolreq_dispatcher_${suffix}`;
+      }
+    }]
+  );
   if (typeof gateway !== "object" || gateway === null) {
     throw new Error("Task12 resident G constructor returned no object.");
   }
@@ -2409,15 +2628,6 @@ async function executeResidentCatalogRow(
         const candidate = asDataRecord(frozen);
         const candidateLocator = asDataRecord(candidate.logicalLocator);
         if (
-          Object.keys(candidate).length === 4 &&
-          Array.isArray(candidate.eventIds) &&
-          Array.isArray(candidate.artifactHashes) &&
-          Array.isArray(candidate.readModelChanges) &&
-          typeof candidate.resultSummary === "string"
-        ) {
-          issuedResult = candidate;
-        }
-        if (
           candidateLocator.toolRequestId === locator.toolRequestId &&
           candidate.requestEventId !== undefined &&
           candidate.executionClaimEventId !== undefined &&
@@ -2440,7 +2650,6 @@ async function executeResidentCatalogRow(
           if (issuedAttestation === undefined) {
             const candidateResult = Reflect.get(candidate, "result");
             if (
-              issuedResult === undefined &&
               typeof candidateResult === "object" &&
               candidateResult !== null
             ) {
