@@ -678,11 +678,7 @@ describe("agent domain execution dispatcher", () => {
       );
       expect(exactResidentEvents, `ordinal ${row.ordinal}`)
         .toEqual(released.domainEvents);
-      expect(attestation.schemaVersion, `ordinal ${row.ordinal}`).toBe(
-        "resident-domain-invocation-attestation.v1"
-      );
-      expect(attestation.result, `ordinal ${row.ordinal}`)
-        .toEqual(released.result);
+      expectExactResidentInvocationInputHash(resident, row, released.result);
     }
   });
 
@@ -784,13 +780,28 @@ describe("agent domain execution dispatcher", () => {
       )
     ]);
 
+    const [automaticReleased, humanReleased] = await Promise.all([
+      executeReleasedResidentAdapter(
+        fixtures[5]!,
+        residentCatalogRows()[10]!,
+        "canonical-automatic-released"
+      ),
+      executeReleasedResidentAdapter(
+        fixtures[4]!,
+        residentCatalogRows()[7]!,
+        "canonical-human-released"
+      )
+    ]);
+
     expectExactResidentInvocationInputHash(
       automatic,
-      residentCatalogRows()[10]!
+      residentCatalogRows()[10]!,
+      automaticReleased.result
     );
     expectExactResidentInvocationInputHash(
       human,
-      residentCatalogRows()[7]!
+      residentCatalogRows()[7]!,
+      humanReleased.result
     );
   });
 
@@ -837,13 +848,18 @@ describe("agent domain execution dispatcher", () => {
         `evidence-table-new-${row.ordinal}`,
         true
       );
+      const released = await executeReleasedResidentAdapter(
+        fixture,
+        row,
+        `evidence-table-released-${row.ordinal}`
+      );
       expect(first.receipt.payload.evidenceMode).toBe(
         row.ordinal === 7
           ? "nonledger-projection-artifacts"
           : "new-ledger-events"
       );
       expectExactResidentCatalogLifecycle(first, row);
-      expectExactResidentInvocationInputHash(first, row);
+      expectExactResidentInvocationInputHash(first, row, released.result);
       if (row.ordinal === 7) {
         const preview = asDataRecord(
           Reflect.get(asDataRecord(first.currentPreview), "preview")
@@ -897,7 +913,7 @@ describe("agent domain execution dispatcher", () => {
       expect(second.receipt.payload.domainEventIds)
         .toEqual(first.receipt.payload.domainEventIds);
       expectExactResidentCatalogLifecycle(second, row);
-      expectExactResidentInvocationInputHash(second, row);
+      expectExactResidentInvocationInputHash(second, row, released.result);
       tableFacts.push({
         ordinal: row.ordinal,
         outcome: "completed",
@@ -1441,7 +1457,10 @@ interface ResidentCatalogExecutionEvidence {
   readonly completed: KnowledgeEventOf<"agent.resident-domain.completed.v1">;
   readonly currentPreview: unknown;
   readonly residentEvents: readonly KnowledgeEvent[];
+  readonly preInvocationLedgerEvents: readonly KnowledgeEvent[];
+  readonly postInvocationLedgerEvents: readonly KnowledgeEvent[];
   readonly issuedAttestation?: Readonly<Record<string, unknown>>;
+  readonly issuedResult?: Readonly<Record<string, unknown>>;
   readonly issuedAttestationInspection?: ResidentAttestationMismatchInspection;
   readonly invocationInput?: Readonly<Record<string, unknown>>;
 }
@@ -1645,7 +1664,8 @@ function expectExactResidentCatalogLifecycle(
 
 function expectExactResidentInvocationInputHash(
   evidence: ResidentCatalogExecutionEvidence,
-  row: ResidentCatalogRow
+  row: ResidentCatalogRow,
+  releasedResult: ReleasedResidentAdapterEvidence["result"]
 ): void {
   const lifecycle = expectExactResidentCatalogLifecycle(evidence, row);
   if (evidence.invocationInput === undefined) {
@@ -1700,26 +1720,54 @@ function expectExactResidentInvocationInputHash(
   );
   const invocationInputHash = residentTestHash(expected);
   const attestation = evidence.issuedAttestation;
-  expect(attestation.logicalLocator)
-    .toEqual(lifecycle.request.payload.logicalLocator);
-  expect(attestation.executionCapabilityHash)
-    .toBe(lifecycle.request.payload.executionCapabilityHash);
-  expect(attestation.requestEventId).toBe(lifecycle.request.id);
-  expect(attestation.executionClaimEventId).toBe(lifecycle.claim.id);
-  expect(attestation.authorization).toEqual(authorization);
-  expect(Object.keys(asDataRecord(attestation.authorization))).toEqual(
-    authorization.authorizationKind === "human-approval"
-      ? [
-          "authorizationKind",
-          "decisionEventId",
-          "approvedBy",
-          "approvedPreviewHash"
-        ]
-      : ["authorizationKind"]
-  );
-  expect(attestation.catalogOrdinal).toBe(row.ordinal);
-  expect(attestation.implementationRevision).toBe(row.implementationRevision);
-  expect(attestation.residentInvocationInputHash).toBe(invocationInputHash);
+  if (evidence.issuedResult === undefined) {
+    throw new Error("Resident catalog evidence lacks its copied issued result.");
+  }
+  const expectedEvidenceMode = row.ordinal === 7
+    ? "nonledger-projection-artifacts"
+    : evidence.postInvocationLedgerEvents.length >
+        evidence.preInvocationLedgerEvents.length
+      ? "new-ledger-events"
+      : "idempotent-existing-ledger-events";
+  const expectedAttestation = {
+    schemaVersion: "resident-domain-invocation-attestation.v1",
+    executionClaimEventId: lifecycle.claim.id,
+    executionCapabilityHash:
+      lifecycle.request.payload.executionCapabilityHash,
+    catalogOrdinal: row.ordinal,
+    implementationRevision: row.implementationRevision,
+    residentInvocationInputHash: invocationInputHash,
+    evidenceMode: expectedEvidenceMode,
+    preInvocationLedgerFingerprint:
+      residentTestHash(evidence.preInvocationLedgerEvents),
+    postInvocationLedgerFingerprint:
+      residentTestHash(evidence.postInvocationLedgerEvents),
+    result: evidence.issuedResult
+  };
+  expect(Reflect.ownKeys(attestation)).toEqual([
+    "schemaVersion",
+    "executionClaimEventId",
+    "executionCapabilityHash",
+    "catalogOrdinal",
+    "implementationRevision",
+    "residentInvocationInputHash",
+    "evidenceMode",
+    "preInvocationLedgerFingerprint",
+    "postInvocationLedgerFingerprint",
+    "result"
+  ]);
+  expect(attestation).toEqual(expectedAttestation);
+  expect(attestation).not.toHaveProperty("logicalLocator");
+  expect(attestation).not.toHaveProperty("requestEventId");
+  expect(attestation).not.toHaveProperty("authorization");
+  expect(attestation.result).toBe(evidence.issuedResult);
+  expect(Reflect.ownKeys(asDataRecord(attestation.result))).toEqual([
+    "eventIds",
+    "artifactHashes",
+    "readModelChanges",
+    "resultSummary"
+  ]);
+  expect(attestation.result).toEqual(releasedResult);
 
   expect(lifecycle.receipt.payload.logicalLocator)
     .toEqual(lifecycle.request.payload.logicalLocator);
@@ -2346,7 +2394,9 @@ async function executeResidentCatalogRow(
     );
   }
   const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
+  const ledgerEventsBeforeExecution = await fixture.ledger.readAll();
   let issuedAttestation: Readonly<Record<string, unknown>> | undefined;
+  let issuedResult: Readonly<Record<string, unknown>> | undefined;
   let issuedAttestationInspection:
     ResidentAttestationMismatchInspection | undefined;
   let invocationInput: Readonly<Record<string, unknown>> | undefined;
@@ -2358,6 +2408,15 @@ async function executeResidentCatalogRow(
         const frozen = originalFreeze(value);
         const candidate = asDataRecord(frozen);
         const candidateLocator = asDataRecord(candidate.logicalLocator);
+        if (
+          Object.keys(candidate).length === 4 &&
+          Array.isArray(candidate.eventIds) &&
+          Array.isArray(candidate.artifactHashes) &&
+          Array.isArray(candidate.readModelChanges) &&
+          typeof candidate.resultSummary === "string"
+        ) {
+          issuedResult = candidate;
+        }
         if (
           candidateLocator.toolRequestId === locator.toolRequestId &&
           candidate.requestEventId !== undefined &&
@@ -2379,6 +2438,14 @@ async function executeResidentCatalogRow(
           typeof candidate.residentInvocationInputHash === "string"
         ) {
           if (issuedAttestation === undefined) {
+            const candidateResult = Reflect.get(candidate, "result");
+            if (
+              issuedResult === undefined &&
+              typeof candidateResult === "object" &&
+              candidateResult !== null
+            ) {
+              issuedResult = asDataRecord(candidateResult);
+            }
             issuedAttestationInspection =
               createResidentAttestationMismatchInspection(candidate);
             issuedAttestation = issuedAttestationInspection.identity;
@@ -2407,12 +2474,22 @@ async function executeResidentCatalogRow(
   if (receipt === undefined || completed === undefined) {
     throw new Error("Task12 resident G returned without durable receipt and completion.");
   }
+  const claim = requiredExactResidentCatalogEvent(
+    stream,
+    "agent.resident-domain.execution-claimed.v1"
+  );
+  const ledgerEventsAfterExecution = (await fixture.ledger.readAll()).filter(
+    (event) => event.id !== receipt.id && event.id !== completed.id
+  );
   return {
     receipt,
     completed,
     currentPreview,
     residentEvents: stream,
+    preInvocationLedgerEvents: [...ledgerEventsBeforeExecution, claim],
+    postInvocationLedgerEvents: ledgerEventsAfterExecution,
     ...(issuedAttestation === undefined ? {} : { issuedAttestation }),
+    ...(issuedResult === undefined ? {} : { issuedResult }),
     ...(issuedAttestationInspection === undefined
       ? {}
       : { issuedAttestationInspection }),
