@@ -29262,6 +29262,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
 
+## RV-1-E-971 — Task136 identity-census RED admitted to fresh focused review
+
+- Recorded at: 2026-07-24T03:53:56Z
+- Exact candidate `31a017b4ad17b1ee427244f53fe9c2f797666586`,
+  sole parent RV-1-E-970 authority merge
+  `720847f0f5e78420792206978fb610cfb4efe50b`, changes exactly the loader
+  test and Task136 claim. Exact tree is
+  `9e69a15d2033a52eb171da7c255cdf862fcb0781`; loader blob is
+  `a05ee83f41eb697df3fe4f3ad3b25076c1513a2d` and claim blob is
+  `cdd716dd63c67c18cb412412301bcd83c16ccb9e`. The two-path delta is
+  **+354/-3** with no dependency change.
+- Dispatcher/G test blobs remain exact
+  `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`; Task12 sources remain exact
+  `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`. Rejected `97610438`,
+  `a1ed492f`, `84b9f6a8`, `fc580fc1`, `9f33e0b9`, `fcb612e7`, and
+  `b54281b0` remain ancestral.
+- Task14's exact dispatcher default local now has a complete reference
+  census: only its import binding and direct sole binder receiver are
+  admitted. Default/local/aliased exports, aliases, destructuring, other
+  property/call access, return/yield/capture/store/pass/outward assignment,
+  and miscellaneous identity uses fail while released legacy dispatcher
+  compatibility remains exact.
+- Gateway-default provenance now traverses direct, renamed, resolved and
+  unresolved computed, object, array, nested, rest, default, alias, and
+  parameter binding patterns. Every extraction fails; the exact direct
+  dispatcher permit-consumer call remains sole, while unrelated dynamic
+  record destructuring is accepted.
+- All dispatcher census, gateway alias, protected-mention/default-G,
+  calibrated normalization, resident dual-context/human/recovery/terminal,
+  and loader-order controls execute before the intended source stop. Fresh
+  gates report exact focused **25 = 17 passed + 8 causal RED failures**,
+  released controls **79/79**, final-byte typecheck, factory readiness,
+  mission **20/20**, V4 assurance **20/20**, and all exact markers. Exact
+  scope/freeze/ancestry/dependency/diff/clean checks pass. Repository mode
+  truthfully stops at the pre-record-29 W1 current-blob mismatch.
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_31a0` is assigned exact `31a017b4`. It
+  must independently verify both complete identity censuses, safe legacy and
+  unrelated-record controls, all preserved matrices/fixtures, exact causal
+  split, and deterministic gates. Every prior reviewer, analyst, and author
+  is ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `31a017b4`. Changed bytes invalidate review. No source authorization follows
+  without explicit later approval/integration authority.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-967 — Protected-mention candidate rejected; three-point closure authorized
 
 - Recorded at: 2026-07-24T02:42:54Z
