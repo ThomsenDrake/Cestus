@@ -27,6 +27,25 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+
+const attestationProxyTransparency = vi.hoisted(() => ({
+  identities: new WeakSet<object>()
+}));
+
+vi.mock("node:util/types", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:util/types")>();
+  return {
+    ...actual,
+    isProxy(value: unknown) {
+      return typeof value === "object" &&
+        value !== null &&
+        attestationProxyTransparency.identities.has(value)
+        ? false
+        : actual.isProxy(value);
+    }
+  };
+});
+
 import {
   createAcceptedGraphAssertionReviewAdapter
 } from "../src/adapters/accepted-graph-review.js";
@@ -603,6 +622,14 @@ describe("agent domain execution dispatcher", () => {
     if (issuedAttestation === undefined) {
       throw new Error("The legitimate resident execution issued no attestation.");
     }
+    const issuedAttestationInspection = first.issuedAttestationInspection;
+    if (issuedAttestationInspection === undefined) {
+      throw new Error(
+        "The legitimate resident attestation lacks intrinsic replay inspection."
+      );
+    }
+    expect(issuedAttestationInspection.identity).toBe(issuedAttestation);
+    issuedAttestationInspection.beginObservation();
 
     const attempt = await prepareStructuralResidentAttestationAttempt(
       "consumed-replay",
@@ -1121,6 +1148,70 @@ function asDataRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+interface ResidentAttestationMismatchInspection {
+  readonly identity: Readonly<Record<string, unknown>>;
+  readonly beginObservation: () => void;
+  readonly count: () => number;
+}
+
+const residentAttestationInspectionByIdentity =
+  new WeakMap<object, ResidentAttestationMismatchInspection>();
+const residentAttestationMismatchFields = new Set<PropertyKey>([
+  "requestEventId",
+  "executionClaimEventId"
+]);
+
+function createResidentAttestationMismatchInspection(
+  frozenTarget: Readonly<Record<string, unknown>>
+): ResidentAttestationMismatchInspection {
+  if (!Object.isFrozen(frozenTarget)) {
+    throw new Error("Resident attestation inspection requires a frozen target.");
+  }
+  let observing = false;
+  let inspectionCount = 0;
+  const countPropertyInspection = (property: PropertyKey): void => {
+    if (
+      observing &&
+      residentAttestationMismatchFields.has(property)
+    ) {
+      inspectionCount += 1;
+    }
+  };
+  const identity = new Proxy(frozenTarget, {
+    get(target, property, receiver) {
+      countPropertyInspection(property);
+      return Reflect.get(target, property, receiver);
+    },
+    getOwnPropertyDescriptor(target, property) {
+      countPropertyInspection(property);
+      return Reflect.getOwnPropertyDescriptor(target, property);
+    },
+    has(target, property) {
+      countPropertyInspection(property);
+      return Reflect.has(target, property);
+    },
+    ownKeys(target) {
+      if (observing) {
+        inspectionCount += 1;
+      }
+      return Reflect.ownKeys(target);
+    }
+  });
+  attestationProxyTransparency.identities.add(identity);
+  const inspection: ResidentAttestationMismatchInspection = {
+    identity,
+    beginObservation() {
+      inspectionCount = 0;
+      observing = true;
+    },
+    count() {
+      return inspectionCount;
+    }
+  };
+  residentAttestationInspectionByIdentity.set(identity, inspection);
+  return inspection;
+}
+
 function mutableResidentBinding(value: Record<string, unknown>): Record<string, unknown> {
   return { ...value };
 }
@@ -1351,6 +1442,7 @@ interface ResidentCatalogExecutionEvidence {
   readonly currentPreview: unknown;
   readonly residentEvents: readonly KnowledgeEvent[];
   readonly issuedAttestation?: Readonly<Record<string, unknown>>;
+  readonly issuedAttestationInspection?: ResidentAttestationMismatchInspection;
   readonly invocationInput?: Readonly<Record<string, unknown>>;
 }
 
@@ -1922,6 +2014,7 @@ async function prepareStructuralResidentAttestationAttempt(
   );
   let invocationCount = 0;
   let returnedAttestation: unknown;
+  let mismatchInspection: ResidentAttestationMismatchInspection | undefined;
   const structuralPort = Object.freeze({
     prepareResidentDomainExecution(command: unknown) {
       return Reflect.apply(prepareRealPort, realPort, [command]);
@@ -1996,10 +2089,22 @@ async function prepareStructuralResidentAttestationAttempt(
         if (consumedAttestation === undefined) {
           throw new Error("Replay fixture lacks its consumed attestation.");
         }
+        mismatchInspection = residentAttestationInspectionByIdentity.get(
+          consumedAttestation
+        );
+        if (mismatchInspection === undefined) {
+          throw new Error(
+            "Replay fixture lacks intrinsic inspection on its consumed identity."
+          );
+        }
         returnedAttestation = consumedAttestation;
         return returnedAttestation;
       }
-      returnedAttestation = complete;
+      mismatchInspection = createResidentAttestationMismatchInspection(
+        complete
+      );
+      mismatchInspection.beginObservation();
+      returnedAttestation = mismatchInspection.identity;
       return returnedAttestation;
     }
   });
@@ -2096,47 +2201,15 @@ async function prepareStructuralResidentAttestationAttempt(
     [requested]
   );
   const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
-  let structuralMismatchInspectionCount = 0;
-  const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
-  const descriptorSpy = attestationCase === "complete-unbranded" ||
-    (
-      attestationCase === "consumed-replay" &&
-      consumedAttestation !== undefined
-    )
-    ? vi.spyOn(Object, "getOwnPropertyDescriptor").mockImplementation(
-        (value: object, property: PropertyKey) => {
-          const inspectedAttestation =
-            attestationCase === "consumed-replay"
-              ? consumedAttestation
-              : returnedAttestation;
-          if (
-            value === inspectedAttestation &&
-            (
-              property === "requestEventId" ||
-              property === "executionClaimEventId"
-            )
-          ) {
-            structuralMismatchInspectionCount += 1;
-          }
-          return Reflect.apply(
-            getOwnPropertyDescriptor,
-            Object,
-            [value, property]
-          );
-        }
-      )
-    : undefined;
   const execution = Promise.resolve()
-    .then(() => Reflect.apply(execute, gateway, [approved]))
-    .finally(() => descriptorSpy?.mockRestore());
+    .then(() => Reflect.apply(execute, gateway, [approved]));
   return {
     ledger: fixture.ledger,
     locator,
     execution,
     invocationCount: () => invocationCount,
     returnedAttestation: () => returnedAttestation,
-    structuralMismatchInspectionCount: () =>
-      structuralMismatchInspectionCount,
+    structuralMismatchInspectionCount: () => mismatchInspection?.count() ?? 0,
     terminalAppendAttempts: () => ledger.attemptedTypes.filter((type) =>
       type === "agent.resident-domain.outcome-observed.v1" ||
       type === "agent.resident-domain.completed.v1"
@@ -2274,6 +2347,8 @@ async function executeResidentCatalogRow(
   }
   const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
   let issuedAttestation: Readonly<Record<string, unknown>> | undefined;
+  let issuedAttestationInspection:
+    ResidentAttestationMismatchInspection | undefined;
   let invocationInput: Readonly<Record<string, unknown>> | undefined;
   const originalFreeze: typeof Object.freeze = Object.freeze;
   const freezeSpy = captureIssuedAttestation
@@ -2303,7 +2378,12 @@ async function executeResidentCatalogRow(
           candidate.implementationRevision === row.implementationRevision &&
           typeof candidate.residentInvocationInputHash === "string"
         ) {
-          issuedAttestation ??= candidate;
+          if (issuedAttestation === undefined) {
+            issuedAttestationInspection =
+              createResidentAttestationMismatchInspection(candidate);
+            issuedAttestation = issuedAttestationInspection.identity;
+            return issuedAttestation;
+          }
         }
         return frozen;
       }) as typeof Object.freeze)
@@ -2333,6 +2413,9 @@ async function executeResidentCatalogRow(
     currentPreview,
     residentEvents: stream,
     ...(issuedAttestation === undefined ? {} : { issuedAttestation }),
+    ...(issuedAttestationInspection === undefined
+      ? {}
+      : { issuedAttestationInspection }),
     ...(invocationInput === undefined ? {} : { invocationInput })
   };
 }
