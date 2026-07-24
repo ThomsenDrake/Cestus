@@ -31876,3 +31876,60 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1006 — E-1005 paused-blob erratum; approved oracle integrated and source resumed
+
+- Recorded at: 2026-07-24T19:48:26Z
+- E-1005's test approval is unchanged and remains bound to exact candidate
+  `9f9d0ae3eecad30cf3124faa2470a52bb07a1483`, tree
+  `263d37c60aa64b1e650e498de7a70fd7eaabd112`, dispatcher-test blob
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, and findings-none fresh review.
+- E-1005 incorrectly expanded the reviewer's reported abbreviated paused
+  source prefixes `30e4a3ea` and `41740d5d` into full strings that are not
+  Git objects. This append-only erratum supersedes only those two erroneous
+  full-string transcriptions. No test approval, gate result, source byte,
+  candidate identity, or disposition is changed.
+- Exact paused working source blobs are dispatcher
+  `30e4a3ea4eea197f5f3881359a12b909210177ab` and gateway
+  `41740d5d608284f8fea78285f1c2e00d99dfd2a9`. Their filesystem mtimes remain
+  respectively `2026-07-24 14:55:06.324063677 -0400` and
+  `2026-07-24 14:53:37.086057919 -0400`, both before the E-1003 source pause.
+  The source implementer confirms no post-pause write or active verifier.
+- Exact approved test lineage
+  `5594ca6cd2feda7f2011027e272d01331e462c0f` is integrated into the
+  existing Task136 lineage by history-preserving two-parent merge
+  `7d067af6730a652f3e5930d649bc5673846d101e`, with exact parents E-1002
+  source-authority merge `bf9d5b7108e22b0fcf519241c6a91b1fc5b3a2e0`
+  and approved-test lineage `5594ca6cd2feda7f2011027e272d01331e462c0f`.
+  The integration retains exact test blob `0eaf2fe609de31657acfedde1e2630cbacedbcdc`
+  and the two exact paused working source blobs above.
+- Task12 source work may resume from those exact paused bytes in only
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. No test, adapter,
+  fixture, loader, claim, contract, dependency, ontology, Task14 runtime,
+  scheduler, barrel, or unrelated byte may change.
+- Resume by rerunning focused **48/48** on the integrated approved test,
+  then complete every E-1002 source gate: cross-boundary and loader suites,
+  released adapters, standalone typecheck, factory, mission **20/20**, V4
+  assurance **20/20**, all markers, repository truthful first stop, exact
+  scope/freeze/ancestry/dependency/diff/clean checks, and the fresh
+  full-verification differential. No repository-prefix or release-closure
+  success may be claimed while record 29 is absent.
+- Produce one forward atomic two-source Task12 candidate only after every
+  authorized test and gate passes. Record exact source blobs, tree, sole
+  parent, and complete evidence. A separate append-only admission and a
+  completely fresh independent read-only source reviewer are required before
+  Task12 may be approved or Task13 authorized. The source author, every test
+  author/reviewer, and every earlier source-byte analyst is ineligible to
+  approve it.
+- Preserve all E-1001 through E-1005 history, both incorrect E-1005 strings
+  as append-only provenance corrected here, every earlier candidate/sibling/
+  recovery/authority commit, and all frozen starting blobs.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 records verifier-recovery test `approved -> integrated` and returns
+  Task12 source work to `implementing`; strict product frontier remains
+  **28 of 29**. This is erratum, test integration, and source-resumption
+  authority, not a source candidate, Task12 approval, Task13 authority,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
