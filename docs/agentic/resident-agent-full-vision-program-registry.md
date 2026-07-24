@@ -29299,6 +29299,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-980 — Task136 Task12 GREEN fixture blockers isolated; bounded repair authorized
+
+- Recorded at: 2026-07-24T06:00:43Z
+- The exact RV-1-E-979 two-source implementation remains uncommitted at
+  authority base `beb629201a537008e689cd9de358b6fe014a1a5f` and changes only
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. Fresh local
+  verification reaches focused **25 = 22 passed + 3 noncausal fixture
+  failures**, standalone typecheck passes, diff-check passes, and no test,
+  claim, ontology, Task14, or unrelated byte has changed.
+- Two gateway failures stop inside the committed ontology validator before
+  their intended Task12 lifecycle assertions because the frozen fixture emits
+  `stage_gateway_*` while
+  `packages/ontology/src/contracts.ts` requires the released
+  `^legacy_stage_[a-zA-Z0-9_-]+$` identifier. One loader failure is the
+  frozen scanner's unconditional requirement for exactly one Task14
+  wake-runtime binder call even though
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` is reserved for
+  Task14 and remains correctly unchanged during Task12. These are fixture and
+  task-order defects, not permission to weaken ontology validation, add a
+  Task12 fallback, or widen the two-source product implementation.
+- One bounded forward repair may modify exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts` and
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`.
+  The gateway fixture must use one ontology-valid `legacy_stage_gateway_*`
+  identifier consistently through preview, approval, execution, hashes,
+  events, and assertions. The loader census must admit the current zero
+  Task14 binder occurrences and the future exact one occurrence while still
+  rejecting duplicates, aliases, alternate receivers/calls, exports,
+  dynamic/computed loading, and every non-owner transfer. Existing Task14
+  behavior/import tests retain ownership of proving the binder is present
+  after Task14.
+- The repair must first reproduce the exact three blockers above against the
+  unchanged source implementation, preserve the exact approved dispatcher
+  test and product-claim blobs, retain all safe and hostile controls, then
+  produce focused **25/25** without changing ontology or any product source.
+  Released adapter controls, typecheck, factory readiness, mission **20/20**,
+  V4 assurance **20/20**, exact markers, scope, ancestry, dependency, diff,
+  clean-state, and actual repository-posture gates remain mandatory.
+- The two source bytes must be committed first as a coherent history-preserved
+  checkpoint, not represented as an approved GREEN while these fixture
+  blockers remain. This registry authority is then forward-merged before the
+  two-test repair. The resulting exact aggregate descendant requires a
+  completely fresh focused review; changed source or test bytes invalidate
+  that review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains **28 of
+  29**. This is bounded fixture-repair authority, not Task12 approval,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
 
 - Recorded at: 2026-07-24T04:58:14Z
