@@ -32019,3 +32019,70 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1008 — Exact Task12 package-owned execution candidate admitted to fresh review
+
+- Recorded at: 2026-07-24T20:39:42Z
+- Exact Task12 source candidate
+  `d0531b15489d3dbc94c23ce2ab4fc1235666d1d6`, tree
+  `9c4b1206de685accc4d9a61f0fb1b91581244bf5`, has sole parent calibrated
+  authority merge `22b0cf4b7492d2efda8828ad404d72f0250207a6`,
+  exact subject `feat(agent): add package-owned resident execution`, and
+  changes exactly `packages/agent/src/domain-execution-dispatcher.ts`
+  (**203 insertions / 42 deletions**) and
+  `packages/agent/src/resident-loop-tool-gateway.ts`
+  (**542 insertions / 72 deletions**).
+- Exact candidate source blobs are dispatcher
+  `30e4a3ea4eea197f5f3881359a12b909210177ab` and gateway
+  `41740d5d608284f8fea78285f1c2e00d99dfd2a9`. Exact approved/frozen blobs
+  remain dispatcher test `0eaf2fe609de31657acfedde1e2630cbacedbcdc`,
+  gateway test `6e720ce896176362256aa09ca0566def9bef2257`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- Author and coordinator independently reproduce exact focused **48/48**.
+  Task12 execution boundary is **98/98**, gateway/loader **30/30**, released
+  cross-boundary controls **443/443**, and exact released adapters **79/79**.
+  Standalone typecheck, UI build, factory, mission **20/20**, V4 assurance
+  **20/20**, and all four exact markers pass.
+- The exact E-1007 calibrated symmetric-60-second differential passes against
+  SHA-bound baseline/current JSON with marker
+  `removed=8 mapped=14 addedPassed=48 retainedLaterRed=13`; comparator log
+  SHA-256 is
+  `4c039043c6a9e0923f6ed749ab0e87f8040fa2d8fc877079ab78a4aead7de2d7`.
+  The later fresh observation with the sole frozen loader assertion exceeding
+  its literal 30-second per-test ceiling is preserved as non-equivalent
+  variance evidence and is not represented as passing.
+- Exact candidate repository mode exits `1`, emits the four required markers,
+  then stops first and only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`.
+  It emits neither repository-prefix nor release-closure success.
+- Scope, source/test/claim/ontology/runtime freezes, all named design/plan/
+  RED/GREEN/fixture/rejection/review/recovery/authority ancestry, dependency
+  quiet, both diff checks, and clean worktree are exact. The 16-file product
+  card retains exactly thirteen later-Task13-through-16 RED occurrences;
+  they are not Task12 defects or product completion.
+- Completely fresh independent read-only source reviewer
+  `/root/task136_e1008_task12_source_review` is assigned exact immutable
+  candidate `d0531b15`. It must review the full two-source diff and current
+  files against the approved design and Task12 plan, attack default-only ABI,
+  closed literal catalog and exact constructor contexts, package-owned
+  identities, private capability/port/brands/permit, before/after W
+  currentness, prefix recovery, branch readbacks, exact attestation/result
+  copy, per-ordinal evidence, at-most-once lifecycle/recovery, and legacy ABI
+  preservation.
+- The reviewer must independently reproduce bounded/cross/adapter/typecheck/
+  factory/mission/V4/marker/repository/scope/freeze/ancestry/dependency/diff/
+  clean gates and assess both calibrated differential evidence and preserved
+  timeout variance. It has not authored, reviewed, or analyzed any changed
+  source byte or earlier changed test byte. All source/test authors,
+  test-byte reviewers, differential auditor, and earlier source analysts are
+  ineligible. It may not edit, commit, merge, substitute a SHA, authorize
+  Task13, or make product/release claims. Changed bytes invalidate review.
+- Task136 advances Task12 `implementing -> candidate -> reviewing` for exact
+  `d0531b15`. Strict product frontier remains **28 of 29**. This is Task12
+  source review admission, not Task12 approval/integration, Task13 authority,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
