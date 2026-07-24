@@ -31933,3 +31933,89 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1007 — Approved fixture migrations calibrated in Task136 full differential
+
+- Recorded at: 2026-07-24T20:18:30Z
+- Task12 source bytes pass focused **48/48**, Task12 boundary **98/98**,
+  gateway/loader **30/30**, released cross-boundary controls **443/443**,
+  exact adapters **79/79**, typecheck, factory, mission **20/20**, V4
+  assurance **20/20**, and all markers. The 16-file card retains only the
+  expected later-Task13-through-16 REDs. No source candidate is committed.
+- Two default-30-second full-suite runs timed out only the unchanged loader
+  policy test under repository-wide contention; that test passes every
+  focused run. Identical 60-second baseline/current runs close the timeout
+  and produce baseline **3,231 = 3,181 passed + 45 failed + 5 pending** and
+  current **3,284 = 3,221 passed + 58 failed + 5 pending**.
+- The uncalibrated occurrence comparator correctly stopped because eight
+  baseline-passed titles are absent. Those exact titles were superseded by
+  approved, reviewed, integrated migrations after baseline
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1`: E-945 through E-947 replace
+  the obsolete strict-V2 ontology fixture, and E-948 through E-950 replace
+  impossible process-cache/current-model C oracles with durable stateless
+  assertions.
+- Fresh read-only mapping auditor
+  `/root/task136_e1007_differential_mapping_audit` returns findings none and
+  `APPROVE CALIBRATION`. It independently proves exact baseline JSON
+  SHA-256 `6f097162388cbd9ddfb8f157b4b7e3d6ab3f38f883073dad7031de8f554293e7`,
+  exactly eight removed passed occurrences, unchanged test blobs, and current
+  focused provider/ontology **105/105** with JSON SHA-256
+  `7fb33b1652cc0cdeb1f115579b2b632a4eeb3148841bf64219151429716422a1`.
+- The seven exact provider-title mappings are:
+  1. `returns deeply frozen initial and replan candidates with the exact Task120 and P2 bindings`
+     -> `returns deeply frozen exact initial and replan candidates through the sole parser boundary`
+     plus `makes parseResidentUntrustedPlanCandidate the only exact structural candidate boundary`;
+  2. `rejects mutable, hostile, secret-bearing, stale, or mismatched candidate/posture data before producing output`
+     -> `rejects mutable, hostile, secret-bearing, stale, or mismatched initial data before producing output`;
+  3. `rejects invalid steps and every wider or substituted replan before it can become a candidate`
+     -> `rejects invalid steps and every wider or substituted replan using only durable facts`;
+  4. `rejects a replan that removes a previously required approval class`
+     -> `rejects a replan whose policy and authority diverge from the durable prior event`;
+  5. `rejects revision-zero budget consumption`
+     -> `rejects an initial plan record with zero action consumption`;
+  6. `rejects revision-zero budget action consumption`
+     -> `rejects an initial budget whose consumed totals do not match its action`; and
+  7. `rejects a second initial without replacing the original replan continuation`
+     -> `creates repeated initial candidates without process-local state or hidden binding`
+     plus `replans from copied durable replay with no latest-process cache`.
+  Every title has the common suite prefix
+  `resident plan candidate provider` and path
+  `packages/agent/test/resident-plan-candidate-provider.test.ts`.
+- The one exact ontology mapping is common-suite title
+  `resident loop ontology contracts v2 preserves accepted v1 replay while requiring the complete strict v2 five-event family`
+  -> these five common-suite titles:
+  `preserves accepted v1 replay while requiring strict v2 terminal and resumable families`,
+  `validates strict automatic and human gateway readbacks`,
+  `validates exact ordinary not-applicable suspension checkpoints`,
+  `validates effect-outcome-unknown suspension and segmented replay`, and
+  `validates human effect-outcome-unknown suspension and segmented replay`,
+  all in
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`.
+- The calibrated comparator must key counted occurrences by exact
+  `path::fullName` plus status; require each old passed tuple exactly once in
+  baseline and zero times in current; remove exactly those eight baseline
+  occurrences; require every one of the fourteen mapped current titles
+  exactly once and passed; then perform the original multiset subtraction.
+  Any other removal, rename, duplicate-count change, status drift, missing or
+  duplicate allowlist entry, malformed path, hash mismatch, or extra path
+  rejects. Every remaining addition must be passed and in the frozen sixteen
+  Task136 test paths. Failed/pending/skipped/deferred and suite-status accounting
+  remain exact.
+- This calibration is required for Task12 and every later Task136 candidate/
+  integration differential against the pre-migration authority baseline.
+  It does not allow a general rename, disappearance, or status exception and
+  changes no test, source, contract, plan, dependency, or product behavior.
+- Task12 implementation may resume on the unchanged two-source bytes, apply
+  this exact comparator to the already SHA-bound identical-timeout evidence,
+  complete verify/UI/integrity gates, then create one atomic forward
+  two-source candidate. Clean-candidate repository first-stop and structural
+  checks remain mandatory before admission and completely fresh source
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is deterministic differential calibration and source
+  verifier recovery, not a source candidate, Task12 approval, Task13
+  authority, Task136 product candidacy, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
