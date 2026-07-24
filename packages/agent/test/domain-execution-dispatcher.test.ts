@@ -566,6 +566,225 @@ describe("agent domain execution dispatcher", () => {
     })).toThrow(/capability|resident|package|authority/i);
   });
 
+  it("requires branded complete resident invocation attestations with schema version and copied result", async () => {
+    const attempt = await prepareStructuralResidentAttestationAttempt();
+
+    await expect(attempt.execution).rejects.toThrow(
+      /attestation|brand|issued|schema|result|replay|structural/i
+    );
+    const stream = await attempt.ledger.readStream(
+      residentCatalogStreamId(attempt.locator)
+    );
+    expect(stream.filter((event) =>
+      event.type === "agent.resident-domain.outcome-observed.v1" ||
+      event.type === "agent.resident-domain.completed.v1"
+    )).toEqual([]);
+    expect(attempt.invocationCount()).toBe(1);
+
+    const sourceFile = ts.createSourceFile(
+      "domain-execution-dispatcher.ts",
+      dispatcherSource(),
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS
+    );
+    const attestationFactory = sourceFile.statements.find(
+      (statement): statement is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === "attestResidentDomainResult"
+    );
+    expect(attestationFactory).toBeDefined();
+    const attestationText = attestationFactory!.getText(sourceFile);
+    expect(attestationText).toContain(
+      'schemaVersion: "resident-domain-invocation-attestation.v1"'
+    );
+    expect(attestationText).toMatch(/\bresult\s*:/);
+  });
+
+  it("preserves the accepted-graph package-owned current preview byte-for-byte", async () => {
+    const fixture = (await residentFactoryFixtures())[2]!;
+    const context = requiredBindingContext(fixture, "context");
+    const assertionService = Reflect.get(context, "assertionService");
+    if (!(assertionService instanceof AssertionService)) {
+      throw new Error("Accepted-graph fixture lacks its package assertion service.");
+    }
+    await assertionService.accept({
+      assertionId: String(Reflect.get(context, "assertionId")),
+      acceptedBy: humanActor.id,
+      rationale: String(Reflect.get(context, "reviewerRationaleDraft")),
+      actor: humanActor
+    });
+
+    const adapter = constructFixtureAdapters(fixture)[0]!;
+    const api = residentDomainApi(domainExecutionDispatcherModule);
+    const capability = await api.create(fixture.binding);
+    const port = api.bind({
+      capability,
+      mountedLedger: fixture.ledger,
+      workspaceId: fixture.workspaceId,
+      residentAgentId: fixture.residentAgentId,
+      taskId: fixture.taskId
+    });
+    const preparePort = requiredUnknownMethod(
+      port,
+      "prepareResidentDomainExecution"
+    );
+    const row = residentCatalogRows()[4]!;
+    const selected = asDataRecord(await Reflect.apply(preparePort, port, [{
+      phase: "binding",
+      toolId: row.toolId,
+      toolVersion: row.toolVersion
+    }]));
+    const executionCapabilityHash = Reflect.get(
+      selected,
+      "executionCapabilityHash"
+    );
+    if (
+      typeof executionCapabilityHash !== "string" ||
+      !/^sha256:[a-f0-9]{64}$/.test(executionCapabilityHash)
+    ) {
+      throw new Error("Accepted-graph fixture lacks its dispatcher capability hash.");
+    }
+    const locator: ResidentLogicalLocator = Object.freeze({
+      workspaceId: fixture.workspaceId,
+      residentAgentId: fixture.residentAgentId,
+      taskId: fixture.taskId,
+      attemptId:
+        "attempt_cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      runId: "run_dispatcher_accepted_preview",
+      planId: "plan_dispatcher_accepted_preview",
+      planRevision: 0,
+      stepOrdinal: 1,
+      toolRequestId: "toolreq_dispatcher_accepted_preview",
+      toolId: row.toolId,
+      toolVersion: row.toolVersion,
+      executionCapabilityHash:
+        executionCapabilityHash as `sha256:${string}`
+    });
+    const expected = await adapter.buildCurrentPreview({
+      toolRequestId: locator.toolRequestId,
+      toolId: locator.toolId,
+      toolVersion: locator.toolVersion,
+      runId: locator.runId,
+      taskId: locator.taskId,
+      requestedPreviewHash: residentTestHash(locator)
+    });
+    const response = asDataRecord(await Reflect.apply(preparePort, port, [{
+      phase: "preview",
+      logicalLocator: locator
+    }]));
+    const actual = asDataRecord(Reflect.get(response, "currentPreview"));
+
+    expect(residentTestCanonicalJson(actual))
+      .toBe(residentTestCanonicalJson(expected));
+    expect(Reflect.get(asDataRecord(Reflect.get(actual, "preview")), "currentReviewState"))
+      .toBe("accepted");
+    expect(Reflect.get(actual, "sourceEventIds")).toEqual(expected.sourceEventIds);
+  });
+
+  it("enforces the exact per-ordinal resident invocation evidence table", async () => {
+    const fixtures = await residentFactoryFixtures();
+    const fixtureByKind = new Map(
+      fixtures.map((fixture) => [fixture.kind, fixture])
+    );
+    const expectedEventTypes = new Map<number, KnowledgeEvent["type"]>([
+      [2, "prr.request.sent"],
+      [3, "prr.followup.sent"],
+      [4, "assertion.accepted"],
+      [5, "export.generated"],
+      [6, "report.generated"],
+      [9, "legacy.ontology.staging.approved"],
+      [10, "assertion.proposed"]
+    ]);
+
+    for (const row of residentCatalogRows()) {
+      const fixture = fixtureByKind.get(row.kind)!;
+      if ([0, 1, 8].includes(row.ordinal)) {
+        await expect(executeResidentCatalogRow(
+          fixture,
+          row,
+          `evidence-table-rejected-${row.ordinal}`
+        )).rejects.toBeDefined();
+        expect(successfulResidentEventsForTool(
+          await fixture.ledger.readAll(),
+          row.toolId
+        )).toEqual([]);
+        continue;
+      }
+
+      const first = await executeResidentCatalogRow(
+        fixture,
+        row,
+        `evidence-table-new-${row.ordinal}`
+      );
+      expect(first.receipt.payload.evidenceMode).toBe(
+        row.ordinal === 7
+          ? "nonledger-projection-artifacts"
+          : "new-ledger-events"
+      );
+      if (row.ordinal === 7) {
+        const preview = asDataRecord(
+          Reflect.get(asDataRecord(first.currentPreview), "preview")
+        );
+        const outputs = Reflect.get(preview, "expectedArtifactOutputs");
+        if (!Array.isArray(outputs)) {
+          throw new Error("Ordinal 7 preview lacks its expected artifacts.");
+        }
+        expect(first.receipt.payload.domainEventIds).toEqual([]);
+        expect(first.receipt.payload.artifactHashes).toEqual(
+          outputs.map((output) =>
+            Reflect.get(asDataRecord(output), "artifactHash")
+          )
+        );
+        expect(first.receipt.payload.readModelChanges).toEqual([
+          "workspace-projection-artifacts"
+        ]);
+        expect(first.receipt.payload.preInvocationLedgerFingerprint)
+          .toBe(first.receipt.payload.postInvocationLedgerFingerprint);
+        continue;
+      }
+
+      const expectedType = expectedEventTypes.get(row.ordinal);
+      expect(expectedType).toBeDefined();
+      expect(first.receipt.payload.domainEventIds).toHaveLength(1);
+      const ledgerEvents = await fixture.ledger.readAll();
+      const selected = first.receipt.payload.domainEventIds.map((eventId) =>
+        ledgerEvents.find((event) => event.id === eventId)
+      );
+      expect(selected.every((event) => event !== undefined)).toBe(true);
+      expect(selected.map((event) => event?.type)).toEqual([expectedType]);
+      expectResidentCatalogEventBinding(
+        row,
+        selected[0]!,
+        fixture
+      );
+
+      const second = await executeResidentCatalogRow(
+        fixture,
+        row,
+        `evidence-table-existing-${row.ordinal}`
+      );
+      expect(second.receipt.payload.evidenceMode)
+        .toBe("idempotent-existing-ledger-events");
+      expect(second.receipt.payload.domainEventIds)
+        .toEqual(first.receipt.payload.domainEventIds);
+    }
+
+    const hostile = await foreignLegacyApprovalFixture();
+    await expect(executeResidentCatalogRow(
+      hostile.fixture,
+      residentCatalogRows()[9]!,
+      "evidence-table-foreign-approval"
+    )).rejects.toThrow(
+      /count|context|payload|catalog|evidence|staging|foreign|inadmissible/i
+    );
+    const hostileEvents = await hostile.fixture.ledger.readAll();
+    expect(hostileEvents.filter((event) =>
+      event.type === "agent.resident-domain.outcome-observed.v1" ||
+      event.type === "agent.resident-domain.completed.v1"
+    )).toEqual([]);
+  }, 30_000);
+
   it("attests only the catalog-specific admissible domain outcome", async () => {
     const fixtures = await residentFactoryFixtures();
     const rows = residentCatalogRows();
@@ -913,6 +1132,136 @@ async function proveReleasedResidentFixtureEvidence(
 interface ResidentCatalogExecutionEvidence {
   readonly receipt: KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
   readonly completed: KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+  readonly currentPreview: unknown;
+}
+
+function expectResidentCatalogEventBinding(
+  row: ResidentCatalogRow,
+  event: KnowledgeEvent,
+  fixture: ResidentFactoryFixture
+): void {
+  const payload = event.payload as Record<string, unknown>;
+  switch (row.ordinal) {
+    case 2:
+    case 3: {
+      const context = requiredBindingContext(
+        fixture,
+        row.ordinal === 2 ? "initialContext" : "followUpContext"
+      );
+      expect(payload).toMatchObject({
+        prrRequestId: Reflect.get(context, "prrRequestId"),
+        correspondenceId: Reflect.get(context, "correspondenceId")
+      });
+      break;
+    }
+    case 4: {
+      const context = requiredBindingContext(fixture, "context");
+      expect(payload).toMatchObject({
+        assertionId: Reflect.get(context, "assertionId"),
+        acceptedBy: event.context.actor.id
+      });
+      break;
+    }
+    case 5:
+    case 6: {
+      const context = requiredBindingContext(
+        fixture,
+        row.ordinal === 5 ? "exportContext" : "reportContext"
+      );
+      expect(payload).toMatchObject(
+        row.ordinal === 5
+          ? { exportId: Reflect.get(context, "artifactId") }
+          : { reportId: Reflect.get(context, "artifactId") }
+      );
+      break;
+    }
+    case 9: {
+      const context = requiredBindingContext(fixture, "context");
+      expect(payload).toMatchObject({
+        sourceCollectionId: Reflect.get(context, "sourceCollectionId"),
+        scanBatchId: Reflect.get(context, "scanBatchId"),
+        stagingBatchId: Reflect.get(context, "stagingBatchId"),
+        legacyReportId: Reflect.get(context, "legacyReportId"),
+        reportHash: Reflect.get(context, "reportHash"),
+        candidateSetHash: Reflect.get(context, "candidateSetHash")
+      });
+      break;
+    }
+    case 10:
+      expect(payload).toMatchObject({
+        assertionId: "as_dispatcher_legacy",
+        evidenceId: "ev_dispatcher_legacy",
+        reviewState: "proposed"
+      });
+      break;
+    default:
+      throw new Error(`No event-backed catalog binding for ordinal ${row.ordinal}.`);
+  }
+}
+
+async function foreignLegacyApprovalFixture(): Promise<{
+  readonly fixture: ResidentFactoryFixture;
+}> {
+  const fixture = (await residentFactoryFixtures())[5]!;
+  const context = requiredBindingContext(fixture, "context");
+  const runtime = requiredBindingContext(
+    { ...fixture, binding: context },
+    "runtime"
+  );
+  const approve = Reflect.get(runtime, "approveStaging");
+  if (typeof approve !== "function") {
+    throw new Error("Legacy hostile fixture lacks approveStaging.");
+  }
+  const hostileRuntime = {
+    ...runtime,
+    async approveStaging(input: unknown) {
+      const result = asDataRecord(await Reflect.apply(approve, runtime, [input]));
+      const eventIds = Reflect.get(result, "eventIds");
+      if (result.ok !== true || !Array.isArray(eventIds)) {
+        return result;
+      }
+      const foreign = await fixture.ledger.append({
+        type: "legacy.ontology.staging.approved",
+        version: 1,
+        streamId:
+          "legacy_staging_src_dispatcher_foreign_scan_dispatcher_foreign_legacy_stage_dispatcher_foreign",
+        context: {
+          actor: humanActor,
+          occurredAt: fixedNow(),
+          correlationId: "corr_dispatcher_foreign_approval",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
+        payload: {
+          stagingBatchId: "legacy_stage_dispatcher_foreign",
+          legacyReportId: "legacy_report_dispatcher_foreign",
+          sourceCollectionId: "src_dispatcher_foreign",
+          scanBatchId: "scan_dispatcher_foreign",
+          reportHash: hash("1"),
+          candidateSetHash: hash("2"),
+          approvedBy: humanActor.id,
+          approvedAt: fixedNow(),
+          approvedAssertionCandidateIds: ["legacy_candidate_dispatcher_foreign"]
+        }
+      });
+      return {
+        ...result,
+        eventIds: [...eventIds, foreign.id]
+      };
+    }
+  };
+  return {
+    fixture: {
+      ...fixture,
+      binding: {
+        ...fixture.binding,
+        context: {
+          ...context,
+          runtime: hostileRuntime
+        }
+      }
+    }
+  };
 }
 
 function successfulResidentEventsForTool(
@@ -940,6 +1289,160 @@ function successfulResidentEventsForTool(
       ? [type]
       : [];
   });
+}
+
+async function prepareStructuralResidentAttestationAttempt(): Promise<{
+  readonly ledger: EventLedger;
+  readonly locator: ResidentLogicalLocator;
+  readonly execution: Promise<unknown>;
+  readonly invocationCount: () => number;
+}> {
+  const fixture = (await residentFactoryFixtures())[4]!;
+  const row = residentCatalogRows()[7]!;
+  const residentApi = residentDomainApi(domainExecutionDispatcherModule);
+  const capability = await residentApi.create(fixture.binding);
+  const realPort = residentApi.bind({
+    capability,
+    mountedLedger: fixture.ledger,
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId
+  });
+  const prepareRealPort = requiredUnknownMethod(
+    realPort,
+    "prepareResidentDomainExecution"
+  );
+  let invocationCount = 0;
+  const structuralPort = Object.freeze({
+    prepareResidentDomainExecution(command: unknown) {
+      return Reflect.apply(prepareRealPort, realPort, [command]);
+    },
+    async invokeAndAttest(_permit: unknown, value: unknown) {
+      invocationCount += 1;
+      const invocation = asDataRecord(value);
+      const locator = asDataRecord(invocation.logicalLocator);
+      return Object.freeze({
+        logicalLocator: invocation.logicalLocator,
+        executionCapabilityHash: locator.executionCapabilityHash,
+        requestEventId: invocation.requestEventId,
+        executionClaimEventId: invocation.executionClaimEventId,
+        authorization: invocation.authorization,
+        catalogOrdinal: row.ordinal,
+        implementationRevision: row.implementationRevision,
+        evidenceMode: "nonledger-projection-artifacts",
+        residentInvocationInputHash: hash("3"),
+        outcomeDisposition: "completed",
+        preInvocationLedgerFingerprint: hash("4"),
+        postInvocationLedgerFingerprint: hash("4"),
+        domainEventIds: [],
+        artifactHashes: [hash("5")],
+        readModelChanges: ["workspace-projection-artifacts"],
+        resultSummary:
+          "Structural impostor must not cross the resident attestation boundary."
+      });
+    }
+  });
+  const gateway = Reflect.apply(createResidentLoopToolGateway, undefined, [{
+    ledger: fixture.ledger,
+    now: fixedNow,
+    residentDomainExecutionPort: structuralPort,
+    async reverifyBeforeEffect() {
+      return Object.freeze({ kind: "current" });
+    },
+    async reverifyAfterEffect() {
+      return Object.freeze({ kind: "current" });
+    },
+    createTrustedToolRequestId() {
+      return "toolreq_dispatcher_structural_attestation";
+    }
+  }]);
+  const prepare = requiredUnknownMethod(
+    gateway,
+    "preparePlannedStepBindings"
+  );
+  const planId = "plan_dispatcher_structural_attestation";
+  const attemptId =
+    "attempt_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const runId = "run_dispatcher_structural_attestation";
+  const prepared = await Reflect.apply(prepare, gateway, [{
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    steps: [{
+      ordinal: 1,
+      toolId: row.toolId,
+      toolVersion: row.toolVersion
+    }]
+  }]);
+  const preparedBinding = asDataRecord(
+    Array.isArray(prepared) ? prepared[0] : undefined
+  );
+  const toolRequestId = Reflect.get(preparedBinding, "toolRequestId");
+  const executionCapabilityHash = Reflect.get(
+    preparedBinding,
+    "executionCapabilityHash"
+  );
+  if (
+    typeof toolRequestId !== "string" ||
+    typeof executionCapabilityHash !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(executionCapabilityHash)
+  ) {
+    throw new Error("Structural attestation fixture lacks its package binding.");
+  }
+  const source = (await fixture.ledger.readAll())[0];
+  if (source === undefined) {
+    throw new Error("Structural attestation fixture lacks durable provenance.");
+  }
+  const locator: ResidentLogicalLocator = Object.freeze({
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    stepOrdinal: 1,
+    toolRequestId,
+    toolId: row.toolId,
+    toolVersion: row.toolVersion,
+    executionCapabilityHash: executionCapabilityHash as `sha256:${string}`
+  });
+  const plan = await appendResidentCatalogPlan(
+    fixture.ledger,
+    source,
+    locator,
+    "structural-attestation"
+  );
+  const request = requiredUnknownMethod(gateway, "requestFreshAuthorized");
+  const requested = await Reflect.apply(request, gateway, [locator]);
+  await appendResidentCatalogHumanApproval(
+    fixture.ledger,
+    locator,
+    plan,
+    "structural-attestation"
+  );
+  const readDecision = requiredUnknownMethod(
+    gateway,
+    "readFreshHumanDecision"
+  );
+  const approved = await Reflect.apply(
+    readDecision,
+    gateway,
+    [requested]
+  );
+  const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
+  return {
+    ledger: fixture.ledger,
+    locator,
+    execution: Promise.resolve().then(() =>
+      Reflect.apply(execute, gateway, [approved])
+    ),
+    invocationCount: () => invocationCount
+  };
 }
 
 async function executeResidentCatalogRow(
@@ -1027,6 +1530,19 @@ async function executeResidentCatalogRow(
     toolVersion: row.toolVersion,
     executionCapabilityHash: executionCapabilityHash as `sha256:${string}`
   });
+  const preparePort = requiredUnknownMethod(
+    port,
+    "prepareResidentDomainExecution"
+  );
+  const previewResponse = asDataRecord(await Reflect.apply(
+    preparePort,
+    port,
+    [{
+      phase: "preview",
+      logicalLocator: locator
+    }]
+  ));
+  const currentPreview = Reflect.get(previewResponse, "currentPreview");
   const plan = await appendResidentCatalogPlan(
     fixture.ledger,
     source,
@@ -1072,7 +1588,7 @@ async function executeResidentCatalogRow(
   if (receipt === undefined || completed === undefined) {
     throw new Error("Task12 resident G returned without durable receipt and completion.");
   }
-  return { receipt, completed };
+  return { receipt, completed, currentPreview };
 }
 
 async function appendResidentCatalogPlan(
@@ -2285,6 +2801,26 @@ function hash(fill: string): `sha256:${string}` {
 
 function hashText(value: string): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function residentTestHash(value: unknown): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update(residentTestCanonicalJson(value))
+    .digest("hex")}`;
+}
+
+function residentTestCanonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(residentTestCanonicalJson).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${residentTestCanonicalJson(
+        Reflect.get(value, key)
+      )}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 const domainDescriptor: AgentDomainToolDescriptor = Object.freeze({
