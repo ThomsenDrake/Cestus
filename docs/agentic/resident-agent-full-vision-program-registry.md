@@ -31555,3 +31555,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1001 — Exact `dd2fa9a4` corrected Task136 RED approved
+
+- Recorded at: 2026-07-24T18:37:13Z
+- Completely fresh read-only focused reviewer
+  `/root/task136_e1000_red_review_dd2f` approves exact corrected test-only
+  candidate `dd2fa9a4d4fab6960ac67d491efa3e86c50e05e7`, tree
+  `51f5dafd95cf4785ee46d945f5217b798987a4d5`, and no other candidate.
+  Review occurred against history-preserving E-1000 authority merge
+  `b2d25f5c0f3c245789d54852981eb84017517dc4`; no candidate byte or
+  repository state changed.
+- Findings are none. The same-invocation raw-result oracle is
+  non-overwriteable, preserves the real ordinal-7 adapter boundary, and
+  proves an independent exact four-key nested result copy. The exact
+  ten-field attestation shape, intrinsic private-brand/replay sentinels,
+  independently derived fingerprints, G-owned lifecycle separation,
+  complete durable event/evidence/readback rules, target-stream recovery,
+  and before/after W-currentness assertions are approved together as one
+  immutable two-test oracle.
+- The reviewer independently reproduced focused
+  **48 = 28 passed + 20 independently source-causal failures**, including
+  the same-call provenance path reaching one real constructor and one real
+  execution before failing solely because the frozen producer lacks its
+  exact issued result. Isolated intrinsic counters remain **3 != 0** and
+  **4 != 0**; loader is **2/2** and released adapters are **79/79**.
+- Standalone typecheck, factory, mission **20/20**, V4 assurance **20/20**,
+  and all four exact contract markers pass. Repository mode exits `1` and
+  stops first and only after those markers at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`;
+  it emits neither repository-prefix nor release-closure success.
+- Candidate identity, tree, sole parent, one-file candidate scope, complete
+  two-test net review scope, dependency-free diff, all frozen blobs, all
+  named design/plan/RED/GREEN/fixture/rejection/review/authority ancestry,
+  preserved original/amended siblings and recovery topology, both diff
+  checks, and clean state are exact.
+- Exact approved test blobs are dispatcher
+  `b38153bc78864e03f08ecac30a269a0039f482ba` and gateway
+  `6e720ce896176362256aa09ca0566def9bef2257`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- One history-preserving two-parent authority merge of this exact approval
+  event into the existing Task136 lineage is authorized. The merge must
+  preserve exact approved test blobs and every ancestor and must be recorded
+  before any separate source-correction authorization is issued.
+- Task136 advances `reviewing -> approved` for the exact corrected test-only
+  RED. Strict product frontier remains **28 of 29**. This is corrected-RED
+  approval authority, not its integration, source GREEN, Task136 product
+  candidacy, strict record 29, assurance transition, publication, or product
+  release. `neo`, push, Wave 3, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
