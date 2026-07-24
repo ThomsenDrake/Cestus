@@ -31477,3 +31477,81 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidacy, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1000 — Same-invocation-copy corrected Task136 RED admitted to fresh review
+
+- Recorded at: 2026-07-24T18:23:42Z
+- Exact corrected test-only candidate
+  `dd2fa9a4d4fab6960ac67d491efa3e86c50e05e7`, tree
+  `51f5dafd95cf4785ee46d945f5217b798987a4d5`, has sole parent E-999
+  repair-authority merge
+  `28f8ad3aa7a3568bad4f4d282816aa571a291c62` and changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`.
+- Exact current test blobs are dispatcher
+  `b38153bc78864e03f08ecac30a269a0039f482ba` and gateway
+  `6e720ce896176362256aa09ca0566def9bef2257`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- A dedicated module instance wraps only the real ordinal-7 static
+  destructive-repair constructor before dispatcher evaluation. The wrapper
+  calls the exact constructor with the unchanged context, preserves the
+  canonical descriptor, delegates preview and execution inputs and errors
+  unchanged, observes exactly one matching `executeApproved` return, and
+  returns that same raw object to the dispatcher.
+- The dynamically matching dispatcher and gateway share the same private
+  permit module instance. Constructor and matching execution counts must
+  each equal one. Mock and module state are restored in `finally`; ordinary
+  loader and released-adapter controls remain green.
+- The ten-field branded attestation result must be a distinct outer identity
+  from that exact same-call raw adapter result, deeply equal to it and to an
+  independent released-content control. Event/artifact/change arrays, each
+  change object, and related-ID arrays must also be distinct copied
+  identities with exact own keys/order and complete equal values. No global
+  lookalike predicate or later freeze can overwrite the two identities.
+- Frozen source reaches the exact adapter boundary once but fails because it
+  does not expose the approved ten-field attestation's exact issued result.
+  Focused execution remains
+  **48 = 28 passed + 20 independently source-causal failures**: dispatcher
+  **18 = 11 passed + 7 failed**, gateway
+  **28 = 15 passed + 13 failed**, loader **2/2** green; intrinsic unbranded
+  and replay primary counters remain **3 != 0** and **4 != 0**.
+- Independent coordinator reproduction matches the exact focused and
+  isolated signatures, loader **2/2**, released adapters **79/79**,
+  standalone typecheck, factory, mission **20/20**, V4 assurance **20/20**,
+  four markers, complete two-test net scope, frozen blobs, all checkpoint/
+  sibling/recovery/named ancestry, dependency-free diff,
+  `git diff --check`, and clean state. Repository mode exits `1`, stops first
+  at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Completely fresh read-only focused reviewer
+  `/root/task136_e1000_red_review_dd2f` is assigned exact immutable candidate
+  `dd2fa9a4`. It must inspect the complete corrected two-test bytes, E-985
+  through E-999 defects and repairs, preserved amend/recovery topology,
+  relevant frozen sources/contracts, and full review package
+  `.superpowers/sdd/review-6755e7ed..dd2fa9a4.diff`. It must attack module
+  isolation/restoration, exact static constructor and context delegation,
+  permit-module identity, exact one-call capture, raw-versus-copy provenance,
+  nested aliasing/key/value rules, and every earlier exact-shape,
+  fingerprint, proxy, durable-event, readback, evidence, target-stream, and W
+  oracle.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte. All prior corrected-byte reviewers, both authors, and all
+  changed-byte analysts are ineligible. It may not edit, commit, merge,
+  substitute another SHA, approve changed bytes, authorize source, or
+  describe this transition as product candidacy or release. Changed
+  candidate bytes invalidate review.
+- All rejected/non-admitted candidates/checkpoints, original/amended
+  siblings, design, dual-context descendant, plan, source checkpoint,
+  fixture adaptations, and rejection/review/recovery/authority commits
+  remain ancestral and unchanged.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `dd2fa9a4`. Strict product frontier remains **28 of 29**. This is corrected
+  test-only RED review admission, not approval, integration, source GREEN,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
