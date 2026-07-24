@@ -31752,3 +31752,79 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidacy, strict record 29, assurance transition, publication, or product
   release. `neo`, push, Wave 3, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1004 — Ordinal-4 fixture-corrected Task136 oracle admitted to fresh review
+
+- Recorded at: 2026-07-24T19:33:05Z
+- Exact forward test-only candidate
+  `9f9d0ae3eecad30cf3124faa2470a52bb07a1483`, tree
+  `263d37c60aa64b1e650e498de7a70fd7eaabd112`, has sole parent E-1003
+  authority merge `361d98bc2fc7ce1c2f33bbf1f0200815fbe18a0c`
+  and changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`,
+  **128 insertions and 4 deletions**. Exact new dispatcher-test blob is
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`.
+- Both affected ordinal-4 call sites retain the resident execution on its
+  exact mounted fixture/ledger but run the post-effect independent released
+  control on a distinct fully real pre-acceptance fixture/ledger. Both lanes
+  use the exact package context, literal released constructor, real released
+  adapter, exact proposed approval preview, and real assertion service.
+  Neither lane catches, normalizes, mocks, suppresses, or weakens adapter
+  validation.
+- Because event IDs and event contexts are legitimate package-owned outputs
+  of their respective ledgers, the candidate does not compare opaque IDs
+  across ledgers. Instead it proves exactly one `assertion.accepted` event
+  per lane, complete lane-specific ID/order/type/version/stream/sequence/
+  actor/time/causation/correlation/version/payload identity, and complete
+  exact result event/artifact/read-model/summary identity. Every non-ordinal-4
+  released-control comparison remains unchanged.
+- Before editing, the author reproduced frozen-source focused
+  **48 = 28 passed + 20 independently source-causal failures**. Final exact
+  candidate with frozen sources retains that same signature: dispatcher
+  **18 = 11 passed + 7 failed**, gateway
+  **28 = 15 passed + 13 failed**, loader **2/2**. There is no fixture,
+  collection, API, dependency, or type failure and no new failure category.
+- A disposable isolated overlay of this exact test blob with the untouched
+  paused E-1002 two-source repair proves focused **48/48**: dispatcher
+  **18/18**, gateway **28/28**, loader **2/2**. The original source worktree
+  remains untouched with exactly its two authorized uncommitted source
+  modifications; no source candidate exists.
+- Author and coordinator reproduction also pass released adapters **79/79**,
+  standalone typecheck, factory, mission **20/20**, V4 assurance **20/20**,
+  and all four exact contract markers. Exact-candidate repository mode exits
+  `1`, stops first and only after those markers at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Scope is one test; dependencies are unchanged; both diff checks pass; the
+  candidate worktree is clean. Frozen blobs remain gateway test
+  `6e720ce896176362256aa09ca0566def9bef2257`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`. All named design, plan,
+  candidate, sibling, recovery, approval, integration, and authority ancestry
+  remains exact.
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1004_ordinal4_test_review` is assigned exact immutable
+  candidate `9f9d0ae3`. It must inspect the complete current dispatcher and
+  gateway test bytes, E-1001 through E-1003 authority and the approved
+  design/Task12 plan, and attack distinct-fixture independence, real released
+  adapter use, proposed-versus-accepted preview semantics, exact per-lane
+  event/result identity, retained ordinal-4 resident new/idempotent evidence,
+  invocation-hash independence, overlay validity, and every previously
+  approved causal assertion.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte or the paused source repair. Every earlier author, reviewer, and
+  changed-byte analyst is ineligible. It may not edit, commit, merge,
+  substitute another SHA, approve changed bytes, authorize source resumption,
+  or describe this transition as source GREEN, product candidacy, or release.
+  Changed candidate bytes invalidate review.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  test-only candidate `9f9d0ae3`. Strict product frontier remains
+  **28 of 29**. This is verifier-recovery test admission, not approval,
+  integration, source resumption, Task12 GREEN, Task13 authority, Task136
+  product candidacy, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
