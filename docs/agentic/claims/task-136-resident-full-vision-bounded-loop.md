@@ -950,3 +950,139 @@ This is a review-ready causal-RED oracle checkpoint, not Task12 source GREEN,
 a product candidate, approval, integration, strict record 29, assurance
 transition, publication, or product release. Task136 remains `implementing`;
 the strict product frontier remains **28 of 29**.
+
+## RV-1-E-959 Task12 Five-Point Forward Causal-RED Correction
+
+The exact RV-1-E-959 authority commit
+`e7212c0821303967388ba2aa0762e577e038eb5e` was forward-merged into the
+preserved Task136 product lineage by exact two-parent merge
+`88eafc00916ca3a201efcaf3ec4bce63b50f4ec5`. Rejected causal-RED candidate
+`fcb612e77ddeee905cc3dc2ff6163d362af10471`, rejected checkpoint
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, approved written-design
+descendant `933498c2ee73a7b11dd481d1df13893aee45423e`, and all prior
+RED/GREEN/repair/review history remain unchanged and ancestral.
+
+The five reviewed P1 oracle defects are corrected without a product-source
+edit:
+
+1. The repository AST classifier now counts only actual value declarations,
+   object methods, function-valued properties, and exports of the protected
+   Task12 operations. It does not count imports, property-access calls,
+   property consumers, or aliases assigned from a consumer. A direct control
+   fixture executes before the causal loader failure and proves Task14's
+   planned
+   `dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(...)`
+   property call, a G method call, a same-named consumer alias, and a general
+   consumer reference do not create a third definition source. The production
+   definition set remains exactly the dispatcher and G sources.
+2. Recovery now rereads and obtains the recovery-only human `requested` stage
+   before any decision exists. The independent actor/path then appends the
+   exact bound durable approval. On the same G instance,
+   `readFreshHumanDecision(recoveryRequested)` and
+   `executeFreshAuthorized(recoveryRequested)` both reject with zero effect.
+   A later recovery reread may return the durable human-approved state, but
+   that recovery human-approved brand also remains nonadvanceable and
+   nonexecutable.
+3. Every fail-closed ordinal 0, 1, and 8 requires an actual rejected execution
+   and an undefined successful evidence/attestation result. Its exact
+   tool-bound resident stream must contain neither an outcome receipt nor a
+   completed terminal. A direct counterfactual proves that the same predicate
+   detects an independently fabricated completed terminal even when no
+   receipt exists, so a source cannot hide completion behind the released
+   adapter rejection.
+4. The exact new `readFreshHumanDecision` ABI now receives real durable cases
+   for zero decisions, multiple approvals, self-issued approval, a stale
+   approval timestamp, an approval observed after its request budget expires,
+   a denial, an approval followed by a later bound denial representing
+   revocation, and an approved-preview mismatch. Every case retains the exact
+   live same-instance requested brand and independently appended event facts;
+   every rejection also proves zero execution claim, outcome receipt,
+   completed terminal, or domain effect.
+5. The G default-export oracle now resolves the default expression to an exact
+   `Object.freeze` object and requires its sole property and operation to be
+   `consumeResidentDomainExecutionPermit`. Direct valid and widened AST
+   controls prove a second issuer operation is detected. Both runtime import
+   orders require the same exact frozen one-key object, while named runtime
+   exports remain exactly the import-gated
+   `createResidentLoopToolGateway`; no public or named permit issuer is
+   accepted.
+
+The real six-family fixture matrix, independent PRR and export/report
+contexts, positive per-ordinal evidence, safe context negatives, catalog
+order, default-only access, no dynamic loading, source freeze, and prior
+same-process human positive remain unchanged.
+
+The fresh focused command was:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1`: all three files fail and exactly 25 tests = 17 passed + 8
+causal RED failures. Four dispatcher tests and three G tests stop only at the
+absent Task12 default dispatcher API after the released-fixture preflight.
+The loader's classifier/default-object counterfactuals execute successfully
+before its sole failure at the absent exact six-module static import map.
+There is no construction, event, context, execution-DTO, collection,
+dependency, type, or unrelated inherited failure. The non-fatal missing
+TypeScript source-map warning does not prevent collection. The complete
+focused log SHA-256 is
+`038e6555551353e0091fbe791274699dfbd6f98262635ec1751bcbd71c731084`.
+
+The exact six released adapter controls exit `0`: 6 files and all **79/79**
+tests pass. Their complete log SHA-256 is
+`f85babe29865d7bd99a5af7456e2b2d0d641d343e5f09d41e073b33589eb0d31`.
+Fresh standalone `npm run typecheck` exits `0` with `typecheck passed`; its
+log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` exits `0` with `factory-readiness passed`; its
+log SHA-256 is
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+The calibrated mission validator passes **20/20** with unchanged fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20** and contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The corrected test SHA-256 values are:
+
+- dispatcher
+  `9c2e3d971c3813946ef5a166b7eb1d6e46d70e4fc1ffe6d86a11f3ba191d0662`;
+- G
+  `08f2a0758d7583d3e84fbd75d52e27b3f4be65baf8f6c11f20f31c5b1484339a`;
+  and
+- loader
+  `620a04454cc900736306a9e154518ce223774990826a5dd760177ca1b2f2f12a`.
+
+Their exact Git blobs are respectively
+`846f0bb1e62719fb10b0af179b6d35c59633f733`,
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`, and
+`4f9a1e003afa35f78612b05352903d1bdf07f7f1`. Both frozen Task12 product
+sources remain unchanged at dispatcher blob
+`96b0ade273696b9ffcf497119f1943f128821a58` and G blob
+`1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+The exact correction scope is only:
+
+```text
+packages/agent/test/domain-execution-dispatcher.test.ts
+packages/agent/test/resident-loop-tool-gateway.test.ts
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, contract, plan, mission state, program registry, provider,
+credential, runtime activation, route, network, fallback, unrelated path, or
+pull request changes. This exact descendant requires a completely fresh
+focused reviewer; the `fcb612e7` reviewer is ineligible for changed bytes.
+Any changed test or claim byte invalidates that review.
+
+This is a review-ready forward causal-RED correction, not Task12 source
+authorization or GREEN, a product candidate, approval, integration, strict
+record 29, assurance transition, publication, or product release. Task136
+remains `implementing`; the strict product frontier remains **28 of 29**.

@@ -80,6 +80,35 @@ describe("resident-loop scheduler completion import boundary", () => {
       ]]
     ]);
 
+    expect(task12ResidentDefinitionSources(definitionClassifierControlSources()))
+      .toEqual(["definitions.ts"]);
+    expect(defaultFrozenObjectOperations(sourceRecordFromText(
+      "valid-default.ts",
+      [
+        "function consumeResidentDomainExecutionPermit() {}",
+        "const residentDomainExecutionPermitConsumer = Object.freeze({",
+        "  consumeResidentDomainExecutionPermit",
+        "});",
+        "export default residentDomainExecutionPermitConsumer;"
+      ].join("\n")
+    ).sourceFile)).toEqual(["consumeResidentDomainExecutionPermit"]);
+    expect(defaultFrozenObjectOperations(sourceRecordFromText(
+      "widened-default.ts",
+      [
+        "function consumeResidentDomainExecutionPermit() {}",
+        "const residentDomainExecutionPermitConsumer = Object.freeze({",
+        "  consumeResidentDomainExecutionPermit,",
+        "  issueResidentDomainExecutionPermit() {},",
+        "});",
+        "export default residentDomainExecutionPermitConsumer;"
+      ].join("\n")
+    ).sourceFile)).toEqual([
+      "consumeResidentDomainExecutionPermit",
+      "issueResidentDomainExecutionPermit"
+    ]);
+    expect(namedRuntimeExports(gatewayRecord.sourceFile)).toEqual([
+      "createResidentLoopToolGateway"
+    ]);
     expect(exactNamedValueImports(dispatcherRecord.sourceFile, expectedAdapterImports))
       .toEqual(Object.fromEntries(expectedAdapterImports));
     expect(staticResidentAdapterModuleOrder(
@@ -91,6 +120,9 @@ describe("resident-loop scheduler completion import boundary", () => {
       localName: expect.stringMatching(/^[A-Za-z_$][A-Za-z0-9_$]*$/)
     }]);
     expect(defaultExports(gatewayRecord.sourceFile)).toHaveLength(1);
+    expect(defaultFrozenObjectOperations(gatewayRecord.sourceFile)).toEqual([
+      "consumeResidentDomainExecutionPermit"
+    ]);
     expect(protectedResidentTransfers(sources)).toEqual([]);
     expect(protectedLoaderTransfers(sources)).toEqual([]);
     expect(task12ResidentDefinitionSources(sources)).toEqual([
@@ -108,6 +140,7 @@ describe("resident-loop scheduler completion import boundary", () => {
     const adapterAfterBarrel = await import("../src/adapters/accepted-graph-review.js");
     const dispatcherAfterBarrel = await import("../src/domain-execution-dispatcher.js");
     const gatewayAfterBarrel = await import("../src/resident-loop-tool-gateway.js");
+    expectExactGatewayDefaultPermitConsumer(gatewayAfterBarrel);
     const barrelFirstFixture = acceptedGraphFactoryFixture("barrel_first");
     const barrelFirstApi = residentDomainExecutionApi(dispatcherAfterBarrel);
     const barrelFirstCapability = await barrelFirstApi.create(
@@ -132,6 +165,7 @@ describe("resident-loop scheduler completion import boundary", () => {
     const barrelAfterAdapter = await import("../src/index.js");
     const dispatcherAfterAdapter = await import("../src/domain-execution-dispatcher.js");
     const gatewayAfterAdapter = await import("../src/resident-loop-tool-gateway.js");
+    expectExactGatewayDefaultPermitConsumer(gatewayAfterAdapter);
     const adapterFirstFixture = acceptedGraphFactoryFixture("adapter_first");
     const adapterFirstApi = residentDomainExecutionApi(dispatcherAfterAdapter);
     const adapterFirstCapability = await adapterFirstApi.create(
@@ -301,14 +335,86 @@ function task12ResidentDefinitionSources(
       if (
         ts.isIdentifier(node) &&
         protectedDefinitions.has(node.text) &&
-        !isImportBinding(node) &&
-        !hasTypeNodeAncestor(node, sourceFile)
+        isValueDefinitionOrExport(node)
       ) {
         found = true;
       }
       ts.forEachChild(node, visit);
     }
   }).sort();
+}
+
+function isValueDefinitionOrExport(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  if (
+    (ts.isFunctionDeclaration(parent) ||
+      ts.isClassDeclaration(parent) ||
+      ts.isMethodDeclaration(parent) ||
+      ts.isGetAccessorDeclaration(parent) ||
+      ts.isSetAccessorDeclaration(parent)) &&
+    parent.name === node
+  ) {
+    return true;
+  }
+  if (
+    ts.isVariableDeclaration(parent) &&
+    parent.name === node &&
+    parent.initializer !== undefined &&
+    (ts.isArrowFunction(parent.initializer) ||
+      ts.isFunctionExpression(parent.initializer) ||
+      ts.isClassExpression(parent.initializer))
+  ) {
+    return true;
+  }
+  if (
+    ts.isPropertyAssignment(parent) &&
+    parent.name === node &&
+    (ts.isArrowFunction(parent.initializer) ||
+      ts.isFunctionExpression(parent.initializer))
+  ) {
+    return true;
+  }
+  return ts.isExportSpecifier(parent);
+}
+
+function definitionClassifierControlSources(): readonly SourceRecord[] {
+  return [
+    sourceRecordFromText("definitions.ts", [
+      "export function createPackageOwnedResidentDomainExecutionCapability() {}",
+      "const gateway = {",
+      "  requestFreshAuthorized() {},",
+      "  readFreshHumanDecision: async function () {},",
+      "};",
+      "export { gateway };"
+    ].join("\n")),
+    sourceRecordFromText("imports.ts", [
+      "import { executeFreshAuthorized } from './resident-loop-tool-gateway.js';",
+      "void executeFreshAuthorized;"
+    ].join("\n")),
+    sourceRecordFromText("task14-consumer.ts", [
+      "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);",
+      "gateway.readFreshHumanDecision(requested);",
+      "const readFreshHumanDecision = gateway.readFreshHumanDecision;",
+      "const consumer = gateway.rereadAndIssueFromLedger;"
+    ].join("\n"))
+  ];
+}
+
+function sourceRecordFromText(
+  sourcePath: string,
+  text: string
+): SourceRecord {
+  return {
+    sourcePath,
+    text,
+    sourceFile: ts.createSourceFile(
+      sourcePath,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS
+    )
+  };
 }
 
 function exactGatewayDefaultImports(
@@ -352,6 +458,106 @@ function defaultExports(sourceFile: ts.SourceFile): readonly string[] {
     }
     return [];
   });
+}
+
+function defaultFrozenObjectOperations(
+  sourceFile: ts.SourceFile
+): readonly string[] {
+  const exported = sourceFile.statements.find(
+    (statement): statement is ts.ExportAssignment =>
+      ts.isExportAssignment(statement) && !statement.isExportEquals
+  );
+  if (exported === undefined) {
+    return [];
+  }
+  const initializer = ts.isIdentifier(exported.expression)
+    ? variableInitializer(sourceFile, exported.expression.text)
+    : exported.expression;
+  if (
+    initializer === undefined ||
+    !ts.isCallExpression(initializer) ||
+    !ts.isPropertyAccessExpression(initializer.expression) ||
+    !ts.isIdentifier(initializer.expression.expression) ||
+    initializer.expression.expression.text !== "Object" ||
+    initializer.expression.name.text !== "freeze" ||
+    initializer.arguments.length !== 1 ||
+    !ts.isObjectLiteralExpression(initializer.arguments[0]!)
+  ) {
+    return [];
+  }
+  return initializer.arguments[0]!.properties.flatMap((property) => {
+    const name = property.name;
+    return name !== undefined &&
+      (ts.isIdentifier(name) || ts.isStringLiteral(name))
+      ? [name.text]
+      : [];
+  });
+}
+
+function variableInitializer(
+  sourceFile: ts.SourceFile,
+  name: string
+): ts.Expression | undefined {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) {
+      continue;
+    }
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === name) {
+        return declaration.initializer;
+      }
+    }
+  }
+  return undefined;
+}
+
+function namedRuntimeExports(sourceFile: ts.SourceFile): readonly string[] {
+  return sourceFile.statements.flatMap((statement) => {
+    if (
+      (ts.isFunctionDeclaration(statement) ||
+        ts.isClassDeclaration(statement) ||
+        ts.isVariableStatement(statement)) &&
+      statement.modifiers?.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.ExportKeyword
+      ) &&
+      !statement.modifiers.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.DeclareKeyword
+      )
+    ) {
+      if (ts.isVariableStatement(statement)) {
+        return statement.declarationList.declarations.flatMap((declaration) =>
+          ts.isIdentifier(declaration.name) ? [declaration.name.text] : []
+        );
+      }
+      return statement.name === undefined ? [] : [statement.name.text];
+    }
+    if (
+      ts.isExportDeclaration(statement) &&
+      statement.exportClause !== undefined &&
+      ts.isNamedExports(statement.exportClause) &&
+      !statement.isTypeOnly
+    ) {
+      return statement.exportClause.elements
+        .filter((element) => !element.isTypeOnly)
+        .map((element) => element.name.text);
+    }
+    return [];
+  }).sort();
+}
+
+function expectExactGatewayDefaultPermitConsumer(module: object): void {
+  const value = Reflect.get(module, "default");
+  expect(value).toSatisfy(isFrozenOpaqueObject);
+  if (typeof value !== "object" || value === null) {
+    throw new Error("Resident gateway default permit consumer is absent.");
+  }
+  expect(Object.keys(value)).toEqual([
+    "consumeResidentDomainExecutionPermit"
+  ]);
+  expect(typeof Reflect.get(
+    value,
+    "consumeResidentDomainExecutionPermit"
+  )).toBe("function");
 }
 
 function protectedResidentTransfers(
