@@ -29215,6 +29215,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-972 — Identity-census candidate rejected; lexical provenance closure authorized
+
+- Recorded at: 2026-07-24T04:05:43Z
+- Completely fresh reviewer `/root/task136_task12_red_review_31a0` rejects
+  exact candidate `31a017b4ad17b1ee427244f53fe9c2f797666586` with one P1
+  gateway-provenance defect. That exact commit and all prior rejected
+  checkpoints, calibration, authority, and review history remain immutable
+  and ancestral; none is source GREEN, approved, integrated, strict record
+  29, or release.
+- Gateway hosts are keyed by textual names and only direct unique `const`
+  aliases are tracked. Mutable `let` identity, parameter defaults sourced
+  from the gateway, conditional/compound identity, and shadowed textual names
+  can therefore feed an unresolved-computed binding extraction without a
+  violation. Each extracted local can be called as a second permit consumer.
+- Replace textual-name provenance with exact lexical binding identity and
+  complete local reference/value-flow census. The exact gateway default
+  import binding is the root. A direct immutable alias may remain a tracked
+  host only when its binding and initializer resolve uniquely to an already
+  tracked host and every reference is classified. Mutable declarations or
+  assignments, parameter/default/destructuring sources, conditional/logical/
+  sequence/compound values, shadowing, closure capture, return/pass/store,
+  or any unrecognized transfer from a tracked host fail closed rather than
+  becoming an untracked value.
+- Binding-pattern rejection must apply to every tracked lexical binding,
+  including nested scopes, while unrelated dynamic-record bindings remain
+  accepted. Direct controls must cover mutable aliases, parameter defaults,
+  conditional/compound aliases, shadowing, nested scopes, reassignment, and
+  safe unrelated records, in addition to every preserved RV-1-E-970 case.
+- One forward correction may modify exactly the loader test and Task136
+  claim. All other test/source blobs remain exact. Preserve full dispatcher
+  identity census, calibrated normalization proof, every previous matrix,
+  exact focused **17 passed + 8 causal RED**, deterministic gates, and
+  truthful repository posture.
+- The exact descendant requires a completely fresh focused reviewer. Every
+  prior reviewer, analyst, and author is ineligible. Changed bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is lexical-provenance loader-oracle correction authority, not
+  Task12 source authorization, candidate approval, integration, strict record
+  29, assurance transition, publication, or product release. `neo`, push,
+  Wave 3, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
+
 ## RV-1-E-970 — Calibrated loader candidate rejected; identity census closure authorized
 
 - Recorded at: 2026-07-24T03:33:25Z
