@@ -103,6 +103,12 @@ describe("resident-loop scheduler completion import boundary", () => {
         permitConsumerOccurrences: 3,
         violations: []
       });
+    for (const control of mentionControls.safe) {
+      expect.soft(
+        task12ProtectedMentionAnalysis(control.sources).violations,
+        control.name
+      ).toEqual([]);
+    }
     expect(closedDataRecordNormalizationAnalysis(gatewayRecord)).toEqual({
       writes: 1,
       violations: []
@@ -432,7 +438,11 @@ function task12ProtectedMentionAnalysis(
   for (const record of sources) {
     const { sourcePath, sourceFile } = record;
     const protectedHosts = protectedHostNames(sourceFile, protectedNames);
-    const gatewayDefaultHosts = gatewayDefaultHostNames(sourceFile);
+    const gatewayDefaultProvenance =
+      gatewayDefaultLexicalProvenance(record);
+    if (gatewayDefaultProvenance.hasViolation) {
+      violations.add(sourcePath);
+    }
     const ownerHasDefinition = sourceContainsOwnedDefinition(
       record,
       protectedNames
@@ -478,10 +488,7 @@ function task12ProtectedMentionAnalysis(
           ts.isPropertyAccessExpression(node) ||
           ts.isElementAccessExpression(node)
         ) &&
-        expressionResolvesProtectedHost(
-          node.expression,
-          gatewayDefaultHosts
-        ) &&
+        gatewayDefaultProvenance.resolves(node.expression) &&
         !isExactDispatcherGatewayAccess(node, record)
       ) {
         violations.add(sourcePath);
@@ -489,7 +496,7 @@ function task12ProtectedMentionAnalysis(
       if (
         isGatewayDefaultBindingPatternSource(
           node,
-          gatewayDefaultHosts
+          gatewayDefaultProvenance
         )
       ) {
         violations.add(sourcePath);
@@ -978,6 +985,10 @@ function uniqueDefaultImportLocal(
 
 interface ProtectedMentionControls {
   readonly safeSources: readonly SourceRecord[];
+  readonly safe: readonly {
+    readonly name: string;
+    readonly sources: readonly SourceRecord[];
+  }[];
   readonly unsafe: readonly {
     readonly name: string;
     readonly sources: readonly SourceRecord[];
@@ -1106,6 +1117,20 @@ function protectedMentionControls(): ProtectedMentionControls {
     ],
     violations: [sourcePath]
   });
+  const shadowedUnrelatedRecordSources = base().map((record) =>
+    record.sourcePath === dispatcherPath
+      ? sourceRecordFromText(record.sourcePath, [
+          record.text,
+          "function readShadowedUnrelatedRecord(",
+          "  gatewayDefault: Record<string, unknown>,",
+          "  dynamicKey: string",
+          ") {",
+          "  const { [dynamicKey]: value } = gatewayDefault;",
+          "  return value;",
+          "}"
+        ].join("\n"))
+      : record
+  );
   const unsafe = [
     unsafeSources("resolved computed definition", "unsafe-resolved.ts",
       "const op = 'executeFreshAuthorized' as const; class X { [op]() {} }"),
@@ -1318,11 +1343,164 @@ function protectedMentionControls(): ProtectedMentionControls {
       ].join("\n")),
       violations: [dispatcherPath]
     },
+    {
+      name: "gateway default mutable alias binding extraction",
+      sources: base("", [
+        "let mutableGateway = gatewayDefault;",
+        "const suffix = 'DomainExecutionPermit';",
+        "const { [`consumeResident${suffix}`]: invoke } = mutableGateway;",
+        "invoke(permit, port, input);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default assignment-sourced binding extraction",
+      sources: base("", [
+        "let assignedGateway = unrelatedRecord;",
+        "assignedGateway = gatewayDefault;",
+        "const suffix = 'DomainExecutionPermit';",
+        "const { [`consumeResident${suffix}`]: invoke } = assignedGateway;",
+        "invoke(permit, port, input);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default parameter-default binding extraction",
+      sources: base("", [
+        "function inspectGateway(host = gatewayDefault) {",
+        "  const suffix = 'DomainExecutionPermit';",
+        "  const { [`consumeResident${suffix}`]: invoke } = host;",
+        "  invoke(permit, port, input);",
+        "}",
+        "inspectGateway();"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default parameter-pass binding extraction",
+      sources: base("", [
+        "function inspectGateway(host: unknown) {",
+        "  const suffix = 'DomainExecutionPermit';",
+        "  const { [`consumeResident${suffix}`]: invoke } = host;",
+        "  invoke(permit, port, input);",
+        "}",
+        "inspectGateway(gatewayDefault);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default conditional binding extraction",
+      sources: base("", [
+        "const selectedGateway = condition ? gatewayDefault : unrelatedRecord;",
+        "const suffix = 'DomainExecutionPermit';",
+        "const { [`consumeResident${suffix}`]: invoke } = selectedGateway;",
+        "invoke(permit, port, input);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default logical binding extraction",
+      sources: base("", [
+        "const selectedGateway = gatewayDefault || unrelatedRecord;",
+        "const suffix = 'DomainExecutionPermit';",
+        "const { [`consumeResident${suffix}`]: invoke } = selectedGateway;",
+        "invoke(permit, port, input);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default sequence binding extraction",
+      sources: base("", [
+        "const selectedGateway = (unrelatedRecord, gatewayDefault);",
+        "const suffix = 'DomainExecutionPermit';",
+        "const { [`consumeResident${suffix}`]: invoke } = selectedGateway;",
+        "invoke(permit, port, input);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default compound-assignment binding extraction",
+      sources: base("", [
+        "let selectedGateway = unrelatedRecord;",
+        "selectedGateway ||= gatewayDefault;",
+        "const suffix = 'DomainExecutionPermit';",
+        "const { [`consumeResident${suffix}`]: invoke } = selectedGateway;",
+        "invoke(permit, port, input);"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default immutable alias reassignment",
+      sources: base("", [
+        "const dynamicGateway = gatewayDefault;",
+        "dynamicGateway = unrelatedRecord;"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default nested alias capture",
+      sources: base("", [
+        "function captureGateway() {",
+        "  const dynamicGateway = gatewayDefault;",
+        "  return dynamicGateway;",
+        "}"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default nested-scope alias binding extraction",
+      sources: base("", [
+        "const dynamicGateway = gatewayDefault;",
+        "function inspectNestedGateway() {",
+        "  const suffix = 'DomainExecutionPermit';",
+        "  const { [`consumeResident${suffix}`]: invoke } = dynamicGateway;",
+        "  invoke(permit, port, input);",
+        "}"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default return escape",
+      sources: base("", [
+        "function returnGateway() {",
+        "  return gatewayDefault;",
+        "}"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default pass escape",
+      sources: base("", "consumeGateway(gatewayDefault);"),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default store escape",
+      sources: base("", "holder.gateway = gatewayDefault;"),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default object transfer",
+      sources: base("", [
+        "const transferredGateway = { gateway: gatewayDefault };",
+        "void transferredGateway;"
+      ].join("\n")),
+      violations: [dispatcherPath]
+    },
     ...freshRecordEscapeControls(base, gatewayPath),
     ...closedNormalizationEscapeControls(base, gatewayPath)
   ];
   return {
     safeSources: base(),
+    safe: [
+      {
+        name: "unique direct immutable gateway alias",
+        sources: base("", "const immutableGatewayAlias = gatewayDefault;")
+      },
+      {
+        name: "shadowed unrelated dynamic record",
+        sources: shadowedUnrelatedRecordSources
+      }
+    ],
     unsafe
   };
 }
@@ -1759,59 +1937,195 @@ function protectedHostNames(
   }
 }
 
-function gatewayDefaultHostNames(
-  sourceFile: ts.SourceFile
-): ReadonlySet<string> {
-  const hosts = new Set<string>();
-  for (const statement of sourceFile.statements) {
+interface GatewayDefaultLexicalProvenance {
+  readonly hasViolation: boolean;
+  readonly resolves: (expression: ts.Expression | undefined) => boolean;
+}
+
+function gatewayDefaultLexicalProvenance(
+  record: SourceRecord
+): GatewayDefaultLexicalProvenance {
+  const { sourceFile } = record;
+  const rootNames = sourceFile.statements.flatMap((statement) => {
     if (
-      ts.isImportDeclaration(statement) &&
-      statement.importClause?.name !== undefined &&
-      statement.importClause.isTypeOnly === false &&
-      statement.importClause.namedBindings === undefined &&
-      ts.isStringLiteral(statement.moduleSpecifier) &&
+      !ts.isImportDeclaration(statement) ||
+      statement.importClause?.name === undefined ||
+      statement.importClause.isTypeOnly ||
+      statement.importClause.namedBindings !== undefined ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
       (
-        statement.moduleSpecifier.text ===
-          "./resident-loop-tool-gateway.js" ||
-        statement.moduleSpecifier.text.endsWith(
+        statement.moduleSpecifier.text !==
+          "./resident-loop-tool-gateway.js" &&
+        !statement.moduleSpecifier.text.endsWith(
           "/resident-loop-tool-gateway.js"
         )
       )
     ) {
-      hosts.add(statement.importClause.name.text);
+      return [];
     }
+    return [statement.importClause.name];
+  });
+  if (rootNames.length === 0) {
+    return {
+      hasViolation: false,
+      resolves: () => false
+    };
   }
+
+  const checker = localLexicalTypeChecker(sourceFile);
+  const trackedSymbols = new Set<ts.Symbol>();
+  const rootDeclarations = new Set<ts.Identifier>();
+  let hasViolation = false;
+  for (const rootName of rootNames) {
+    const symbol = checker.getSymbolAtLocation(rootName);
+    if (symbol === undefined) {
+      hasViolation = true;
+      continue;
+    }
+    trackedSymbols.add(symbol);
+    rootDeclarations.add(rootName);
+  }
+
+  const aliasDeclarations = new Set<ts.Identifier>();
+  const aliasInitializers = new Set<ts.Identifier>();
   let changed = true;
   while (changed) {
     changed = false;
-    visit(sourceFile);
+    visitAliasCandidates(sourceFile);
   }
-  return hosts;
 
-  function visit(node: ts.Node): void {
+  visitReferences(sourceFile);
+  return {
+    hasViolation,
+    resolves: (expression) => {
+      if (expression === undefined) {
+        return false;
+      }
+      const value = unwrapStaticExpression(expression);
+      return ts.isIdentifier(value) &&
+        symbolIsTracked(value);
+    }
+  };
+
+  function visitAliasCandidates(node: ts.Node): void {
     if (
       ts.isVariableDeclaration(node) &&
       ts.isIdentifier(node.name) &&
       node.initializer !== undefined &&
-      uniqueConstDeclaration(sourceFile, node.name.text) === node
+      ts.isIdentifier(node.initializer) &&
+      isDirectConstDeclaration(node)
     ) {
-      const initializer = unwrapStaticExpression(node.initializer);
+      const initializerSymbol =
+        checker.getSymbolAtLocation(node.initializer);
+      const aliasSymbol = checker.getSymbolAtLocation(node.name);
+      const initializerDeclaration = initializerSymbol?.valueDeclaration ??
+        initializerSymbol?.declarations?.[0];
       if (
-        ts.isIdentifier(initializer) &&
-        hosts.has(initializer.text) &&
-        !hosts.has(node.name.text)
+        initializerSymbol !== undefined &&
+        trackedSymbols.has(initializerSymbol) &&
+        initializerDeclaration !== undefined &&
+        sameFunctionBoundary(node, initializerDeclaration) &&
+        aliasSymbol !== undefined &&
+        aliasSymbol.declarations?.length === 1 &&
+        aliasSymbol.declarations[0] === node &&
+        !trackedSymbols.has(aliasSymbol)
       ) {
-        hosts.add(node.name.text);
+        trackedSymbols.add(aliasSymbol);
+        aliasDeclarations.add(node.name);
+        aliasInitializers.add(node.initializer);
         changed = true;
       }
     }
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, visitAliasCandidates);
   }
+
+  function visitReferences(node: ts.Node): void {
+    if (ts.isIdentifier(node) && symbolIsTracked(node)) {
+      if (
+        !rootDeclarations.has(node) &&
+        !aliasDeclarations.has(node) &&
+        !aliasInitializers.has(node) &&
+        !isExactDispatcherGatewayReference(node, record)
+      ) {
+        hasViolation = true;
+      }
+    }
+    ts.forEachChild(node, visitReferences);
+  }
+
+  function symbolIsTracked(identifier: ts.Identifier): boolean {
+    const symbol = checker.getSymbolAtLocation(identifier);
+    return symbol !== undefined && trackedSymbols.has(symbol);
+  }
+}
+
+function localLexicalTypeChecker(
+  sourceFile: ts.SourceFile
+): ts.TypeChecker {
+  const options: ts.CompilerOptions = {
+    noLib: true,
+    noResolve: true,
+    target: ts.ScriptTarget.Latest,
+    module: ts.ModuleKind.ESNext
+  };
+  const host = ts.createCompilerHost(options, true);
+  host.fileExists = (fileName) => fileName === sourceFile.fileName;
+  host.readFile = (fileName) =>
+    fileName === sourceFile.fileName ? sourceFile.text : undefined;
+  host.getSourceFile = (fileName) =>
+    fileName === sourceFile.fileName ? sourceFile : undefined;
+  host.getDefaultLibFileName = () => "";
+  host.getCurrentDirectory = () => "";
+  host.writeFile = () => undefined;
+  const program = ts.createProgram({
+    rootNames: [sourceFile.fileName],
+    options,
+    host
+  });
+  return program.getTypeChecker();
+}
+
+function isDirectConstDeclaration(
+  declaration: ts.VariableDeclaration
+): boolean {
+  return ts.isVariableDeclarationList(declaration.parent) &&
+    (declaration.parent.flags & ts.NodeFlags.Const) !== 0;
+}
+
+function sameFunctionBoundary(
+  left: ts.Node,
+  right: ts.Node
+): boolean {
+  return nearestFunctionBoundary(left) === nearestFunctionBoundary(right);
+}
+
+function nearestFunctionBoundary(node: ts.Node): ts.Node {
+  let current: ts.Node | undefined = node.parent;
+  while (current !== undefined && !ts.isSourceFile(current)) {
+    if (ts.isFunctionLike(current)) {
+      return current;
+    }
+    current = current.parent;
+  }
+  return current ?? node.getSourceFile();
+}
+
+function isExactDispatcherGatewayReference(
+  node: ts.Identifier,
+  record: SourceRecord
+): boolean {
+  const access = node.parent;
+  return (
+    ts.isPropertyAccessExpression(access) ||
+    ts.isElementAccessExpression(access)
+  ) &&
+    access.expression === node &&
+    isExactDispatcherGatewayAccess(access, record);
 }
 
 function isGatewayDefaultBindingPatternSource(
   node: ts.Node,
-  gatewayDefaultHosts: ReadonlySet<string>
+  provenance: GatewayDefaultLexicalProvenance
 ): boolean {
   if (
     ts.isVariableDeclaration(node) &&
@@ -1826,27 +2140,18 @@ function isGatewayDefaultBindingPatternSource(
       )
       ? node.parent.parent
       : undefined;
-    return expressionResolvesProtectedHost(
-      node.initializer ?? loop?.expression,
-      gatewayDefaultHosts
-    );
+    return provenance.resolves(node.initializer ?? loop?.expression);
   }
   if (
     ts.isParameter(node) &&
     isBindingPattern(node.name) &&
-    expressionResolvesProtectedHost(
-      node.initializer,
-      gatewayDefaultHosts
-    )
+    provenance.resolves(node.initializer)
   ) {
     return true;
   }
   return ts.isBindingElement(node) &&
     node.initializer !== undefined &&
-    expressionResolvesProtectedHost(
-      node.initializer,
-      gatewayDefaultHosts
-    );
+    provenance.resolves(node.initializer);
 }
 
 function isBindingPattern(

@@ -1654,3 +1654,117 @@ source authorization or GREEN, a product candidate approval, integration,
 strict record 29, assurance transition, publication, or product release.
 Task136 remains `implementing`; the strict product frontier remains **28 of
 29**.
+
+## RV-1-E-972 Task12 Lexical-Provenance Loader-Oracle Closure
+
+Exact RV-1-E-972 authority
+`22c274d5b1d24d8b212e0489510047b72b595263` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`c3de8f95524c3c15d7f53794aea3b3c2ca248249`. Its first parent is
+`b276d27201be43e0468e3faeb4d3df55bba48e7c`; its second parent is that
+exact registry authority. Rejected identity-census candidate
+`31a017b4ad17b1ee427244f53fe9c2f797666586`, plus rejected candidates
+`976104381ad94f1d1551c0ac4075b9118f4d4016`,
+`a1ed492fc71e0d98ccf7a7d96d5e314a64ecb0e2`,
+`84b9f6a8599e9596ce42f3078fc017a0fe487862`,
+`fc580fc110d4e97863c1793e145eb41d8013332a`,
+`9f33e0b9309be0bf62054833816833c932233819`,
+`fcb612e77ddeee905cc3dc2ff6163d362af10471`, and
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, remain immutable ancestors.
+Every earlier authority, design, permanent RED, GREEN, repair, review, and
+claim commit is preserved without reset, rebase, amend, reconstruction, or
+discarded history.
+
+Gateway-default provenance is now rooted in the TypeScript lexical symbol of
+the exact value-default import rather than an identifier string. A uniquely
+declared direct `const` identifier alias is tracked only when its initializer
+resolves to an already tracked symbol in the same function boundary. Every
+identifier reference to every tracked symbol is then censused. The import
+binding, a proven alias binding and initializer, and the exact direct
+dispatcher permit-consumer call are the only classified forms. Mutable
+declarations or assignments, parameter/default sources, conditional,
+logical, sequence, or compound values, reassignment, closure capture,
+return, pass, store, object transfer, or any other reference fails closed.
+All existing object/array/nested/rest/default/renamed/computed binding-pattern
+rejection now resolves the exact tracked lexical symbol in every scope.
+
+Direct controls reject mutable and assignment-sourced aliases,
+parameter-default and parameter-pass flows, conditional, logical, sequence,
+and compound-assignment flows, immutable-alias reassignment, nested alias
+capture, a tracked alias used by a nested-scope binding pattern, and
+return/pass/store/object escapes. Separate positive controls accept one
+otherwise-unused unique direct immutable alias and a same-text shadowed
+parameter used as an unrelated dynamic record. The preserved unrelated
+fresh-record control also remains accepted. Every RV-1-E-970 dispatcher
+reference census, gateway binding-pattern matrix, fresh-record census,
+calibrated normalization proof, and released legacy compatibility control
+continues to execute unchanged.
+
+The final focused command is:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1`: all three files fail and exactly **25 = 17 passed + 8 causal
+RED failures**. Every lexical-provenance unsafe and safe control executes
+successfully before the loader stops only at the absent exact six-module
+Task12 map. Four dispatcher and three G tests stop only at the absent Task12
+default API. There is no construction, event, context, execution-DTO,
+collection, dependency, type, oracle-control, or unrelated inherited
+failure. The non-fatal missing TypeScript source-map warning does not prevent
+collection. The complete focused log SHA-256 is
+`9d217eabab2bca1d77ea4e0b6ba4015d0fa20a0271e65ea0ed34d74b6398f7e7`.
+
+The exact six released adapter controls pass **79/79** with log SHA-256
+`eba8c54aa964c0936111fa31f5cb03b4e5d1d75112a7deec8fc195294693869c`.
+Fresh standalone `npm run typecheck` passes with log SHA-256
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` passes with log SHA-256
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+The calibrated mission validator passes **20/20**, and the direct validator
+reports unchanged fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20**. Contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The V4 contract remains SHA-256
+`81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+The corrected loader SHA-256 is
+`d0b524d4a0c0542972d602746ee0ab12b478d0874d20dde9962da82d5a572b00`;
+its exact Git blob is `1e03766e9c29fa8caf4b7ee4f68c144da25af09c`.
+Frozen dispatcher and G tests remain exact at blobs
+`846f0bb1e62719fb10b0af179b6d35c59633f733` and
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`. Both Task12 product sources
+remain exact at dispatcher blob
+`96b0ade273696b9ffcf497119f1943f128821a58` and G blob
+`1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+The exact correction scope is only:
+
+```text
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, dispatcher/G test, contract, plan, mission state, program
+registry, provider, credential, runtime activation, route, network,
+fallback, unrelated path, dependency, or pull request changes. Clean
+repository mode must retain the actual pre-record-29 W1 current-blob
+mismatch and must not emit repository-prefix or release-closure success.
+The exact two-path descendant requires a completely fresh focused reviewer;
+the reviewer of `31a017b4` and every earlier RED reviewer, candidate author,
+or model analyst is ineligible. Any changed test or claim byte invalidates
+that review.
+
+This is a review-ready lexical-provenance loader-oracle correction, not
+Task12 source authorization or GREEN, a product candidate approval,
+integration, strict record 29, assurance transition, publication, or product
+release. Task136 remains `implementing`; the strict product frontier remains
+**28 of 29**.
