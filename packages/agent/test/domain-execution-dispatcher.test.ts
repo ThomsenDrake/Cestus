@@ -582,7 +582,11 @@ describe("agent domain execution dispatcher", () => {
     );
     await expectRejectedStructuralAttestation(
       attempt,
-      /attestation.*(?:brand|issued)|(?:brand|issued).*attestation/i
+      /attestation.*(?:brand|issued)|(?:brand|issued).*attestation/i,
+      {
+        requireNoStructuralMismatchInspection: true,
+        requireNoTerminalAppendAttempts: true
+      }
     );
   });
 
@@ -606,7 +610,10 @@ describe("agent domain execution dispatcher", () => {
     );
     await expectRejectedStructuralAttestation(
       attempt,
-      /replay|consumed/i
+      /replay|consumed/i,
+      {
+        requireNoStructuralMismatchInspection: true
+      }
     );
     expect(attempt.returnedAttestation()).toBe(issuedAttestation);
   });
@@ -1851,15 +1858,27 @@ interface StructuralResidentAttestationAttempt {
   readonly execution: Promise<unknown>;
   readonly invocationCount: () => number;
   readonly returnedAttestation: () => unknown;
+  readonly structuralMismatchInspectionCount: () => number;
+  readonly terminalAppendAttempts: () => readonly string[];
+}
+
+interface StructuralResidentAttestationOracle {
+  readonly requireNoStructuralMismatchInspection?: boolean;
+  readonly requireNoTerminalAppendAttempts?: boolean;
 }
 
 async function expectRejectedStructuralAttestation(
   attempt: StructuralResidentAttestationAttempt,
-  expectedFailure: RegExp = /attestation|brand|issued|schema|result|replay|structural/i
+  expectedFailure: RegExp = /attestation|brand|issued|schema|result|replay|structural/i,
+  oracle: StructuralResidentAttestationOracle = {}
 ): Promise<void> {
-  await expect(attempt.execution).rejects.toThrow(
-    expectedFailure
-  );
+  let rejection: unknown;
+  try {
+    await attempt.execution;
+  } catch (error) {
+    rejection = error;
+  }
+  expect(rejection, "structural attestation execution must reject").toBeDefined();
   const stream = await attempt.ledger.readStream(
     residentCatalogStreamId(attempt.locator)
   );
@@ -1868,13 +1887,25 @@ async function expectRejectedStructuralAttestation(
     event.type === "agent.resident-domain.completed.v1"
   )).toEqual([]);
   expect(attempt.invocationCount()).toBe(1);
+  if (oracle.requireNoTerminalAppendAttempts === true) {
+    expect(attempt.terminalAppendAttempts()).toEqual([]);
+  }
+  if (oracle.requireNoStructuralMismatchInspection === true) {
+    expect(attempt.structuralMismatchInspectionCount()).toBe(0);
+  }
+  expect(() => {
+    throw rejection;
+  }).toThrow(expectedFailure);
 }
 
 async function prepareStructuralResidentAttestationAttempt(
   attestationCase: StructuralResidentAttestationCase,
   consumedAttestation?: Readonly<Record<string, unknown>>
 ): Promise<StructuralResidentAttestationAttempt> {
-  const fixture = (await residentFactoryFixtures())[4]!;
+  const ledger = new AppendAttemptLedger();
+  const fixture = (await residentFactoryFixtures({
+    destructiveLedger: ledger
+  }))[4]!;
   const row = residentCatalogRows()[7]!;
   const residentApi = residentDomainApi(domainExecutionDispatcherModule);
   const capability = await residentApi.create(fixture.binding);
@@ -1951,7 +1982,14 @@ async function prepareStructuralResidentAttestationAttempt(
       }
       const complete = Object.freeze({
         schemaVersion: "resident-domain-invocation-attestation.v1",
-        ...envelope,
+        executionClaimEventId: invocation.executionClaimEventId,
+        executionCapabilityHash: locator.executionCapabilityHash,
+        catalogOrdinal: row.ordinal,
+        implementationRevision: row.implementationRevision,
+        residentInvocationInputHash: residentTestHash(invocation),
+        evidenceMode: "nonledger-projection-artifacts",
+        preInvocationLedgerFingerprint: residentTestHash(ledgerState),
+        postInvocationLedgerFingerprint: residentTestHash(ledgerState),
         result
       });
       if (attestationCase === "consumed-replay") {
@@ -2058,14 +2096,51 @@ async function prepareStructuralResidentAttestationAttempt(
     [requested]
   );
   const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
+  let structuralMismatchInspectionCount = 0;
+  const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+  const descriptorSpy = attestationCase === "complete-unbranded" ||
+    (
+      attestationCase === "consumed-replay" &&
+      consumedAttestation !== undefined
+    )
+    ? vi.spyOn(Object, "getOwnPropertyDescriptor").mockImplementation(
+        (value: object, property: PropertyKey) => {
+          const inspectedAttestation =
+            attestationCase === "consumed-replay"
+              ? consumedAttestation
+              : returnedAttestation;
+          if (
+            value === inspectedAttestation &&
+            (
+              property === "requestEventId" ||
+              property === "executionClaimEventId"
+            )
+          ) {
+            structuralMismatchInspectionCount += 1;
+          }
+          return Reflect.apply(
+            getOwnPropertyDescriptor,
+            Object,
+            [value, property]
+          );
+        }
+      )
+    : undefined;
+  const execution = Promise.resolve()
+    .then(() => Reflect.apply(execute, gateway, [approved]))
+    .finally(() => descriptorSpy?.mockRestore());
   return {
     ledger: fixture.ledger,
     locator,
-    execution: Promise.resolve().then(() =>
-      Reflect.apply(execute, gateway, [approved])
-    ),
+    execution,
     invocationCount: () => invocationCount,
-    returnedAttestation: () => returnedAttestation
+    returnedAttestation: () => returnedAttestation,
+    structuralMismatchInspectionCount: () =>
+      structuralMismatchInspectionCount,
+    terminalAppendAttempts: () => ledger.attemptedTypes.filter((type) =>
+      type === "agent.resident-domain.outcome-observed.v1" ||
+      type === "agent.resident-domain.completed.v1"
+    )
   };
 }
 
@@ -2219,7 +2294,11 @@ async function executeResidentCatalogRow(
           invocationInput = candidate;
         }
         if (
-          candidateLocator.toolRequestId === locator.toolRequestId &&
+          (
+            candidate.schemaVersion ===
+              "resident-domain-invocation-attestation.v1" ||
+            candidateLocator.toolRequestId === locator.toolRequestId
+          ) &&
           candidate.catalogOrdinal === row.ordinal &&
           candidate.implementationRevision === row.implementationRevision &&
           typeof candidate.residentInvocationInputHash === "string"
@@ -2445,7 +2524,11 @@ function legacyFixtureAssertionId(candidateId: string): string {
   ].join(":")).digest("hex")}`;
 }
 
-async function residentFactoryFixtures(): Promise<readonly ResidentFactoryFixture[]> {
+async function residentFactoryFixtures(
+  input: {
+    readonly destructiveLedger?: EventLedger;
+  } = {}
+): Promise<readonly ResidentFactoryFixture[]> {
   const workspaceId = "ws_dispatcher_catalog";
   const residentAgentId = "agent_default";
   const taskId = "task_dispatcher_catalog";
@@ -2453,7 +2536,8 @@ async function residentFactoryFixtures(): Promise<readonly ResidentFactoryFixtur
   const prrLedger = new InMemoryEventLedger();
   const acceptedGraphLedger = new InMemoryEventLedger();
   const exportLedger = new SeededLedger(goldenGovernanceLedgerEvents);
-  const destructiveLedger = new InMemoryEventLedger();
+  const destructiveLedger =
+    input.destructiveLedger ?? new InMemoryEventLedger();
   const legacyLedger = new InMemoryEventLedger();
   const providerEvidenceHash = hash("1");
   const providerContextPack = buildContextPackRef({
@@ -3212,6 +3296,18 @@ class SeededLedger implements EventLedger {
 
   async readAll(): Promise<KnowledgeEvent[]> {
     return [...structuredClone(this.seeded), ...await this.appended.readAll()];
+  }
+}
+
+class AppendAttemptLedger extends InMemoryEventLedger {
+  readonly attemptedTypes: string[] = [];
+
+  override append(
+    event: AppendableKnowledgeEvent,
+    options?: AppendOptions
+  ): Promise<KnowledgeEvent> {
+    this.attemptedTypes.push(event.type);
+    return super.append(event, options);
   }
 }
 
