@@ -29266,6 +29266,61 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
 
+## RV-1-E-966 — Protected-mention Task136 RED candidate admitted to fresh review
+
+- Recorded at: 2026-07-24T02:28:31Z
+- Exact candidate `a1ed492fc71e0d98ccf7a7d96d5e314a64ecb0e2`,
+  sole parent RV-1-E-965 authority merge
+  `659319b752739b9183c40c3d5e479b9f252aa760`, changes exactly the loader
+  test and Task136 claim. Exact tree is
+  `67480e57745c647e4e9baf6c9566c397e7d8d159`; loader blob is
+  `9dacf71855e78f2be3dfaff62c532ad0542303b8` and claim blob is
+  `920275ead2946986beb95d13892824475ad94aec`.
+- Dispatcher/G test blobs remain exact
+  `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`; Task12 sources remain exact
+  `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`. Rejected `84b9f6a8`,
+  `fc580fc1`, `9f33e0b9`, `fcb612e7`, and `b54281b0` remain ancestral.
+- The old write-form classifier and definition table are replaced by one
+  mention-first default-deny traversal over the exact eight protected names.
+  It admits only exact module/type syntax, proven read/call/alias/destructuring
+  consumers, exact dispatcher/G definitions, and the exact Task14
+  default-import binder call. All unclassified protected identifiers,
+  literals, resolved computed names, declaration/assignment/update/iteration
+  targets, binding defaults, namespaces/merges, mutation APIs/aliases, and
+  owner-anchored unresolved writes fail closed.
+- Exact permit authority is restricted to one top-level body-bearing local
+  declaration, one noncomputed shorthand in the direct frozen default
+  object, and one dispatcher call on the exact default import. Runtime
+  snapshots and compares standard `Object.prototype`, `Function.prototype`,
+  default-object, callable, and callable-prototype own keys/descriptors,
+  frozen state, name, length, and constructor identity before dynamic
+  imports. Counterfactual prototype mutations use restoration boundaries.
+- Seven safe source controls and the finite RV-1-E-959/RV-1-E-961/
+  RV-1-E-963/RV-1-E-965 unsafe matrix all complete before the intended loader
+  stop. Fresh gates report exact focused **25 = 17 passed + 8 causal RED
+  failures**, released controls **79/79**, typecheck, factory readiness,
+  mission **20/20**, V4 assurance **20/20**, and all exact markers. Exact
+  two-path scope, frozen blobs, ancestry, diff, and clean state pass.
+  Repository mode truthfully stops at the pre-record-29 W1 current-blob
+  mismatch; no prefix or closure success is claimed.
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_a1ed` is assigned exact `a1ed492f`. It
+  must attack mention coverage, safe exclusions, protected-host provenance,
+  mutation aliases, exact permit occurrence/identity, captured runtime
+  baselines, standard/inherited/function-object widening, all preserved
+  resident fixtures, causal split, and deterministic gates. Every prior RED
+  reviewer, model analyst, and candidate author is ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `a1ed492f`. Changed bytes invalidate review. No source authorization follows
+  without explicit later approval/integration authority.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-963 — Hardened Task136 loader candidate rejected; fail-closed repair authorized
 
 - Recorded at: 2026-07-24T00:55:50Z
