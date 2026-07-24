@@ -30889,3 +30889,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-991 — Exact `363193f0` rejected; durable-approval oracle repair authorized
+
+- Recorded at: 2026-07-24T15:36:13Z
+- Completely fresh read-only focused reviewer
+  `/root/task136_e990_red_review_3631` rejects exact candidate
+  `363193f0c261153b9649f71dbc32aac6b6cbf07f`, tree
+  `1bda2a6caec2ab9e62228f133bb23a802ea6c069`, and no other candidate.
+  Review occurred against history-preserving authority merge
+  `b4ee3d945f40caa11b678338a4a7e26fa6de1605`; no candidate byte or
+  repository state changed.
+- The reviewer independently reproduced exact focused
+  **48 = 28 passed + 20 source-causal failures**, loader **2/2**, released
+  adapters **79/79**, standalone typecheck, factory, mission **20/20**, V4
+  assurance **20/20**, all four exact markers, scope, freezes, ancestry,
+  dependency-free diff, diff, and clean-state gates. Repository mode exits
+  `1`, stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Rejection is mandatory because the human canonical-invocation oracle
+  derives expected authorization, approver, approved preview hash, and claim
+  identity from the outcome receipt under test. The lifecycle assertions
+  likewise cross-check completion against that receipt rather than against
+  the independent durable human-approval and claim events.
+- A weak implementation can return a correct human-approved gateway
+  readback, then substitute different valid approval facts at execution
+  time and copy those wrong facts consistently into invocation,
+  attestation, receipt, and completion. The candidate derives its expected
+  values from the same wrong receipt, so this durable-approval corruption
+  passes. That violates E-987's requirement that human invocation input bind
+  exact durable approval facts.
+- A narrower forward test-only repair is authorized in exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`. It must preserve
+  gateway-test blob
+  `6e720ce896176362256aa09ca0566def9bef2257`, both Task12 source blobs,
+  loader, Task136 claim, ontology, Task14 wake runtime, all fixture
+  adaptations, loader controls, released adapter controls, and every
+  previously valid assertion.
+- The repair must locate and validate the exact durable request, optional
+  human-approval, execution-claim, receipt, and completion events. Expected
+  human authorization, decision ID, approver, and approved preview hash must
+  come only from the exact durable approval event; expected claim identity
+  must come only from the exact durable claim event. Invocation,
+  attestation, receipt, completion, context chains, and canonical input
+  hashes must then bind independently to those durable facts, never echo
+  values from another output under test.
+- The descendant must establish and report its exact focused pass/fail
+  signature from execution. Every RED failure must remain independently
+  source-causal, with no fixture, API, collection, dependency, or type
+  failure. Focused causality, loader, released adapter, standalone typecheck,
+  factory, mission **20/20**, V4 assurance **20/20**, four-marker, truthful
+  repository first stop, exact scope, freeze, ancestry, dependency, diff,
+  and clean-state gates remain mandatory.
+- The exact descendant requires a completely fresh read-only focused
+  reviewer. All three prior corrected-byte reviewers and every author or
+  analyst of changed bytes are ineligible; changed bytes invalidate review.
+  Neither Task12 source may change before the corrected RED is independently
+  approved, recorded append-only, integrated forward, and followed by
+  separate explicit source-correction authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejection and one-test durable-oracle repair
+  authority, not corrected-RED approval/integration, source GREEN, Task136
+  product candidacy, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
