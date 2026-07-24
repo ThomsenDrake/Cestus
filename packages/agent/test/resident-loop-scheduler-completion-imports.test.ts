@@ -80,9 +80,34 @@ describe("resident-loop scheduler completion import boundary", () => {
       ]]
     ]);
 
-    expect(task12ResidentDefinitionSources(definitionClassifierControlSources()))
-      .toEqual(["definitions.ts"]);
-    expect(defaultFrozenObjectOperations(sourceRecordFromText(
+    expect(task12ResidentDefinitionAnalysis(definitionClassifierControlSources()))
+      .toEqual({
+        definitionSources: [
+          "class-accessor.ts",
+          "class-field.ts",
+          "class-method.ts",
+          "function-declaration.ts",
+          "later-assignment.ts",
+          "literal-method.ts",
+          "object-accessor.ts",
+          "object-method.ts",
+          "object-property.ts",
+          "resolved-computed.ts",
+          "value-declaration.ts"
+        ],
+        unresolvedDefinitionSources: []
+      });
+    expect(task12ResidentDefinitionAnalysis([
+      sourceRecordFromText("unresolved-computed.ts", [
+        "declare const operationName: string;",
+        "const gateway = { [operationName]() {} };",
+        "void gateway;"
+      ].join("\n"))
+    ])).toEqual({
+      definitionSources: [],
+      unresolvedDefinitionSources: ["unresolved-computed.ts"]
+    });
+    expect(defaultFrozenObjectAnalysis(sourceRecordFromText(
       "valid-default.ts",
       [
         "function consumeResidentDomainExecutionPermit() {}",
@@ -91,8 +116,11 @@ describe("resident-loop scheduler completion import boundary", () => {
         "});",
         "export default residentDomainExecutionPermitConsumer;"
       ].join("\n")
-    ).sourceFile)).toEqual(["consumeResidentDomainExecutionPermit"]);
-    expect(defaultFrozenObjectOperations(sourceRecordFromText(
+    ).sourceFile)).toEqual({
+      operationNames: ["consumeResidentDomainExecutionPermit"],
+      violations: []
+    });
+    expect(defaultFrozenObjectAnalysis(sourceRecordFromText(
       "widened-default.ts",
       [
         "function consumeResidentDomainExecutionPermit() {}",
@@ -102,10 +130,75 @@ describe("resident-loop scheduler completion import boundary", () => {
         "});",
         "export default residentDomainExecutionPermitConsumer;"
       ].join("\n")
-    ).sourceFile)).toEqual([
-      "consumeResidentDomainExecutionPermit",
-      "issueResidentDomainExecutionPermit"
-    ]);
+    ).sourceFile)).toEqual({
+      operationNames: [
+        "consumeResidentDomainExecutionPermit",
+        "issueResidentDomainExecutionPermit"
+      ],
+      violations: []
+    });
+    expect(defaultFrozenObjectAnalysis(sourceRecordFromText(
+      "resolved-computed-default.ts",
+      [
+        "const operationName = 'issueResidentDomainExecutionPermit' as const;",
+        "const residentDomainExecutionPermitConsumer = Object.freeze({",
+        "  [operationName]() {},",
+        "});",
+        "export default residentDomainExecutionPermitConsumer;"
+      ].join("\n")
+    ).sourceFile)).toEqual({
+      operationNames: ["issueResidentDomainExecutionPermit"],
+      violations: [
+        "computed-operation-name:issueResidentDomainExecutionPermit"
+      ]
+    });
+    expect(defaultFrozenObjectAnalysis(sourceRecordFromText(
+      "symbol-default.ts",
+      [
+        "function consumeResidentDomainExecutionPermit() {}",
+        "const residentDomainExecutionPermitConsumer = Object.freeze({",
+        "  consumeResidentDomainExecutionPermit,",
+        "  [Symbol.for('resident-permit-issuer')]() {},",
+        "});",
+        "export default residentDomainExecutionPermitConsumer;"
+      ].join("\n")
+    ).sourceFile)).toEqual({
+      operationNames: ["consumeResidentDomainExecutionPermit"],
+      violations: ["symbol-operation-name"]
+    });
+    expect(defaultFrozenObjectAnalysis(sourceRecordFromText(
+      "unresolved-computed-default.ts",
+      [
+        "declare const operationName: string;",
+        "const residentDomainExecutionPermitConsumer = Object.freeze({",
+        "  [operationName]() {},",
+        "});",
+        "export default residentDomainExecutionPermitConsumer;"
+      ].join("\n")
+    ).sourceFile)).toEqual({
+      operationNames: [],
+      violations: ["unresolved-operation-name"]
+    });
+    const exactConsumer = () => undefined;
+    expect(isExactFrozenGatewayDefaultPermitConsumer(Object.freeze({
+      consumeResidentDomainExecutionPermit: exactConsumer
+    }))).toBe(true);
+    expect(isExactFrozenGatewayDefaultPermitConsumer(Object.freeze({
+      consumeResidentDomainExecutionPermit: exactConsumer,
+      issueResidentDomainExecutionPermit: exactConsumer
+    }))).toBe(false);
+    expect(isExactFrozenGatewayDefaultPermitConsumer(Object.freeze({
+      consumeResidentDomainExecutionPermit: exactConsumer,
+      [Symbol.for("resident-permit-issuer")]: exactConsumer
+    }))).toBe(false);
+    expect(isExactFrozenGatewayDefaultPermitConsumer(Object.freeze({
+      get consumeResidentDomainExecutionPermit() {
+        return exactConsumer;
+      }
+    }))).toBe(false);
+    expect(isExactFrozenGatewayDefaultPermitConsumer(Object.freeze({
+      consumeResidentDomainExecutionPermit: "not-callable"
+    }))).toBe(false);
     expect(namedRuntimeExports(gatewayRecord.sourceFile)).toEqual([
       "createResidentLoopToolGateway"
     ]);
@@ -120,15 +213,19 @@ describe("resident-loop scheduler completion import boundary", () => {
       localName: expect.stringMatching(/^[A-Za-z_$][A-Za-z0-9_$]*$/)
     }]);
     expect(defaultExports(gatewayRecord.sourceFile)).toHaveLength(1);
-    expect(defaultFrozenObjectOperations(gatewayRecord.sourceFile)).toEqual([
-      "consumeResidentDomainExecutionPermit"
-    ]);
+    expect(defaultFrozenObjectAnalysis(gatewayRecord.sourceFile)).toEqual({
+      operationNames: ["consumeResidentDomainExecutionPermit"],
+      violations: []
+    });
     expect(protectedResidentTransfers(sources)).toEqual([]);
     expect(protectedLoaderTransfers(sources)).toEqual([]);
-    expect(task12ResidentDefinitionSources(sources)).toEqual([
-      "packages/agent/src/domain-execution-dispatcher.ts",
-      "packages/agent/src/resident-loop-tool-gateway.ts"
-    ]);
+    expect(task12ResidentDefinitionAnalysis(sources)).toEqual({
+      definitionSources: [
+        "packages/agent/src/domain-execution-dispatcher.ts",
+        "packages/agent/src/resident-loop-tool-gateway.ts"
+      ],
+      unresolvedDefinitionSources: []
+    });
     expect(topLevelAdapterReads(dispatcherRecord.sourceFile, expectedAdapterImports))
       .toEqual([]);
     expect(indexRecord.text).not.toMatch(
@@ -313,9 +410,14 @@ function staticResidentAdapterModuleOrder(
   );
 }
 
-function task12ResidentDefinitionSources(
+interface Task12ResidentDefinitionAnalysis {
+  readonly definitionSources: readonly string[];
+  readonly unresolvedDefinitionSources: readonly string[];
+}
+
+function task12ResidentDefinitionAnalysis(
   sources: readonly SourceRecord[]
-): readonly string[] {
+): Task12ResidentDefinitionAnalysis {
   const protectedDefinitions = new Set([
     "createPackageOwnedResidentDomainExecutionCapability",
     "bindPackageOwnedResidentDomainExecutionPort",
@@ -326,75 +428,263 @@ function task12ResidentDefinitionSources(
     "executeFreshAuthorized",
     "rereadAndIssueFromLedger"
   ]);
-  return sources.flatMap(({ sourcePath, sourceFile }) => {
+  const definitionSources: string[] = [];
+  const unresolvedDefinitionSources: string[] = [];
+  for (const { sourcePath, sourceFile } of sources) {
     let found = false;
+    let unresolved = false;
     visit(sourceFile);
-    return found ? [sourcePath] : [];
+    if (found) {
+      definitionSources.push(sourcePath);
+    }
+    if (unresolved) {
+      unresolvedDefinitionSources.push(sourcePath);
+    }
 
     function visit(node: ts.Node): void {
-      if (
-        ts.isIdentifier(node) &&
-        protectedDefinitions.has(node.text) &&
-        isValueDefinitionOrExport(node)
-      ) {
+      const classification = classifyTask12ValueDefinition(
+        node,
+        sourceFile,
+        protectedDefinitions
+      );
+      if (classification === "protected") {
         found = true;
+      } else if (classification === "unresolved") {
+        unresolved = true;
       }
       ts.forEachChild(node, visit);
     }
-  }).sort();
+  }
+  return {
+    definitionSources: definitionSources.sort(),
+    unresolvedDefinitionSources: unresolvedDefinitionSources.sort()
+  };
 }
 
-function isValueDefinitionOrExport(node: ts.Identifier): boolean {
-  const parent = node.parent;
+type Task12DefinitionClassification =
+  | "none"
+  | "protected"
+  | "unresolved";
+
+function classifyTask12ValueDefinition(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  protectedDefinitions: ReadonlySet<string>
+): Task12DefinitionClassification {
+  if (isTypeOnlyOrAmbientDefinition(node)) {
+    return "none";
+  }
   if (
-    (ts.isFunctionDeclaration(parent) ||
-      ts.isClassDeclaration(parent) ||
-      ts.isMethodDeclaration(parent) ||
-      ts.isGetAccessorDeclaration(parent) ||
-      ts.isSetAccessorDeclaration(parent)) &&
-    parent.name === node
+    ts.isFunctionDeclaration(node) ||
+    ts.isClassDeclaration(node) ||
+    ts.isClassExpression(node) ||
+    ts.isEnumDeclaration(node)
+  ) {
+    return node.name !== undefined &&
+      ts.isIdentifier(node.name) &&
+      protectedDefinitions.has(node.name.text)
+      ? "protected"
+      : "none";
+  }
+  if (ts.isVariableDeclaration(node)) {
+    return ts.isIdentifier(node.name) &&
+      protectedDefinitions.has(node.name.text) &&
+      node.initializer !== undefined &&
+      !isConsumerAliasExpression(node.initializer)
+      ? "protected"
+      : "none";
+  }
+  if (
+    ts.isMethodDeclaration(node) ||
+    ts.isGetAccessorDeclaration(node) ||
+    ts.isSetAccessorDeclaration(node) ||
+    ts.isPropertyDeclaration(node) ||
+    ts.isPropertyAssignment(node)
+  ) {
+    return classifyDefinitionPropertyName(
+      node.name,
+      sourceFile,
+      protectedDefinitions
+    );
+  }
+  if (
+    ts.isBinaryExpression(node) &&
+    node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+  ) {
+    if (ts.isIdentifier(node.left)) {
+      return protectedDefinitions.has(node.left.text) &&
+        !isConsumerAliasExpression(node.right)
+        ? "protected"
+        : "none";
+    }
+    if (ts.isPropertyAccessExpression(node.left)) {
+      return protectedDefinitions.has(node.left.name.text)
+        ? "protected"
+        : "none";
+    }
+    if (ts.isElementAccessExpression(node.left)) {
+      const key = staticExpressionKey(node.left.argumentExpression, sourceFile);
+      if (key.kind === "unresolved") {
+        return "unresolved";
+      }
+      return key.kind === "string" && protectedDefinitions.has(key.value)
+        ? "protected"
+        : "none";
+    }
+  }
+  return "none";
+}
+
+function classifyDefinitionPropertyName(
+  name: ts.PropertyName | undefined,
+  sourceFile: ts.SourceFile,
+  protectedDefinitions: ReadonlySet<string>
+): Task12DefinitionClassification {
+  if (name === undefined) {
+    return "none";
+  }
+  const key = staticPropertyKey(name, sourceFile);
+  if (key.kind === "unresolved") {
+    return "unresolved";
+  }
+  return key.kind === "string" && protectedDefinitions.has(key.value)
+    ? "protected"
+    : "none";
+}
+
+function isConsumerAliasExpression(expression: ts.Expression): boolean {
+  const value = unwrapStaticExpression(expression);
+  return ts.isIdentifier(value) ||
+    ts.isPropertyAccessExpression(value) ||
+    ts.isElementAccessExpression(value) ||
+    ts.isCallExpression(value) &&
+    (
+      ts.isPropertyAccessExpression(value.expression) ||
+      ts.isElementAccessExpression(value.expression)
+    );
+}
+
+function isTypeOnlyOrAmbientDefinition(node: ts.Node): boolean {
+  if (
+    (
+      ts.isFunctionDeclaration(node) ||
+      ts.isMethodDeclaration(node) ||
+      ts.isGetAccessorDeclaration(node) ||
+      ts.isSetAccessorDeclaration(node)
+    ) &&
+    node.body === undefined
   ) {
     return true;
   }
   if (
-    ts.isVariableDeclaration(parent) &&
-    parent.name === node &&
-    parent.initializer !== undefined &&
-    (ts.isArrowFunction(parent.initializer) ||
-      ts.isFunctionExpression(parent.initializer) ||
-      ts.isClassExpression(parent.initializer))
+    ts.canHaveModifiers(node) &&
+    ts.getModifiers(node)?.some((modifier) =>
+      modifier.kind === ts.SyntaxKind.AbstractKeyword
+    )
   ) {
     return true;
   }
-  if (
-    ts.isPropertyAssignment(parent) &&
-    parent.name === node &&
-    (ts.isArrowFunction(parent.initializer) ||
-      ts.isFunctionExpression(parent.initializer))
+  for (
+    let current: ts.Node | undefined = node;
+    current !== undefined && !ts.isSourceFile(current);
+    current = current.parent
   ) {
-    return true;
+    if (
+      ts.isInterfaceDeclaration(current) ||
+      ts.isTypeAliasDeclaration(current) ||
+      ts.isTypeLiteralNode(current)
+    ) {
+      return true;
+    }
+    if (
+      ts.canHaveModifiers(current) &&
+      ts.getModifiers(current)?.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.DeclareKeyword
+      )
+    ) {
+      return true;
+    }
   }
-  return ts.isExportSpecifier(parent);
+  return false;
 }
 
 function definitionClassifierControlSources(): readonly SourceRecord[] {
   return [
-    sourceRecordFromText("definitions.ts", [
-      "export function createPackageOwnedResidentDomainExecutionCapability() {}",
+    sourceRecordFromText("function-declaration.ts",
+      "function createPackageOwnedResidentDomainExecutionCapability() {}"),
+    sourceRecordFromText("value-declaration.ts",
+      "const bindPackageOwnedResidentDomainExecutionPort = () => {};"),
+    sourceRecordFromText("class-method.ts", [
+      "class Gateway {",
+      "  consumeResidentDomainExecutionPermit() {}",
+      "}"
+    ].join("\n")),
+    sourceRecordFromText("class-field.ts", [
+      "class Gateway {",
+      "  preparePlannedStepBindings = () => {};",
+      "}"
+    ].join("\n")),
+    sourceRecordFromText("class-accessor.ts", [
+      "class Gateway {",
+      "  get requestFreshAuthorized() { return () => undefined; }",
+      "}"
+    ].join("\n")),
+    sourceRecordFromText("object-method.ts", [
+      "const gateway = { readFreshHumanDecision() {} };",
+      "void gateway;"
+    ].join("\n")),
+    sourceRecordFromText("object-property.ts", [
+      "const gateway = { executeFreshAuthorized: async function () {} };",
+      "void gateway;"
+    ].join("\n")),
+    sourceRecordFromText("object-accessor.ts", [
       "const gateway = {",
-      "  requestFreshAuthorized() {},",
-      "  readFreshHumanDecision: async function () {},",
+      "  get rereadAndIssueFromLedger() { return () => undefined; }",
       "};",
-      "export { gateway };"
+      "void gateway;"
+    ].join("\n")),
+    sourceRecordFromText("later-assignment.ts", [
+      "const gateway: Record<string, unknown> = {};",
+      "gateway.preparePlannedStepBindings = () => {};"
+    ].join("\n")),
+    sourceRecordFromText("literal-method.ts", [
+      "const gateway = {",
+      "  'consumeResidentDomainExecutionPermit'() {},",
+      "};",
+      "void gateway;"
+    ].join("\n")),
+    sourceRecordFromText("resolved-computed.ts", [
+      "const operationName = 'executeFreshAuthorized' as const;",
+      "class Gateway {",
+      "  [operationName]() {}",
+      "}"
     ].join("\n")),
     sourceRecordFromText("imports.ts", [
       "import { executeFreshAuthorized } from './resident-loop-tool-gateway.js';",
+      "import type { readFreshHumanDecision } from './gateway-types.js';",
       "void executeFreshAuthorized;"
+    ].join("\n")),
+    sourceRecordFromText("re-exports.ts", [
+      "export { executeFreshAuthorized } from './resident-loop-tool-gateway.js';",
+      "export type { readFreshHumanDecision } from './gateway-types.js';"
+    ].join("\n")),
+    sourceRecordFromText("types.ts", [
+      "interface Gateway { executeFreshAuthorized(): Promise<void>; }",
+      "type RequestFreshAuthorized = { requestFreshAuthorized: string };",
+      "declare function rereadAndIssueFromLedger(): void;",
+      "declare class AmbientGateway {",
+      "  preparePlannedStepBindings: () => void;",
+      "  executeFreshAuthorized(): void;",
+      "}",
+      "abstract class AbstractGateway {",
+      "  abstract readFreshHumanDecision(): void;",
+      "}"
     ].join("\n")),
     sourceRecordFromText("task14-consumer.ts", [
       "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);",
       "gateway.readFreshHumanDecision(requested);",
       "const readFreshHumanDecision = gateway.readFreshHumanDecision;",
+      "const executeFreshAuthorized = gateway.executeFreshAuthorized(requested);",
       "const consumer = gateway.rereadAndIssueFromLedger;"
     ].join("\n"))
   ];
@@ -460,15 +750,23 @@ function defaultExports(sourceFile: ts.SourceFile): readonly string[] {
   });
 }
 
-function defaultFrozenObjectOperations(
+interface DefaultFrozenObjectAnalysis {
+  readonly operationNames: readonly string[];
+  readonly violations: readonly string[];
+}
+
+function defaultFrozenObjectAnalysis(
   sourceFile: ts.SourceFile
-): readonly string[] {
+): DefaultFrozenObjectAnalysis {
   const exported = sourceFile.statements.find(
     (statement): statement is ts.ExportAssignment =>
       ts.isExportAssignment(statement) && !statement.isExportEquals
   );
   if (exported === undefined) {
-    return [];
+    return {
+      operationNames: [],
+      violations: ["missing-default-export"]
+    };
   }
   const initializer = ts.isIdentifier(exported.expression)
     ? variableInitializer(sourceFile, exported.expression.text)
@@ -483,15 +781,183 @@ function defaultFrozenObjectOperations(
     initializer.arguments.length !== 1 ||
     !ts.isObjectLiteralExpression(initializer.arguments[0]!)
   ) {
-    return [];
+    return {
+      operationNames: [],
+      violations: ["default-is-not-frozen-object"]
+    };
   }
-  return initializer.arguments[0]!.properties.flatMap((property) => {
-    const name = property.name;
-    return name !== undefined &&
-      (ts.isIdentifier(name) || ts.isStringLiteral(name))
-      ? [name.text]
-      : [];
-  });
+  const operationNames: string[] = [];
+  const violations: string[] = [];
+  for (const property of initializer.arguments[0]!.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      violations.push("spread-operation");
+      continue;
+    }
+    const key = staticPropertyKey(property.name, sourceFile);
+    if (key.kind === "unresolved") {
+      violations.push("unresolved-operation-name");
+      continue;
+    }
+    if (key.kind === "symbol") {
+      violations.push("symbol-operation-name");
+      continue;
+    }
+    operationNames.push(key.value);
+    if (ts.isComputedPropertyName(property.name)) {
+      violations.push(`computed-operation-name:${key.value}`);
+    }
+    if (
+      ts.isGetAccessorDeclaration(property) ||
+      ts.isSetAccessorDeclaration(property)
+    ) {
+      violations.push(`accessor-operation:${key.value}`);
+    } else if (
+      ts.isPropertyAssignment(property) &&
+      !isCallableExpression(property.initializer)
+    ) {
+      violations.push(`non-callable-operation:${key.value}`);
+    }
+  }
+  return {
+    operationNames,
+    violations
+  };
+}
+
+type StaticPropertyKey =
+  | { readonly kind: "string"; readonly value: string }
+  | { readonly kind: "symbol" }
+  | { readonly kind: "unresolved" };
+
+function staticPropertyKey(
+  name: ts.PropertyName,
+  sourceFile: ts.SourceFile
+): StaticPropertyKey {
+  if (ts.isIdentifier(name) || ts.isPrivateIdentifier(name)) {
+    return {
+      kind: "string",
+      value: name.text
+    };
+  }
+  if (
+    ts.isStringLiteral(name) ||
+    ts.isNumericLiteral(name) ||
+    ts.isBigIntLiteral(name) ||
+    ts.isNoSubstitutionTemplateLiteral(name)
+  ) {
+    return {
+      kind: "string",
+      value: name.text
+    };
+  }
+  return ts.isComputedPropertyName(name)
+    ? staticExpressionKey(name.expression, sourceFile)
+    : { kind: "unresolved" };
+}
+
+function staticExpressionKey(
+  expression: ts.Expression,
+  sourceFile: ts.SourceFile,
+  resolving: ReadonlySet<string> = new Set()
+): StaticPropertyKey {
+  const value = unwrapStaticExpression(expression);
+  if (
+    ts.isStringLiteral(value) ||
+    ts.isNumericLiteral(value) ||
+    ts.isNoSubstitutionTemplateLiteral(value)
+  ) {
+    return {
+      kind: "string",
+      value: value.text
+    };
+  }
+  if (
+    ts.isCallExpression(value) &&
+    (
+      ts.isIdentifier(value.expression) &&
+      value.expression.text === "Symbol" ||
+      ts.isPropertyAccessExpression(value.expression) &&
+      ts.isIdentifier(value.expression.expression) &&
+      value.expression.expression.text === "Symbol"
+    )
+  ) {
+    return { kind: "symbol" };
+  }
+  if (
+    ts.isPropertyAccessExpression(value) &&
+    ts.isIdentifier(value.expression) &&
+    value.expression.text === "Symbol"
+  ) {
+    return { kind: "symbol" };
+  }
+  if (ts.isIdentifier(value) && !resolving.has(value.text)) {
+    const initializer = constVariableInitializer(
+      sourceFile,
+      value.text
+    );
+    if (initializer !== undefined) {
+      return staticExpressionKey(
+        initializer,
+        sourceFile,
+        new Set([...resolving, value.text])
+      );
+    }
+  }
+  if (
+    ts.isBinaryExpression(value) &&
+    value.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    const left = staticExpressionKey(value.left, sourceFile, resolving);
+    const right = staticExpressionKey(value.right, sourceFile, resolving);
+    if (left.kind === "string" && right.kind === "string") {
+      return {
+        kind: "string",
+        value: left.value + right.value
+      };
+    }
+  }
+  return { kind: "unresolved" };
+}
+
+function unwrapStaticExpression(expression: ts.Expression): ts.Expression {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isTypeAssertionExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function constVariableInitializer(
+  sourceFile: ts.SourceFile,
+  name: string
+): ts.Expression | undefined {
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isVariableStatement(statement) ||
+      (statement.declarationList.flags & ts.NodeFlags.Const) === 0
+    ) {
+      continue;
+    }
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === name) {
+        return declaration.initializer;
+      }
+    }
+  }
+  return undefined;
+}
+
+function isCallableExpression(expression: ts.Expression): boolean {
+  const value = unwrapStaticExpression(expression);
+  return ts.isArrowFunction(value) ||
+    ts.isFunctionExpression(value) ||
+    ts.isIdentifier(value);
 }
 
 function variableInitializer(
@@ -547,17 +1013,36 @@ function namedRuntimeExports(sourceFile: ts.SourceFile): readonly string[] {
 
 function expectExactGatewayDefaultPermitConsumer(module: object): void {
   const value = Reflect.get(module, "default");
-  expect(value).toSatisfy(isFrozenOpaqueObject);
-  if (typeof value !== "object" || value === null) {
-    throw new Error("Resident gateway default permit consumer is absent.");
+  expect(isExactFrozenGatewayDefaultPermitConsumer(value)).toBe(true);
+}
+
+function isExactFrozenGatewayDefaultPermitConsumer(value: unknown): boolean {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !Object.isFrozen(value)
+  ) {
+    return false;
   }
-  expect(Object.keys(value)).toEqual([
-    "consumeResidentDomainExecutionPermit"
-  ]);
-  expect(typeof Reflect.get(
+  const keys = Reflect.ownKeys(value);
+  if (
+    keys.length !== 1 ||
+    keys[0] !== "consumeResidentDomainExecutionPermit"
+  ) {
+    return false;
+  }
+  const descriptor = Reflect.getOwnPropertyDescriptor(
     value,
     "consumeResidentDomainExecutionPermit"
-  )).toBe("function");
+  );
+  return descriptor !== undefined &&
+    "value" in descriptor &&
+    !("get" in descriptor) &&
+    !("set" in descriptor) &&
+    descriptor.enumerable === true &&
+    descriptor.configurable === false &&
+    descriptor.writable === false &&
+    typeof descriptor.value === "function";
 }
 
 function protectedResidentTransfers(
