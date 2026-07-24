@@ -439,8 +439,7 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       portPreview.implementationRevision,
       beforeEffect,
       afterEffect,
-      input.now(),
-      false
+      input.now()
     );
     return issueResidentLiveStage({
       owner,
