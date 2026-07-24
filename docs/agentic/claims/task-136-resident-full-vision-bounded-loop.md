@@ -1545,3 +1545,112 @@ assurance transition, publication, or product release. Task136 remains
 `implementing`; the strict product frontier remains **28 of 29**. The exact
 two-path descendant requires a completely fresh focused reviewer; all prior
 candidate authors, model analysts, and reviewers are ineligible.
+
+## RV-1-E-970 Task12 Identity-Census Loader-Oracle Closure
+
+Exact RV-1-E-970 authority
+`9bec6ed2a691514d1e5d5e40b8ebc03201812279` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`720847f0f5e78420792206978fb610cfb4efe50b`. Its first parent is
+`a9c705ec5a8795ddc71c0501d55ad2e038de78dd`; its second parent is that
+exact registry authority. Rejected candidate
+`976104381ad94f1d1551c0ac4075b9118f4d4016`, plus rejected candidates
+`a1ed492fc71e0d98ccf7a7d96d5e314a64ecb0e2`,
+`84b9f6a8599e9596ce42f3078fc017a0fe487862`,
+`fc580fc110d4e97863c1793e145eb41d8013332a`,
+`9f33e0b9309be0bf62054833816833c932233819`,
+`fcb612e77ddeee905cc3dc2ff6163d362af10471`, and
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, remain immutable ancestors.
+Every earlier authority, design, permanent RED, GREEN, repair, review, and
+claim commit is preserved without reset, rebase, amend, reconstruction, or
+discarded history.
+
+The Task14 dispatcher-default allowance now includes a complete binding
+reference census. The only admitted references are its exact value-default
+import declaration and the receiver of its sole exact direct
+`bindPackageOwnedResidentDomainExecutionPort(...)` call. Independent
+controls reject default export, local export, aliased local re-export,
+identity alias, destructuring, another property, another call, return, yield,
+closure capture, property store, call argument, outward assignment, and
+otherwise inert use. The previously admitted exact binder and all six
+released legacy dispatcher signatures remain accepted.
+
+Gateway-default provenance retains the existing unique immutable identifier
+alias graph and now rejects every object or array binding pattern sourced
+from that graph. Direct, renamed, statically computed, unresolved computed,
+array, nested, rest, default-initialized, alias-sourced, and parameter
+patterns each have an independent control. The exact reviewer
+substituted-template counterexample is rejected before its extracted local
+can be invoked. The exact direct dispatcher property call remains the sole
+consumer. A separate unresolved dynamic-key destructuring from an unrelated
+fresh record remains accepted, preventing repository-wide false-positive
+broadening.
+
+The fresh focused command is:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1`: all three files fail and exactly **25 = 17 passed + 8 causal
+RED failures**. Every new identity-census, binding-pattern, alias, and safe
+unrelated-record control executes successfully. Four dispatcher tests and
+three G tests stop only at the absent Task12 default dispatcher API; the
+loader stops only at the absent exact six-module static adapter map. There
+is no construction, event, context, execution-DTO, collection, dependency,
+type, new-oracle-control, or unrelated inherited failure. The non-fatal
+missing TypeScript source-map warning does not prevent collection. The
+complete focused log SHA-256 is
+`69be1e4b79b9a8c295b3549c829e957fa2bfa892c6b941ec7d0e56ad09fe94db`.
+
+The exact six released adapter controls pass **79/79** with log SHA-256
+`50220e25de9b93767055cd7cd7cde1f504a25b38775673258d6b0368ac51fae5`.
+Fresh standalone `npm run typecheck` passes with log SHA-256
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` passes with log SHA-256
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+The calibrated mission validator passes **20/20**, and the direct validator
+reports unchanged fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20**. Contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The V4 contract remains SHA-256
+`81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+The corrected loader SHA-256 is
+`63ec3c44e7555ed83c2ee67dbb8c5784f26828fd8ff90f3e39aeb688476677c6`;
+its exact Git blob is `a05ee83f41eb697df3fe4f3ad3b25076c1513a2d`.
+Frozen dispatcher and G tests remain exact at blobs
+`846f0bb1e62719fb10b0af179b6d35c59633f733` and
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`. Both Task12 product sources
+remain exact at dispatcher blob
+`96b0ade273696b9ffcf497119f1943f128821a58` and G blob
+`1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+The exact correction scope is only:
+
+```text
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, dispatcher/G test, contract, plan, mission state, program
+registry, provider, credential, runtime activation, route, network,
+fallback, unrelated path, or pull request changes. Clean repository mode
+must retain the actual pre-record-29 W1 current-blob mismatch and must not
+emit repository-prefix or release-closure success. The exact two-path
+descendant requires a completely fresh focused reviewer; the reviewer of
+`97610438` and every earlier RED reviewer, candidate author, or model analyst
+is ineligible. Any changed test or claim byte invalidates that review.
+
+This is a review-ready identity-census loader-oracle correction, not Task12
+source authorization or GREEN, a product candidate approval, integration,
+strict record 29, assurance transition, publication, or product release.
+Task136 remains `implementing`; the strict product frontier remains **28 of
+29**.
