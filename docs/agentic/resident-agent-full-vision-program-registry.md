@@ -30610,3 +30610,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-987 — Corrected Task136 RED rejected; four-point exactness repair authorized
+
+- Recorded at: 2026-07-24T13:57:14Z
+- Completely fresh read-only focused reviewer
+  `/root/task136_e986_red_review_c6d7` returns exact-candidate verdict
+  `REJECT` for
+  `c6d75787b9a12605892c9209b1716b0003497572` with four P1 oracle defects.
+  The candidate, its exact two changed blobs, E-986 review authority, rejected
+  `ae200ddff9c251027f4af81b87fc3d68fc3f4e45` and
+  `0cc48416dc368c8d737c50a3b5308655e6ca51f3`, source checkpoint
+  `ed5a1bb932e149de9915e4aefd3663125e80ed03`, and every earlier design,
+  plan, RED, GREEN, fixture, rejection, review, and authority commit remain
+  immutable and ancestral. None is approved, integrated, source GREEN,
+  Task136 product candidacy, strict record 29, or release.
+- First, the case labeled replay never performs a replay. Its memo is
+  initialized and returned on the sole invocation while the test explicitly
+  expects one invocation, so it duplicates the otherwise-complete unbranded
+  case. The repair must consume one exact issued attestation in a legitimate
+  first execution and then reuse that same attestation in a distinct second
+  execution attempt whose rejection is causally attributable to replay. A
+  second missing-brand failure, memo initialization, dead source text, or
+  unexercised callback does not satisfy this independent negative.
+- Second, the expected canonical automatic invocation hash incorrectly
+  includes synthetic `approvedPreviewHash` and `approvedBy` compatibility
+  fields. The repair must bind the exact branch-specific pre-translation
+  invocation input: automatic policy contains neither human-only field;
+  human approval contains the exact durable approval facts. Compatibility
+  DTO fields may not enter canonical input, resident events, or hashes.
+- Third, exact domain evidence remains partial. The repair must compare every
+  required domain event's complete ordered context and payload identity for
+  ordinals 2 through 6 and 9 through 10, not selected values plus key names.
+  It must bind the complete ordinal-7 result, rich read-model change, ordered
+  related output IDs, artifacts, and result identity to the approved preview.
+  Source-text mentions of `schemaVersion` or `result` are not runtime
+  evidence.
+- Fourth, multiple gateway readback paths still use
+  `expect.objectContaining` or equivalent subset assertions. The repair must
+  replace every resident readback subset with exact branch-specific objects
+  and exact key sets, covering completed, denied, pre-claim failed,
+  post-claim failed, unknown, hostile, W-timing, and automatic/human
+  branches. No extra locator, capability, approval, claim, receipt, human,
+  or failure field may pass on a branch that does not own it.
+- One forward correction may modify exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts` and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. It must preserve
+  all sound RV-1-E-985 corrections already present in `c6d75787`, the
+  RV-1-E-980/RV-1-E-981 fixture adaptations, loader policy, released adapter
+  controls, and every frozen source/claim/ontology/Task14 blob. No source,
+  loader, claim, registry, contract, plan, mission, dependency, provider,
+  activation, route, fallback, credential, network, or unrelated path may
+  change.
+- The descendant must establish a new exact focused signature rather than
+  inherit **27/19**. Every failure must be independently source-causal with no
+  fixture, API, collection, or type failure. Focused causality, loader
+  **2/2**, released adapters **79/79**, standalone typecheck, factory,
+  mission **20/20**, V4 assurance **20/20**, all exact markers, truthful
+  repository first stop, exact scope, freeze, ancestry, dependency, diff, and
+  clean-state gates remain mandatory.
+- The exact descendant requires a completely fresh read-only focused
+  reviewer. The `c6d75787` reviewer and every previous changed-byte reviewer
+  or analyst are ineligible; changed bytes invalidate prior review. Neither
+  Task12 source may change without later explicit approval, integration, and
+  separate source-correction authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejected-test recovery and bounded test-only repair
+  authority, not source correction, Task12 approval/integration, Task136
+  product candidacy, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
