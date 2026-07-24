@@ -29260,6 +29260,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-964 — Fail-closed Task136 loader oracle admitted to fresh review
+
+- Recorded at: 2026-07-24T01:15:23Z
+- Exact candidate `84b9f6a8599e9596ce42f3078fc017a0fe487862`,
+  sole parent RV-1-E-963 authority merge
+  `e1e6a181a9d7ff480a8b8fba80fe20145d2fbd15`, changes exactly the loader
+  test and Task136 claim. Exact tree is
+  `3a5f06c868c7fde657617e66e93ffd18ea2e998c`; loader blob is
+  `1d51fa482a37d0d24d3cba6a872ee7b2602e671c` and claim blob is
+  `dc4fbf617d45fc41c5cd74df28c592acb7f0b334`.
+- Dispatcher/G test blobs remain exact
+  `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`; Task12 sources remain exact
+  `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`. Rejected `fc580fc1`,
+  `9f33e0b9`, `fcb612e7`, and `b54281b0` remain ancestral.
+- The default-G oracle now requires one noncomputed shorthand member bound to
+  exactly one body-bearing, nonexported, top-level module-local function
+  declaration named `consumeResidentDomainExecutionPermit`. It rejects
+  wrong aliases, shorthand variables, property aliases, inline methods and
+  arrows, missing/duplicate/ambient/exported declarations, extra literal,
+  computed, symbol, accessor, or data properties, wrong callable name, and
+  null or custom prototypes; runtime retains exact frozen own-key and
+  descriptor checks with the standard prototype.
+- The definition traversal now detects object/array/aliased/nested binding
+  defaults; parenthesized, `as`, and non-null assignment targets; direct and
+  compound `=`, `??=`, `||=`, and `&&=` writes; and
+  `Object.defineProperty`/`Reflect.defineProperty` with literal, resolved, or
+  unresolved names. Independent controls preserve safe consumer
+  destructuring, namespace/named/type imports, re-exports and type uses,
+  aliases, property calls, and Task14's binder call.
+- Fresh gates report exact focused **25 = 17 passed + 8 causal RED
+  failures**, released controls **79/79**, typecheck, factory readiness,
+  mission **20/20**, V4 assurance **20/20**, and all exact markers. Exact
+  two-path scope, frozen blobs, ancestry, diff, and clean state pass.
+  Repository mode truthfully stops at the pre-record-29 W1 current-blob
+  mismatch; no prefix or closure success is claimed.
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_84b9` is assigned exact `84b9f6a8`. It
+  must attack the exact local-function and prototype identity, every
+  definition-write form and safe exclusion, preserved five-point controls,
+  real released fixture matrix, causal split, and all deterministic gates.
+  All prior RED reviewers and candidate authors are ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `84b9f6a8`. Changed bytes invalidate review. No source authorization follows
+  without explicit later approval and integration authority.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-961 — Corrected Task136 RED rejected; two-point loader repair authorized
 
 - Recorded at: 2026-07-24T00:24:06Z
