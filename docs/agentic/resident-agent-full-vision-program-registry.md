@@ -29215,6 +29215,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-965 — Fail-closed loader candidate rejected; protected-mention model authorized
+
+- Recorded at: 2026-07-24T01:31:11Z
+- Completely fresh reviewer `/root/task136_task12_red_review_84b9` rejects
+  exact candidate `84b9f6a8599e9596ce42f3078fc017a0fe487862` with two P1
+  loader-oracle defects. That commit and rejected `fc580fc1`, `9f33e0b9`,
+  `fcb612e7`, and `b54281b0` remain immutable and ancestral; none is source
+  GREEN, approved, integrated, strict record 29, or release.
+- The default-G check still accepts issuer operations added to the actual
+  standard `Object.prototype`, namespace/function-object widening, mutation
+  of the unique declaration, and a same-named replacement callable because
+  it checks only the default object's own key/prototype identity and the
+  callable's type/name. The correction must statically permit the exact
+  function name only at its one body-bearing declaration, the one shorthand
+  default member, and the exact dispatcher consumer. Any namespace merge,
+  reassignment, augmentation API, property write, or extra use is a
+  violation. Runtime must compare the object and callable own-key/descriptor
+  sets and their `Object.prototype`/`Function.prototype` chains against exact
+  captured standard baselines, rejecting inherited or function-object
+  augmentation while retaining exact frozen shape and identity checks.
+- Enumerating write syntax remains incomplete: assignment destructuring,
+  namespace bindings, updates, iteration targets, further compound writes,
+  `Reflect.set`, and aliased property-definition calls escape. Replace the
+  write-form allowlist with a fail-closed protected-mention model over all
+  scanned production sources. Every protected identifier, literal, or
+  statically resolved computed property name outside the two definition
+  sources must be classified. Only exact syntax-defined imports, re-exports,
+  type-only uses, alias reads, consumer destructuring without a default,
+  property reads/calls, and Task14's binder consumer may be excluded.
+  Declaration/binding positions, default initializers, assignment/update/
+  iteration targets, namespaces/merges, property-definition/mutation APIs,
+  callable RHS values, and unresolved dynamic names in a write context must
+  fail closed. A mention may never silently disappear because its write form
+  was not enumerated.
+- One forward correction may modify exactly the loader test and Task136
+  claim. All other test/source blobs remain exact. Independent direct
+  controls must reproduce every RV-1-E-963 and RV-1-E-965 counterexample,
+  standard-prototype/function-object augmentation, and every safe exclusion.
+  Preserve the exact focused **17 passed + 8 causal RED**, released fixture
+  matrix, deterministic gates, and truthful repository posture.
+- The exact descendant requires a completely fresh focused reviewer. All
+  prior RED reviewers and candidate authors are ineligible. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is protected-mention loader-oracle correction authority, not
+  Task12 source authorization, candidate approval, integration, strict record
+  29, assurance transition, publication, or product release. `neo`, push,
+  Wave 3, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
+
 ## RV-1-E-963 — Hardened Task136 loader candidate rejected; fail-closed repair authorized
 
 - Recorded at: 2026-07-24T00:55:50Z
