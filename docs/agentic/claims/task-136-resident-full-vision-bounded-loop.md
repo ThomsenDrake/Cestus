@@ -1323,3 +1323,137 @@ Task12 source authorization or GREEN, a product candidate, approval,
 integration, strict record 29, assurance transition, publication, or product
 release. Task136 remains `implementing`; the strict product frontier remains
 **28 of 29**.
+
+## RV-1-E-965 Task12 Protected-Mention Loader-Oracle Correction
+
+Exact RV-1-E-965 authority
+`8669e0493ac2769de4802ee87bc75542a893fccd` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`659319b752739b9183c40c3d5e479b9f252aa760`. Its first parent is
+`cacb7012a6401534d20a475269d33c41db2fb9ca`; its second parent is that
+exact registry authority. Rejected candidates
+`84b9f6a8599e9596ce42f3078fc017a0fe487862`,
+`fc580fc110d4e97863c1793e145eb41d8013332a`,
+`9f33e0b9309be0bf62054833816833c932233819`,
+`fcb612e77ddeee905cc3dc2ff6163d362af10471`, and
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, plus every earlier authority,
+design, permanent RED, GREEN, repair, and review ancestor, remain preserved
+and unchanged.
+
+The loader now uses one mention-first, default-deny analysis over the exact
+eight protected runtime names. Every direct identifier, string literal,
+no-substitution template literal, and statically resolved computed key is
+classified as an exact owned definition, module syntax, type-only use,
+permitted read, or violation. Definition ownership is exactly dispatcher for
+capability creation and port binding and G for the remaining six names.
+The permit consumer has exactly three admitted occurrences: its sole
+body-bearing module-local declaration, the sole default-object shorthand,
+and the exact dispatcher call through G's unique default import. The sole
+Task14 binder call is tied to the unique default dispatcher import at the
+exact wake-supervisor path.
+
+Assignment and declaration classification uses TypeScript's semantic
+assignment-target and declaration-name APIs. It covers declaration and
+binding positions; object, array, aliased, nested, and computed binding
+defaults; parenthesized, asserted, and non-null writes; simple, logical, and
+other compound assignments; prefix/postfix updates; `for-in` and `for-of`
+targets; namespace merges; resolved and unresolved computed definitions; and
+direct or const/destructured aliases of `Object.defineProperty`,
+`Reflect.defineProperty`, and `Reflect.set`. Static-key resolution unwraps
+only the defined expression wrappers and follows a unique immutable
+declaration, failing closed on cycles, multiple or shadowed bindings,
+mutable bindings, calls, and substituted templates. Unresolved writes are
+anchored to an exact protected host or one of the two owner sources rather
+than rejected repository-wide. A direct control retains G's future-safe
+write to a fresh `Object.create(null)` record and safe consumer destructuring
+without a default.
+
+The default-G static oracle permits the consumer name only at its exact
+declaration and sole shorthand. Independent controls reject namespace
+merging, declaration reassignment, same-named replacement functions, and
+function-object widening in addition to all previously rejected alias,
+inline, missing, duplicate, ambient, exported, computed, symbol, accessor,
+data, widened-object, and custom-prototype forms. It also derives the
+expected emitted callable length from the exact declaration.
+
+Runtime baselines are captured before either dynamic import order. The
+oracle compares the exact own-key and descriptor sets of `Object.prototype`,
+`Function.prototype`, the frozen default object, its callable, and an
+ordinary declared function prototype. The callable must have the exact
+name, derived length, standard function prototype chain, ordinary own
+descriptor shape, and a sole prototype constructor back-reference.
+Table-driven controls reject object/string/symbol/accessor widening, null or
+custom object prototypes, wrong or augmented callables, widened callable
+prototypes, and arrow substitution. Actual `Object.prototype` and
+`Function.prototype` mutation controls save and restore descriptors in
+`try/finally` and prove the baseline comparison rejects either mutation.
+
+The fresh focused command is:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1`: all three files fail and exactly 25 tests = 17 passed + 8
+causal RED failures. All protected-mention, static default, runtime
+descriptor, prototype-mutation, safe-exclusion, and preserved counterfactual
+controls execute before the loader's sole stop at the absent exact
+six-module import map. Four dispatcher tests and three G tests stop only at
+the absent Task12 default dispatcher API. There is no construction, event,
+context, execution-DTO, collection, dependency, type, oracle-control, or
+unrelated inherited failure. The non-fatal missing TypeScript source-map
+warning does not prevent collection. The complete focused log SHA-256 is
+`c2ff7579e96085885b7acb913efc68a0cd8a01ba80368447ae49ff8a0fede57d`.
+
+The exact six released adapter controls exit `0`: 6 files and all **79/79**
+tests pass. Their complete log SHA-256 is
+`826d5d0349f352850a91839a900b1fbe620d2500e67dd3011c762170296dfe8e`.
+Fresh standalone `npm run typecheck` exits `0` with `typecheck passed`; its
+complete log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` exits `0` with `factory-readiness passed`; its
+complete log SHA-256 is
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+
+The calibrated mission validator passes **20/20** with unchanged fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20** and contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The V4 contract remains exact at SHA-256
+`81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+The corrected loader test SHA-256 is
+`25c3fe27c0eeeeb9e9ab51492f8cad0c0240e830f9736cb036e346aa997f7f04`;
+its exact Git blob is `9dacf71855e78f2be3dfaff62c532ad0542303b8`.
+Frozen dispatcher and G tests remain exact at blobs
+`846f0bb1e62719fb10b0af179b6d35c59633f733` and
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`. Both Task12 sources remain
+exact at dispatcher blob `96b0ade273696b9ffcf497119f1943f128821a58`
+and G blob `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+`git diff --check` passes. The exact correction scope is only:
+
+```text
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, dispatcher/G test, contract, plan, mission state, program
+registry, provider, credential, runtime activation, route, network, fallback,
+unrelated path, or pull request changes. Clean repository mode retains the
+actual pre-record-29 W1 current-blob mismatch and does not emit repository
+prefix or release-closure success. The exact two-path descendant requires a
+completely fresh focused reviewer; every prior RED reviewer and candidate
+author is ineligible. Any changed test or claim byte invalidates that review.
+
+This is a review-ready protected-mention forward loader-oracle correction,
+not Task12 source authorization or GREEN, a product candidate approval,
+integration, strict record 29, assurance transition, publication, or product
+release. Task136 remains `implementing`; the strict product frontier remains
+**28 of 29**.
