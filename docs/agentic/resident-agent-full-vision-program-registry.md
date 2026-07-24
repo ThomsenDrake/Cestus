@@ -32131,3 +32131,100 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, push, Wave 3, credential, provider, external-system, pull-request,
   or unrelated authority. Preserve all history and resume forward-only from
   the exact SHAs recorded here.
+
+## RV-1-E-1010 — Exact `d0531b15` Task12 source candidate rejected; bounded G repair authorized
+
+- Recorded at: 2026-07-24T22:47:03Z
+- Completely fresh independent read-only source reviewer
+  `/root/task136_e1010_task12_fresh_source_review` rejects exact Task12
+  candidate `d0531b15489d3dbc94c23ce2ab4fc1235666d1d6`, tree
+  `9c4b1206de685accc4d9a61f0fb1b91581244bf5`, and no other candidate.
+  Review occurred beneath clean history-preserving E-1009 authority merge
+  `3d9e9881de1565387c8c5c9695d73c823e951b3c`; no candidate byte,
+  registry byte, branch, or repository state changed during review.
+- The reviewer had not authored, reviewed, or analyzed any changed source
+  byte or any earlier changed test byte. It inspected both changed sources
+  against the approved design and Task12 plan. No material defect was found
+  in `packages/agent/src/domain-execution-dispatcher.ts`.
+- Rejection is mandatory because
+  `packages/agent/src/resident-loop-tool-gateway.ts` can read a stream that
+  already contains a schema-valid permanent claim, append a second claim at
+  the next sequence, mint a new permit, and invoke the effect again. The
+  fresh path does not validate the exact current lifecycle prefix or
+  revalidate W after the claim-stream await. Request, claim, receipt, and
+  completion publication also trust append returns instead of rereading the
+  assigned durable event and validating its complete canonical prefix.
+- Recovery receipt validation is incomplete. It checks only basic
+  request/claim/authorization linkage, omitting disposition, envelope hash,
+  exact evidence, fingerprints, catalog/revision, invocation hash, and
+  domain outputs. Any accepted receipt is then terminalized as `completed`;
+  an otherwise valid recovered receipt with failed disposition can therefore
+  become success instead of the exact proven post-claim failed terminal.
+- Human approval chronology is incomplete. The fresh decision path rejects
+  approval before the request and execution after the current deadline, but
+  does not require the durable approval timestamp to be no later than both
+  its exact deadline and the current trusted clock. A future-dated or
+  post-deadline approval can therefore obtain a live authorization brand
+  while the current clock remains before the deadline.
+- The reviewer independently reproduced focused **48/48**, exact Task12
+  boundary **98/98**, gateway/loader **30/30**, released cross-boundary
+  **443/443**, exact adapters **79/79**, standalone typecheck, UI build,
+  factory readiness, mission **20/20** with its expected fingerprint, V4
+  assurance **20/20**, and all four contract markers. Repository mode exits
+  `1`, emits those markers, stops first and only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Exact identity, tree, sole parent, two-source scope, source/test/claim/
+  ontology/runtime freezes, named ancestry, dependency quiet, diff checks,
+  and clean Task136/program states pass. The E-1007 calibrated symmetric
+  differential independently passes with
+  `removed=8 mapped=14 addedPassed=48 retainedLaterRed=13` and exact
+  comparator log SHA-256
+  `4c039043c6a9e0923f6ed749ab0e87f8040fa2d8fc877079ab78a4aead7de2d7`.
+  The later frozen-loader duration of **35.55 seconds**, above its literal
+  30-second ceiling, remains non-passing timeout variance and is not a pass.
+- The smallest forward TDD correction is authorized in exactly:
+  `packages/agent/test/resident-loop-tool-gateway.test.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. First add causal
+  regressions that fail against exact rejected source blob
+  `41740d5d608284f8fea78285f1c2e00d99dfd2a9`: an already-claimed fresh
+  stream cannot append another claim or execute; every lifecycle append must
+  be followed by exact durable reread and complete-prefix validation; failed
+  and incomplete recovery receipts cannot become completed; and approvals
+  after their deadline or trusted current time cannot authorize execution.
+- Then apply only the smallest G repair: perform the mandated W revalidation
+  around every authority-bearing await, validate the exact current prefix
+  before a permanent claim, append each lifecycle event once, reread its
+  assigned durable identity and canonical bytes, validate the complete
+  branch-specific prefix, map only a completely validated completed receipt
+  to completion, map a completely validated failed receipt only to the exact
+  proven post-claim failed terminal, and enforce request <= approval <=
+  deadline and approval <= trusted current time. Recovery remains
+  nonexecutable and at-most-once.
+- Preserve exact frozen blobs: dispatcher source
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, dispatcher test
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`. Starting G source/test blobs
+  are respectively `41740d5d608284f8fea78285f1c2e00d99dfd2a9` and
+  `6e720ce896176362256aa09ca0566def9bef2257`. Preserve every earlier
+  design, plan, RED, GREEN, fixture, candidate, rejection, review, recovery,
+  handoff, and authority commit without amendment or reconstruction.
+- The correction must establish exact causal RED and GREEN signatures, then
+  rerun every E-1008 focused, boundary, adapter, typecheck, UI, factory,
+  mission, V4, marker, repository-first-stop, scope, freeze, ancestry,
+  dependency, diff, clean-state, calibrated-differential, and
+  timeout-variance check. Produce one forward exact candidate and obtain a
+  completely fresh independent read-only review. This reviewer, every prior
+  source/test author or reviewer, and every analyst of the new changed bytes
+  are ineligible to approve that candidate. Changed candidate bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns Task12 `reviewing -> implementing`; strict product frontier
+  remains **28 of 29**. This is exact source rejection and bounded G repair
+  authority, not Task12 approval/integration, Task13 authority, a Task136
+  product candidate, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, provider,
+  external-system, pull-request, and unrelated actions remain unauthorized.
