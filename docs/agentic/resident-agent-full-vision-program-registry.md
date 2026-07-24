@@ -29215,6 +29215,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-967 — Protected-mention candidate rejected; three-point closure authorized
+
+- Recorded at: 2026-07-24T02:42:54Z
+- Completely fresh reviewer `/root/task136_task12_red_review_a1ed` rejects
+  exact candidate `a1ed492fc71e0d98ccf7a7d96d5e314a64ecb0e2` with three P1
+  loader-oracle defects. The candidate, rejected `84b9f6a8`, `fc580fc1`,
+  `9f33e0b9`, `fcb612e7`, and `b54281b0`, and all prior authority/review
+  history remain immutable and ancestral; none is source GREEN, approved,
+  integrated, strict record 29, or release.
+- First, the import census proves the exact gateway default import and W
+  binder call but does not enumerate all imports/re-exports of
+  `domain-execution-dispatcher.js`. The correction must census that module
+  across every scanned production source and allow exactly Task14 W's one
+  value default import. Additional or alternate default imports, named
+  `default as` imports, namespace imports, named imports, default/named
+  re-exports, and any other resident dispatcher API transfer must fail.
+- Second, a tracked alias of the gateway default can make a second
+  permit-consumer call through an unresolved substituted-template element key
+  while the exact occurrence count remains three. The correction must track
+  gateway-default provenance through admitted aliases and reject every
+  unresolved element read/call on that host. Only the one exact dispatcher
+  property call may consume the permit; unrelated internal-record dynamic
+  reads remain governed separately.
+- Third, the fresh null-prototype normalization-record exception proves only
+  `Object.create(null)` construction, not nonescape. The correction must
+  require a unique local record whose complete reference set is limited to
+  admitted local normalization reads/writes and whose identity is never
+  returned, yielded, assigned outward, stored in another object, passed to an
+  unrecognized call, captured, or otherwise escapes. An escaping record
+  invalidates the exception and makes the owner-anchored unresolved write a
+  violation.
+- One forward correction may modify exactly the loader test and Task136
+  claim. All other test/source blobs remain exact. Add independent direct
+  controls for every dispatcher import/transfer form, the substituted-template
+  gateway alias call, safe unrelated dynamic record reads, local nonescaping
+  normalization, and every escape form above. Preserve the already-sound
+  computed-owner duplicate rejection, full resident fixture matrix, exact
+  focused **17 passed + 8 causal RED**, deterministic gates, and truthful
+  repository posture.
+- The exact descendant requires a completely fresh focused reviewer. Every
+  previous reviewer, model analyst, and candidate author is ineligible.
+  Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is bounded loader-oracle closure authority, not Task12 source
+  authorization, candidate approval, integration, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-965 — Fail-closed loader candidate rejected; protected-mention model authorized
 
 - Recorded at: 2026-07-24T01:31:11Z
