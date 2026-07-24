@@ -30760,3 +30760,67 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance transition, publication, or product release. `neo`, push, Wave
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-989 — Exact `f0845800` rejected; final readback-oracle repair authorized
+
+- Recorded at: 2026-07-24T14:56:02Z
+- Completely fresh read-only focused reviewer
+  `/root/task136_e988_red_review_f084` rejects exact candidate
+  `f08458007ad014803bda968e032c3c8e433f6e3f`, tree
+  `c885d472f56c0a55d057551d3b6e8a5e74cb8fdd`, and no other candidate.
+  Review occurred against history-preserving authority merge
+  `d45e248cbc629b3331577577a782c4624e33e82f`; no candidate byte or
+  repository state changed.
+- The reviewer independently reproduced exact focused
+  **48 = 28 passed + 20 source-causal failures**, loader **2/2**, released
+  adapters **79/79**, standalone typecheck, factory, mission **20/20**, V4
+  assurance **20/20**, all four exact markers, scope, freezes, ancestry,
+  dependency-free diff, diff, and clean-state gates. Repository mode exits
+  `1`, stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Rejection is mandatory because the fresh automatic execution discards its
+  fulfilled completed value and asserts only settlement statuses. A weak
+  fresh-execution implementation may therefore add human-only or extraneous
+  fields to the automatic completed readback while every candidate test
+  passes. Recovery exercises a separate path and does not close this gap.
+- The fresh human requested-stage value is likewise consumed without an
+  exact whole-object shape assertion. Automatic request and recovered
+  completion identifiers are partly self-derived from the readback under
+  test instead of being bound to their exact durable requested/completed
+  events, so canonical-looking but wrong identifiers can pass.
+- A narrower forward test-only repair is authorized in exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. It must preserve
+  dispatcher-test blob
+  `bee084b81af7b74946051c296cf58b813af6f618`, both Task12 source blobs,
+  loader, Task136 claim, ontology, Task14 wake runtime, all fixture
+  adaptations, loader controls, released adapter controls, and every
+  previously valid assertion.
+- The repair must exact-assert the fresh automatic completed value, including
+  the absence of all human-only and extraneous fields; exact-assert the fresh
+  human requested value before consumption; and bind every asserted request
+  or result event identifier to the corresponding exact durable appended
+  event rather than copying the identifier from the readback under test.
+  Whole-object branch shapes, key sets, payloads, results, claims, receipts,
+  and prohibited-field absence must resist the reviewer's weak
+  counterexamples.
+- The descendant must establish and report its exact focused pass/fail
+  signature from execution. Every RED failure must remain independently
+  source-causal, with no fixture, API, collection, or type failure. Focused
+  causality, loader, released adapter, standalone typecheck, factory, mission
+  **20/20**, V4 assurance **20/20**, four-marker, truthful repository first
+  stop, exact scope, freeze, ancestry, dependency, diff, and clean-state
+  gates remain mandatory.
+- The exact descendant requires a completely fresh read-only focused
+  reviewer. Both prior corrected-byte reviewers and every author or analyst
+  of changed bytes are ineligible; changed bytes invalidate review. Neither
+  Task12 source may change before the corrected RED is independently
+  approved, recorded append-only, integrated forward, and followed by
+  separate explicit source-correction authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejection and one-test oracle-repair authority, not
+  corrected-RED approval/integration, source GREEN, Task136 product
+  candidacy, strict record 29, assurance transition, publication, or product
+  release. `neo`, push, Wave 3, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
