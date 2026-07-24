@@ -31000,3 +31000,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   GREEN, Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-993 — Lineage-preserved durable-oracle RED admitted to fresh review
+
+- Recorded at: 2026-07-24T16:03:55Z
+- Exact lineage-preserved test-only candidate is recovery merge
+  `5cf531868d4c7790e39c3fd6e25c1e6d2ca1698d`, tree
+  `02475ef98298f2220e3242867b70ccd57b847343`, with exact first parent
+  E-992 authority merge
+  `ff44910b93f423c4ab448de7e0186d699dfd1309` and exact second parent
+  original E-991 implementation commit
+  `99814d2217b87536135b3d397bcecba27063a725`.
+- Exact amended sibling `1a94fdf08f7d22dbf87b29c4c30e195bcce633c5`
+  is ancestral through the first parent. Both original dispatcher-test blob
+  `c1143d1874a1554580895e081f89b2fa39df329d` and current dispatcher-test
+  blob `5fe3d871bb92702cc6ae09cb4b00c0aa9ac4f9a1` remain reachable. The
+  recovery merge retains the current corrected tree exactly; no reset,
+  rebase, further amend, squash, force operation, cherry-pick, discarded
+  object, or replacement history occurred during coordinator recovery.
+- Exact current gateway-test blob is
+  `6e720ce896176362256aa09ca0566def9bef2257`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- The current durable-oracle repair requires exactly one durable request,
+  optional approval, claim, receipt, and completion in canonical order.
+  Human authorization facts derive only from the exact independent durable
+  approval; claim identity derives only from the exact durable claim.
+  Invocation input, issued attestation, receipt, completion, context and
+  causation chains, and canonical input hash bind independently to those
+  facts. Automatic authorization contains no human-only fields.
+- Independent coordinator reproduction from exact recovery candidate matches
+  focused **48 = 28 passed + 20 independently source-causal failures**,
+  loader **2/2**, released adapters **79/79**, standalone typecheck, factory,
+  mission **20/20**, V4 assurance **20/20**, all four exact markers, complete
+  two-test net scope, frozen blobs, both sibling ancestries, all named earlier
+  authority/design/plan/fixture/candidate ancestries, dependency-free diff,
+  `git diff --check`, and clean state. Repository mode exits `1`, stops first
+  at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Completely fresh read-only focused reviewer
+  `/root/task136_e993_red_review_5cf5` is assigned exact immutable recovery
+  candidate `5cf53186`. It must inspect the complete current corrected
+  two-test bytes, original and amended E-991 siblings, E-992 recovery merges,
+  the full review package
+  `.superpowers/sdd/review-6755e7ed..5cf53186.diff`, all E-985 through E-992
+  defects and repairs, and relevant frozen sources/contracts. It must attack
+  weak-implementation counterexamples, classify every RED failure, and
+  independently reproduce every focused and cross-boundary gate.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte. All prior corrected-byte reviewers, the removed author, and
+  every other changed-byte analyst are ineligible. This reviewer may not
+  edit, commit, merge, substitute another SHA, approve changed bytes,
+  authorize source, or describe this transition as product candidacy or
+  release. Any changed candidate byte invalidates review.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `5cf53186`. Strict product frontier remains **28 of 29**. This is
+  lineage-preserved corrected test-only RED review admission, not approval,
+  integration, source GREEN, Task136 product candidacy, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
