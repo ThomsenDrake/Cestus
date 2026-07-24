@@ -29265,6 +29265,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-968 — Task136 normalization-record nonescape calibrated
+
+- Recorded at: 2026-07-24T02:56:29Z
+- RV-1-E-967's fresh-record nonescape rule is calibrated against exact frozen
+  Task12 G source blob `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+  Released `dataRecord(value, label)` deliberately constructs a fresh
+  null-prototype validation copy, copies only sorted own enumerable data
+  descriptors after unsafe-key/proxy/prototype/symbol rejection, and returns
+  that copy to four module-local normalization call sites. Treating any
+  helper return as authority escape would make the loader RED fail on
+  released source before the absent Task12 API and is therefore noncausal.
+- “Nonescaping” means no escape from the closed module-local data-normalization
+  graph into an authority-bearing graph. The loader oracle may admit a
+  structurally exact fresh-record helper return only when whole-module
+  reference/call-site analysis proves every returned identity is bound to a
+  unique local, used only by exact validation/property-read/safe-copy
+  operations, and consumed into new frozen copied output. No returned record
+  or alias may be exported, returned from an exported/capability/authority
+  operation, yielded, captured, stored outward, passed to an unrecognized
+  call, assigned into another object, used as a prototype, default/G/permit
+  host, or enter any issued-readback/capability/WeakMap identity graph.
+- The compatibility is semantic, not a path/line/blob-only bypass. It must
+  prove the helper's exact fresh-null construction and descriptor-copy
+  discipline plus the complete closed call graph on both frozen RED source
+  and later Task12 GREEN source. A counterexample helper that merely returns
+  a fresh record without those caller/use proofs remains a violation.
+- RV-1-E-967's dispatcher-default census and gateway-alias unresolved-call
+  corrections remain unchanged. Legacy named/type dispatcher imports and
+  non-default compatibility exports remain allowed only where already
+  released; no alternate access or transfer of the new default resident API
+  is allowed.
+- The same exact loader-test and Task136-claim correction scope remains
+  authorized. Add direct positive controls for exact closed normalization and
+  negative controls for authority/export/capture/store/pass/prototype/default/
+  permit escape. Preserve every prior counterexample, exact focused
+  **17 passed + 8 causal RED**, deterministic gates, and truthful repository
+  posture.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains **28 of
+  29**. This is a bounded oracle calibration, not candidate approval, source
+  GREEN, integration, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-965 — Fail-closed loader candidate rejected; protected-mention model authorized
 
 - Recorded at: 2026-07-24T01:31:11Z
