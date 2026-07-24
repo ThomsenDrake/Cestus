@@ -29215,6 +29215,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
+
+- Recorded at: 2026-07-24T04:58:14Z
+- Completely fresh reviewer `/root/task136_task12_red_review_135a` rejects
+  exact candidate `135a5f2b2b07796dd01106540b1068c514f0588d` with one P1
+  loader-oracle defect. That commit and all prior rejected candidates,
+  calibration, authority, and review history remain immutable and ancestral;
+  none is source GREEN, approved, integrated, strict record 29, or release.
+- The exact dispatcher permit-call predicate now authenticates the receiver
+  symbol correctly but does not inspect call arguments, spreads, or optional
+  access/call syntax. Wrong-order, missing, extra, and optional calls
+  therefore retain exact counts with no violation.
+- Preserve the lexical receiver fix and require a non-optional property access
+  and non-optional direct call with exactly three non-spread arguments in the
+  exact permit, opaque resident port, and canonical invocation input order.
+  Each argument must resolve to the exact local binding/provenance expected by
+  the dispatcher construction frame; aliases, substitutions, duplicate
+  arguments, wrong order, missing/extra values, spread, comma/conditional/
+  optional forms, and caller-controlled same-text bindings fail.
+- One forward correction may modify exactly the loader test and Task136
+  claim. All other test/source blobs remain exact. Add independent safe exact
+  call plus wrong-order, missing, extra, spread, optional receiver, optional
+  call, alias/substitution, and binding-shadow controls. Preserve all prior
+  matrices, exact focused **17 passed + 8 causal RED**, deterministic gates,
+  and truthful repository posture.
+- The exact descendant requires a completely fresh focused reviewer. Every
+  previous reviewer, analyst, and author is ineligible. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is exact-call argument loader-oracle correction authority, not
+  Task12 source authorization, candidate approval, integration, strict record
+  29, assurance transition, publication, or product release. `neo`, push,
+  Wave 3, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
+
 ## RV-1-E-974 — Lexical-provenance candidate rejected; exact call-symbol closure authorized
 
 - Recorded at: 2026-07-24T04:36:39Z
