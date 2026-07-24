@@ -29165,6 +29165,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3, credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-960 — Corrected Task136 Task12 causal RED admitted to fresh review
+
+- Recorded at: 2026-07-24T00:12:58Z
+- Exact corrected candidate
+  `9f33e0b9309be0bf62054833816833c932233819`, sole parent RV-1-E-959
+  authority merge `88eafc00916ca3a201efcaf3ec4bce63b50f4ec5`, changes exactly
+  the same three Task12 tests and product claim. Rejected candidates
+  `fcb612e77ddeee905cc3dc2ff6163d362af10471` and
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, approved corrected design
+  `933498c2ee73a7b11dd481d1df13893aee45423e`, and every earlier RED/GREEN
+  and review event remain ancestral and unchanged.
+- Exact blobs are dispatcher test
+  `846f0bb1e62719fb10b0af179b6d35c59633f733`, G test
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`, loader test
+  `4f9a1e003afa35f78612b05352903d1bdf07f7f1`, and product claim
+  `5ed23e21c284ddc8c8143e06d58eb9fabf5f7574`. Task12 sources remain frozen
+  at dispatcher `96b0ade273696b9ffcf497119f1943f128821a58` and G
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+- The correction distinguishes actual Task12 value definitions/exports from
+  imports, consumer aliases, property calls, and future Task14 binder calls;
+  freezes the default G object to the sole
+  `consumeResidentDomainExecutionPermit` operation and the sole named runtime
+  constructor; rereads a recovery human-request stage before the independent
+  approval and proves it cannot advance or execute; rejects successful
+  attestations, receipts, and completed terminals for 0/1/8; and exercises
+  zero, multiple, self-issued, stale, expired, denied, revoked, and
+  preview-mismatched decisions through the exact live resident G ABI.
+- Fresh gates report exact focused **25 = 17 passed + 8 causal RED
+  failures**, released adapter controls **79/79**, standalone typecheck,
+  factory readiness, mission **20/20**, V4 assurance **20/20**, and all four
+  exact markers. Exact scope, blob/source freeze, ancestry, diff, and clean
+  checks pass. Repository mode again stops truthfully at the pre-record-29
+  W1 current-blob mismatch and no prefix or closure success is claimed.
+- Completely fresh read-only focused reviewer
+  `/root/task136_task12_red_review_9f33` is assigned exact `9f33e0b9`. It
+  must reproduce every RV-1-E-957 fixture and all five RV-1-E-959
+  corrections, inspect runtime and direct AST controls against weak
+  implementations, prove exact eight-failure causality, determine the
+  repository-mode posture from committed authority, and rerun controls,
+  typecheck, factory, mission, V4, scope, ancestry, and clean gates. The
+  `fcb612e7` reviewer and candidate author are ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `9f33e0b9`. Changed bytes invalidate the review. The reviewer may not edit,
+  commit, merge, substitute another SHA, or authorize either source.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-954 — Task136 dual-context dispatcher correction authorized
 
 - Recorded at: 2026-07-23T22:28:30Z
