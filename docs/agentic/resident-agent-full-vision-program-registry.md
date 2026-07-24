@@ -32228,3 +32228,102 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidate, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, provider,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1011 — Exact Task12 G lifecycle correction admitted to fresh review
+
+- Recorded at: 2026-07-24T23:53:52Z
+- Exact forward Task12 correction candidate
+  `e362a31c3d549298ef9b3fa808d0c90f14208099`, tree
+  `1a05a9ef616bfc85f08ba6b88b7cb5b3b976e037`, has sole parent second
+  causal RED `5c1c06288eb3f3b36cb5234f698934c38d06077f` and exact subject
+  `fix(agent): reverify durable request publication`. Its cumulative
+  correction range begins at E-1010 authority merge
+  `bdaf5d4e72bdcd0ccc0c35418a575ff85ac10227` and changes exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`.
+- The exact forward topology is
+  `bdaf5d4e -> 251eb9dc -> 34b05aec -> 5c1c0628 -> e362a31c`.
+  First causal RED `251eb9dc56d75c0accd76d624981ebf06c66c397`
+  preserves rejected source blob
+  `41740d5d608284f8fea78285f1c2e00d99dfd2a9` and proves
+  **35 = 30 passed + 5 failed** with no collection, fixture, API, type, or
+  dependency failure. It covers duplicate claim/effect, substituted
+  lifecycle append returns, failed and incomplete receipt recovery, and
+  future/post-deadline approval.
+- First GREEN `34b05aec542106b049fcf6dd2bf97a386d4466ff`
+  closed those five defects but remained non-admitted after coordinator
+  scrutiny found its explicit request-publication W bypass. Second causal
+  RED `5c1c06288eb3f3b36cb5234f698934c38d06077f` then proves
+  **36 = 34 passed + 2 failed**: stale W after package preview but during
+  request append, exact-stream reread, or global reread still issued a live
+  executable request and allowed one full effect. Final GREEN removes only
+  that bypass and closes gateway/loader **36/36**.
+- Exact final blobs are gateway source
+  `fc20fb3e928b3bb4cda463fdf8f4dc319e327735` and gateway test
+  `c1c1f8a581a89158dd87bb56871399cf1eb9c7ef`. Frozen blobs remain
+  dispatcher source `30e4a3ea4eea197f5f3881359a12b909210177ab`,
+  dispatcher test `0eaf2fe609de31657acfedde1e2630cbacedbcdc`,
+  loader `48ecf05ca86bfc9a0c610996a95a1c903b091476`,
+  Task136 claim `49074087ae30d06f4d16d5e29fbe8935781d0fa1`,
+  ontology source `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`,
+  ontology Task136 test `f1a8bc5eeaf33eaaa9fdd4b793245b4c8aa4f423`,
+  and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- Final committed bytes pass focused **54/54**, exact Task12 boundary
+  **98/98**, gateway/loader **36/36**, released cross-boundary
+  **443/443**, exact adapters **79/79**, standalone typecheck, UI build,
+  factory readiness, mission **20/20** with exact fingerprint
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`,
+  V4 assurance **20/20**, and all four exact markers.
+- Repository mode truthfully exits `1`, emits the four markers, stops first
+  and only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success. The exact
+  sixteen-file product card truthfully remains nonzero with
+  **287 = 274 passed + 13 later Task13-through-16 REDs**.
+- A fresh parallel full-suite observation remains explicitly non-passing:
+  **3,290 = 3,226 passed + 59 failed + 5 pending**, whose sole extra failure
+  beyond the calibrated cohort is the frozen loader assertion at
+  **36.266 seconds**. It is timeout-variance evidence, not a passing gate.
+- Fresh identical low-contention baseline/current runs use
+  `--testTimeout=60000 --no-file-parallelism --maxWorkers=1`. Exact baseline
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1` is
+  **3,231 = 3,181 passed + 45 failed + 5 pending**, JSON SHA-256
+  `9c009767b3c2ea64526ff2a936a39d62e08956cad4e94d94c600a92bd43e344c`.
+  Exact current candidate is
+  **3,290 = 3,227 passed + 58 failed + 5 pending**, JSON SHA-256
+  `0af63bb46438d26c293b734928255db438f8c1054fbefca7994980ef7ebefe31`,
+  with the loader passing in **10.249583 seconds**.
+- The fresh exact occurrence comparator emits
+  `TASK136_E1010_FIX1_CALIBRATED_DIFFERENTIAL_OK removed=8 mapped=14 addedPassed=54 retainedLaterRed=13`;
+  its log SHA-256 is
+  `a30463ece73ad453793362a9c5c9b0b5acd186a5d406a22f67405a4e2d198f18`.
+  Exact cumulative scope, all frozen blobs, named ancestry, dependency
+  quiet, both diff checks, and clean tracked/untracked state pass.
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1011_gateway_fix_fresh_review` is assigned exact immutable
+  candidate `e362a31c`, its four-commit cumulative range, final source/test
+  bytes, complete report, and review package. It must attack every E-1010
+  defect and regression oracle; current-prefix validation; append return,
+  stream, and global reread identity; W bracketing at preview, request,
+  decision, claim, effect, receipt, and terminal boundaries; completed versus
+  failed receipt recovery; approval chronology; recovery nonexecutability;
+  and preservation of dispatcher/default ABI, exact durable lifecycle,
+  branch readbacks, and at-most-once behavior.
+- The reviewer must independently reproduce focused, boundary, gateway/
+  loader, released cross-boundary, adapter, typecheck, UI, factory, mission,
+  V4, marker, repository-first-stop, product-card, scope, freeze, ancestry,
+  dependency, diff, clean-state, fresh calibrated-differential, and
+  timeout-variance checks. It has not authored, reviewed, or analyzed any
+  changed candidate byte. The implementer, coordinator, E-1008 reviewer,
+  every earlier source/test author or reviewer, and every changed-byte
+  analyst are ineligible. The reviewer may not edit, commit, merge,
+  substitute a SHA, authorize Task13, or make product/release claims.
+  Changed candidate bytes invalidate review.
+- Task136 advances Task12 `implementing -> candidate -> reviewing` for exact
+  `e362a31c`. Strict product frontier remains **28 of 29**. This is Task12
+  correction review admission, not Task12 approval/integration, Task13
+  authority, a Task136 product candidate, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, provider, external-system, pull-request, and unrelated actions
+  remain unauthorized.
