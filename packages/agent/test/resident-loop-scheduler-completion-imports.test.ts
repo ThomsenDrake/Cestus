@@ -489,7 +489,11 @@ function task12ProtectedMentionAnalysis(
           ts.isElementAccessExpression(node)
         ) &&
         gatewayDefaultProvenance.resolves(node.expression) &&
-        !isExactDispatcherGatewayAccess(node, record)
+        !isExactDispatcherGatewayAccess(
+          node,
+          record,
+          gatewayDefaultProvenance
+        )
       ) {
         violations.add(sourcePath);
       }
@@ -520,7 +524,11 @@ function task12ProtectedMentionAnalysis(
         if (
           isExactPermitDeclaration(node, sourcePath) ||
           isExactPermitDefaultShorthand(node, sourcePath) ||
-          isExactDispatcherPermitCall(node, record)
+          isExactDispatcherPermitCall(
+            node,
+            record,
+            gatewayDefaultProvenance
+          )
         ) {
           if (isExactPermitDeclaration(node, sourcePath)) {
             admitDefinition(name, sourcePath);
@@ -918,7 +926,8 @@ function isExactPermitDefaultShorthand(
 
 function isExactDispatcherPermitCall(
   node: ts.Node,
-  record: SourceRecord
+  record: SourceRecord,
+  provenance: GatewayDefaultLexicalProvenance
 ): boolean {
   if (
     record.sourcePath !==
@@ -932,18 +941,16 @@ function isExactDispatcherPermitCall(
   ) {
     return false;
   }
-  return uniqueDefaultImportLocal(
-    record.sourceFile,
-    "./resident-loop-tool-gateway.js"
-  ) === node.parent.expression.text;
+  return provenance.isRootBinding(node.parent.expression);
 }
 
 function isExactDispatcherGatewayAccess(
   node: ts.PropertyAccessExpression | ts.ElementAccessExpression,
-  record: SourceRecord
+  record: SourceRecord,
+  provenance: GatewayDefaultLexicalProvenance
 ): boolean {
   return ts.isPropertyAccessExpression(node) &&
-    isExactDispatcherPermitCall(node.name, record);
+    isExactDispatcherPermitCall(node.name, record, provenance);
 }
 
 function isExactTask14BinderCall(
@@ -1003,20 +1010,24 @@ function protectedMentionControls(): ProtectedMentionControls {
     "packages/agent/src/resident-loop-tool-gateway.ts";
   const task14Path =
     "packages/local-runtime/src/wake-supervisor-runtime.ts";
+  const exactDispatcherFunction = [
+    "function dispatch(permit: unknown, port: unknown, input: unknown) {",
+    "  return gatewayDefault.consumeResidentDomainExecutionPermit(",
+    "    permit, port, input",
+    "  );",
+    "}"
+  ];
   const base = (
     gatewayExtra = "",
     dispatcherExtra = "",
-    normalizationEscape = ""
+    normalizationEscape = "",
+    dispatcherFunction: readonly string[] = exactDispatcherFunction
   ): readonly SourceRecord[] => [
     sourceRecordFromText(dispatcherPath, [
       "import gatewayDefault from './resident-loop-tool-gateway.js';",
       "function createPackageOwnedResidentDomainExecutionCapability() {}",
       "function bindPackageOwnedResidentDomainExecutionPort() {}",
-      "function dispatch(permit: unknown, port: unknown, input: unknown) {",
-      "  return gatewayDefault.consumeResidentDomainExecutionPermit(",
-      "    permit, port, input",
-      "  );",
-      "}",
+      ...dispatcherFunction,
       "const residentDomainExecutionApi = Object.freeze({",
       "  createPackageOwnedResidentDomainExecutionCapability,",
       "  bindPackageOwnedResidentDomainExecutionPort",
@@ -1132,6 +1143,64 @@ function protectedMentionControls(): ProtectedMentionControls {
       : record
   );
   const unsafe = [
+    {
+      name: "gateway default shadowed parameter permit call",
+      sources: base("", "", "", [
+        "function dispatch(",
+        "  gatewayDefault: any,",
+        "  permit: unknown,",
+        "  port: unknown,",
+        "  input: unknown",
+        ") {",
+        "  return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "    permit, port, input",
+        "  );",
+        "}"
+      ]),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default shadowed local permit call",
+      sources: base("", "", "", [
+        "function dispatch(permit: unknown, port: unknown, input: unknown) {",
+        "  const gatewayDefault: any = unrelatedGateway;",
+        "  return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "    permit, port, input",
+        "  );",
+        "}"
+      ]),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default nested shadow permit call",
+      sources: base("", "", "", [
+        "function dispatch(permit: unknown, port: unknown, input: unknown) {",
+        "  function invoke(gatewayDefault: any) {",
+        "    return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "      permit, port, input",
+        "    );",
+        "  }",
+        "  return invoke(unrelatedGateway);",
+        "}"
+      ]),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default namespace shadow permit call",
+      sources: base("", "", "", [
+        "namespace ShadowedPermitNamespace {",
+        "  export const gatewayDefault: any = unrelatedGateway;",
+        "  export function dispatch(",
+        "    permit: unknown, port: unknown, input: unknown",
+        "  ) {",
+        "    return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "      permit, port, input",
+        "    );",
+        "  }",
+        "}"
+      ]),
+      violations: [dispatcherPath]
+    },
     unsafeSources("resolved computed definition", "unsafe-resolved.ts",
       "const op = 'executeFreshAuthorized' as const; class X { [op]() {} }"),
     unsafeSources("class field", "unsafe-field.ts",
@@ -1940,6 +2009,7 @@ function protectedHostNames(
 interface GatewayDefaultLexicalProvenance {
   readonly hasViolation: boolean;
   readonly resolves: (expression: ts.Expression | undefined) => boolean;
+  readonly isRootBinding: (identifier: ts.Identifier) => boolean;
 }
 
 function gatewayDefaultLexicalProvenance(
@@ -1968,12 +2038,14 @@ function gatewayDefaultLexicalProvenance(
   if (rootNames.length === 0) {
     return {
       hasViolation: false,
-      resolves: () => false
+      resolves: () => false,
+      isRootBinding: () => false
     };
   }
 
   const checker = localLexicalTypeChecker(sourceFile);
   const trackedSymbols = new Set<ts.Symbol>();
+  const rootSymbols = new Set<ts.Symbol>();
   const rootDeclarations = new Set<ts.Identifier>();
   let hasViolation = false;
   for (const rootName of rootNames) {
@@ -1983,9 +2055,30 @@ function gatewayDefaultLexicalProvenance(
       continue;
     }
     trackedSymbols.add(symbol);
+    rootSymbols.add(symbol);
     rootDeclarations.add(rootName);
   }
 
+  const provenance: GatewayDefaultLexicalProvenance = {
+    get hasViolation() {
+      return hasViolation;
+    },
+    resolves: (expression) => {
+      if (expression === undefined) {
+        return false;
+      }
+      const value = unwrapStaticExpression(expression);
+      return ts.isIdentifier(value) &&
+        symbolIsTracked(value);
+    },
+    isRootBinding: (identifier) => {
+      const symbol = checker.getSymbolAtLocation(identifier);
+      return rootNames.length === 1 &&
+        rootSymbols.size === 1 &&
+        symbol !== undefined &&
+        rootSymbols.has(symbol);
+    }
+  };
   const aliasDeclarations = new Set<ts.Identifier>();
   const aliasInitializers = new Set<ts.Identifier>();
   let changed = true;
@@ -1995,17 +2088,7 @@ function gatewayDefaultLexicalProvenance(
   }
 
   visitReferences(sourceFile);
-  return {
-    hasViolation,
-    resolves: (expression) => {
-      if (expression === undefined) {
-        return false;
-      }
-      const value = unwrapStaticExpression(expression);
-      return ts.isIdentifier(value) &&
-        symbolIsTracked(value);
-    }
-  };
+  return provenance;
 
   function visitAliasCandidates(node: ts.Node): void {
     if (
@@ -2045,7 +2128,11 @@ function gatewayDefaultLexicalProvenance(
         !rootDeclarations.has(node) &&
         !aliasDeclarations.has(node) &&
         !aliasInitializers.has(node) &&
-        !isExactDispatcherGatewayReference(node, record)
+        !isExactDispatcherGatewayReference(
+          node,
+          record,
+          provenance
+        )
       ) {
         hasViolation = true;
       }
@@ -2112,7 +2199,8 @@ function nearestFunctionBoundary(node: ts.Node): ts.Node {
 
 function isExactDispatcherGatewayReference(
   node: ts.Identifier,
-  record: SourceRecord
+  record: SourceRecord,
+  provenance: GatewayDefaultLexicalProvenance
 ): boolean {
   const access = node.parent;
   return (
@@ -2120,7 +2208,7 @@ function isExactDispatcherGatewayReference(
     ts.isElementAccessExpression(access)
   ) &&
     access.expression === node &&
-    isExactDispatcherGatewayAccess(access, record);
+    isExactDispatcherGatewayAccess(access, record, provenance);
 }
 
 function isGatewayDefaultBindingPatternSource(
