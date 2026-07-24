@@ -31609,3 +31609,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidacy, strict record 29, assurance transition, publication, or product
   release. `neo`, push, Wave 3, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1002 — Approved corrected RED integrated; Task12 source GREEN authorized
+
+- Recorded at: 2026-07-24T18:38:31Z
+- Exact approved corrected test-only candidate
+  `dd2fa9a4d4fab6960ac67d491efa3e86c50e05e7` and E-1001 approval commit
+  `5d7652fbf51fa2d50ee0c49b42602bbec9ecba49` are integrated into the
+  existing Task136 lineage by history-preserving two-parent merge
+  `5bc1a8a8d9463a727d790059b126ff842f32c02c`, with exact parents
+  `b2d25f5c0f3c245789d54852981eb84017517dc4` and
+  `5d7652fbf51fa2d50ee0c49b42602bbec9ecba49`.
+- The integrated test blobs remain exact: dispatcher
+  `b38153bc78864e03f08ecac30a269a0039f482ba` and gateway
+  `6e720ce896176362256aa09ca0566def9bef2257`. Every rejected and
+  non-admitted candidate, both original/amended siblings, approved design,
+  dual-context design descendant, reviewed plan, Task12 source checkpoint,
+  fixture adaptation, rejection, review, recovery, and authority commit
+  remains ancestral and unchanged.
+- The smallest Task12 GREEN repair is now authorized in exactly:
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. No test, fixture,
+  loader, claim, ontology, Task14 runtime, contract, dependency, or other
+  source byte may change.
+- Implement the approved written design
+  `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`, approved dual-context
+  descendant `933498c2ee73a7b11dd481d1df13893aee45423e`,
+  reviewed plan `c5df0231c82264a9bfde33dcfc7e68b61b37c93f`, and Task12 plan steps
+  exactly. Preserve the default-only dispatcher/G ABI, closed
+  package-owned catalog and identities, private dispatcher/attestation
+  brands and permit interlock, exact package-owned request/claim/capability/
+  context identities, and at-most-once behavior.
+- The repair must implement before-and-after W-currentness checks, complete
+  durable prefix validation and recovery, exact branch-specific durable
+  readbacks, the exact ten-field privately branded attestation with complete
+  independently copied four-key result, exact per-ordinal evidence rules,
+  ordinal-7 approved-preview artifact/read-model binding,
+  multi-candidate ordinal-10 ordering, complete event counts/order/context/
+  input/payload/result identities, no human-only automatic fields, and no
+  extraneous denied/failed claim or receipt fields.
+- Preserve exact frozen blobs: loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`, dispatcher test
+  `b38153bc78864e03f08ecac30a269a0039f482ba`, and gateway test
+  `6e720ce896176362256aa09ca0566def9bef2257`. Starting source blobs are
+  dispatcher `925977aee795810c80f8777bdab655a08110b045` and gateway
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`.
+- Use the integrated causal RED before implementation. Run all plan- and
+  contract-mandated focused, cross-boundary, loader, released-adapter,
+  typecheck, factory, mission **20/20**, V4 assurance **20/20**, marker,
+  repository-prefix, scope, freeze, ancestry, dependency, diff,
+  clean-state, and fresh full-verification differential gates. Report exact
+  pass/fail signatures and the repository checker's truthful first stop.
+- Produce one exact forward Task12 source candidate only after every
+  authorized test is green and all required gates pass. It must receive a
+  separate append-only admission and a completely fresh independent
+  read-only review before Task13 may be authorized. No test author,
+  corrected-byte reviewer, source author, or earlier changed-byte analyst
+  may approve the source candidate.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 records corrected RED `approved -> integrated` and Task12 source
+  work `integrated -> implementing`. Strict product frontier remains
+  **28 of 29**. This is Task12 source-correction authority, not Task12
+  approval, Task13 authority, Task136 product candidacy, strict record 29,
+  assurance transition, publication, or product release. `neo`, push,
+  Wave 3, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
