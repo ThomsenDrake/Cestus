@@ -935,13 +935,109 @@ function isExactDispatcherPermitCall(
     !ts.isIdentifier(node) ||
     !ts.isPropertyAccessExpression(node.parent) ||
     node.parent.name !== node ||
+    node.parent.questionDotToken !== undefined ||
     !ts.isCallExpression(node.parent.parent) ||
     node.parent.parent.expression !== node.parent ||
+    node.parent.parent.questionDotToken !== undefined ||
     !ts.isIdentifier(node.parent.expression)
   ) {
     return false;
   }
-  return provenance.isRootBinding(node.parent.expression);
+  return provenance.isRootBinding(node.parent.expression) &&
+    isExactDispatcherPermitTuple(node.parent.parent, provenance);
+}
+
+function isExactDispatcherPermitTuple(
+  call: ts.CallExpression,
+  provenance: GatewayDefaultLexicalProvenance
+): boolean {
+  if (
+    call.arguments.length !== 3 ||
+    call.arguments.some((argument) => ts.isSpreadElement(argument))
+  ) {
+    return false;
+  }
+  const [permitArgument, portArgument, inputArgument] = call.arguments;
+  if (
+    permitArgument === undefined ||
+    portArgument === undefined ||
+    inputArgument === undefined ||
+    !ts.isIdentifier(permitArgument) ||
+    !ts.isIdentifier(portArgument) ||
+    !ts.isIdentifier(inputArgument)
+  ) {
+    return false;
+  }
+
+  let frame: ts.Node | undefined = call.parent;
+  while (frame !== undefined && !ts.isFunctionLike(frame)) {
+    frame = frame.parent;
+  }
+  if (
+    frame === undefined ||
+    !ts.isMethodDeclaration(frame) ||
+    !ts.isIdentifier(frame.name) ||
+    frame.name.text !== "invokeAndAttest" ||
+    frame.parameters.length !== 2
+  ) {
+    return false;
+  }
+  const [permitParameter, inputParameter] = frame.parameters;
+  if (
+    permitParameter === undefined ||
+    inputParameter === undefined ||
+    !isRequiredIdentifierParameter(permitParameter) ||
+    !isRequiredIdentifierParameter(inputParameter) ||
+    !ts.isObjectLiteralExpression(frame.parent) ||
+    !ts.isCallExpression(frame.parent.parent)
+  ) {
+    return false;
+  }
+  const freezeCall = frame.parent.parent;
+  if (
+    freezeCall.arguments.length !== 1 ||
+    freezeCall.arguments[0] !== frame.parent ||
+    freezeCall.questionDotToken !== undefined ||
+    !ts.isPropertyAccessExpression(freezeCall.expression) ||
+    freezeCall.expression.questionDotToken !== undefined ||
+    !ts.isIdentifier(freezeCall.expression.expression) ||
+    freezeCall.expression.expression.text !== "Object" ||
+    freezeCall.expression.name.text !== "freeze" ||
+    !ts.isVariableDeclaration(freezeCall.parent) ||
+    freezeCall.parent.initializer !== freezeCall ||
+    !ts.isIdentifier(freezeCall.parent.name) ||
+    !isDirectConstDeclaration(freezeCall.parent)
+  ) {
+    return false;
+  }
+  const portDeclaration = freezeCall.parent;
+  if (!ts.isIdentifier(portDeclaration.name)) {
+    return false;
+  }
+  return provenance.isUniqueDeclaration(
+    permitParameter.name,
+    permitParameter
+  ) &&
+    provenance.isUniqueDeclaration(
+      inputParameter.name,
+      inputParameter
+    ) &&
+    provenance.isUniqueDeclaration(
+      portDeclaration.name,
+      portDeclaration
+    ) &&
+    provenance.sameBinding(permitArgument, permitParameter.name) &&
+    provenance.sameBinding(portArgument, portDeclaration.name) &&
+    provenance.sameBinding(inputArgument, inputParameter.name);
+}
+
+function isRequiredIdentifierParameter(
+  parameter: ts.ParameterDeclaration
+): parameter is ts.ParameterDeclaration & { readonly name: ts.Identifier } {
+  return ts.isIdentifier(parameter.name) &&
+    parameter.dotDotDotToken === undefined &&
+    parameter.questionToken === undefined &&
+    parameter.initializer === undefined;
 }
 
 function isExactDispatcherGatewayAccess(
@@ -1010,13 +1106,26 @@ function protectedMentionControls(): ProtectedMentionControls {
     "packages/agent/src/resident-loop-tool-gateway.ts";
   const task14Path =
     "packages/local-runtime/src/wake-supervisor-runtime.ts";
-  const exactDispatcherFunction = [
-    "function dispatch(permit: unknown, port: unknown, input: unknown) {",
-    "  return gatewayDefault.consumeResidentDomainExecutionPermit(",
-    "    permit, port, input",
-    "  );",
+  const dispatcherPermitFrame = (
+    body: readonly string[]
+  ): readonly string[] => [
+    "function createOpaqueResidentPort() {",
+    "  const port = Object.freeze({",
+    "    invokeAndAttest(",
+    "      permit: unknown,",
+    "      residentInvocationInput: unknown",
+    "    ) {",
+    ...body,
+    "    }",
+    "  });",
+    "  return port;",
     "}"
   ];
+  const exactDispatcherFunction = dispatcherPermitFrame([
+    "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+    "        permit, port, residentInvocationInput",
+    "      );"
+  ]);
   const base = (
     gatewayExtra = "",
     dispatcherExtra = "",
@@ -1143,6 +1252,120 @@ function protectedMentionControls(): ProtectedMentionControls {
       : record
   );
   const unsafe = [
+    {
+      name: "gateway default wrong-order permit tuple",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        port, permit, residentInvocationInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default missing permit tuple argument",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        permit, port",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default extra permit tuple argument",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        permit, port, residentInvocationInput, extraInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default spread permit tuple",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        ...permitTuple",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default optional receiver permit call",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault?.consumeResidentDomainExecutionPermit(",
+        "        permit, port, residentInvocationInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default optional permit call",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit?.(",
+        "        permit, port, residentInvocationInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default aliased permit tuple binding",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      const permitAlias = permit;",
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        permitAlias, port, residentInvocationInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default substituted permit tuple binding",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        substitutedPermit, port, residentInvocationInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default duplicate permit tuple binding",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        permit, port, port",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default comma permit tuple value",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        (substitutedPermit, permit), port, residentInvocationInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default conditional permit tuple value",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "        condition ? permit : substitutedPermit,",
+        "        port,",
+        "        residentInvocationInput",
+        "      );"
+      ])),
+      violations: [dispatcherPath]
+    },
+    {
+      name: "gateway default shadowed permit tuple binding",
+      sources: base("", "", "", dispatcherPermitFrame([
+        "      {",
+        "        const permit = substitutedPermit;",
+        "        return gatewayDefault.consumeResidentDomainExecutionPermit(",
+        "          permit, port, residentInvocationInput",
+        "        );",
+        "      }"
+      ])),
+      violations: [dispatcherPath]
+    },
     {
       name: "gateway default shadowed parameter permit call",
       sources: base("", "", "", [
@@ -1561,6 +1784,10 @@ function protectedMentionControls(): ProtectedMentionControls {
   return {
     safeSources: base(),
     safe: [
+      {
+        name: "exact dispatcher permit tuple",
+        sources: base()
+      },
       {
         name: "unique direct immutable gateway alias",
         sources: base("", "const immutableGatewayAlias = gatewayDefault;")
@@ -2010,6 +2237,14 @@ interface GatewayDefaultLexicalProvenance {
   readonly hasViolation: boolean;
   readonly resolves: (expression: ts.Expression | undefined) => boolean;
   readonly isRootBinding: (identifier: ts.Identifier) => boolean;
+  readonly sameBinding: (
+    left: ts.Identifier,
+    right: ts.Identifier
+  ) => boolean;
+  readonly isUniqueDeclaration: (
+    identifier: ts.Identifier,
+    declaration: ts.Declaration
+  ) => boolean;
 }
 
 function gatewayDefaultLexicalProvenance(
@@ -2039,7 +2274,9 @@ function gatewayDefaultLexicalProvenance(
     return {
       hasViolation: false,
       resolves: () => false,
-      isRootBinding: () => false
+      isRootBinding: () => false,
+      sameBinding: () => false,
+      isUniqueDeclaration: () => false
     };
   }
 
@@ -2077,6 +2314,16 @@ function gatewayDefaultLexicalProvenance(
         rootSymbols.size === 1 &&
         symbol !== undefined &&
         rootSymbols.has(symbol);
+    },
+    sameBinding: (left, right) => {
+      const leftSymbol = checker.getSymbolAtLocation(left);
+      const rightSymbol = checker.getSymbolAtLocation(right);
+      return leftSymbol !== undefined && leftSymbol === rightSymbol;
+    },
+    isUniqueDeclaration: (identifier, declaration) => {
+      const symbol = checker.getSymbolAtLocation(identifier);
+      return symbol?.declarations?.length === 1 &&
+        symbol.declarations[0] === declaration;
     }
   };
   const aliasDeclarations = new Set<ts.Identifier>();
