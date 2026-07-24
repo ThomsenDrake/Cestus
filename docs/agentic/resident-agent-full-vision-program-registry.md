@@ -30465,3 +30465,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-985 — Task136 source-closure causal RED rejected; narrower test correction authorized
+
+- Recorded at: 2026-07-24T12:52:27Z
+- The fresh focused review of exact test-only candidate
+  `ae200ddff9c251027f4af81b87fc3d68fc3f4e45` is ratified as a rejection.
+  The candidate, its exact tree
+  `9b66821f72e4419ae41f16a9e8d0adf4524d07a4`, changed test blobs
+  `f21b9280bb3a2b3cc868be1b0b66525349a5385b` and
+  `a7df24b5b5f7cc4f42a312162453e58f5613d45d`, rejected aggregate candidate
+  `0cc48416dc368c8d737c50a3b5308655e6ca51f3`, source checkpoint
+  `ed5a1bb932e149de9915e4aefd3663125e80ed03`, and every earlier design,
+  plan, RED, GREEN, fixture, rejection, review, and authority commit remain
+  immutable and ancestral. Neither rejected candidate is approved,
+  integrated, a Task136 product candidate, strict record 29, or a release.
+- First, two locator/hash-drift cases poison a foreign stream instead of the
+  target stream whose prefix is under test. The correction must place each
+  hostile locator/hash payload in the target stream so target recovery is
+  exercised causally. An independent foreign-stream control may remain where
+  useful, but it cannot substitute for the target-stream mutation.
+- Second, both W-currentness timing cases replace authenticated opaque port
+  or ledger identities with structural wrappers that a correct
+  implementation may reject. The correction must preserve the exact real
+  opaque port and the same exact authenticated ledger object used during
+  construction and binding. It must instrument real adapter preview hooks or
+  use one instrumented ledger object from construction time; no wrapper may
+  be substituted after identity binding.
+- Third, the attestation negative conflates invalid shape with missing private
+  branding. The correction must add an otherwise complete
+  attestation-shaped value containing the required `schemaVersion` and the
+  complete copied result while lacking only the private brand. Missing
+  fields, missing branding, and replay must be independent negative cases.
+- Fourth, assertions described as exact remain partial. The correction must
+  require complete per-ordinal event counts and order; exact context,
+  invocation input, payload, and result identity; the complete
+  new/idempotent/nonledger evidence table; ordinal-7 artifact/read-model
+  binding to the approved preview; multi-candidate ordinal-10 ordering;
+  exact readback key sets rather than subset matches; no human-only fields on
+  automatic branches; and no extraneous claim or receipt fields on denied or
+  failed branches.
+- One narrower forward test-only correction may modify exactly:
+  `packages/agent/test/domain-execution-dispatcher.test.ts` and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. It may not modify
+  either Task12 product source, the loader test, the Task136 product claim,
+  ontology, Task14 wake runtime, adapter controls, contracts, plans, mission
+  state, registry, provider, activation, fallback, credential, network, or
+  any unrelated path.
+- The correction must preserve the RV-1-E-980 and RV-1-E-981 fixture
+  adaptations, every previously valid Task12 assertion, loader policy
+  controls, and released adapter controls. It must fail causally against
+  frozen rejected source blobs
+  `925977aee795810c80f8777bdab655a08110b045` and
+  `f9aa90ebfd705353f835efceaee273b75d0e3060` with no fixture, API, or type
+  failure, and establish its own exact focused pass/fail signature rather
+  than inheriting RV-1-E-984's **28/16** report.
+- Focused causality, loader, adapter-control, standalone typecheck, factory,
+  mission **20/20**, V4 assurance **20/20**, all exact contract markers,
+  repository-posture, exact two-path scope, blob-freeze, ancestry,
+  dependency, diff, and clean-state checks remain mandatory. Repository mode
+  must report its truthful first stop and may not emit or claim prefix or
+  release-closure success while strict record 29 is absent.
+- The exact corrected test-only descendant requires a completely fresh
+  read-only focused reviewer. No author, reviewer, or analyst of any earlier
+  changed test byte may approve it; any changed candidate byte invalidates
+  the review. No Task12 product source may change until the corrected causal
+  RED is independently approved, recorded append-only, integrated into the
+  Task136 lineage, and followed by a separate explicit source-correction
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejected-test recovery and bounded test-only
+  correction authority, not source repair, Task12 approval/integration,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
