@@ -678,13 +678,24 @@ describe("resident-loop tool gateway", () => {
       fresh.gateway,
       [fresh.locator]
     );
+    const automaticRequestedEvent = requiredResidentGatewayEvent(
+      await fresh.ledger.readStream(residentDomainStreamId(fresh.locator)),
+      "agent.resident-domain.requested.v1"
+    );
     expect(requested).toEqual({
       authorizationKind: "automatic-policy",
       stage: "requested",
       logicalLocator: fresh.locator,
       executionCapabilityHash: fresh.locator.executionCapabilityHash,
-      requestEventId: requiredReadbackEventId(requested, "requestEventId")
+      requestEventId: automaticRequestedEvent.id
     });
+    expectExactOwnKeys(requested, [
+      "authorizationKind",
+      "stage",
+      "logicalLocator",
+      "executionCapabilityHash",
+      "requestEventId"
+    ]);
     const [first, concurrent] = await Promise.allSettled([
       Reflect.apply(execute, fresh.gateway, [requested]),
       Reflect.apply(execute, fresh.gateway, [requested])
@@ -693,6 +704,51 @@ describe("resident-loop tool gateway", () => {
       "fulfilled",
       "rejected"
     ]);
+    const stream = await fresh.ledger.readStream(
+      residentDomainStreamId(fresh.locator)
+    );
+    const automaticClaim = requiredResidentGatewayEvent(
+      stream,
+      "agent.resident-domain.execution-claimed.v1"
+    );
+    const automaticReceipt = requiredResidentGatewayEvent(
+      stream,
+      "agent.resident-domain.outcome-observed.v1"
+    );
+    const automaticCompletion = requiredResidentGatewayEvent(
+      stream,
+      "agent.resident-domain.completed.v1"
+    );
+    const fulfilled = [first, concurrent].filter(
+      (outcome): outcome is PromiseFulfilledResult<unknown> =>
+        outcome.status === "fulfilled"
+    );
+    expect(fulfilled).toEqual([{
+      status: "fulfilled",
+      value: {
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        logicalLocator: fresh.locator,
+        executionCapabilityHash: fresh.locator.executionCapabilityHash,
+        requestEventId: automaticRequestedEvent.id,
+        executionClaimEventId: automaticClaim.id,
+        outcomeReceiptEventId: automaticReceipt.id,
+        resultEventId: automaticCompletion.id
+      }
+    }]);
+    expectExactOwnKeys(fulfilled[0]?.value, [
+      "authorizationKind",
+      "stage",
+      "logicalLocator",
+      "executionCapabilityHash",
+      "requestEventId",
+      "executionClaimEventId",
+      "outcomeReceiptEventId",
+      "resultEventId"
+    ]);
+    expect([first, concurrent].filter(
+      (outcome) => outcome.status === "rejected"
+    )).toHaveLength(1);
     expect(fresh.effects.count).toBe(1);
     expect(fresh.composition.beforeEffectCalls).toBeGreaterThan(0);
     expect(fresh.composition.afterEffectCalls).toBeGreaterThan(0);
@@ -717,6 +773,14 @@ describe("resident-loop tool gateway", () => {
       recoveredRequest.gateway,
       "executeFreshAuthorized"
     );
+    expect(rereadRequested).toEqual({
+      authorizationKind: "automatic-policy",
+      stage: "requested",
+      logicalLocator: recoveredRequest.locator,
+      executionCapabilityHash:
+        recoveredRequest.locator.executionCapabilityHash,
+      requestEventId: recoveredRequest.request.id
+    });
     await expect(Reflect.apply(
       recoveredExecute,
       recoveredRequest.gateway,
@@ -733,7 +797,6 @@ describe("resident-loop tool gateway", () => {
       .rejects.toThrow(/binding|locator|port|issued|foreign/i);
     expect(foreign.effects.count).toBe(0);
 
-    const stream = await fresh.ledger.readStream(residentDomainStreamId(fresh.locator));
     expectCanonicalResidentDomainPrefix(stream);
     expect(stream.filter((event) =>
       event.type === "agent.resident-domain.execution-claimed.v1"
@@ -763,6 +826,24 @@ describe("resident-loop tool gateway", () => {
       human.gateway,
       [human.locator]
     );
+    const humanRequestedEvent = requiredResidentGatewayEvent(
+      await human.ledger.readStream(residentDomainStreamId(human.locator)),
+      "agent.resident-domain.requested.v1"
+    );
+    expect(humanRequested).toEqual({
+      authorizationKind: "human-approval",
+      stage: "requested",
+      logicalLocator: human.locator,
+      executionCapabilityHash: human.locator.executionCapabilityHash,
+      requestEventId: humanRequestedEvent.id
+    });
+    expectExactOwnKeys(humanRequested, [
+      "authorizationKind",
+      "stage",
+      "logicalLocator",
+      "executionCapabilityHash",
+      "requestEventId"
+    ]);
     const independentApproval = await appendIndependentResidentHumanApproval(
       human.ledger,
       human.locator,
@@ -778,7 +859,7 @@ describe("resident-loop tool gateway", () => {
       stage: "human-approved",
       logicalLocator: human.locator,
       executionCapabilityHash: human.locator.executionCapabilityHash,
-      requestEventId: independentApproval.payload.requestEventId,
+      requestEventId: humanRequestedEvent.id,
       decisionEventId: independentApproval.payload.decisionEventId,
       approvedBy: humanActor.id,
       approvedPreviewHash: independentApproval.payload.approvedPreviewHash
@@ -805,7 +886,7 @@ describe("resident-loop tool gateway", () => {
       stage: "completed",
       logicalLocator: human.locator,
       executionCapabilityHash: human.locator.executionCapabilityHash,
-      requestEventId: independentApproval.payload.requestEventId,
+      requestEventId: humanRequestedEvent.id,
       decisionEventId: independentApproval.payload.decisionEventId,
       approvedBy: humanActor.id,
       approvedPreviewHash: independentApproval.payload.approvedPreviewHash,
@@ -959,6 +1040,13 @@ describe("resident-loop tool gateway", () => {
       receipted.gateway,
       [receipted.locator]
     );
+    const recoveredStream = await receipted.ledger.readStream(
+      residentDomainStreamId(receipted.locator)
+    );
+    const recoveredCompletion = requiredResidentGatewayEvent(
+      recoveredStream,
+      "agent.resident-domain.completed.v1"
+    );
     expect(recovered).toEqual({
       authorizationKind: "automatic-policy",
       stage: "completed",
@@ -968,12 +1056,19 @@ describe("resident-loop tool gateway", () => {
       executionClaimEventId:
         requiredPrefixEvent(receipted.claim, "claim").id,
       outcomeReceiptEventId: receipted.receipt?.id,
-      resultEventId: requiredReadbackEventId(recovered, "resultEventId")
+      resultEventId: recoveredCompletion.id
     });
+    expectExactOwnKeys(recovered, [
+      "authorizationKind",
+      "stage",
+      "logicalLocator",
+      "executionCapabilityHash",
+      "requestEventId",
+      "executionClaimEventId",
+      "outcomeReceiptEventId",
+      "resultEventId"
+    ]);
     expect(receipted.effects.count).toBe(0);
-    const recoveredStream = await receipted.ledger.readStream(
-      residentDomainStreamId(receipted.locator)
-    );
     expectCanonicalResidentDomainPrefix(recoveredStream);
     expect(recoveredStream.at(-1)?.context.causationId)
       .toBe(receipted.receipt?.id);
@@ -1187,15 +1282,35 @@ function requiredPrefixEvent(
   return event;
 }
 
-function requiredReadbackEventId(value: unknown, key: string): string {
+function requiredResidentGatewayEvent<
+  T extends
+    | "agent.resident-domain.requested.v1"
+    | "agent.resident-domain.execution-claimed.v1"
+    | "agent.resident-domain.outcome-observed.v1"
+    | "agent.resident-domain.completed.v1"
+>(
+  events: readonly KnowledgeEvent[],
+  type: T
+): KnowledgeEventOf<T> {
+  const matching = events.filter(
+    (event): event is KnowledgeEventOf<T> => event.type === type
+  );
+  if (matching.length !== 1) {
+    throw new Error(`Resident gateway requires exactly one durable ${type}.`);
+  }
+  return matching[0]!;
+}
+
+function expectExactOwnKeys(
+  value: unknown,
+  expectedKeys: readonly string[]
+): void {
   if (typeof value !== "object" || value === null) {
-    throw new Error(`Resident readback is absent for ${key}.`);
+    throw new Error("Resident gateway readback is not an object.");
   }
-  const eventId = Reflect.get(value, key);
-  if (typeof eventId !== "string" || !/^evt_[a-zA-Z0-9_-]+$/.test(eventId)) {
-    throw new Error(`Resident readback ${key} is not canonical.`);
-  }
-  return eventId;
+  expect(Reflect.ownKeys(value).map(String).sort()).toEqual(
+    [...expectedKeys].sort()
+  );
 }
 
 function requiredStringProperty(
