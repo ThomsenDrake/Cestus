@@ -29215,6 +29215,51 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-963 — Hardened Task136 loader candidate rejected; fail-closed repair authorized
+
+- Recorded at: 2026-07-24T00:55:50Z
+- Completely fresh reviewer `/root/task136_task12_red_review_fc58` rejects
+  exact candidate `fc580fc110d4e97863c1793e145eb41d8013332a` with two P1
+  loader-oracle defects. That exact commit, rejected `9f33e0b9`,
+  `fcb612e7`, and `b54281b0`, and every prior authority/design/review commit
+  remain preserved. None is source GREEN, approved, integrated, strict
+  record 29, or release.
+- The static default-G check accepts a wrong function alias, inline method,
+  or inline arrow under the required property, while runtime accepts a frozen
+  one-own-key object with an inherited issuer and any wrong callable identity.
+  The correction must require one noncomputed shorthand
+  `consumeResidentDomainExecutionPermit` member backed by exactly one
+  body-bearing module-local function declaration of that exact name. It must
+  reject aliases, inline implementations, duplicate/missing declarations,
+  accessors/data properties, symbols/computed keys, and any nonstandard or
+  operation-bearing prototype; runtime must retain exact frozen own-key and
+  descriptor checks.
+- The protected-definition classifier still misses object/array/aliased
+  destructuring defaults, parenthesized and compound `??=`/`||=` assignments,
+  and static `Object.defineProperty`/`Reflect.defineProperty` calls. The
+  correction must inspect callable or value-producing binding defaults,
+  recursively unwrap assignment targets and relevant assignment operators,
+  and recognize statically named property-definition APIs. It must fail
+  closed on unresolved protected-definition names while retaining explicit
+  exclusions for consumer destructuring without defaults, namespace imports,
+  re-exports, type uses, aliases, property calls, and Task14's binder call.
+- One forward correction may modify exactly the loader test and Task136
+  product claim. All other test/source blobs remain exact. Direct controls
+  must prove every rejected counterexample and safe exclusion independently,
+  preserve the complete RV-1-E-957/RV-1-E-959 fixture matrix and exact
+  focused **17 passed + 8 causal RED** boundary, and record truthful
+  repository posture.
+- The exact descendant requires a completely fresh focused reviewer. All
+  three prior RED reviewers and the candidate author are ineligible. Changed
+  bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to `implementing`; strict product frontier remains **28 of
+  29**. This is fail-closed loader-oracle correction authority, not Task12
+  source authorization, candidate approval, integration, strict record 29,
+  assurance transition, publication, or product release. `neo`, push, Wave
+  3, credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-961 — Corrected Task136 RED rejected; two-point loader repair authorized
 
 - Recorded at: 2026-07-24T00:24:06Z
