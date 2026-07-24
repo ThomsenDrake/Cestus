@@ -30540,3 +30540,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidacy, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-986 — Corrected Task136 source-closure causal RED admitted to fresh review
+
+- Recorded at: 2026-07-24T13:44:57Z
+- Exact corrected test-only candidate
+  `c6d75787b9a12605892c9209b1716b0003497572`, tree
+  `b77711a82f94d46145335a45914495f1db027d2e`, has sole parent E-985
+  authority merge `6755e7edb6e98d761b0e637294bc05605b55017d`
+  and changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts` and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. Rejected
+  test-only candidate `ae200ddff9c251027f4af81b87fc3d68fc3f4e45`,
+  rejected aggregate candidate
+  `0cc48416dc368c8d737c50a3b5308655e6ca51f3`, source checkpoint
+  `ed5a1bb932e149de9915e4aefd3663125e80ed03`, and every earlier design,
+  plan, RED, GREEN, fixture, rejection, review, and authority commit remain
+  ancestral and unchanged.
+- Exact corrected test blobs are dispatcher
+  `0b46af4c639919e6ca9fb41319ee70100b2adb11` and gateway
+  `6b1702f37e08770ac0986175f8c6acd03b43fb56`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, rejected dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, rejected gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- Focused execution establishes a new exact signature:
+  **46 tests = 27 passed + 19 source-causal failures** across the two
+  corrected tests and frozen loader, with loader policy **2/2** green and no
+  fixture, API, collection, or type failure. The failures cover independent
+  missing-field, otherwise-complete unbranded, and replay attestation
+  boundaries; exact accepted-preview and complete invocation binding;
+  exact readback shape; ten hostile target-prefix mutations; and both
+  before/after W timing boundaries.
+- The corrected oracle places locator/hash corruption in the exact target
+  stream; preserves the real opaque dispatcher port and one authenticated
+  ledger identity from construction through binding and reads; separates
+  complete-unbranded, missing-field, and replay attestation negatives; and
+  closes complete per-ordinal count/order/context/input/payload/result,
+  evidence-mode, ordinal-7 preview, ordinal-10 candidate-order, readback-key,
+  automatic-field, and denied/failed field assertions.
+- Independent coordinator reproduction matches focused **27/19**, loader
+  **2/2**, released adapter controls **79/79**, standalone typecheck, factory
+  readiness, mission **20/20**, V4 assurance **20/20**, and all four exact
+  contract markers. Exact scope, dependency-free diff, frozen blobs,
+  ancestry, `git diff --check`, and clean-state checks pass.
+- Clean repository mode exits `1` and stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`.
+  It emits neither repository-prefix nor release-closure success.
+- Completely fresh read-only focused reviewer
+  `/root/task136_e986_red_review_c6d7` is assigned exact immutable candidate
+  `c6d75787`. The reviewer must inspect the complete two-file diff and every
+  RV-1-E-985 correction; independently classify all 19 failures as
+  source-causal; attack target-stream placement, opaque port and ledger
+  identity, private-brand separation, exact per-ordinal/readback assertions,
+  ordinal-7 and ordinal-10 bindings, and weak-implementation counterexamples;
+  and reproduce the focused, loader, adapter, typecheck, factory, mission,
+  V4, marker, repository-posture, scope, freeze, ancestry, dependency, diff,
+  and clean-state gates.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte and may not edit, commit, merge, substitute another SHA, approve
+  changed bytes, authorize either source, or describe this review transition
+  as product candidacy or release. Any changed candidate byte invalidates the
+  review.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `c6d75787`. Strict product frontier remains **28 of 29**. This is corrected
+  test-only RED review admission, not approval, integration, source GREEN,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
