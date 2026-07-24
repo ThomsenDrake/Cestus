@@ -30955,3 +30955,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidacy, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-992 — E-991 author protocol violation quarantined; full lineage preservation authorized
+
+- Recorded at: 2026-07-24T15:58:13Z
+- The E-991 test author created atomic test-only commit
+  `99814d2217b87536135b3d397bcecba27063a725`, tree
+  `9de516727ebff15fd4f1ff5e3add71595e8f280a`, then incorrectly used
+  `git commit --amend` to create sibling
+  `1a94fdf08f7d22dbf87b29c4c30e195bcce633c5`, tree
+  `47fdea89f7876d8d244af2f5a5223c8ef6cf1656`. Both have sole parent
+  E-991 authority merge
+  `ac78afe84c465a2ab28f56399e20736b43bb4617` and change exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`.
+- Amending violates the explicit forward-only program contract. The author
+  was interrupted immediately after reporting it and is removed from active
+  implementation ownership. Neither sibling is admitted, reviewed,
+  approved, integrated, source authority, product candidacy, record 29, or a
+  release.
+- Exact original dispatcher-test blob
+  `c1143d1874a1554580895e081f89b2fa39df329d` and amended dispatcher-test
+  blob `5fe3d871bb92702cc6ae09cb4b00c0aa9ac4f9a1` differ by exactly one
+  expectation: the amended tree takes canonical `authorizationKind` from
+  the independently derived exact durable authorization rather than from
+  the request. Gateway test and all product-source/frozen blobs are
+  unchanged.
+- No reset, rebase, further amend, squash, force operation, cherry-pick,
+  discard, or replacement history is authorized. To preserve both existing
+  commit objects, first forward-merge this exact registry authority into
+  current `1a94fdf0`, then create an explicit two-parent lineage-recovery
+  merge whose second parent is exact original `99814d22` and whose resulting
+  tracked tree retains the current corrected test bytes plus this registry
+  authority. Exact original and amended blobs must both remain ancestral.
+- The lineage-recovery merge is a quarantine checkpoint only. Its current
+  test bytes must receive complete coordinator reproduction and a new
+  candidate-admission event before review. The next reviewer must be
+  completely fresh and inspect the full current two-test net diff plus both
+  sibling commits and the recovery merge. All earlier changed-byte authors,
+  reviewers, and analysts remain ineligible.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is append-only incident recovery and ancestry
+  preservation, not corrected-RED admission/approval/integration, source
+  GREEN, Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
