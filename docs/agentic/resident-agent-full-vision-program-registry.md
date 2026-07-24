@@ -29251,6 +29251,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
 
+## RV-1-E-977 — Task136 exact permit-tuple RED admitted to fresh review
+
+- Recorded at: 2026-07-24T05:13:58Z
+- Exact candidate `3f9207ba95655029ace0764e349e7f3a2763a620`,
+  sole parent RV-1-E-976 authority merge
+  `a82b8867448639c05ed3252ba6ddcae75e1179c6`, changes exactly the loader
+  test and Task136 claim. Exact tree is
+  `0395d19c0f115a9cec44a423dba9c3115a1c1c4a`; loader blob is
+  `f8df9ae8e4f5a8506e84cb20fc207783c69cce21` and claim blob is
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`. Delta is loader **+254/-7**
+  and claim **+114/-0**, with no dependency change.
+- Dispatcher/G test blobs remain exact
+  `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+  `a53f7425ec2b86bc28343446064fb3df7e5f3137`; Task12 sources remain exact
+  `96b0ade273696b9ffcf497119f1943f128821a58` and
+  `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`. Rejected `135a5f2b`,
+  `60f17f5b`, `31a017b4`, `97610438`, `a1ed492f`, `84b9f6a8`,
+  `fc580fc1`, `9f33e0b9`, `fcb612e7`, and `b54281b0` remain ancestral.
+- The exact permit call now requires the unique gateway import receiver
+  symbol, nonoptional access/call, and exactly three ordered nonspread
+  bindings resolved to the dispatcher method's permit parameter, owning
+  opaque resident-port const, and canonical invocation-input parameter.
+  Twelve independent wrong-order, missing, extra, spread, optional,
+  alias/substitution, duplicate, comma, conditional, and same-text-shadow
+  controls reject; the exact safe call remains admitted.
+- Every prior lexical provenance, Task14 census, dispatcher transfer,
+  gateway binding, protected-mention/default-G/prototype/callable,
+  calibrated normalization/escape, resident dual-context/human/recovery/
+  terminal, and loader-order matrix executes before the intended source stop.
+  Fresh gates report exact focused **25 = 17 passed + 8 causal RED
+  failures**, released controls **79/79**, typecheck, factory readiness,
+  mission **20/20**, V4 assurance **20/20**, and all exact markers. Exact
+  scope/freeze/ancestry/dependency/diff/clean checks pass. Repository mode
+  truthfully stops at the pre-record-29 W1 current-blob mismatch.
+- Completely fresh read-only reviewer
+  `/root/task136_task12_red_review_3f92` is assigned exact `3f9207ba`. It
+  must independently verify receiver/argument lexical identity and all
+  negative/safe tuple controls, every preserved matrix/fixture, exact causal
+  split, and deterministic gates. Every prior reviewer, analyst, and author
+  is ineligible.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `3f9207ba`. Changed bytes invalidate review. No source authorization follows
+  without explicit later approval/integration authority.
+- Strict product frontier remains **28 of 29**. This is RED review admission,
+  not approval, Task12 source GREEN, integration, product candidate, strict
+  record 29, assurance transition, publication, or product release. `neo`,
+  push, Wave 3, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
+
 ## RV-1-E-974 — Lexical-provenance candidate rejected; exact call-symbol closure authorized
 
 - Recorded at: 2026-07-24T04:36:39Z
