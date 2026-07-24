@@ -371,15 +371,15 @@ describe("resident-loop tool gateway", () => {
       human.gateway,
       [human.locator]
     );
-    expect(automaticCompleted).toEqual(expect.objectContaining({
+    expect(automaticCompleted).toEqual({
       authorizationKind: "automatic-policy",
       stage: "completed",
       requestEventId: automatic.request.id,
       executionClaimEventId: requiredPrefixEvent(automatic.claim, "claim").id,
       outcomeReceiptEventId: automatic.receipt?.id,
       resultEventId: automatic.terminal?.id
-    }));
-    expect(humanCompleted).toEqual(expect.objectContaining({
+    });
+    expect(humanCompleted).toEqual({
       authorizationKind: "human-approval",
       stage: "completed",
       requestEventId: human.request.id,
@@ -387,10 +387,15 @@ describe("resident-loop tool gateway", () => {
         human.decision?.payload ?? {},
         "decisionEventId"
       ),
+      approvedBy: humanActor.id,
+      approvedPreviewHash: Reflect.get(
+        human.decision?.payload ?? {},
+        "approvedPreviewHash"
+      ),
       executionClaimEventId: requiredPrefixEvent(human.claim, "claim").id,
       outcomeReceiptEventId: human.receipt?.id,
       resultEventId: human.terminal?.id
-    }));
+    });
     await Reflect.apply(automaticReread, automatic.gateway, [automatic.locator]);
     await Reflect.apply(humanReread, human.gateway, [human.locator]);
     expect(await automatic.ledger.readAll()).toHaveLength(beforeAutomatic);
@@ -469,113 +474,15 @@ describe("resident-loop tool gateway", () => {
         [prefix.locator]
       );
       expect(prefix.effects.count).toBe(0);
+      expect(readback).toEqual(
+        expectedRecoveryReadback(prefix, entry.terminal)
+      );
       return {
-        name: entry.name,
-        readback: recoveryReadbackFacts(readback)
+        name: entry.name
       };
     }));
 
-    expect(results).toEqual([
-      {
-        name: "automatic completed",
-        readback: expect.objectContaining({
-          authorizationKind: "automatic-policy",
-          stage: "completed",
-          executionClaimEventId: expect.stringMatching(/^evt_/),
-          outcomeReceiptEventId: expect.stringMatching(/^evt_/),
-          resultEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "human completed",
-        readback: expect.objectContaining({
-          authorizationKind: "human-approval",
-          stage: "completed",
-          decisionEventId: "evt_human_decision_gateway",
-          executionClaimEventId: expect.stringMatching(/^evt_/),
-          outcomeReceiptEventId: expect.stringMatching(/^evt_/),
-          resultEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "human denied",
-        readback: expect.objectContaining({
-          authorizationKind: "human-approval",
-          stage: "denied",
-          denialEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "automatic pre-claim failed",
-        readback: expect.objectContaining({
-          authorizationKind: "automatic-policy",
-          stage: "failed",
-          failurePhase: "pre-claim",
-          resultEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "human pre-approval failed",
-        readback: expect.objectContaining({
-          authorizationKind: "human-approval",
-          stage: "failed",
-          failurePhase: "pre-approval",
-          resultEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "human post-approval pre-claim failed",
-        readback: expect.objectContaining({
-          authorizationKind: "human-approval",
-          stage: "failed",
-          failurePhase: "post-approval-pre-claim",
-          decisionEventId: "evt_human_decision_gateway",
-          resultEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "automatic post-claim failed",
-        readback: expect.objectContaining({
-          authorizationKind: "automatic-policy",
-          stage: "failed",
-          failurePhase: "post-claim",
-          executionClaimEventId: expect.stringMatching(/^evt_/),
-          outcomeReceiptEventId: expect.stringMatching(/^evt_/),
-          resultEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "human post-claim failed",
-        readback: expect.objectContaining({
-          authorizationKind: "human-approval",
-          stage: "failed",
-          failurePhase: "post-claim",
-          decisionEventId: "evt_human_decision_gateway",
-          executionClaimEventId: expect.stringMatching(/^evt_/),
-          outcomeReceiptEventId: expect.stringMatching(/^evt_/),
-          resultEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "automatic claim without receipt",
-        readback: expect.objectContaining({
-          authorizationKind: "automatic-policy",
-          stage: "claimed",
-          category: "effect-outcome-unknown",
-          executionClaimEventId: expect.stringMatching(/^evt_/)
-        })
-      },
-      {
-        name: "human claim without receipt",
-        readback: expect.objectContaining({
-          authorizationKind: "human-approval",
-          stage: "claimed",
-          category: "effect-outcome-unknown",
-          decisionEventId: "evt_human_decision_gateway",
-          executionClaimEventId: expect.stringMatching(/^evt_/)
-        })
-      }
-    ]);
+    expect(results).toEqual(cases.map(({ name }) => ({ name })));
   });
 
   it.each([
@@ -594,7 +501,25 @@ describe("resident-loop tool gateway", () => {
     "causation drift"
   ] as const)("rejects hostile resident recovery prefix: %s", async (hostility) => {
     const hostile = await appendHostileResidentRecoveryPrefix(hostility);
-    expectOntologyValidResidentEvents(hostile.events);
+    const bindingDrift =
+      hostility === "logical locator drift" ||
+      hostility === "capability hash drift";
+    expectOntologyValidResidentEvents(
+      bindingDrift ? hostile.events.slice(0, -1) : hostile.events
+    );
+    if (bindingDrift) {
+      const targetStream = await hostile.ledger.readStream(
+        residentDomainStreamId(hostile.locator)
+      );
+      expect(targetStream.at(-1)?.type)
+        .toBe("agent.resident-domain.completed.v1");
+      expect(targetStream.at(-1)?.payload).not.toEqual(
+        expect.objectContaining({
+          logicalLocator: hostile.locator,
+          executionCapabilityHash: hostile.locator.executionCapabilityHash
+        })
+      );
+    }
     const reread = reflectedOperation(
       hostile.gateway,
       "rereadAndIssueFromLedger"
@@ -1018,10 +943,34 @@ interface ResidentGatewayHarness {
 type ResidentCurrentnessKind = "current" | "stale";
 
 interface ResidentGatewayHarnessInstrumentation {
-  readonly wrapLedger?: (ledger: InMemoryEventLedger) => EventLedger;
-  readonly wrapPort?: (port: object) => object;
+  readonly createLedger?: () => InMemoryEventLedger;
+  readonly onPackagePreview?: () => Promise<void>;
   readonly reverifyBeforeEffect?: () => Promise<unknown>;
   readonly reverifyAfterEffect?: () => Promise<unknown>;
+}
+
+class TargetStreamHostileResidentLedger extends InMemoryEventLedger {
+  private readonly hostileEvents: KnowledgeEvent[] = [];
+
+  injectTargetStreamHostile(event: KnowledgeEvent): void {
+    this.hostileEvents.push(structuredClone(event));
+  }
+
+  override async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+    return [
+      ...await super.readStream(streamId),
+      ...this.hostileEvents
+        .filter((event) => event.streamId === streamId)
+        .map((event) => structuredClone(event))
+    ];
+  }
+
+  override async readAll(): Promise<KnowledgeEvent[]> {
+    return [
+      ...await super.readAll(),
+      ...this.hostileEvents.map((event) => structuredClone(event))
+    ];
+  }
 }
 
 interface UnknownResidentDomainApi {
@@ -1170,7 +1119,8 @@ function residentLegacyContext(
   ledger: InMemoryEventLedger,
   effects: { count: number },
   source: KnowledgeEvent,
-  suffix: string
+  suffix: string,
+  instrumentation: ResidentGatewayHarnessInstrumentation = {}
 ): Readonly<Record<string, unknown>> {
   const reportHash =
     "sha256:9999999999999999999999999999999999999999999999999999999999999999";
@@ -1186,6 +1136,9 @@ function residentLegacyContext(
   ].join(":")).digest("hex")}`;
   const runtime = {
     async stagingPreview() {
+      if (instrumentation.onPackagePreview !== undefined) {
+        await instrumentation.onPackagePreview();
+      }
       return {
         ok: true as const,
         command: "legacy staging-preview",
@@ -1298,7 +1251,8 @@ async function prepareResidentGatewayHarness(input: {
     ? "legacy.staging.execute"
     : "legacy.staging.approve";
   const toolVersion = "0.1.0";
-  const ledger = new InMemoryEventLedger();
+  const ledger =
+    input.instrumentation?.createLedger?.() ?? new InMemoryEventLedger();
   const effects = { count: 0 };
   const composition: ResidentGatewayCompositionCounts = {
     safeIdCalls: 0,
@@ -1314,7 +1268,13 @@ async function prepareResidentGatewayHarness(input: {
     workspaceId,
     residentAgentId,
     taskId,
-    context: residentLegacyContext(ledger, effects, source, input.suffix)
+    context: residentLegacyContext(
+      ledger,
+      effects,
+      source,
+      input.suffix,
+      input.instrumentation
+    )
   });
   expect(capability).toSatisfy(isFrozenOpaqueObject);
   const port = residentApi.bind({
@@ -1329,8 +1289,8 @@ async function prepareResidentGatewayHarness(input: {
     throw new Error("Resident dispatcher did not bind an opaque execution port.");
   }
   const gateway = createRevisedGateway(
-    input.instrumentation?.wrapLedger?.(ledger) ?? ledger,
-    input.instrumentation?.wrapPort?.(port) ?? port,
+    ledger,
+    port,
     composition,
     input.suffix,
     input.now,
@@ -1699,11 +1659,15 @@ async function appendCanonicalResidentDomainPrefix(input: {
   readonly authorizationKind: ResidentAuthorizationKind;
   readonly terminal: ResidentPrefixTerminal;
   readonly suffix?: string;
+  readonly createLedger?: () => InMemoryEventLedger;
 }): Promise<CanonicalResidentPrefix> {
   const suffix = input.suffix ?? "canonical";
   const harness = await prepareResidentGatewayHarness({
     authorizationKind: input.authorizationKind,
-    suffix
+    suffix,
+    ...(input.createLedger === undefined
+      ? {}
+      : { instrumentation: { createLedger: input.createLedger } })
   });
   const {
     ledger,
@@ -2346,7 +2310,13 @@ async function appendHostileResidentRecoveryPrefix(
   const target = await appendCanonicalResidentDomainPrefix({
     authorizationKind: "automatic-policy",
     terminal: baseTerminal,
-    suffix
+    suffix,
+    ...(hostility === "logical locator drift" ||
+    hostility === "capability hash drift"
+      ? {
+          createLedger: () => new TargetStreamHostileResidentLedger()
+        }
+      : {})
   });
   const donor = await appendCanonicalResidentDomainPrefix({
     authorizationKind: "automatic-policy",
@@ -2448,7 +2418,7 @@ async function appendHostileResidentRecoveryPrefix(
         executionClaimEventId: claimId,
         outcomeReceiptEventId: receiptId,
         logicalLocator: foreignLocator
-      }, { causationId: receiptId }, foreignLocator);
+      }, { causationId: receiptId }, target.locator, true);
       break;
       }
     case "capability hash drift":
@@ -2466,7 +2436,7 @@ async function appendHostileResidentRecoveryPrefix(
         outcomeReceiptEventId: receiptId,
         logicalLocator: foreignLocator,
         executionCapabilityHash: foreignCapabilityHash
-      }, { causationId: receiptId }, foreignLocator);
+      }, { causationId: receiptId }, target.locator, true);
       break;
       }
     case "correlation drift":
@@ -2501,7 +2471,8 @@ async function appendRetargetedResidentEvent(
   donor: KnowledgeEvent,
   payloadOverrides: Readonly<Record<string, unknown>>,
   contextOverrides: Readonly<Record<string, unknown>>,
-  streamLocator: ResidentLogicalLocator = target.locator
+  streamLocator: ResidentLogicalLocator = target.locator,
+  injectInvalidTargetBinding = false
 ): Promise<KnowledgeEvent> {
   const { id: _id, sequence: _sequence, ...appendable } = donor;
   const current = await target.ledger.readStream(
@@ -2510,7 +2481,7 @@ async function appendRetargetedResidentEvent(
   const correlationId = typeof payloadOverrides.correlationId === "string"
     ? payloadOverrides.correlationId
     : `corr_gateway_${target.locator.planId.toString().replace("plan_gateway_", "")}`;
-  const appended = await target.ledger.append({
+  const candidate = {
     ...appendable,
     streamId: residentDomainStreamId(streamLocator),
     context: {
@@ -2524,10 +2495,30 @@ async function appendRetargetedResidentEvent(
       executionCapabilityHash: target.locator.executionCapabilityHash,
       correlationId,
       ...payloadOverrides
+    },
+    id: `evt_${createHash("sha256").update([
+      "resident-hostile-target-binding",
+      donor.id,
+      JSON.stringify(payloadOverrides)
+    ].join(":")).digest("hex").slice(0, 32)}`,
+    sequence: current.length + 1
+  };
+  if (injectInvalidTargetBinding) {
+    if (!(target.ledger instanceof TargetStreamHostileResidentLedger)) {
+      throw new Error("Hostile target-stream fixture lacks its instrumented ledger.");
     }
-  } as AppendableKnowledgeEvent, {
+    const event = structuredClone(candidate) as KnowledgeEvent;
+    target.ledger.injectTargetStreamHostile(event);
+    return event;
+  }
+  const { id: _candidateId, sequence: _candidateSequence, ...candidateInput } =
+    candidate;
+  const appended = await target.ledger.append(
+    candidateInput as AppendableKnowledgeEvent,
+    {
     expectedNextSequence: current.length + 1
-  });
+    }
+  );
   const validation = validateKnowledgeEvent(appended);
   expect(validation.success, JSON.stringify(validation)).toBe(true);
   return appended;
@@ -2566,27 +2557,90 @@ function expectOntologyValidResidentEvents(
   }
 }
 
-function recoveryReadbackFacts(value: unknown): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object") {
-    throw new Error("Resident recovery readback is absent.");
+function expectedRecoveryReadback(
+  prefix: CanonicalResidentPrefix,
+  terminal: ResidentPrefixTerminal
+): Readonly<Record<string, unknown>> {
+  const authorizationKind = Reflect.get(
+    prefix.request.payload,
+    "authorizationKind"
+  );
+  const base = {
+    authorizationKind,
+    requestEventId: prefix.request.id
+  };
+  const humanDecision = prefix.decision === undefined
+    ? {}
+    : {
+        decisionEventId: Reflect.get(
+          prefix.decision.payload,
+          "decisionEventId"
+        ),
+        approvedBy: Reflect.get(prefix.decision.payload, "approvedBy"),
+        approvedPreviewHash: Reflect.get(
+          prefix.decision.payload,
+          "approvedPreviewHash"
+        )
+      };
+
+  if (terminal === "completed") {
+    return {
+      ...base,
+      stage: "completed",
+      ...humanDecision,
+      executionClaimEventId: requiredPrefixEvent(prefix.claim, "claim").id,
+      outcomeReceiptEventId: requiredPrefixEvent(prefix.receipt, "receipt").id,
+      resultEventId: requiredPrefixEvent(prefix.terminal, "terminal").id
+    };
   }
-  const keys = [
-    "authorizationKind",
-    "stage",
-    "category",
-    "requestEventId",
-    "decisionEventId",
-    "approvedBy",
-    "approvedPreviewHash",
-    "executionClaimEventId",
-    "outcomeReceiptEventId",
-    "denialEventId",
-    "failurePhase",
-    "resultEventId"
-  ];
-  return Object.fromEntries(keys.flatMap((key) =>
-    Object.hasOwn(value, key) ? [[key, Reflect.get(value, key)]] : []
-  ));
+  if (terminal === "denied") {
+    return {
+      ...base,
+      stage: "denied",
+      denialEventId: requiredPrefixEvent(prefix.terminal, "terminal").id
+    };
+  }
+  if (terminal === "claimed") {
+    return {
+      ...base,
+      stage: "claimed",
+      category: "effect-outcome-unknown",
+      ...humanDecision,
+      executionClaimEventId: requiredPrefixEvent(prefix.claim, "claim").id
+    };
+  }
+  if (
+    terminal === "automatic-pre-claim-failed" ||
+    terminal === "human-pre-approval-failed" ||
+    terminal === "human-post-approval-pre-claim-failed" ||
+    terminal === "post-claim-failed"
+  ) {
+    const failurePhase = terminal === "automatic-pre-claim-failed"
+      ? "pre-claim"
+      : terminal === "human-pre-approval-failed"
+        ? "pre-approval"
+        : terminal === "human-post-approval-pre-claim-failed"
+          ? "post-approval-pre-claim"
+          : "post-claim";
+    return {
+      ...base,
+      stage: "failed",
+      failurePhase,
+      ...(failurePhase === "pre-approval" || failurePhase === "pre-claim"
+        ? {}
+        : humanDecision),
+      ...(failurePhase === "post-claim"
+        ? {
+            executionClaimEventId:
+              requiredPrefixEvent(prefix.claim, "claim").id,
+            outcomeReceiptEventId:
+              requiredPrefixEvent(prefix.receipt, "receipt").id
+          }
+        : {}),
+      resultEventId: requiredPrefixEvent(prefix.terminal, "terminal").id
+    };
+  }
+  throw new Error(`Resident recovery terminal ${terminal} has no issued readback.`);
 }
 
 async function runPackagePreviewRevalidationCase(
@@ -2598,24 +2652,10 @@ async function runPackagePreviewRevalidationCase(
     authorizationKind: "automatic-policy",
     suffix: `preview-${beforeKind}-${afterKind}`,
     instrumentation: {
-      wrapPort(port) {
-        const prepare = Reflect.get(port, "prepareResidentDomainExecution");
-        if (typeof prepare !== "function") {
-          throw new Error("Resident package preview port is absent.");
-        }
-        return Object.freeze({
-          async prepareResidentDomainExecution(command: unknown) {
-            const preview = Reflect.get(command as object, "phase") === "preview";
-            if (preview) {
-              trace.push("preview:start");
-            }
-            const result = await Reflect.apply(prepare, port, [command]);
-            if (preview) {
-              trace.push("preview:end");
-            }
-            return result;
-          }
-        });
+      async onPackagePreview() {
+        trace.push("preview:start");
+        await Promise.resolve();
+        trace.push("preview:end");
       },
       async reverifyBeforeEffect() {
         trace.push("W:before");
@@ -2659,24 +2699,22 @@ async function runHumanDecisionRevalidationCase(
     authorizationKind: "human-approval",
     suffix: `decision-revalidation-${beforeKind}-${afterKind}`,
     instrumentation: {
-      wrapLedger(ledger) {
-        return Object.freeze({
-          append: ledger.append.bind(ledger),
-          readAll: ledger.readAll.bind(ledger),
-          async readStream(streamId: string) {
+      createLedger() {
+        return new class extends InMemoryEventLedger {
+          override async readStream(streamId: string) {
             const decisionRead =
               observingDecision &&
               streamId.startsWith("agent_resident_domain_");
             if (decisionRead) {
               trace.push("decision:start");
             }
-            const events = await ledger.readStream(streamId);
+            const events = await super.readStream(streamId);
             if (decisionRead) {
               trace.push("decision:end");
             }
             return events;
           }
-        });
+        }();
       },
       async reverifyBeforeEffect() {
         if (observingDecision) {
