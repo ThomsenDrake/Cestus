@@ -29494,6 +29494,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, push, Wave 3, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
 
+## RV-1-E-984 — Task136 Task12 source-closure causal RED admitted to fresh review
+
+- Recorded at: 2026-07-24T06:58:44Z
+- Exact test-only candidate
+  `ae200ddff9c251027f4af81b87fc3d68fc3f4e45`, tree
+  `9b66821f72e4419ae41f16a9e8d0adf4524d07a4`, sole parent
+  RV-1-E-983 authority merge
+  `81936794eafa7b173f3e449c3d095694ba13d8fd`, changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts` and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`.
+- Exact changed blobs are dispatcher test
+  `f21b9280bb3a2b3cc868be1b0b66525349a5385b` and gateway test
+  `a7df24b5b5f7cc4f42a312162453e58f5613d45d`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, rejected dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, rejected G source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- Focused evidence is exact **44 = 28 passed + 16 causal source failures**,
+  with loader policy **2/2** and zero fixture/API/type failure. The failures
+  cover structural/unbranded incomplete attestation accepted through G,
+  accepted-graph preview rewrite/truncation, extra foreign ordinal-9
+  evidence, missing denied/pre/post-claim-failed recovery mappings, ten
+  accepted hostile prefix mutations, and missing before/after W checks around
+  preview and human-decision awaits.
+- Released adapter controls pass **79/79**; standalone typecheck, factory
+  readiness, mission **20/20** with exact fingerprints, V4 assurance
+  **20/20**, all four exact markers, scope/freeze/ancestry/dependency/diff and
+  clean-state gates pass. Repository mode truthfully stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`;
+  no prefix or closure success is claimed.
+- Completely fresh-to-these-blobs read-only reviewer
+  `/root/task136_zero_path_arch_review_d475` is assigned exact `ae200ddf`.
+  The reviewer confirms it authored and reviewed neither changed test blob.
+  It must inspect every new fixture and assertion against RV-1-E-983 and the
+  corrected design, prove each failure is source-causal and controls cannot
+  be satisfied by a weak implementation, check the large test diff for
+  duplicated or contradictory authority, reproduce exact 28/16 causality,
+  adapter controls, typecheck, factory, mission/V4, markers, blob/scope/
+  freeze/ancestry/dependency/diff/clean and actual repository posture, then
+  return one exact approve/reject disposition.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `ae200ddf`. Changed bytes invalidate review. The reviewer may not edit,
+  commit, merge, substitute another SHA, authorize source repair, or describe
+  this as product candidacy.
+- Strict product frontier remains **28 of 29**. This is test-only causal-RED
+  review admission, not approval, integration, source GREEN, Task136 product
+  candidacy, strict record 29, assurance transition, publication, or product
+  release. `neo`, push, Wave 3, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
+
 ## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
 
 - Recorded at: 2026-07-24T04:58:14Z
