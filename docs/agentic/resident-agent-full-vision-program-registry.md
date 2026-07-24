@@ -31340,3 +31340,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidacy, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-998 — Exact-shape corrected Task136 RED admitted to fresh review
+
+- Recorded at: 2026-07-24T17:43:04Z
+- Exact corrected test-only candidate
+  `68293fbb7894607c7ae4160c8a52e8d21f4fc1c7`, tree
+  `8a10b916a9497822572889ecd5c142d71b76cb6b`, has sole parent E-997
+  repair-authority merge
+  `0cffbb0a6f0a91ae5b9acdf09a6e29940d5d4e33` and changes exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts`.
+- Exact current test blobs are dispatcher
+  `234850e4a3690d7c04bbb1ddc3def27d8268e219` and gateway
+  `6e720ce896176362256aa09ca0566def9bef2257`. Frozen blobs remain loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 product claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, dispatcher source
+  `925977aee795810c80f8777bdab655a08110b045`, gateway source
+  `f9aa90ebfd705353f835efceaee273b75d0e3060`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, and Task14 wake runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- The candidate requires exactly ten dispatcher-attestation own keys through
+  `Reflect.ownKeys`, so enumerable, non-enumerable, and symbol extras fail:
+  schema version, exact durable claim/capability, catalog ordinal/revision,
+  canonical invocation hash, evidence mode, pre/post ledger fingerprints,
+  and complete result only. Locator, request, authorization, and all other
+  extras are explicitly absent.
+- Fingerprint preimages are constructed independently from durable ledger
+  snapshots immediately around the invocation, including the exact claim and
+  excluding G's later receipt/completion. The expected result comes from the
+  separately executed released adapter and is bound both by complete content
+  and copied result identity. G receipt/completion remain independently
+  derived from durable request, optional approval, claim, locator,
+  capability, authorization, invocation hash, result/evidence, and
+  causation/context chains.
+- E-995 intrinsic brand/replay sentinels remain exact. Focused execution
+  establishes **48 = 28 passed + 20 independently source-causal failures**:
+  dispatcher **18 = 11 passed + 7 failed**, gateway
+  **28 = 15 passed + 13 failed**, loader **2/2** green; isolated unbranded
+  and replay primary counters remain **3 != 0** and **4 != 0**.
+- Independent coordinator reproduction matches focused **28/20**, isolated
+  counters, loader **2/2**, released adapters **79/79**, standalone
+  typecheck, factory, mission **20/20**, V4 assurance **20/20**, four exact
+  markers, complete two-test net scope, frozen blobs, all checkpoint/sibling/
+  recovery/named ancestry, dependency-free diff, `git diff --check`, and
+  clean state. Repository mode exits `1`, stops first at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success.
+- Completely fresh read-only focused reviewer
+  `/root/task136_e998_red_review_6829` is assigned exact immutable candidate
+  `68293fbb`. It must inspect all current corrected two-test bytes, E-985
+  through E-997 defects and repairs, preserved amend/recovery topology,
+  relevant frozen sources/contracts, and full review package
+  `.superpowers/sdd/review-6755e7ed..68293fbb.diff`. It must attack exact
+  ten-field own-key completeness/order, hidden/symbol extras, independent
+  fingerprint preimages, result capture/identity, G-owned fact separation,
+  intrinsic proxy semantics, and every earlier weak counterexample.
+- The reviewer has not authored, reviewed, or analyzed any earlier changed
+  test byte. Every prior corrected-byte reviewer, both authors, and all
+  changed-byte analysts are ineligible. It may not edit, commit, merge,
+  substitute another SHA, approve changed bytes, authorize source, or
+  describe this transition as product candidacy or release. Changed
+  candidate bytes invalidate review.
+- All rejected/non-admitted candidates/checkpoints, original and amended
+  siblings, approved design, dual-context descendant, reviewed plan, source
+  checkpoint, fixture adaptations, and rejection/review/recovery/authority
+  commits remain ancestral and unchanged.
+- Task136 advances `implementing -> candidate -> reviewing` for exact
+  `68293fbb`. Strict product frontier remains **28 of 29**. This is corrected
+  test-only RED review admission, not approval, integration, source GREEN,
+  Task136 product candidacy, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
