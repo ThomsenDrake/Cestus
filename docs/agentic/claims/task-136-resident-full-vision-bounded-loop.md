@@ -1197,3 +1197,129 @@ source authorization or GREEN, a product candidate, approval, integration,
 strict record 29, assurance transition, publication, or product release.
 Task136 remains `implementing`; the strict product frontier remains **28 of
 29**.
+
+## RV-1-E-963 Task12 Fail-Closed Loader-Oracle Correction
+
+Exact RV-1-E-963 authority
+`4b14ddf45e4ac45fbb0ddcd9c87ec46de6a7fef0` was forward-merged into the
+preserved Task136 lineage by exact two-parent merge
+`e1e6a181a9d7ff480a8b8fba80fe20145d2fbd15`. Its first parent is
+`feda31a7b9c44b1b9ded13258d02a6ede8157141`; its second parent is that exact
+registry authority. Rejected candidates
+`fc580fc110d4e97863c1793e145eb41d8013332a`,
+`9f33e0b9309be0bf62054833816833c932233819`,
+`fcb612e77ddeee905cc3dc2ff6163d362af10471`, and
+`b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`, plus every earlier authority,
+design, permanent RED, GREEN, repair, and review ancestor, remain preserved
+and unchanged.
+
+The default-G oracle is reduced to one exact fail-closed model. The default
+must resolve directly to `Object.freeze` of an object literal with exactly
+one noncomputed shorthand member named
+`consumeResidentDomainExecutionPermit`. That shorthand must have exactly one
+module value binding: one top-level, body-bearing, nonexported,
+non-ambient function declaration with the same exact name. Independent
+controls reject a different-function alias, a shorthand alias or arrow,
+inline method and arrow implementations, missing and duplicate bindings,
+ambient or exported declarations, an extra string operation, computed and
+symbol members, accessors, data, and nonliteral/custom-prototype
+construction.
+
+Runtime validation retains exact frozen-own-descriptor enforcement with
+`Reflect.ownKeys` and adds exact standard-prototype and declared-function-name
+checks. The sole own property must be enumerable, nonconfigurable,
+nonwritable, callable data under the exact consumer name. Direct controls
+accept the named consumer on `Object.prototype` and reject a wrong callable
+identity, string or symbol widening, an accessor, noncallable data, a null
+prototype, and an inherited issuer on a custom prototype. The static binding
+check and runtime descriptor/name/prototype checks jointly prevent a
+different callable or inherited operation from satisfying the private
+default ABI.
+
+The protected-definition analysis retains the prior declaration/member
+coverage and now classifies value-producing defaults in object, array,
+aliased, and nested binding patterns. It recursively unwraps parenthesized,
+`as`, and non-null assignment targets; recognizes exact `=`, `??=`, `||=`,
+and `&&=` definition assignments; and recognizes exact static
+`Object.defineProperty` and `Reflect.defineProperty` calls with literal or
+statically resolved keys. Unresolved dynamic names in binding defaults,
+assignment targets, and property-definition calls fail closed in the
+separate unresolved-source set.
+
+The controls remain mechanically table-driven so every syntax family is a
+separate expected source without duplicating repository traversal or
+property-name resolution. Safe destructuring without a default, namespace
+and named imports, type imports and declarations, re-exports, consumer
+aliases and property calls, and Task14's dispatcher-binder call remain
+excluded. Alias defaults and assignments remain excluded only when their
+target name is statically safe; an unresolved actual definition target still
+fails closed. Existing known symbol members remain statically non-string and
+cannot alias a protected string operation. The production definition set
+remains exactly dispatcher and G with no unresolved source.
+
+The fresh focused command is:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1`: all three files fail and exactly 25 tests = 17 passed + 8
+causal RED failures. Every new direct default/definition counterfactual runs
+successfully before the loader's sole stop at the absent exact six-module
+static import map. Four dispatcher tests and three G tests stop only at the
+absent Task12 default dispatcher API. There is no construction, event,
+context, execution-DTO, collection, dependency, type, oracle-control, or
+unrelated inherited failure. The non-fatal missing TypeScript source-map
+warning does not prevent collection. The complete focused log SHA-256 is
+`3c37a74b1e36988a5879a837d22e33e75c9c3645ff526e6f7980348d70b7432b`.
+
+The exact six released adapter controls exit `0`: 6 files and all **79/79**
+tests pass. Their complete log SHA-256 is
+`3bb59a06e7d6ed1e852cb37973e3186974450337f7fa365eeda311509a76aa37`.
+Fresh standalone `npm run typecheck`
+exits `0` with `typecheck passed`; its complete log SHA-256 is
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+Fresh `npm run factory:check` exits `0`
+with `factory-readiness passed`; its complete log SHA-256 is
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+
+The calibrated mission validator passes **20/20** with unchanged fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20** and contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The corrected loader test SHA-256 is
+`b055fdc4ffbda6c150fc1d583094fe642a14744d98eeac70b51e00254adeb858`;
+its exact Git blob is `1d51fa482a37d0d24d3cba6a872ee7b2602e671c`.
+Frozen dispatcher and G tests remain exact at
+blobs `846f0bb1e62719fb10b0af179b6d35c59633f733` and
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`. Both Task12 sources remain
+exact at dispatcher blob `96b0ade273696b9ffcf497119f1943f128821a58`
+and G blob `1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+`git diff --check` passes. The exact correction scope is only:
+
+```text
+packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
+```
+
+No product source, dispatcher/G test, contract, plan, mission state, program
+registry, provider, credential, runtime activation, route, network, fallback,
+unrelated path, or pull request changes. Repository mode must retain the
+actual pre-record-29 W1 mismatch and may not claim prefix or release closure.
+The exact two-path descendant requires a completely fresh focused reviewer;
+all three prior RED reviewers and every candidate author are ineligible. Any
+changed test or claim byte invalidates that review.
+
+This is a review-ready fail-closed forward loader-oracle correction, not
+Task12 source authorization or GREEN, a product candidate, approval,
+integration, strict record 29, assurance transition, publication, or product
+release. Task136 remains `implementing`; the strict product frontier remains
+**28 of 29**.
