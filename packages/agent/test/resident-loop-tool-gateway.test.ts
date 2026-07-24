@@ -17,18 +17,17 @@ describe("resident-loop tool gateway", () => {
   it("derives durable request, human decision, claim, and result readbacks through the private completion route", async () => {
     const fixture = await prepareFixture();
     const request = await fixture.bridge.requestAndReadback(requestInput(fixture));
+    const requestedEvent = requiredLegacyGatewayEvent(
+      await fixture.ledger.readStream(`agent_tool_request_${request.toolRequestId}`),
+      "agent.tool.requested"
+    );
 
-    expect(request).toMatchObject({
-      taskId: "task_gateway",
-      attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      runId: "run_gateway",
-      toolId: "agent.test.effect",
-      toolVersion: "1.0.0",
-      planRecordEventId: fixture.plan.event.id,
-      requestEventId: expect.stringMatching(/^evt_/)
-    });
+    expect(request).toEqual(expectedToolGatewayReadback(
+      fixture,
+      requestedEvent
+    ));
 
-    await fixture.approvalGateway.approveTool({
+    const approval = await fixture.approvalGateway.approveTool({
       toolRequestId: request.toolRequestId,
       approvedPreviewHash: request.previewHash,
       actor: humanActor,
@@ -41,12 +40,14 @@ describe("resident-loop tool gateway", () => {
       leaseExpiresAt: "2026-07-19T12:05:00.000Z"
     });
 
+    let domainResultEventId: string | undefined;
     const completed = await fixture.bridge.executeAndReadback(decision, async (execution) => {
       expect(execution.executionClaimEventId).toBe(claim.id);
       const domainResult = await appendEvidence(fixture.ledger, {
         evidenceId: "ev_gateway_durable_result",
         causationId: claim.id
       });
+      domainResultEventId = domainResult.id;
       return {
         eventIds: [domainResult.id],
         artifactHashes: [],
@@ -56,12 +57,20 @@ describe("resident-loop tool gateway", () => {
     });
     const reread = await fixture.bridge.readResult(completed);
 
-    expect(reread).toMatchObject({
-      requestEventId: request.requestEventId,
-      decisionEventId: decision.decisionEventId,
+    if (domainResultEventId === undefined) {
+      throw new Error("Resident-loop result fixture lacks its domain evidence.");
+    }
+    const completion = requiredLegacyGatewayEvent(
+      await fixture.ledger.readStream(`agent_tool_request_${request.toolRequestId}`),
+      "agent.tool.completed"
+    );
+    expect(reread).toEqual(expectedToolGatewayReadback(fixture, requestedEvent, {
+      decisionEventId: approval.id,
       executionClaimEventId: claim.id,
-      resultEventId: expect.stringMatching(/^evt_/)
-    });
+      resultEventId: completion.id,
+      approvedBy: humanActor.id,
+      resultEvidenceEventIds: [domainResultEventId]
+    }));
     expect((await fixture.ledger.readStream(`agent_tool_request_${request.toolRequestId}`)).at(-1)?.type)
       .toBe("agent.tool.completed");
   });
@@ -346,16 +355,34 @@ describe("resident-loop tool gateway", () => {
       human.gateway,
       "rereadAndIssueFromLedger"
     );
-    expect(automatic.preparedBinding).toEqual(expect.objectContaining({
+    expect(automatic.preparedBinding).toEqual({
       ordinal: automatic.locator.stepOrdinal,
+      workspaceId: automatic.locator.workspaceId,
+      residentAgentId: automatic.locator.residentAgentId,
+      taskId: automatic.locator.taskId,
+      attemptId: automatic.locator.attemptId,
+      runId: automatic.locator.runId,
+      planId: automatic.locator.planId,
+      planRevision: automatic.locator.planRevision,
       toolRequestId: automatic.locator.toolRequestId,
+      toolId: automatic.locator.toolId,
+      toolVersion: automatic.locator.toolVersion,
       executionCapabilityHash: automatic.locator.executionCapabilityHash
-    }));
-    expect(human.preparedBinding).toEqual(expect.objectContaining({
+    });
+    expect(human.preparedBinding).toEqual({
       ordinal: human.locator.stepOrdinal,
+      workspaceId: human.locator.workspaceId,
+      residentAgentId: human.locator.residentAgentId,
+      taskId: human.locator.taskId,
+      attemptId: human.locator.attemptId,
+      runId: human.locator.runId,
+      planId: human.locator.planId,
+      planRevision: human.locator.planRevision,
       toolRequestId: human.locator.toolRequestId,
+      toolId: human.locator.toolId,
+      toolVersion: human.locator.toolVersion,
       executionCapabilityHash: human.locator.executionCapabilityHash
-    }));
+    });
     expect(automatic.composition.safeIdCalls).toBe(1);
     expect(human.composition.safeIdCalls).toBe(1);
 
@@ -374,6 +401,8 @@ describe("resident-loop tool gateway", () => {
     expect(automaticCompleted).toEqual({
       authorizationKind: "automatic-policy",
       stage: "completed",
+      logicalLocator: automatic.locator,
+      executionCapabilityHash: automatic.locator.executionCapabilityHash,
       requestEventId: automatic.request.id,
       executionClaimEventId: requiredPrefixEvent(automatic.claim, "claim").id,
       outcomeReceiptEventId: automatic.receipt?.id,
@@ -382,6 +411,8 @@ describe("resident-loop tool gateway", () => {
     expect(humanCompleted).toEqual({
       authorizationKind: "human-approval",
       stage: "completed",
+      logicalLocator: human.locator,
+      executionCapabilityHash: human.locator.executionCapabilityHash,
       requestEventId: human.request.id,
       decisionEventId: Reflect.get(
         human.decision?.payload ?? {},
@@ -647,11 +678,13 @@ describe("resident-loop tool gateway", () => {
       fresh.gateway,
       [fresh.locator]
     );
-    expect(requested).toEqual(expect.objectContaining({
+    expect(requested).toEqual({
       authorizationKind: "automatic-policy",
       stage: "requested",
-      executionCapabilityHash: fresh.locator.executionCapabilityHash
-    }));
+      logicalLocator: fresh.locator,
+      executionCapabilityHash: fresh.locator.executionCapabilityHash,
+      requestEventId: requiredReadbackEventId(requested, "requestEventId")
+    });
     const [first, concurrent] = await Promise.allSettled([
       Reflect.apply(execute, fresh.gateway, [requested]),
       Reflect.apply(execute, fresh.gateway, [requested])
@@ -740,23 +773,46 @@ describe("resident-loop tool gateway", () => {
       human.gateway,
       [humanRequested]
     );
-    expect(humanApproved).toEqual(expect.objectContaining({
+    expect(humanApproved).toEqual({
       authorizationKind: "human-approval",
       stage: "human-approved",
+      logicalLocator: human.locator,
+      executionCapabilityHash: human.locator.executionCapabilityHash,
       requestEventId: independentApproval.payload.requestEventId,
       decisionEventId: independentApproval.payload.decisionEventId,
       approvedBy: humanActor.id,
       approvedPreviewHash: independentApproval.payload.approvedPreviewHash
-    }));
+    });
     const humanCompleted = await Reflect.apply(
       executeHuman,
       human.gateway,
       [humanApproved]
     );
-    expect(humanCompleted).toEqual(expect.objectContaining({
+    const humanStream = await human.ledger.readStream(
+      residentDomainStreamId(human.locator)
+    );
+    const humanClaim = humanStream.find(
+      (event) => event.type === "agent.resident-domain.execution-claimed.v1"
+    );
+    const humanReceipt = humanStream.find(
+      (event) => event.type === "agent.resident-domain.outcome-observed.v1"
+    );
+    const humanTerminal = humanStream.find(
+      (event) => event.type === "agent.resident-domain.completed.v1"
+    );
+    expect(humanCompleted).toEqual({
       authorizationKind: "human-approval",
-      stage: "completed"
-    }));
+      stage: "completed",
+      logicalLocator: human.locator,
+      executionCapabilityHash: human.locator.executionCapabilityHash,
+      requestEventId: independentApproval.payload.requestEventId,
+      decisionEventId: independentApproval.payload.decisionEventId,
+      approvedBy: humanActor.id,
+      approvedPreviewHash: independentApproval.payload.approvedPreviewHash,
+      executionClaimEventId: requiredPrefixEvent(humanClaim, "claim").id,
+      outcomeReceiptEventId: requiredPrefixEvent(humanReceipt, "receipt").id,
+      resultEventId: requiredPrefixEvent(humanTerminal, "terminal").id
+    });
     expect(human.effects.count).toBe(1);
     await expect(Reflect.apply(
       readFreshDecision,
@@ -778,10 +834,14 @@ describe("resident-loop tool gateway", () => {
       recoveredHuman.gateway,
       [recoveredHuman.locator]
     );
-    expect(recoveryOnlyRequested).toEqual(expect.objectContaining({
+    expect(recoveryOnlyRequested).toEqual({
       authorizationKind: "human-approval",
-      stage: "requested"
-    }));
+      stage: "requested",
+      logicalLocator: recoveredHuman.locator,
+      executionCapabilityHash:
+        recoveredHuman.locator.executionCapabilityHash,
+      requestEventId: recoveredHuman.request.id
+    });
     const recoveredHumanReadDecision = reflectedOperation(
       recoveredHuman.gateway,
       "readFreshHumanDecision"
@@ -790,7 +850,7 @@ describe("resident-loop tool gateway", () => {
       recoveredHuman.gateway,
       "executeFreshAuthorized"
     );
-    await appendIndependentResidentHumanApproval(
+    const recoveredApproval = await appendIndependentResidentHumanApproval(
       recoveredHuman.ledger,
       recoveredHuman.locator,
       "reread-human-approved"
@@ -810,10 +870,17 @@ describe("resident-loop tool gateway", () => {
       recoveredHuman.gateway,
       [recoveredHuman.locator]
     );
-    expect(recoveryOnlyApproved).toEqual(expect.objectContaining({
+    expect(recoveryOnlyApproved).toEqual({
       authorizationKind: "human-approval",
-      stage: "human-approved"
-    }));
+      stage: "human-approved",
+      logicalLocator: recoveredHuman.locator,
+      executionCapabilityHash:
+        recoveredHuman.locator.executionCapabilityHash,
+      requestEventId: recoveredHuman.request.id,
+      decisionEventId: recoveredApproval.payload.decisionEventId,
+      approvedBy: recoveredApproval.payload.approvedBy,
+      approvedPreviewHash: recoveredApproval.payload.approvedPreviewHash
+    });
     await expect(Reflect.apply(
       recoveredHumanReadDecision,
       recoveredHuman.gateway,
@@ -849,13 +916,28 @@ describe("resident-loop tool gateway", () => {
         claimed.gateway,
         [claimed.locator]
       );
-      expect(unknown).toEqual(expect.objectContaining({
+      expect(unknown).toEqual({
         authorizationKind,
         stage: "claimed",
         category: "effect-outcome-unknown",
+        logicalLocator: claimed.locator,
+        executionCapabilityHash: claimed.locator.executionCapabilityHash,
         requestEventId: claimed.request.id,
+        ...(claimed.decision === undefined
+          ? {}
+          : {
+              decisionEventId: Reflect.get(
+                claimed.decision.payload,
+                "decisionEventId"
+              ),
+              approvedBy: Reflect.get(claimed.decision.payload, "approvedBy"),
+              approvedPreviewHash: Reflect.get(
+                claimed.decision.payload,
+                "approvedPreviewHash"
+              )
+            }),
         executionClaimEventId: requiredPrefixEvent(claimed.claim, "claim").id
-      }));
+      });
       expect(claimed.effects.count).toBe(0);
       expect(await claimed.ledger.readStream(
         residentDomainStreamId(claimed.locator)
@@ -877,15 +959,17 @@ describe("resident-loop tool gateway", () => {
       receipted.gateway,
       [receipted.locator]
     );
-    expect(recovered).toEqual(expect.objectContaining({
+    expect(recovered).toEqual({
       authorizationKind: "automatic-policy",
       stage: "completed",
+      logicalLocator: receipted.locator,
+      executionCapabilityHash: receipted.locator.executionCapabilityHash,
       requestEventId: receipted.request.id,
       executionClaimEventId:
         requiredPrefixEvent(receipted.claim, "claim").id,
       outcomeReceiptEventId: receipted.receipt?.id,
-      resultEventId: expect.stringMatching(/^evt_/)
-    }));
+      resultEventId: requiredReadbackEventId(recovered, "resultEventId")
+    });
     expect(receipted.effects.count).toBe(0);
     const recoveredStream = await receipted.ledger.readStream(
       residentDomainStreamId(receipted.locator)
@@ -1103,6 +1187,17 @@ function requiredPrefixEvent(
   return event;
 }
 
+function requiredReadbackEventId(value: unknown, key: string): string {
+  if (typeof value !== "object" || value === null) {
+    throw new Error(`Resident readback is absent for ${key}.`);
+  }
+  const eventId = Reflect.get(value, key);
+  if (typeof eventId !== "string" || !/^evt_[a-zA-Z0-9_-]+$/.test(eventId)) {
+    throw new Error(`Resident readback ${key} is not canonical.`);
+  }
+  return eventId;
+}
+
 function requiredStringProperty(
   value: Readonly<Record<string, unknown>>,
   key: string,
@@ -1308,13 +1403,6 @@ async function prepareResidentGatewayHarness(input: {
     planRevision,
     steps: [{ ordinal: stepOrdinal, toolId, toolVersion }]
   }]);
-  expect(rawBindings).toEqual([
-    expect.objectContaining({
-      ordinal: stepOrdinal,
-      toolRequestId: expect.stringMatching(/^toolreq_/),
-      executionCapabilityHash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/)
-    })
-  ]);
   const preparedBinding = requiredPreparedBinding(rawBindings);
   const toolRequestId = requiredStringProperty(
     preparedBinding,
@@ -1326,6 +1414,20 @@ async function prepareResidentGatewayHarness(input: {
     "executionCapabilityHash",
     /^sha256:[a-f0-9]{64}$/
   ) as `sha256:${string}`;
+  expect(rawBindings).toEqual([{
+    ordinal: stepOrdinal,
+    workspaceId,
+    residentAgentId,
+    taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision,
+    toolRequestId,
+    toolId,
+    toolVersion,
+    executionCapabilityHash
+  }]);
   const plan = await appendCanonicalResidentPlan(ledger, source.id, {
     workspaceId,
     residentAgentId,
@@ -2567,6 +2669,8 @@ function expectedRecoveryReadback(
   );
   const base = {
     authorizationKind,
+    logicalLocator: prefix.locator,
+    executionCapabilityHash: prefix.locator.executionCapabilityHash,
     requestEventId: prefix.request.id
   };
   const humanDecision = prefix.decision === undefined
@@ -3087,6 +3191,56 @@ function createBridge(
 }
 
 type GatewayFixture = Awaited<ReturnType<typeof prepareFixture>>;
+
+function expectedToolGatewayReadback(
+  fixture: GatewayFixture,
+  request: KnowledgeEventOf<"agent.tool.requested">,
+  stageFields: Partial<Pick<
+    ResidentLoopToolGatewayReadback,
+    | "decisionEventId"
+    | "executionClaimEventId"
+    | "resultEventId"
+    | "approvedBy"
+    | "resultEvidenceEventIds"
+  >> = {}
+): ResidentLoopToolGatewayReadback {
+  return {
+    schemaVersion: "resident-loop-tool-gateway-readback.v1",
+    planRecordEventId: fixture.plan.event.id,
+    requestEventId: request.id,
+    ...stageFields,
+    toolRequestId: "toolreq_gateway",
+    residentAgentId: "agent_default",
+    taskId: "task_gateway",
+    attemptId:
+      "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    runId: "run_gateway",
+    toolId: "agent.test.effect",
+    toolVersion: "1.0.0",
+    sideEffectClass: "ledger-review",
+    previewHash: request.payload.previewHash,
+    approvalClass: "ledger-review",
+    policyHash: fixture.plan.event.payload.policyHash,
+    authorityHash: fixture.plan.event.payload.authorityHash,
+    sourceEventIds: fixture.plan.event.payload.sourceEventIds,
+    contextArtifactHashes: fixture.plan.event.payload.contextArtifactHashes
+  };
+}
+
+function requiredLegacyGatewayEvent<
+  T extends "agent.tool.requested" | "agent.tool.completed"
+>(
+  events: readonly KnowledgeEvent[],
+  type: T
+): KnowledgeEventOf<T> {
+  const event = events.find(
+    (candidate): candidate is KnowledgeEventOf<T> => candidate.type === type
+  );
+  if (event === undefined) {
+    throw new Error(`Resident-loop gateway fixture lacks ${type}.`);
+  }
+  return event;
+}
 
 function injectNewPlanAtCompletionBoundary(
   fixture: GatewayFixture,
