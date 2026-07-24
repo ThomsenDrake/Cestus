@@ -29426,6 +29426,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   push, Wave 3, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
 
+## RV-1-E-983 — Task136 Task12 aggregate candidate rejected; causal source-closure RED authorized
+
+- Recorded at: 2026-07-24T06:31:13Z
+- Completely fresh-to-these-bytes reviewer
+  `/root/task136_zero_path_exec_review_d475` rejects exact aggregate candidate
+  `0cc48416dc368c8d737c50a3b5308655e6ca51f3` with four P1 findings and
+  one P2 evidence correction. The candidate, source checkpoint
+  `ed5a1bb932e149de9915e4aefd3663125e80ed03`, repaired tests, passing
+  gates, and all earlier RED/GREEN/review/authority history remain immutable
+  and ancestral. None is approved, integrated, strict record 29, or release.
+- P1: `rereadAndIssueFromLedger` returns a completed readback before requiring
+  or causally validating its execution claim and outcome receipt, accepts
+  gapped/forged terminal prefixes, and does not implement the exact denied and
+  failed recovery branches. A claim without receipt must remain only
+  `effect-outcome-unknown`; completed requires the complete exact
+  request/optional-decision/claim/receipt/terminal chain.
+- P1: dispatcher attestation omits the required schema version and exact
+  copied result, lacks the private attestation brand, does not unconditionally
+  reject successful ordinals 0, 1, and 8, under-validates exact per-ordinal
+  event count/order/context/input/payload identity, and does not bind ordinal
+  7 artifacts/read-model change to the approved preview.
+- P1: the dispatcher rewrites accepted-graph current preview state from
+  accepted to proposed and truncates source-event input instead of copying,
+  reparsing, and retaining the exact package-owned preview.
+- P1: G performs preview reconstruction before its first W currentness
+  revalidation and performs only a post-read human-decision check. Both
+  package preview and independent human-decision awaits require exact
+  before-and-after W revalidation; stale authority may contribute no request,
+  claim, receipt, terminal, or effect.
+- P2: RV-1-E-982's exact repository-posture sentence is corrected
+  append-only. Actual candidate repository mode stops at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`;
+  the pre-record-29 rejection is expected, but it is not yet the later W1
+  mismatch.
+- One causal RED correction may modify exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts` and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. It must preserve
+  the approved RV-1-E-980/981 fixture repairs, loader test, product claim,
+  both rejected source blobs, ontology, Task14, and every unrelated byte.
+- Dispatcher REDs must require the exact frozen attestation shape including
+  schema version and copied result; reject structural/replayed/unbranded
+  attestations; prove 0/1/8 cannot attest success; verify the exact
+  per-ordinal count/order/context/payload and new/idempotent/nonledger evidence
+  table; bind ordinal 7 artifacts and its one read-model change to the exact
+  approved preview; and prove accepted-graph current preview bytes are not
+  rewritten or truncated.
+- Gateway REDs must reject standalone/gapped/foreign/mismatched completed
+  prefixes, receipt without claim, terminal without receipt, duplicate or
+  second terminals, and branch/locator/hash/causation drift; prove exact
+  completed, denied, pre-claim failed, post-claim failed, and permanent
+  claim-without-receipt unknown readbacks; and instrument both preview and
+  human-decision awaits to require W revalidation immediately before and
+  after, with zero append/effect after stale detection.
+- Every new assertion must fail causally against the frozen rejected source
+  blobs while all previously passing Task12 assertions and released controls
+  remain green. Commit one exact test-only RED descendant, run focused
+  causality, adapter controls, typecheck, factory, mission/V4, marker,
+  scope/freeze/ancestry/dependency/diff/clean and actual repository-posture
+  checks, and obtain a completely fresh read-only focused review before any
+  source correction.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns `reviewing -> implementing`; strict product frontier remains
+  **28 of 29**. This is rejected-candidate recovery and test-only causal RED
+  authority, not source repair, Task12 approval/integration, Task136 product
+  candidacy, strict record 29, assurance transition, publication, or product
+  release. `neo`, push, Wave 3, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
+
 ## RV-1-E-976 — Exact call-symbol candidate rejected; argument tuple closure authorized
 
 - Recorded at: 2026-07-24T04:58:14Z
