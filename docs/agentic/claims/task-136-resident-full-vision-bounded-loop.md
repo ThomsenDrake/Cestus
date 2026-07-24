@@ -1457,3 +1457,91 @@ not Task12 source authorization or GREEN, a product candidate approval,
 integration, strict record 29, assurance transition, publication, or product
 release. Task136 remains `implementing`; the strict product frontier remains
 **28 of 29**.
+
+## RV-1-E-967/RV-1-E-968 three-seam loader closure evidence
+
+Recorded at `2026-07-24T03:17:46Z` from exact authority parent
+`0991a3e0d200362f4616ff770f6eff118b9df69b`. Rejected candidates
+`a1ed492f`, `84b9f6a8`, `fc580fc1`, `9f33e0b9`, `fcb612e7`, and
+`b54281b0` remain immutable ancestors. This correction changes only this
+claim and the Task136 loader test. Every product source and other test
+remains frozen.
+
+The dispatcher transfer census now examines every production declaration
+targeting `domain-execution-dispatcher.js`. It permits only Task14 W's one
+value default import when tied to the sole exact binder call, the six exact
+released legacy named/type import signatures, and the released non-default
+barrel star. Fourteen direct negatives reject an additional or duplicate
+default, `default as`, namespace, protected named, mixed default/named,
+type-only default, side-effect, import-equals, default/named/namespace/star
+re-export, and any transfer outside those exact released locations.
+
+Gateway-default provenance follows only unique immutable identifier aliases
+of the exact dispatcher default import. Every property or element access on
+that graph is rejected except the direct dispatcher property call. The
+substituted-template alias counterexample now fails independently while
+ordinary dynamic reads on an unrelated internal record remain safe. The
+previous computed-owner duplicate control remains rejected.
+
+Fresh null-prototype records now require a unique lexical `const` and a
+complete reference census. Local normalization admits only nonescaping
+property/element operations and exact own-key inspection. Twelve direct
+controls reject return, yield, outward assignment, store, unrecognized pass,
+capture, identity alias, authority, export, prototype, default, and permit
+escapes. Under RV-1-E-968, the released `dataRecord` compatibility is
+semantic rather than path- or blob-only: it proves the exact plain-object,
+proxy, prototype, symbol, sorted-own-name, data-descriptor, unsafe-key, and
+fresh-null copy discipline; exactly four direct module-local calls; unique
+local results; recognized validation/read/safe-copy use; non-exported copy
+operations; and frozen copied output. Eight returned-record controls reject
+authority, exported-operation, capture, store, unrecognized pass, prototype,
+default, and permit graph escape. The exact frozen G helper and its four
+current call sites pass a direct positive analysis.
+
+The final focused command is:
+
+```bash
+npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
+```
+
+It exits `1` with exactly **25 = 17 passed + 8 causal RED failures**. All new
+safe/unsafe controls execute before the loader stops only on the absent exact
+six-module Task12 map. Four dispatcher and three G tests stop only on the
+absent Task12 default API. The complete focused log SHA-256 is
+`2704d1013d75db441ce5491dd40a59c5adf1631047bce51a04cd6bdd47e5c2ad`.
+The non-fatal missing TypeScript source-map warning does not prevent
+collection.
+
+The exact six released adapter control files pass **79/79** with log SHA-256
+`5c64ba0f3ffe364337cb0eb2341a5309ddf82e4095e602b8d0c6920df9564c1e`.
+Standalone `npm run typecheck` passes with log SHA-256
+`88603ae6d0804b467cf0223e64644258397c61d0119a5876e07565cc5b2dd279`.
+`npm run factory:check` passes with log SHA-256
+`09272a7baed03e65abdf0e54f4deb8f276b98b035b7941a686a2d61c7b1e71bb`.
+Mission-state passes **20/20** with fingerprint
+`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`.
+V4 assurance passes **20/20** and contract mode emits exactly:
+
+```text
+TASK136_RELEASE_GRAPH_OK records=29
+TASK136_COMPOSITION_CORPUS_OK green=1 red=20
+TASK136_COMMAND_CARDS_OK cards=29
+TASK136_ABI_CORPUS_OK green=1 red=15
+```
+
+The V4 contract remains SHA-256
+`81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+The corrected loader SHA-256 is
+`70f3bdff9c29cfa16ecfbed8c8799dc3130f75cc74855168290dfe0a3f32a4df`.
+Frozen dispatcher/G tests remain Git blobs
+`846f0bb1e62719fb10b0af179b6d35c59633f733` and
+`a53f7425ec2b86bc28343446064fb3df7e5f3137`; frozen dispatcher/G sources
+remain `96b0ade273696b9ffcf497119f1943f128821a58` and
+`1d4ceaed0cc5efe4640a7e135eedf8f2c07dc8fe`.
+
+This is a review-ready loader-oracle correction, not Task12 source
+authorization or GREEN, candidate approval, integration, strict record 29,
+assurance transition, publication, or product release. Task136 remains
+`implementing`; the strict product frontier remains **28 of 29**. The exact
+two-path descendant requires a completely fresh focused reviewer; all prior
+candidate authors, model analysts, and reviewers are ineligible.
