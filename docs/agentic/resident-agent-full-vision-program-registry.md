@@ -32847,3 +32847,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1018 — Exact 32-path Task136 assurance amendment admitted to fresh dual review
+
+- Recorded at: 2026-07-25T14:42:37Z
+- Exact forward amendment candidate
+  `40a8d0f630dd986ed4d03ade7422ef2b4d3e5f70`, tree
+  `d5a589a63fce8b663c79e0a73578a7f2533ef992`, has sole parent preserved
+  pre-admission correction checkpoint
+  `a01f7a4362de06992e9d3fc2f8708b4964f6e9c4`. The cumulative candidate
+  range begins at E-1017 Task136 authority merge
+  `d0136f6960f0355fe7ea29320498c80dd276c963` and changes exactly nine
+  approved authority surfaces: Task136 design, plan, product claim, V4
+  authority-transfer claim, V4 JSON, V4 checker, V4 checker test, mission
+  JSON, and mission checker.
+- The preserved `a01f7a43` checkpoint initially pinned the adopted source and
+  test together at earlier commit `c2441064`, but clean repository mode
+  truthfully proved that commit carried only the final source blob, not the
+  final test blob. It was never admitted or reviewed. Exact forward
+  correction `40a8d0f6` binds both frozen blobs to earliest common lineage
+  commit `3be15212776ab3c96e66bf0bade4630960c362eb` and published integration
+  `dc05c43c4b9a592d0396acd034bfc32e177fd09a`. Both checkpoints remain
+  preserved without amend, reset, rebase, squash, reconstruction, or
+  discarded history.
+- The candidate preserves the exact 29-card graph/order, all 28 raw release
+  pins, eleven compatibility records, all transfers, and Task136's nine
+  prerequisites. It expands only Task136 to the canonical 32-path order:
+  exactly fourteen sources, seventeen tests, and one claim. The adopted
+  legacy-staging source/test pair occupies positions 9 and 10; the exact
+  newline-delimited ordered-path SHA-256 is
+  `8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+- The exact adopted source/test blobs are respectively
+  `99fbafda3844435109bc249b015b111b9258c210` and
+  `de7cef3123a15fb82891943dc51005165c8c9fcd`. Candidate, integration, and
+  current-HEAD equality are finite pre-record-29 gates. Record 29 migrates
+  both into exact Task136 candidate/integration/current equality; no generic
+  adoption or transfer mechanism was added.
+- The design exposes only ordered secret-safe
+  `selectedCandidateBindingHashes`. The versioned canonical preimage binds
+  candidate ID, evidence ID, evidence content hash, predicate, independent
+  scalar object, confidence, and explicit optional-subject-reference
+  presence/value. Adapter derivation binds the ordered hashes into
+  `normalizedInputHash` and the complete preview hash. Fresh dispatcher
+  execution and gateway recovery independently recompute them from exact
+  proposal and evidence durable facts. Raw predicate/object preview fields,
+  receipt self-oracles, report-store ports, fallback writes, and runtime
+  activation remain forbidden.
+- Exact forward hashes are V4 JSON
+  `3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438`,
+  assurance fingerprint
+  `da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec`,
+  mission source fingerprint
+  `sha256:b83a29bf17abdb2a6c1c70a48783e35e9adb1ae6e5b995667ec94a66008f21c8`,
+  and mission immutable-envelope fingerprint
+  `sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae`.
+- Coordinator reproduction passes V4 assurance **20/20**, mission
+  **20/20**, factory readiness, exact 29-card order, and all four markers:
+  release graph `records=29`, composition `green=1 red=20`, command cards
+  `cards=29`, and ABI `green=1 red=15`. Scope, ordered-path hash, contract
+  hash, baseline blob ancestry, diff, and clean state are exact.
+- Clean repository mode exits `1`, emits all four markers, and stops first
+  only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`.
+  It emits neither repository-prefix nor release-closure success. This is
+  the truthful pre-record-29 stop.
+- Admit only exact `40a8d0f6` as amendment `candidate -> reviewing`.
+  Completely fresh independent read-only design and executability reviewers
+  must inspect the full cumulative nine-file range, both amendment commits,
+  E-1016 through E-1018 authority, finite baseline adoption, canonical
+  preimage and data flow, exact Task12 plan, all scope/hash/pin
+  synchronizations, and independently reproduce every gate above. Neither
+  may edit, commit, merge, substitute a SHA, authorize Task12, or make
+  product/release claims. Any changed candidate byte invalidates both.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is amendment review admission, not amendment approval or
+  integration, Task12 product authority, Task13 authority, a Task136 product
+  candidate, strict record 29, assurance-only transition, publication, Wave
+  3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
