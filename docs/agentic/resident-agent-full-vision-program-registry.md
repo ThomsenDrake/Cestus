@@ -34184,3 +34184,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1040 — Integrated chronology RED authorizes exact two-source repair
+
+- Recorded at: 2026-07-25T18:39:16Z
+- E-1039 integrated exact independently approved chronology RED
+  `f00f9fcad6c8e10f0dc6208f3d7ff60df906cf6e` by program commit
+  `9e35f6286e707b4adc6ca727c6624620b1d5cca7`. Exact Task136 authority
+  merge `5265615d24624683c010115d9135e1a1ab400257` has exact parents E-1037
+  review-authority merge
+  `d5adb3da15b9f922410a84ac628f9ede4d0e1728` and E-1039 integrated
+  program authority. The chronology RED is approved, recorded, and
+  integrated.
+- Authorize the smallest forward source repair in exactly
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. Starting blobs are
+  dispatcher `44a5a16152d0bde813aca9dc54cb8fa33195c841` and gateway
+  `bfa042dbe19e96af0fcdb828de1175258d619f16`.
+- Freeze exact approved chronology tests at dispatcher
+  `7bddefd21e4823c61b13f0fdc13f18e251172c64` and gateway
+  `2db635799e8e92e84170c5487d94cb4f0877cc93`; freeze adapter source/test
+  at `a8e0d185e0ad3e7f5b4b10be62ce4d26ad56c919` and
+  `741bf9c02184c0367c4b4aa08a1b06202bac362e`; freeze every other path.
+- In dispatcher fresh validation and gateway recovery, retain exact unique
+  evidence identity, content, causation, binding, order, and hash checks and
+  additionally require the uniquely matched evidence event's global
+  `allEvents` index to be strictly lower than the corresponding proposal
+  event's global index. Reject missing events, duplicate matches, reversed
+  chronology, index ambiguity, or any mismatch before attestation,
+  terminalization, or at-most-once recovery. Do not compare only the selected
+  subarray and do not trust receipt order as its own oracle.
+- Turn exact loader-inclusive
+  **86 = 84 passed + 2 chronology failures** into exact **86/86** without
+  changing any test. Preserve mandatory binding arrays, independent
+  recomputation, object independence, currentness, chronology, identities,
+  private permit/brands, exact attestation/readbacks/evidence, at-most-once,
+  default-only ABI, loader, released adapters, and absence of fallback,
+  report store, public widening, route, provider, credential, or activation.
+- Commit exactly the two source paths with subject
+  `fix(agent): enforce legacy evidence chronology`. Run every Task12 focused,
+  boundary, cross, adapter, card, typecheck, UI, factory, mission, V4,
+  marker, repository-first-stop, scope, freeze, ancestry, dependency, diff,
+  clean-state, calibrated-differential, and timeout-variance gate. A later
+  separate event must admit one exact candidate to a completely fresh source
+  reviewer; all prior implementers/reviewers/analysts and the coordinator are
+  ineligible to approve changed bytes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded two-source correction authority, not Task12
+  or Task136 candidacy, approval or integration, Task13 authority, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
