@@ -32710,3 +32710,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task136 product candidate, strict record 29, assurance transition,
   publication, or product release. `neo`, push, Wave 3, credential, provider,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1016 — Task12 ordinal-10 schema-conflict checkpoint; scope decision required
+
+- Recorded at: 2026-07-25T01:40:41Z
+- The E-1015 implementer read the committed authority and traced the released
+  ordinal-10 data path before editing. It stopped with no tracked or
+  untracked change at exact clean E-1015 authority merge
+  `78ead5154a081e5486ffffe276a1b1df02150b9b`, tree
+  `1d36d35bbbd379aae169167e289aeef5256c71af`. Exact rejected gateway
+  source/test blobs remain
+  `76c429687575152df55d12d76d307f35f7f64c08` and
+  `c4d5410eb7916e4570d6ed10b45697b615110c9b`. No RED, GREEN, fixture,
+  candidate, approval, integration, or product commit was created.
+- E-1015 is not truthfully implementable in its exact gateway source/test
+  scope. Released legacy candidate semantics contain candidate ID,
+  observation ID, evidence content hash, source path, predicate, independent
+  object, confidence, optional subject reference, and evidence ID. Released
+  staging passes predicate, object, confidence, and optional subject
+  reference unchanged into assertion construction.
+- The released package adapter resolves those complete selected candidates
+  but its mounted preview retains only ordered candidate IDs, evidence IDs,
+  evidence content hashes, source paths, and affected references. It discards
+  predicate, independent object, confidence, optional subject reference, and
+  observation ID before the dispatcher transparently transports the preview
+  to G.
+- The durable legacy report event stores only IDs, report/candidate hashes,
+  generator/time, and totals. Canonical candidate bytes live behind the
+  report store, which G does not own. The candidate-set hash is one-way and
+  covers missing and unselected data. G therefore cannot derive an
+  independent expected predicate/object/confidence/subject tuple from its
+  mounted preview or ledger. Comparing the receipt's proposal payload to
+  itself would be circular; adding fixture-only gateway fields would not
+  repair the released path.
+- The committed Task12 implementation plan lists only
+  `packages/agent/src/domain-execution-dispatcher.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts` as source files and
+  explicitly requires that no adapter source change. E-1015 further
+  authorized exactly the gateway source and test. The coordinator may not
+  silently widen those product boundaries.
+- The smallest technically complete expansion is a reviewed Task12
+  design/plan amendment followed by TDD authority for exactly four product
+  paths:
+  `packages/agent/src/adapters/legacy-staging.ts`,
+  `packages/agent/test/legacy-staging-adapter.test.ts`,
+  `packages/agent/src/resident-loop-tool-gateway.ts`, and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. The adapter
+  preview would expose an ordered, normalized, canonical-hash-bound
+  `selectedCandidateBindings` value containing candidate/evidence identity,
+  predicate, independent object, confidence, and optional subject reference.
+  G could then validate the exact assertion/evidence payload and order
+  without a new dispatcher edit or report-store capability.
+- The broader alternative is a new read-only canonical report-artifact
+  capability transported through the port. It changes more interfaces and
+  callers and is not the smallest recovery. Weakening exact receipt
+  validation or trusting the receipt as its own oracle is not an acceptable
+  alternative.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. E-1015 product editing is suspended at a clean no-edit
+  checkpoint pending an explicit product/scope decision. No adapter,
+  gateway, dispatcher, test, design, plan, claim, contract, mission,
+  Task13, Task136 product-candidate, record-29, assurance, publication,
+  release, `neo`, push, provider, credential, external-system, pull-request,
+  or unrelated action is authorized by this checkpoint.
