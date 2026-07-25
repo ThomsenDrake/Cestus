@@ -35844,3 +35844,89 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1067 — Exact Task14 loader RED rejected; lexical correction authorized
+
+- Recorded at: 2026-07-25T23:30:27Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1066_task14_loader_red_review` returns
+  **NEEDS CHANGES** for exact test-only candidate
+  `a6068aaef1fc255b11c203d847f31a26976a7c20`, tree
+  `72d88a8eaebc7ece64a9019d2a8a8c0910e0fb62`, and no other bytes. Review
+  occurred beneath clean E-1066 review-authority merge
+  `c0e6627ca65abc4b2d6127a5f6a22877448412f2`; no byte changed.
+- Defect 1: both changed constructor analyzers admit a direct
+  `bindPackageOwnedResidentDomainExecutionPort` call with zero or two
+  non-spread arguments as the exact one-shot call. They count identity and
+  call placement but omit exact one-argument arity, and their controls omit
+  zero-, two-, spread-, and optional-call counterexamples.
+- Defect 2: the local production scan discovers the mounted-store binder
+  import but counts wake calls by identifier text rather than the imported
+  symbol. An unused genuine named import plus a shadowing function parameter
+  or local declaration with the same name and a three-argument call is
+  falsely accepted. Its namespace-import path is likewise accepted despite
+  the direct-named-import-only requirement.
+- The reviewer reproduced both false accepts with in-memory mutations. It
+  independently confirms exact candidate identity, parent, tree, subject,
+  two-test scope, blobs, frozen sources, ancestry, dependencies,
+  connectivity, diff, and clean state. Focused remains
+  **34 = 32 passed + 2 causal failures**, combined loader remains
+  **7 = 5 passed + 2 causal failures**, and the exact card remains
+  **321 = 311 passed + 10 failures**. Cross-boundary passes **443/443** and
+  relevant mounted/portable/ontology boundaries pass **44/44**.
+- Typecheck, factory, mission **20/20**, V4 **20/20**, and markers
+  **29 / 20 / 29 / 15** pass. Repository mode retains the truthful
+  legacy-staging source first stop. Fresh serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** and its calibrated
+  comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`. Default parallel
+  execution is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**; the three additional
+  failures are the frozen prerequisite-checker variance, not loader
+  collection or status.
+- Reject exact `a6068aae`. It is not approved, integrated, a Task14 source or
+  product candidate, record 29, or a release. Preserve its exact commit,
+  tree, blobs, causal evidence, review, and all earlier history in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`
+  and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blobs
+  `d497c2d87f5329ffedf6513b6d65ed027426d568` and
+  `175e83ac53f47dce49a909ecb249c8603815d895`.
+  Freeze both Task14 sources and every other path.
+- In both fixed-constructor analyzers require the dispatcher default binder
+  to have exactly one direct non-spread argument inside the exact mounted
+  store binder. Add independently executing zero-argument, two-argument,
+  spread-argument, optional-property/call, and out-of-binder counterexamples.
+  Preserve the exact default import, unique lexical identity, one runtime
+  reference, one direct call, and all existing alias/carrier/escape controls.
+- Replace the local wake binder text census with symbol-resolved lexical
+  provenance. Require exactly one direct named value import of
+  `bindMountedResidentLoopAuthorityForFactory` from
+  `./mounted-wake-lifecycle-store.js`, exactly one reference to that imported
+  symbol, and exactly one direct three-argument call. Reject unused genuine
+  import plus shadowed parameter/local/function calls, aliased named import,
+  namespace/default/import-equals/dynamic imports, optional or spread calls,
+  duplicate declarations/imports, property carriers, and calls through any
+  different symbol. Keep the sole production importer fixed to wake runtime.
+- Preserve every E-1065/E-1066 correct control and causal claim. Against the
+  frozen sources, the corrected descendant must retain only the same three
+  Task14 RED identities and exact focused **32+2**, combined loader **5+2**,
+  and card **311+10** signatures, with no fixture, analyzer, API, collection,
+  type, or unrelated failure.
+- Reproduce adapter, boundary, typecheck, factory, mission, V4, marker,
+  truthful repository-first-stop, serialized/default full-suite variance,
+  calibrated-differential, exact scope, freeze, ancestry, dependency,
+  connectivity, diff, and clean-state evidence. Commit one exact corrected
+  test-only candidate and admit only that SHA to a completely fresh
+  independent read-only reviewer. No prior author, reviewer, verifier, or
+  analyst of changed bytes may approve it; changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test rejection and bounded forward
+  test-correction authority, not test approval or integration, source
+  correction, Task14 approval, Task15 authority, Task136 product candidacy,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
