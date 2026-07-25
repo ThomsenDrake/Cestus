@@ -33465,3 +33465,42 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1028 — Exact Task12 candidate-binding causal RED integrated
+
+- Recorded at: 2026-07-25T16:22:15Z
+- Exact approved test-only RED
+  `21935b2197a35c25b194ae57ec5365dd88351049`, tree
+  `1cd13613c17b18a80d5876cd684f143eaf10ee10`, is integrated by exact
+  history-preserving no-ff merge
+  `6fb07d13efa167189c0c30c23dd2bc8c99fb04b4`. Its exact first parent is
+  E-1027 approval commit
+  `e81e279eb54079240b7bf6e5de7cd191fef2d82c`; its exact second parent is
+  the reviewed RED. Every earlier design, plan, claim, amendment, authority,
+  rejected candidate, review, correction, RED, GREEN, fixture adaptation,
+  release, and E-1026 placement evidence remains an immutable ancestor.
+- The integration tree retains exact approved test blobs legacy-staging
+  adapter `8e143a1dd692ea292124b44ee4b84bd1a934e44f`, dispatcher
+  `13058371223c7f99b089f41c4aabcae734eaa19d`, and gateway
+  `8a1bc1239dc216e261ac2a7164bdd6158fa8bc63`. Product sources remain frozen
+  at legacy-staging adapter
+  `99fbafda3844435109bc249b015b111b9258c210`, dispatcher
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, and gateway
+  `76c429687575152df55d12d76d307f35f7f64c08`.
+- Fresh integration-tree reproduction retains the exact focused causal
+  signature **79 = 76 passed + 3 failed**, factory readiness, mission
+  **20/20**, V4 **20/20**, all four exact markers, blob equality, dependency
+  quiet, diff, ancestry, and clean state. Repository mode retains the
+  truthful test-first stop recorded by E-1027 and emits no prefix, closure,
+  `29/29`, record-29, or release success.
+- Advance only exact test-only RED `approved -> integrated`. This event
+  intentionally contains no source-correction authorization. A separate
+  append-only event after the exact Task136 authority merge is required
+  before any product source byte changes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED integration, not Task12 GREEN authority,
+  a Task12 or Task136 product candidate, Task13 authority, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
