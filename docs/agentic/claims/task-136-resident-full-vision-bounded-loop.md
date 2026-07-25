@@ -854,13 +854,13 @@ The forward current assurance pins are:
 Task136 ordered-path SHA-256:
 8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41
 V4 JSON SHA-256:
-3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
 V4 assurance fingerprint:
 da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
 Mission immutable-envelope fingerprint:
-sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
 Mission source fingerprint:
-sha256:b83a29bf17abdb2a6c1c70a48783e35e9adb1ae6e5b995667ec94a66008f21c8
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
 ```
 
 The historical V4 hashes and all earlier product/review evidence above remain
@@ -2059,3 +2059,51 @@ Task12 source authorization or GREEN, a product candidate approval,
 integration, strict record 29, assurance transition, publication, or product
 release. Task136 remains `implementing`; the strict product frontier remains
 **28 of 29**.
+
+## RV-1-E-1019 final current Task136 32-path authority
+
+This true-EOF section controls current sequential interpretation. The
+physically earlier RV-1-E-1017 amendment section and every E-957 through
+E-976 section above remain immutable historical evidence for their exact
+commits; their former 30-path scope, V4 hash, mission pins, test boundary, and
+candidate status are explicitly superseded as current authority.
+
+Exact amendment candidate
+`40a8d0f630dd986ed4d03ade7422ef2b4d3e5f70`, tree
+`d5a589a63fce8b663c79e0a73578a7f2533ef992`, remains preserved but was
+rejected by both fresh E-1018 reviewers. RV-1-E-1019 program authority
+`58c3910d15f27b2cb24a2dcec1f508d757a36ab5` was forward-merged by exact
+two-parent Task136 commit
+`21ace835f6d739aea05da30551cf1bec57a5c496`; it authorizes only this forward
+authority correction. Neither rejected candidate is approved or integrated.
+
+Current Task136 authority preserves the exact 29-card graph/order and strict
+frontier **28 of 29**, with Task12 `implementing`, no Task136 product
+candidate, no strict record 29, and no product release. Its canonical scope
+is exactly 32 ordered paths: 14 sources, 17 tests, and this one product claim.
+The adopted legacy-staging source/test occupy positions 9 and 10; the exact
+newline-delimited ordered-path SHA-256 remains
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+
+The V4 JSON is now the exact two-space `JSON.stringify(value, null, 2)` form
+with one final LF. Current pins are:
+
+```text
+V4 JSON SHA-256:
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
+V4 assurance fingerprint:
+da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
+Mission immutable-envelope fingerprint:
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
+Mission source fingerprint:
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
+```
+
+The executable plan now uses the exact 17-test card and 35-test
+cross-boundary array, the exact 14-source/32-path manifests, the adopted
+adapter-test differential allowlist, exact source-only GREEN-commit union,
+and separate three-test Task12 binding-RED path/blob and causality proofs.
+All package/product bytes remain unchanged. A new exact amendment candidate
+requires completely fresh independent design and executability approval
+before integration and before any separate six-product-file Task12
+authorization.

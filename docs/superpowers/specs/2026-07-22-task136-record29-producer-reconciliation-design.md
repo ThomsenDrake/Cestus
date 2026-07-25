@@ -1732,9 +1732,12 @@ The permanent RED matrix covers at least:
 
 ## Assurance And Mission-State Migration
 
-The authority correction changes exactly six files:
+The forward assurance amendment changes exactly nine files:
 
 ```text
+docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md
+docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 docs/agentic/contracts/task136-bounded-assurance-v4.json
 scripts/resident-agent/assurance/task136-bounded-assurance.mjs
 scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
@@ -1749,7 +1752,12 @@ G136-SC dispatcher-test transfer and dispatcher-source baseline-adoption
 validator. It also adds exact source/target scope and command validators, the
 eleven-entry compatibility constant, source-specific historical target/
 current-head migration branches, the 28 raw pins, and new exact fingerprints.
-The baseline validator requires the dispatcher source blob
+The baseline validator requires the adopted legacy-staging source and test
+blobs `99fbafda3844435109bc249b015b111b9258c210` and
+`de7cef3123a15fb82891943dc51005165c8c9fcd` at common candidate
+`3be15212776ab3c96e66bf0bade4630960c362eb`, published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and pre-record-29 HEAD.
+It also requires the dispatcher source blob
 `96b0ade273696b9ffcf497119f1943f128821a58` at the G136-SC candidate,
 G136-SC integration, and pre-record-29 HEAD; it does not invent historical
 G136-SC ownership for that previously unowned source. The same finite baseline
@@ -1769,13 +1777,16 @@ and one final LF produce:
 
 ```text
 V4 JSON SHA-256:
-3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
 
 V4 assurance fingerprint:
 da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
 
 Mission immutable-envelope fingerprint after pin synchronization:
-sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
+
+Mission source fingerprint after pin synchronization:
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
 ```
 
 The mission JSON changes only `mission.frozenAuthority.sha256`; card count
@@ -1802,7 +1813,7 @@ minimum history-preserving sequence is:
    repository strict 28/28 followed only by expected incomplete-29 closure,
    typecheck, exact scope/diff/ancestry/dependency/clean gates, and obtain a
    fresh independent architecture/executability review pair on one exact
-   six-file candidate. Integrate only after both approve.
+   nine-file amendment candidate. Integrate only after both approve.
 4. Forward-merge that approved program authority into the existing clean
    Task136 lineage at `72e1ee6624c582218995e3e075e2303998811834` without
    reset, rebase, amend, reconstruction, or discarded history.
