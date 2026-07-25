@@ -32543,3 +32543,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidate, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, provider,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1014 — E-1013 placement defect corrected; exact Task12 candidate admitted at registry EOF
+
+- Recorded at: 2026-07-25T01:06:16Z
+- Program commit `f546cb59a3f44346730ed98281b28c6bf1f528d5`
+  preserved a factually correct proposed E-1013 Task12 admission block but
+  mechanically inserted it between committed E-1010 and E-1011 rather than
+  at the append-only registry end. This was a coordinator patch-anchor
+  defect. It was detected before that commit was integrated into the
+  Task136 lineage or dispatched to any reviewer.
+- Preserve `f546cb59` and its exact bytes in ancestry. Do not amend, reset,
+  rebase, reorder, delete, or reconstruct it. Because its physical placement
+  violates chronological append-only ordering, the embedded E-1013 block is
+  non-transition evidence only: it did not move Task12 from implementing,
+  did not admit a candidate, did not authorize review, and did not authorize
+  Task13 or any later action.
+- This E-1014 event is appended after committed E-1012 and is the sole
+  current machine transition authority for the correction admission.
+  It incorporates E-1013's exact candidate identity, TDD topology, eleven
+  causal receipt cases, final source/test blobs, full gate matrix,
+  differential, timeout variance, freezes, scope, and reviewer-independence
+  terms without changing any candidate byte.
+- Exact immutable Task12 candidate
+  `eca22dd01a0af2f4ca4074937e6078c74a07dc0a`, tree
+  `833937ed1a6fedcec114cd2a62200f4eaf1097fe`, has sole parent permanent
+  causal RED `8f9cf5aadb4046225eea0c8940676f102f483415`,
+  whose sole parent is E-1012 authority merge
+  `5a979b06c89aa062dca530128200b3c82c55c884`. Exact final gateway source
+  and test blobs are respectively
+  `76c429687575152df55d12d76d307f35f7f64c08` and
+  `c4d5410eb7916e4570d6ed10b45697b615110c9b`. The cumulative range changes
+  exactly the authorized gateway source and gateway test.
+- The permanent RED is **47 = 36 passed + 11 causal semantic failures**.
+  Final committed bytes pass focused **65/65**, Task12 boundary **98/98**,
+  gateway/loader **47/47**, cross-boundary **443/443**, adapters **79/79**,
+  typecheck, UI, factory, mission **20/20** with the exact committed
+  fingerprint, V4 **20/20**, and all four contract markers. Repository mode
+  stops first and only at the frozen dispatcher blob mismatch and emits no
+  prefix or release-closure success. Product card remains nonzero at
+  **298 = 285 passed + 13 later REDs**.
+- The fresh serialized comparator emits
+  `TASK136_E1012_CALIBRATED_DIFFERENTIAL_OK removed=8 mapped=14 addedPassed=65 retainedLaterRed=13`.
+  Parallel evidence remains non-passing at
+  **3,301 = 3,237 passed + 59 failed + 5 pending**, with only the frozen
+  loader duration beyond the calibrated cohort. Exact scope, freezes,
+  ancestry, dependencies, diffs, temporary-worktree cleanup, and clean state
+  pass.
+- Admit exact `eca22dd0` now as Task12 `implementing -> candidate ->
+  reviewing`. Completely fresh independent read-only reviewer
+  `/root/task136_e1014_semantic_receipt_fresh_review` must review that exact
+  candidate and complete two-commit range, attack every E-1012 invariant and
+  causal oracle, preserve earlier lifecycle/W/approval/failed-receipt/
+  nonexecution/at-most-once requirements, and independently reproduce every
+  focused, boundary, adapter, typecheck, UI, factory, mission, V4, marker,
+  repository-first-stop, product-card, scope, freeze, ancestry, dependency,
+  diff, clean-state, fresh differential, and timeout-variance check.
+- The reviewer has not authored, reviewed, or analyzed any changed candidate
+  byte. The implementer, coordinator, E-1011 reviewer, every earlier
+  source/test author or reviewer, and every changed-byte analyst are
+  ineligible. Changed candidate bytes invalidate review. The reviewer may not
+  edit, commit, merge, substitute a SHA, authorize Task13, or make product or
+  release claims.
+- Strict product frontier remains **28 of 29**. This is only exact Task12
+  correction review admission. It is not Task12 approval/integration,
+  Task13 authority, a Task136 product candidate, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, provider, external-system, pull-request, and unrelated actions
+  remain unauthorized.
