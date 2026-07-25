@@ -11,7 +11,11 @@ import { describe, expect, it } from "vitest";
 import * as domainExecutionDispatcherModule from "../src/domain-execution-dispatcher.js";
 import { createResidentPlanObservationStore } from "../src/plan-observation-contracts.js";
 import { createResidentLoopToolGateway, type ResidentLoopToolGatewayReadback } from "../src/resident-loop-tool-gateway.js";
-import { createAgentToolGateway, type RequestAgentToolInput } from "../src/tool-gateway.js";
+import {
+  createAgentToolGateway,
+  hashAgentToolPreview,
+  type RequestAgentToolInput
+} from "../src/tool-gateway.js";
 
 describe("resident-loop tool gateway", () => {
   it("derives durable request, human decision, claim, and result readbacks through the private completion route", async () => {
@@ -693,6 +697,61 @@ describe("resident-loop tool gateway", () => {
       effects: 0
     });
   });
+
+  it.each([
+    { ordinal: 2, mutation: "duplicate-evidence" },
+    { ordinal: 3, mutation: "invocation-input" },
+    { ordinal: 4, mutation: "domain-context" },
+    { ordinal: 5, mutation: "domain-payload" },
+    { ordinal: 6, mutation: "result-identity" },
+    { ordinal: 9, mutation: "authorization-branch" }
+  ] as const)(
+    "rejects a correctly self-hashed ordinal-$ordinal receipt with semantic $mutation drift",
+    async ({ ordinal, mutation }) => {
+      await expectSemanticResidentReceiptRejected(
+        await appendSemanticResidentRecoveryReceipt({ ordinal, mutation })
+      );
+    }
+  );
+
+  it.each([
+    "candidate-order",
+    "candidate-payload"
+  ] as const)(
+    "rejects a correctly self-hashed ordinal-10 receipt with %s drift",
+    async (mutation) => {
+      await expectSemanticResidentReceiptRejected(
+        await appendSemanticResidentRecoveryReceipt({
+          ordinal: 10,
+          mutation
+        })
+      );
+    }
+  );
+
+  it("rejects correctly self-hashed idempotent evidence that does not predate the permanent claim", async () => {
+    await expectSemanticResidentReceiptRejected(
+      await appendSemanticResidentRecoveryReceipt({
+        ordinal: 2,
+        mutation: "idempotent-after-claim"
+      })
+    );
+  });
+
+  it.each([
+    "projection-artifacts",
+    "projection-read-model"
+  ] as const)(
+    "rejects a correctly self-hashed ordinal-7 receipt with %s drift",
+    async (mutation) => {
+      await expectSemanticResidentReceiptRejected(
+        await appendSemanticResidentRecoveryReceipt({
+          ordinal: 7,
+          mutation
+        })
+      );
+    }
+  );
 
   it("rejects human approvals after their deadline or the trusted current time", async () => {
     const cases = [
@@ -1504,6 +1563,7 @@ interface ResidentGatewayCompositionCounts {
 interface ResidentGatewayHarness {
   readonly ledger: InMemoryEventLedger;
   readonly gateway: object;
+  readonly port: object;
   readonly effects: { count: number };
   readonly composition: ResidentGatewayCompositionCounts;
   readonly source: KnowledgeEvent;
@@ -2012,6 +2072,7 @@ async function prepareResidentGatewayHarness(input: {
   return {
     ledger,
     gateway,
+    port,
     effects,
     composition,
     source,
@@ -2341,6 +2402,831 @@ async function expectNoResidentHumanExecution(
   expect(input.harness.effects.count).toBe(0);
 }
 
+type SemanticResidentOrdinal = 2 | 3 | 4 | 5 | 6 | 7 | 9 | 10;
+type SemanticReceiptMutation =
+  | "duplicate-evidence"
+  | "invocation-input"
+  | "domain-context"
+  | "domain-payload"
+  | "result-identity"
+  | "authorization-branch"
+  | "candidate-order"
+  | "candidate-payload"
+  | "idempotent-after-claim"
+  | "projection-artifacts"
+  | "projection-read-model";
+
+interface SemanticResidentReceiptFixture {
+  readonly ledger: InMemoryEventLedger;
+  readonly gateway: object;
+  readonly locator: ResidentLogicalLocator;
+  readonly effects: { count: number };
+}
+
+interface SemanticResidentCatalogFixture {
+  readonly ordinal: SemanticResidentOrdinal;
+  readonly toolId: string;
+  readonly implementationRevision: string;
+  readonly sideEffectClass:
+    | "external-message-send"
+    | "ledger-review"
+    | "export-or-publication"
+    | "destructive-or-repair"
+    | "ledger-proposal";
+  readonly requiredApprovalClass:
+    | "external-message-send"
+    | "ledger-review"
+    | "export-or-publication"
+    | "destructive-or-repair"
+    | "none";
+  readonly preview: Readonly<Record<string, unknown>>;
+  readonly artifactHashes: readonly `sha256:${string}`[];
+  readonly readModelChanges: readonly string[];
+  readonly resultSummary: string;
+}
+
+async function expectSemanticResidentReceiptRejected(
+  fixture: SemanticResidentReceiptFixture
+): Promise<void> {
+  const recover = reflectedOperation(
+    fixture.gateway,
+    "rereadAndIssueFromLedger"
+  );
+  const outcome = await settledResidentRecovery(() => Reflect.apply(
+    recover,
+    fixture.gateway,
+    [fixture.locator]
+  ));
+  const residentEvents = await fixture.ledger.readStream(
+    residentDomainStreamId(fixture.locator)
+  );
+  expect({
+    ...outcome,
+    residentEventTypes: residentEvents.map((event) => event.type),
+    effects: fixture.effects.count
+  }).toEqual({
+    outcome: "rejected",
+    message: expect.stringMatching(
+      /semantic|catalog|receipt|invocation|event|context|payload|result|candidate|idempotent|projection/i
+    ),
+    residentEventTypes: expect.not.arrayContaining([
+      "agent.resident-domain.completed.v1",
+      "agent.resident-domain.failed.v1"
+    ]),
+    effects: 0
+  });
+}
+
+async function appendSemanticResidentRecoveryReceipt(input: {
+  readonly ordinal: SemanticResidentOrdinal;
+  readonly mutation: SemanticReceiptMutation;
+}): Promise<SemanticResidentReceiptFixture> {
+  const suffix = `semantic-${input.ordinal}-${input.mutation.replace(
+    "authorization",
+    "branch"
+  )}`;
+  const ledger = new InMemoryEventLedger();
+  const source = await appendEvidence(ledger, {
+    evidenceId: `ev_gateway_${suffix}_a`
+  });
+  const secondSource = input.ordinal === 10
+    ? await appendEvidence(ledger, {
+        evidenceId: `ev_gateway_${suffix}_b`
+      })
+    : undefined;
+  const catalog = semanticResidentCatalogFixture(
+    input.ordinal,
+    suffix,
+    source,
+    secondSource
+  );
+  const workspaceId = "ws_gateway";
+  const residentAgentId = "agent_default" as const;
+  const taskId = "task_gateway";
+  const attemptId =
+    "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const runId = "run_gateway";
+  const planId = `plan_gateway_${suffix}`;
+  const planRevision = 0;
+  const stepOrdinal = 1;
+  const toolRequestId = `toolreq_gateway_${suffix}`;
+  const toolVersion = "0.1.0";
+  const executionCapabilityHash =
+    "sha256:abababababababababababababababababababababababababababababababab";
+  const plan = await appendCanonicalResidentPlan(ledger, source.id, {
+    workspaceId,
+    residentAgentId,
+    taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision,
+    stepOrdinal,
+    toolRequestId,
+    toolId: catalog.toolId,
+    toolVersion,
+    executionCapabilityHash,
+    suffix
+  });
+  const locator: ResidentLogicalLocator = deepFreezePlain({
+    workspaceId,
+    residentAgentId,
+    taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision,
+    stepOrdinal,
+    toolRequestId,
+    toolId: catalog.toolId,
+    toolVersion,
+    executionCapabilityHash
+  });
+  const currentPreview = deepFreezePlain({
+    preview: catalog.preview,
+    sourceEventIds: [
+      source.id,
+      ...(secondSource === undefined ? [] : [secondSource.id])
+    ],
+    inputArtifactHashes: [
+      "sha256:bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc"
+    ],
+    provenanceRefs: [`provenance_gateway_${suffix}`],
+    activeLocks: [],
+    freshnessChecks: [{
+      name: "semantic-fixture",
+      expected: "current",
+      actual: "current",
+      ok: true
+    }]
+  });
+  const port = Object.freeze({
+    async prepareResidentDomainExecution(command: unknown) {
+      const phase = typeof command === "object" && command !== null
+        ? Reflect.get(command, "phase")
+        : undefined;
+      if (phase !== "preview") {
+        throw new Error("Semantic receipt fixture supports preview recovery only.");
+      }
+      return Object.freeze({
+        catalogOrdinal: catalog.ordinal,
+        executionCapabilityHash,
+        implementationRevision: catalog.implementationRevision,
+        descriptor: Object.freeze({
+          toolId: catalog.toolId,
+          toolVersion,
+          sideEffectClass: catalog.sideEffectClass,
+          requiredApprovalClass: catalog.requiredApprovalClass
+        }),
+        currentPreview
+      });
+    }
+  });
+  const effects = { count: 0 };
+  const composition: ResidentGatewayCompositionCounts = {
+    safeIdCalls: 0,
+    beforeEffectCalls: 0,
+    afterEffectCalls: 0
+  };
+  const gateway = createRevisedGateway(
+    ledger,
+    port,
+    composition,
+    suffix
+  );
+  const streamId = residentDomainStreamId(locator);
+  const correlationId = `corr_gateway_${suffix}`;
+  const previewHash = hashAgentToolPreview(
+    catalog.preview as Parameters<typeof hashAgentToolPreview>[0]
+  );
+  const authorizationKind = input.ordinal === 10
+    ? "automatic-policy" as const
+    : "human-approval" as const;
+  const request = await ledger.append({
+    type: "agent.resident-domain.requested.v1",
+    version: 1,
+    streamId,
+    context: residentEventContext(plan.id, correlationId),
+    payload: {
+      schemaVersion: "resident-domain-requested.v1",
+      logicalLocator: locator,
+      executionCapabilityHash,
+      causationId: plan.id,
+      correlationId,
+      authorizationKind,
+      planRecordEventId: plan.id,
+      previewHash,
+      allowlistEntryHash:
+        "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      sideEffectClass: catalog.sideEffectClass,
+      expectedSafeOutputClass: "proposal",
+      requiredApprovalClass: catalog.requiredApprovalClass,
+      sourceEventIds: [source.id],
+      contextPackRefs: [{
+        contextPackId: "context_pack_gateway",
+        contentHash:
+          "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }],
+      inputArtifactHashes: [...currentPreview.inputArtifactHashes],
+      policy: {
+        policyId: "agent_policy_gateway",
+        policyVersion: "policy_gateway_v1",
+        policyHash:
+          "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      authority: {
+        workspaceIdentityHash:
+          "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        mountGeneration: "mount_gateway",
+        ledgerStoreIdentity: "ledger_gateway",
+        artifactStoreIdentity: "artifact_gateway",
+        ledgerHighWaterEventId: source.id,
+        policyHash:
+          "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        activeLocksHash:
+          "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      budget: residentBudget(1, 1)
+    }
+  }, { expectedNextSequence: 1 });
+  if (request.type !== "agent.resident-domain.requested.v1") {
+    throw new Error("Semantic receipt fixture appended the wrong request.");
+  }
+  const approval = authorizationKind === "human-approval"
+    ? await ledger.append({
+        type: "agent.resident-domain.human-approved.v1",
+        version: 1,
+        streamId,
+        context: residentEventContext(
+          request.id,
+          correlationId,
+          humanActor
+        ),
+        payload: {
+          schemaVersion: "resident-domain-human-approved.v1",
+          logicalLocator: locator,
+          executionCapabilityHash,
+          causationId: request.id,
+          correlationId,
+          authorizationKind: "human-approval",
+          requestEventId: request.id,
+          decisionEventId: `evt_human_decision_${suffix}`,
+          approvedBy: humanActor.id,
+          approvedPreviewHash: previewHash
+        }
+      }, { expectedNextSequence: 2 })
+    : undefined;
+  const authorization = authorizationKind === "automatic-policy"
+    ? { authorizationKind: "automatic-policy" as const }
+    : {
+        authorizationKind: "human-approval" as const,
+        decisionEventId: `evt_human_decision_${suffix}`,
+        approvedBy: humanActor.id,
+        approvedPreviewHash: previewHash
+      };
+  const claimCausationId = approval?.id ?? request.id;
+  const claim = await ledger.append({
+    type: "agent.resident-domain.execution-claimed.v1",
+    version: 1,
+    streamId,
+    context: residentEventContext(claimCausationId, correlationId),
+    payload: {
+      schemaVersion: "resident-domain-execution-claimed.v1",
+      logicalLocator: locator,
+      executionCapabilityHash,
+      causationId: claimCausationId,
+      correlationId,
+      requestEventId: request.id,
+      authorization,
+      claimedAt: fixedNow()
+    }
+  }, { expectedNextSequence: approval === undefined ? 2 : 3 });
+  if (claim.type !== "agent.resident-domain.execution-claimed.v1") {
+    throw new Error("Semantic receipt fixture appended the wrong claim.");
+  }
+
+  const preInvocationLedgerFingerprint = ledgerFingerprint(
+    await ledger.readAll()
+  );
+  const domainEvents = await appendSemanticResidentDomainEvents({
+    ledger,
+    catalog,
+    mutation: input.mutation,
+    claim,
+    source,
+    secondSource,
+    suffix
+  });
+  const postInvocationLedgerFingerprint = ledgerFingerprint(
+    await ledger.readAll()
+  );
+  const evidenceMode = input.mutation === "idempotent-after-claim"
+    ? "idempotent-existing-ledger-events" as const
+    : input.ordinal === 7
+      ? "nonledger-projection-artifacts" as const
+      : "new-ledger-events" as const;
+  const canonicalInvocationInput = {
+    authorizationKind,
+    logicalLocator: locator,
+    requestEventId: request.id,
+    executionClaimEventId: claim.id,
+    authorization,
+    previewHash,
+    ...(authorizationKind === "human-approval"
+      ? {
+          approvedPreviewHash: previewHash,
+          approvedBy: humanActor.id
+        }
+      : {}),
+    currentPreview
+  };
+  const artifactHashes = input.mutation === "projection-artifacts"
+    ? [hashCanonical("foreign projection artifact")]
+    : catalog.artifactHashes;
+  const readModelChanges = input.mutation === "projection-read-model"
+    ? ["foreign-projection"]
+    : catalog.readModelChanges;
+  const resultSummary = input.mutation === "result-identity"
+    ? "A well-formed but foreign result identity."
+    : catalog.resultSummary;
+  const receiptEnvelope = {
+    logicalLocator: locator,
+    executionCapabilityHash,
+    requestEventId: request.id,
+    executionClaimEventId: claim.id,
+    authorization,
+    catalogOrdinal: catalog.ordinal,
+    implementationRevision: catalog.implementationRevision,
+    evidenceMode,
+    residentInvocationInputHash: input.mutation === "invocation-input"
+      ? hashCanonical({
+          ...canonicalInvocationInput,
+          currentPreview: {
+            ...currentPreview,
+            preview: {
+              ...catalog.preview,
+              semanticDrift: "foreign-but-well-formed"
+            }
+          }
+        })
+      : hashCanonical(canonicalInvocationInput),
+    outcomeDisposition: "completed" as const,
+    preInvocationLedgerFingerprint:
+      input.mutation === "idempotent-after-claim"
+        ? postInvocationLedgerFingerprint
+        : preInvocationLedgerFingerprint,
+    postInvocationLedgerFingerprint,
+    domainEventIds: domainEvents.map((event) => event.id),
+    artifactHashes: [...artifactHashes],
+    readModelChanges: [...readModelChanges],
+    resultSummary
+  };
+  const receipt = await ledger.append({
+    type: "agent.resident-domain.outcome-observed.v1",
+    version: 1,
+    streamId,
+    context: residentEventContext(claim.id, correlationId),
+    payload: {
+      schemaVersion: "resident-domain-outcome-observed.v1",
+      causationId: claim.id,
+      correlationId,
+      ...receiptEnvelope,
+      envelopeHash: hashCanonical(receiptEnvelope)
+    }
+  }, { expectedNextSequence: approval === undefined ? 3 : 4 });
+  if (receipt.type !== "agent.resident-domain.outcome-observed.v1") {
+    throw new Error("Semantic receipt fixture appended the wrong receipt.");
+  }
+  expectOntologyValidResidentEvents([
+    request,
+    ...(approval === undefined ? [] : [approval]),
+    claim,
+    receipt
+  ]);
+  domainEvents.forEach((event) => {
+    const validation = validateKnowledgeEvent(event);
+    expect(validation.success, JSON.stringify(validation)).toBe(true);
+  });
+  return { ledger, gateway, locator, effects };
+}
+
+function semanticResidentCatalogFixture(
+  ordinal: SemanticResidentOrdinal,
+  suffix: string,
+  source: KnowledgeEvent,
+  secondSource: KnowledgeEvent | undefined
+): SemanticResidentCatalogFixture {
+  const bodyHash =
+    "sha256:3131313131313131313131313131313131313131313131313131313131313131";
+  const outputHash =
+    "sha256:4141414141414141414141414141414141414141414141414141414141414141";
+  const candidateSetHash =
+    "sha256:5151515151515151515151515151515151515151515151515151515151515151";
+  const reportHash =
+    "sha256:6161616161616161616161616161616161616161616161616161616161616161";
+  const basePreview = {
+    schemaVersion: "agent-domain-preview.v1",
+    toolRequestId: `toolreq_gateway_${suffix}`,
+    toolVersion: "0.1.0",
+    runId: "run_gateway",
+    taskId: "task_gateway",
+    residentAgentId: "agent_default",
+    summary: `Review semantic receipt ${suffix}.`,
+    scope: `Bounded semantic receipt fixture ${suffix}.`,
+    estimatedEffect: "Produce exactly the catalog-bound result."
+  };
+  switch (ordinal) {
+    case 2:
+    case 3: {
+      const initial = ordinal === 2;
+      const toolId = initial
+        ? "prr.initial-send.execute"
+        : "prr.follow-up.execute";
+      return {
+        ordinal,
+        toolId,
+        implementationRevision: initial
+          ? "prr-initial-send-execution.adapter.v1"
+          : "prr-follow-up-execution.adapter.v1",
+        sideEffectClass: "external-message-send",
+        requiredApprovalClass: "external-message-send",
+        preview: {
+          ...basePreview,
+          toolId,
+          prrRequestId: `prr_gateway_${suffix}`,
+          correspondenceId: `corr_prr_gateway_${suffix}`,
+          provider: "gmail",
+          subject: `Gateway correspondence ${suffix}`,
+          renderedBodyHash: bodyHash,
+          providerIdempotencyKey: `send_gateway_${suffix}`,
+          attachmentBindings: [{
+            evidenceId: String(Reflect.get(source.payload, "evidenceId")),
+            filename: "gateway-evidence.json",
+            contentHash: String(Reflect.get(source.payload, "contentHash"))
+          }]
+        },
+        artifactHashes: [],
+        readModelChanges: [initial ? "prr" : "prr-timeline"],
+        resultSummary:
+          "PRR correspondence was recorded by the authoritative domain service."
+      };
+    }
+    case 4:
+      return {
+        ordinal,
+        toolId: "ontology.assertion.accept",
+        implementationRevision:
+          "accepted-graph-assertion-review.adapter.v1",
+        sideEffectClass: "ledger-review",
+        requiredApprovalClass: "ledger-review",
+        preview: {
+          ...basePreview,
+          toolId: "ontology.assertion.accept",
+          assertionId: `as_gateway_${suffix}`,
+          proposalEventId: `evt_proposal_gateway_${suffix}`,
+          evidenceId: String(Reflect.get(source.payload, "evidenceId")),
+          evidenceEventId: source.id,
+          evidenceContentHash: String(
+            Reflect.get(source.payload, "contentHash")
+          ),
+          reviewerRationaleDraft:
+            "The exact evidence supports this bounded assertion."
+        },
+        artifactHashes: [],
+        readModelChanges: ["ontology-graph"],
+        resultSummary:
+          "The human-reviewed assertion was accepted through the ontology assertion service."
+      };
+    case 5:
+    case 6: {
+      const artifactKind = ordinal === 5 ? "export" : "report";
+      const toolId = `governance.${artifactKind}.generate`;
+      return {
+        ordinal,
+        toolId,
+        implementationRevision: ordinal === 5
+          ? "export-generation.adapter.v1"
+          : "report-generation.adapter.v1",
+        sideEffectClass: "export-or-publication",
+        requiredApprovalClass: "export-or-publication",
+        preview: {
+          ...basePreview,
+          toolId,
+          artifactKind,
+          artifactId: ordinal === 5
+            ? `exp_gateway_${suffix}`
+            : `report_gateway_${suffix}`,
+          includedEvidenceIds: [
+            String(Reflect.get(source.payload, "evidenceId"))
+          ],
+          includedContentHashes: [
+            String(Reflect.get(source.payload, "contentHash"))
+          ],
+          sensitiveOptIns: [],
+          defaultPublicSafeOnly: true,
+          policy: {
+            policyId: "gov_policy_gateway",
+            version: "v1"
+          },
+          causationEventId: source.id,
+          outputArtifactHash: outputHash
+        },
+        artifactHashes: [outputHash],
+        readModelChanges: ["governance-generated-artifacts"],
+        resultSummary:
+          `Governance recorded the approved ${artifactKind} generation without publishing or transferring artifact bytes.`
+      };
+    }
+    case 7:
+      return {
+        ordinal,
+        toolId: "workspace.projection-rebuild.execute",
+        implementationRevision:
+          "workspace-projection-rebuild.adapter.v1",
+        sideEffectClass: "destructive-or-repair",
+        requiredApprovalClass: "destructive-or-repair",
+        preview: {
+          ...basePreview,
+          toolId: "workspace.projection-rebuild.execute",
+          expectedArtifactOutputs: [{
+            artifactId: `projection_gateway_${suffix}`,
+            artifactHash: outputHash,
+            path: `generated/${suffix}.json`
+          }]
+        },
+        artifactHashes: [outputHash],
+        readModelChanges: ["workspace-projection-artifacts"],
+        resultSummary:
+          "Workspace-ops rebuilt the approved expendable projection artifacts."
+      };
+    case 9:
+    case 10: {
+      const automatic = ordinal === 10;
+      const selectedCandidateIds = automatic
+        ? [
+            `legacy_candidate_gateway_${suffix}_a`,
+            `legacy_candidate_gateway_${suffix}_b`
+          ]
+        : [`legacy_candidate_gateway_${suffix}_a`];
+      return {
+        ordinal,
+        toolId: automatic
+          ? "legacy.staging.execute"
+          : "legacy.staging.approve",
+        implementationRevision: automatic
+          ? "legacy-staging-execution.adapter.v1"
+          : "legacy-staging-approval.adapter.v1",
+        sideEffectClass: automatic ? "ledger-proposal" : "ledger-review",
+        requiredApprovalClass: automatic ? "none" : "ledger-review",
+        preview: {
+          ...basePreview,
+          toolId: automatic
+            ? "legacy.staging.execute"
+            : "legacy.staging.approve",
+          sourceCollectionId: "src_gateway_semantic",
+          scanBatchId: "scan_gateway_semantic",
+          stagingBatchId: `legacy_stage_gateway_${suffix}`,
+          legacyReportId: `legacy_report_gateway_${suffix}`,
+          reportHash,
+          candidateSetHash,
+          selectedCandidateIds,
+          importedEvidenceIds: [
+            String(Reflect.get(source.payload, "evidenceId")),
+            ...(secondSource === undefined
+              ? []
+              : [String(Reflect.get(secondSource.payload, "evidenceId"))])
+          ],
+          evidenceContentHashes: [
+            String(Reflect.get(source.payload, "contentHash")),
+            ...(secondSource === undefined
+              ? []
+              : [String(Reflect.get(secondSource.payload, "contentHash"))])
+          ]
+        },
+        artifactHashes: automatic ? [] : [reportHash, candidateSetHash],
+        readModelChanges: ["legacy-staging"],
+        resultSummary: automatic
+          ? "Legacy ontology staging appended evidence-tied assertion proposals."
+          : "Legacy ontology staging approval was recorded."
+      };
+    }
+  }
+}
+
+async function appendSemanticResidentDomainEvents(input: {
+  readonly ledger: InMemoryEventLedger;
+  readonly catalog: SemanticResidentCatalogFixture;
+  readonly mutation: SemanticReceiptMutation;
+  readonly claim: ResidentClaimedEvent;
+  readonly source: KnowledgeEvent;
+  readonly secondSource: KnowledgeEvent | undefined;
+  readonly suffix: string;
+}): Promise<readonly KnowledgeEvent[]> {
+  if (input.catalog.ordinal === 7) {
+    return [];
+  }
+  const preview = input.catalog.preview;
+  const foreignHuman: ActorRef = {
+    id: "human_gateway_foreign",
+    kind: "human",
+    label: "Foreign Gateway Reviewer"
+  };
+  const actor = (
+    input.mutation === "domain-context" ||
+    input.mutation === "authorization-branch"
+  )
+    ? foreignHuman
+    : humanActor;
+  switch (input.catalog.ordinal) {
+    case 2:
+    case 3: {
+      const initial = input.catalog.ordinal === 2;
+      const appendCorrespondence = async () => await input.ledger.append({
+        type: initial ? "prr.request.sent" : "prr.followup.sent",
+        version: 1,
+        streamId: `prr_${String(Reflect.get(preview, "prrRequestId"))}`,
+        context: residentEventContext(
+          input.claim.id,
+          `corr_gateway_domain_${input.suffix}`,
+          actor
+        ),
+        payload: {
+          prrRequestId: String(Reflect.get(preview, "prrRequestId")),
+          correspondenceId: String(
+            Reflect.get(preview, "correspondenceId")
+          ),
+          provider: "gmail",
+          providerMessageId: `msg_gateway_${input.suffix}`,
+          ...(initial
+            ? {
+                providerThreadId: `thread_gateway_${input.suffix}`,
+                idempotencyKey: String(
+                  Reflect.get(preview, "providerIdempotencyKey")
+                ),
+                attachmentEvidenceIds: [
+                  String(Reflect.get(input.source.payload, "evidenceId"))
+                ],
+                rawMetadata: {}
+              }
+            : {}),
+          subject: String(Reflect.get(preview, "subject")),
+          bodyHash: String(Reflect.get(preview, "renderedBodyHash")),
+          sentAt: fixedNow(),
+          approvedBy: actor.id
+        }
+      } as AppendableKnowledgeEvent);
+      const first = await appendCorrespondence();
+      return input.mutation === "duplicate-evidence"
+        ? [first, await appendCorrespondence()]
+        : [first];
+    }
+    case 4:
+      return [await input.ledger.append({
+        type: "assertion.accepted",
+        version: 1,
+        streamId: `assertion_${String(Reflect.get(preview, "assertionId"))}`,
+        context: residentEventContext(
+          String(Reflect.get(preview, "proposalEventId")),
+          `corr_gateway_domain_${input.suffix}`,
+          actor
+        ),
+        payload: {
+          assertionId: String(Reflect.get(preview, "assertionId")),
+          acceptedBy: actor.id,
+          rationale: String(
+            Reflect.get(preview, "reviewerRationaleDraft")
+          )
+        }
+      })];
+    case 5:
+    case 6: {
+      const artifactKind = input.catalog.ordinal === 5 ? "export" : "report";
+      const expectedArtifactId = String(
+        Reflect.get(preview, "artifactId")
+      );
+      const artifactId = input.mutation === "domain-payload"
+        ? input.catalog.ordinal === 5
+          ? "exp_gateway_foreign"
+          : "report_gateway_foreign"
+        : expectedArtifactId;
+      return [await input.ledger.append({
+        type: input.catalog.ordinal === 5
+          ? "export.generated"
+          : "report.generated",
+        version: 1,
+        streamId: `${artifactKind}_${artifactId}`,
+        context: residentEventContext(
+          String(Reflect.get(preview, "causationEventId")),
+          `corr_gateway_domain_${input.suffix}`,
+          humanActor
+        ),
+        payload: {
+          ...(artifactKind === "export"
+            ? { exportId: artifactId }
+            : { reportId: artifactId }),
+          generatedBy: humanActor.id,
+          generatedAt: fixedNow(),
+          policy: Reflect.get(preview, "policy"),
+          includedEvidenceIds: Reflect.get(
+            preview,
+            "includedEvidenceIds"
+          ),
+          includedContentHashes: Reflect.get(
+            preview,
+            "includedContentHashes"
+          ),
+          sensitiveOptIns: [],
+          defaultPublicSafeOnly: true
+        }
+      } as AppendableKnowledgeEvent)];
+    }
+    case 9:
+      return [await input.ledger.append({
+        type: "legacy.ontology.staging.approved",
+        version: 1,
+        streamId:
+          `legacy_staging_src_gateway_semantic_scan_gateway_semantic_${String(Reflect.get(preview, "stagingBatchId"))}`,
+        context: residentEventContext(
+          input.claim.id,
+          `corr_gateway_domain_${input.suffix}`,
+          actor
+        ),
+        payload: {
+          stagingBatchId: String(
+            Reflect.get(preview, "stagingBatchId")
+          ),
+          legacyReportId: String(
+            Reflect.get(preview, "legacyReportId")
+          ),
+          sourceCollectionId: String(
+            Reflect.get(preview, "sourceCollectionId")
+          ),
+          scanBatchId: String(Reflect.get(preview, "scanBatchId")),
+          reportHash: String(Reflect.get(preview, "reportHash")),
+          candidateSetHash: String(
+            Reflect.get(preview, "candidateSetHash")
+          ),
+          approvedBy: actor.id,
+          approvedAt: fixedNow(),
+          approvedAssertionCandidateIds: Reflect.get(
+            preview,
+            "selectedCandidateIds"
+          )
+        }
+      } as AppendableKnowledgeEvent)];
+    case 10: {
+      const selected = [
+        ...(Reflect.get(preview, "selectedCandidateIds") as readonly string[])
+      ];
+      const evidenceIds = [
+        ...(Reflect.get(preview, "importedEvidenceIds") as readonly string[])
+      ];
+      const sources = [
+        input.source,
+        requiredPrefixEvent(input.secondSource, "second semantic evidence")
+      ];
+      const order = input.mutation === "candidate-order"
+        ? [1, 0]
+        : [0, 1];
+      const events: KnowledgeEvent[] = [];
+      for (const selectedIndex of order) {
+        const candidateId = selected[selectedIndex]!;
+        const evidenceId = evidenceIds[selectedIndex]!;
+        const eventSource = sources[selectedIndex]!;
+        const assertionId = `as_legacy_${createHash("sha256").update([
+          String(Reflect.get(preview, "sourceCollectionId")),
+          String(Reflect.get(preview, "scanBatchId")),
+          String(Reflect.get(preview, "stagingBatchId")),
+          String(Reflect.get(preview, "candidateSetHash")),
+          candidateId
+        ].join(":")).digest("hex")}`;
+        events.push(await input.ledger.append({
+          type: "assertion.proposed",
+          version: 1,
+          streamId: `assertion_${assertionId}`,
+          context: residentEventContext(
+            eventSource.id,
+            `corr_gateway_domain_${input.suffix}`
+          ),
+          payload: {
+            assertionId,
+            evidenceId,
+            predicate: "legacy.gateway.semantic",
+            object:
+              input.mutation === "candidate-payload" &&
+              selectedIndex === 0
+                ? "legacy_candidate_gateway_foreign"
+                : candidateId,
+            confidence: 0.8,
+            reviewState: "proposed"
+          }
+        }));
+      }
+      return events;
+    }
+  }
+}
+
 async function appendCanonicalResidentDomainPrefix(input: {
   readonly authorizationKind: ResidentAuthorizationKind;
   readonly terminal: ResidentPrefixTerminal;
@@ -2360,6 +3246,7 @@ async function appendCanonicalResidentDomainPrefix(input: {
   const {
     ledger,
     gateway,
+    port,
     effects,
     composition,
     source,
@@ -2367,6 +3254,27 @@ async function appendCanonicalResidentDomainPrefix(input: {
     preparedBinding,
     locator
   } = harness;
+  const rawPortPreview = await reflectedOperation(
+    port,
+    "prepareResidentDomainExecution"
+  )({
+    phase: "preview",
+    logicalLocator: locator
+  });
+  if (typeof rawPortPreview !== "object" || rawPortPreview === null) {
+    throw new Error("Canonical resident prefix lacks its package preview.");
+  }
+  const currentPreview = Reflect.get(rawPortPreview, "currentPreview");
+  if (typeof currentPreview !== "object" || currentPreview === null) {
+    throw new Error("Canonical resident prefix lacks its exact current preview.");
+  }
+  const preview = Reflect.get(currentPreview, "preview");
+  if (typeof preview !== "object" || preview === null) {
+    throw new Error("Canonical resident prefix lacks its exact tool preview.");
+  }
+  const previewHash = hashAgentToolPreview(
+    preview as Parameters<typeof hashAgentToolPreview>[0]
+  );
   const capabilityHash = locator.executionCapabilityHash;
   const streamId = residentDomainStreamId(locator);
   const correlationId = `corr_gateway_${suffix}`;
@@ -2386,8 +3294,7 @@ async function appendCanonicalResidentDomainPrefix(input: {
       correlationId,
       authorizationKind: input.authorizationKind,
       planRecordEventId: plan.id,
-      previewHash:
-        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      previewHash,
       allowlistEntryHash:
         "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       sideEffectClass: input.authorizationKind === "automatic-policy"
@@ -2403,7 +3310,9 @@ async function appendCanonicalResidentDomainPrefix(input: {
         contentHash:
           "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       }],
-      inputArtifactHashes: [],
+      inputArtifactHashes: [
+        ...(Reflect.get(currentPreview, "inputArtifactHashes") as readonly `sha256:${string}`[])
+      ],
       policy: {
         policyId: "agent_policy_gateway",
         policyVersion: "policy_gateway_v1",
@@ -2526,8 +3435,7 @@ async function appendCanonicalResidentDomainPrefix(input: {
         requestEventId: requested.id,
         decisionEventId: "evt_human_decision_gateway",
         approvedBy: humanActor.id,
-        approvedPreviewHash:
-          "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        approvedPreviewHash: previewHash
       }
     };
     const appendedDecision = await ledger.append(decisionInput, {
@@ -2572,8 +3480,7 @@ async function appendCanonicalResidentDomainPrefix(input: {
         authorizationKind: "human-approval" as const,
         decisionEventId: "evt_human_decision_gateway",
         approvedBy: humanActor.id,
-        approvedPreviewHash:
-          "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        approvedPreviewHash: previewHash
       };
   const claimCausationId = decision?.id ?? requested.id;
   const claimInput: Extract<
@@ -2620,8 +3527,28 @@ async function appendCanonicalResidentDomainPrefix(input: {
   const preInvocationLedgerFingerprint = ledgerFingerprint(
     await ledger.readAll()
   );
+  const selectedCandidateIds = Reflect.get(preview, "selectedCandidateIds");
+  const importedEvidenceIds = Reflect.get(preview, "importedEvidenceIds");
+  if (
+    !Array.isArray(selectedCandidateIds) ||
+    !Array.isArray(importedEvidenceIds) ||
+    selectedCandidateIds.length !== 1 ||
+    importedEvidenceIds.length !== 1
+  ) {
+    throw new Error("Canonical legacy preview lacks its exact selected candidate.");
+  }
   const domainEvent = input.authorizationKind === "automatic-policy"
-    ? await appendLegacyAssertionProposal(ledger, source, suffix)
+    ? await appendLegacyAssertionProposal(
+        ledger,
+        source,
+        suffix,
+        String(selectedCandidateIds[0]),
+        String(importedEvidenceIds[0]),
+        String(Reflect.get(preview, "sourceCollectionId")),
+        String(Reflect.get(preview, "scanBatchId")),
+        String(Reflect.get(preview, "stagingBatchId")),
+        String(Reflect.get(preview, "candidateSetHash"))
+      )
     : await appendLegacyStagingApproval(ledger, suffix);
   const postInvocationLedgerFingerprint = ledgerFingerprint(
     await ledger.readAll()
@@ -2640,10 +3567,19 @@ async function appendCanonicalResidentDomainPrefix(input: {
     implementationRevision,
     evidenceMode: "new-ledger-events" as const,
     residentInvocationInputHash: hashCanonical({
+      authorizationKind: input.authorizationKind,
       logicalLocator: locator,
       requestEventId: requested.id,
       executionClaimEventId: claim.id,
-      authorization
+      authorization,
+      previewHash,
+      ...(input.authorizationKind === "human-approval"
+        ? {
+            approvedPreviewHash: previewHash,
+            approvedBy: humanActor.id
+          }
+        : {}),
+      currentPreview
     }),
     outcomeDisposition: input.receiptDisposition ??
       (input.terminal === "post-claim-failed"
@@ -2652,9 +3588,16 @@ async function appendCanonicalResidentDomainPrefix(input: {
     preInvocationLedgerFingerprint,
     postInvocationLedgerFingerprint,
     domainEventIds: [domainEvent.id],
-    artifactHashes: [],
+    artifactHashes: input.authorizationKind === "automatic-policy"
+      ? []
+      : [
+          String(Reflect.get(preview, "reportHash")) as `sha256:${string}`,
+          String(Reflect.get(preview, "candidateSetHash")) as `sha256:${string}`
+        ],
     readModelChanges: ["legacy-staging"],
-    resultSummary: "Canonical resident domain outcome."
+    resultSummary: input.authorizationKind === "automatic-policy"
+      ? "Legacy ontology staging appended evidence-tied assertion proposals."
+      : "Legacy ontology staging approval was recorded."
   };
   const receiptInput: Extract<
     AppendableKnowledgeEvent,
@@ -2724,7 +3667,7 @@ async function appendCanonicalResidentDomainPrefix(input: {
           outcomeReceiptEventId: receipt.id,
           authorization,
           resultHash: hashCanonical(receiptEnvelope),
-          resultArtifactHashes: []
+          resultArtifactHashes: [...receiptEnvelope.artifactHashes]
         }
       }, {
         expectedNextSequence: events.length + 1
@@ -3623,9 +4566,21 @@ async function settledResidentRecovery(
 async function appendLegacyAssertionProposal(
   ledger: InMemoryEventLedger,
   source: KnowledgeEvent,
-  suffix: string
+  suffix: string,
+  candidateId: string,
+  evidenceId: string,
+  sourceCollectionId: string,
+  scanBatchId: string,
+  stagingBatchId: string,
+  candidateSetHash: string
 ): Promise<KnowledgeEvent> {
-  const assertionId = `as_gateway_recovery_${suffix}`;
+  const assertionId = `as_legacy_${createHash("sha256").update([
+    sourceCollectionId,
+    scanBatchId,
+    stagingBatchId,
+    candidateSetHash,
+    candidateId
+  ].join(":")).digest("hex")}`;
   const proposed = await ledger.append({
     type: "assertion.proposed",
     version: 1,
@@ -3636,9 +4591,9 @@ async function appendLegacyAssertionProposal(
     ),
     payload: {
       assertionId,
-      evidenceId: Reflect.get(source.payload, "evidenceId"),
+      evidenceId,
       predicate: "legacy.gateway.recovery",
-      object: suffix,
+      object: candidateId,
       confidence: 0.8,
       reviewState: "proposed"
     }
