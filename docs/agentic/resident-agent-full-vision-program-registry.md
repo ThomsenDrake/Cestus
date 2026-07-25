@@ -33572,3 +33572,103 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1030 — Exact Task12 GREEN fails pre-admission design gate; causal fixture correction authorized
+
+- Recorded at: 2026-07-25T17:05:28Z
+- Exact source-only GREEN
+  `0b40ed92dd308f7a2c3eccdd260d12f9ed454f15`, tree
+  `ff0bd1d1895c8380d14442a5e3a43c541337c8b8`, has sole parent E-1029
+  Task136 source-authority merge
+  `9b59ade713d5baff02d22d1322dded14454362e5` and exact subject
+  `fix(agent): bind legacy candidate receipt semantics`. It changes exactly
+  the three authorized sources. Exact source blobs are legacy-staging adapter
+  `207a57d401eaae0c89361a654e319f98cea3469a`, dispatcher
+  `9c134607804d442f004ea7cb24ca89adf1a5bf80`, and gateway
+  `ec6163d18928a7f5fa09cada18a22c7759b93e2a`; all three E-1026 approved
+  RED test blobs remain exact.
+- Read-only gate verifier `/root/task136_e1029_green_verifier` independently
+  reproduces exact identity, three-source scope, **31/31** named ancestors,
+  dependency quiet, Vitest `4.1.9`, diff, freezes, and clean state. Runtime
+  gates pass focused **79/79**, focused plus loader **81/81**, Task12
+  execution boundary **99/99**, gateway plus loader **48/48**, released
+  cross-boundary **443/443**, all six released adapters **79/79**, typecheck,
+  UI build, factory readiness, mission **20/20**, V4 **20/20**, and all four
+  exact markers. The 17-test card truthfully remains
+  **314 = 301 passed + 13 later-task RED failures**; the 35-file cross array
+  remains **971 = 958 passed + those same 13 failures**.
+- The valid serialized calibrated differential compares exact authority
+  baseline **3,231 = 3,181 passed + 45 failed + 5 pending** to exact GREEN
+  **3,303 = 3,240 passed + 58 failed + 5 pending** and emits
+  `removed=8 mapped=14 addedPassed=53 retainedLaterRed=13`. Baseline
+  JSON/log SHA-256 values are
+  `9b702c237af5deb671fa18df1f4d915c9e63d0b2eb2021ab23ab225faf7e366d`
+  and
+  `3056b283ef27f63c91faa93c299868405f6db0a1d78eb47108eafd59bcedda35`;
+  GREEN JSON/log values are
+  `2d6882244ee8948a6373932da53fb1548688078b6fdbd277e0e86621f9d2b5ee`
+  and
+  `3e747282bbf8a892ab5306ab6aa42f142d8462b1fd28a8109a8189e6977843a4`;
+  comparator log SHA-256 is
+  `517b6e9ba6c01a19bc9dade84b77da1982b36b6af4d6ef699c911f51480dbf23`.
+- Fresh default-parallel timeout variance remains explicitly nonpassing:
+  **3,303 = 3,239 passed + 59 failed + 5 pending**. Its sole difference
+  from the serialized result is the frozen loader privacy assertion, which
+  passed serialized in **10,535.956 ms** and exceeded its explicit
+  30-second ceiling in parallel at **36,739.379 ms**. Parallel JSON/log and
+  variance-proof SHA-256 values are respectively
+  `8fe2a9c6084b3781396b272c7a2c8b6d28673e5baa33f7c1df8cc97afbc30d42`,
+  `aa1a87fa6a62b507b3429e4048af5826d44b3081a703eaa9e8cabecdcfb19357`,
+  and
+  `169591e66da516fb2c1b2fb3ecd7fbb4a1d9088319412a165ee4547b61a942d8`.
+  This observation is not a passing gate.
+- Repository mode exits `1` after all four markers and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no prefix, closure, `29/29`, record-29, or release success.
+- Despite the valid runtime evidence, exact `0b40ed92` fails the
+  pre-admission design gate. The amended design and E-1029 require
+  nonoptional ordered `selectedCandidateBindingHashes` for every exact
+  current selected candidate and require that array in `normalizedInputHash`.
+  The GREEN instead returns `undefined` when all selected candidates omit
+  assertion binding fields, removes the array from both hashes and preview,
+  and permits that omission through dispatcher and gateway "pre-binding"
+  compatibility lanes. No current design, plan, or registry authority grants
+  that exception. Exact `0b40ed92` is rejected before candidate admission;
+  it is not reviewing, approved, or integrated, and no source reviewer is
+  assigned.
+- The root cause is preserved pre-binding test doubles in the Task12
+  dispatcher and gateway tests whose selected current candidates omit
+  required predicate, independent object, and confidence. Source fallback is
+  not an authorized substitute for correcting those fixtures. Authorize one
+  narrower causal test-only correction in exactly
+  `packages/agent/test/legacy-staging-adapter.test.ts`,
+  `packages/agent/test/domain-execution-dispatcher.test.ts`, and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. Freeze the three
+  rejected source blobs above and every other path.
+- The corrected tests must give every legitimate current selected-candidate
+  fixture complete canonical assertion binding material, using released
+  staging preparation where the current test already crosses that boundary.
+  They must causally require adapter preview construction, dispatcher fresh
+  execution, and gateway recovery to reject a missing
+  `selectedCandidateBindingHashes` array rather than enter any compatibility
+  lane. Preserve the legitimate independent-object-not-candidate-ID positive,
+  all eight E-1026 mutation dimensions, all prior lifecycle/currentness/
+  chronology/brand/attestation/readback/evidence/at-most-once assertions,
+  loader policy, and released adapter controls. Do not add fixture-only
+  preview fields, receipt self-oracles, report-store ports, or product edits.
+- Commit one exact test-only causal descendant, measure its focused RED
+  signature against the frozen rejected sources, and obtain a completely
+  fresh independent read-only test review. The GREEN implementer, gate
+  verifier, E-1026 reviewer, coordinator, every prior changed-test author or
+  reviewer, and every analyst of the corrected bytes are ineligible to
+  approve it. Only after that exact RED is approved, recorded append-only,
+  and integrated may a separate event authorize removal of all three
+  compatibility lanes from the three sources.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is a pre-admission GREEN rejection and bounded
+  test-correction authorization, not a Task12 or Task136 product candidate,
+  approval or integration, Task13 authority, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
