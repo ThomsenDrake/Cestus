@@ -34786,3 +34786,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1051 — Exact chronology-corrected Task13 source candidate admitted to fresh review
+
+- Recorded at: 2026-07-25T20:25:29Z
+- Exact corrected Task13 source candidate
+  `92078539b9c7f5060d973441623b66a8c0ba272f`, tree
+  `17fda951b456316d933d64f219ead195b89a66c9`, has sole parent E-1050
+  source-correction authority merge
+  `eda7f17c7e5462e9d94f781ca2549d5127db6ec2` and exact subject
+  `fix(agent): order resident suspension before approval wait`.
+- The correction changes exactly
+  `packages/agent/src/task-orchestrator.ts` by
+  **12 insertions / 4 deletions** to blob
+  `47317a4554ef2ba2accc14ae480d9b1632d19bc9`. Projection source remains
+  frozen at `e203840a748dd1cb47cdcd751000298b02c42559`; exact Task13 source range
+  from E-1044 authority is the two planned sources only,
+  **139 insertions / 9 deletions**.
+- Approved chronology claims test remains exact
+  `c12c00292efccd6fef621d86b5f693a0da3ad8e2`; projection test remains
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`. Every Task12 and later
+  Task136 byte, public type, claim, contract, dependency, route, provider,
+  credential, external-system, and unrelated path remains frozen.
+- The approval-wait handler now retains cancellation precedence, resolves the
+  authoritative current unreleased active-or-expired owning claim, and
+  applies the existing exact resident-suspension interlock before any
+  approval-wait release, waiting result, approval inspection, reclaim, or
+  dispatch. It does not broadly treat every later checkpoint as superseding
+  approval recovery.
+- Approved RED reproduced exact **2 failed + 16 skipped** before the
+  correction. Corrected chronology selector passes **2/2**, complete claims
+  pass **18/18**, and claims plus projection plus approval plus recovery
+  boundaries pass **70/70**. Exact Task136 card is
+  **321 = 310 passed + 11 preserved Task14-through-16 RED failures**.
+- Standalone typecheck and factory readiness pass; mission and V4 pass
+  **20/20** each; all four markers remain exact
+  **29 / 20 / 29 / 15**. Repository mode retains the truthful legacy-staging
+  source first stop. Exact scope, test/projection/Task12/later freezes, public
+  type freeze, ancestry, real dependencies, diff, and clean state pass.
+- Admit only exact `92078539` as Task13 source
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1051_task13_source_review`, who has never
+  authored, reviewed, verified, or analyzed either candidate source byte.
+  The reviewer must inspect both final Task13 sources and the full Task13
+  source range against the approved design and plan, independently attack
+  same-stream/task/run/attempt/retry/lease-generation/causation/instruction
+  validation, cancellation precedence, live and stale approval chronology,
+  exact skip and no-side-effect rules, projection ordering, ordinary and
+  nonresident preservation, and public-type freeze.
+- The reviewer must independently reproduce exact identity, parent, tree,
+  subject, blobs, one-source correction scope, full two-source range, RED and
+  GREEN signatures, focused/boundary/card counts, typecheck, factory,
+  mission, V4, markers, truthful repository first stop, freezes, ancestry,
+  dependencies, diff, and clean state. It may not edit, commit, merge,
+  authorize Task14, substitute a SHA, or make product/record-29/release/
+  prefix/Wave claims. Changed bytes invalidate review.
+- The correction author, test author, rejected-source author and reviewer,
+  RED reviewer, every prior Task136 author/reviewer/verifier/analyst, and
+  coordinator are ineligible to approve changed bytes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact Task13 source review admission, not approval or
+  integration, Task14 authority, Task136 product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
