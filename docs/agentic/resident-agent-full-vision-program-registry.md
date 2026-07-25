@@ -35463,3 +35463,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1061 — Exact Task14 stage-one construction RED admitted to fresh review
+
+- Recorded at: 2026-07-25T22:21:50Z
+- Exact stage-one test-only candidate
+  `75ec9bac1cc8efcb7e866916ba8b5cda7790e53c`, tree
+  `5a9ec2835c6a6c723b9696a9d1a4a8d17f4d087f`, has sole parent E-1060
+  authority merge `ea93475e2d772cb8fb8ae301ceebf10e8fec0e31`
+  and exact subject
+  `test(local-runtime): isolate mounted construction authority`.
+- It changes exactly the three authorized tests by
+  **486 insertions / 665 deletions**. Exact blobs are wake runtime
+  `8269ba2abea46e3b16cb7491cf613e7768969111`, mounted lifecycle store
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, and import policy
+  `7c464d5f664345e1651330111977d7509cb713d7`. The mounted test is the exact
+  valid pre-E-1056 blob. Rejected sources remain frozen at wake
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and store
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`.
+- Exact focused signature is
+  **34 = 32 passed + 2 causal stage-one RED failures**. The real unwrapped
+  portable-workspace/SQLite/started-Core/provider/H/package-dispatcher
+  construction asserts provider source ordinal **6** and durable rows **7**
+  before frozen W rejects it as `stale or foreign`. The import analyzer
+  successfully collects and resolves the local type graph, then reports exact
+  frozen store binder/call arity **5/5** with callback-or-wrapper parameter
+  indices **3 and 4**.
+- No copied/swapped identity, currentness, prefix, or reclaim executable claim
+  is made at this stage. Their prior non-claiming controls are restored and
+  remain future stage-two work after the construction source checkpoint.
+- Exact Task136 card is
+  **321 = 312 passed + 9 failed**, consisting only of the **7** preserved
+  Task15-through-16 RED failures and these **2** stage-one Task14 failures.
+  Relevant boundaries pass **110/110**. Standalone typecheck and factory
+  readiness pass; mission and V4 pass **20/20** each; all four markers remain
+  exact **29 / 20 / 29 / 15**. Repository mode retains the truthful
+  legacy-staging source first stop.
+- Exact three-test scope, source/Task12/13/later/public/claim/contract/
+  dependency freezes, ancestry, real dependencies, diff, and clean state
+  pass.
+- Admit only exact `75ec9bac` as Task14 stage-one test-only
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1061_task14_stage1_red_review`, who has never
+  authored, reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect the complete three-test forward correction against
+  E-1059/E-1060, prove the mounted test exact restoration, reconstruct the
+  real exact construction and ordinal/durable-row evidence, attack fixture
+  identities and absence of wrappers, inspect the recursive AST analyzer
+  against aliased/nested callback counterexamples, and confirm no downstream
+  behavior claim remains. It must reproduce exact identity, parent, tree,
+  subject, blobs, scope, focused/card/boundary counts, typecheck, factory,
+  mission, V4, markers, truthful repository first stop, freezes, ancestry,
+  dependencies, diff, and clean state.
+- The test author, all earlier Task14 source/test authors, reviewers,
+  verifiers, analysts, every prior Task136 participant, and coordinator are
+  ineligible to approve changed bytes. The reviewer may not edit, commit,
+  merge, authorize source correction or Task15, substitute a SHA, or make
+  product/record-29/release/prefix/Wave claims. Changed bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is stage-one test-only review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority, Task136
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
