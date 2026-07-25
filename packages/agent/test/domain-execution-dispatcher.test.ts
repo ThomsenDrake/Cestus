@@ -1210,6 +1210,30 @@ describe("agent domain execution dispatcher", () => {
       prepared.cleanup();
     }
   });
+
+  it("rejects fresh legacy execution when its otherwise current preview omits selected candidate binding hashes", async () => {
+    const fixture = (await residentFactoryFixtures())[5]!;
+
+    await expect(executeResidentCatalogRow(
+      fixture,
+      residentCatalogRows()[10]!,
+      "missing-selected-candidate-binding-hashes",
+      false,
+      {
+        transformCurrentPreview:
+          withoutSelectedCandidateBindingHashes
+      }
+    )).rejects.toThrow(/binding/i);
+
+    const events = await fixture.ledger.readAll();
+    expect(events.filter((event) =>
+      event.type === "assertion.proposed"
+    )).toHaveLength(3);
+    expect(events.filter((event) =>
+      event.type === "agent.resident-domain.outcome-observed.v1" ||
+      event.type === "agent.resident-domain.completed.v1"
+    )).toEqual([]);
+  });
 });
 
 type ResidentFactoryKind =
@@ -2344,6 +2368,14 @@ async function outOfOrderLegacyCandidateFixture(): Promise<{
           if (evidenceId === undefined) {
             throw new Error("Hostile candidate lacks evidence identity.");
           }
+          const evidenceEvent = (await fixture.ledger.readAll()).find(
+            (event) =>
+              event.type === "evidence.ingested" &&
+              event.payload.evidenceId === evidenceId
+          );
+          if (evidenceEvent === undefined) {
+            throw new Error("Hostile candidate lacks durable evidence.");
+          }
           return await fixture.ledger.append({
             type: "assertion.proposed",
             version: 1,
@@ -2352,6 +2384,7 @@ async function outOfOrderLegacyCandidateFixture(): Promise<{
               actor: schedulerActor,
               occurredAt: fixedNow(),
               correlationId: `corr_dispatcher_hostile_order_${index}`,
+              causationId: evidenceEvent.id,
               coreVersion: "0.1.0",
               packVersions: { core: "0.1.0", ingestion: "0.1.0" }
             },
@@ -2361,6 +2394,11 @@ async function outOfOrderLegacyCandidateFixture(): Promise<{
               predicate: "legacy.dispatcher.fixture",
               object: candidateId,
               confidence: 0.8,
+              ...(
+                candidateId === "legacy_candidate_dispatcher_alpha"
+                  ? { subjectRef: "agency:dispatcher-alpha" }
+                  : {}
+              ),
               reviewState: "proposed"
             }
           });
@@ -2703,6 +2741,9 @@ async function prepareStructuralResidentAttestationAttempt(
 interface ResidentCatalogExecutionRuntime {
   readonly dispatcherModule?: object;
   readonly gatewayFactory?: typeof createResidentLoopToolGateway;
+  readonly transformCurrentPreview?: (
+    preview: Readonly<Record<string, unknown>>
+  ) => Readonly<Record<string, unknown>>;
 }
 
 interface SameInvocationResultEvidence {
@@ -2818,13 +2859,69 @@ async function executeResidentCatalogRow(
     runtime.dispatcherModule ?? domainExecutionDispatcherModule
   );
   const capability = await residentApi.create(fixture.binding);
-  const port = residentApi.bind({
-    capability,
-    mountedLedger: fixture.ledger,
-    workspaceId: fixture.workspaceId,
-    residentAgentId: fixture.residentAgentId,
-    taskId: fixture.taskId
-  });
+  const portOriginalFreeze: typeof Object.freeze = Object.freeze;
+  const portFreezeSpy = runtime.transformCurrentPreview === undefined
+    ? undefined
+    : vi.spyOn(Object, "freeze").mockImplementation(((
+        value: object
+      ): Readonly<object> => {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          typeof Reflect.get(value, "prepareResidentDomainExecution") ===
+            "function" &&
+          typeof Reflect.get(value, "invokeAndAttest") === "function"
+        ) {
+          return value;
+        }
+        return portOriginalFreeze(value);
+      }) as typeof Object.freeze);
+  let port: unknown;
+  try {
+    port = residentApi.bind({
+      capability,
+      mountedLedger: fixture.ledger,
+      workspaceId: fixture.workspaceId,
+      residentAgentId: fixture.residentAgentId,
+      taskId: fixture.taskId
+    });
+  } finally {
+    portFreezeSpy?.mockRestore();
+  }
+  if (runtime.transformCurrentPreview !== undefined) {
+    const prepareResidentDomainExecution = requiredUnknownMethod(
+      port,
+      "prepareResidentDomainExecution"
+    );
+    Reflect.set(
+      port as object,
+      "prepareResidentDomainExecution",
+      async (command: unknown) => {
+        const response = await Reflect.apply(
+          prepareResidentDomainExecution,
+          port,
+          [command]
+        );
+        if (
+          typeof command !== "object" ||
+          command === null ||
+          Reflect.get(command, "phase") !== "preview"
+        ) {
+          return response;
+        }
+        const responseRecord = asDataRecord(response);
+        const currentPreview = asDataRecord(responseRecord.currentPreview);
+        const preview = asDataRecord(currentPreview.preview);
+        return Object.freeze({
+          ...responseRecord,
+          currentPreview: Object.freeze({
+            ...currentPreview,
+            preview: runtime.transformCurrentPreview!(preview)
+          })
+        });
+      }
+    );
+  }
   const gateway = Reflect.apply(
     runtime.gatewayFactory ?? createResidentLoopToolGateway,
     undefined,
@@ -3034,6 +3131,40 @@ async function executeResidentCatalogRow(
       : { issuedAttestationInspection }),
     ...(invocationInput === undefined ? {} : { invocationInput })
   };
+}
+
+function withoutSelectedCandidateBindingHashes(
+  preview: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> {
+  const selectedCandidateBindingHashes = Reflect.get(
+    preview,
+    "selectedCandidateBindingHashes"
+  );
+  if (!Array.isArray(selectedCandidateBindingHashes)) {
+    throw new Error(
+      "Dispatcher omission fixture requires canonical selected candidate binding hashes."
+    );
+  }
+  const {
+    selectedCandidateBindingHashes: _omittedBindingHashes,
+    normalizedInputHash: _priorNormalizedInputHash,
+    ...previewWithoutBindingHashes
+  } = preview;
+  const normalizedInputHash = residentTestHash({
+    sourceCollectionId: preview.sourceCollectionId,
+    scanBatchId: preview.scanBatchId,
+    stagingBatchId: preview.stagingBatchId,
+    legacyReportId: preview.legacyReportId,
+    reportHash: preview.reportHash,
+    candidateSetHash: preview.candidateSetHash,
+    selectedCandidateIds: preview.selectedCandidateIds,
+    importedEvidenceIds: preview.importedEvidenceIds,
+    evidenceContentHashes: preview.evidenceContentHashes
+  });
+  return Object.freeze({
+    ...previewWithoutBindingHashes,
+    normalizedInputHash
+  });
 }
 
 async function appendResidentCatalogPlan(
@@ -3471,23 +3602,34 @@ async function residentFactoryFixtures(
       candidateId: "legacy_candidate_dispatcher_alpha",
       evidenceId: "ev_dispatcher_legacy_alpha",
       evidenceContentHash: hash("f"),
+      predicate: "legacy.dispatcher.fixture",
+      object: "legacy_candidate_dispatcher_alpha",
+      confidence: 0.8,
+      subjectRef: "agency:dispatcher-alpha",
       sourcePath: "fixture-alpha.json"
     },
     {
       candidateId: "legacy_candidate_dispatcher_beta",
       evidenceId: "ev_dispatcher_legacy_beta",
       evidenceContentHash: hash("8"),
+      predicate: "legacy.dispatcher.fixture",
+      object: "legacy_candidate_dispatcher_beta",
+      confidence: 0.8,
       sourcePath: "fixture-beta.json"
     },
     {
       candidateId: "legacy_candidate_dispatcher_gamma",
       evidenceId: "ev_dispatcher_legacy_gamma",
       evidenceContentHash: hash("9"),
+      predicate: "legacy.dispatcher.fixture",
+      object: "legacy_candidate_dispatcher_gamma",
+      confidence: 0.8,
       sourcePath: "fixture-gamma.json"
     }
   ]);
   const legacyCandidateIds =
     legacyCandidates.map(({ candidateId }) => candidateId);
+  const legacyEvidenceByCandidate = new Map<string, KnowledgeEvent>();
   let legacyApproval: KnowledgeEvent | undefined;
   let legacyProposals: readonly KnowledgeEvent[] | undefined;
   const legacyContext = {
@@ -3555,15 +3697,22 @@ async function residentFactoryFixtures(
                 actor: schedulerActor,
                 occurredAt: fixedNow(),
                 correlationId: `corr_dispatcher_legacy_proposal_${index}`,
+                causationId:
+                  legacyEvidenceByCandidate.get(candidate.candidateId)!.id,
                 coreVersion: "0.1.0",
                 packVersions: { core: "0.1.0", ingestion: "0.1.0" }
               },
               payload: {
                 assertionId,
                 evidenceId: candidate.evidenceId,
-                predicate: "legacy.dispatcher.fixture",
-                object: candidate.candidateId,
-                confidence: 0.8,
+                predicate: candidate.predicate,
+                object: candidate.object,
+                confidence: candidate.confidence,
+                ...(
+                  Object.hasOwn(candidate, "subjectRef")
+                    ? { subjectRef: candidate.subjectRef }
+                    : {}
+                ),
                 reviewState: "proposed"
               }
             });
@@ -3599,6 +3748,35 @@ async function residentFactoryFixtures(
     ["legacy", legacyLedger]
   ] as const) {
     if ((await ledger.readAll()).length === 0) {
+      if (label === "legacy") {
+        for (const candidate of legacyCandidates) {
+          const evidence = await ledger.append({
+            type: "evidence.ingested",
+            version: 1,
+            streamId: `evidence_${candidate.evidenceId}`,
+            context: {
+              actor: schedulerActor,
+              occurredAt: fixedNow(),
+              correlationId:
+                `corr_dispatcher_legacy_${candidate.candidateId}`,
+              coreVersion: "0.1.0",
+              packVersions: { core: "0.1.0" }
+            },
+            payload: {
+              evidenceId: candidate.evidenceId,
+              source: {
+                kind: "file",
+                label: candidate.sourcePath
+              },
+              contentHash: candidate.evidenceContentHash,
+              mediaType: "application/json",
+              sizeBytes: 1
+            }
+          });
+          legacyEvidenceByCandidate.set(candidate.candidateId, evidence);
+        }
+        continue;
+      }
       await ledger.append({
         type: "evidence.ingested",
         version: 1,

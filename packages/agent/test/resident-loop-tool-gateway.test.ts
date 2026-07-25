@@ -761,6 +761,21 @@ describe("resident-loop tool gateway", () => {
     }
   });
 
+  it("rejects a correctly self-hashed legacy recovery prefix whose preview omits selected candidate binding hashes", async () => {
+    const legacyBinding = await prepareRealGatewayLegacyBinding();
+    try {
+      await expectSemanticResidentReceiptRejected(
+        await appendSemanticResidentRecoveryReceipt({
+          ordinal: 10,
+          mutation: "missing-binding-hashes",
+          legacyBinding
+        })
+      );
+    } finally {
+      legacyBinding.cleanup();
+    }
+  });
+
   it.each([
     "candidate-order",
     "candidate-payload"
@@ -1910,6 +1925,9 @@ function residentLegacyContext(
           candidateId,
           evidenceId: Reflect.get(source.payload, "evidenceId"),
           evidenceContentHash: Reflect.get(source.payload, "contentHash"),
+          predicate: "legacy.gateway.fixture",
+          object: candidateId,
+          confidence: 0.8,
           sourcePath: "gateway-fixture.json"
         }],
         nextActions: []
@@ -2473,6 +2491,7 @@ type SemanticReceiptMutation =
   | "candidate-order"
   | "candidate-payload"
   | "binding-hash"
+  | "missing-binding-hashes"
   | "idempotent-after-claim"
   | "projection-artifacts"
   | "projection-read-model";
@@ -3277,11 +3296,19 @@ function semanticResidentCatalogFixture(
           "Ordinal-10 semantic catalog requires real legacy preparation."
         );
       }
+      const legacyCandidates = automatic
+        ? mutation === "missing-binding-hashes"
+          ? legacyBinding!.candidates.map((candidate) => ({
+              ...candidate,
+              object: candidate.candidateId
+            })) as unknown as RealGatewayLegacyBinding["candidates"]
+          : legacyBinding!.candidates
+        : undefined;
       const selectedCandidateIds = automatic
-        ? legacyBinding!.candidates.map(({ candidateId }) => candidateId)
+        ? legacyCandidates!.map(({ candidateId }) => candidateId)
         : [`legacy_candidate_gateway_${suffix}_a`];
       const selectedCandidateBindingHashes = automatic
-        ? [...legacyBinding!.selectedCandidateBindingHashes]
+        ? legacyCandidates!.map(realGatewayLegacyCandidateBindingHash)
         : [];
       if (automatic && mutation === "binding-hash") {
         selectedCandidateBindingHashes[0] = hashCanonical({
@@ -3320,15 +3347,19 @@ function semanticResidentCatalogFixture(
             ? legacyBinding!.candidateSetHash
             : candidateSetHash,
           selectedCandidateIds,
-          ...(automatic ? { selectedCandidateBindingHashes } : {}),
+          ...(
+            automatic && mutation !== "missing-binding-hashes"
+              ? { selectedCandidateBindingHashes }
+              : {}
+          ),
           importedEvidenceIds: [
             ...(automatic
-              ? legacyBinding!.candidates.map(({ evidenceId }) => evidenceId)
+              ? legacyCandidates!.map(({ evidenceId }) => evidenceId)
               : [String(Reflect.get(source.payload, "evidenceId"))])
           ],
           evidenceContentHashes: [
             ...(automatic
-              ? legacyBinding!.candidates.map(
+              ? legacyCandidates!.map(
                   ({ evidenceContentHash }) => evidenceContentHash
                 )
               : [String(Reflect.get(source.payload, "contentHash"))])
@@ -3340,7 +3371,7 @@ function semanticResidentCatalogFixture(
           ? "Legacy ontology staging appended evidence-tied assertion proposals."
           : "Legacy ontology staging approval was recorded.",
         ...(automatic
-          ? { legacyCandidates: legacyBinding!.candidates }
+          ? { legacyCandidates: legacyCandidates! }
           : {})
       };
     }
@@ -4956,7 +4987,7 @@ async function appendLegacyAssertionProposal(
     payload: {
       assertionId,
       evidenceId,
-      predicate: "legacy.gateway.recovery",
+      predicate: "legacy.gateway.fixture",
       object: candidateId,
       confidence: 0.8,
       reviewState: "proposed"
