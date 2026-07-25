@@ -32229,6 +32229,115 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product release. `neo`, push, Wave 3, credential, provider,
   external-system, pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-1013 — Exact Task12 semantic-receipt correction admitted to fresh review
+
+- Recorded at: 2026-07-25T01:05:14Z
+- Exact forward Task12 correction candidate
+  `eca22dd01a0af2f4ca4074937e6078c74a07dc0a`, tree
+  `833937ed1a6fedcec114cd2a62200f4eaf1097fe`, has sole parent permanent
+  causal RED `8f9cf5aadb4046225eea0c8940676f102f483415` and exact subject
+  `fix(agent): validate semantic resident receipts`. Its correction range
+  begins at E-1012 authority merge
+  `5a979b06c89aa062dca530128200b3c82c55c884` and changes exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`.
+- Permanent causal RED
+  `8f9cf5aadb4046225eea0c8940676f102f483415`, tree
+  `3ee54d21aa495a01d4b113989c759efe14f4194c`, has sole parent exact
+  E-1012 authority `5a979b06`, exact subject
+  `test(agent): expose semantic resident receipt drift`, rejected source blob
+  `fc20fb3e928b3bb4cda463fdf8f4dc319e327735`, and test blob
+  `c4d5410eb7916e4570d6ed10b45697b615110c9b`. Its real-ledger focused
+  run is **47 = 36 passed + exactly 11 failed**. Every failure is the intended
+  invalid receipt being accepted and terminalized; there is no envelope
+  shape, branding, canonical-hash, fixture, schema, collection, API, type, or
+  dependency failure.
+- The eleven causal cases cover ordinal-2 duplicate evidence; ordinal-3
+  invocation-input drift; ordinal-4 context drift; ordinal-5 payload
+  artifact-ID drift; ordinal-6 result-summary drift; ordinal-9
+  authorization-branch drift; ordinal-10 selected-candidate order and
+  candidate payload/object drift; ordinal-2 post-claim idempotent evidence;
+  and ordinal-7 artifact and read-model drift. Each uses the real gateway and
+  `InMemoryEventLedger` with an otherwise valid, correctly self-hashed
+  receipt.
+- Exact GREEN source blob is
+  `76c429687575152df55d12d76d307f35f7f64c08`; exact RED test blob is
+  retained as `c4d5410eb7916e4570d6ed10b45697b615110c9b`. Recovery now receives
+  the exact mounted preview, reconstructs and hashes the exact invocation,
+  validates exact catalog/result/event semantics and branch fields, enforces
+  per-row event cardinality, ordinal-10 candidate order and payload,
+  ordinal-7 preview-derived artifacts/read model, and pre-claim idempotent
+  evidence chronology before any recovered receipt becomes terminal.
+- Final committed bytes pass focused **65/65**, exact Task12 boundary
+  **98/98**, gateway/loader **47/47**, released cross-boundary
+  **443/443** with `TASK137_POLICY_CORPUS_OK allowed=8 rejected=20`,
+  exact adapters **79/79**, standalone typecheck, UI build, factory
+  readiness, mission **20/20** with exact fingerprint
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`,
+  V4 assurance **20/20**, and all four exact contract markers. Coordinator
+  independently reproduced focused **65/65**, confirmed its `0` exit despite
+  the inherited missing-source-map warning, reran exact
+  `npm run factory:check`, and obtained `factory-readiness passed`.
+- Repository mode truthfully exits `1`, emits the four markers, stops first
+  and only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success. The exact
+  sixteen-file product card truthfully remains nonzero with
+  **298 = 285 passed + 13 later Task13-through-16 REDs**.
+- Fresh parallel full-suite evidence remains explicitly non-passing:
+  **3,301 = 3,237 passed + 59 failed + 5 pending**. Its only excess failure
+  is the frozen loader assertion at **36.401 seconds**. This is timeout
+  variance, not a passing gate.
+- Fresh identical serialized baseline/current runs use
+  `--testTimeout=60000 --no-file-parallelism --maxWorkers=1`. Exact baseline
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1` is
+  **3,231 = 3,181 passed + 45 failed + 5 pending**, JSON SHA-256
+  `d6119011c9fc78b6b8ef0fed9569d97eada67d0ffa79268bdbf72f6de10c96d0`.
+  Exact current candidate is
+  **3,301 = 3,238 passed + 58 failed + 5 pending**, JSON SHA-256
+  `a1af7f14e17d4a676aaff1fc89a9915ee80b310ec83f65e62c2ab4d627a36631`.
+- The fresh exact occurrence comparator emits
+  `TASK136_E1012_CALIBRATED_DIFFERENTIAL_OK removed=8 mapped=14 addedPassed=65 retainedLaterRed=13`;
+  its log SHA-256 is
+  `cf6fe129b88128b25de74bec91526f95d35cd05399b73e84ac829aa3be29c412`.
+  Exact cumulative two-file scope, all frozen blobs, sixteen named ancestry
+  checks, dependency quiet, both diff checks, detached-worktree cleanup, and
+  clean tracked/untracked state pass.
+- Preserved frozen blobs are dispatcher source
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, dispatcher test
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, ontology source
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, ontology Task136 test
+  `f1a8bc5eeaf33eaaa9fdd4b793245b4c8aa4f423`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`.
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1013_semantic_receipt_fresh_review` is assigned exact
+  immutable candidate `eca22dd0`, its complete two-commit range, exact final
+  source/test bytes, report, and sealed review package. It must attack each
+  of the eleven new oracles; every E-1012 semantic receipt invariant;
+  complete ordinal 2-through-7, 9, and 10 table enforcement; exact mounted
+  preview and package-owned identities; all earlier lifecycle/W/approval/
+  failed-receipt/nonexecution/at-most-once repairs; default-only dispatcher/G
+  ABI; and preservation of all prior valid assertions.
+- The reviewer must independently reproduce focused, boundary, gateway/
+  loader, released cross-boundary, adapter, typecheck, UI, factory, mission,
+  V4, marker, repository-first-stop, product-card, scope, freeze, ancestry,
+  dependency, diff, clean-state, fresh calibrated-differential, and
+  timeout-variance checks. It has not authored, reviewed, or analyzed any
+  changed candidate byte. The implementer, coordinator, E-1011 reviewer,
+  every earlier source/test author or reviewer, and every changed-byte
+  analyst are ineligible. The reviewer may not edit, commit, merge,
+  substitute a SHA, authorize Task13, or make product/release claims.
+  Changed candidate bytes invalidate review.
+- Task136 advances Task12 `implementing -> candidate -> reviewing` for exact
+  `eca22dd0`. Strict product frontier remains **28 of 29**. This is Task12
+  correction review admission, not Task12 approval/integration, Task13
+  authority, a Task136 product candidate, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, provider, external-system, pull-request, and unrelated actions
+  remain unauthorized.
+
 ## RV-1-E-1011 — Exact Task12 G lifecycle correction admitted to fresh review
 
 - Recorded at: 2026-07-24T23:53:52Z
@@ -32434,3 +32543,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidate, strict record 29, assurance transition, publication, or
   product release. `neo`, push, Wave 3, credential, provider,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1014 — E-1013 placement defect corrected; exact Task12 candidate admitted at registry EOF
+
+- Recorded at: 2026-07-25T01:06:16Z
+- Program commit `f546cb59a3f44346730ed98281b28c6bf1f528d5`
+  preserved a factually correct proposed E-1013 Task12 admission block but
+  mechanically inserted it between committed E-1010 and E-1011 rather than
+  at the append-only registry end. This was a coordinator patch-anchor
+  defect. It was detected before that commit was integrated into the
+  Task136 lineage or dispatched to any reviewer.
+- Preserve `f546cb59` and its exact bytes in ancestry. Do not amend, reset,
+  rebase, reorder, delete, or reconstruct it. Because its physical placement
+  violates chronological append-only ordering, the embedded E-1013 block is
+  non-transition evidence only: it did not move Task12 from implementing,
+  did not admit a candidate, did not authorize review, and did not authorize
+  Task13 or any later action.
+- This E-1014 event is appended after committed E-1012 and is the sole
+  current machine transition authority for the correction admission.
+  It incorporates E-1013's exact candidate identity, TDD topology, eleven
+  causal receipt cases, final source/test blobs, full gate matrix,
+  differential, timeout variance, freezes, scope, and reviewer-independence
+  terms without changing any candidate byte.
+- Exact immutable Task12 candidate
+  `eca22dd01a0af2f4ca4074937e6078c74a07dc0a`, tree
+  `833937ed1a6fedcec114cd2a62200f4eaf1097fe`, has sole parent permanent
+  causal RED `8f9cf5aadb4046225eea0c8940676f102f483415`,
+  whose sole parent is E-1012 authority merge
+  `5a979b06c89aa062dca530128200b3c82c55c884`. Exact final gateway source
+  and test blobs are respectively
+  `76c429687575152df55d12d76d307f35f7f64c08` and
+  `c4d5410eb7916e4570d6ed10b45697b615110c9b`. The cumulative range changes
+  exactly the authorized gateway source and gateway test.
+- The permanent RED is **47 = 36 passed + 11 causal semantic failures**.
+  Final committed bytes pass focused **65/65**, Task12 boundary **98/98**,
+  gateway/loader **47/47**, cross-boundary **443/443**, adapters **79/79**,
+  typecheck, UI, factory, mission **20/20** with the exact committed
+  fingerprint, V4 **20/20**, and all four contract markers. Repository mode
+  stops first and only at the frozen dispatcher blob mismatch and emits no
+  prefix or release-closure success. Product card remains nonzero at
+  **298 = 285 passed + 13 later REDs**.
+- The fresh serialized comparator emits
+  `TASK136_E1012_CALIBRATED_DIFFERENTIAL_OK removed=8 mapped=14 addedPassed=65 retainedLaterRed=13`.
+  Parallel evidence remains non-passing at
+  **3,301 = 3,237 passed + 59 failed + 5 pending**, with only the frozen
+  loader duration beyond the calibrated cohort. Exact scope, freezes,
+  ancestry, dependencies, diffs, temporary-worktree cleanup, and clean state
+  pass.
+- Admit exact `eca22dd0` now as Task12 `implementing -> candidate ->
+  reviewing`. Completely fresh independent read-only reviewer
+  `/root/task136_e1014_semantic_receipt_fresh_review` must review that exact
+  candidate and complete two-commit range, attack every E-1012 invariant and
+  causal oracle, preserve earlier lifecycle/W/approval/failed-receipt/
+  nonexecution/at-most-once requirements, and independently reproduce every
+  focused, boundary, adapter, typecheck, UI, factory, mission, V4, marker,
+  repository-first-stop, product-card, scope, freeze, ancestry, dependency,
+  diff, clean-state, fresh differential, and timeout-variance check.
+- The reviewer has not authored, reviewed, or analyzed any changed candidate
+  byte. The implementer, coordinator, E-1011 reviewer, every earlier
+  source/test author or reviewer, and every changed-byte analyst are
+  ineligible. Changed candidate bytes invalidate review. The reviewer may not
+  edit, commit, merge, substitute a SHA, authorize Task13, or make product or
+  release claims.
+- Strict product frontier remains **28 of 29**. This is only exact Task12
+  correction review admission. It is not Task12 approval/integration,
+  Task13 authority, a Task136 product candidate, strict record 29, assurance
+  transition, publication, or product release. `neo`, push, Wave 3,
+  credential, provider, external-system, pull-request, and unrelated actions
+  remain unauthorized.
