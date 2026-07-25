@@ -33407,3 +33407,100 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidate, strict record 29, assurance-only transition, publication, Wave
   3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1027 — E-1026 placement corrected; exact Task12 causal RED approved at registry EOF
+
+- Recorded at: 2026-07-25T16:19:26Z
+- E-1026 correctly admits exact test-only RED
+  `21935b2197a35c25b194ae57ec5365dd88351049`, tree
+  `1cd13613c17b18a80d5876cd684f143eaf10ee10`, but its physical insertion
+  precedes preserved E-1023-through-E-1025 and E-1021/E-1022/E-1019/E-1020
+  history introduced by prior history-preserving merges. Preserve E-1026
+  unchanged as valid historical evidence. This true-EOF event incorporates
+  its exact candidate identity, three-test scope and blobs, frozen-source
+  blobs, causal signatures, complete gate packet, reviewer assignment,
+  independence rules, and non-product classification, and is the sole
+  current machine transition authority for the RED verdict.
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1026_binding_red_review` returns **APPROVED** with no
+  findings for that exact RED and no other bytes. Review occurred beneath
+  exact clean E-1026 authority merge
+  `04f1884a8373e29e85775969d30d76c8b04c79bc`, whose exact parents are the
+  reviewed RED and E-1026 admission commit
+  `018588d86e9b80d96b7725c1be7ec47c23910d12`. No byte changed during
+  review.
+- The reviewer independently confirms the RED's sole parent
+  `52b2491bdf8a24d61f806aea8c497921a8f9ffdc`, exact three-test scope,
+  registered test blobs, three frozen source blobs, dependency quiet, required
+  ancestry, diff check, and clean state. The focused command collects
+  **79 = 76 passed + 3 causal failures**; the exact 17-test card collects
+  **314 = 298 passed + 16 expected failures**, comprising this Task12 RED
+  plus the preserved thirteen later-task REDs.
+- The reviewer traces two evidence-bound real staging candidates through real
+  dispatcher and gateway boundaries, including one legitimate independent
+  scalar object unequal to its candidate ID and both optional-subject-reference
+  presence states. Predicate, object, confidence, subject-reference presence,
+  subject-reference value, evidence-content hash, candidate order, and binding
+  hash are eight independent mutations. Each mutation's lifecycle envelope,
+  ledger fingerprint, domain-event identities, and preview hash are
+  recomputed, so each reaches the intended semantic comparison without using
+  a receipt as its own oracle or a fixture-only substitute.
+- The reviewer reproduces loader **2/2**, five released adapter-control suites
+  **65/65**, typecheck, UI build, factory readiness, mission **20/20**, V4
+  **20/20**, and all four exact contract markers. Repository mode exits `1`
+  after those markers and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/test/legacy-staging-adapter.test.ts`;
+  it emits no repository-prefix, release-closure, or `29/29` success.
+- Advance only exact `21935b21` test-only RED
+  `reviewing -> approved`. Authorize the repository-prescribed
+  history-preserving no-ff merge of that exact RED into this program branch,
+  followed by exact integration-tree checks and a separate append-only
+  integrated event. This event contains no source-correction authorization;
+  a separate later event is mandatory.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED approval, not RED integration,
+  source-correction authority, Task12 product candidate or approval, Task13
+  authority, a Task136 product candidate, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
+
+## RV-1-E-1028 — Exact Task12 candidate-binding causal RED integrated
+
+- Recorded at: 2026-07-25T16:22:15Z
+- Exact approved test-only RED
+  `21935b2197a35c25b194ae57ec5365dd88351049`, tree
+  `1cd13613c17b18a80d5876cd684f143eaf10ee10`, is integrated by exact
+  history-preserving no-ff merge
+  `6fb07d13efa167189c0c30c23dd2bc8c99fb04b4`. Its exact first parent is
+  E-1027 approval commit
+  `e81e279eb54079240b7bf6e5de7cd191fef2d82c`; its exact second parent is
+  the reviewed RED. Every earlier design, plan, claim, amendment, authority,
+  rejected candidate, review, correction, RED, GREEN, fixture adaptation,
+  release, and E-1026 placement evidence remains an immutable ancestor.
+- The integration tree retains exact approved test blobs legacy-staging
+  adapter `8e143a1dd692ea292124b44ee4b84bd1a934e44f`, dispatcher
+  `13058371223c7f99b089f41c4aabcae734eaa19d`, and gateway
+  `8a1bc1239dc216e261ac2a7164bdd6158fa8bc63`. Product sources remain frozen
+  at legacy-staging adapter
+  `99fbafda3844435109bc249b015b111b9258c210`, dispatcher
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, and gateway
+  `76c429687575152df55d12d76d307f35f7f64c08`.
+- Fresh integration-tree reproduction retains the exact focused causal
+  signature **79 = 76 passed + 3 failed**, factory readiness, mission
+  **20/20**, V4 **20/20**, all four exact markers, blob equality, dependency
+  quiet, diff, ancestry, and clean state. Repository mode retains the
+  truthful test-first stop recorded by E-1027 and emits no prefix, closure,
+  `29/29`, record-29, or release success.
+- Advance only exact test-only RED `approved -> integrated`. This event
+  intentionally contains no source-correction authorization. A separate
+  append-only event after the exact Task136 authority merge is required
+  before any product source byte changes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED integration, not Task12 GREEN authority,
+  a Task12 or Task136 product candidate, Task13 authority, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
