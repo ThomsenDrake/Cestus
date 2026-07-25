@@ -32926,3 +32926,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidate, strict record 29, assurance-only transition, publication, Wave
   3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1019 — Exact 32-path amendment candidate rejected; narrow authority correction authorized
+
+- Recorded at: 2026-07-25T14:54:19Z
+- Completely fresh independent read-only design reviewer
+  `/root/task136_e1018_design_review` and executability reviewer
+  `/root/task136_e1018_exec_review` each inspected exact candidate
+  `40a8d0f630dd986ed4d03ade7422ef2b4d3e5f70`, tree
+  `d5a589a63fce8b663c79e0a73578a7f2533ef992`, and independently rejected
+  those exact bytes. Candidate `40a8d0f6`, its sole parent
+  `a01f7a4362de06992e9d3fc2f8708b4964f6e9c4`, E-1018 admission, and every
+  earlier authority, candidate, review, rejection, RED, GREEN, claim,
+  contract, design, plan, fixture, release, and integration remain preserved
+  unchanged in ancestry.
+- The reviewers reproduced exact candidate identity and ancestry, the exact
+  nine-file cumulative amendment scope with no package or dependency change,
+  the 29-card graph, thirty-two-path `14/17/1` classification, ordered-path
+  hash, adopted baseline blobs and ancestry, V4 **20/20**, mission **20/20**,
+  factory readiness, all four contract markers, diff and clean state. Clean
+  repository mode truthfully stopped first at the dispatcher source blob
+  mismatch and emitted neither prefix nor release-closure success.
+- The implementation plan nevertheless retains operative downstream
+  sixteen-test, thirteen-source, thirty-owned-path, and thirty-four
+  cross-boundary-test constructions. It omits the adopted adapter test from
+  Task16 and Task17 exact commands and from the fresh differential allowlist,
+  and its source-only Task17 proof diffs from the original Task9 RED even
+  though the required later Task12 causal RED changes three tests. The
+  future 32-path candidate therefore cannot satisfy that proof. The repaired
+  plan must use the exact seventeen-test, fourteen-source, thirty-two-path,
+  and thirty-five-cross-boundary-test authority; prove the union of exact
+  source-only GREEN commit deltas; separately prove the later Task12 RED's
+  three exact test paths and blobs; and require fresh candidate review to
+  reproduce both original Task9 and later Task12 RED causality.
+- The Task136 product claim places its E-1017 current-authority amendment
+  before preserved earlier E-957 through E-976 history. The physical tail
+  consequently ends by calling obsolete mission and V4 pins current. Preserve
+  all existing text as historical evidence, but append a true-EOF
+  current-authority section that explicitly supersedes those old pins and
+  controls sequential interpretation.
+- The V4 JSON bytes are not the canonical two-space serialization required
+  by the design and plan. Exact raw file SHA-256
+  `3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438`
+  differs from independently reproduced canonical
+  `JSON.stringify(value, null, 2) + LF` SHA-256
+  `3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930`.
+  Canonicalization therefore requires forward synchronization of the V4,
+  mission, checker, design, plan, and claim pins; the structural assurance
+  data and fingerprint must remain unchanged.
+- Reject exact `40a8d0f6`; it is neither approved nor integrated. Authorize
+  only the smallest forward authority-only correction in the Task136 design,
+  implementation plan, product claim, V4 authority-transfer claim, V4 JSON,
+  V4 checker test, mission JSON, and mission checker. The V4 checker source,
+  mission-checker test, all package product bytes, and every other path remain
+  frozen unless deterministic validation proves a directly required
+  authority synchronization and a later append-only event records it.
+- The corrected candidate must receive entirely fresh independent design and
+  executability reviews; both E-1018 reviewers are ineligible to approve any
+  changed byte. Reproduce canonical serialization and synchronized pins,
+  exact downstream plan executability, V4 **20/20**, mission **20/20**,
+  factory readiness, all four markers, exact graph/order/scope/hash/freeze/
+  ancestry/dependency/diff/clean-state gates, and the truthful repository
+  first stop before admission.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is a candidate-bound rejection and narrow forward
+  authority-correction authorization, not amendment approval or integration,
+  Task12 product authority, Task13 authority, a Task136 product candidate,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
