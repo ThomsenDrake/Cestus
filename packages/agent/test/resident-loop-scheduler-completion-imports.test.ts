@@ -1068,22 +1068,49 @@ function isExactTask14BinderCall(
   node: ts.Node,
   record: SourceRecord
 ): boolean {
+  const property = ts.isIdentifier(node) &&
+    ts.isPropertyAccessExpression(node.parent) &&
+    node.parent.name === node
+      ? node.parent
+      : undefined;
+  const call = property !== undefined &&
+    ts.isCallExpression(property.parent) &&
+    property.parent.expression === property
+      ? property.parent
+      : undefined;
   if (
     record.sourcePath !==
       "packages/local-runtime/src/mounted-wake-lifecycle-store.ts" ||
-    !ts.isIdentifier(node) ||
-    !ts.isPropertyAccessExpression(node.parent) ||
-    node.parent.name !== node ||
-    !ts.isCallExpression(node.parent.parent) ||
-    node.parent.parent.expression !== node.parent ||
-    !ts.isIdentifier(node.parent.expression)
+    property === undefined ||
+    property.questionDotToken !== undefined ||
+    call === undefined ||
+    call.questionDotToken !== undefined ||
+    call.arguments.length !== 1 ||
+    ts.isSpreadElement(call.arguments[0]!) ||
+    !ts.isIdentifier(property.expression) ||
+    !isInsideExactTask14Binder(call)
   ) {
     return false;
   }
   return uniqueDefaultImportLocal(
     record.sourceFile,
     "../../agent/src/domain-execution-dispatcher.js"
-  ) === node.parent.expression.text;
+  ) === property.expression.text;
+}
+
+function isInsideExactTask14Binder(node: ts.Node): boolean {
+  for (
+    let current: ts.Node | undefined = node.parent;
+    current !== undefined;
+    current = current.parent
+  ) {
+    if (ts.isFunctionLike(current)) {
+      return ts.isFunctionDeclaration(current) &&
+        current.name?.text ===
+          "bindMountedResidentLoopAuthorityForFactory";
+    }
+  }
+  return false;
 }
 
 function uniqueDefaultImportLocal(
@@ -1234,7 +1261,9 @@ function protectedMentionControls(): ProtectedMentionControls {
     sourceRecordFromText(task14Path, [
       "import dispatcherDefault from " +
         "'../../agent/src/domain-execution-dispatcher.js';",
-      "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);"
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);",
+      "}"
     ].join("\n")),
     ...protectedMentionSafeReadSources()
   ];
@@ -1266,7 +1295,60 @@ function protectedMentionControls(): ProtectedMentionControls {
         ].join("\n"))
       : record
   );
+  const unsafeTask14Binder = (
+    name: string,
+    body: readonly string[]
+  ) => ({
+    name,
+    sources: base().map((record) =>
+      record.sourcePath === task14Path
+        ? sourceRecordFromText(task14Path, [
+            "import dispatcherDefault from " +
+              "'../../agent/src/domain-execution-dispatcher.js';",
+            ...body
+          ].join("\n"))
+        : record
+    ),
+    violations: [task14Path]
+  });
   const unsafe = [
+    unsafeTask14Binder("Task14 dispatcher zero-argument binder call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort();",
+      "}"
+    ]),
+    unsafeTask14Binder("Task14 dispatcher two-argument binder call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(",
+      "    firstBinding, secondBinding",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Binder("Task14 dispatcher spread binder call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(",
+      "    ...bindings",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Binder("Task14 dispatcher optional-property binder call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault?.bindPackageOwnedResidentDomainExecutionPort(",
+      "    binding",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Binder("Task14 dispatcher optional-call binder call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort?.(",
+      "    binding",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Binder("Task14 dispatcher out-of-binder call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {}",
+      "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);"
+    ]),
     {
       name: "gateway default wrong-order permit tuple",
       sources: base("", "", "", dispatcherPermitFrame([
@@ -2055,7 +2137,9 @@ function dispatcherTransferControls(): readonly DispatcherTransferControl[] {
   const exactTask14 = sourceRecordFromText(task14Path, [
     "import dispatcherDefault from " +
       "'../../agent/src/domain-execution-dispatcher.js';",
-    "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);"
+    "function bindMountedResidentLoopAuthorityForFactory() {",
+    "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);",
+    "}"
   ].join("\n"));
   const splitLegacy = [
     "accepted-graph-review",
@@ -2111,8 +2195,24 @@ function dispatcherTransferControls(): readonly DispatcherTransferControl[] {
       sourceRecordFromText(task14Path, [
         "import dispatcherDefault from " +
           "'../../agent/src/domain-execution-dispatcher.js';",
-        "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);",
+        "function bindMountedResidentLoopAuthorityForFactory() {",
+        "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);",
+        "}",
         extra
+      ].join("\n"))
+    ],
+    violations: [`${task14Path}: alternate dispatcher transfer`]
+  });
+  const unsafeTask14Call = (
+    name: string,
+    body: readonly string[]
+  ): DispatcherTransferControl => ({
+    name,
+    sources: [
+      sourceRecordFromText(task14Path, [
+        "import dispatcherDefault from " +
+          "'../../agent/src/domain-execution-dispatcher.js';",
+        ...body
       ].join("\n"))
     ],
     violations: [`${task14Path}: alternate dispatcher transfer`]
@@ -2136,12 +2236,51 @@ function dispatcherTransferControls(): readonly DispatcherTransferControl[] {
             "'../../agent/src/domain-execution-dispatcher.js';",
           "import second from " +
             "'../../agent/src/domain-execution-dispatcher.js';",
-          "first.bindPackageOwnedResidentDomainExecutionPort(binding);",
+          "function bindMountedResidentLoopAuthorityForFactory() {",
+          "  first.bindPackageOwnedResidentDomainExecutionPort(binding);",
+          "}",
           "void second;"
         ].join("\n"))
       ],
       violations: [`${task14Path}: alternate dispatcher transfer`]
     },
+    unsafeTask14Call("Task14 dispatcher zero-argument call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort();",
+      "}"
+    ]),
+    unsafeTask14Call("Task14 dispatcher two-argument call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(",
+      "    firstBinding, secondBinding",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Call("Task14 dispatcher spread-argument call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(",
+      "    ...bindings",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Call("Task14 dispatcher optional-property call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault?.bindPackageOwnedResidentDomainExecutionPort(",
+      "    binding",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Call("Task14 dispatcher optional call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {",
+      "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort?.(",
+      "    binding",
+      "  );",
+      "}"
+    ]),
+    unsafeTask14Call("Task14 dispatcher out-of-binder call", [
+      "function bindMountedResidentLoopAuthorityForFactory() {}",
+      "dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(binding);"
+    ]),
     unsafeTask14Identity(
       "Task14 dispatcher default export escape",
       "export default dispatcherDefault;"
