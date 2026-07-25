@@ -33010,6 +33010,79 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1025 — Integrated 32-path authority admits exact six-file Task12 TDD
+
+- Recorded at: 2026-07-25T15:42:39Z
+- E-1024 integrated the exact dual-approved 32-path assurance amendment at
+  program commit `2c5df722da11708461f4f8fa83ece965e115b193`; exact
+  history-preserving Task136 authority merge
+  `c80b8e67926579a6b5ef3dbc44da8af6b1a6d014` has parents E-1022
+  admission merge `cacb5b1a795d2766731beb6f5aece8a2f384196d` and that exact
+  integrated program authority. The condition for a separate Task12
+  implementation authorization is satisfied.
+- Authorize Task12 product work in exactly these six paths and no others:
+  `packages/agent/src/adapters/legacy-staging.ts`,
+  `packages/agent/test/legacy-staging-adapter.test.ts`,
+  `packages/agent/src/domain-execution-dispatcher.ts`,
+  `packages/agent/test/domain-execution-dispatcher.test.ts`,
+  `packages/agent/src/resident-loop-tool-gateway.ts`, and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`.
+- The exact starting source blobs are legacy adapter
+  `99fbafda3844435109bc249b015b111b9258c210`, dispatcher
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, and gateway
+  `76c429687575152df55d12d76d307f35f7f64c08`. The exact starting test
+  blobs are legacy adapter
+  `de7cef3123a15fb82891943dc51005165c8c9fcd`, dispatcher
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, and gateway
+  `c4d5410eb7916e4570d6ed10b45697b615110c9b`. Preserve every earlier
+  source/test candidate, rejection, causal RED, GREEN, fixture adaptation,
+  review, and authority commit in ancestry.
+- First create and commit one causal test-only RED changing exactly the three
+  authorized tests. Against the three frozen starting sources it must collect
+  cleanly and fail only for the missing candidate-binding behavior, with no
+  fixture, API, schema, type, dependency, or unrelated failure. No product
+  source may change before that exact RED is committed.
+- The RED must establish a legitimate selected candidate whose independent
+  scalar object differs from `candidateId` and that passes both fresh
+  dispatcher execution and gateway recovery after GREEN. It must independently
+  mutate predicate, object, confidence, optional-subject-reference presence,
+  optional-subject-reference value, evidence content hash, candidate order,
+  and binding hash through real released staging preparation,
+  `InMemoryEventLedger`, real dispatcher execution, and real gateway
+  recovery. Every mutation must fail for its own semantic mismatch.
+- Preserve all prior lifecycle, locator/hash target-stream, loader, released
+  adapter, real opaque identity, before/after W currentness, chronology,
+  private-brand, attestation-shape, exact-readback, complete evidence-table,
+  ordinal-7, ordinal-10, denial/failure field-set, and at-most-once controls.
+  Use no fixture-only preview field, receipt self-oracle, report-store port,
+  raw preview predicate/object, fallback write, runtime activation, provider,
+  credential, network, or external system.
+- After the exact causal RED is committed and reproduced, apply only the
+  smallest GREEN in the three authorized sources. Implement the approved
+  `legacy-selected-candidate-binding.v1` canonical preimage and ordered
+  secret-safe `selectedCandidateBindingHashes`; bind them into
+  `normalizedInputHash` and complete preview hash; independently recompute
+  them in fresh dispatcher and gateway recovery from exact
+  `assertion.proposed` and uniquely matched `evidence.ingested`; and retain
+  exact identity, event order, currentness, private permit/brand,
+  attestation, branch readback, evidence, and at-most-once rules.
+- Run every Task12 focused, loader, adapter, released cross-boundary,
+  typecheck, UI, factory, mission **20/20**, V4 **20/20**, marker,
+  repository-first-stop, 17-test card, scope, source/test/blob-freeze,
+  ancestry, dependency, diff, clean-state, calibrated-differential, and
+  timeout-variance gate from the reviewed plan. Admit one exact candidate
+  only after the RED and GREEN signatures are measured rather than predicted.
+  A completely fresh independent candidate-bound reviewer must approve it;
+  no implementer, coordinator, prior source/test reviewer, or analyst of the
+  new bytes is eligible. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded Task12 TDD authority, not Task12 candidate,
+  approval or integration, Task13 authority, a Task136 product candidate,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-1021 — Corrected amendment candidate rejected; final plan-only correction authorized
 
 - Recorded at: 2026-07-25T15:19:13Z
