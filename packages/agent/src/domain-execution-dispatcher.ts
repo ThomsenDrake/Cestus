@@ -818,6 +818,10 @@ function validateResidentLegacyCandidateEvidence(
       return evidencePayload.evidenceId === evidenceId;
     });
     const evidenceEvent = evidenceEvents[0];
+    const proposalEventIndex = allEvents.indexOf(event);
+    const evidenceEventIndex = evidenceEvent === undefined
+      ? -1
+      : allEvents.indexOf(evidenceEvent);
     const evidenceEventRecord = evidenceEvent === undefined
       ? undefined
       : residentDataRecord(
@@ -846,6 +850,9 @@ function validateResidentLegacyCandidateEvidence(
     if (
       eventRecord.type !== "assertion.proposed" ||
       evidenceEvents.length !== 1 ||
+      proposalEventIndex < 0 ||
+      evidenceEventIndex < 0 ||
+      evidenceEventIndex >= proposalEventIndex ||
       payload.assertionId !== assertionId ||
       payload.evidenceId !== evidenceId ||
       evidenceContentHash !== expectedEvidenceContentHash ||
