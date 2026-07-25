@@ -33742,3 +33742,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1032 — Exact missing-binding-array causal RED approved
+
+- Recorded at: 2026-07-25T17:34:22Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1031_fixture_red_review` returns **APPROVED** with no
+  findings for exact test-only RED
+  `2a4a69a97712070ac5b9c31521223df1d6ac4a52`, tree
+  `4bf07d59785f76deeca79c0e6058f2e76811ca11`, and no other bytes. Review
+  occurred beneath clean E-1031 authority merge
+  `60ccd8cccbe58ac053c0f7730f322eae88b0184d`, whose exact parents are the
+  reviewed RED and E-1031 admission commit
+  `6a0e47a908c46e058ac608cafd2fc094fad15619`. No byte changed during
+  review.
+- The reviewer independently reproduces sole parent
+  `5bd5ee7c28ddab484786dbc86c9912c9280473e0`, exact three-test scope and
+  blobs, three frozen rejected-source blobs, dependency quiet, diff, ancestry,
+  and clean state. Focused RED is **82 = 79 passed + 3 failed**; with loader
+  it is **84 = 81 passed + the same 3 failures**; card accounting is
+  **317 = 301 passed + 16 expected RED failures**; five other released
+  adapters remain **65/65**.
+- The reviewer confirms all legitimate current-candidate fixtures now include
+  complete canonical binding material and exact evidence causation/content.
+  Adapter, fresh dispatcher, and gateway recovery failures isolate only the
+  omitted binding-hash array: normalized input, preview, receipt, lifecycle,
+  fingerprint, and durable evidence hashes are recomputed. The object-equal
+  fixture isolates the rejected compatibility guard; the real released
+  object-unequal positive, all eight earlier mutations, and all prior controls
+  remain passing. No fixture-only preview field, receipt self-oracle,
+  report-store, fallback, or unrelated weakening exists.
+- Typecheck, factory readiness, mission **20/20**, V4 **20/20**, and all four
+  exact markers pass. Repository mode exits `1` after those markers and stops
+  first only at the legacy-staging adopted source blob mismatch, with no
+  prefix, closure, `29/29`, record-29, or release success.
+- Advance only exact `2a4a69a9` test-only RED
+  `reviewing -> approved`. Authorize the history-preserving no-ff merge of
+  that exact RED into this program branch, followed by fresh integration-tree
+  gates and a separate append-only integrated event. This event contains no
+  source-correction authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED approval, not integration or source
+  authority, Task12 or Task136 product candidacy, Task13 authority, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
+
+## RV-1-E-1033 — Exact missing-binding-array causal RED integrated
+
+- Recorded at: 2026-07-25T17:36:09Z
+- Exact approved test-only RED
+  `2a4a69a97712070ac5b9c31521223df1d6ac4a52`, tree
+  `4bf07d59785f76deeca79c0e6058f2e76811ca11`, is integrated by exact
+  history-preserving no-ff merge
+  `058cdd46086ed30ffa5691a053784be9a5140a0a`. Its first parent is E-1032
+  approval commit `28194284ba535b18e98c2f386b5802416821adf1`; its second parent is the
+  exact reviewed RED.
+- Because the test-only RED descends from rejected source GREEN `0b40ed92`,
+  the history-preserving merge necessarily retains those rejected source
+  bytes in its ancestry and integration tree. That preservation does not
+  approve or integrate the rejected source candidate. Exact source status
+  remains rejected under E-1030; only the exact three RED test blobs advance.
+- Fresh integration-tree gates retain focused
+  **82 = 79 passed + 3 failed**, factory readiness, mission **20/20**, V4
+  **20/20**, all four markers, exact test-blob equality, dependency quiet,
+  diff, ancestry, and clean state. Repository mode retains the truthful
+  legacy-staging source first stop and emits no prefix, closure, `29/29`,
+  record-29, or release success.
+- Advance only exact test-only RED `approved -> integrated`. This event
+  intentionally contains no source-correction authorization. A separate
+  append-only event after the exact Task136 authority merge is mandatory
+  before any source byte changes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED integration, not source approval or
+  correction authority, Task12 or Task136 product candidacy, Task13
+  authority, strict record 29, assurance-only transition, publication, Wave
+  3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
