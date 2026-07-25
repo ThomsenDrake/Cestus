@@ -32972,6 +32972,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-1024 — Task136 32-path assurance amendment integrated
+
+- Recorded at: 2026-07-25T15:41:48Z
+- Exact approved candidate
+  `b949744fcd6658d578f9bc3d987563cf82051dc9`, tree
+  `bc218fb006f1282e47c73effddc78b9461ceeea1`, was integrated by exact
+  history-preserving no-ff merge
+  `d79a7e15ded5aa58492133212934b7b3a9af3b0f`. Its first parent is E-1023
+  approval commit `ce1985c615e5953de3c26737005b8ca1b5e706ce`; its second parent is the
+  exact reviewed candidate. Rejected candidates `40a8d0f6` and `9f0e6424`,
+  every correction/review/admission, and all earlier Task136 and V4 history
+  remain immutable ancestors.
+- All exact nine amendment authority blobs in the integration tree equal the
+  reviewed candidate blobs. The merge necessarily preserves the Task136
+  lineage's earlier rejected product/test checkpoints in ancestry and tree;
+  it does not approve, integrate, or admit any Task136 product candidate.
+  Product status remains Task12 `implementing`.
+- Fresh integration-tree gates pass mission **20/20**, V4 **20/20**, all four
+  exact markers, standalone typecheck, factory readiness, canonical V4 and
+  mission pins, exact 29-card order, thirty-two-path `14/17/1` classification
+  and ordered hash, adapter controls, baseline freezes, ancestry,
+  dependencies, diff, nine-blob equality, and clean state.
+- Clean repository mode exits `1` after all four markers and stops first only
+  at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`.
+  It emits no repository-prefix, release-closure, or `29/29` success.
+- Advance the exact 32-path assurance amendment `approved -> integrated`.
+  This event intentionally contains no Task12 implementation authorization.
+  A separate later append-only event is required before any change to the
+  exact six Task12 product paths.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is integrated assurance authority, not a product edit,
+  Task12 product authorization, Task13 authority, a Task136 product
+  candidate, strict record 29, post-record assurance transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-1021 — Corrected amendment candidate rejected; final plan-only correction authorized
 
 - Recorded at: 2026-07-25T15:19:13Z
