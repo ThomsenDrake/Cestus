@@ -32611,3 +32611,102 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   credential, provider, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1015 — Exact `eca22dd0` Task12 candidate rejected; ordinal-10 payload repair authorized
+
+- Recorded at: 2026-07-25T01:30:40Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1014_semantic_receipt_fresh_review` rejects exact Task12
+  candidate `eca22dd01a0af2f4ca4074937e6078c74a07dc0a`, tree
+  `833937ed1a6fedcec114cd2a62200f4eaf1097fe`, and no other candidate.
+  Review occurred beneath clean E-1014 admission merge
+  `b3b657120e2c1e029892c5c603778cb246c36b20`, whose exact first parent is
+  the candidate and whose exact second parent is E-1014 program authority
+  `2f4d53e79eead0bf23f1d0cb52ded9307348a7a9`. No candidate, registry,
+  ref, or repository byte changed during review.
+- Rejection is mandatory because ordinal-10 recovery both accepts
+  semantically divergent assertion/evidence payloads and rejects valid
+  released candidate semantics. The validator binds assertion ID, evidence
+  ID, review state, causation, and `payload.object === candidateId`, but does
+  not bind assertion predicate, confidence, optional subject reference, or
+  the evidence payload's content hash to the selected candidate and mounted
+  preview.
+- A fresh temporary-copy causal regression changed only the ordinal-10
+  assertion predicate while preserving candidate ID, object, evidence,
+  schema, receipt branding, and canonical self-hash. Exact candidate
+  recovery returned `fulfilled` and appended completion instead of rejecting
+  the receipt. The one focused probe failed with 44 existing cases skipped.
+  Temporary review bytes were removed and never entered candidate history.
+- The released `LegacyApprovedAssertionCandidate.object` is an independent
+  scalar, not the candidate ID. Released staging passes predicate, object,
+  confidence, and optional subject reference unchanged into the assertion
+  service. Requiring `object === candidateId` therefore rejects a legitimate
+  selected candidate whenever its object differs from its ID. Current
+  Task12 fixtures mask both defects by setting every ordinal-10 candidate
+  object equal to its candidate ID.
+- The reviewer independently reproduced permanent causal RED
+  **47 = 36 passed + 11 intended failures**, focused **65/65**, Task12
+  boundary **98/98**, gateway/loader **47/47**, released cross-boundary
+  **443/443** with the exact policy marker, adapters **79/79**, typecheck,
+  UI, factory, mission **20/20** with exact fingerprint
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`,
+  V4 **20/20**, all four contract markers, exact identity, sealed package,
+  two-file scope, frozen blobs, sixteen ancestry checks, dependencies, diffs,
+  topology, cleanup, and final clean state.
+- Repository mode truthfully exits `1` first and only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`
+  and emits neither prefix nor release-closure success. Product card remains
+  expected non-passing at **298 = 285 passed + 13 later REDs**.
+- Fresh identical serialized baseline/current evidence remains exact:
+  baseline **3,231 = 3,181 passed + 45 failed + 5 pending**, current
+  **3,301 = 3,238 passed + 58 failed + 5 pending**. The occurrence comparator
+  emits
+  `TASK136_E1012_CALIBRATED_DIFFERENTIAL_OK removed=8 mapped=14 addedPassed=65 retainedLaterRed=13`.
+  Fresh parallel evidence remains non-passing at
+  **3,301 = 3,237 passed + 59 failed + 5 pending**, with the only excess
+  frozen-loader duration at **36.776699739 seconds**.
+- The smallest forward TDD correction is authorized in exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. First add causal
+  real-gateway/ledger cases against exact rejected source blob
+  `76c429687575152df55d12d76d307f35f7f64c08` that:
+  accept a valid ordinal-10 candidate whose independent object differs from
+  its candidate ID; reject otherwise valid, correctly self-hashed receipts
+  when assertion predicate, object, confidence, optional subject reference,
+  or evidence content hash diverges; and retain exact selected-candidate
+  order and all earlier ordinal-10 identity/evidence bindings.
+- Then apply only the smallest source repair: derive the expected ordinal-10
+  assertion and evidence payloads from the exact ordered selected candidates
+  and mounted preview; compare predicate, independent object, confidence,
+  optional subject reference, and evidence content hash exactly; remove the
+  false `object === candidateId` substitution; and preserve all E-1010 and
+  E-1012 lifecycle, currentness, chronology, receipt-table, preview,
+  nonexecution, and at-most-once guarantees.
+- Preserve exact frozen blobs: dispatcher source
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, dispatcher test
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, ontology Task136 test
+  `f1a8bc5eeaf33eaaa9fdd4b793245b4c8aa4f423`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`. Preserve rejected
+  source/test blobs `76c429687575152df55d12d76d307f35f7f64c08`
+  and `c4d5410eb7916e4570d6ed10b45697b615110c9b`, all earlier candidates,
+  REDs, GREENs, reviews, authorities, and the E-1013/E-1014 correction
+  history in ancestry without amendment or reconstruction.
+- The correction must establish exact causal RED and GREEN signatures and
+  rerun every E-1014 focused, boundary, adapter, typecheck, UI, factory,
+  mission, V4, marker, repository-first-stop, product-card, scope, freeze,
+  ancestry, dependency, diff, clean-state, fresh differential, and
+  timeout-variance check. Produce one exact forward candidate and obtain a
+  completely fresh independent read-only review. The E-1014 reviewer,
+  implementer, coordinator, every prior author/reviewer, and every analyst of
+  the new bytes are ineligible to approve them. Changed bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns Task12 `reviewing -> implementing`; strict product frontier
+  remains **28 of 29**. This is exact Task12 rejection and bounded ordinal-10
+  correction authority, not Task12 approval/integration, Task13 authority, a
+  Task136 product candidate, strict record 29, assurance transition,
+  publication, or product release. `neo`, push, Wave 3, credential, provider,
+  external-system, pull-request, and unrelated actions remain unauthorized.
