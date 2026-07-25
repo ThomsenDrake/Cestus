@@ -35321,3 +35321,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1059 — E-1058 causal order corrected; stage-one mounted-construction RED authorized
+
+- Recorded at: 2026-07-25T22:05:04Z
+- Fresh E-1058 test author
+  `/root/task136_e1058_task14_red_correction` proved that no exact legal
+  construction can reach downstream mounted currentness on the frozen
+  rejected sources. It stopped without a commit, reverted only its own
+  uncommitted edits, and returned the Task136 worktree to exact clean head
+  `79548f3f62350ccc1353620305531c071577c6c7`, tree
+  `90abff31b98fd02b92f9ed8b3f98a15b78f93c71`. E-1058 remains valid
+  historical evidence but its combined executable-table sequencing is not
+  currently satisfiable.
+- The exact authenticated mounted store reports source high-water mark equal
+  to the exact provider readback while computing
+  `facts.highWaterOrdinal = 7` from all durable rows. The exact Core/P
+  provider binding retains source high-water ordinal **6** captured before
+  W's required wake lifecycle lease while correctly reporting
+  `durableLedgerEventCount = 7`. Rejected W requires both ordinals and the
+  durable count to be equal, so it returns `stale or foreign` before issuing
+  currentness.
+- Appending one real source event after start does not create a legal escape:
+  mounted facts advance to the new event and ordinal **8**, while the exact
+  already-issued provider authority correctly remains on its admitted
+  pre-start source mark and ordinal **6** with durable count **8**. Passing
+  rejected W would require a copied/rewritten provider identity or filtered
+  ledger, both forbidden. Therefore downstream tests cannot independently
+  reach currentness, prefix, or reclaim until this earlier source defect is
+  corrected.
+- Preserve E-1058, rejected test candidate `97cb528d`, rejected source
+  candidate `79380b78`, all exact blobs, and all earlier history. No new test
+  or source candidate exists and no byte is approved or integrated by this
+  event.
+- Supersede only E-1058's immediate combined-test sequencing. Authorize a
+  smaller stage-one test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`,
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`.
+  Start from rejected test blobs wake
+  `70556992b09541bf3df561f2ea11dc3e2fe95184`, store
+  `7aa88e838202607816bf04a2ae72f93906a66f6b`, imports
+  `42ecbc7b28545893fca9c146990f0a7c564f0e6a`; freeze both rejected sources
+  and every other path.
+- In the wake test retain the real portable workspace, SQLite ledger,
+  started Core runtime, exact provider and H authority, exact package-owned
+  dispatcher capability, and exact unwrapped binding. Assert exact
+  construction succeeds without append and separately assert copied,
+  swapped, pre-Core, foreign, and replayed identities fail without append.
+  The success case must causally expose the source ordinal **6**, durable
+  count **7**, mounted source ordinal **7** comparison; do not claim or test
+  downstream currentness, prefix, or reclaim yet.
+- Forward-restore the mounted-store test from rejected textual-oracle blob
+  `7aa88e83` to the last valid pre-E-1056 blob
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, preserving the rejected blob
+  in ancestry. This removes the invalid source-text currentness and reclaim
+  claims without weakening any earlier valid control.
+- In the import test replace the shallow arity/type-spelling check with a
+  recursive TypeScript AST analyzer that resolves local aliases, unions,
+  intersections, tuples, arrays, object properties, call signatures, method
+  signatures, and nested parameter annotations. Require the exact
+  three-argument package-private store binder, the exact one production call
+  from wake runtime, fixed direct dispatcher default and G named imports, and
+  no callback-bearing or wrapper-bearing construction parameter or alternate
+  production importer.
+- The stage-one descendant must fail only because frozen source retains the
+  high-water comparison and replaceable five-argument construction boundary;
+  it must contain no fixture, collection, API, import, AST, or type failure
+  and must not claim downstream coverage. Establish a new exact signature and
+  run focused, analyzer, exact card, relevant boundaries, typecheck, factory,
+  mission **20/20**, V4 **20/20**, markers, truthful repository first stop,
+  exact three-test scope, freezes, ancestry, real dependencies, diff, and
+  clean-state checks.
+- Admit one exact stage-one RED SHA to a completely fresh independent
+  read-only reviewer. Only after that RED is independently approved, recorded
+  and integrated may a separate event authorize the smallest two-source
+  construction/high-water correction. That source checkpoint must leave
+  currentness, prefix, and reclaim logic otherwise frozen. Only after the
+  checkpoint exists may a separate later event reauthorize the executable
+  downstream tables from E-1058.
+- No author, reviewer, verifier, analyst, or coordinator of changed bytes may
+  approve them. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is causal-order correction and stage-one test-only
+  authority, not test approval or integration, source correction, Task14
+  approval, Task15 authority, Task136 product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
