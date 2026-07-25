@@ -35158,3 +35158,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1057 — Exact Task14 mounted-authority causal RED admitted to fresh review
+
+- Recorded at: 2026-07-25T21:46:55Z
+- Exact test-only candidate
+  `97cb528d04d092ca87d7a6d3e82fb57b3c470a1c`, tree
+  `8614bc1d6a463d9cfd558c8192d764368e8bb4de`, has sole parent E-1056
+  rejection-authority merge
+  `67cec7f42a4f894011bf78c9d56be8c97e3a58b0` and exact subject
+  `test(local-runtime): close mounted resident authority boundaries`.
+- It changes exactly the three authorized tests by
+  **928 insertions / 83 deletions**. Exact blobs are wake runtime
+  `70556992b09541bf3df561f2ea11dc3e2fe95184`, mounted lifecycle store
+  `7aa88e838202607816bf04a2ae72f93906a66f6b`, and import policy
+  `42ecbc7b28545893fca9c146990f0a7c564f0e6a`. Rejected sources remain
+  frozen at wake
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and store
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`.
+- Focused signature is exactly
+  **35 = 30 passed + 5 causal E-1056 failures**. The fixed-construction import
+  control rejects the five-argument replaceable-callback binder. Exact real
+  mounted Core/P/H/dispatcher construction and the canonical-prefix aggregate
+  both expose rejected W comparing source high-water ordinal **6** with total
+  durable rows **7** after its own wake lifecycle append. The mounted-store
+  currentness aggregate rejects the broad orchestration-event admission, and
+  the reclaim aggregate rejects absence of approval-required and
+  effect-outcome-unknown category branches.
+- The three separately named real-mounted aggregates preserve exact package
+  identities and durable fixtures. On rejected bytes the currentness,
+  canonical-prefix, and reclaim layers stop first at the same real W issuance
+  defect; after that source defect is corrected their unchanged assertions
+  exercise the later currentness, canonical-prefix, and category-specific
+  reclaim requirements.
+- Exact 17-test card is
+  **322 = 310 passed + 12 failed**, consisting only of the **7** preserved
+  Task15-through-16 RED failures plus these **5** new Task14 RED failures.
+  Relevant boundary/analyzer tests pass **99/99**. Standalone typecheck and
+  factory readiness pass; mission and V4 pass **20/20** each; all four markers
+  remain exact **29 / 20 / 29 / 15**. Repository mode retains the truthful
+  legacy-staging source first stop.
+- Exact three-test scope, rejected-source/Task12/13/later/public/claim/
+  contract/dependency freezes, ancestry, real dependencies, diff, and clean
+  state pass.
+- Admit only exact `97cb528d` as Task14 test-only
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1057_task14_red_review`, who has never authored,
+  reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect the complete three-test diff against E-1056 and
+  independently reconstruct the real mounted fixture, exact released package
+  identity chain, W source-high-water versus wake-lifecycle-row failure,
+  fixed-constructor import analyzer, currentness analyzer, canonical prefix
+  tables, category reclaim table, exact no-append/no-effect assertions, and
+  downstream layering without accepting fixture-only or structurally wrapped
+  identities. It must reproduce exact identity, parent, tree, subject, blobs,
+  scope, focused/card/boundary signatures, typecheck, factory, mission, V4,
+  markers, truthful repository first stop, freezes, ancestry, dependencies,
+  diff, and clean state.
+- The test author, rejected-source author and reviewer, all prior Task136
+  authors/reviewers/verifiers/analysts, and coordinator are ineligible to
+  approve changed bytes. The reviewer may not edit, commit, merge, authorize
+  source correction or Task15, substitute a SHA, or make product/record-29/
+  release/prefix/Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED review admission, not approval,
+  integration, source correction, Task14 source approval, Task15 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
