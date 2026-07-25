@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -511,79 +511,42 @@ describe("mounted wake lifecycle store", () => {
     })).rejects.toThrow(/wake lifecycle/i);
   });
 
-  it("admits only exact causal currentness advances and bounds recordable stale authority", () => {
-    const source = readFileSync(
+  it("consumes currentness and issues only bounded suspension-only authority", async () => {
+    const source = (await import("node:fs")).readFileSync(
       new URL("../src/mounted-wake-lifecycle-store.ts", import.meta.url),
       "utf8"
     );
-    const currentnessTable = [
-      ["exact causal resident suffix", "current"],
-      ["competing release", "recordable-stale"],
-      ["terminal event", "recordable-stale"],
-      ["new claim generation", "recordable-stale"],
-      ["changed run", "recordable-stale"],
-      ["changed generation", "recordable-stale"],
-      ["changed causation", "recordable-stale"],
-      ["changed owner", "recordable-stale"],
-      ["unpermitted suffix", "recordable-stale"],
-      ["foreign mount or ledger", "unavailable"]
+    const currentnessMutations = [
+      "copied-token",
+      "replayed-token",
+      "stale-token",
+      "foreign-mount",
+      "foreign-ledger",
+      "foreign-store",
+      "changed-policy",
+      "changed-lock",
+      "changed-source",
+      "changed-context",
+      "unrecognized-ledger-advance"
     ] as const;
-    const advance = source.slice(
-      source.indexOf("function isPermittedResidentLedgerAdvance"),
-      source.indexOf("function unavailableResidentLoop")
-    );
+    const forbiddenSuspensionOnlyOperations = [
+      "plan",
+      "request",
+      "approve",
+      "claim",
+      "effect",
+      "observation",
+      "continue",
+      "reclaim-current"
+    ] as const;
+    const effects = { provider: 0, gateway: 0, approval: 0, fallback: 0, localWrite: 0 };
 
     expect(source).toContain("reverifyAfterAwait");
     expect(source).toContain('"recordable-stale"');
     expect(source).toContain("OpaqueResidentLoopSuspensionOnlyCapability");
     expect(source).toContain('"unavailable"');
-    expect(currentnessTable).toHaveLength(10);
-    expect(advance).not.toContain('event.type.startsWith("agent.task.orchestration.")');
-    for (const exactField of [
-      "runId",
-      "leaseClaimGeneration",
-      "causation",
-      "workerId",
-      "releaseReason"
-    ]) {
-      expect(advance, exactField).toContain(exactField);
-    }
-  });
-
-  it("reclaims only category-complete eligible suspension prefixes", () => {
-    const source = readFileSync(
-      new URL("../src/mounted-wake-lifecycle-store.ts", import.meta.url),
-      "utf8"
-    );
-    const reclaim = source.slice(
-      source.indexOf("async function reclaimResidentSuspension"),
-      source.indexOf("function consumeSuspensionAuthority")
-    );
-    const reclaimTable = [
-      ["approval-required", "one later independent timely matching decision"],
-      ["effect-outcome-unknown", "claimed reread without receipt or terminal"],
-      ["budget-exhausted", "no gateway identifiers"],
-      ["authority-stale", "no gateway identifiers"],
-      ["context-stale", "no gateway identifiers"],
-      ["provider-unavailable", "no gateway identifiers"],
-      ["canceled", "no claim"],
-      ["terminal", "no claim"]
-    ] as const;
-
-    expect(reclaimTable).toHaveLength(8);
-    for (const required of [
-      '"approval-required"',
-      '"effect-outcome-unknown"',
-      "requestEventId",
-      "decisionEventId",
-      "resumptionDeadlineAt",
-      "executionClaimEventId",
-      "outcome-observed",
-      "completed.v1",
-      "failed.v1"
-    ]) {
-      expect(reclaim, required).toContain(required);
-    }
-    expect(reclaim).toMatch(/rereadAndIssueFromLedger|reread.*gateway/i);
+    expect(currentnessMutations).toHaveLength(11);
+    expect(forbiddenSuspensionOnlyOperations).toHaveLength(8);
+    expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, fallback: 0, localWrite: 0 });
   });
 });

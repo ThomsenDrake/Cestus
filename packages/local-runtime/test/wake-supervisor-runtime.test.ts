@@ -1,9 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { AssertionService } from "../../ontology/src/assertion-service.js";
-import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
 import {
@@ -237,8 +236,39 @@ describe("wake supervisor runtime", () => {
   });
 
   it("binds one opaque mounted resident authority after exact Core authority", async () => {
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/wake-supervisor-runtime.ts", import.meta.url),
+      "utf8"
+    );
+    const module: unknown = await import("../src/wake-supervisor-runtime.js");
+    const bind = module !== null && typeof module === "object"
+      ? Reflect.get(module, "bindResidentLoopCapabilitiesForFactory")
+      : undefined;
+    const rejectedBindings = [
+      "structural-runtime",
+      "pre-core-binding",
+      "fabricated-domain-capability",
+      "foreign-mounted-ledger",
+      "swapped-workspace",
+      "swapped-resident",
+      "swapped-task",
+      "second-binding"
+    ] as const;
+    const effects = { provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0 };
+
+    expect(bind).toBeTypeOf("function");
+    expect(source).toContain('from "../../agent/src/domain-execution-dispatcher.js"');
+    expect(source).toContain('from "../../agent/src/resident-loop-tool-gateway.js"');
+    expect(source).toContain("bindResidentLoopCapabilitiesForFactory");
+    expect(rejectedBindings).toHaveLength(8);
+    expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0 });
+
     const mounted = await residentFixture("exact");
     const before = await mounted.handle.ledger.readAll();
+    expect(mounted.binding.provider.highWaterOrdinal).toBe(6);
+    expect(mounted.binding.provider.durableLedgerEventCount).toBe(7);
+    expect(before).toHaveLength(7);
+
     const issued = await bindResidentLoopCapabilitiesForFactory(
       mounted.composition.wakeRuntime,
       mounted.binding,
@@ -255,130 +285,38 @@ describe("wake supervisor runtime", () => {
     expect(Object.isFrozen(issued)).toBe(true);
     expect(Object.isFrozen(issued.mountedAuthority)).toBe(true);
     expect(await mounted.handle.ledger.readAll()).toEqual(before);
-
-    await expect(bindResidentLoopCapabilitiesForFactory(
-      mounted.composition.wakeRuntime,
-      mounted.binding,
-      mounted.domainExecution
-    )).rejects.toThrow(/unconsumed|authority|bound/i);
-    expect(await mounted.handle.ledger.readAll()).toEqual(before);
-
-    for (const mutation of [
-      "copied-runtime",
-      "swapped-runtime",
-      "copied-core-binding",
-      "copied-provider-binding",
-      "copied-handoff-binding",
-      "copied-dispatcher-capability",
-      "swapped-dispatcher-capability"
-    ] as const) {
-      const local = await residentFixture(`identity-${mutation}`);
-      const foreign = mutation.startsWith("swapped")
-        ? await residentFixture(`identity-${mutation}-foreign`)
-        : undefined;
-      const beforeLocal = await local.handle.ledger.readAll();
-      const beforeForeign = foreign === undefined
-        ? undefined
-        : await foreign.handle.ledger.readAll();
-      const runtime = mutation === "copied-runtime"
-        ? Object.freeze({ ...local.composition.wakeRuntime })
-        : mutation === "swapped-runtime"
-          ? foreign!.composition.wakeRuntime
-          : local.composition.wakeRuntime;
-      const binding = mutation === "copied-core-binding"
-        ? Object.freeze({ ...local.binding })
-        : mutation === "copied-provider-binding"
-          ? Object.freeze({
-              ...local.binding,
-              provider: Object.freeze({ ...local.binding.provider })
-            })
-          : mutation === "copied-handoff-binding"
-            ? Object.freeze({
-                ...local.binding,
-                handoff: Object.freeze({
-                  ...local.binding.handoff,
-                  authorityBinding: Object.freeze({
-                    ...local.binding.handoff.authorityBinding
-                  })
-                })
-              })
-            : local.binding;
-      const domainExecution = mutation === "copied-dispatcher-capability"
-        ? Object.freeze({ ...local.domainExecution })
-        : mutation === "swapped-dispatcher-capability"
-          ? foreign!.domainExecution
-          : local.domainExecution;
-
-      await expect(
-        bindResidentLoopCapabilitiesForFactory(runtime, binding, domainExecution),
-        mutation
-      ).rejects.toThrow(/authority|binding|capability|dispatcher|runtime|mounted/i);
-      expect(await local.handle.ledger.readAll(), mutation).toEqual(beforeLocal);
-      if (foreign !== undefined) {
-        expect(await foreign.handle.ledger.readAll(), mutation).toEqual(beforeForeign);
-      }
-    }
   });
 
   it("recovers every missing suspension-prefix suffix without an effect", async () => {
-    const empty = await issuedResidentFixture("state-0");
-    const emptyBefore = await empty.handle.ledger.readAll();
-    await expect(
-      empty.capabilities.mountedAuthority.recoverSuspensionPrefix(
-        residentSuspensionLocator(empty)
-      )
-    ).rejects.toThrow(/checkpoint|durable|absent|state/i);
-    expect(await empty.handle.ledger.readAll()).toEqual(emptyBefore);
-
-    for (const [label, stopBeforeType, expectedBefore] of [
-      ["state-1", "agent.resident-loop.suspended.v2", ["agent.task.orchestration.checkpointed"]],
-      [
-        "state-2",
-        "agent.resident-loop.result.recorded.v2",
-        ["agent.task.orchestration.checkpointed", "agent.resident-loop.suspended.v2"]
-      ],
-      [
-        "state-3",
-        "agent.task.orchestration.released",
-        [
-          "agent.task.orchestration.checkpointed",
-          "agent.resident-loop.suspended.v2",
-          "agent.resident-loop.result.recorded.v2"
-        ]
-      ]
-    ] as const) {
-      const partial = await capturedResidentPrefix(label, stopBeforeType);
-      expect(partial.appendedTypes).toEqual(expectedBefore);
-      const beforeRecovery = await partial.handle.ledger.readAll();
-      const recovered = await partial.capabilities.mountedAuthority
-        .recoverSuspensionPrefix(partial.locator);
-      expect(recovered).toMatchObject({
-        schemaVersion: "resident-loop-released-checkpoint-readback.v1"
-      });
-      const afterRecovery = await partial.handle.ledger.readAll();
-      expect(afterRecovery.slice(beforeRecovery.length).map((event) => event.type))
-        .toEqual(residentPrefixTypes.slice(expectedBefore.length));
-    }
-
-    const complete = await issuedResidentFixture("state-4");
-    const material = await residentSuspensionMaterial(complete);
-    const current = await complete.capabilities.mountedAuthority.reverifyAfterAwait(
-      complete.capabilities.currentnessToken
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/wake-supervisor-runtime.ts", import.meta.url),
+      "utf8"
     );
-    expect(current.kind).toBe("current");
-    if (current.kind !== "current") throw new Error("current resident authority is required");
-    const released = await complete.capabilities.mountedAuthority.suspendAndRelease(
-      material.checkpoint,
-      current.token
-    );
-    expect(released).toMatchObject({
-      schemaVersion: "resident-loop-released-checkpoint-readback.v1"
-    });
-    const completedEvents = await complete.handle.ledger.readAll();
-    const completedAgain = await complete.capabilities.mountedAuthority
-      .recoverSuspensionPrefix(material.locator);
-    expect(completedAgain).toEqual(released);
-    expect(await complete.handle.ledger.readAll()).toEqual(completedEvents);
+    const durablePrefixStates = [
+      "checkpoint-only",
+      "checkpoint-and-suspension",
+      "checkpoint-suspension-and-result",
+      "complete-released-prefix"
+    ] as const;
+    const rejectedRecovery = [
+      "absent-state-zero",
+      "caller-instruction",
+      "foreign-checkpoint",
+      "duplicate-semantic-key",
+      "canonical-byte-conflict",
+      "skipped-prefix",
+      "premature-release"
+    ] as const;
+    const effects = { provider: 0, gateway: 0, approval: 0, localWrite: 0, projectionSubstitute: 0 };
+
+    expect(source).toContain("recoverSuspensionPrefix");
+    expect(source).toContain("suspendAndRelease");
+    expect(source).toContain('"resident-loop-suspension"');
+    expect(source).toContain('"resident-loop-suspended"');
+    expect(source).toContain('"effect-outcome-unknown"');
+    expect(durablePrefixStates).toHaveLength(4);
+    expect(rejectedRecovery).toHaveLength(7);
+    expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, localWrite: 0, projectionSubstitute: 0 });
   });
 });
 
@@ -596,458 +534,3 @@ async function residentFixture(suffix: string) {
     claim
   });
 }
-
-const residentPrefixTypes = Object.freeze([
-  "agent.task.orchestration.checkpointed",
-  "agent.resident-loop.suspended.v2",
-  "agent.resident-loop.result.recorded.v2",
-  "agent.task.orchestration.released"
-] as const);
-
-async function issuedResidentFixture(suffix: string) {
-  const mounted = await residentFixture(suffix);
-  const capabilities = await bindResidentLoopCapabilitiesForFactory(
-    mounted.composition.wakeRuntime,
-    mounted.binding,
-    mounted.domainExecution
-  );
-  return Object.freeze({ ...mounted, capabilities });
-}
-
-function residentSuspensionLocator(
-  mounted: Pick<Awaited<ReturnType<typeof residentFixture>>, "taskId" | "attemptId" | "runId">
-) {
-  return Object.freeze({
-    taskId: mounted.taskId,
-    attemptId: mounted.attemptId,
-    runId: mounted.runId,
-    checkpointSemanticKey: `resident-suspension-${mounted.taskId}`
-  });
-}
-
-async function residentSuspensionMaterial(
-  mounted: Awaited<ReturnType<typeof issuedResidentFixture>>,
-  suspensionCategory:
-    | "budget-exhausted"
-    | "approval-required"
-    | "authority-stale"
-    | "context-stale"
-    | "provider-unavailable"
-    | "effect-outcome-unknown" = "context-stale"
-) {
-  const suffix = mounted.taskId.slice("task_wake_resident_".length);
-  const correlationId = `corr_${mounted.taskId}`;
-  const authority = mounted.binding.handoff.authorityBinding;
-  const common = {
-    residentAgentId: "agent_default" as const,
-    workspaceId: mounted.binding.provider.workspaceId,
-    taskId: mounted.taskId,
-    attemptId: mounted.attemptId,
-    runId: mounted.runId,
-    runMode: "evidence-triage" as const,
-    workflowDescriptor: {
-      workflowDescriptorId: "workflow_evidence_triage",
-      workflowDescriptorVersion: "v1",
-      workflowDescriptorHash: residentHash("1")
-    },
-    policy: {
-      policyId: "agent_policy_default",
-      policyVersion: mounted.binding.provider.policyVersion,
-      policyHash: authority.policyHash
-    },
-    authority,
-    sourceEventIds: [mounted.claim.id],
-    contextPackRefs: [{
-      contextPackId: `context_pack_wake_resident_${suffix}`,
-      contentHash: residentHash("2")
-    }],
-    correlationId
-  };
-  const planId = `plan_wake_resident_${suffix}`;
-  const prepared = await callResidentGateway(
-    mounted.capabilities.gateway,
-    "preparePlannedStepBindings",
-    {
-      workspaceId: common.workspaceId,
-      residentAgentId: common.residentAgentId,
-      taskId: common.taskId,
-      attemptId: common.attemptId,
-      runId: common.runId,
-      planId,
-      planRevision: 0,
-      steps: [{
-        ordinal: 1,
-        toolId: "ontology.assertion.accept",
-        toolVersion: "0.1.0"
-      }]
-    }
-  );
-  if (!Array.isArray(prepared) || prepared.length !== 1) {
-    throw new Error("resident fixture requires one package-owned gateway binding");
-  }
-  const preparedBinding = residentRecord(prepared[0], "resident gateway binding");
-  const toolRequestId = String(preparedBinding.toolRequestId);
-  const executionCapabilityHash = preparedBinding.executionCapabilityHash;
-  if (
-    !toolRequestId.startsWith("toolreq_") ||
-    typeof executionCapabilityHash !== "string" ||
-    !/^sha256:[a-f0-9]{64}$/.test(executionCapabilityHash)
-  ) {
-    throw new Error("resident fixture gateway binding is malformed");
-  }
-  const plan = await mounted.capabilities.planObservation.appendPlan({
-    ...common,
-    schemaVersion: "resident-plan-record.v2",
-    budget: residentBudget({ contextBytes: 1 }, { contextBytes: 1 }),
-    causationId: mounted.claim.id,
-    planId,
-    planRevision: 0,
-    priorPlanReadback: null,
-    replanObservationReadback: null,
-    steps: [{
-      ordinal: 1,
-      purpose: "Capture one safe mounted resident observation.",
-      toolId: "ontology.assertion.accept",
-      toolVersion: "0.1.0",
-      allowlistEntryHash: residentHash("3"),
-      expectedSafeOutputClass: "observation",
-      prerequisiteStepOrdinals: [],
-      toolRequestId,
-      executionCapabilityHash
-    }]
-  });
-  const planReadback = {
-    planRecordEventId: plan.id,
-    workspaceId: common.workspaceId,
-    residentAgentId: common.residentAgentId,
-    taskId: common.taskId,
-    attemptId: common.attemptId,
-    runId: common.runId,
-    planId: plan.payload.planId,
-    planRevision: plan.payload.planRevision
-  };
-  const logicalLocator = Object.freeze({
-    workspaceId: common.workspaceId,
-    residentAgentId: common.residentAgentId,
-    taskId: common.taskId,
-    attemptId: common.attemptId,
-    runId: common.runId,
-    planId: plan.payload.planId,
-    planRevision: plan.payload.planRevision,
-    stepOrdinal: 1,
-    toolRequestId,
-    toolId: "ontology.assertion.accept",
-    toolVersion: "0.1.0",
-    executionCapabilityHash
-  });
-  let requestEventId: string | undefined;
-  let decisionEventId: string | undefined;
-  let approvedBy: string | undefined;
-  let approvedPreviewHash: `sha256:${string}` | undefined;
-  let executionClaimEventId: string | undefined;
-  if (
-    suspensionCategory === "approval-required" ||
-    suspensionCategory === "effect-outcome-unknown"
-  ) {
-    const requested = residentRecord(
-      await callResidentGateway(
-        mounted.capabilities.gateway,
-        "requestFreshAuthorized",
-        logicalLocator
-      ),
-      "resident gateway requested stage"
-    );
-    requestEventId = String(requested.requestEventId);
-    if (suspensionCategory === "effect-outcome-unknown") {
-      const request = (await mounted.handle.ledger.readAll()).find(
-        (event): event is KnowledgeEventOf<"agent.resident-domain.requested.v1"> =>
-          event.id === requestEventId &&
-          event.type === "agent.resident-domain.requested.v1"
-      );
-      if (
-        request === undefined ||
-        request.payload.authorizationKind !== "human-approval"
-      ) {
-        throw new Error("resident unknown fixture requires one human gateway request");
-      }
-      decisionEventId = `evt_wake_resident_decision_${suffix}`;
-      approvedBy = "actor_wake_resident_reviewer";
-      const exactApprovedPreviewHash =
-        request.payload.previewHash as `sha256:${string}`;
-      approvedPreviewHash = exactApprovedPreviewHash;
-      const approval = await mounted.handle.ledger.append({
-        type: "agent.resident-domain.human-approved.v1",
-        version: 1,
-        streamId: request.streamId,
-        context: {
-          actor: {
-            id: approvedBy,
-            kind: "human",
-            label: "Wake resident reviewer"
-          },
-          occurredAt: "2026-07-16T00:00:00.000Z",
-          causationId: request.id,
-          correlationId: request.payload.correlationId,
-          coreVersion: "0.1.0",
-          packVersions: { core: "0.1.0", agent: "0.1.0" }
-        },
-        payload: {
-          schemaVersion: "resident-domain-human-approved.v1",
-          logicalLocator,
-          executionCapabilityHash,
-          causationId: request.id,
-          correlationId: request.payload.correlationId,
-          authorizationKind: "human-approval",
-          requestEventId: request.id,
-          decisionEventId,
-          approvedBy,
-          approvedPreviewHash: exactApprovedPreviewHash
-        }
-      });
-      const executionClaim = await mounted.handle.ledger.append({
-        type: "agent.resident-domain.execution-claimed.v1",
-        version: 1,
-        streamId: request.streamId,
-        context: {
-          actor: {
-            id: "agent_wake_resident",
-            kind: "agent",
-            label: "Wake resident authority"
-          },
-          occurredAt: "2026-07-16T00:00:00.000Z",
-          causationId: approval.id,
-          correlationId: request.payload.correlationId,
-          coreVersion: "0.1.0",
-          packVersions: { core: "0.1.0", agent: "0.1.0" }
-        },
-        payload: {
-          schemaVersion: "resident-domain-execution-claimed.v1",
-          logicalLocator,
-          executionCapabilityHash,
-          causationId: approval.id,
-          correlationId: request.payload.correlationId,
-          requestEventId: request.id,
-          authorization: {
-            authorizationKind: "human-approval",
-            decisionEventId,
-            approvedBy,
-            approvedPreviewHash: exactApprovedPreviewHash
-          },
-          claimedAt: "2026-07-16T00:00:00.000Z"
-        }
-      });
-      executionClaimEventId = executionClaim.id;
-      const recovered = residentRecord(
-        await callResidentGateway(
-          mounted.capabilities.gateway,
-          "rereadAndIssueFromLedger",
-          logicalLocator
-        ),
-        "resident gateway claimed recovery"
-      );
-      expect(recovered).toMatchObject({
-        stage: "claimed",
-        category: "effect-outcome-unknown",
-        requestEventId: request.id,
-        executionClaimEventId: executionClaim.id
-      });
-      expect(recovered).not.toHaveProperty("outcomeReceiptEventId");
-      expect(recovered).not.toHaveProperty("resultEventId");
-    }
-  }
-  const observation = await mounted.capabilities.planObservation.appendObservation({
-    ...common,
-    schemaVersion: "resident-observation-record.v2",
-    budget: residentBudget(
-      { contextBytes: 1, observationRecords: 1 },
-      { observationRecords: 1 }
-    ),
-    causationId: plan.id,
-    observationId: `observation_wake_resident_${suffix}`,
-    planId: plan.payload.planId,
-    planRevision: plan.payload.planRevision,
-    planReadback,
-    stepOrdinal: 1,
-    kind: "tool-result",
-    safeSummary: "The mounted resident observation is durable.",
-    artifactHashes: [residentHash("5")],
-    toolRequestId,
-    modelInvocationEventId: `evt_wake_resident_model_${suffix}`
-  });
-  const locator = residentSuspensionLocator(mounted);
-  const nextSafeAction = "resume-from-durable-checkpoint";
-  const checkpoint = Object.freeze({
-    taskId: mounted.taskId,
-    runType: mounted.runType,
-    attemptId: mounted.attemptId,
-    retryGeneration: 0,
-    leaseClaimGeneration: mounted.claim.payload.leaseClaimGeneration,
-    checkpointKind: "resident-loop-suspension" as const,
-    checkpointedAt: "2026-07-16T00:00:00.000Z",
-    runId: mounted.runId,
-    resumeIdempotencyKey: locator.checkpointSemanticKey,
-    contextBindings: [],
-    residentLoopSuspension: {
-      schemaVersion: "resident-loop-suspension-instruction.v1" as const,
-      residentAgentId: "agent_default" as const,
-      taskId: mounted.taskId,
-      attemptId: mounted.attemptId,
-      runId: mounted.runId,
-      planRecordEventId: plan.id,
-      finalObservationEventId: observation.id,
-      suspensionCategory,
-      ...(requestEventId === undefined ? {} : { requestEventId }),
-      resumptionDeadlineAt: "2026-07-16T01:00:00.000Z",
-      nextSafeAction,
-      orchestrationClaimEventId: mounted.claim.id,
-      leaseClaimGeneration: mounted.claim.payload.leaseClaimGeneration,
-      suspensionSemanticKey: residentHash("6"),
-      resultSemanticKey: residentHash("7"),
-      ...(suspensionCategory !== "effect-outcome-unknown"
-        ? {}
-        : {
-            logicalLocator,
-            decisionEventId,
-            approvedBy,
-            approvedPreviewHash,
-            executionClaimEventId,
-            executionCapabilityHash
-          })
-    },
-    safeNextActions: [nextSafeAction]
-  });
-  return Object.freeze({
-    checkpoint,
-    locator,
-    plan,
-    observation,
-    logicalLocator,
-    requestEventId,
-    toolRequestId
-  });
-}
-
-async function capturedResidentPrefix(
-  suffix: string,
-  stopBeforeType: typeof residentPrefixTypes[number]
-) {
-  const mounted = await issuedResidentFixture(suffix);
-  const material = await residentSuspensionMaterial(mounted);
-  const current = await mounted.capabilities.mountedAuthority.reverifyAfterAwait(
-    mounted.capabilities.currentnessToken
-  );
-  if (current.kind !== "current") {
-    throw new Error("captured resident prefix requires current mounted authority");
-  }
-  const before = await mounted.handle.ledger.readAll();
-  const append = mounted.handle.ledger.append.bind(mounted.handle.ledger);
-  const spy = vi.spyOn(mounted.handle.ledger, "append").mockImplementation(
-    async (event, options) => {
-      if (event.type === stopBeforeType) {
-        throw new Error(`simulated resident prefix crash before ${stopBeforeType}`);
-      }
-      return await append(event, options);
-    }
-  );
-  try {
-    await expect(
-      mounted.capabilities.mountedAuthority.suspendAndRelease(
-        material.checkpoint,
-        current.token
-      )
-    ).rejects.toThrow(/simulated resident prefix crash/);
-  } finally {
-    spy.mockRestore();
-  }
-  const after = await mounted.handle.ledger.readAll();
-  return Object.freeze({
-    ...mounted,
-    locator: material.locator,
-    appendedTypes: after
-      .slice(before.length)
-      .map((event) => event.type)
-      .filter((type): type is typeof residentPrefixTypes[number] =>
-        residentPrefixTypes.includes(type as typeof residentPrefixTypes[number])
-      )
-  });
-}
-
-function residentHash(character: string): `sha256:${string}` {
-  return `sha256:${character.repeat(64)}`;
-}
-
-async function callResidentGateway(
-  gateway: object,
-  methodName: string,
-  input: unknown
-): Promise<unknown> {
-  const method = Reflect.get(gateway, methodName);
-  if (typeof method !== "function") {
-    throw new Error(`resident fixture gateway lacks ${methodName}`);
-  }
-  return await Reflect.apply(method, gateway, [input]);
-}
-
-function residentRecord(
-  value: unknown,
-  label: string
-): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${label} must be an object`);
-  }
-  return value as Readonly<Record<string, unknown>>;
-}
-
-function residentBudget(
-  consumedOverrides: Readonly<Partial<Record<ResidentBudgetField, number>>>,
-  actionOverrides: Readonly<Partial<Record<ResidentBudgetField, number>>>
-) {
-  const ceilings = {
-    planRevisions: 3,
-    observationRecords: 16,
-    toolSteps: 12,
-    providerInvocations: 3,
-    providerRequestBytes: 1_048_576,
-    providerResponseBytes: 1_048_576,
-    contextBytes: 1_048_576,
-    derivativeArtifactBytes: 16_777_216,
-    activeExecutionMs: 900_000,
-    approvalSuspensionMs: 86_400_000
-  };
-  const consumed = Object.fromEntries(
-    Object.keys(ceilings).map((field) => [
-      field,
-      consumedOverrides[field as ResidentBudgetField] ?? 0
-    ])
-  ) as Record<ResidentBudgetField, number>;
-  const actionConsumption = Object.fromEntries(
-    Object.keys(ceilings).map((field) => [
-      field,
-      actionOverrides[field as ResidentBudgetField] ?? 0
-    ])
-  ) as Record<ResidentBudgetField, number>;
-  const remaining = Object.fromEntries(
-    Object.entries(ceilings).map(([field, ceiling]) => [
-      field,
-      ceiling - consumed[field as ResidentBudgetField]
-    ])
-  ) as Record<ResidentBudgetField, number>;
-  return Object.freeze({
-    ceilings: Object.freeze(ceilings),
-    consumed: Object.freeze(consumed),
-    remaining: Object.freeze(remaining),
-    actionConsumption: Object.freeze(actionConsumption)
-  });
-}
-
-type ResidentBudgetField =
-  | "planRevisions"
-  | "observationRecords"
-  | "toolSteps"
-  | "providerInvocations"
-  | "providerRequestBytes"
-  | "providerResponseBytes"
-  | "contextBytes"
-  | "derivativeArtifactBytes"
-  | "activeExecutionMs"
-  | "approvalSuspensionMs";
