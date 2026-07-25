@@ -34727,3 +34727,62 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidacy, strict record 29, assurance-only transition, publication,
   Wave 3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1050 — Integrated chronology RED authorizes exact Task13 ordering repair
+
+- Recorded at: 2026-07-25T20:16:50Z
+- E-1049 integrated exact independently approved chronology RED
+  `0eb366becff68e15d65836ccddec6e3ed8a9a623` by program commit
+  `1d0039ea5eab98a3e0f691a0d32ce4fc727234c9`. Exact Task136 authority
+  merge `8a87ca659e6bcd661330382e429072c9b6f69e46` has exact parents E-1047
+  review-authority merge
+  `583b1d02400569a51d760cf277bc2d4585f4830c` and E-1049 integrated
+  program authority. The chronology RED is approved, recorded, and
+  integrated.
+- Authorize the smallest forward source repair in exactly
+  `packages/agent/src/task-orchestrator.ts`, starting blob
+  `f55b6edeab86639de2b7e840fa009d3f0fb16921`. Freeze projection source
+  `packages/agent/src/task-orchestrator-projection.ts` at
+  `e203840a748dd1cb47cdcd751000298b02c42559`; no projection correction is
+  needed.
+- Freeze exact approved chronology claims test at
+  `c12c00292efccd6fef621d86b5f693a0da3ad8e2` and projection test at
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`; freeze every Task12 and
+  later Task136 path, public type, claim, contract, dependency, route,
+  provider, credential, external-system, and unrelated byte.
+- Before suspended approval-wait recovery can return waiting, verify approval,
+  reclaim, or dispatch, enforce the existing exact resident-suspension
+  interlock against the authoritative current active or expired owning claim.
+  Retain cancellation precedence. For a valid later same-claim
+  resident-loop-suspension, return exactly one existing `not-claimable` skip
+  and append no approval result, release, `stale-recovered`,
+  generation-plus-one claim, runner-dispatching checkpoint, or runner call.
+  Do not weaken exact stream/task/run/attempt/retry/lease-generation,
+  causation, validated checkpoint, complete instruction, or W ownership
+  checks, and do not make every later checkpoint supersede approval recovery.
+- Turn complete claims
+  **18 = 16 passed + 2 chronology failures** into exact **18/18** and return
+  the exact Task136 card to
+  **321 = 310 passed + 11 preserved Task14-through-16 RED failures** without
+  changing any test. Preserve the original Task13 active, cancellation,
+  stale-recovery, projection, ordinary-claim, nonresident-checkpoint, exact
+  skip-count, no-release/no-reclaim, and public-type controls plus every
+  integrated Task12 control.
+- Commit exactly the one source with subject
+  `fix(agent): order resident suspension before approval wait`. Run focused
+  Task13, exact card, relevant approval and recovery boundary tests,
+  typecheck, factory, mission, V4, all four markers, truthful repository
+  first stop, exact one-source scope, test/projection/Task12/later freezes,
+  ancestry, real dependencies, diff, and clean-state gates.
+- A separate later append-only event must admit one exact source candidate to
+  a completely fresh independent read-only reviewer. The test author,
+  rejected-source author and reviewer, RED reviewer, all prior Task136
+  authors/reviewers/verifiers/analysts, and coordinator are ineligible to
+  approve changed source bytes. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded one-source correction authority, not Task13
+  approval or integration, Task14 authority, Task136 product candidacy,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
