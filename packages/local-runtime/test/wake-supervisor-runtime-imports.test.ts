@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import ts from "typescript";
 
 const roots: string[] = [];
 const target = "wake-supervisor-runtime.js";
@@ -69,6 +70,10 @@ describe("wake supervisor runtime import boundary", () => {
 
   it("allows only the dispatcher default and named gateway constructor import chain", () => {
     const source = readFileSync(new URL("../src/wake-supervisor-runtime.ts", import.meta.url), "utf8");
+    const mountedStoreSource = readFileSync(
+      new URL("../src/mounted-wake-lifecycle-store.ts", import.meta.url),
+      "utf8"
+    );
     const agentBarrel = readFileSync(new URL("../../agent/src/index.ts", import.meta.url), "utf8");
     const forbiddenLoaderForms = [
       /\bimport\s*\(/,
@@ -92,6 +97,46 @@ describe("wake supervisor runtime import boundary", () => {
     expect(source).toContain(`from "${permittedResidentImports.wakeRuntime.gatewayNamedConstructor}"`);
     expect(source).toMatch(/import\s+\w+\s+from\s+"..\/..\/agent\/src\/domain-execution-dispatcher\.js"/);
     expect(source).toMatch(/import\s*\{[^}]*createResidentLoopToolGateway[^}]*\}\s*from\s+"..\/..\/agent\/src\/resident-loop-tool-gateway\.js"/s);
+    const wakeFile = ts.createSourceFile(
+      "wake-supervisor-runtime.ts",
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS
+    );
+    const mountedStoreFile = ts.createSourceFile(
+      "mounted-wake-lifecycle-store.ts",
+      mountedStoreSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS
+    );
+    const calls: ts.CallExpression[] = [];
+    const visitWake = (node: ts.Node): void => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === "bindMountedResidentLoopAuthorityForFactory"
+      ) {
+        calls.push(node);
+      }
+      ts.forEachChild(node, visitWake);
+    };
+    visitWake(wakeFile);
+    const declarations = mountedStoreFile.statements.filter(
+      (statement): statement is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === "bindMountedResidentLoopAuthorityForFactory"
+    );
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.arguments).toHaveLength(3);
+    expect(declarations).toHaveLength(1);
+    expect(declarations[0]!.parameters.map((parameter) => parameter.name.getText(mountedStoreFile)))
+      .toEqual(["store", "rawBinding", "domainExecution"]);
+    expect(declarations[0]!.parameters.some((parameter) =>
+      parameter.type?.kind === ts.SyntaxKind.FunctionType
+    )).toBe(false);
     for (const pattern of forbiddenLoaderForms) expect(source).not.toMatch(pattern);
     for (const transfer of forbiddenTransfers) expect(source).not.toContain(transfer);
     expect(agentBarrel).not.toMatch(/ResidentDomainExecution|ResidentLoopToolGateway|PackageOwnedResident|BoundedAgentLoop/);
