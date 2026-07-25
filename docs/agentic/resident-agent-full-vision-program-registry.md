@@ -35529,3 +35529,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1062 — Exact Task14 stage-one construction RED approved
+
+- Recorded at: 2026-07-25T22:32:25Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1061_task14_stage1_red_review` returns **APPROVED** with no
+  findings for exact test-only candidate
+  `75ec9bac1cc8efcb7e866916ba8b5cda7790e53c`, tree
+  `5a9ec2835c6a6c723b9696a9d1a4a8d17f4d087f`, and no other bytes. Review
+  occurred beneath clean E-1061 review-authority merge
+  `4ec2e2087ef606204117cda5e355dac3a6e7b1c6`; no byte changed.
+- The reviewer independently verifies sole parent
+  `ea93475e2d772cb8fb8ae301ceebf10e8fec0e31`, exact subject, exact
+  three-test **486 insertion / 665 deletion** forward scope, wake/store/import
+  blobs `8269ba2abea46e3b16cb7491cf613e7768969111` /
+  `9836c9ae07c4b891bf588a31b38975ae977e540f` /
+  `7c464d5f664345e1651330111977d7509cb713d7`, and frozen source blobs.
+- The mounted test is the exact pre-E-1056 restoration. The real unwrapped
+  mounted fixture proves provider source ordinal **6**, durable rows **7**,
+  and the frozen source-only `stale or foreign` return. Independent in-memory
+  analyzer probes detect alias chains, nested objects, unions, intersections,
+  tuples, arrays, call signatures, and method signatures while accepting the
+  safe control; product analysis reports exact **5** parameters, **5** call
+  arguments, and callback-or-wrapper indices **3 and 4**.
+- Focused is exact **34 = 32 passed + 2 causal RED failures**; card is exact
+  **321 = 312 passed + 9 expected failures**, comprising only the **7**
+  preserved Task15-through-16 REDs plus these **2** stage-one REDs.
+  Boundaries pass **110/110**. Typecheck and factory pass; mission and V4 pass
+  **20/20** each; markers remain **29 / 20 / 29 / 15**. Repository retains
+  the truthful legacy-staging source first stop.
+- Exact scope, freezes, ancestry, dependencies, diff, and clean state pass.
+  No copied/swapped, currentness, prefix, or reclaim executable claim is made
+  by this approved stage.
+- Advance only exact `75ec9bac` stage-one test-only RED
+  `reviewing -> approved`. Authorize its history-preserving no-ff merge into
+  this program branch, fresh integration-tree gates, and a separate
+  append-only integrated event. This event contains no source-correction or
+  Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is stage-one RED approval, not integration, source
+  correction, Task14 approval, Task15 authority, Task136 product candidacy,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
