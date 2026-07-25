@@ -35615,3 +35615,67 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1064 — Task14 stage-one mounted-construction source checkpoint authorized
+
+- Recorded at: 2026-07-25T22:38:16Z
+- Exact independently approved stage-one test-only RED
+  `75ec9bac1cc8efcb7e866916ba8b5cda7790e53c` is integrated into the
+  Task136 lineage by exact history-preserving two-parent authority merge
+  `47f36c77a0bfbcb6e948fba4aa4f177568ee6570`. E-1063 program integration
+  commit `40c587e3bbacbc01fe0ead4b31c50eb43adcd9bb` is its exact second parent.
+- Authorize the smallest forward stage-one source correction in exactly
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting from
+  rejected source blobs
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`. Preserve rejected candidate
+  `79380b780daf79ee01f4717272b283bcf22862ff`, rejected test candidate
+  `97cb528d`, approved RED `75ec9bac`, and all earlier authority, design,
+  plan, RED, GREEN, fixture, review, rejection, and integration history in
+  ancestry.
+- Correct the mounted facts source high-water ordinal to the exact ordinal of
+  the last non-wake-lifecycle source event in the complete authenticated
+  ledger. Keep `durableLedgerEventCount` independently equal to all durable
+  rows. A required wake lifecycle lease may increase durable count without
+  changing the admitted source high-water mark or source ordinal.
+- Replace the rejected caller-supplied dispatcher-binder and gateway
+  constructor callbacks with the fixed package-owned construction required
+  by the approved design and Task14 plan. The package-private store binder
+  and its sole production wake-runtime call must each accept exactly
+  `(store, rawBinding, domainExecution)`. Retain the exact wake-runtime
+  dispatcher default import, exact named
+  `createResidentLoopToolGateway` import, authenticated mounted ledger object,
+  exact workspace/resident/task tuple, one-shot identity binding, private
+  reverify closures, and trusted safe-ID wrapping. No caller, wrapper,
+  registrar, alternate binder importer, or later runtime input may supply or
+  replace the dispatcher API, G constructor, ledger, closures, or opaque
+  resident port.
+- Freeze exact approved stage-one test blobs wake
+  `8269ba2abea46e3b16cb7491cf613e7768969111`, mounted store
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, and import policy
+  `7c464d5f664345e1651330111977d7509cb713d7`. Freeze every other Task136
+  path. Within the two authorized sources, leave currentness admissibility,
+  prefix validation/recovery, reclaim categories, suspension/release,
+  readback, and all later Task14 behavior unchanged except for the minimum
+  construction and source-ordinal plumbing necessary to pass stage one.
+- Required focused result is exact **34/34**, closing only the two approved
+  stage-one failures. Required exact Task136 card result is
+  **321 = 314 passed + 7 failed**, with only the preserved Task15-through-16
+  REDs remaining. Reproduce relevant boundaries, standalone typecheck,
+  factory readiness, mission **20/20**, V4 **20/20**, all four exact markers,
+  truthful repository legacy-staging first stop, exact two-source scope,
+  test/later-path freezes, ancestry, dependencies, diff, and clean state.
+- Commit one coherent stage-one source checkpoint on the existing Task136
+  branch and stop. This checkpoint is not a Task14 candidate, approval, or
+  integration. It may not claim executable copied/swapped identity,
+  currentness, prefix, or reclaim proof. After the checkpoint exists, a
+  separate append-only event must authorize the downstream executable tables
+  required by E-1058 before any Task14 source candidate may be admitted.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded stage-one source-checkpoint authority, not
+  Task14 approval, Task15 authority, Task136 product candidacy, strict record
+  29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
