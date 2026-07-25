@@ -35066,3 +35066,95 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1056 — Exact Task14 candidate rejected; bounded causal W RED authorized
+
+- Recorded at: 2026-07-25T21:16:13Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1055_task14_source_review` rejects exact Task14 candidate
+  `79380b780daf79ee01f4717272b283bcf22862ff`, tree
+  `1180cd19d8270459705c3055e7568cab6a481c35`. The review remained clean
+  and did not edit, commit, merge, or substitute the candidate.
+- The mounted-store helper is exported and accepts caller-supplied dispatcher
+  binding and gateway-construction functions. That replaceable construction
+  surface bypasses the exact wake-runtime identity, Core-readiness, one-shot
+  WeakMap, fixed default dispatcher, and fixed G-constructor chain required by
+  the approved design.
+- Currentness permits every wake lifecycle event and orchestration events
+  matching only task and attempt. It does not require exact run, claim
+  generation, causation, owner, or terminal state, so a competing release,
+  terminal, or newer claim can remain current. Post-effect verification
+  accepts any append-only global suffix, including a foreign stream event,
+  rather than only the exact permitted causal advance.
+- Existing resident S, R-resumable, and release events are matched by partial
+  fields and reused without exact canonical equality to checkpoint-derived
+  expected material. A conflicting single canonical event or extra target
+  stream suffix can be accepted and released instead of failing closed.
+- Reclaim does not implement category-specific recovery. Approval-required
+  reclaim omits the exact independent current decision and deadline proof.
+  Effect-outcome-unknown reclaim omits exact G non-executable claimed
+  reissuance, absence of receipt/terminal, and burned-request proof. Complete
+  binding and budget are not revalidated before a fresh orchestration claim.
+  Empty state-0 recovery is correctly rejected but does not cure these
+  defects.
+- Preserve rejected candidate `79380b78`, tree `1180cd19`, wake/store source
+  blobs `2d5b12e4e3826f5210792d8eac8fa1545f721185` /
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, all earlier source states,
+  Task12/13, REDs, GREENs, candidates, reviews, rejections, authority, claims,
+  contracts, and releases as immutable ancestors. The candidate is not
+  approved or integrated and Task15 remains unauthorized.
+- Authorize a narrower test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`,
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from exact blobs respectively
+  `6ce99e3db17f5621a623ae50ba2f39d9a9ad1873`,
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, and
+  `66f8c9fd90a2438ccfc7fab534968e99d01bccc6`.
+- Add causal controls proving only the exact wake-runtime one-shot registrar
+  and fixed direct imports can construct W; the mounted store exposes no
+  replaceable binder or gateway callback. Prove copied/swapped runtime,
+  Core/P/H, dispatcher, ledger, store, tuple, token, or constructor identity
+  fails before issuance or append.
+- Prove before- and after-effect currentness rejects competing target release,
+  terminal, new-generation claim, changed claim/run/causation/owner, and
+  unpermitted global suffix while admitting only the exact causal advance.
+  Preserve independent foreign-stream controls where the contract permits
+  them, and require same freshly authenticated mount/ledger/lifecycle
+  identity before issuing recordable-stale.
+- Prove every preexisting S, R-resumable, and release byte is exactly the
+  checkpoint-derived canonical event; reject partial-field conflicts,
+  duplicates, missing/extra target suffix, changed semantic keys, causation,
+  ordering, result identity, deadline, next action, or release binding with no
+  later append. Preserve state-0 recovery rejection and exact states 1
+  through 4 suffix-only behavior.
+- Prove approval-required reclaim needs exactly one later independent current
+  matching decision before its deadline. Prove effect-outcome-unknown reclaim
+  requires exact G reread-only non-executable claimed state, no receipt or
+  terminal, complete binding and budget, preserved burned request, and no
+  effect. Prove ordinary categories forbid gateway IDs and canceled or
+  ineligible work appends no fresh claim.
+- The corrected test-only descendant must fail causally against the two frozen
+  rejected sources with no fixture, API, import, or type failure; preserve all
+  previously valid Task14, Task12/13, portable/mounted/ontology, loader,
+  adapter, currentness, prefix, no-effect, import-policy, and later-task
+  controls; and establish its own exact pass/fail signature. Run focused,
+  analyzer, exact card, relevant boundaries, typecheck, factory, mission
+  **20/20**, V4 **20/20**, markers, truthful repository first stop, exact
+  three-test scope, blob freezes, ancestry, real dependencies, diff, and
+  clean-state checks.
+- Admit one exact corrected test-only RED SHA to a completely fresh
+  independent read-only reviewer. No author, reviewer, verifier, analyst, or
+  coordinator of changed bytes may approve them. Changed bytes invalidate
+  review. Do not modify either Task14 source until the causal RED is
+  independently approved, recorded append-only, integrated with a
+  history-preserving two-parent merge, and followed by a separate explicit
+  source-correction authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact-candidate rejection and test-only RED authority,
+  not Task14 approval or integration, source correction, Task15 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
