@@ -32988,6 +32988,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
 
+## RV-1-E-1022 — Final plan-corrected Task136 assurance amendment admitted to fresh dual review
+
+- Recorded at: 2026-07-25T15:23:37Z
+- Exact final plan-corrected amendment candidate
+  `b949744fcd6658d578f9bc3d987563cf82051dc9`, tree
+  `bc218fb006f1282e47c73effddc78b9461ceeea1`, has sole parent E-1021
+  Task136 authority merge
+  `26c03e23e806782cd0a9da7d0646054ba1631f53`. The exact E-1021 correction
+  changes only
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  It preserves rejected exact candidates `9f0e6424` and `40a8d0f6`, their
+  reviews, admissions and merges, and all earlier history unchanged in
+  ancestry.
+- The plan now distinguishes the exact nine cumulative amendment authority
+  paths, exact eight-file E-1019 correction, and exact one-file E-1021
+  correction at both admission and self-review gates. Task16 and Task17
+  freeze the whole adapter directory except exact authorized
+  `legacy-staging.ts`, then separately require that path to be the sole
+  adapter-directory delta. The candidate-to-integration whole-directory
+  equality gate remains unchanged.
+- Coordinator validation proves the adapter exclusion accepts a historical
+  exact legacy-staging-only delta and rejects an independent same-directory
+  foreign adapter delta. It also reproduces mission **20/20**, V4 **20/20**,
+  canonical V4 SHA-256
+  `3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930`,
+  unchanged assurance fingerprint, exact mission pins, all four markers,
+  typecheck, factory readiness, exact 29-card order, thirty-two-path
+  `14/17/1` classification and ordered hash, baseline freezes, ancestry,
+  dependencies, diff, one-file correction scope, and clean state.
+- Clean repository mode exits `1`, emits all four markers, and stops first
+  only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`.
+  It emits no repository-prefix, release-closure, or `29/29` success.
+- Admit only exact `b949744f` as amendment `candidate -> reviewing`. Assign
+  completely fresh independent read-only design reviewer
+  `/root/task136_e1022_design_review` and executability reviewer
+  `/root/task136_e1022_exec_review`. They must inspect the full amendment,
+  both rejected descendants and corrections, the exact future Task12–Task18
+  plan, and independently reproduce every advertised gate including both
+  adapter-delta controls. Neither may edit, commit, merge, substitute bytes,
+  authorize product work, or make release claims. Both E-1020 reviewers,
+  both E-1018 reviewers, and every author or analyst of changed bytes are
+  ineligible. Any changed byte invalidates both reviews.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is amendment review admission, not amendment approval or
+  integration, Task12 product authority, Task13 authority, a Task136 product
+  candidate, strict record 29, assurance-only transition, publication, Wave
+  3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-1019 — Exact 32-path amendment candidate rejected; narrow authority correction authorized
 
 - Recorded at: 2026-07-25T14:54:19Z
