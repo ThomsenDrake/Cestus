@@ -34236,3 +34236,95 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1041 — Exact chronology-corrected Task12 source candidate admitted to fresh review
+
+- Recorded at: 2026-07-25T19:00:00Z
+- Exact source candidate
+  `2d07a3f0f81f106bce82643a76a75ad93418c289`, tree
+  `8afe03e411ef864bcff783301c6d45f0c229bdf9`, has sole parent E-1040
+  source-authority merge
+  `0ea3e662a28bc757888f74ba118edc1134762d7a` and exact subject
+  `fix(agent): enforce legacy evidence chronology`. Its direct delta is
+  exactly **14 insertions** in dispatcher and gateway; the complete Task12
+  candidate range also retains the strict reviewed adapter/binding work and
+  all approved RED tests in ancestry.
+- Exact changed source blobs are dispatcher
+  `230a0b53ee19e29cc3301750c0ff23bcb9225314` and gateway
+  `2e7d7a79763758037c56cedd91a70f63c8d8feea`. Adapter source/test remain
+  frozen at `a8e0d185e0ad3e7f5b4b10be62ce4d26ad56c919` and
+  `741bf9c02184c0367c4b4aa08a1b06202bac362e`; chronology tests remain
+  frozen at dispatcher
+  `7bddefd21e4823c61b13f0fdc13f18e251172c64` and gateway
+  `2db635799e8e92e84170c5487d94cb4f0877cc93`.
+- Read-only gate verifier `/root/task136_e1029_green_verifier`, permanently
+  ineligible to approve these bytes, reproduces exact identity, scope, blobs,
+  source/test freezes, **11/11** named ancestry, real dependencies, diff, and
+  clean state with no finding. Both validators use complete `allEvents`, find
+  both proposal and unique evidence in that same array, reject absent indices,
+  and require strict `evidenceEventIndex < proposalEventIndex` while retaining
+  uniqueness, identity, content, causation, review-state, binding, order,
+  hash, attestation, and terminalization checks. Exact chronology-proof
+  SHA-256 is
+  `6a6ec25c6c438a486b38dc101c5358347e3bb549896e059ebf9c97de4ebfcc7e`.
+- Runtime gates pass focused **84/84**, focused plus loader **86/86**,
+  Task12 boundary **101/101**, gateway plus loader **50/50**, released
+  cross-boundary **443/443**, and all six adapters **80/80**. The exact
+  17-test card truthfully remains
+  **319 = 306 passed + 13 later-task RED failures**; 35-file cross remains
+  **976 = 963 passed + those same 13 failures**. Exact cohort-equality proof
+  SHA-256 is
+  `36da9d09f4cf2470246d63de7b09eb161862459c5376e92b725537e43a18932d`.
+- Typecheck, UI build, factory readiness, mission **20/20**, V4 **20/20**,
+  all four exact markers, current fingerprints, scope, freezes, ancestry,
+  dependency quiet, diff, and clean state pass. Repository mode exits `1`
+  after the markers and stops first only at the legacy-staging adopted source
+  blob mismatch. It emits no prefix, closure, `29/29`, record-29, or release
+  success.
+- Fresh serialized differential compares authority baseline
+  **3,231 = 3,181 passed + 45 failed + 5 pending** to candidate
+  **3,308 = 3,245 passed + 58 failed + 5 pending** and emits
+  `removed=8 mapped=14 addedPassed=58 retainedLaterRed=13`. Baseline
+  JSON/log SHA-256 values are
+  `ff190a6df97f728d9e6cdaa577a6c76b2440815bbfc4e9a5b5c1c243c74f7b44`
+  and
+  `5f2978adaec036d547c33a5d56ae0db35a35c55f3c39be103f421987c11f3ea6`;
+  candidate values are
+  `fc354100455903e81fb74b36fba207cc9f171838183b1439bffd05352a69ea1b`
+  and
+  `fe52977ed8f731f7d4d50123b7061804e61557f51f1f59bd118a76a51f43743d`;
+  comparator log SHA-256 is
+  `f2155a2c0962248c9065f7340ff1e16a76667d9d3e5937ebb74dda3b7035509f`.
+- Fresh default-parallel timeout variance remains explicitly nonpassing:
+  **3,308 = 3,244 passed + 59 failed + 5 pending**. Its sole status
+  variance is the frozen loader privacy assertion, passing serialized in
+  **11,749.585 ms** and exceeding its 30-second ceiling in parallel at
+  **36,033.272 ms**. Parallel JSON/log and variance-proof SHA-256 values are
+  `336e18fc7657a1dc1a379aa534c5ea70232e4dd1002fbcc2afbcb53179bc446d`,
+  `e753b275b5bd1babf93ee96e5ce8f8e9c25ec65358899a72bb0d30231bfd9839`,
+  and
+  `bb30efa40c5f76b123da46f4a986f0cf2ef9c363645ba5992005171431ddf9eb`.
+- Admit only exact `2d07a3f0` as Task12 source
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1041_source_review`. The reviewer must inspect the
+  full three-source Task12 range and current files against the amended design
+  and plan, including mandatory canonical bindings, event chronology,
+  evidence identity/content/causation/order, default-only ABI, package
+  identities, currentness, private permit/brand, exact attestation/readbacks/
+  evidence, at-most-once behavior, no receipt oracle/fallback/store/activation,
+  and every branch-specific negative. It must independently reproduce the
+  exact candidate and complete gate packet above.
+- The reviewer has never authored, reviewed, or analyzed any current Task12
+  candidate source byte. Every source/test author, RED/source reviewer, gate
+  verifier, changed-byte analyst, and the coordinator are ineligible. It may
+  not edit, commit, merge, substitute a SHA, authorize Task13, or make
+  Task136-product/record-29/release/prefix/Wave claims. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 advances only Task12 `implementing -> candidate -> reviewing` for
+  exact `2d07a3f0`; it still has no Task136 product candidate. Strict product
+  frontier remains **28 of 29**. This is source review admission, not Task12
+  approval/integration, Task13 authority, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
