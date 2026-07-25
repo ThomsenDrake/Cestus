@@ -1,4 +1,11 @@
 import { createHash } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createLegacyImportRuntime } from "../../ingestion/src/legacy-runtime.js";
+import { sha256, stableJson } from "../../ingestion/src/legacy-report.js";
+import { createFakeMountedWorkspace } from "../../ingestion/test/runtime-test-helpers.js";
+import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-cestus-fixtures.js";
 import {
   validateKnowledgeEvent,
   type AppendableKnowledgeEvent,
@@ -9,6 +16,10 @@ import {
 import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { describe, expect, it } from "vitest";
 import * as domainExecutionDispatcherModule from "../src/domain-execution-dispatcher.js";
+import {
+  buildLegacyStagingApprovalPreview,
+  legacyStagingExecuteDescriptor
+} from "../src/adapters/legacy-staging.js";
 import { createResidentPlanObservationStore } from "../src/plan-observation-contracts.js";
 import { createResidentLoopToolGateway, type ResidentLoopToolGatewayReadback } from "../src/resident-loop-tool-gateway.js";
 import {
@@ -714,18 +725,60 @@ describe("resident-loop tool gateway", () => {
     }
   );
 
+  it("recovers one exact real legacy candidate binding and rejects the complete independently self-hashed drift corpus", async () => {
+    const legacyBinding = await prepareRealGatewayLegacyBinding();
+    try {
+      expect(legacyBinding.candidates[0]?.object).not.toBe(
+        legacyBinding.candidates[0]?.candidateId
+      );
+      await expectSemanticResidentReceiptCompleted(
+        await appendSemanticResidentRecoveryReceipt({
+          ordinal: 10,
+          mutation: "none",
+          legacyBinding
+        })
+      );
+      for (const mutation of [
+        "predicate",
+        "object",
+        "confidence",
+        "subjectRef-presence",
+        "subjectRef-value",
+        "evidence-content-hash",
+        "candidate-order",
+        "binding-hash"
+      ] as const) {
+        await expectSemanticResidentReceiptRejected(
+          await appendSemanticResidentRecoveryReceipt({
+            ordinal: 10,
+            mutation,
+            legacyBinding
+          })
+        );
+      }
+    } finally {
+      legacyBinding.cleanup();
+    }
+  });
+
   it.each([
     "candidate-order",
     "candidate-payload"
   ] as const)(
     "rejects a correctly self-hashed ordinal-10 receipt with %s drift",
     async (mutation) => {
-      await expectSemanticResidentReceiptRejected(
-        await appendSemanticResidentRecoveryReceipt({
-          ordinal: 10,
-          mutation
-        })
-      );
+      const legacyBinding = await prepareRealGatewayLegacyBinding();
+      try {
+        await expectSemanticResidentReceiptRejected(
+          await appendSemanticResidentRecoveryReceipt({
+            ordinal: 10,
+            mutation,
+            legacyBinding
+          })
+        );
+      } finally {
+        legacyBinding.cleanup();
+      }
     }
   );
 
@@ -2404,17 +2457,210 @@ async function expectNoResidentHumanExecution(
 
 type SemanticResidentOrdinal = 2 | 3 | 4 | 5 | 6 | 7 | 9 | 10;
 type SemanticReceiptMutation =
+  | "none"
   | "duplicate-evidence"
   | "invocation-input"
   | "domain-context"
   | "domain-payload"
   | "result-identity"
   | "authorization-branch"
+  | "predicate"
+  | "object"
+  | "confidence"
+  | "subjectRef-presence"
+  | "subjectRef-value"
+  | "evidence-content-hash"
   | "candidate-order"
   | "candidate-payload"
+  | "binding-hash"
   | "idempotent-after-claim"
   | "projection-artifacts"
   | "projection-read-model";
+
+interface RealGatewayLegacyCandidate {
+  readonly candidateId: string;
+  readonly evidenceId: string;
+  readonly evidenceContentHash: `sha256:${string}`;
+  readonly predicate: string;
+  readonly object: string | number | boolean | null;
+  readonly confidence: number;
+  readonly subjectRef?: string;
+}
+
+interface RealGatewayLegacyBinding {
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly stagingBatchId: string;
+  readonly legacyReportId: string;
+  readonly reportHash: `sha256:${string}`;
+  readonly candidateSetHash: `sha256:${string}`;
+  readonly candidates: readonly [
+    RealGatewayLegacyCandidate,
+    RealGatewayLegacyCandidate
+  ];
+  readonly selectedCandidateBindingHashes: readonly [
+    `sha256:${string}`,
+    `sha256:${string}`
+  ];
+  readonly cleanup: () => void;
+}
+
+async function prepareRealGatewayLegacyBinding(): Promise<RealGatewayLegacyBinding> {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "gateway-real-legacy-"));
+  writeLegacyCestusFixture(sourceRoot);
+  writeFileSync(
+    join(sourceRoot, "ontology", "claims.json"),
+    JSON.stringify({
+      legacyCestusType: "claims",
+      claims: [{
+        id: "legacy_gateway_binding_subject",
+        subjectRef: "agency:gateway-primary",
+        predicate: "agency.name",
+        object: "Gateway Primary Agency",
+        confidence: 0.93
+      }]
+    }, null, 2)
+  );
+  writeFileSync(
+    join(sourceRoot, "ontology", "claims-secondary.json"),
+    JSON.stringify({
+      legacyCestusType: "claims",
+      claims: [{
+        id: "legacy_gateway_binding_secondary",
+        predicate: "agency.status",
+        object: "active",
+        confidence: 0.81
+      }]
+    }, null, 2)
+  );
+  const workspace = createFakeMountedWorkspace(
+    "Gateway real legacy binding workspace"
+  );
+  const runtime = createLegacyImportRuntime({
+    mountedWorkspace: workspace,
+    actor: humanActor
+  });
+  try {
+    const sourceCollectionId = "src_task136_legacy_binding";
+    const scanBatchId = "scan_task136_legacy_binding";
+    const stagingBatchId = "legacy_stage_task136_legacy_binding";
+    const inspected = await runtime.inspect({
+      sourceCollectionId,
+      label: "Task136 real legacy binding source",
+      sourceRoot,
+      scanBatchId
+    });
+    if (!inspected.ok) {
+      throw new Error("Real gateway legacy inspection failed.");
+    }
+    const approvedImport = await runtime.approveRawImport({
+      sourceCollectionId,
+      scanBatchId,
+      importBatchId: "imp_task136_legacy_binding",
+      approvedBy: humanActor.id
+    });
+    if (!approvedImport.ok) {
+      throw new Error("Real gateway legacy raw approval failed.");
+    }
+    const imported = await runtime.importApproved({
+      sourceCollectionId,
+      scanBatchId,
+      importBatchId: "imp_task136_legacy_binding"
+    });
+    if (!imported.ok) {
+      throw new Error("Real gateway legacy import failed.");
+    }
+    const staging = await runtime.stagingPreview({
+      sourceCollectionId,
+      legacyReportId: inspected.legacyReportId
+    });
+    if (!staging.ok || staging.candidates.length !== 2) {
+      throw new Error(
+        "Real gateway legacy preparation requires two evidence-tied candidates."
+      );
+    }
+    const ordered = [...staging.candidates].sort((left, right) =>
+      Number(Object.hasOwn(right, "subjectRef")) -
+      Number(Object.hasOwn(left, "subjectRef"))
+    );
+    const candidates = [ordered[0]!, ordered[1]!] as const;
+    if (
+      !Object.hasOwn(candidates[0], "subjectRef") ||
+      Object.hasOwn(candidates[1], "subjectRef")
+    ) {
+      throw new Error(
+        "Real gateway legacy candidates lack both subjectRef presence states."
+      );
+    }
+    const selectedCandidateIds = candidates.map(
+      ({ candidateId }) => candidateId
+    );
+    const releasedPreview = buildLegacyStagingApprovalPreview({
+      sourceCollectionId,
+      scanBatchId,
+      stagingBatchId,
+      legacyReportId: inspected.legacyReportId,
+      reportHash: inspected.reportHash,
+      candidateSetHash: inspected.candidateSetHash,
+      toolRequestId: "toolreq_gateway_real_legacy_preparation",
+      toolId: legacyStagingExecuteDescriptor.toolId,
+      toolVersion: legacyStagingExecuteDescriptor.toolVersion,
+      runId: "run_gateway_real_legacy_preparation",
+      taskId: "task_gateway_real_legacy_preparation",
+      residentAgentId: "agent_default",
+      preview: staging,
+      selectedCandidateIds
+    });
+    expect(releasedPreview.selectedCandidateIds).toEqual(
+      selectedCandidateIds
+    );
+    const bindingHashes = candidates.map(
+      realGatewayLegacyCandidateBindingHash
+    );
+    return {
+      sourceCollectionId,
+      scanBatchId,
+      stagingBatchId,
+      legacyReportId: inspected.legacyReportId,
+      reportHash: inspected.reportHash,
+      candidateSetHash: inspected.candidateSetHash,
+      candidates,
+      selectedCandidateBindingHashes: [
+        bindingHashes[0]!,
+        bindingHashes[1]!
+      ],
+      cleanup() {
+        rmSync(sourceRoot, { recursive: true, force: true });
+        rmSync(workspace.rootDir, { recursive: true, force: true });
+      }
+    };
+  } catch (error) {
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(workspace.rootDir, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function realGatewayLegacyCandidateBindingHash(
+  candidate: RealGatewayLegacyCandidate
+): `sha256:${string}` {
+  const subjectRefPresent = Object.hasOwn(candidate, "subjectRef");
+  return sha256(
+    "legacy-selected-candidate-binding.v1\n" +
+    stableJson({
+      candidateId: candidate.candidateId,
+      evidenceId: candidate.evidenceId,
+      evidenceContentHash: candidate.evidenceContentHash,
+      predicate: candidate.predicate,
+      object: candidate.object,
+      confidence: candidate.confidence,
+      subjectRef: {
+        present: subjectRefPresent,
+        value: subjectRefPresent ? candidate.subjectRef : null
+      }
+    })
+  );
+}
 
 interface SemanticResidentReceiptFixture {
   readonly ledger: InMemoryEventLedger;
@@ -2443,6 +2689,41 @@ interface SemanticResidentCatalogFixture {
   readonly artifactHashes: readonly `sha256:${string}`[];
   readonly readModelChanges: readonly string[];
   readonly resultSummary: string;
+  readonly legacyCandidates?: readonly [
+    RealGatewayLegacyCandidate,
+    RealGatewayLegacyCandidate
+  ];
+}
+
+async function expectSemanticResidentReceiptCompleted(
+  fixture: SemanticResidentReceiptFixture
+): Promise<void> {
+  const recover = reflectedOperation(
+    fixture.gateway,
+    "rereadAndIssueFromLedger"
+  );
+  const outcome = await settledResidentRecovery(() => Reflect.apply(
+    recover,
+    fixture.gateway,
+    [fixture.locator]
+  ));
+  const residentEvents = await fixture.ledger.readStream(
+    residentDomainStreamId(fixture.locator)
+  );
+  expect({
+    ...outcome,
+    residentEventTypes: residentEvents.map((event) => event.type),
+    effects: fixture.effects.count
+  }).toEqual({
+    outcome: "fulfilled",
+    residentEventTypes: [
+      "agent.resident-domain.requested.v1",
+      "agent.resident-domain.execution-claimed.v1",
+      "agent.resident-domain.outcome-observed.v1",
+      "agent.resident-domain.completed.v1"
+    ],
+    effects: 0
+  });
 }
 
 async function expectSemanticResidentReceiptRejected(
@@ -2480,25 +2761,53 @@ async function expectSemanticResidentReceiptRejected(
 async function appendSemanticResidentRecoveryReceipt(input: {
   readonly ordinal: SemanticResidentOrdinal;
   readonly mutation: SemanticReceiptMutation;
+  readonly legacyBinding?: RealGatewayLegacyBinding;
 }): Promise<SemanticResidentReceiptFixture> {
   const suffix = `semantic-${input.ordinal}-${input.mutation.replace(
     "authorization",
     "branch"
   )}`;
   const ledger = new InMemoryEventLedger();
+  const firstLegacyCandidate = input.ordinal === 10
+    ? input.legacyBinding?.candidates[0]
+    : undefined;
+  const secondLegacyCandidate = input.ordinal === 10
+    ? input.legacyBinding?.candidates[1]
+    : undefined;
+  if (
+    input.ordinal === 10 &&
+    (firstLegacyCandidate === undefined || secondLegacyCandidate === undefined)
+  ) {
+    throw new Error(
+      "Ordinal-10 semantic recovery requires real released legacy candidates."
+    );
+  }
   const source = await appendEvidence(ledger, {
-    evidenceId: `ev_gateway_${suffix}_a`
+    evidenceId:
+      firstLegacyCandidate?.evidenceId ?? `ev_gateway_${suffix}_a`,
+    ...(firstLegacyCandidate === undefined
+      ? {}
+      : {
+          contentHash: input.mutation === "evidence-content-hash"
+            ? hashCanonical({
+                foreignEvidenceContentHash:
+                  firstLegacyCandidate.evidenceContentHash
+              })
+            : firstLegacyCandidate.evidenceContentHash
+        })
   });
   const secondSource = input.ordinal === 10
     ? await appendEvidence(ledger, {
-        evidenceId: `ev_gateway_${suffix}_b`
+        evidenceId: secondLegacyCandidate!.evidenceId,
+        contentHash: secondLegacyCandidate!.evidenceContentHash
       })
     : undefined;
   const catalog = semanticResidentCatalogFixture(
     input.ordinal,
     suffix,
     source,
-    secondSource
+    input.legacyBinding,
+    input.mutation
   );
   const workspaceId = "ws_gateway";
   const residentAgentId = "agent_default" as const;
@@ -2814,7 +3123,8 @@ function semanticResidentCatalogFixture(
   ordinal: SemanticResidentOrdinal,
   suffix: string,
   source: KnowledgeEvent,
-  secondSource: KnowledgeEvent | undefined
+  legacyBinding: RealGatewayLegacyBinding | undefined,
+  mutation: SemanticReceiptMutation
 ): SemanticResidentCatalogFixture {
   const bodyHash =
     "sha256:3131313131313131313131313131313131313131313131313131313131313131";
@@ -2962,12 +3272,22 @@ function semanticResidentCatalogFixture(
     case 9:
     case 10: {
       const automatic = ordinal === 10;
+      if (automatic && legacyBinding === undefined) {
+        throw new Error(
+          "Ordinal-10 semantic catalog requires real legacy preparation."
+        );
+      }
       const selectedCandidateIds = automatic
-        ? [
-            `legacy_candidate_gateway_${suffix}_a`,
-            `legacy_candidate_gateway_${suffix}_b`
-          ]
+        ? legacyBinding!.candidates.map(({ candidateId }) => candidateId)
         : [`legacy_candidate_gateway_${suffix}_a`];
+      const selectedCandidateBindingHashes = automatic
+        ? [...legacyBinding!.selectedCandidateBindingHashes]
+        : [];
+      if (automatic && mutation === "binding-hash") {
+        selectedCandidateBindingHashes[0] = hashCanonical({
+          foreignBindingHash: selectedCandidateBindingHashes[0]
+        });
+      }
       return {
         ordinal,
         toolId: automatic
@@ -2983,31 +3303,45 @@ function semanticResidentCatalogFixture(
           toolId: automatic
             ? "legacy.staging.execute"
             : "legacy.staging.approve",
-          sourceCollectionId: "src_gateway_semantic",
-          scanBatchId: "scan_gateway_semantic",
-          stagingBatchId: `legacy_stage_gateway_${suffix}`,
-          legacyReportId: `legacy_report_gateway_${suffix}`,
-          reportHash,
-          candidateSetHash,
+          sourceCollectionId: automatic
+            ? legacyBinding!.sourceCollectionId
+            : "src_gateway_semantic",
+          scanBatchId: automatic
+            ? legacyBinding!.scanBatchId
+            : "scan_gateway_semantic",
+          stagingBatchId: automatic
+            ? legacyBinding!.stagingBatchId
+            : `legacy_stage_gateway_${suffix}`,
+          legacyReportId: automatic
+            ? legacyBinding!.legacyReportId
+            : `legacy_report_gateway_${suffix}`,
+          reportHash: automatic ? legacyBinding!.reportHash : reportHash,
+          candidateSetHash: automatic
+            ? legacyBinding!.candidateSetHash
+            : candidateSetHash,
           selectedCandidateIds,
+          ...(automatic ? { selectedCandidateBindingHashes } : {}),
           importedEvidenceIds: [
-            String(Reflect.get(source.payload, "evidenceId")),
-            ...(secondSource === undefined
-              ? []
-              : [String(Reflect.get(secondSource.payload, "evidenceId"))])
+            ...(automatic
+              ? legacyBinding!.candidates.map(({ evidenceId }) => evidenceId)
+              : [String(Reflect.get(source.payload, "evidenceId"))])
           ],
           evidenceContentHashes: [
-            String(Reflect.get(source.payload, "contentHash")),
-            ...(secondSource === undefined
-              ? []
-              : [String(Reflect.get(secondSource.payload, "contentHash"))])
+            ...(automatic
+              ? legacyBinding!.candidates.map(
+                  ({ evidenceContentHash }) => evidenceContentHash
+                )
+              : [String(Reflect.get(source.payload, "contentHash"))])
           ]
         },
         artifactHashes: automatic ? [] : [reportHash, candidateSetHash],
         readModelChanges: ["legacy-staging"],
         resultSummary: automatic
           ? "Legacy ontology staging appended evidence-tied assertion proposals."
-          : "Legacy ontology staging approval was recorded."
+          : "Legacy ontology staging approval was recorded.",
+        ...(automatic
+          ? { legacyCandidates: legacyBinding!.candidates }
+          : {})
       };
     }
   }
@@ -3185,6 +3519,12 @@ async function appendSemanticResidentDomainEvents(input: {
         input.source,
         requiredPrefixEvent(input.secondSource, "second semantic evidence")
       ];
+      const candidates = input.catalog.legacyCandidates;
+      if (candidates === undefined) {
+        throw new Error(
+          "Ordinal-10 semantic domain evidence lacks real candidate bindings."
+        );
+      }
       const order = input.mutation === "candidate-order"
         ? [1, 0]
         : [0, 1];
@@ -3193,6 +3533,7 @@ async function appendSemanticResidentDomainEvents(input: {
         const candidateId = selected[selectedIndex]!;
         const evidenceId = evidenceIds[selectedIndex]!;
         const eventSource = sources[selectedIndex]!;
+        const candidate = candidates[selectedIndex]!;
         const assertionId = `as_legacy_${createHash("sha256").update([
           String(Reflect.get(preview, "sourceCollectionId")),
           String(Reflect.get(preview, "scanBatchId")),
@@ -3211,13 +3552,36 @@ async function appendSemanticResidentDomainEvents(input: {
           payload: {
             assertionId,
             evidenceId,
-            predicate: "legacy.gateway.semantic",
+            predicate:
+              input.mutation === "predicate" && selectedIndex === 0
+                ? `${candidate.predicate}.foreign`
+                : candidate.predicate,
             object:
-              input.mutation === "candidate-payload" &&
+              (
+                input.mutation === "object" ||
+                input.mutation === "candidate-payload"
+              ) &&
               selectedIndex === 0
-                ? "legacy_candidate_gateway_foreign"
-                : candidateId,
-            confidence: 0.8,
+                ? `${String(candidate.object)} foreign`
+                : candidate.object,
+            confidence:
+              input.mutation === "confidence" && selectedIndex === 0
+                ? Math.max(0, candidate.confidence - 0.1)
+                : candidate.confidence,
+            ...(
+              input.mutation === "subjectRef-presence" &&
+              selectedIndex === 0
+                ? {}
+                : candidate.subjectRef === undefined
+                  ? {}
+                  : {
+                      subjectRef:
+                        input.mutation === "subjectRef-value" &&
+                        selectedIndex === 0
+                          ? `${candidate.subjectRef}_foreign`
+                          : candidate.subjectRef
+                    }
+            ),
             reviewState: "proposed"
           }
         }));
@@ -5048,7 +5412,11 @@ function requestInput(fixture: Awaited<ReturnType<typeof prepareFixture>>) {
 
 async function appendEvidence(
   ledger: InMemoryEventLedger,
-  input: { readonly evidenceId: string; readonly causationId?: string }
+  input: {
+    readonly evidenceId: string;
+    readonly causationId?: string;
+    readonly contentHash?: `sha256:${string}`;
+  }
 ) {
   return await ledger.append({
     type: "evidence.ingested",
@@ -5065,7 +5433,8 @@ async function appendEvidence(
     payload: {
       evidenceId: input.evidenceId,
       source: { kind: "manual", label: "Resident-loop gateway evidence" },
-      contentHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      contentHash: input.contentHash ??
+        "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       mediaType: "application/json",
       sizeBytes: 1
     }

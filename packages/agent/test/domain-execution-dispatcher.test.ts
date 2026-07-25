@@ -24,9 +24,19 @@ import type { WorkspaceStats } from "../../workspace-ops/src/filesystem.js";
 import { resolveWorkspaceLayout } from "../../workspace-ops/src/layout.js";
 import { describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { createLegacyImportRuntime } from "../../ingestion/src/legacy-runtime.js";
+import { createFakeMountedWorkspace } from "../../ingestion/test/runtime-test-helpers.js";
+import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-cestus-fixtures.js";
 
 const attestationProxyTransparency = vi.hoisted(() => ({
   identities: new WeakSet<object>()
@@ -1158,6 +1168,48 @@ describe("agent domain execution dispatcher", () => {
     expect(residentInvocationFor(automatic, legacy)).not.toHaveProperty("approvedBy");
     expect(residentInvocationFor(automatic, legacy)).not.toHaveProperty("approvedPreviewHash");
   });
+
+  it("attests the real selected legacy candidate binding when its object is not its candidate ID", async () => {
+    const prepared = await prepareRealLegacyResidentFixture();
+    try {
+      expect(prepared.candidates[0].object).not.toBe(
+        prepared.candidates[0].candidateId
+      );
+
+      const execution = await executeResidentCatalogRow(
+        prepared.fixture,
+        residentCatalogRows()[10]!,
+        "real-legacy-candidate-binding"
+      );
+      const proposals = execution.postInvocationLedgerEvents.filter(
+        (
+          event
+        ): event is KnowledgeEventOf<"assertion.proposed"> =>
+          event.type === "assertion.proposed"
+      );
+
+      expect(proposals.map(({ payload }) => ({
+        evidenceId: payload.evidenceId,
+        predicate: payload.predicate,
+        object: payload.object,
+        confidence: payload.confidence,
+        subjectRefPresent: Object.hasOwn(payload, "subjectRef"),
+        subjectRef: payload.subjectRef
+      }))).toEqual(prepared.candidates.map((candidate) => ({
+        evidenceId: candidate.evidenceId,
+        predicate: candidate.predicate,
+        object: candidate.object,
+        confidence: candidate.confidence,
+        subjectRefPresent: Object.hasOwn(candidate, "subjectRef"),
+        subjectRef: candidate.subjectRef
+      })));
+      expect(execution.completed.payload.authorization).toEqual({
+        authorizationKind: "automatic-policy"
+      });
+    } finally {
+      prepared.cleanup();
+    }
+  });
 });
 
 type ResidentFactoryKind =
@@ -1176,6 +1228,160 @@ interface ResidentFactoryFixture {
   readonly workspaceId: string;
   readonly residentAgentId: "agent_default";
   readonly taskId: string;
+}
+
+async function prepareRealLegacyResidentFixture(): Promise<{
+  readonly fixture: ResidentFactoryFixture;
+  readonly candidates: readonly [{
+    readonly candidateId: string;
+    readonly evidenceId: string;
+    readonly predicate: string;
+    readonly object: unknown;
+    readonly confidence: number;
+    readonly subjectRef?: string;
+  }, {
+    readonly candidateId: string;
+    readonly evidenceId: string;
+    readonly predicate: string;
+    readonly object: unknown;
+    readonly confidence: number;
+    readonly subjectRef?: string;
+  }];
+  readonly cleanup: () => void;
+}> {
+  const sourceRoot = mkdtempSync(join(tmpdir(), "dispatcher-real-legacy-"));
+  writeLegacyCestusFixture(sourceRoot);
+  writeFileSync(
+    join(sourceRoot, "ontology", "claims.json"),
+    JSON.stringify({
+      legacyCestusType: "claims",
+      claims: [{
+        id: "legacy_gateway_binding_subject",
+        subjectRef: "agency:gateway-primary",
+        predicate: "agency.name",
+        object: "Gateway Primary Agency",
+        confidence: 0.93
+      }]
+    }, null, 2)
+  );
+  writeFileSync(
+    join(sourceRoot, "ontology", "claims-secondary.json"),
+    JSON.stringify({
+      legacyCestusType: "claims",
+      claims: [{
+        id: "legacy_gateway_binding_secondary",
+        predicate: "agency.status",
+        object: "active",
+        confidence: 0.81
+      }]
+    }, null, 2)
+  );
+  const workspace = createFakeMountedWorkspace(
+    "Dispatcher real legacy binding workspace"
+  );
+  const runtime = createLegacyImportRuntime({
+    mountedWorkspace: workspace,
+    actor: humanActor
+  });
+  try {
+    const sourceCollectionId = "src_task136_legacy_binding";
+    const scanBatchId = "scan_task136_legacy_binding";
+    const stagingBatchId = "legacy_stage_task136_legacy_binding";
+    const inspected = await runtime.inspect({
+      sourceCollectionId,
+      label: "Task136 real legacy binding source",
+      sourceRoot,
+      scanBatchId
+    });
+    if (!inspected.ok) {
+      throw new Error("Real dispatcher legacy inspection failed.");
+    }
+    const approvedImport = await runtime.approveRawImport({
+      sourceCollectionId,
+      scanBatchId,
+      importBatchId: "imp_task136_legacy_binding",
+      approvedBy: humanActor.id
+    });
+    if (!approvedImport.ok) {
+      throw new Error("Real dispatcher legacy raw approval failed.");
+    }
+    const imported = await runtime.importApproved({
+      sourceCollectionId,
+      scanBatchId,
+      importBatchId: "imp_task136_legacy_binding"
+    });
+    if (!imported.ok) {
+      throw new Error("Real dispatcher legacy import failed.");
+    }
+    const preview = await runtime.stagingPreview({
+      sourceCollectionId,
+      legacyReportId: inspected.legacyReportId
+    });
+    if (!preview.ok || preview.candidates.length !== 2) {
+      throw new Error(
+        "Real dispatcher legacy preparation requires two evidence-tied candidates."
+      );
+    }
+    const ordered = [...preview.candidates].sort((left, right) =>
+      Number(Object.hasOwn(right, "subjectRef")) -
+      Number(Object.hasOwn(left, "subjectRef"))
+    );
+    const candidates = [ordered[0]!, ordered[1]!] as const;
+    const selectedCandidateIds = candidates.map(
+      ({ candidateId }) => candidateId
+    );
+    const approvedStaging = await runtime.approveStaging({
+      sourceCollectionId,
+      scanBatchId,
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId,
+      approvedBy: humanActor.id,
+      approvedAssertionCandidateIds: selectedCandidateIds
+    });
+    if (!approvedStaging.ok) {
+      throw new Error("Real dispatcher legacy staging approval failed.");
+    }
+    const residentAgentId = "agent_default" as const;
+    const taskId = "task_dispatcher_real_legacy";
+    const context = {
+      runtime,
+      ledger: workspace.ledger,
+      residentAgentId,
+      sourceCollectionId,
+      scanBatchId,
+      stagingBatchId,
+      legacyReportId: inspected.legacyReportId,
+      reportHash: inspected.reportHash,
+      candidateSetHash: inspected.candidateSetHash,
+      selectedCandidateIds
+    };
+    return {
+      fixture: {
+        kind: "legacy-staging",
+        ordinals: [9, 10],
+        ledger: workspace.ledger,
+        workspaceId: workspace.workspaceId,
+        residentAgentId,
+        taskId,
+        binding: {
+          kind: "legacy-staging",
+          workspaceId: workspace.workspaceId,
+          residentAgentId,
+          taskId,
+          context
+        }
+      },
+      candidates,
+      cleanup() {
+        rmSync(sourceRoot, { recursive: true, force: true });
+        rmSync(workspace.rootDir, { recursive: true, force: true });
+      }
+    };
+  } catch (error) {
+    rmSync(sourceRoot, { recursive: true, force: true });
+    rmSync(workspace.rootDir, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 interface UnknownResidentDomainApi {
