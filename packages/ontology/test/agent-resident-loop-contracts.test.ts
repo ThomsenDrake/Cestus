@@ -13,13 +13,16 @@ const context = {
 };
 
 function event(id: string, type: string, payload: Record<string, unknown>, sequence: number) {
+  const causationId = typeof payload.causationId === "string"
+    ? payload.causationId
+    : context.causationId;
   return {
     id,
     type,
     version: 1,
     streamId: "agent_resident_loop_task_001_attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_run_001",
     sequence,
-    context,
+    context: { ...context, causationId },
     payload
   };
 }
@@ -206,7 +209,11 @@ const v2Binding = {
 const v2PlanEventId = "evt_resident_v2_plan_task_001_attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_run_001";
 const v2ObservationEventId = "evt_resident_v2_observation_001";
 const v2ToolStepEventId = "evt_resident_v2_step_001";
+const v2FinalObservationEventId = "evt_resident_v2_observation_final_001";
 const v2SuspensionEventId = "evt_resident_v2_suspension_001";
+const v2OrchestrationCheckpointEventId = "evt_orchestration_resident_suspension_001";
+const v2AutomaticRequestEventId = "evt_resident_domain_requested_001";
+const v2HumanRequestEventId = "evt_resident_domain_requested_002";
 
 const v2PlanReadback = {
   planRecordEventId: v2PlanEventId,
@@ -219,7 +226,7 @@ const v2PlanReadback = {
   planRevision: 0
 };
 
-function v2FixtureEvents() {
+function terminalV2Replay() {
   let consumed = v2BudgetUsage();
   const nextBudget = (actionConsumption: V2BudgetUsage) => {
     consumed = advanceV2Budget(consumed, actionConsumption);
@@ -233,7 +240,7 @@ function v2FixtureEvents() {
     providerResponseBytes: 256
   }));
   const toolStepBudget = nextBudget(v2BudgetUsage({ toolSteps: 1, derivativeArtifactBytes: 1024 }));
-  const suspensionBudget = nextBudget(v2BudgetUsage({ approvalSuspensionMs: 5 }));
+  const finalObservationBudget = nextBudget(v2BudgetUsage({ observationRecords: 1 }));
   const resultBudget = nextBudget(v2BudgetUsage({ activeExecutionMs: 10 }));
   return [
     event(v2PlanEventId, "agent.resident-plan.recorded.v2", {
@@ -251,7 +258,9 @@ function v2FixtureEvents() {
         toolVersion: "1.0.0",
         allowlistEntryHash: hash,
         expectedSafeOutputClass: "observation",
-        prerequisiteStepOrdinals: []
+        prerequisiteStepOrdinals: [],
+        toolRequestId: "toolreq_001",
+        executionCapabilityHash: hash
       }, {
         ordinal: 2,
         purpose: "record the bounded observation",
@@ -259,11 +268,14 @@ function v2FixtureEvents() {
         toolVersion: "1.0.0",
         allowlistEntryHash: hash,
         expectedSafeOutputClass: "observation",
-        prerequisiteStepOrdinals: [1]
+        prerequisiteStepOrdinals: [1],
+        toolRequestId: "toolreq_002",
+        executionCapabilityHash: hash
       }]
     }, 1),
     event(v2ObservationEventId, "agent.resident-observation.recorded.v2", {
       ...v2Binding,
+      causationId: v2PlanEventId,
       budget: observationBudget,
       schemaVersion: "resident-observation-record.v2",
       observationId: "observation_001",
@@ -279,6 +291,7 @@ function v2FixtureEvents() {
     }, 2),
     event(v2ToolStepEventId, "agent.resident-tool-step.recorded.v2", {
       ...v2Binding,
+      causationId: "evt_resident_domain_completed_001",
       budget: toolStepBudget,
       schemaVersion: "resident-tool-step-record.v2",
       planId: "plan_001",
@@ -294,48 +307,42 @@ function v2FixtureEvents() {
       state: "executed",
       previewHash: hash,
       gatewayReadbacks: {
-        requestEventId: "evt_tool_requested_001",
-        decisionEventId: "evt_tool_approved_001",
-        resultEventId: "evt_tool_completed_001"
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        requestEventId: v2AutomaticRequestEventId,
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_completed_001"
       },
       inputArtifactHashes: [hash],
       resultArtifactHashes: [hash]
     }, 3),
-    event(v2SuspensionEventId, "agent.resident-loop.suspended.v2", {
+    event(v2FinalObservationEventId, "agent.resident-observation.recorded.v2", {
       ...v2Binding,
-      budget: suspensionBudget,
-      schemaVersion: "resident-loop-suspension.v2",
+      causationId: v2ToolStepEventId,
+      budget: finalObservationBudget,
+      schemaVersion: "resident-observation-record.v2",
+      observationId: "observation_final_001",
       planId: "plan_001",
       planRevision: 0,
       planReadback: v2PlanReadback,
-      finalObservationReadback: {
-        observationEventId: v2ObservationEventId,
-        workspaceId: v2Binding.workspaceId,
-        residentAgentId: v2Binding.residentAgentId,
-        taskId: v2Binding.taskId,
-        attemptId: v2Binding.attemptId,
-        runId: v2Binding.runId,
-        planId: "plan_001",
-        planRevision: 0
-      },
-      suspensionCategory: "approval-required",
-      checkpoint: {
-        checkpointEventId: v2SuspensionEventId,
-        requestEventId: "evt_tool_requested_001",
-        decisionEventId: "evt_tool_approved_001",
-        resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
-        nextSafeAction: "await-human-review"
-      }
+      stepOrdinal: 1,
+      kind: "tool-result",
+      safeSummary: "Durable tool result observed.",
+      artifactHashes: [hash],
+      toolRequestId: "toolreq_001",
+      modelInvocationEventId: "evt_invocation_001"
     }, 4),
     event("evt_resident_v2_result_001", "agent.resident-loop.result.recorded.v2", {
       ...v2Binding,
+      causationId: v2FinalObservationEventId,
       budget: resultBudget,
       schemaVersion: "resident-loop-result.v2",
       planId: "plan_001",
       planRevision: 0,
       planReadback: v2PlanReadback,
       finalObservationReadback: {
-        observationEventId: v2ObservationEventId,
+        observationEventId: v2FinalObservationEventId,
         workspaceId: v2Binding.workspaceId,
         residentAgentId: v2Binding.residentAgentId,
         taskId: v2Binding.taskId,
@@ -373,9 +380,85 @@ function v2FixtureEvents() {
   ] as const;
 }
 
+function approvalResumableV2Replay() {
+  const [plan, observation, automaticToolStep, finalObservation, terminalResult] = terminalV2Replay();
+  const finalObservationBudget = finalObservation.payload.budget as {
+    consumed: V2BudgetUsage;
+  };
+  const suspensionAction = v2BudgetUsage({ approvalSuspensionMs: 5 });
+  const suspensionConsumed = advanceV2Budget(finalObservationBudget.consumed, suspensionAction);
+  const suspensionBudget = v2BudgetSnapshot(suspensionConsumed, suspensionAction);
+  const resultAction = v2BudgetUsage({ activeExecutionMs: 10 });
+  const resultBudget = v2BudgetSnapshot(
+    advanceV2Budget(suspensionConsumed, resultAction),
+    resultAction
+  );
+  const toolStep = {
+    ...automaticToolStep,
+    context: {
+      ...automaticToolStep.context,
+      causationId: v2HumanRequestEventId
+    },
+    payload: {
+      ...automaticToolStep.payload,
+      causationId: v2HumanRequestEventId,
+      sideEffectClass: "ledger-review",
+      requiredApprovalClass: "ledger-review",
+      state: "suspended",
+      gatewayReadbacks: {
+        authorizationKind: "human-approval",
+        stage: "requested",
+        requestEventId: v2HumanRequestEventId
+      },
+      resultArtifactHashes: []
+    }
+  };
+  const suspension = event(v2SuspensionEventId, "agent.resident-loop.suspended.v2", {
+    ...v2Binding,
+    causationId: v2OrchestrationCheckpointEventId,
+    budget: suspensionBudget,
+    schemaVersion: "resident-loop-suspension.v2",
+    planId: "plan_001",
+    planRevision: 0,
+    planReadback: v2PlanReadback,
+    finalObservationReadback: {
+      observationEventId: v2FinalObservationEventId,
+      workspaceId: v2Binding.workspaceId,
+      residentAgentId: v2Binding.residentAgentId,
+      taskId: v2Binding.taskId,
+      attemptId: v2Binding.attemptId,
+      runId: v2Binding.runId,
+      planId: "plan_001",
+      planRevision: 0
+    },
+    suspensionCategory: "approval-required",
+    checkpoint: {
+      authorizationKind: "awaiting-human-approval",
+      orchestrationCheckpointEventId: v2OrchestrationCheckpointEventId,
+      requestEventId: v2HumanRequestEventId,
+      resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
+      nextSafeAction: "await-human-review"
+    }
+  }, 5);
+  const { handoffReadback: _handoffReadback, ...resultWithoutHandoff } = terminalResult.payload;
+  const result = event("evt_resident_v2_result_001", "agent.resident-loop.result.recorded.v2", {
+    ...resultWithoutHandoff,
+    causationId: v2SuspensionEventId,
+    budget: resultBudget,
+    outcome: "resumable",
+    category: "approval-required",
+    resumeAnchor: {
+      checkpointEventId: v2SuspensionEventId,
+      resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
+      nextSafeAction: "await-human-review"
+    }
+  }, 6);
+  return [plan, observation, toolStep, finalObservation, suspension, result] as const;
+}
+
 function v2ReplayWithPlanRecords(planRecordCount: number) {
-  const [basePlan, baseObservation, baseToolStep, baseSuspension, baseResult] = v2FixtureEvents();
-  const replay: ReturnType<typeof v2FixtureEvents>[number][] = [];
+  const [basePlan, baseObservation, baseToolStep, baseFinalObservation, baseResult] = terminalV2Replay();
+  const replay: ReturnType<typeof terminalV2Replay>[number][] = [];
   let consumed = v2BudgetUsage();
   const nextBudget = (actionConsumption: V2BudgetUsage) => {
     consumed = advanceV2Budget(consumed, actionConsumption);
@@ -395,8 +478,13 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
       planId,
       planRevision
     };
+    const stableToolRequestIds = [
+      `toolreq_plan_${planRevision + 1}_step_1`,
+      `toolreq_plan_${planRevision + 1}_step_2`
+    ] as const;
     replay.push(event(planEventId, "agent.resident-plan.recorded.v2", {
       ...basePlan.payload,
+      causationId: priorObservationReadback?.observationEventId ?? v2Binding.causationId,
       budget: nextBudget(v2BudgetUsage({
         ...(planRevision === 0 ? {} : { planRevisions: 1 }),
         ...(planRevision === 0 ? { contextBytes: 512 } : {})
@@ -407,10 +495,15 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
         ...priorPlanReadback,
         priorPlanRecordEventId: priorPlanReadback.planRecordEventId
       },
-      replanObservationReadback: priorObservationReadback ?? null
+      replanObservationReadback: priorObservationReadback ?? null,
+      steps: (basePlan.payload.steps as Record<string, unknown>[]).map((step, index) => ({
+        ...step,
+        toolRequestId: stableToolRequestIds[index]
+      }))
     }, replay.length + 1));
     replay.push(event(`evt_resident_v2_observation_${planRevision + 1}`, "agent.resident-observation.recorded.v2", {
       ...baseObservation.payload,
+      causationId: planEventId,
       budget: nextBudget(v2BudgetUsage({
         observationRecords: 1,
         ...(planRevision === 0 ? {
@@ -422,22 +515,44 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
       observationId: `observation_${planRevision + 1}`,
       planId,
       planRevision,
-      planReadback
+      planReadback,
+      toolRequestId: stableToolRequestIds[0]
     }, replay.length + 1));
-    const observationEvent = replay[replay.length - 1]!;
     replay.push(event(`evt_resident_v2_step_${planRevision + 1}`, "agent.resident-tool-step.recorded.v2", {
       ...baseToolStep.payload,
+      causationId: `evt_resident_domain_completed_${planRevision + 1}`,
       budget: nextBudget(v2BudgetUsage({
         toolSteps: 1,
         ...(planRevision === 0 ? { derivativeArtifactBytes: 1024 } : {})
       })),
       planId,
       planRevision,
-      planReadback
+      planReadback,
+      toolRequestId: stableToolRequestIds[0],
+      gatewayReadbacks: {
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        requestEventId: `evt_resident_domain_requested_${planRevision + 1}`,
+        executionClaimEventId: `evt_resident_domain_claimed_${planRevision + 1}`,
+        outcomeReceiptEventId: `evt_resident_domain_receipt_${planRevision + 1}`,
+        resultEventId: `evt_resident_domain_completed_${planRevision + 1}`
+      }
     }, replay.length + 1));
+    const toolStepEvent = replay[replay.length - 1]!;
+    replay.push(event(`evt_resident_v2_observation_final_${planRevision + 1}`, "agent.resident-observation.recorded.v2", {
+      ...baseFinalObservation.payload,
+      causationId: toolStepEvent.id,
+      budget: nextBudget(v2BudgetUsage({ observationRecords: 1 })),
+      observationId: `observation_final_${planRevision + 1}`,
+      planId,
+      planRevision,
+      planReadback,
+      toolRequestId: stableToolRequestIds[0]
+    }, replay.length + 1));
+    const finalObservationEvent = replay[replay.length - 1]!;
     priorPlanReadback = planReadback;
     priorObservationReadback = {
-      observationEventId: observationEvent.id,
+      observationEventId: finalObservationEvent.id,
       workspaceId: v2Binding.workspaceId,
       residentAgentId: v2Binding.residentAgentId,
       taskId: v2Binding.taskId,
@@ -450,21 +565,9 @@ function v2ReplayWithPlanRecords(planRecordCount: number) {
     finalObservationReadback = priorObservationReadback;
   }
 
-  const suspensionEventId = `evt_resident_v2_suspension_${planRecordCount}`;
-  replay.push(event(suspensionEventId, "agent.resident-loop.suspended.v2", {
-    ...baseSuspension.payload,
-    budget: nextBudget(v2BudgetUsage({ approvalSuspensionMs: 5 })),
-    planId: finalPlanReadback?.planId,
-    planRevision: planRecordCount - 1,
-    planReadback: finalPlanReadback,
-    finalObservationReadback,
-    checkpoint: {
-      ...(baseSuspension.payload.checkpoint as Record<string, unknown>),
-      checkpointEventId: suspensionEventId
-    }
-  }, replay.length + 1));
   replay.push(event(`evt_resident_v2_result_${planRecordCount}`, "agent.resident-loop.result.recorded.v2", {
     ...baseResult.payload,
+    causationId: finalObservationReadback?.observationEventId,
     budget: nextBudget(v2BudgetUsage({ activeExecutionMs: 10 })),
     planId: finalPlanReadback?.planId,
     planRevision: planRecordCount - 1,
@@ -749,7 +852,7 @@ describe("resident loop ontology contracts", () => {
 });
 
 describe("resident loop ontology contracts v2", () => {
-  it("preserves accepted v1 replay while requiring the complete strict v2 five-event family", () => {
+  it("preserves accepted v1 replay while requiring strict v2 terminal and resumable families", () => {
     for (const candidate of fixtureEvents()) {
       expectValid(candidate);
     }
@@ -762,11 +865,12 @@ describe("resident loop ontology contracts v2", () => {
       "agent.resident-loop.result.recorded.v2"
     ]));
 
-    const replay = v2FixtureEvents();
-    for (const candidate of replay) {
-      expectValid(candidate);
+    for (const replay of [terminalV2Replay(), approvalResumableV2Replay()]) {
+      for (const candidate of replay) {
+        expectValid(candidate);
+      }
+      expect(validateResidentLoopEventSequence(replay as never).success).toBe(true);
     }
-    expect(validateResidentLoopEventSequence(replay as never).success).toBe(true);
   });
 
   it("replays durable budget progression through a fourth plan record and rejects an over-limit revision", () => {
@@ -853,15 +957,15 @@ describe("resident loop ontology contracts v2", () => {
 
   it("rejects a replan without its causally preceding durable observation", () => {
     const replay = v2ReplayWithPlanRecords(2);
-    const withoutPrecedingObservation = [
-      replay[0]!,
-      replay[2]!,
-      replay[3]!,
-      replay[4]!,
-      replay[5]!,
-      replay[6]!,
-      replay[7]!
-    ];
+    const secondPlan = replay.find((candidate) =>
+      candidate.type === "agent.resident-plan.recorded.v2" && candidate.payload.planRevision === 1
+    )!;
+    const precedingObservationEventId = (
+      secondPlan.payload.replanObservationReadback as { observationEventId: string }
+    ).observationEventId;
+    const withoutPrecedingObservation = replay.filter(
+      (candidate) => candidate.id !== precedingObservationEventId
+    );
     let consumed = v2BudgetUsage();
     const recounted = withoutPrecedingObservation.map((candidate, index) => {
       const actionConsumption = (candidate.payload.budget as { actionConsumption: V2BudgetUsage }).actionConsumption;
@@ -878,17 +982,21 @@ describe("resident loop ontology contracts v2", () => {
 
   it("rejects a third plan that carries forward an observation from before the intervening plan", () => {
     const replay = v2ReplayWithPlanRecords(3);
-    const firstObservation = replay.find((candidate) =>
-      candidate.type === "agent.resident-observation.recorded.v2" && candidate.payload.planRevision === 0
-    )!;
-    const intermediateObservation = replay.find((candidate) =>
-      candidate.type === "agent.resident-observation.recorded.v2" && candidate.payload.planRevision === 1
-    )!;
     const intermediatePlan = replay.find((candidate) =>
       candidate.type === "agent.resident-plan.recorded.v2" && candidate.payload.planRevision === 1
     )!;
     const thirdPlan = replay.find((candidate) =>
       candidate.type === "agent.resident-plan.recorded.v2" && candidate.payload.planRevision === 2
+    )!;
+    const firstObservationEventId = (
+      intermediatePlan.payload.replanObservationReadback as { observationEventId: string }
+    ).observationEventId;
+    const intermediateObservationEventId = (
+      thirdPlan.payload.replanObservationReadback as { observationEventId: string }
+    ).observationEventId;
+    const firstObservation = replay.find((candidate) => candidate.id === firstObservationEventId)!;
+    const intermediateObservation = replay.find(
+      (candidate) => candidate.id === intermediateObservationEventId
     )!;
     const staleObservationReplay = replay
       .filter((candidate) => candidate.id !== intermediateObservation.id)
@@ -922,24 +1030,38 @@ describe("resident loop ontology contracts v2", () => {
   });
 
   it("rejects a declared step when its prerequisite was never executed", () => {
-    const replay = v2FixtureEvents();
+    const replay = terminalV2Replay();
     const toolStep = replay[2]!;
 
     expect(validateResidentLoopEventSequence([
       replay[0]!,
       replay[1]!,
-      { ...toolStep, payload: { ...toolStep.payload, stepOrdinal: 2 } },
-      replay[3]!,
+      {
+        ...toolStep,
+        payload: {
+          ...toolStep.payload,
+          stepOrdinal: 2,
+          toolRequestId: "toolreq_002"
+        }
+      },
+      {
+        ...replay[3]!,
+        payload: {
+          ...replay[3]!.payload,
+          stepOrdinal: 2,
+          toolRequestId: "toolreq_002"
+        }
+      },
       replay[4]!
     ] as never).success).toBe(false);
   });
 
   it.each([
-    ["observation", 1, "observationRecords"],
+    ["observation", 3, "observationRecords"],
     ["tool step", 2, "toolSteps"],
     ["result", 4, "activeExecutionMs"]
   ] as const)("rejects a v2 replay with missing %s budget consumption", (_label, index, field) => {
-    const replay = v2FixtureEvents();
+    const replay = terminalV2Replay();
     expect(validateResidentLoopEventSequence(replay as never).success).toBe(true);
     const candidate = replay[index]!;
     const budget = candidate.payload.budget as {
@@ -961,38 +1083,16 @@ describe("resident loop ontology contracts v2", () => {
     ] as never).success).toBe(false);
   });
 
-  function resumableV2Replay() {
-    const replay = v2FixtureEvents();
-    const result = replay[4]!;
-    const { handoffReadback: _handoffReadback, ...withoutHandoff } = result.payload;
-    return [
-      ...replay.slice(0, 4),
-      {
-        ...result,
-        payload: {
-          ...withoutHandoff,
-          outcome: "resumable",
-          category: "approval-required",
-          resumeAnchor: {
-            checkpointEventId: v2SuspensionEventId,
-            resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
-            nextSafeAction: "await-human-review"
-          }
-        }
-      }
-    ];
-  }
-
   it.each([
     ["checkpoint", { checkpointEventId: "evt_unrelated_checkpoint_001" }],
     ["deadline", { resumptionDeadlineAt: "2026-07-15T18:00:00.000Z" }],
     ["next action", { nextSafeAction: "retry-unrelated-action" }]
   ] as const)("rejects a resumable result anchored to an unrelated suspension %s", (_label, mutate) => {
-    const replay = resumableV2Replay();
+    const replay = approvalResumableV2Replay();
     expect(validateResidentLoopEventSequence(replay as never).success).toBe(true);
-    const result = replay[4]!;
+    const result = replay[5]!;
     expect(validateResidentLoopEventSequence([
-      ...replay.slice(0, 4),
+      ...replay.slice(0, 5),
       {
         ...result,
         payload: {
@@ -1013,7 +1113,7 @@ describe("resident loop ontology contracts v2", () => {
     ["provenance-missing", "failed", "resumable"],
     ["secret-detected", "failed", "resumable"]
   ] as const)("exposes a safe %s category only for its permitted outcome", (category, validOutcome, invalidOutcome) => {
-    const result = v2FixtureEvents()[4]!;
+    const result = terminalV2Replay()[4]!;
     const { handoffReadback: _handoffReadback, ...withoutHandoff } = result.payload;
     const resumableAnchor = {
       checkpointEventId: v2SuspensionEventId,
@@ -1043,7 +1143,7 @@ describe("resident loop ontology contracts v2", () => {
   it.each(Object.entries(v2HardMaximums))(
     "rejects a %s ceiling above its hard maximum even when accounting is conserved",
     (field, hardMaximum) => {
-      const [plan] = v2FixtureEvents();
+      const [plan] = terminalV2Replay();
       const candidate = {
         ...plan,
         payload: {
@@ -1078,7 +1178,7 @@ describe("resident loop ontology contracts v2", () => {
     }],
     ["failed approval-required", "failed", "approval-required", undefined]
   ] as const)("rejects an invalid %s outcome/category pair", (_label, outcome, category, resumeAnchor) => {
-    const result = v2FixtureEvents()[4]!;
+    const result = terminalV2Replay()[4]!;
     const { handoffReadback: _handoffReadback, ...withoutHandoff } = result.payload;
     expect(validateKnowledgeEvent({
       ...result,
@@ -1092,23 +1192,23 @@ describe("resident loop ontology contracts v2", () => {
   });
 
   it.each([
-    ["undeclared ordinal", (replay: ReturnType<typeof v2FixtureEvents>) => [
+    ["undeclared ordinal", (replay: ReturnType<typeof terminalV2Replay>) => [
       ...replay.slice(0, 2),
       { ...replay[2]!, payload: { ...replay[2]!.payload, stepOrdinal: 3 } },
       ...replay.slice(3)
     ]],
-    ["declared ordinal with swapped tool binding", (replay: ReturnType<typeof v2FixtureEvents>) => [
+    ["declared ordinal with swapped tool binding", (replay: ReturnType<typeof terminalV2Replay>) => [
       ...replay.slice(0, 2),
       { ...replay[2]!, payload: { ...replay[2]!.payload, toolId: "tool_other_workspace" } },
       ...replay.slice(3)
     ]],
-    ["declared ordinal with swapped allowlist entry", (replay: ReturnType<typeof v2FixtureEvents>) => [
+    ["declared ordinal with swapped allowlist entry", (replay: ReturnType<typeof terminalV2Replay>) => [
       ...replay.slice(0, 2),
       { ...replay[2]!, payload: { ...replay[2]!.payload, allowlistEntryHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222" } },
       ...replay.slice(3)
     ]]
   ])("rejects a replayed tool step with %s", (_label, mutate) => {
-    expect(validateResidentLoopEventSequence(mutate(v2FixtureEvents()) as never).success).toBe(false);
+    expect(validateResidentLoopEventSequence(mutate(terminalV2Replay()) as never).success).toBe(false);
   });
 
   it.each([
@@ -1125,7 +1225,7 @@ describe("resident loop ontology contracts v2", () => {
       steps[1]!
     ]]
   ])("rejects a plan with a %s", (_label, mutate) => {
-    const [plan] = v2FixtureEvents();
+    const [plan] = terminalV2Replay();
     expect(validateKnowledgeEvent({
       ...plan,
       payload: {
@@ -1174,7 +1274,7 @@ describe("resident loop ontology contracts v2", () => {
       return { ...narrow, safeDiagnostics: [{ category: "handoff-recorded", nextSafeAction: "review-handoff" }] };
     }]
   ])("rejects a completed result with a narrowed %s H substitute", (_label, mutate) => {
-    const result = v2FixtureEvents()[4]!;
+    const result = terminalV2Replay()[4]!;
     expect(validateKnowledgeEvent({
       ...result,
       payload: {
@@ -1185,7 +1285,7 @@ describe("resident loop ontology contracts v2", () => {
   });
 
   it("requires the completed Task119 handoff readback authority to match the resident authority", () => {
-    const replay = v2FixtureEvents().map((event) => structuredClone(event));
+    const replay = terminalV2Replay().map((event) => structuredClone(event));
     const result = replay[4]!;
     result.payload = {
       ...result.payload,
@@ -1202,82 +1302,86 @@ describe("resident loop ontology contracts v2", () => {
   });
 
   it.each([
-    ["plan missing workspace identity", 0, (candidate: Record<string, unknown>) => {
+    ["plan missing workspace identity", "terminal", 0, (candidate: Record<string, unknown>) => {
       const { workspaceId: _workspaceId, ...payload } = candidate;
       return payload;
     }],
-    ["plan missing descriptor binding", 0, (candidate: Record<string, unknown>) => {
+    ["plan missing descriptor binding", "terminal", 0, (candidate: Record<string, unknown>) => {
       const { workflowDescriptor: _workflowDescriptor, ...payload } = candidate;
       return payload;
     }],
-    ["plan missing policy binding", 0, (candidate: Record<string, unknown>) => {
+    ["plan missing policy binding", "terminal", 0, (candidate: Record<string, unknown>) => {
       const { policy: _policy, ...payload } = candidate;
       return payload;
     }],
-    ["plan mismatched authority policy", 0, (candidate: Record<string, unknown>) => ({
+    ["plan mismatched authority policy", "terminal", 0, (candidate: Record<string, unknown>) => ({
       ...candidate,
       authority: { ...(candidate.authority as Record<string, unknown>), policyHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222" }
     })],
-    ["plan malformed ten-counter accounting", 0, (candidate: Record<string, unknown>) => ({
+    ["plan malformed ten-counter accounting", "terminal", 0, (candidate: Record<string, unknown>) => ({
       ...candidate,
       budget: {
         ...(candidate.budget as Record<string, unknown>),
         remaining: { ...((candidate.budget as { remaining: Record<string, unknown> }).remaining), toolSteps: 10 }
       }
     })],
-    ["observation missing plan readback", 1, (candidate: Record<string, unknown>) => {
+    ["observation missing plan readback", "terminal", 1, (candidate: Record<string, unknown>) => {
       const { planReadback: _planReadback, ...payload } = candidate;
       return payload;
     }],
-    ["observation changed plan identity", 1, (candidate: Record<string, unknown>) => ({
+    ["observation changed plan identity", "terminal", 1, (candidate: Record<string, unknown>) => ({
       ...candidate,
       planReadback: { ...(candidate.planReadback as Record<string, unknown>), planId: "plan_other" }
     })],
-    ["tool step missing exact allowlist binding", 2, (candidate: Record<string, unknown>) => {
+    ["tool step missing exact allowlist binding", "terminal", 2, (candidate: Record<string, unknown>) => {
       const { allowlistEntryHash: _allowlistEntryHash, ...payload } = candidate;
       return payload;
     }],
-    ["tool step missing preview binding", 2, (candidate: Record<string, unknown>) => {
+    ["tool step missing preview binding", "terminal", 2, (candidate: Record<string, unknown>) => {
       const { previewHash: _previewHash, ...payload } = candidate;
       return payload;
     }],
-    ["tool step missing durable gateway readback", 2, (candidate: Record<string, unknown>) => {
+    ["tool step missing durable gateway readback", "terminal", 2, (candidate: Record<string, unknown>) => {
       const { gatewayReadbacks: _gatewayReadbacks, ...payload } = candidate;
       return payload;
     }],
-    ["suspension missing durable checkpoint", 3, (candidate: Record<string, unknown>) => {
+    ["suspension missing durable checkpoint", "resumable", 4, (candidate: Record<string, unknown>) => {
       const { checkpoint: _checkpoint, ...payload } = candidate;
       return payload;
     }],
-    ["suspension changed final-observation identity", 3, (candidate: Record<string, unknown>) => ({
+    ["suspension changed final-observation identity", "resumable", 4, (candidate: Record<string, unknown>) => ({
       ...candidate,
       finalObservationReadback: {
         ...(candidate.finalObservationReadback as Record<string, unknown>),
         runId: "run_other"
       }
     })],
-    ["completed result missing complete H readback", 4, (candidate: Record<string, unknown>) => {
+    ["completed result missing complete H readback", "terminal", 4, (candidate: Record<string, unknown>) => {
       const { handoffReadback: _handoffReadback, ...payload } = candidate;
       return payload;
     }],
-    ["completed result with incomplete H lifecycle proof", 4, (candidate: Record<string, unknown>) => ({
+    ["completed result with incomplete H lifecycle proof", "terminal", 4, (candidate: Record<string, unknown>) => ({
       ...candidate,
       handoffReadback: {
         ...(candidate.handoffReadback as Record<string, unknown>),
         terminalRunEventId: undefined
       }
     })],
-    ["resumable result without resume anchor", 4, (candidate: Record<string, unknown>) => {
+    ["resumable result without resume anchor", "resumable", 5, (candidate: Record<string, unknown>) => {
       const { handoffReadback: _handoffReadback, ...payload } = candidate;
-      return { ...payload, outcome: "resumable", category: "approval-required" };
+      const { resumeAnchor: _resumeAnchor, ...withoutResumeAnchor } = payload;
+      return withoutResumeAnchor;
     }]
-  ])("rejects %s", (_label, index, mutate) => {
-    const candidate = v2FixtureEvents()[index]!;
+  ] as const)("rejects %s", (_label, replayKind, index, mutate) => {
+    const replay = replayKind === "terminal"
+      ? terminalV2Replay()
+      : approvalResumableV2Replay();
+    const candidate = replay[index]!;
     expect(validateKnowledgeEvent({ ...candidate, payload: mutate(candidate.payload) }).success).toBe(false);
   });
 
   it("rejects unknown and unsafe own-data v2 input without reading an accessor", () => {
-    const [plan] = v2FixtureEvents();
+    const [plan] = terminalV2Replay();
     expect(validateKnowledgeEvent({ ...plan, payload: { ...plan.payload, unexpected: true } }).success).toBe(false);
 
     const payloadWithAccessor = { ...plan.payload };
@@ -1291,5 +1395,465 @@ describe("resident loop ontology contracts v2", () => {
     });
     expect(validateKnowledgeEvent({ ...plan, payload: payloadWithAccessor }).success).toBe(false);
     expect(accessorCalls).toBe(0);
+  });
+
+  it("validates strict automatic and human gateway readbacks", () => {
+    const step = terminalV2Replay()[2]!;
+    const automatic = [
+      ["requested", "requested", {
+        authorizationKind: "automatic-policy",
+        stage: "requested",
+        requestEventId: "evt_resident_domain_requested_001"
+      }],
+      ["claimed", "suspended", {
+        authorizationKind: "automatic-policy",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001"
+      }],
+      ["completed", "executed", {
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_completed_001"
+      }],
+      ["pre-claim failed", "failed", {
+        authorizationKind: "automatic-policy",
+        stage: "failed",
+        failurePhase: "pre-claim",
+        requestEventId: "evt_resident_domain_requested_001",
+        resultEventId: "evt_resident_domain_failed_001"
+      }],
+      ["post-claim failed", "failed", {
+        authorizationKind: "automatic-policy",
+        stage: "failed",
+        failurePhase: "post-claim",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_failed_001"
+      }]
+    ] as const;
+    const human = [
+      ["requested", "requested", {
+        authorizationKind: "human-approval",
+        stage: "requested",
+        requestEventId: "evt_resident_domain_requested_002"
+      }],
+      ["claimed", "suspended", {
+        authorizationKind: "human-approval",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        executionClaimEventId: "evt_resident_domain_claimed_002"
+      }],
+      ["completed", "executed", {
+        authorizationKind: "human-approval",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        executionClaimEventId: "evt_resident_domain_claimed_002",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_002",
+        resultEventId: "evt_resident_domain_completed_002"
+      }],
+      ["denied", "denied", {
+        authorizationKind: "human-approval",
+        stage: "denied",
+        requestEventId: "evt_resident_domain_requested_002",
+        denialEventId: "evt_resident_domain_denied_002"
+      }],
+      ["pre-approval failed", "failed", {
+        authorizationKind: "human-approval",
+        stage: "failed",
+        failurePhase: "pre-approval",
+        requestEventId: "evt_resident_domain_requested_002",
+        resultEventId: "evt_resident_domain_failed_002"
+      }],
+      ["post-approval-pre-claim failed", "failed", {
+        authorizationKind: "human-approval",
+        stage: "failed",
+        failurePhase: "post-approval-pre-claim",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        resultEventId: "evt_resident_domain_failed_002"
+      }],
+      ["post-claim failed", "failed", {
+        authorizationKind: "human-approval",
+        stage: "failed",
+        failurePhase: "post-claim",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: hash,
+        executionClaimEventId: "evt_resident_domain_claimed_002",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_002",
+        resultEventId: "evt_resident_domain_failed_002"
+      }]
+    ] as const;
+
+    for (const [label, state, gatewayReadbacks] of [...automatic, ...human]) {
+      const candidate = {
+        ...step,
+        payload: {
+          ...step.payload,
+          sideEffectClass: gatewayReadbacks.authorizationKind === "automatic-policy" ? "read-only" : "ledger-review",
+          requiredApprovalClass: gatewayReadbacks.authorizationKind === "automatic-policy" ? "none" : "ledger-review",
+          state,
+          gatewayReadbacks
+        }
+      };
+      expect(validateKnowledgeEvent(candidate).success, label).toBe(true);
+    }
+
+    const automaticRequested = automatic[0]![2];
+    const humanRequested = human[0]![2];
+    const invalid = [
+      ["automatic decision", { ...automaticRequested, decisionEventId: "evt_fabricated_decision" }],
+      ["automatic approver", { ...automaticRequested, approvedBy: "human_fabricated" }],
+      ["automatic approved preview", { ...automaticRequested, approvedPreviewHash: hash }],
+      ["human future decision", { ...humanRequested, decisionEventId: "evt_future_decision" }],
+      ["automatic denial", {
+        authorizationKind: "automatic-policy",
+        stage: "denied",
+        requestEventId: "evt_resident_domain_requested_001",
+        denialEventId: "evt_resident_domain_denied_001"
+      }],
+      ["claimed without claim", {
+        authorizationKind: "automatic-policy",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_001"
+      }],
+      ["completed without receipt", {
+        ...automatic[2]![2],
+        outcomeReceiptEventId: undefined
+      }],
+      ["human claimed without approval tuple", {
+        authorizationKind: "human-approval",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_002",
+        executionClaimEventId: "evt_resident_domain_claimed_002"
+      }],
+      ["compatibility approval substitute", {
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_completed_001",
+        approvedBy: "resident-automatic-policy"
+      }]
+    ] as const;
+    const stateByGatewayStage = {
+      requested: "requested",
+      claimed: "suspended",
+      completed: "executed",
+      denied: "denied",
+      failed: "failed"
+    } as const;
+    for (const [label, gatewayReadbacks] of invalid) {
+      expect(validateKnowledgeEvent({
+        ...step,
+        payload: {
+          ...step.payload,
+          state: stateByGatewayStage[gatewayReadbacks.stage],
+          gatewayReadbacks
+        }
+      }).success, label).toBe(false);
+    }
+  });
+
+  it("validates exact ordinary not-applicable suspension checkpoints", () => {
+    const suspension = approvalResumableV2Replay()[4]!;
+    const ordinaryCheckpoint = {
+      authorizationKind: "not-applicable",
+      orchestrationCheckpointEventId: v2OrchestrationCheckpointEventId,
+      resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
+      nextSafeAction: "refresh-mounted-authority"
+    };
+    const ordinarySuspension = {
+      ...suspension,
+      payload: {
+        ...suspension.payload,
+        suspensionCategory: "authority-stale",
+        checkpoint: ordinaryCheckpoint
+      }
+    };
+
+    expect(validateKnowledgeEvent({
+      ...ordinarySuspension,
+      payload: {
+        ...ordinarySuspension.payload,
+        checkpoint: {
+          ...ordinaryCheckpoint,
+          requestEventId: v2AutomaticRequestEventId
+        }
+      }
+    }).success, "ordinary suspension carrying gateway ID").toBe(false);
+    expect(validateKnowledgeEvent(ordinarySuspension).success).toBe(true);
+  });
+
+  it("validates effect-outcome-unknown suspension and segmented replay", () => {
+    const terminalFixture = terminalV2Replay();
+    const resumableFixture = approvalResumableV2Replay();
+    const executionClaimEventId = "evt_resident_domain_claimed_001";
+    const claimedToolStep = {
+      ...terminalFixture[2]!,
+      context: {
+        ...terminalFixture[2]!.context,
+        causationId: executionClaimEventId
+      },
+      payload: {
+        ...terminalFixture[2]!.payload,
+        causationId: executionClaimEventId,
+        state: "suspended",
+        gatewayReadbacks: {
+          authorizationKind: "automatic-policy",
+          stage: "claimed",
+          requestEventId: v2AutomaticRequestEventId,
+          executionClaimEventId
+        },
+        resultArtifactHashes: []
+      }
+    };
+    const replay = [
+      terminalFixture[0]!,
+      terminalFixture[1]!,
+      claimedToolStep,
+      terminalFixture[3]!,
+      resumableFixture[4]!,
+      resumableFixture[5]!
+    ] as const;
+    const suspension = replay[4]!;
+    const result = replay[5]!;
+    const logicalLocator = {
+      workspaceId: v2Binding.workspaceId,
+      residentAgentId: v2Binding.residentAgentId,
+      taskId: v2Binding.taskId,
+      attemptId: v2Binding.attemptId,
+      runId: v2Binding.runId,
+      planId: "plan_001",
+      planRevision: 0,
+      stepOrdinal: 1,
+      toolRequestId: "toolreq_001",
+      toolId: "tool_read_workspace",
+      toolVersion: "1.0.0",
+      executionCapabilityHash: hash
+    };
+    const automaticCheckpoint = {
+      authorizationKind: "effect-outcome-unknown-automatic",
+      orchestrationCheckpointEventId: v2OrchestrationCheckpointEventId,
+      logicalLocator,
+      requestEventId: v2AutomaticRequestEventId,
+      executionClaimEventId,
+      executionCapabilityHash: hash,
+      resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
+      nextSafeAction: "reconcile-effect-outcome"
+    };
+    const unknownSuspension = {
+      ...suspension,
+      context: {
+        ...suspension.context,
+        causationId: automaticCheckpoint.orchestrationCheckpointEventId
+      },
+      payload: {
+        ...suspension.payload,
+        causationId: automaticCheckpoint.orchestrationCheckpointEventId,
+        suspensionCategory: "effect-outcome-unknown",
+        checkpoint: automaticCheckpoint
+      }
+    };
+    const unknownResult = {
+      ...result,
+      context: {
+        ...result.context,
+        causationId: suspension.id
+      },
+      payload: {
+        ...result.payload,
+        causationId: suspension.id,
+        outcome: "resumable",
+        category: "effect-outcome-unknown",
+        resumeAnchor: {
+          checkpointEventId: suspension.id,
+          resumptionDeadlineAt: automaticCheckpoint.resumptionDeadlineAt,
+          nextSafeAction: automaticCheckpoint.nextSafeAction
+        }
+      }
+    };
+
+    const invalid = [
+      ["unknown suspension with not-applicable authority", {
+        ...automaticCheckpoint,
+        authorizationKind: "not-applicable"
+      }],
+      ["unknown suspension missing claim", (() => {
+        const { executionClaimEventId: _executionClaimEventId, ...candidate } = automaticCheckpoint;
+        return candidate;
+      })()],
+      ["unknown suspension missing locator", (() => {
+        const { logicalLocator: _logicalLocator, ...candidate } = automaticCheckpoint;
+        return candidate;
+      })()],
+      ["unknown automatic suspension carrying decision", {
+        ...automaticCheckpoint,
+        decisionEventId: "evt_fabricated_decision"
+      }]
+    ] as const;
+    for (const [label, checkpoint] of invalid) {
+      expect(validateKnowledgeEvent({
+        ...unknownSuspension,
+        payload: { ...unknownSuspension.payload, checkpoint }
+      }).success, label).toBe(false);
+    }
+
+    expect.soft(validateKnowledgeEvent(unknownSuspension).success).toBe(true);
+    expect.soft(validateKnowledgeEvent(unknownResult).success).toBe(true);
+    expect.soft(validateResidentLoopEventSequence([
+      ...replay.slice(0, 4),
+      unknownSuspension,
+      unknownResult
+    ] as never).success).toBe(true);
+
+    expect(validateResidentLoopEventSequence([
+      ...replay.slice(0, 4),
+      unknownSuspension,
+      {
+        ...unknownResult,
+        payload: {
+          ...unknownResult.payload,
+          resumeAnchor: {
+            ...(unknownResult.payload.resumeAnchor as Record<string, unknown>),
+            checkpointEventId: "evt_other_suspension"
+          }
+        }
+      }
+    ] as never).success).toBe(false);
+  });
+
+  it("validates human effect-outcome-unknown suspension and segmented replay", () => {
+    const fixture = approvalResumableV2Replay();
+    const decisionEventId = "evt_resident_domain_approved_002";
+    const executionClaimEventId = "evt_resident_domain_claimed_002";
+    const claimedToolStep = {
+      ...fixture[2]!,
+      context: {
+        ...fixture[2]!.context,
+        causationId: executionClaimEventId
+      },
+      payload: {
+        ...fixture[2]!.payload,
+        causationId: executionClaimEventId,
+        state: "suspended",
+        gatewayReadbacks: {
+          authorizationKind: "human-approval",
+          stage: "claimed",
+          requestEventId: v2HumanRequestEventId,
+          decisionEventId,
+          approvedBy: "human_resident_reviewer",
+          approvedPreviewHash: hash,
+          executionClaimEventId
+        },
+        resultArtifactHashes: []
+      }
+    };
+    const suspension = fixture[4]!;
+    const result = fixture[5]!;
+    const logicalLocator = {
+      workspaceId: v2Binding.workspaceId,
+      residentAgentId: v2Binding.residentAgentId,
+      taskId: v2Binding.taskId,
+      attemptId: v2Binding.attemptId,
+      runId: v2Binding.runId,
+      planId: "plan_001",
+      planRevision: 0,
+      stepOrdinal: 1,
+      toolRequestId: "toolreq_001",
+      toolId: "tool_read_workspace",
+      toolVersion: "1.0.0",
+      executionCapabilityHash: hash
+    };
+    const humanCheckpoint = {
+      authorizationKind: "effect-outcome-unknown-human",
+      orchestrationCheckpointEventId: v2OrchestrationCheckpointEventId,
+      logicalLocator,
+      requestEventId: v2HumanRequestEventId,
+      decisionEventId,
+      approvedBy: "human_resident_reviewer",
+      approvedPreviewHash: hash,
+      executionClaimEventId,
+      executionCapabilityHash: hash,
+      resumptionDeadlineAt: "2026-07-14T18:00:00.000Z",
+      nextSafeAction: "reconcile-effect-outcome"
+    };
+    const unknownSuspension = {
+      ...suspension,
+      context: {
+        ...suspension.context,
+        causationId: humanCheckpoint.orchestrationCheckpointEventId
+      },
+      payload: {
+        ...suspension.payload,
+        causationId: humanCheckpoint.orchestrationCheckpointEventId,
+        suspensionCategory: "effect-outcome-unknown",
+        checkpoint: humanCheckpoint
+      }
+    };
+    const unknownResult = {
+      ...result,
+      context: {
+        ...result.context,
+        causationId: suspension.id
+      },
+      payload: {
+        ...result.payload,
+        causationId: suspension.id,
+        outcome: "resumable",
+        category: "effect-outcome-unknown",
+        resumeAnchor: {
+          checkpointEventId: suspension.id,
+          resumptionDeadlineAt: humanCheckpoint.resumptionDeadlineAt,
+          nextSafeAction: humanCheckpoint.nextSafeAction
+        }
+      }
+    };
+    const invalid = [
+      ["unknown human suspension missing decision", (() => {
+        const { decisionEventId: _decisionEventId, ...candidate } = humanCheckpoint;
+        return candidate;
+      })()],
+      ["unknown human suspension missing approver", (() => {
+        const { approvedBy: _approvedBy, ...candidate } = humanCheckpoint;
+        return candidate;
+      })()],
+      ["unknown human suspension missing approved preview", (() => {
+        const { approvedPreviewHash: _approvedPreviewHash, ...candidate } = humanCheckpoint;
+        return candidate;
+      })()]
+    ] as const;
+
+    for (const [label, checkpoint] of invalid) {
+      expect(validateKnowledgeEvent({
+        ...unknownSuspension,
+        payload: { ...unknownSuspension.payload, checkpoint }
+      }).success, label).toBe(false);
+    }
+    expect.soft(validateKnowledgeEvent(unknownSuspension).success).toBe(true);
+    expect.soft(validateKnowledgeEvent(unknownResult).success).toBe(true);
+    expect.soft(validateResidentLoopEventSequence([
+      fixture[0]!,
+      fixture[1]!,
+      claimedToolStep,
+      fixture[3]!,
+      unknownSuspension,
+      unknownResult
+    ] as never).success).toBe(true);
   });
 });

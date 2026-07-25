@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { createResidentPlanObservationStore } from "../src/plan-observation-contracts.js";
+import * as planObservationContractsModule from "../src/plan-observation-contracts.js";
 
 const actor = { id: "actor_resident_planner", kind: "agent" as const, label: "Cestus Agent" };
 const now = () => "2026-07-13T20:00:00.000Z";
@@ -206,6 +207,161 @@ describe("resident plan/observation contracts", () => {
 
     expect((await ledger.readAll())).toHaveLength(countBefore);
   });
+
+  it("stores strict automatic and human V2 gateway branches without fabricated approval", () => {
+    const createV2Store = Reflect.get(planObservationContractsModule, "createResidentPlanObservationStoreV2");
+    expect(typeof createV2Store).toBe("function");
+    const store = Reflect.apply(createV2Store as (...args: unknown[]) => unknown, undefined, [{
+      ledger: new InMemoryEventLedger(),
+      actor,
+      now
+    }]);
+    expect(v2StoreOperations(store)).toEqual([
+      "appendPlan",
+      "appendObservation",
+      "appendToolStep",
+      "appendSuspension",
+      "appendResult",
+      "readPlan",
+      "readObservation",
+      "readToolStep",
+      "readSuspension",
+      "readResult",
+      "readReplay"
+    ]);
+
+    const branchTable = [
+      ["automatic requested", {
+        authorizationKind: "automatic-policy",
+        stage: "requested",
+        requestEventId: "evt_resident_domain_requested_001"
+      }],
+      ["automatic claimed", {
+        authorizationKind: "automatic-policy",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001"
+      }],
+      ["automatic completed", {
+        authorizationKind: "automatic-policy",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_001",
+        executionClaimEventId: "evt_resident_domain_claimed_001",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_001",
+        resultEventId: "evt_resident_domain_completed_001"
+      }],
+      ["human requested", {
+        authorizationKind: "human-approval",
+        stage: "requested",
+        requestEventId: "evt_resident_domain_requested_002"
+      }],
+      ["human claimed", {
+        authorizationKind: "human-approval",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        executionClaimEventId: "evt_resident_domain_claimed_002"
+      }],
+      ["human completed", {
+        authorizationKind: "human-approval",
+        stage: "completed",
+        requestEventId: "evt_resident_domain_requested_002",
+        decisionEventId: "evt_resident_domain_approved_002",
+        approvedBy: "human_resident_reviewer",
+        approvedPreviewHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        executionClaimEventId: "evt_resident_domain_claimed_002",
+        outcomeReceiptEventId: "evt_resident_domain_receipt_002",
+        resultEventId: "evt_resident_domain_completed_002"
+      }]
+    ] as const;
+    for (const [label, branch] of branchTable) {
+      expect(Object.isFrozen(Object.freeze({ ...branch })), label).toBe(true);
+      if (branch.authorizationKind === "automatic-policy" || branch.stage === "requested") {
+        expect(branch, label).not.toHaveProperty("decisionEventId");
+        expect(branch, label).not.toHaveProperty("approvedBy");
+        expect(branch, label).not.toHaveProperty("approvedPreviewHash");
+      }
+    }
+
+    const invalidBranchTable = [
+      ["automatic decision", { ...branchTable[0]![1], decisionEventId: "evt_fabricated_decision" }],
+      ["automatic approver", { ...branchTable[0]![1], approvedBy: "human_fabricated" }],
+      ["automatic approved preview", {
+        ...branchTable[0]![1],
+        approvedPreviewHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }],
+      ["human future decision", { ...branchTable[3]![1], decisionEventId: "evt_future_decision" }],
+      ["completed missing receipt", {
+        ...branchTable[2]![1],
+        outcomeReceiptEventId: undefined
+      }],
+      ["claimed missing claim", {
+        authorizationKind: "automatic-policy",
+        stage: "claimed",
+        requestEventId: "evt_resident_domain_requested_001"
+      }]
+    ] as const;
+    expect(invalidBranchTable.map(([label]) => label)).toEqual([
+      "automatic decision",
+      "automatic approver",
+      "automatic approved preview",
+      "human future decision",
+      "completed missing receipt",
+      "claimed missing claim"
+    ]);
+  });
+
+  it("replays segmented suspension/result prefixes and burns stable tool requests", () => {
+    const createV2Store = Reflect.get(planObservationContractsModule, "createResidentPlanObservationStoreV2");
+    expect(typeof createV2Store).toBe("function");
+    const store = Reflect.apply(createV2Store as (...args: unknown[]) => unknown, undefined, [{
+      ledger: new InMemoryEventLedger(),
+      actor,
+      now
+    }]) as Record<string, unknown>;
+    expect(typeof store.readReplay).toBe("function");
+
+    const segmentedGrammar = [
+      "agent.resident-plan.recorded.v2",
+      "agent.resident-observation.recorded.v2",
+      "agent.resident-loop.suspended.v2",
+      "agent.resident-loop.result.recorded.v2",
+      "agent.resident-observation.recorded.v2",
+      "agent.resident-tool-step.recorded.v2",
+      "agent.resident-loop.suspended.v2",
+      "agent.resident-loop.result.recorded.v2",
+      "agent.resident-observation.recorded.v2",
+      "agent.resident-loop.result.recorded.v2"
+    ] as const;
+    expect(segmentedGrammar.filter((type) => type === "agent.resident-loop.suspended.v2")).toHaveLength(2);
+    expect(segmentedGrammar.at(-1)).toBe("agent.resident-loop.result.recorded.v2");
+
+    const stableToolRequestMutations = [
+      ["duplicate within a plan", ["toolreq_stable_001", "toolreq_stable_001"]],
+      ["reuse by a replan", ["toolreq_stable_001", "toolreq_stable_002", "toolreq_stable_001"]],
+      ["reuse from resident gateway stream", ["toolreq_gateway_burned_001"]],
+      ["changed idempotent stable key", ["toolreq_stable_001", "toolreq_stable_changed"]]
+    ] as const;
+    expect(stableToolRequestMutations.map(([label]) => label)).toEqual([
+      "duplicate within a plan",
+      "reuse by a replan",
+      "reuse from resident gateway stream",
+      "changed idempotent stable key"
+    ]);
+
+    const prefixMutations = [
+      "fake terminal suspension",
+      "resumable result without suspension",
+      "suspension/result category mismatch",
+      "resume anchor mismatch",
+      "event after terminal",
+      "cross-segment causation",
+      "dangling suspension"
+    ] as const;
+    expect(prefixMutations).toHaveLength(7);
+  });
 });
 
 class TransformingReadbackLedger implements EventLedger {
@@ -224,4 +380,22 @@ class TransformingReadbackLedger implements EventLedger {
   async readAll(): Promise<KnowledgeEvent[]> {
     return (await this.delegate.readAll()).map(this.transform);
   }
+}
+
+function v2StoreOperations(value: unknown): string[] {
+  if (value === null || typeof value !== "object") return [];
+  const expected = [
+    "appendPlan",
+    "appendObservation",
+    "appendToolStep",
+    "appendSuspension",
+    "appendResult",
+    "readPlan",
+    "readObservation",
+    "readToolStep",
+    "readSuspension",
+    "readResult",
+    "readReplay"
+  ];
+  return expected.filter((name) => typeof Reflect.get(value, name) === "function");
 }

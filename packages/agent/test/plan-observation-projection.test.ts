@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { createResidentPlanObservationStore } from "../src/plan-observation-contracts.js";
 import { buildResidentPlanObservationProjection } from "../src/plan-observation-projection.js";
@@ -160,5 +162,60 @@ describe("resident plan/observation projection", () => {
     expect(staleObservation.type).toBe("agent.resident-observation.recorded.v1");
     expect(projection.state).toBe("blocked");
     expect(projection.diagnostics.map((diagnostic) => diagnostic.code)).toContain("observation-plan-superseded");
+  });
+
+  it("rebuilds repeated resumable segments and one terminal from ledger events only", () => {
+    const projectionSource = readFileSync(
+      fileURLToPath(new URL("../src/plan-observation-projection.ts", import.meta.url)),
+      "utf8"
+    );
+    const requiredLedgerFamilies = [
+      "agent.resident-plan.recorded.v2",
+      "agent.resident-observation.recorded.v2",
+      "agent.resident-tool-step.recorded.v2",
+      "agent.resident-loop.suspended.v2",
+      "agent.resident-loop.result.recorded.v2"
+    ] as const;
+    for (const eventType of requiredLedgerFamilies) {
+      expect(projectionSource, eventType).toContain(eventType);
+    }
+    for (const projectedField of ["toolSteps", "suspensions", "results", "budgets", "segments"] as const) {
+      expect(projectionSource, projectedField).toMatch(new RegExp(`\\b${projectedField}\\b`));
+    }
+
+    const prohibitedRecoverySources = [
+      ["artifact scan", /readdir|glob|scanArtifact|artifactScan/],
+      ["fallback write", /fallback(?:Store|Write)|writeFallback/],
+      ["process cache", /inMemoryRecovery|processCache/],
+      ["projection substitute", /acceptedGraph|projectionSubstitute/]
+    ] as const;
+    for (const [label, pattern] of prohibitedRecoverySources) {
+      expect(projectionSource, label).not.toMatch(pattern);
+    }
+
+    const segmentMutationTable = [
+      ["resumable without suspension", ["P", "O", "R-resumable"]],
+      ["fake terminal suspension", ["P", "O", "S", "R-terminal"]],
+      ["cross-segment recovery", ["P", "O", "S", "R-resumable", "O-foreign"]],
+      ["event after terminal", ["P", "O", "R-terminal", "O"]],
+      ["dangling suspension", ["P", "O", "S"]],
+      ["mismatched unknown category", ["P", "O", "S-unknown", "R-approval"]],
+      ["mismatched resume anchor", ["P", "O", "S-a", "R-resumable-b"]]
+    ] as const;
+    expect(segmentMutationTable.map(([label]) => label)).toEqual([
+      "resumable without suspension",
+      "fake terminal suspension",
+      "cross-segment recovery",
+      "event after terminal",
+      "dangling suspension",
+      "mismatched unknown category",
+      "mismatched resume anchor"
+    ]);
+
+    expect(buildResidentPlanObservationProjection([])).toMatchObject({
+      state: "ready",
+      plans: [],
+      observations: []
+    });
   });
 });

@@ -1,6 +1,81 @@
-import { type KnowledgeEvent, type KnowledgeEventOf } from "../../ontology/src/contracts.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
-import { describe, expect, it } from "vitest";
+import {
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
+import { AssertionService } from "../../ontology/src/assertion-service.js";
+import { GovernanceService } from "../../ontology/src/governance-service.js";
+import {
+  type AppendOptions,
+  type EventLedger,
+  InMemoryEventLedger
+} from "../../ontology/src/event-ledger.js";
+import { goldenGovernanceLedgerEvents } from "../../ontology/test/fixtures/golden-governance-ledger.js";
+import type {
+  AdapterCapabilities,
+  ApprovedMessageInput,
+  CorrespondenceAdapter,
+  SentMessageResult,
+  SyncResult
+} from "../../prr/src/correspondence-adapter.js";
+import { PrrCorrespondenceService } from "../../prr/src/correspondence-service.js";
+import { PrrLifecycleService } from "../../prr/src/lifecycle.js";
+import type { WorkspaceStats } from "../../workspace-ops/src/filesystem.js";
+import { resolveWorkspaceLayout } from "../../workspace-ops/src/layout.js";
+import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
+
+const attestationProxyTransparency = vi.hoisted(() => ({
+  identities: new WeakSet<object>()
+}));
+
+vi.mock("node:util/types", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:util/types")>();
+  return {
+    ...actual,
+    isProxy(value: unknown) {
+      return typeof value === "object" &&
+        value !== null &&
+        attestationProxyTransparency.identities.has(value)
+        ? false
+        : actual.isProxy(value);
+    }
+  };
+});
+
+import {
+  createAcceptedGraphAssertionReviewAdapter
+} from "../src/adapters/accepted-graph-review.js";
+import {
+  createBlockedCanonicalRepairAdapter,
+  createWorkspaceProjectionRebuildAdapter
+} from "../src/adapters/destructive-repair.js";
+import {
+  createExportGenerationAdapter,
+  createReportGenerationAdapter
+} from "../src/adapters/export-report.js";
+import {
+  createLegacyStagingApprovalAdapter,
+  createLegacyStagingExecutionAdapter
+} from "../src/adapters/legacy-staging.js";
+import {
+  createPrrFollowUpExecutionAdapter,
+  createPrrInitialSendExecutionAdapter,
+  type PrrCorrespondenceAdapterContext,
+  type PrrCorrespondenceCurrentMessage
+} from "../src/adapters/prr-correspondence.js";
+import {
+  createProviderByteTransferAdapter,
+  createProviderParseExecutionAdapter
+} from "../src/adapters/provider-byte-transfer.js";
+import { buildContextPackRef } from "../src/context-packs.js";
+import { buildPromptArtifact, promptArtifactAuditMetadata } from "../src/prompt-artifacts.js";
+import { createProviderCapabilityDescriptor } from "../src/provider-registry.js";
+import * as domainExecutionDispatcherModule from "../src/domain-execution-dispatcher.js";
+import { createResidentLoopToolGateway } from "../src/resident-loop-tool-gateway.js";
 import {
   agentDomainExecutionFailure,
   createAgentDomainExecutionDispatcher,
@@ -263,7 +338,3780 @@ describe("agent domain execution dispatcher", () => {
       adapters: [invalidAdapter]
     })).toThrow(/approval class/i);
   });
+
+  it("mints only closed-catalog package capabilities through the default API", async () => {
+    const fixtures = await residentFactoryFixtures();
+    expect(fixtures.map(({ kind, ordinals }) => [kind, ordinals])).toEqual([
+      ["provider-byte-transfer", [0, 1]],
+      ["prr-correspondence", [2, 3]],
+      ["accepted-graph-review", [4]],
+      ["export-report", [5, 6]],
+      ["destructive-repair", [7, 8]],
+      ["legacy-staging", [9, 10]]
+    ]);
+    expect(fixtures.flatMap(constructFixtureAdapters).map((adapter) => adapter.descriptor.toolId))
+      .toEqual(residentCatalogRows().map((row) => row.toolId));
+    await proveReleasedResidentFixtureEvidence(fixtures);
+
+    const api = residentDomainApi(domainExecutionDispatcherModule);
+    const issued: Array<{ fixture: ResidentFactoryFixture; capability: unknown; port: unknown }> = [];
+    for (const fixture of fixtures) {
+      const capability = await api.create(fixture.binding);
+      expect(capability, fixture.kind).toSatisfy(isFrozenOpaqueObject);
+      const port = api.bind({
+        capability,
+        mountedLedger: fixture.ledger,
+        workspaceId: fixture.workspaceId,
+        residentAgentId: fixture.residentAgentId,
+        taskId: fixture.taskId
+      });
+      expect(port, fixture.kind).toSatisfy(isFrozenOpaqueObject);
+      expect(Reflect.get(port as object, "buildCurrentPreview"), fixture.kind).toBeUndefined();
+      expect(Reflect.get(port as object, "executeApproved"), fixture.kind).toBeUndefined();
+      expect(Reflect.get(port as object, "adapter"), fixture.kind).toBeUndefined();
+      issued.push({ fixture, capability, port });
+    }
+
+    const accepted = fixtures[2]!;
+    const acceptedCapability = issued[2]!.capability;
+    const legacyStructuralDispatcher = createAgentDomainExecutionDispatcher({
+      ledger: accepted.ledger,
+      actor: schedulerActor,
+      now: fixedNow,
+      adapters: []
+    });
+    for (const capability of [
+      {},
+      Object.freeze({}),
+      legacyStructuralDispatcher,
+      { ...asDataRecord(acceptedCapability) }
+    ]) {
+      expect(() => api.bind({
+        capability,
+        mountedLedger: accepted.ledger,
+        workspaceId: accepted.workspaceId,
+        residentAgentId: accepted.residentAgentId,
+        taskId: accepted.taskId
+      })).toThrow(/capability|resident|package|authority/i);
+    }
+    for (const [field, value] of [
+      ["mountedLedger", new InMemoryEventLedger()],
+      ["workspaceId", "ws_dispatcher_other"],
+      ["residentAgentId", "agent_dispatcher_other"],
+      ["taskId", "task_dispatcher_other"]
+    ] as const) {
+      expect(() => api.bind({
+        capability: acceptedCapability,
+        mountedLedger: accepted.ledger,
+        workspaceId: accepted.workspaceId,
+        residentAgentId: accepted.residentAgentId,
+        taskId: accepted.taskId,
+        [field]: value
+      })).toThrow(/ledger|workspace|resident|task|binding|capability/i);
+    }
+
+    const hostileBindings = [
+      { ...accepted.binding, kind: "unknown-family" },
+      { ...accepted.binding, adapter: adapterFor(previewFor("toolreq_structural_elevation")) },
+      { ...accepted.binding, descriptor: domainDescriptor },
+      { ...accepted.binding, executor: async () => undefined },
+      { ...accepted.binding, factory: () => undefined },
+      { ...accepted.binding, implementationRevision: "caller-owned.v1" },
+      { ...accepted.binding, lookup: () => undefined },
+      Object.assign(Object.create({ inherited: true }), accepted.binding),
+      Object.defineProperty({ ...accepted.binding }, "kind", { enumerable: true, get: () => accepted.kind }),
+      new Proxy({ ...accepted.binding }, {
+        ownKeys() {
+          throw new Error("hostile proxy");
+        }
+      })
+    ];
+    for (const binding of hostileBindings) {
+      await expect(api.create(binding)).rejects.toThrow(
+        /kind|unsupported|plain|data propert|accessor|proxy|adapter|descriptor|executor|factory|implementation|lookup|binding/i
+      );
+    }
+
+    const destructive = fixtures[4]!;
+    await expect(api.create({
+      ...destructive.binding,
+      canonicalRepairContext: {
+        ...asDataRecord(Reflect.get(destructive.binding, "canonicalRepairContext")),
+        ledger: new InMemoryEventLedger()
+      }
+    })).rejects.toThrow(/ledger|same|binding/i);
+
+    const prr = fixtures[1]!;
+    const initialContext = requiredBindingContext(prr, "initialContext");
+    const followUpContext = requiredBindingContext(prr, "followUpContext");
+    expect(initialContext).not.toBe(followUpContext);
+    expect(Reflect.get(initialContext, "ledger")).toBe(Reflect.get(followUpContext, "ledger"));
+    for (const binding of [
+      {
+        ...prr.binding,
+        initialContext: followUpContext,
+        followUpContext: initialContext
+      },
+      {
+        ...prr.binding,
+        followUpContext: {
+          ...followUpContext,
+          ledger: new InMemoryEventLedger()
+        }
+      },
+      {
+        ...prr.binding,
+        followUpContext: {
+          ...followUpContext,
+          taskId: "task_dispatcher_cross_used"
+        }
+      }
+    ]) {
+      await expect(api.create(binding)).rejects.toThrow(
+        /context|tool|ledger|same|resident|task|binding/i
+      );
+    }
+
+    const exportReport = fixtures[3]!;
+    const exportContext = requiredBindingContext(exportReport, "exportContext");
+    const reportContext = requiredBindingContext(exportReport, "reportContext");
+    expect(exportContext).not.toBe(reportContext);
+    expect(Reflect.get(exportContext, "ledger")).toBe(Reflect.get(reportContext, "ledger"));
+    for (const binding of [
+      {
+        ...exportReport.binding,
+        exportContext: reportContext,
+        reportContext: exportContext
+      },
+      {
+        ...exportReport.binding,
+        reportContext: {
+          ...reportContext,
+          ledger: new InMemoryEventLedger()
+        }
+      },
+      {
+        ...exportReport.binding,
+        reportContext: {
+          ...reportContext,
+          residentAgentId: "agent_dispatcher_cross_used"
+        }
+      }
+    ]) {
+      await expect(api.create(binding)).rejects.toThrow(
+        /context|tool|artifact|ledger|same|resident|task|binding/i
+      );
+    }
+
+    const mutable = mutableResidentBinding(accepted.binding);
+    const pendingCapability = api.create(mutable);
+    mutable.workspaceId = "ws_dispatcher_mutated_after_call";
+    mutable.residentAgentId = "agent_dispatcher_mutated_after_call";
+    const copiedCapability = await pendingCapability;
+    expect(() => api.bind({
+      capability: copiedCapability,
+      mountedLedger: accepted.ledger,
+      workspaceId: accepted.workspaceId,
+      residentAgentId: accepted.residentAgentId,
+      taskId: accepted.taskId
+    })).not.toThrow();
+  });
+
+  it("uses six literal static adapter modules and eleven constructors without initialization-order drift", async () => {
+    const source = dispatcherSource();
+    const sourceFile = ts.createSourceFile(
+      "domain-execution-dispatcher.ts",
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS
+    );
+    const expectedImports = expectedResidentCatalogImports();
+    const factoryFixture = (await residentFactoryFixtures())[2]!;
+    const api = residentDomainApi(domainExecutionDispatcherModule);
+
+    expect(staticNamedImports(sourceFile)).toEqual(expect.objectContaining(expectedImports));
+    expect(dynamicLoaderNodes(sourceFile)).toEqual([]);
+    const factory = sourceFile.statements.find(
+      (statement): statement is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === "createPackageOwnedResidentDomainExecutionCapability"
+    );
+    expect(factory).toBeDefined();
+    const factoryText = factory!.getText(sourceFile);
+    for (const { constructorName, descriptorName, implementationRevision } of residentCatalogRows()) {
+      expect(factoryText, constructorName).toMatch(new RegExp(`\\b${constructorName}\\b`));
+      expect(factoryText, descriptorName).toMatch(new RegExp(`\\b${descriptorName}\\b`));
+      expect(factoryText, implementationRevision).toContain(`"${implementationRevision}"`);
+    }
+    expect(topLevelImportedCatalogReads(sourceFile)).toEqual([]);
+
+    vi.resetModules();
+    const barrelFirst = await import("../src/index.js");
+    const adapterAfterBarrel = await import("../src/adapters/provider-byte-transfer.js");
+    const dispatcherAfterBarrel = await import("../src/domain-execution-dispatcher.js");
+    const barrelFirstApi = residentDomainApi(dispatcherAfterBarrel);
+    const barrelFirstCapability = await barrelFirstApi.create(factoryFixture.binding);
+    const barrelFirstPort = barrelFirstApi.bind({
+      capability: barrelFirstCapability,
+      mountedLedger: factoryFixture.ledger,
+      workspaceId: factoryFixture.workspaceId,
+      residentAgentId: factoryFixture.residentAgentId,
+      taskId: factoryFixture.taskId
+    });
+    vi.resetModules();
+    const adapterFirst = await import("../src/adapters/provider-byte-transfer.js");
+    const barrelAfterAdapter = await import("../src/index.js");
+    const dispatcherAfterAdapter = await import("../src/domain-execution-dispatcher.js");
+    const adapterFirstApi = residentDomainApi(dispatcherAfterAdapter);
+    const adapterFirstCapability = await adapterFirstApi.create(factoryFixture.binding);
+    const adapterFirstPort = adapterFirstApi.bind({
+      capability: adapterFirstCapability,
+      mountedLedger: factoryFixture.ledger,
+      workspaceId: factoryFixture.workspaceId,
+      residentAgentId: factoryFixture.residentAgentId,
+      taskId: factoryFixture.taskId
+    });
+    expect(adapterAfterBarrel.providerByteTransferDescriptor).toEqual(adapterFirst.providerByteTransferDescriptor);
+    expect(barrelFirst.providerByteTransferDescriptor).toEqual(barrelAfterAdapter.providerByteTransferDescriptor);
+    expect([barrelFirstCapability, adapterFirstCapability].every(isFrozenOpaqueObject)).toBe(true);
+    expect([barrelFirstPort, adapterFirstPort].every(isFrozenOpaqueObject)).toBe(true);
+    expect(() => adapterFirstApi.bind({
+      capability: barrelFirstCapability,
+      mountedLedger: factoryFixture.ledger,
+      workspaceId: factoryFixture.workspaceId,
+      residentAgentId: factoryFixture.residentAgentId,
+      taskId: factoryFixture.taskId
+    })).toThrow(/capability|resident|package|authority/i);
+  });
+
+  it("rejects structural resident attestations with missing required fields", async () => {
+    const attempt = await prepareStructuralResidentAttestationAttempt(
+      "missing-fields"
+    );
+    await expectRejectedStructuralAttestation(
+      attempt,
+      /attestation.*(?:schema|result|required|complete)|(?:schema|result).*attestation/i
+    );
+  });
+
+  it("rejects otherwise complete resident attestations that lack the private brand", async () => {
+    const attempt = await prepareStructuralResidentAttestationAttempt(
+      "complete-unbranded"
+    );
+    await expectRejectedStructuralAttestation(
+      attempt,
+      /attestation.*(?:brand|issued)|(?:brand|issued).*attestation/i,
+      {
+        requireNoStructuralMismatchInspection: true,
+        requireNoTerminalAppendAttempts: true
+      }
+    );
+  });
+
+  it("rejects a replayed complete resident invocation attestation instance", async () => {
+    const fixture = (await residentFactoryFixtures())[4]!;
+    const first = await executeResidentCatalogRow(
+      fixture,
+      residentCatalogRows()[7]!,
+      "legitimate-attestation-consumption",
+      true
+    );
+    expect(first.completed.payload.outcomeReceiptEventId).toBe(first.receipt.id);
+    const issuedAttestation = first.issuedAttestation;
+    if (issuedAttestation === undefined) {
+      throw new Error("The legitimate resident execution issued no attestation.");
+    }
+    const issuedAttestationInspection = first.issuedAttestationInspection;
+    if (issuedAttestationInspection === undefined) {
+      throw new Error(
+        "The legitimate resident attestation lacks intrinsic replay inspection."
+      );
+    }
+    expect(issuedAttestationInspection.identity).toBe(issuedAttestation);
+    issuedAttestationInspection.beginObservation();
+
+    const attempt = await prepareStructuralResidentAttestationAttempt(
+      "consumed-replay",
+      issuedAttestation
+    );
+    await expectRejectedStructuralAttestation(
+      attempt,
+      /replay|consumed/i,
+      {
+        requireNoStructuralMismatchInspection: true
+      }
+    );
+    expect(attempt.returnedAttestation()).toBe(issuedAttestation);
+  });
+
+  it("attests the complete released result and exact ordered domain events at runtime", async () => {
+    const fixtures = await residentFactoryFixtures();
+    const fixtureByKind = new Map(
+      fixtures.map((fixture) => [fixture.kind, fixture])
+    );
+
+    const copyRow = residentCatalogRows()[7]!;
+    const copyFixture = fixtureByKind.get(copyRow.kind)!;
+    const sameInvocation = await executeResidentCatalogRowWithRawResult(
+      copyFixture,
+      copyRow,
+      "attested-runtime-same-invocation-copy"
+    );
+    const independentReleased = await executeReleasedResidentAdapter(
+      copyFixture,
+      copyRow,
+      "released-runtime-same-invocation-copy"
+    );
+    expectExactResidentSameInvocationResultCopy(
+      sameInvocation.evidence,
+      sameInvocation.rawResult,
+      independentReleased.result
+    );
+    expectExactResidentInvocationInputHash(
+      sameInvocation.evidence,
+      copyRow,
+      independentReleased.result
+    );
+
+    for (const row of residentCatalogRows().filter(
+      ({ ordinal }) => ![0, 1, 8].includes(ordinal)
+    )) {
+      const fixture = fixtureByKind.get(row.kind)!;
+      const releasedFixture = row.ordinal === 4
+        ? (await residentFactoryFixtures())[2]!
+        : fixture;
+      const residentStartedAt = new Date().toISOString();
+      const resident = await executeResidentCatalogRow(
+        fixture,
+        row,
+        `attested-runtime-${row.ordinal}`,
+        true
+      );
+      const residentFinishedAt = new Date().toISOString();
+      const releasedStartedAt = new Date().toISOString();
+      const released = await executeReleasedResidentAdapter(
+        releasedFixture,
+        row,
+        `released-runtime-${row.ordinal}`
+      );
+      const releasedFinishedAt = new Date().toISOString();
+      const attestation = resident.issuedAttestation;
+      if (attestation === undefined) {
+        throw new Error(`Catalog ordinal ${row.ordinal} issued no attestation.`);
+      }
+      if (row.ordinal === 4) {
+        expect(releasedFixture.ledger).not.toBe(fixture.ledger);
+        const residentResult = expectExactAcceptedGraphControl(
+          fixture,
+          resident.issuedResult,
+          resident.receipt.payload.domainEventIds.map((eventId) =>
+            resident.postInvocationLedgerEvents.find(
+              (event) => event.id === eventId
+            )
+          ),
+          { startedAt: residentStartedAt, finishedAt: residentFinishedAt }
+        );
+        expectExactAcceptedGraphControl(
+          releasedFixture,
+          released.result,
+          released.domainEvents,
+          { startedAt: releasedStartedAt, finishedAt: releasedFinishedAt }
+        );
+        expectExactResidentInvocationInputHash(resident, row, residentResult);
+        continue;
+      }
+      expect(resident.receipt.payload.domainEventIds, `ordinal ${row.ordinal}`)
+        .toEqual(released.result.eventIds);
+      const mountedEvents = await fixture.ledger.readAll();
+      const exactResidentEvents = resident.receipt.payload.domainEventIds.map(
+        (eventId) => mountedEvents.find((event) => event.id === eventId)
+      );
+      expect(exactResidentEvents, `ordinal ${row.ordinal}`)
+        .toEqual(released.domainEvents);
+      expectExactResidentInvocationInputHash(resident, row, released.result);
+    }
+  });
+
+  it("preserves the accepted-graph package-owned current preview byte-for-byte", async () => {
+    const fixture = (await residentFactoryFixtures())[2]!;
+    const context = requiredBindingContext(fixture, "context");
+    const assertionService = Reflect.get(context, "assertionService");
+    if (!(assertionService instanceof AssertionService)) {
+      throw new Error("Accepted-graph fixture lacks its package assertion service.");
+    }
+    await assertionService.accept({
+      assertionId: String(Reflect.get(context, "assertionId")),
+      acceptedBy: humanActor.id,
+      rationale: String(Reflect.get(context, "reviewerRationaleDraft")),
+      actor: humanActor
+    });
+
+    const adapter = constructFixtureAdapters(fixture)[0]!;
+    const api = residentDomainApi(domainExecutionDispatcherModule);
+    const capability = await api.create(fixture.binding);
+    const port = api.bind({
+      capability,
+      mountedLedger: fixture.ledger,
+      workspaceId: fixture.workspaceId,
+      residentAgentId: fixture.residentAgentId,
+      taskId: fixture.taskId
+    });
+    const preparePort = requiredUnknownMethod(
+      port,
+      "prepareResidentDomainExecution"
+    );
+    const row = residentCatalogRows()[4]!;
+    const selected = asDataRecord(await Reflect.apply(preparePort, port, [{
+      phase: "binding",
+      toolId: row.toolId,
+      toolVersion: row.toolVersion
+    }]));
+    const executionCapabilityHash = Reflect.get(
+      selected,
+      "executionCapabilityHash"
+    );
+    if (
+      typeof executionCapabilityHash !== "string" ||
+      !/^sha256:[a-f0-9]{64}$/.test(executionCapabilityHash)
+    ) {
+      throw new Error("Accepted-graph fixture lacks its dispatcher capability hash.");
+    }
+    const locator: ResidentLogicalLocator = Object.freeze({
+      workspaceId: fixture.workspaceId,
+      residentAgentId: fixture.residentAgentId,
+      taskId: fixture.taskId,
+      attemptId:
+        "attempt_cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      runId: "run_dispatcher_accepted_preview",
+      planId: "plan_dispatcher_accepted_preview",
+      planRevision: 0,
+      stepOrdinal: 1,
+      toolRequestId: "toolreq_dispatcher_accepted_preview",
+      toolId: row.toolId,
+      toolVersion: row.toolVersion,
+      executionCapabilityHash:
+        executionCapabilityHash as `sha256:${string}`
+    });
+    const expected = await adapter.buildCurrentPreview({
+      toolRequestId: locator.toolRequestId,
+      toolId: locator.toolId,
+      toolVersion: locator.toolVersion,
+      runId: locator.runId,
+      taskId: locator.taskId,
+      requestedPreviewHash: residentTestHash(locator)
+    });
+    const response = asDataRecord(await Reflect.apply(preparePort, port, [{
+      phase: "preview",
+      logicalLocator: locator
+    }]));
+    const actual = asDataRecord(Reflect.get(response, "currentPreview"));
+
+    expect(residentTestCanonicalJson(actual))
+      .toBe(residentTestCanonicalJson(expected));
+    expect(Reflect.get(asDataRecord(Reflect.get(actual, "preview")), "currentReviewState"))
+      .toBe("accepted");
+    expect(Reflect.get(actual, "sourceEventIds")).toEqual(expected.sourceEventIds);
+  });
+
+  it("uses authorization-specific exact canonical resident invocation inputs", async () => {
+    const fixtures = await residentFactoryFixtures();
+    const [human, automatic] = await Promise.all([
+      executeResidentCatalogRow(
+        fixtures[4]!,
+        residentCatalogRows()[7]!,
+        "canonical-human-invocation",
+        true
+      ),
+      executeResidentCatalogRow(
+        fixtures[5]!,
+        residentCatalogRows()[10]!,
+        "canonical-automatic-invocation",
+        true
+      )
+    ]);
+
+    const [automaticReleased, humanReleased] = await Promise.all([
+      executeReleasedResidentAdapter(
+        fixtures[5]!,
+        residentCatalogRows()[10]!,
+        "canonical-automatic-released"
+      ),
+      executeReleasedResidentAdapter(
+        fixtures[4]!,
+        residentCatalogRows()[7]!,
+        "canonical-human-released"
+      )
+    ]);
+
+    expectExactResidentInvocationInputHash(
+      automatic,
+      residentCatalogRows()[10]!,
+      automaticReleased.result
+    );
+    expectExactResidentInvocationInputHash(
+      human,
+      residentCatalogRows()[7]!,
+      humanReleased.result
+    );
+  });
+
+  it("enforces the exact per-ordinal resident invocation evidence table", async () => {
+    const fixtures = await residentFactoryFixtures();
+    const fixtureByKind = new Map(
+      fixtures.map((fixture) => [fixture.kind, fixture])
+    );
+    const expectedEventTypes = new Map<number, KnowledgeEvent["type"]>([
+      [2, "prr.request.sent"],
+      [3, "prr.followup.sent"],
+      [4, "assertion.accepted"],
+      [5, "export.generated"],
+      [6, "report.generated"],
+      [9, "legacy.ontology.staging.approved"],
+      [10, "assertion.proposed"]
+    ]);
+    const tableFacts: Array<Readonly<Record<string, unknown>>> = [];
+
+    for (const row of residentCatalogRows()) {
+      const fixture = fixtureByKind.get(row.kind)!;
+      if ([0, 1, 8].includes(row.ordinal)) {
+        await expect(executeResidentCatalogRow(
+          fixture,
+          row,
+          `evidence-table-rejected-${row.ordinal}`
+        )).rejects.toBeDefined();
+        expect(successfulResidentEventsForTool(
+          await fixture.ledger.readAll(),
+          row.toolId
+        )).toEqual([]);
+        tableFacts.push({
+          ordinal: row.ordinal,
+          outcome: "rejected",
+          evidenceModes: [],
+          domainEventCount: 0
+        });
+        continue;
+      }
+
+      const releasedFixture = row.ordinal === 4
+        ? (await residentFactoryFixtures())[2]!
+        : fixture;
+      const firstStartedAt = new Date().toISOString();
+      const first = await executeResidentCatalogRow(
+        fixture,
+        row,
+        `evidence-table-new-${row.ordinal}`,
+        true
+      );
+      const firstFinishedAt = new Date().toISOString();
+      const releasedStartedAt = new Date().toISOString();
+      const released = await executeReleasedResidentAdapter(
+        releasedFixture,
+        row,
+        `evidence-table-released-${row.ordinal}`
+      );
+      const releasedFinishedAt = new Date().toISOString();
+      const exactReleasedResult = row.ordinal === 4
+        ? expectExactAcceptedGraphControl(
+            fixture,
+            first.issuedResult,
+            first.receipt.payload.domainEventIds.map((eventId) =>
+              first.postInvocationLedgerEvents.find(
+                (event) => event.id === eventId
+              )
+            ),
+            { startedAt: firstStartedAt, finishedAt: firstFinishedAt }
+          )
+        : released.result;
+      if (row.ordinal === 4) {
+        expect(releasedFixture.ledger).not.toBe(fixture.ledger);
+        expectExactAcceptedGraphControl(
+          releasedFixture,
+          released.result,
+          released.domainEvents,
+          { startedAt: releasedStartedAt, finishedAt: releasedFinishedAt }
+        );
+      }
+      expect(first.receipt.payload.evidenceMode).toBe(
+        row.ordinal === 7
+          ? "nonledger-projection-artifacts"
+          : "new-ledger-events"
+      );
+      expectExactResidentCatalogLifecycle(first, row);
+      expectExactResidentInvocationInputHash(first, row, exactReleasedResult);
+      if (row.ordinal === 7) {
+        const preview = asDataRecord(
+          Reflect.get(asDataRecord(first.currentPreview), "preview")
+        );
+        const outputs = Reflect.get(preview, "expectedArtifactOutputs");
+        if (!Array.isArray(outputs)) {
+          throw new Error("Ordinal 7 preview lacks its expected artifacts.");
+        }
+        expect(first.receipt.payload.domainEventIds).toEqual([]);
+        expect(first.receipt.payload.artifactHashes).toEqual(
+          outputs.map((output) =>
+            Reflect.get(asDataRecord(output), "artifactHash")
+          )
+        );
+        expect(first.receipt.payload.readModelChanges).toEqual([
+          "workspace-projection-artifacts"
+        ]);
+        expect(first.receipt.payload.preInvocationLedgerFingerprint)
+          .toBe(first.receipt.payload.postInvocationLedgerFingerprint);
+        tableFacts.push({
+          ordinal: row.ordinal,
+          outcome: "completed",
+          evidenceModes: ["nonledger-projection-artifacts"],
+          domainEventCount: 0
+        });
+        continue;
+      }
+
+      const expectedType = expectedEventTypes.get(row.ordinal);
+      expect(expectedType).toBeDefined();
+      const expectedDomainEventCount = row.ordinal === 10 ? 3 : 1;
+      expect(first.receipt.payload.domainEventIds)
+        .toHaveLength(expectedDomainEventCount);
+      const ledgerEvents = await fixture.ledger.readAll();
+      const selected = first.receipt.payload.domainEventIds.map((eventId) =>
+        ledgerEvents.find((event) => event.id === eventId)
+      );
+      expect(selected.every((event) => event !== undefined)).toBe(true);
+      expect(selected.map((event) => event?.type)).toEqual(
+        Array.from({ length: expectedDomainEventCount }, () => expectedType)
+      );
+
+      const second = await executeResidentCatalogRow(
+        fixture,
+        row,
+        `evidence-table-existing-${row.ordinal}`,
+        true
+      );
+      expect(second.receipt.payload.evidenceMode)
+        .toBe("idempotent-existing-ledger-events");
+      expect(second.receipt.payload.domainEventIds)
+        .toEqual(first.receipt.payload.domainEventIds);
+      expectExactResidentCatalogLifecycle(second, row);
+      expectExactResidentInvocationInputHash(second, row, exactReleasedResult);
+      tableFacts.push({
+        ordinal: row.ordinal,
+        outcome: "completed",
+        evidenceModes: [
+          "new-ledger-events",
+          "idempotent-existing-ledger-events"
+        ],
+        domainEventCount: expectedDomainEventCount
+      });
+    }
+
+    expect(tableFacts).toEqual([
+      { ordinal: 0, outcome: "rejected", evidenceModes: [], domainEventCount: 0 },
+      { ordinal: 1, outcome: "rejected", evidenceModes: [], domainEventCount: 0 },
+      { ordinal: 2, outcome: "completed", evidenceModes: ["new-ledger-events", "idempotent-existing-ledger-events"], domainEventCount: 1 },
+      { ordinal: 3, outcome: "completed", evidenceModes: ["new-ledger-events", "idempotent-existing-ledger-events"], domainEventCount: 1 },
+      { ordinal: 4, outcome: "completed", evidenceModes: ["new-ledger-events", "idempotent-existing-ledger-events"], domainEventCount: 1 },
+      { ordinal: 5, outcome: "completed", evidenceModes: ["new-ledger-events", "idempotent-existing-ledger-events"], domainEventCount: 1 },
+      { ordinal: 6, outcome: "completed", evidenceModes: ["new-ledger-events", "idempotent-existing-ledger-events"], domainEventCount: 1 },
+      { ordinal: 7, outcome: "completed", evidenceModes: ["nonledger-projection-artifacts"], domainEventCount: 0 },
+      { ordinal: 8, outcome: "rejected", evidenceModes: [], domainEventCount: 0 },
+      { ordinal: 9, outcome: "completed", evidenceModes: ["new-ledger-events", "idempotent-existing-ledger-events"], domainEventCount: 1 },
+      { ordinal: 10, outcome: "completed", evidenceModes: ["new-ledger-events", "idempotent-existing-ledger-events"], domainEventCount: 3 }
+    ]);
+
+    const hostile = await foreignLegacyApprovalFixture();
+    await expect(executeResidentCatalogRow(
+      hostile.fixture,
+      residentCatalogRows()[9]!,
+      "evidence-table-foreign-approval"
+    )).rejects.toThrow(
+      /count|context|payload|catalog|evidence|staging|foreign|inadmissible/i
+    );
+    const hostileEvents = await hostile.fixture.ledger.readAll();
+    expect(hostileEvents.filter((event) =>
+      event.type === "agent.resident-domain.outcome-observed.v1" ||
+      event.type === "agent.resident-domain.completed.v1"
+    )).toEqual([]);
+
+    const outOfOrder = await outOfOrderLegacyCandidateFixture();
+    await expect(executeResidentCatalogRow(
+      outOfOrder.fixture,
+      residentCatalogRows()[10]!,
+      "evidence-table-out-of-order-candidates"
+    )).rejects.toThrow(
+      /candidate|catalog|evidence|order|payload|selection/i
+    );
+  }, 30_000);
+
+  it("attests only the catalog-specific admissible domain outcome", async () => {
+    const fixtures = await residentFactoryFixtures();
+    const rows = residentCatalogRows();
+    const fixtureByKind = new Map(fixtures.map((fixture) => [fixture.kind, fixture]));
+
+    for (const row of rows) {
+      const fixture = fixtureByKind.get(row.kind)!;
+      if ([0, 1, 8].includes(row.ordinal)) {
+        const before = await fixture.ledger.readAll();
+        let successfulAttestation: ResidentCatalogExecutionEvidence | undefined;
+        let rejection: unknown;
+        try {
+          successfulAttestation = await executeResidentCatalogRow(
+            fixture,
+            row,
+            `closed-${row.ordinal}`
+          );
+        } catch (error) {
+          rejection = error;
+          // The exact package-owned adapter rejection is the admissible path.
+        }
+        expect(rejection).toBeDefined();
+        expect(successfulAttestation).toBeUndefined();
+        const after = await fixture.ledger.readAll();
+        expect(successfulResidentEventsForTool(after, row.toolId)).toEqual([]);
+        expect(successfulResidentEventsForTool([
+          ...after,
+          {
+            type: "agent.resident-domain.completed.v1",
+            payload: { logicalLocator: { toolId: row.toolId } }
+          }
+        ], row.toolId)).toEqual([
+          "agent.resident-domain.completed.v1"
+        ]);
+        expect(after.length).toBeGreaterThanOrEqual(before.length);
+        continue;
+      }
+
+      const first = await executeResidentCatalogRow(
+        fixture,
+        row,
+        `new-${row.ordinal}`
+      );
+      expect(first.receipt.payload).toMatchObject({
+        catalogOrdinal: row.ordinal,
+        implementationRevision: row.implementationRevision,
+        evidenceMode: row.ordinal === 7
+          ? "nonledger-projection-artifacts"
+          : "new-ledger-events"
+      });
+      expect(first.completed.payload.authorization).toMatchObject({
+        authorizationKind:
+          row.ordinal === 10 ? "automatic-policy" : "human-approval"
+      });
+
+      if (row.ordinal !== 7) {
+        const second = await executeResidentCatalogRow(
+          fixture,
+          row,
+          `existing-${row.ordinal}`
+        );
+        expect(second.receipt.payload).toMatchObject({
+          catalogOrdinal: row.ordinal,
+          implementationRevision: row.implementationRevision,
+          evidenceMode: "idempotent-existing-ledger-events"
+        });
+        expect(second.receipt.payload.domainEventIds)
+          .toEqual(first.receipt.payload.domainEventIds);
+      }
+    }
+  });
+
+  it("allows the ordinal-10 automatic compatibility bridge and no other ordinal", async () => {
+    const fixtures = await residentFactoryFixtures();
+    const api = residentDomainApi(domainExecutionDispatcherModule);
+    const automatic = residentCatalogRows()[10]!;
+    const legacy = fixtures[5]!;
+    const capability = await api.create(legacy.binding);
+    const port = api.bind({
+      capability,
+      mountedLedger: legacy.ledger,
+      workspaceId: legacy.workspaceId,
+      residentAgentId: legacy.residentAgentId,
+      taskId: legacy.taskId
+    });
+    const invokeAndAttest = requiredUnknownMethod(port, "invokeAndAttest");
+    const before = await legacy.ledger.readAll();
+
+    for (const row of residentCatalogRows().slice(0, 10)) {
+      await expect(
+        Promise.resolve().then(() => Reflect.apply(invokeAndAttest, port, [
+          Object.freeze({ schemaVersion: "forged-resident-execution-permit.v1", catalogOrdinal: row.ordinal }),
+          residentInvocationFor({ ...row, authorizationKind: "automatic-policy" }, legacy)
+        ]))
+      ).rejects.toThrow(/permit|issued|ordinal|automatic|approval|authority/i);
+    }
+    for (const mutation of [
+      { authorizationKind: "human-approval", approvedBy: humanActor.id },
+      { authorizationKind: "automatic-policy", approvedPreviewHash: hash("c") },
+      { authorizationKind: "automatic-policy", approvedBy: "caller-supplied-actor" }
+    ]) {
+      await expect(
+        Promise.resolve().then(() => Reflect.apply(invokeAndAttest, port, [
+          Object.freeze({ schemaVersion: "forged-resident-execution-permit.v1", catalogOrdinal: 10 }),
+          { ...residentInvocationFor(automatic, legacy), ...mutation }
+        ]))
+      ).rejects.toThrow(/permit|issued|automatic|approval|actor|authority/i);
+    }
+    expect(await legacy.ledger.readAll()).toEqual(before);
+    expect(residentInvocationFor(automatic, legacy)).toMatchObject({
+      authorizationKind: "automatic-policy"
+    });
+    expect(residentInvocationFor(automatic, legacy)).not.toHaveProperty("decisionEventId");
+    expect(residentInvocationFor(automatic, legacy)).not.toHaveProperty("approvedBy");
+    expect(residentInvocationFor(automatic, legacy)).not.toHaveProperty("approvedPreviewHash");
+  });
 });
+
+type ResidentFactoryKind =
+  | "provider-byte-transfer"
+  | "prr-correspondence"
+  | "accepted-graph-review"
+  | "export-report"
+  | "destructive-repair"
+  | "legacy-staging";
+
+interface ResidentFactoryFixture {
+  readonly kind: ResidentFactoryKind;
+  readonly ordinals: readonly number[];
+  readonly binding: Record<string, unknown>;
+  readonly ledger: EventLedger;
+  readonly workspaceId: string;
+  readonly residentAgentId: "agent_default";
+  readonly taskId: string;
+}
+
+interface UnknownResidentDomainApi {
+  readonly create: (input: unknown) => Promise<unknown>;
+  readonly bind: (input: unknown) => unknown;
+}
+
+type ResidentRequestedAppend = Extract<
+  AppendableKnowledgeEvent,
+  { readonly type: "agent.resident-domain.requested.v1" }
+>;
+type ResidentLogicalLocator =
+  ResidentRequestedAppend["payload"]["logicalLocator"];
+type ResidentBudget = ResidentRequestedAppend["payload"]["budget"];
+
+interface ResidentCatalogRow {
+  readonly kind: ResidentFactoryKind;
+  readonly ordinal: number;
+  readonly constructorName: string;
+  readonly descriptorName: string;
+  readonly implementationRevision: string;
+  readonly toolId: string;
+  readonly toolVersion: "0.1.0";
+  readonly authorizationKind?: "automatic-policy" | "human-approval";
+}
+
+function residentDomainApi(module: object): UnknownResidentDomainApi {
+  const candidate = Reflect.get(module, "default");
+  if (typeof candidate !== "object" || candidate === null || !Object.isFrozen(candidate)) {
+    throw new Error("Task12 resident dispatcher default API is absent.");
+  }
+  const create = Reflect.get(candidate, "createPackageOwnedResidentDomainExecutionCapability");
+  const bind = Reflect.get(candidate, "bindPackageOwnedResidentDomainExecutionPort");
+  if (typeof create !== "function" || typeof bind !== "function") {
+    throw new Error("Task12 resident dispatcher issuer or binder is absent.");
+  }
+  return {
+    create(input: unknown) {
+      return Promise.resolve(Reflect.apply(create, candidate, [input]));
+    },
+    bind(input: unknown) {
+      return Reflect.apply(bind, candidate, [input]);
+    }
+  };
+}
+
+function requiredUnknownMethod(target: unknown, methodName: string): (...args: readonly unknown[]) => unknown {
+  if (typeof target !== "object" || target === null) {
+    throw new Error(`Task12 resident dispatcher port is absent for ${methodName}.`);
+  }
+  const method = Reflect.get(target, methodName);
+  if (typeof method !== "function") {
+    throw new Error(`Task12 resident dispatcher port method ${methodName} is absent.`);
+  }
+  return method as (...args: readonly unknown[]) => unknown;
+}
+
+function isFrozenOpaqueObject(value: unknown): boolean {
+  return typeof value === "object" && value !== null && Object.isFrozen(value);
+}
+
+function asDataRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null
+    ? value as Record<string, unknown>
+    : {};
+}
+
+interface ResidentAttestationMismatchInspection {
+  readonly identity: Readonly<Record<string, unknown>>;
+  readonly beginObservation: () => void;
+  readonly count: () => number;
+}
+
+const residentAttestationInspectionByIdentity =
+  new WeakMap<object, ResidentAttestationMismatchInspection>();
+const residentAttestationMismatchFields = new Set<PropertyKey>([
+  "requestEventId",
+  "executionClaimEventId"
+]);
+
+function createResidentAttestationMismatchInspection(
+  frozenTarget: Readonly<Record<string, unknown>>
+): ResidentAttestationMismatchInspection {
+  if (!Object.isFrozen(frozenTarget)) {
+    throw new Error("Resident attestation inspection requires a frozen target.");
+  }
+  let observing = false;
+  let inspectionCount = 0;
+  const countPropertyInspection = (property: PropertyKey): void => {
+    if (
+      observing &&
+      residentAttestationMismatchFields.has(property)
+    ) {
+      inspectionCount += 1;
+    }
+  };
+  const identity = new Proxy(frozenTarget, {
+    get(target, property, receiver) {
+      countPropertyInspection(property);
+      return Reflect.get(target, property, receiver);
+    },
+    getOwnPropertyDescriptor(target, property) {
+      countPropertyInspection(property);
+      return Reflect.getOwnPropertyDescriptor(target, property);
+    },
+    has(target, property) {
+      countPropertyInspection(property);
+      return Reflect.has(target, property);
+    },
+    ownKeys(target) {
+      if (observing) {
+        inspectionCount += 1;
+      }
+      return Reflect.ownKeys(target);
+    }
+  });
+  attestationProxyTransparency.identities.add(identity);
+  const inspection: ResidentAttestationMismatchInspection = {
+    identity,
+    beginObservation() {
+      inspectionCount = 0;
+      observing = true;
+    },
+    count() {
+      return inspectionCount;
+    }
+  };
+  residentAttestationInspectionByIdentity.set(identity, inspection);
+  return inspection;
+}
+
+function mutableResidentBinding(value: Record<string, unknown>): Record<string, unknown> {
+  return { ...value };
+}
+
+function constructFixtureAdapters(fixture: ResidentFactoryFixture): readonly AgentDomainExecutionAdapter[] {
+  const context = Reflect.get(fixture.binding, "context");
+  switch (fixture.kind) {
+    case "provider-byte-transfer":
+      return [
+        createProviderByteTransferAdapter(context as never),
+        createProviderParseExecutionAdapter(context as never)
+      ];
+    case "prr-correspondence":
+      return [
+        createPrrInitialSendExecutionAdapter(
+          Reflect.get(fixture.binding, "initialContext") as never
+        ),
+        createPrrFollowUpExecutionAdapter(
+          Reflect.get(fixture.binding, "followUpContext") as never
+        )
+      ];
+    case "accepted-graph-review":
+      return [createAcceptedGraphAssertionReviewAdapter(context as never)];
+    case "export-report":
+      return [
+        createExportGenerationAdapter(
+          Reflect.get(fixture.binding, "exportContext") as never
+        ),
+        createReportGenerationAdapter(
+          Reflect.get(fixture.binding, "reportContext") as never
+        )
+      ];
+    case "destructive-repair":
+      return [
+        createWorkspaceProjectionRebuildAdapter(Reflect.get(fixture.binding, "projectionContext") as never),
+        createBlockedCanonicalRepairAdapter(Reflect.get(fixture.binding, "canonicalRepairContext") as never)
+      ];
+    case "legacy-staging":
+      return [
+        createLegacyStagingApprovalAdapter(context as never),
+        createLegacyStagingExecutionAdapter(context as never)
+      ];
+  }
+}
+
+async function proveReleasedResidentFixtureEvidence(
+  fixtures: readonly ResidentFactoryFixture[]
+): Promise<void> {
+  const rows = residentCatalogRows();
+  const fixtureByKind = new Map(fixtures.map((fixture) => [fixture.kind, fixture]));
+  const adapterByOrdinal = new Map<number, AgentDomainExecutionAdapter>();
+  for (const fixture of fixtures) {
+    const adapters = constructFixtureAdapters(fixture);
+    expect(adapters).toHaveLength(fixture.ordinals.length);
+    for (const [index, ordinal] of fixture.ordinals.entries()) {
+      adapterByOrdinal.set(ordinal, adapters[index]!);
+    }
+  }
+  const expectedEventType = new Map<number, KnowledgeEvent["type"]>([
+    [2, "prr.request.sent"],
+    [3, "prr.followup.sent"],
+    [4, "assertion.accepted"],
+    [5, "export.generated"],
+    [6, "report.generated"],
+    [9, "legacy.ontology.staging.approved"],
+    [10, "assertion.proposed"]
+  ]);
+
+  for (const row of rows) {
+    const fixture = fixtureByKind.get(row.kind)!;
+    const adapter = adapterByOrdinal.get(row.ordinal)!;
+    const previewInput = {
+      toolRequestId: `toolreq_dispatcher_preflight_${row.ordinal}`,
+      toolId: row.toolId,
+      toolVersion: row.toolVersion,
+      runId: `run_dispatcher_preflight_${row.ordinal}`,
+      taskId: fixture.taskId,
+      requestedPreviewHash: hash("0")
+    };
+    const before = await fixture.ledger.readAll();
+    if ([0, 1].includes(row.ordinal)) {
+      await expect(
+        Promise.resolve(adapter.buildCurrentPreview(previewInput))
+      ).rejects.toBeDefined();
+      expect(await fixture.ledger.readAll()).toEqual(before);
+      continue;
+    }
+    const current = await adapter.buildCurrentPreview(previewInput);
+    const previewHash = hashAgentToolPreview(current.preview);
+    const execution = {
+      toolRequestId: previewInput.toolRequestId,
+      toolId: previewInput.toolId,
+      toolVersion: previewInput.toolVersion,
+      runId: previewInput.runId,
+      taskId: previewInput.taskId,
+      sideEffectClass: adapter.descriptor.sideEffectClass,
+      approvalClass: adapter.descriptor.requiredApprovalClass,
+      previewHash,
+      approvedPreviewHash: previewHash,
+      approvedBy: humanActor.id,
+      sourceEventIds: current.sourceEventIds,
+      inputArtifactHashes: current.inputArtifactHashes,
+      provenanceRefs: current.provenanceRefs
+    };
+    if (row.ordinal === 8) {
+      await expect(adapter.executeApproved(execution)).rejects.toMatchObject({
+        category: expect.stringMatching(
+          row.ordinal === 8 ? /data-loss-risk/i : /domain-gate-failed/i
+        )
+      });
+      expect(await fixture.ledger.readAll()).toEqual(before);
+      continue;
+    }
+
+    const first = await adapter.executeApproved(execution);
+    const afterFirst = await fixture.ledger.readAll();
+    if (row.ordinal === 7) {
+      const preview = asDataRecord(current.preview);
+      const outputs = Reflect.get(preview, "expectedArtifactOutputs");
+      if (!Array.isArray(outputs)) {
+        throw new Error("Released ordinal 7 preview lacks expected artifact outputs.");
+      }
+      const artifactHashes = outputs.map((output) =>
+        String(Reflect.get(asDataRecord(output), "artifactHash"))
+      );
+      const artifactIds = outputs.map((output) =>
+        String(Reflect.get(asDataRecord(output), "artifactId"))
+      );
+      const projectionContext = requiredBindingContext(
+        fixture,
+        "projectionContext"
+      );
+      expect(first).toEqual({
+        eventIds: [],
+        artifactHashes,
+        readModelChanges: [{
+          projectionName: "workspace-projection-artifacts",
+          change:
+            `rebuilt ${artifactIds.length} expendable projection artifact${artifactIds.length === 1 ? "" : "s"}`,
+          relatedIds: [
+            Reflect.get(projectionContext, "projectionName"),
+            Reflect.get(projectionContext, "rebuildId"),
+            ...artifactIds
+          ]
+        }],
+        resultSummary:
+          "Workspace-ops rebuilt the approved expendable projection artifacts."
+      });
+      expect(afterFirst).toEqual(before);
+      continue;
+    }
+
+    const eventType = expectedEventType.get(row.ordinal);
+    expect(eventType).toBeDefined();
+    expect(first.eventIds.length).toBeGreaterThan(0);
+    const newEvents = afterFirst.filter(
+      (event) => !before.some((candidate) => candidate.id === event.id)
+    );
+    expect(newEvents.map((event) => event.id)).toEqual(first.eventIds);
+    expect(newEvents.every((event) => event.type === eventType)).toBe(true);
+
+    const second = await adapter.executeApproved(execution);
+    expect(second.eventIds).toEqual(first.eventIds);
+    expect(await fixture.ledger.readAll()).toEqual(afterFirst);
+  }
+}
+
+interface ReleasedResidentAdapterEvidence {
+  readonly result: Awaited<
+    ReturnType<AgentDomainExecutionAdapter["executeApproved"]>
+  >;
+  readonly domainEvents: readonly KnowledgeEvent[];
+}
+
+interface AcceptedGraphExecutionWindow {
+  readonly startedAt: string;
+  readonly finishedAt: string;
+}
+
+function expectExactAcceptedGraphControl(
+  fixture: ResidentFactoryFixture,
+  result: unknown,
+  domainEvents: readonly (KnowledgeEvent | undefined)[],
+  executionWindow: AcceptedGraphExecutionWindow
+): ReleasedResidentAdapterEvidence["result"] {
+  if (result === undefined) {
+    throw new Error("Accepted-graph control lacks its exact issued result.");
+  }
+  const context = requiredBindingContext(fixture, "context");
+  const assertionId = String(Reflect.get(context, "assertionId"));
+  const proposalEventId = String(Reflect.get(context, "proposalEventId"));
+  const evidenceId = String(Reflect.get(context, "evidenceId"));
+  const reviewerRationaleDraft = String(
+    Reflect.get(context, "reviewerRationaleDraft")
+  );
+  const accepted = domainEvents[0];
+  if (accepted?.type !== "assertion.accepted") {
+    throw new Error(
+      "Accepted-graph control lacks its exact assertion.accepted event."
+    );
+  }
+  const occurredAt = accepted.context.occurredAt;
+  expect(new Date(occurredAt).toISOString()).toBe(occurredAt);
+  expect(Date.parse(occurredAt))
+    .toBeGreaterThanOrEqual(Date.parse(executionWindow.startedAt));
+  expect(Date.parse(occurredAt))
+    .toBeLessThanOrEqual(Date.parse(executionWindow.finishedAt));
+  expect(domainEvents).toEqual([{
+    id: accepted.id,
+    type: "assertion.accepted",
+    version: 1,
+    streamId: `assertion_${assertionId}`,
+    sequence: 2,
+    context: {
+      actor: humanActor,
+      occurredAt,
+      causationId: proposalEventId,
+      correlationId: `corr_${assertionId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      assertionId,
+      acceptedBy: humanActor.id,
+      rationale: reviewerRationaleDraft
+    }
+  }]);
+  const expected = {
+    eventIds: [accepted.id],
+    artifactHashes: [],
+    readModelChanges: [{
+      projectionName: "ontology-graph",
+      change: `accepted assertion ${assertionId}`,
+      relatedIds: [assertionId, evidenceId]
+    }],
+    resultSummary:
+      "The human-reviewed assertion was accepted through the ontology assertion service."
+  };
+  expect(result).toEqual(expected);
+  return expected;
+}
+
+async function executeReleasedResidentAdapter(
+  fixture: ResidentFactoryFixture,
+  row: ResidentCatalogRow,
+  suffix: string
+): Promise<ReleasedResidentAdapterEvidence> {
+  const fixtureOrdinalIndex = fixture.ordinals.indexOf(row.ordinal);
+  const adapter = constructFixtureAdapters(fixture)[fixtureOrdinalIndex];
+  if (adapter === undefined) {
+    throw new Error(`Catalog ordinal ${row.ordinal} lacks its released adapter.`);
+  }
+  const previewInput = {
+    toolRequestId: `toolreq_dispatcher_${suffix}`,
+    toolId: row.toolId,
+    toolVersion: row.toolVersion,
+    runId: `run_dispatcher_${suffix}`,
+    taskId: fixture.taskId,
+    requestedPreviewHash: hash("0")
+  };
+  const current = await adapter.buildCurrentPreview(previewInput);
+  const previewHash = hashAgentToolPreview(current.preview);
+  const result = await adapter.executeApproved({
+    toolRequestId: previewInput.toolRequestId,
+    toolId: previewInput.toolId,
+    toolVersion: previewInput.toolVersion,
+    runId: previewInput.runId,
+    taskId: previewInput.taskId,
+    sideEffectClass: adapter.descriptor.sideEffectClass,
+    approvalClass: adapter.descriptor.requiredApprovalClass,
+    previewHash,
+    approvedPreviewHash: previewHash,
+    approvedBy: humanActor.id,
+    sourceEventIds: current.sourceEventIds,
+    inputArtifactHashes: current.inputArtifactHashes,
+    provenanceRefs: current.provenanceRefs
+  });
+  const allEvents = await fixture.ledger.readAll();
+  const domainEvents = result.eventIds.map((eventId) =>
+    allEvents.find((event) => event.id === eventId)
+  );
+  if (domainEvents.some((event) => event === undefined)) {
+    throw new Error(
+      `Released catalog ordinal ${row.ordinal} returned absent domain evidence.`
+    );
+  }
+  return {
+    result,
+    domainEvents: domainEvents as readonly KnowledgeEvent[]
+  };
+}
+
+interface ResidentCatalogExecutionEvidence {
+  readonly receipt: KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
+  readonly completed: KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+  readonly currentPreview: unknown;
+  readonly residentEvents: readonly KnowledgeEvent[];
+  readonly preInvocationLedgerEvents: readonly KnowledgeEvent[];
+  readonly postInvocationLedgerEvents: readonly KnowledgeEvent[];
+  readonly issuedAttestation?: Readonly<Record<string, unknown>>;
+  readonly issuedResult?: Readonly<Record<string, unknown>>;
+  readonly issuedAttestationInspection?: ResidentAttestationMismatchInspection;
+  readonly invocationInput?: Readonly<Record<string, unknown>>;
+}
+
+type ResidentCatalogLifecycleType =
+  | "agent.resident-domain.requested.v1"
+  | "agent.resident-domain.human-approved.v1"
+  | "agent.resident-domain.execution-claimed.v1"
+  | "agent.resident-domain.outcome-observed.v1"
+  | "agent.resident-domain.completed.v1";
+
+type ResidentCatalogAuthorization =
+  KnowledgeEventOf<
+    "agent.resident-domain.execution-claimed.v1"
+  >["payload"]["authorization"];
+
+interface ResidentCatalogDurableLifecycle {
+  readonly request:
+    KnowledgeEventOf<"agent.resident-domain.requested.v1">;
+  readonly approval?:
+    KnowledgeEventOf<"agent.resident-domain.human-approved.v1">;
+  readonly claim:
+    KnowledgeEventOf<"agent.resident-domain.execution-claimed.v1">;
+  readonly receipt:
+    KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
+  readonly completed:
+    KnowledgeEventOf<"agent.resident-domain.completed.v1">;
+  readonly authorization: ResidentCatalogAuthorization;
+}
+
+function requiredExactResidentCatalogEvent<
+  T extends ResidentCatalogLifecycleType
+>(
+  events: readonly KnowledgeEvent[],
+  type: T
+): KnowledgeEventOf<T> {
+  const matches = events.filter(
+    (event): event is KnowledgeEventOf<T> => event.type === type
+  );
+  if (matches.length !== 1) {
+    throw new Error(`Resident catalog requires exactly one durable ${type}.`);
+  }
+  return matches[0]!;
+}
+
+function expectExactResidentCatalogLifecycle(
+  evidence: ResidentCatalogExecutionEvidence,
+  row: ResidentCatalogRow
+): ResidentCatalogDurableLifecycle {
+  const expectedTypes = row.ordinal === 10
+    ? [
+        "agent.resident-domain.requested.v1",
+        "agent.resident-domain.execution-claimed.v1",
+        "agent.resident-domain.outcome-observed.v1",
+        "agent.resident-domain.completed.v1"
+      ]
+    : [
+        "agent.resident-domain.requested.v1",
+        "agent.resident-domain.human-approved.v1",
+        "agent.resident-domain.execution-claimed.v1",
+        "agent.resident-domain.outcome-observed.v1",
+        "agent.resident-domain.completed.v1"
+      ];
+  expect(evidence.residentEvents.map(({ type }) => type))
+    .toEqual(expectedTypes);
+  expect(evidence.residentEvents.map(({ sequence }) => sequence))
+    .toEqual(expectedTypes.map((_, index) => index + 1));
+  const request = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.requested.v1"
+  );
+  const claim = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.execution-claimed.v1"
+  );
+  const receipt = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.outcome-observed.v1"
+  );
+  const completed = requiredExactResidentCatalogEvent(
+    evidence.residentEvents,
+    "agent.resident-domain.completed.v1"
+  );
+  const approvals = evidence.residentEvents.filter(
+    (
+      event
+    ): event is KnowledgeEventOf<"agent.resident-domain.human-approved.v1"> =>
+      event.type === "agent.resident-domain.human-approved.v1"
+  );
+  expect(approvals).toHaveLength(row.ordinal === 10 ? 0 : 1);
+  const approval = approvals[0];
+  if (row.ordinal !== 10 && approval === undefined) {
+    throw new Error("Resident human catalog lifecycle lacks its exact approval.");
+  }
+  const authorization: ResidentCatalogAuthorization = approval === undefined
+    ? { authorizationKind: "automatic-policy" }
+    : {
+        authorizationKind: approval.payload.authorizationKind,
+        decisionEventId: approval.payload.decisionEventId,
+        approvedBy: approval.payload.approvedBy,
+        approvedPreviewHash: approval.payload.approvedPreviewHash
+      };
+
+  expect(evidence.receipt).toBe(receipt);
+  expect(evidence.completed).toBe(completed);
+  expect(request.payload.schemaVersion).toBe("resident-domain-requested.v1");
+  expect(request.payload.authorizationKind).toBe(
+    approval === undefined ? "automatic-policy" : "human-approval"
+  );
+  expect(request.payload.logicalLocator.toolId).toBe(row.toolId);
+  expect(request.payload.logicalLocator.toolVersion).toBe(row.toolVersion);
+  expect(request.payload.executionCapabilityHash)
+    .toBe(request.payload.logicalLocator.executionCapabilityHash);
+  expect(request.context.causationId).toBe(request.payload.causationId);
+  expect(request.context.correlationId).toBe(request.payload.correlationId);
+
+  if (approval !== undefined) {
+    expect(approval.payload.schemaVersion)
+      .toBe("resident-domain-human-approved.v1");
+    expect(approval.payload.requestEventId).toBe(request.id);
+    expect(approval.payload.approvedBy).toBe(approval.context.actor.id);
+    expect(approval.payload.approvedPreviewHash)
+      .toBe(request.payload.previewHash);
+  }
+
+  const claimCausationId = approval?.id ?? request.id;
+  expect(claim.payload.schemaVersion)
+    .toBe("resident-domain-execution-claimed.v1");
+  expect(claim.payload.requestEventId).toBe(request.id);
+  expect(claim.payload.authorization).toEqual(authorization);
+  expect(Object.keys(claim.payload.authorization)).toEqual(
+    approval === undefined
+      ? ["authorizationKind"]
+      : [
+          "authorizationKind",
+          "decisionEventId",
+          "approvedBy",
+          "approvedPreviewHash"
+        ]
+  );
+  expect(claim.payload.causationId).toBe(claimCausationId);
+  expect(claim.context.causationId).toBe(claimCausationId);
+
+  expect(receipt.payload.schemaVersion)
+    .toBe("resident-domain-outcome-observed.v1");
+  expect(receipt.payload.requestEventId).toBe(request.id);
+  expect(receipt.payload.executionClaimEventId).toBe(claim.id);
+  expect(receipt.payload.authorization).toEqual(authorization);
+  expect(receipt.payload.causationId).toBe(claim.id);
+  expect(receipt.context.causationId).toBe(claim.id);
+
+  expect(completed.payload.schemaVersion).toBe("resident-domain-completed.v1");
+  expect(completed.payload.requestEventId).toBe(request.id);
+  expect(completed.payload.executionClaimEventId).toBe(claim.id);
+  expect(completed.payload.outcomeReceiptEventId).toBe(receipt.id);
+  expect(completed.payload.authorization).toEqual(authorization);
+  expect(completed.payload.causationId).toBe(receipt.id);
+  expect(completed.context.causationId).toBe(receipt.id);
+
+  for (let index = 0; index < evidence.residentEvents.length; index += 1) {
+    const event = evidence.residentEvents[index]!;
+    const eventPayload = asDataRecord(event.payload);
+    expect(event.streamId).toBe(request.streamId);
+    expect(eventPayload.logicalLocator)
+      .toEqual(request.payload.logicalLocator);
+    expect(eventPayload.executionCapabilityHash)
+      .toBe(request.payload.executionCapabilityHash);
+    expect(eventPayload.correlationId)
+      .toBe(request.payload.correlationId);
+    expect(eventPayload.causationId).toBe(
+      index === 0
+        ? request.payload.causationId
+        : evidence.residentEvents[index - 1]?.id
+    );
+    expect(event.context).toEqual({
+      actor: event.type === "agent.resident-domain.human-approved.v1"
+        ? humanActor
+        : {
+            id: "agent_default",
+            kind: "agent",
+            label: "Cestus Agent"
+          },
+      occurredAt: fixedNow(),
+      ...(index === 0
+        ? { causationId: request.payload.causationId }
+        : { causationId: evidence.residentEvents[index - 1]?.id }),
+      correlationId: request.payload.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    });
+  }
+  return {
+    request,
+    ...(approval === undefined ? {} : { approval }),
+    claim,
+    receipt,
+    completed,
+    authorization
+  };
+}
+
+function expectExactResidentInvocationInputHash(
+  evidence: ResidentCatalogExecutionEvidence,
+  row: ResidentCatalogRow,
+  releasedResult: ReleasedResidentAdapterEvidence["result"]
+): void {
+  const lifecycle = expectExactResidentCatalogLifecycle(evidence, row);
+  if (evidence.invocationInput === undefined) {
+    throw new Error("Resident catalog evidence lacks its runtime invocation input.");
+  }
+  if (evidence.issuedAttestation === undefined) {
+    throw new Error("Resident catalog evidence lacks its issued attestation.");
+  }
+  const authorization = lifecycle.authorization;
+  const base = {
+    authorizationKind: authorization.authorizationKind,
+    logicalLocator: lifecycle.request.payload.logicalLocator,
+    requestEventId: lifecycle.request.id,
+    executionClaimEventId: lifecycle.claim.id,
+    authorization,
+    previewHash: lifecycle.request.payload.previewHash
+  };
+  const expected = authorization.authorizationKind === "human-approval"
+    ? {
+        ...base,
+        approvedPreviewHash: authorization.approvedPreviewHash,
+        approvedBy: authorization.approvedBy,
+        currentPreview: evidence.currentPreview
+      }
+    : {
+        ...base,
+        currentPreview: evidence.currentPreview
+      };
+  expect(evidence.invocationInput).toEqual(expected);
+  expect(Object.keys(evidence.invocationInput)).toEqual(
+    authorization.authorizationKind === "human-approval"
+      ? [
+          "authorizationKind",
+          "logicalLocator",
+          "requestEventId",
+          "executionClaimEventId",
+          "authorization",
+          "previewHash",
+          "approvedPreviewHash",
+          "approvedBy",
+          "currentPreview"
+        ]
+      : [
+          "authorizationKind",
+          "logicalLocator",
+          "requestEventId",
+          "executionClaimEventId",
+          "authorization",
+          "previewHash",
+          "currentPreview"
+        ]
+  );
+  const invocationInputHash = residentTestHash(expected);
+  const attestation = evidence.issuedAttestation;
+  if (evidence.issuedResult === undefined) {
+    throw new Error("Resident catalog evidence lacks its copied issued result.");
+  }
+  const expectedEvidenceMode = row.ordinal === 7
+    ? "nonledger-projection-artifacts"
+    : evidence.postInvocationLedgerEvents.length >
+        evidence.preInvocationLedgerEvents.length
+      ? "new-ledger-events"
+      : "idempotent-existing-ledger-events";
+  const expectedAttestation = {
+    schemaVersion: "resident-domain-invocation-attestation.v1",
+    executionClaimEventId: lifecycle.claim.id,
+    executionCapabilityHash:
+      lifecycle.request.payload.executionCapabilityHash,
+    catalogOrdinal: row.ordinal,
+    implementationRevision: row.implementationRevision,
+    residentInvocationInputHash: invocationInputHash,
+    evidenceMode: expectedEvidenceMode,
+    preInvocationLedgerFingerprint:
+      residentTestHash(evidence.preInvocationLedgerEvents),
+    postInvocationLedgerFingerprint:
+      residentTestHash(evidence.postInvocationLedgerEvents),
+    result: evidence.issuedResult
+  };
+  expect(Reflect.ownKeys(attestation)).toEqual([
+    "schemaVersion",
+    "executionClaimEventId",
+    "executionCapabilityHash",
+    "catalogOrdinal",
+    "implementationRevision",
+    "residentInvocationInputHash",
+    "evidenceMode",
+    "preInvocationLedgerFingerprint",
+    "postInvocationLedgerFingerprint",
+    "result"
+  ]);
+  expect(attestation).toEqual(expectedAttestation);
+  expect(attestation).not.toHaveProperty("logicalLocator");
+  expect(attestation).not.toHaveProperty("requestEventId");
+  expect(attestation).not.toHaveProperty("authorization");
+  expect(attestation.result).toBe(evidence.issuedResult);
+  expect(Reflect.ownKeys(asDataRecord(attestation.result))).toEqual([
+    "eventIds",
+    "artifactHashes",
+    "readModelChanges",
+    "resultSummary"
+  ]);
+  expect(attestation.result).toEqual(releasedResult);
+
+  expect(lifecycle.receipt.payload.logicalLocator)
+    .toEqual(lifecycle.request.payload.logicalLocator);
+  expect(lifecycle.receipt.payload.executionCapabilityHash)
+    .toBe(lifecycle.request.payload.executionCapabilityHash);
+  expect(lifecycle.receipt.payload.requestEventId).toBe(lifecycle.request.id);
+  expect(lifecycle.receipt.payload.executionClaimEventId)
+    .toBe(lifecycle.claim.id);
+  expect(lifecycle.receipt.payload.authorization).toEqual(authorization);
+  expect(Object.keys(lifecycle.receipt.payload.authorization)).toEqual(
+    authorization.authorizationKind === "human-approval"
+      ? [
+          "authorizationKind",
+          "decisionEventId",
+          "approvedBy",
+          "approvedPreviewHash"
+        ]
+      : ["authorizationKind"]
+  );
+  expect(lifecycle.receipt.payload.catalogOrdinal).toBe(row.ordinal);
+  expect(lifecycle.receipt.payload.implementationRevision)
+    .toBe(row.implementationRevision);
+  expect(lifecycle.receipt.payload.residentInvocationInputHash)
+    .toBe(invocationInputHash);
+
+  expect(lifecycle.completed.payload.logicalLocator)
+    .toEqual(lifecycle.request.payload.logicalLocator);
+  expect(lifecycle.completed.payload.executionCapabilityHash)
+    .toBe(lifecycle.request.payload.executionCapabilityHash);
+  expect(lifecycle.completed.payload.requestEventId).toBe(lifecycle.request.id);
+  expect(lifecycle.completed.payload.executionClaimEventId)
+    .toBe(lifecycle.claim.id);
+  expect(lifecycle.completed.payload.outcomeReceiptEventId)
+    .toBe(lifecycle.receipt.id);
+  expect(lifecycle.completed.payload.authorization).toEqual(authorization);
+  expect(Object.keys(lifecycle.completed.payload.authorization)).toEqual(
+    authorization.authorizationKind === "human-approval"
+      ? [
+          "authorizationKind",
+          "decisionEventId",
+          "approvedBy",
+          "approvedPreviewHash"
+        ]
+      : ["authorizationKind"]
+  );
+}
+
+function expectExactResidentSameInvocationResultCopy(
+  evidence: ResidentCatalogExecutionEvidence,
+  rawResult: ReleasedResidentAdapterEvidence["result"],
+  independentReleasedResult: ReleasedResidentAdapterEvidence["result"]
+): void {
+  if (evidence.issuedResult === undefined) {
+    throw new Error("Resident catalog evidence lacks its exact issued result.");
+  }
+  const copiedResult = evidence.issuedResult;
+  const rawResultRecord = asDataRecord(rawResult);
+  const resultKeys = [
+    "eventIds",
+    "artifactHashes",
+    "readModelChanges",
+    "resultSummary"
+  ];
+  expect(copiedResult).not.toBe(rawResult);
+  expect(Reflect.ownKeys(copiedResult)).toEqual(resultKeys);
+  expect(Reflect.ownKeys(rawResultRecord)).toEqual(resultKeys);
+  expect(copiedResult).toEqual(rawResult);
+  expect(copiedResult).toEqual(independentReleasedResult);
+
+  for (const key of ["eventIds", "artifactHashes"] as const) {
+    const copied = Reflect.get(copiedResult, key);
+    const raw = Reflect.get(rawResultRecord, key);
+    if (!Array.isArray(copied) || !Array.isArray(raw)) {
+      throw new Error(`Resident copied result lacks exact ${key}.`);
+    }
+    const arrayKeys = [
+      ...raw.map((_, index) => String(index)),
+      "length"
+    ];
+    expect(copied).not.toBe(raw);
+    expect(Reflect.ownKeys(copied)).toEqual(arrayKeys);
+    expect(Reflect.ownKeys(raw)).toEqual(arrayKeys);
+    expect(copied).toEqual(raw);
+  }
+
+  const copiedChanges = Reflect.get(copiedResult, "readModelChanges");
+  const rawChanges = Reflect.get(rawResultRecord, "readModelChanges");
+  if (!Array.isArray(copiedChanges) || !Array.isArray(rawChanges)) {
+    throw new Error("Resident copied result lacks exact read-model changes.");
+  }
+  const changeArrayKeys = [
+    ...rawChanges.map((_, index) => String(index)),
+    "length"
+  ];
+  expect(copiedChanges).not.toBe(rawChanges);
+  expect(Reflect.ownKeys(copiedChanges)).toEqual(changeArrayKeys);
+  expect(Reflect.ownKeys(rawChanges)).toEqual(changeArrayKeys);
+  expect(copiedChanges).toEqual(rawChanges);
+  for (let index = 0; index < rawChanges.length; index += 1) {
+    const copiedChange = asDataRecord(copiedChanges[index]);
+    const rawChange = asDataRecord(rawChanges[index]);
+    expect(copiedChange).not.toBe(rawChange);
+    expect(Reflect.ownKeys(copiedChange)).toEqual([
+      "projectionName",
+      "change",
+      "relatedIds"
+    ]);
+    expect(Reflect.ownKeys(rawChange)).toEqual([
+      "projectionName",
+      "change",
+      "relatedIds"
+    ]);
+    expect(copiedChange).toEqual(rawChange);
+    const copiedRelatedIds = Reflect.get(copiedChange, "relatedIds");
+    const rawRelatedIds = Reflect.get(rawChange, "relatedIds");
+    if (!Array.isArray(copiedRelatedIds) || !Array.isArray(rawRelatedIds)) {
+      throw new Error("Resident copied result lacks exact related IDs.");
+    }
+    const relatedIdKeys = [
+      ...rawRelatedIds.map((_, relatedIndex) => String(relatedIndex)),
+      "length"
+    ];
+    expect(copiedRelatedIds).not.toBe(rawRelatedIds);
+    expect(Reflect.ownKeys(copiedRelatedIds)).toEqual(relatedIdKeys);
+    expect(Reflect.ownKeys(rawRelatedIds)).toEqual(relatedIdKeys);
+    expect(copiedRelatedIds).toEqual(rawRelatedIds);
+  }
+}
+
+async function foreignLegacyApprovalFixture(): Promise<{
+  readonly fixture: ResidentFactoryFixture;
+}> {
+  const fixture = (await residentFactoryFixtures())[5]!;
+  const context = requiredBindingContext(fixture, "context");
+  const runtime = requiredBindingContext(
+    { ...fixture, binding: context },
+    "runtime"
+  );
+  const approve = Reflect.get(runtime, "approveStaging");
+  if (typeof approve !== "function") {
+    throw new Error("Legacy hostile fixture lacks approveStaging.");
+  }
+  const hostileRuntime = {
+    ...runtime,
+    async approveStaging(input: unknown) {
+      const result = asDataRecord(await Reflect.apply(approve, runtime, [input]));
+      const eventIds = Reflect.get(result, "eventIds");
+      if (result.ok !== true || !Array.isArray(eventIds)) {
+        return result;
+      }
+      const foreign = await fixture.ledger.append({
+        type: "legacy.ontology.staging.approved",
+        version: 1,
+        streamId:
+          "legacy_staging_src_dispatcher_foreign_scan_dispatcher_foreign_legacy_stage_dispatcher_foreign",
+        context: {
+          actor: humanActor,
+          occurredAt: fixedNow(),
+          correlationId: "corr_dispatcher_foreign_approval",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
+        payload: {
+          stagingBatchId: "legacy_stage_dispatcher_foreign",
+          legacyReportId: "legacy_report_dispatcher_foreign",
+          sourceCollectionId: "src_dispatcher_foreign",
+          scanBatchId: "scan_dispatcher_foreign",
+          reportHash: hash("1"),
+          candidateSetHash: hash("2"),
+          approvedBy: humanActor.id,
+          approvedAt: fixedNow(),
+          approvedAssertionCandidateIds: ["legacy_candidate_dispatcher_foreign"]
+        }
+      });
+      return {
+        ...result,
+        eventIds: [...eventIds, foreign.id]
+      };
+    }
+  };
+  return {
+    fixture: {
+      ...fixture,
+      binding: {
+        ...fixture.binding,
+        context: {
+          ...context,
+          runtime: hostileRuntime
+        }
+      }
+    }
+  };
+}
+
+async function outOfOrderLegacyCandidateFixture(): Promise<{
+  readonly fixture: ResidentFactoryFixture;
+}> {
+  const fixture = (await residentFactoryFixtures())[5]!;
+  const context = requiredBindingContext(fixture, "context");
+  const runtime = requiredBindingContext(
+    { ...fixture, binding: context },
+    "runtime"
+  );
+  const selectedCandidateIds = Reflect.get(context, "selectedCandidateIds");
+  if (!Array.isArray(selectedCandidateIds)) {
+    throw new Error("Legacy ordering fixture lacks selected candidate IDs.");
+  }
+  const evidenceByCandidate = new Map([
+    ["legacy_candidate_dispatcher_alpha", "ev_dispatcher_legacy_alpha"],
+    ["legacy_candidate_dispatcher_beta", "ev_dispatcher_legacy_beta"],
+    ["legacy_candidate_dispatcher_gamma", "ev_dispatcher_legacy_gamma"]
+  ]);
+  const hostileRuntime = {
+    ...runtime,
+    async stageApproved() {
+      const reversed = [...selectedCandidateIds].reverse();
+      const events = await Promise.all(reversed.map(
+        async (candidateId, index) => {
+          const assertionId = legacyFixtureAssertionId(String(candidateId));
+          const evidenceId = evidenceByCandidate.get(String(candidateId));
+          if (evidenceId === undefined) {
+            throw new Error("Hostile candidate lacks evidence identity.");
+          }
+          return await fixture.ledger.append({
+            type: "assertion.proposed",
+            version: 1,
+            streamId: `assertion_${assertionId}`,
+            context: {
+              actor: schedulerActor,
+              occurredAt: fixedNow(),
+              correlationId: `corr_dispatcher_hostile_order_${index}`,
+              coreVersion: "0.1.0",
+              packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+            },
+            payload: {
+              assertionId,
+              evidenceId,
+              predicate: "legacy.dispatcher.fixture",
+              object: candidateId,
+              confidence: 0.8,
+              reviewState: "proposed"
+            }
+          });
+        }
+      ));
+      return {
+        ok: true as const,
+        command: "legacy stage",
+        sourceCollectionId: "src_dispatcher_legacy",
+        scanBatchId: "scan_dispatcher_legacy",
+        eventIds: events.map(({ id }) => id),
+        nextActions: [],
+        legacyReportId: "legacy_report_dispatcher",
+        stagingBatchId: "legacy_stage_dispatcher_legacy",
+        proposedAssertionIds: events.map(({ payload }) =>
+          String(Reflect.get(payload, "assertionId"))
+        )
+      };
+    }
+  };
+  return {
+    fixture: {
+      ...fixture,
+      binding: {
+        ...fixture.binding,
+        context: {
+          ...context,
+          runtime: hostileRuntime
+        }
+      }
+    }
+  };
+}
+
+function successfulResidentEventsForTool(
+  events: readonly unknown[],
+  toolId: string
+): readonly string[] {
+  return events.flatMap((value) => {
+    if (typeof value !== "object" || value === null) {
+      return [];
+    }
+    const type = Reflect.get(value, "type");
+    if (
+      type !== "agent.resident-domain.outcome-observed.v1" &&
+      type !== "agent.resident-domain.completed.v1"
+    ) {
+      return [];
+    }
+    const payload = Reflect.get(value, "payload");
+    const locator = typeof payload === "object" && payload !== null
+      ? Reflect.get(payload, "logicalLocator")
+      : undefined;
+    return typeof locator === "object" &&
+      locator !== null &&
+      Reflect.get(locator, "toolId") === toolId
+      ? [type]
+      : [];
+  });
+}
+
+type StructuralResidentAttestationCase =
+  | "missing-fields"
+  | "complete-unbranded"
+  | "consumed-replay";
+
+interface StructuralResidentAttestationAttempt {
+  readonly ledger: EventLedger;
+  readonly locator: ResidentLogicalLocator;
+  readonly execution: Promise<unknown>;
+  readonly invocationCount: () => number;
+  readonly returnedAttestation: () => unknown;
+  readonly structuralMismatchInspectionCount: () => number;
+  readonly terminalAppendAttempts: () => readonly string[];
+}
+
+interface StructuralResidentAttestationOracle {
+  readonly requireNoStructuralMismatchInspection?: boolean;
+  readonly requireNoTerminalAppendAttempts?: boolean;
+}
+
+async function expectRejectedStructuralAttestation(
+  attempt: StructuralResidentAttestationAttempt,
+  expectedFailure: RegExp = /attestation|brand|issued|schema|result|replay|structural/i,
+  oracle: StructuralResidentAttestationOracle = {}
+): Promise<void> {
+  let rejection: unknown;
+  try {
+    await attempt.execution;
+  } catch (error) {
+    rejection = error;
+  }
+  expect(rejection, "structural attestation execution must reject").toBeDefined();
+  const stream = await attempt.ledger.readStream(
+    residentCatalogStreamId(attempt.locator)
+  );
+  expect(stream.filter((event) =>
+    event.type === "agent.resident-domain.outcome-observed.v1" ||
+    event.type === "agent.resident-domain.completed.v1"
+  )).toEqual([]);
+  expect(attempt.invocationCount()).toBe(1);
+  if (oracle.requireNoTerminalAppendAttempts === true) {
+    expect(attempt.terminalAppendAttempts()).toEqual([]);
+  }
+  if (oracle.requireNoStructuralMismatchInspection === true) {
+    expect(attempt.structuralMismatchInspectionCount()).toBe(0);
+  }
+  expect(() => {
+    throw rejection;
+  }).toThrow(expectedFailure);
+}
+
+async function prepareStructuralResidentAttestationAttempt(
+  attestationCase: StructuralResidentAttestationCase,
+  consumedAttestation?: Readonly<Record<string, unknown>>
+): Promise<StructuralResidentAttestationAttempt> {
+  const ledger = new AppendAttemptLedger();
+  const fixture = (await residentFactoryFixtures({
+    destructiveLedger: ledger
+  }))[4]!;
+  const row = residentCatalogRows()[7]!;
+  const residentApi = residentDomainApi(domainExecutionDispatcherModule);
+  const capability = await residentApi.create(fixture.binding);
+  const realPort = residentApi.bind({
+    capability,
+    mountedLedger: fixture.ledger,
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId
+  });
+  const prepareRealPort = requiredUnknownMethod(
+    realPort,
+    "prepareResidentDomainExecution"
+  );
+  let invocationCount = 0;
+  let returnedAttestation: unknown;
+  let mismatchInspection: ResidentAttestationMismatchInspection | undefined;
+  const structuralPort = Object.freeze({
+    prepareResidentDomainExecution(command: unknown) {
+      return Reflect.apply(prepareRealPort, realPort, [command]);
+    },
+    async invokeAndAttest(_permit: unknown, value: unknown) {
+      invocationCount += 1;
+      const invocation = asDataRecord(value);
+      const locator = asDataRecord(invocation.logicalLocator);
+      const currentPreview = asDataRecord(invocation.currentPreview);
+      const preview = asDataRecord(currentPreview.preview);
+      const outputs = Reflect.get(preview, "expectedArtifactOutputs");
+      if (!Array.isArray(outputs) || outputs.length === 0) {
+        throw new Error("Structural attestation fixture lacks approved outputs.");
+      }
+      const artifactHashes = Object.freeze(outputs.map((output) =>
+        String(Reflect.get(asDataRecord(output), "artifactHash"))
+      ));
+      const artifactIds = Object.freeze(outputs.map((output) =>
+        String(Reflect.get(asDataRecord(output), "artifactId"))
+      ));
+      const result = Object.freeze({
+        eventIds: Object.freeze([]),
+        artifactHashes,
+        readModelChanges: Object.freeze([Object.freeze({
+          projectionName: "workspace-projection-artifacts",
+          change: `rebuilt ${artifactIds.length} expendable projection artifact${artifactIds.length === 1 ? "" : "s"}`,
+          relatedIds: Object.freeze([
+            "graph",
+            "rb_dispatcher_graph",
+            ...artifactIds
+          ])
+        })]),
+        resultSummary:
+          "Workspace-ops rebuilt the approved expendable projection artifacts."
+      });
+      const ledgerState = await fixture.ledger.readAll();
+      const envelope = {
+        logicalLocator: invocation.logicalLocator,
+        executionCapabilityHash: locator.executionCapabilityHash,
+        requestEventId: invocation.requestEventId,
+        executionClaimEventId: invocation.executionClaimEventId,
+        authorization: invocation.authorization,
+        catalogOrdinal: row.ordinal,
+        implementationRevision: row.implementationRevision,
+        evidenceMode: "nonledger-projection-artifacts",
+        residentInvocationInputHash: residentTestHash(invocation),
+        outcomeDisposition: "completed",
+        preInvocationLedgerFingerprint: residentTestHash(ledgerState),
+        postInvocationLedgerFingerprint: residentTestHash(ledgerState),
+        domainEventIds: [],
+        artifactHashes,
+        readModelChanges: ["workspace-projection-artifacts"],
+        resultSummary: result.resultSummary
+      };
+      if (attestationCase === "missing-fields") {
+        returnedAttestation = Object.freeze(envelope);
+        return returnedAttestation;
+      }
+      const complete = Object.freeze({
+        schemaVersion: "resident-domain-invocation-attestation.v1",
+        executionClaimEventId: invocation.executionClaimEventId,
+        executionCapabilityHash: locator.executionCapabilityHash,
+        catalogOrdinal: row.ordinal,
+        implementationRevision: row.implementationRevision,
+        residentInvocationInputHash: residentTestHash(invocation),
+        evidenceMode: "nonledger-projection-artifacts",
+        preInvocationLedgerFingerprint: residentTestHash(ledgerState),
+        postInvocationLedgerFingerprint: residentTestHash(ledgerState),
+        result
+      });
+      if (attestationCase === "consumed-replay") {
+        if (consumedAttestation === undefined) {
+          throw new Error("Replay fixture lacks its consumed attestation.");
+        }
+        mismatchInspection = residentAttestationInspectionByIdentity.get(
+          consumedAttestation
+        );
+        if (mismatchInspection === undefined) {
+          throw new Error(
+            "Replay fixture lacks intrinsic inspection on its consumed identity."
+          );
+        }
+        returnedAttestation = consumedAttestation;
+        return returnedAttestation;
+      }
+      mismatchInspection = createResidentAttestationMismatchInspection(
+        complete
+      );
+      mismatchInspection.beginObservation();
+      returnedAttestation = mismatchInspection.identity;
+      return returnedAttestation;
+    }
+  });
+  const gateway = Reflect.apply(createResidentLoopToolGateway, undefined, [{
+    ledger: fixture.ledger,
+    now: fixedNow,
+    residentDomainExecutionPort: structuralPort,
+    async reverifyBeforeEffect() {
+      return Object.freeze({ kind: "current" });
+    },
+    async reverifyAfterEffect() {
+      return Object.freeze({ kind: "current" });
+    },
+    createTrustedToolRequestId() {
+      return "toolreq_dispatcher_structural_attestation";
+    }
+  }]);
+  const prepare = requiredUnknownMethod(
+    gateway,
+    "preparePlannedStepBindings"
+  );
+  const planId = "plan_dispatcher_structural_attestation";
+  const attemptId =
+    "attempt_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const runId = "run_dispatcher_structural_attestation";
+  const prepared = await Reflect.apply(prepare, gateway, [{
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    steps: [{
+      ordinal: 1,
+      toolId: row.toolId,
+      toolVersion: row.toolVersion
+    }]
+  }]);
+  const preparedBinding = asDataRecord(
+    Array.isArray(prepared) ? prepared[0] : undefined
+  );
+  const toolRequestId = Reflect.get(preparedBinding, "toolRequestId");
+  const executionCapabilityHash = Reflect.get(
+    preparedBinding,
+    "executionCapabilityHash"
+  );
+  if (
+    typeof toolRequestId !== "string" ||
+    typeof executionCapabilityHash !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(executionCapabilityHash)
+  ) {
+    throw new Error("Structural attestation fixture lacks its package binding.");
+  }
+  const source = (await fixture.ledger.readAll())[0];
+  if (source === undefined) {
+    throw new Error("Structural attestation fixture lacks durable provenance.");
+  }
+  const locator: ResidentLogicalLocator = Object.freeze({
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    stepOrdinal: 1,
+    toolRequestId,
+    toolId: row.toolId,
+    toolVersion: row.toolVersion,
+    executionCapabilityHash: executionCapabilityHash as `sha256:${string}`
+  });
+  const plan = await appendResidentCatalogPlan(
+    fixture.ledger,
+    source,
+    locator,
+    "structural-attestation"
+  );
+  const request = requiredUnknownMethod(gateway, "requestFreshAuthorized");
+  const requested = await Reflect.apply(request, gateway, [locator]);
+  await appendResidentCatalogHumanApproval(
+    fixture.ledger,
+    locator,
+    plan,
+    "structural-attestation"
+  );
+  const readDecision = requiredUnknownMethod(
+    gateway,
+    "readFreshHumanDecision"
+  );
+  const approved = await Reflect.apply(
+    readDecision,
+    gateway,
+    [requested]
+  );
+  const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
+  const execution = Promise.resolve()
+    .then(() => Reflect.apply(execute, gateway, [approved]));
+  return {
+    ledger: fixture.ledger,
+    locator,
+    execution,
+    invocationCount: () => invocationCount,
+    returnedAttestation: () => returnedAttestation,
+    structuralMismatchInspectionCount: () => mismatchInspection?.count() ?? 0,
+    terminalAppendAttempts: () => ledger.attemptedTypes.filter((type) =>
+      type === "agent.resident-domain.outcome-observed.v1" ||
+      type === "agent.resident-domain.completed.v1"
+    )
+  };
+}
+
+interface ResidentCatalogExecutionRuntime {
+  readonly dispatcherModule?: object;
+  readonly gatewayFactory?: typeof createResidentLoopToolGateway;
+}
+
+interface SameInvocationResultEvidence {
+  readonly evidence: ResidentCatalogExecutionEvidence;
+  readonly rawResult: ReleasedResidentAdapterEvidence["result"];
+}
+
+async function executeResidentCatalogRowWithRawResult(
+  fixture: ResidentFactoryFixture,
+  row: ResidentCatalogRow,
+  suffix: string
+): Promise<SameInvocationResultEvidence> {
+  if (row.ordinal !== 7) {
+    throw new Error("Same-invocation result capture requires catalog ordinal 7.");
+  }
+  const expectedToolRequestId = `toolreq_dispatcher_${suffix}`;
+  let constructorCount = 0;
+  let executionCount = 0;
+  let rawResult: ReleasedResidentAdapterEvidence["result"] | undefined;
+  vi.resetModules();
+  vi.doMock("../src/adapters/destructive-repair.js", async (importOriginal) => {
+    const actual = await importOriginal<
+      typeof import("../src/adapters/destructive-repair.js")
+    >();
+    return {
+      ...actual,
+      createWorkspaceProjectionRebuildAdapter(
+        input: Parameters<
+          typeof actual.createWorkspaceProjectionRebuildAdapter
+        >[0]
+      ) {
+        constructorCount += 1;
+        const realAdapter =
+          actual.createWorkspaceProjectionRebuildAdapter(input);
+        if (realAdapter.descriptor !== actual.workspaceProjectionRebuildDescriptor) {
+          throw new Error(
+            "Dedicated result capture lost the exact released descriptor."
+          );
+        }
+        return Object.freeze({
+          descriptor: realAdapter.descriptor,
+          buildCurrentPreview(
+            previewInput: Parameters<
+              AgentDomainExecutionAdapter["buildCurrentPreview"]
+            >[0]
+          ) {
+            return realAdapter.buildCurrentPreview(previewInput);
+          },
+          executeApproved(
+            executionInput: Parameters<
+              AgentDomainExecutionAdapter["executeApproved"]
+            >[0]
+          ) {
+            const returned = realAdapter.executeApproved(executionInput);
+            if (executionInput.toolRequestId !== expectedToolRequestId) {
+              return returned;
+            }
+            executionCount += 1;
+            return Promise.resolve(returned).then((result) => {
+              if (rawResult !== undefined) {
+                throw new Error(
+                  "Dedicated result capture observed the same invocation twice."
+                );
+              }
+              rawResult = result;
+              return result;
+            });
+          }
+        } satisfies AgentDomainExecutionAdapter);
+      }
+    };
+  });
+
+  try {
+    const [dedicatedDispatcher, dedicatedGateway] = await Promise.all([
+      import("../src/domain-execution-dispatcher.js"),
+      import("../src/resident-loop-tool-gateway.js")
+    ]);
+    const evidence = await executeResidentCatalogRow(
+      fixture,
+      row,
+      suffix,
+      true,
+      {
+        dispatcherModule: dedicatedDispatcher,
+        gatewayFactory: dedicatedGateway.createResidentLoopToolGateway
+      }
+    );
+    if (
+      constructorCount !== 1 ||
+      executionCount !== 1 ||
+      rawResult === undefined
+    ) {
+      throw new Error(
+        "Dedicated result capture did not observe one exact released adapter call."
+      );
+    }
+    return { evidence, rawResult };
+  } finally {
+    vi.doUnmock("../src/adapters/destructive-repair.js");
+    vi.resetModules();
+  }
+}
+
+async function executeResidentCatalogRow(
+  fixture: ResidentFactoryFixture,
+  row: ResidentCatalogRow,
+  suffix: string,
+  captureIssuedAttestation = false,
+  runtime: ResidentCatalogExecutionRuntime = {}
+): Promise<ResidentCatalogExecutionEvidence> {
+  const residentApi = residentDomainApi(
+    runtime.dispatcherModule ?? domainExecutionDispatcherModule
+  );
+  const capability = await residentApi.create(fixture.binding);
+  const port = residentApi.bind({
+    capability,
+    mountedLedger: fixture.ledger,
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId
+  });
+  const gateway = Reflect.apply(
+    runtime.gatewayFactory ?? createResidentLoopToolGateway,
+    undefined,
+    [{
+      ledger: fixture.ledger,
+      now: fixedNow,
+      residentDomainExecutionPort: port,
+      async reverifyBeforeEffect() {
+        return Object.freeze({ kind: "current" });
+      },
+      async reverifyAfterEffect() {
+        return Object.freeze({ kind: "current" });
+      },
+      createTrustedToolRequestId() {
+        return `toolreq_dispatcher_${suffix}`;
+      }
+    }]
+  );
+  if (typeof gateway !== "object" || gateway === null) {
+    throw new Error("Task12 resident G constructor returned no object.");
+  }
+  const prepare = requiredUnknownMethod(gateway, "preparePlannedStepBindings");
+  const planId = `plan_dispatcher_${suffix}`;
+  const attemptId =
+    "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const runId = `run_dispatcher_${suffix}`;
+  const prepared = await Reflect.apply(prepare, gateway, [{
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    steps: [{
+      ordinal: 1,
+      toolId: row.toolId,
+      toolVersion: row.toolVersion
+    }]
+  }]);
+  if (!Array.isArray(prepared) || prepared.length !== 1) {
+    throw new Error("Task12 resident G did not prepare exactly one binding.");
+  }
+  const preparedBinding = asDataRecord(prepared[0]);
+  const toolRequestId = Reflect.get(preparedBinding, "toolRequestId");
+  const executionCapabilityHash = Reflect.get(
+    preparedBinding,
+    "executionCapabilityHash"
+  );
+  if (
+    typeof toolRequestId !== "string" ||
+    typeof executionCapabilityHash !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(executionCapabilityHash)
+  ) {
+    throw new Error("Task12 resident G returned a malformed prepared binding.");
+  }
+  const events = await fixture.ledger.readAll();
+  const source = events[0];
+  if (source === undefined) {
+    throw new Error("Resident catalog fixture lacks durable plan provenance.");
+  }
+  const locator: ResidentLogicalLocator = Object.freeze({
+    workspaceId: fixture.workspaceId,
+    residentAgentId: fixture.residentAgentId,
+    taskId: fixture.taskId,
+    attemptId,
+    runId,
+    planId,
+    planRevision: 0,
+    stepOrdinal: 1,
+    toolRequestId,
+    toolId: row.toolId,
+    toolVersion: row.toolVersion,
+    executionCapabilityHash: executionCapabilityHash as `sha256:${string}`
+  });
+  const preparePort = requiredUnknownMethod(
+    port,
+    "prepareResidentDomainExecution"
+  );
+  const previewResponse = asDataRecord(await Reflect.apply(
+    preparePort,
+    port,
+    [{
+      phase: "preview",
+      logicalLocator: locator
+    }]
+  ));
+  const currentPreview = Reflect.get(previewResponse, "currentPreview");
+  const plan = await appendResidentCatalogPlan(
+    fixture.ledger,
+    source,
+    locator,
+    suffix
+  );
+  const requestFresh = requiredUnknownMethod(
+    gateway,
+    "requestFreshAuthorized"
+  );
+  const requested = await Reflect.apply(requestFresh, gateway, [locator]);
+  let executable = requested;
+  if (row.ordinal !== 10) {
+    await appendResidentCatalogHumanApproval(
+      fixture.ledger,
+      locator,
+      plan,
+      suffix
+    );
+    const readFreshHumanDecision = requiredUnknownMethod(
+      gateway,
+      "readFreshHumanDecision"
+    );
+    executable = await Reflect.apply(
+      readFreshHumanDecision,
+      gateway,
+      [requested]
+    );
+  }
+  const execute = requiredUnknownMethod(gateway, "executeFreshAuthorized");
+  const ledgerEventsBeforeExecution = await fixture.ledger.readAll();
+  let issuedAttestation: Readonly<Record<string, unknown>> | undefined;
+  let issuedResult: Readonly<Record<string, unknown>> | undefined;
+  let issuedAttestationInspection:
+    ResidentAttestationMismatchInspection | undefined;
+  let invocationInput: Readonly<Record<string, unknown>> | undefined;
+  const originalFreeze: typeof Object.freeze = Object.freeze;
+  const freezeSpy = captureIssuedAttestation
+    ? vi.spyOn(Object, "freeze").mockImplementation(((
+        value: object
+      ): Readonly<object> => {
+        const frozen = originalFreeze(value);
+        const candidate = asDataRecord(frozen);
+        const candidateLocator = asDataRecord(candidate.logicalLocator);
+        if (
+          candidateLocator.toolRequestId === locator.toolRequestId &&
+          candidate.requestEventId !== undefined &&
+          candidate.executionClaimEventId !== undefined &&
+          candidate.authorization !== undefined &&
+          candidate.currentPreview !== undefined &&
+          candidate.residentInvocationInputHash === undefined
+        ) {
+          invocationInput = candidate;
+        }
+        if (
+          (
+            candidate.schemaVersion ===
+              "resident-domain-invocation-attestation.v1" ||
+            candidateLocator.toolRequestId === locator.toolRequestId
+          ) &&
+          candidate.catalogOrdinal === row.ordinal &&
+          candidate.implementationRevision === row.implementationRevision &&
+          typeof candidate.residentInvocationInputHash === "string"
+        ) {
+          if (issuedAttestation === undefined) {
+            const candidateResult = Reflect.get(candidate, "result");
+            if (
+              typeof candidateResult === "object" &&
+              candidateResult !== null
+            ) {
+              issuedResult = asDataRecord(candidateResult);
+            }
+            issuedAttestationInspection =
+              createResidentAttestationMismatchInspection(candidate);
+            issuedAttestation = issuedAttestationInspection.identity;
+            return issuedAttestation;
+          }
+        }
+        return frozen;
+      }) as typeof Object.freeze)
+    : undefined;
+  try {
+    await Reflect.apply(execute, gateway, [executable]);
+  } finally {
+    freezeSpy?.mockRestore();
+  }
+  const stream = await fixture.ledger.readStream(
+    residentCatalogStreamId(locator)
+  );
+  const receipt = stream.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1"> =>
+      event.type === "agent.resident-domain.outcome-observed.v1"
+  );
+  const completed = stream.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.completed.v1"> =>
+      event.type === "agent.resident-domain.completed.v1"
+  );
+  if (receipt === undefined || completed === undefined) {
+    throw new Error("Task12 resident G returned without durable receipt and completion.");
+  }
+  const claim = requiredExactResidentCatalogEvent(
+    stream,
+    "agent.resident-domain.execution-claimed.v1"
+  );
+  const ledgerEventsAfterExecution = (await fixture.ledger.readAll()).filter(
+    (event) => event.id !== receipt.id && event.id !== completed.id
+  );
+  return {
+    receipt,
+    completed,
+    currentPreview,
+    residentEvents: stream,
+    preInvocationLedgerEvents: [...ledgerEventsBeforeExecution, claim],
+    postInvocationLedgerEvents: ledgerEventsAfterExecution,
+    ...(issuedAttestation === undefined ? {} : { issuedAttestation }),
+    ...(issuedResult === undefined ? {} : { issuedResult }),
+    ...(issuedAttestationInspection === undefined
+      ? {}
+      : { issuedAttestationInspection }),
+    ...(invocationInput === undefined ? {} : { invocationInput })
+  };
+}
+
+async function appendResidentCatalogPlan(
+  ledger: EventLedger,
+  source: KnowledgeEvent,
+  locator: ResidentLogicalLocator,
+  suffix: string
+): Promise<KnowledgeEvent> {
+  const budget = residentCatalogBudget();
+  const planInput: Extract<
+    AppendableKnowledgeEvent,
+    { readonly type: "agent.resident-plan.recorded.v2" }
+  > = {
+    type: "agent.resident-plan.recorded.v2",
+    version: 1,
+    streamId:
+      `agent_resident_loop_${locator.taskId}_${locator.attemptId}_${locator.runId}`,
+    context: {
+      actor: schedulerActor,
+      occurredAt: fixedNow(),
+      causationId: source.id,
+      correlationId: `corr_dispatcher_${suffix}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      schemaVersion: "resident-plan-record.v2",
+      residentAgentId: locator.residentAgentId,
+      workspaceId: locator.workspaceId,
+      taskId: locator.taskId,
+      attemptId: locator.attemptId,
+      runId: locator.runId,
+      runMode: "evidence-triage",
+      workflowDescriptor: {
+        workflowDescriptorId: "workflow_evidence_triage",
+        workflowDescriptorVersion: "v1",
+        workflowDescriptorHash: hash("8")
+      },
+      policy: {
+        policyId: "agent_policy_dispatcher",
+        policyVersion: "policy_dispatcher_v1",
+        policyHash: hash("e")
+      },
+      authority: {
+        workspaceIdentityHash: hash("1"),
+        mountGeneration: "mount_dispatcher",
+        ledgerStoreIdentity: "ledger_dispatcher",
+        artifactStoreIdentity: "artifact_dispatcher",
+        ledgerHighWaterEventId: source.id,
+        policyHash: hash("e"),
+        activeLocksHash: hash("2")
+      },
+      sourceEventIds: [source.id],
+      contextPackRefs: [{
+        contextPackId: "context_pack_dispatcher",
+        contentHash: hash("d")
+      }],
+      budget,
+      causationId: source.id,
+      correlationId: `corr_dispatcher_${suffix}`,
+      planId: locator.planId,
+      planRevision: locator.planRevision,
+      priorPlanReadback: null,
+      replanObservationReadback: null,
+      steps: [{
+        ordinal: locator.stepOrdinal,
+        purpose: "Execute one exact package-owned resident catalog row.",
+        toolId: locator.toolId,
+        toolVersion: locator.toolVersion,
+        allowlistEntryHash: hash("c"),
+        expectedSafeOutputClass: "proposal",
+        prerequisiteStepOrdinals: [],
+        toolRequestId: locator.toolRequestId,
+        executionCapabilityHash: locator.executionCapabilityHash
+      }]
+    }
+  };
+  return ledger.append(planInput);
+}
+
+async function appendResidentCatalogHumanApproval(
+  ledger: EventLedger,
+  locator: ResidentLogicalLocator,
+  _plan: KnowledgeEvent,
+  suffix: string
+): Promise<void> {
+  const streamId = residentCatalogStreamId(locator);
+  const stream = await ledger.readStream(streamId);
+  const requested = stream.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.requested.v1"> =>
+      event.type === "agent.resident-domain.requested.v1"
+  );
+  if (requested === undefined) {
+    throw new Error("Task12 resident G failed to append the fresh request.");
+  }
+  const approvalInput: Extract<
+    AppendableKnowledgeEvent,
+    { readonly type: "agent.resident-domain.human-approved.v1" }
+  > = {
+    type: "agent.resident-domain.human-approved.v1",
+    version: 1,
+    streamId,
+    context: {
+      actor: humanActor,
+      occurredAt: fixedNow(),
+      causationId: requested.id,
+      correlationId: requested.payload.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      schemaVersion: "resident-domain-human-approved.v1",
+      logicalLocator: locator,
+      executionCapabilityHash: locator.executionCapabilityHash,
+      causationId: requested.id,
+      correlationId: requested.payload.correlationId,
+      authorizationKind: "human-approval",
+      requestEventId: requested.id,
+      decisionEventId: `evt_dispatcher_independent_decision_${suffix}`,
+      approvedBy: humanActor.id,
+      approvedPreviewHash: requested.payload.previewHash
+    }
+  };
+  await ledger.append(approvalInput, { expectedNextSequence: 2 });
+}
+
+function residentCatalogStreamId(
+  locator: ResidentLogicalLocator
+): string {
+  return `agent_resident_domain_${createHash("sha256")
+    .update(canonicalResidentJson(locator))
+    .digest("hex")}`;
+}
+
+function canonicalResidentJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalResidentJson).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${canonicalResidentJson(Reflect.get(value, key))}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function residentCatalogBudget(): ResidentBudget {
+  const ceilings = {
+    planRevisions: 3,
+    observationRecords: 16,
+    toolSteps: 12,
+    providerInvocations: 3,
+    providerRequestBytes: 1048576,
+    providerResponseBytes: 1048576,
+    contextBytes: 1048576,
+    derivativeArtifactBytes: 16777216,
+    activeExecutionMs: 900000,
+    approvalSuspensionMs: 86400000
+  };
+  const zeroes = {
+    planRevisions: 0,
+    observationRecords: 0,
+    toolSteps: 0,
+    providerInvocations: 0,
+    providerRequestBytes: 0,
+    providerResponseBytes: 0,
+    contextBytes: 0,
+    derivativeArtifactBytes: 0,
+    activeExecutionMs: 0,
+    approvalSuspensionMs: 0
+  };
+  return {
+    ceilings,
+    consumed: { ...zeroes, contextBytes: 1 },
+    remaining: { ...ceilings, contextBytes: ceilings.contextBytes - 1 },
+    actionConsumption: { ...zeroes, contextBytes: 1 }
+  };
+}
+
+function legacyFixtureAssertionId(candidateId: string): string {
+  return `as_legacy_${createHash("sha256").update([
+    "src_dispatcher_legacy",
+    "scan_dispatcher_legacy",
+    "legacy_stage_dispatcher_legacy",
+    hash("e"),
+    candidateId
+  ].join(":")).digest("hex")}`;
+}
+
+async function residentFactoryFixtures(
+  input: {
+    readonly destructiveLedger?: EventLedger;
+  } = {}
+): Promise<readonly ResidentFactoryFixture[]> {
+  const workspaceId = "ws_dispatcher_catalog";
+  const residentAgentId = "agent_default";
+  const taskId = "task_dispatcher_catalog";
+  const providerLedger = new InMemoryEventLedger();
+  const prrLedger = new InMemoryEventLedger();
+  const acceptedGraphLedger = new InMemoryEventLedger();
+  const exportLedger = new SeededLedger(goldenGovernanceLedgerEvents);
+  const destructiveLedger =
+    input.destructiveLedger ?? new InMemoryEventLedger();
+  const legacyLedger = new InMemoryEventLedger();
+  const providerEvidenceHash = hash("1");
+  const providerContextPack = buildContextPackRef({
+    contextPackId: "provider-transfer.v1",
+    version: 1,
+    generatedAt: fixedNow(),
+    payload: {
+      evidenceId: "ev_dispatcher_provider",
+      contentHash: providerEvidenceHash
+    },
+    safeSummary: "Dispatcher provider-transfer binding.",
+    provenanceRefs: [
+      "ev_dispatcher_provider",
+      "evt_dispatcher_provider_evidence",
+      providerEvidenceHash
+    ],
+    sourceEventIds: [
+      "evt_dispatcher_provider_evidence",
+      "evt_dispatcher_provider_link"
+    ],
+    artifactHashes: [providerEvidenceHash]
+  });
+  const basePromptAudit = promptArtifactAuditMetadata(buildPromptArtifact({
+    promptTemplateId: "provider-document-parse",
+    promptTemplateVersion: 1,
+    generatedAt: fixedNow(),
+    runType: "evidence-triage",
+    safetyClass: "provider-approved",
+    transferApprovalClass: "provider-byte-transfer",
+    contextPackRefs: [providerContextPack],
+    text: "Parse only the exact dispatcher fixture evidence.",
+    safeSummary: "Dispatcher provider parsing instructions."
+  }));
+  const providerPromptAudit = {
+    ...basePromptAudit,
+    production: {
+      schemaVersion: "agent-production-prompt-binding.v1" as const,
+      rendererId: "evidence-triage.classify.renderer",
+      rendererVersion: 1,
+      rendererHash: hash("2"),
+      renderedPromptHash: hash("3"),
+      providerOutputSchemaId: "evidence-triage.classify-output.v1",
+      providerOutputSchemaVersion: 1,
+      handoffSchemaId: "evidence-triage-handoff.v1",
+      handoffSchemaVersion: 1,
+      scopeApplicabilityHash: hash("4"),
+      evaluatedContextRequirements: [{
+        contextPackId: "provider-transfer.v1",
+        requirementMode: "always" as const,
+        status: "applicable" as const,
+        contentHash: providerContextPack.contentHash
+      }, {
+        contextPackId: "prr-read-model.v1",
+        requirementMode: "when-scope-associated-prr" as const,
+        status: "not-applicable" as const,
+        omissionReason: "no-associated-prr"
+      }],
+      resolvedPayloadAudits: [{
+        contextPackId: "provider-transfer.v1",
+        contentHash: providerContextPack.contentHash,
+        sizeBytes: 128,
+        schemaId: "provider-transfer.v1"
+      }]
+    }
+  };
+  const providerCapability = createProviderCapabilityDescriptor({
+    providerId: "provider_dispatcher_fixture",
+    label: "Dispatcher fixture provider",
+    adapterVersion: "dispatcher-provider.v1",
+    backendKind: "custom-adapter",
+    modelFamilies: ["dispatcher-fixture"],
+    modalities: ["file"],
+    toolSupport: "none",
+    structuredOutputSupport: "schema-strict",
+    contextLimits: { maxInputTokens: 4096, maxOutputTokens: 1024 },
+    credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+    dataHandlingNotes: "Selected fixture bytes are processed under the approved transfer policy.",
+    costPolicy: "metered-api",
+    workspaceScopes: ["workspace"],
+    approvalProfile: "remote-byte-transfer-gated",
+    diagnosticContract: ["requires-byte-transfer-approval"],
+    fakeSupport: false
+  });
+  const providerReadiness = {
+    providerId: providerCapability.providerId,
+    label: "Dispatcher fixture provider",
+    backendKind: "custom-adapter" as const,
+    capabilitySummary: ["file", "no tools", "schema output"],
+    credentialKindSummary: ["api-key-bearer"],
+    state: "requires-byte-transfer-approval" as const,
+    requiredApprovalClass: "provider-byte-transfer" as const,
+    credentialHealth: "local-binding-healthy" as const,
+    dataHandlingPosture: "remote-prompt-byte-transfer-gated" as const,
+    credentialRefId: "agent_credref_dispatcher_fixture",
+    safeActionIds: ["action_request_provider_byte_transfer_approval"]
+  };
+  const providerContext = {
+    ledger: providerLedger,
+    reviewer: humanActor,
+    residentAgentId,
+    taskId,
+    providerJobId: "provider_dispatcher_job",
+    sourceCollectionId: "src_dispatcher_provider",
+    importBatchId: "imp_dispatcher_provider",
+    providerId: providerCapability.providerId,
+    approvalEventId: "evt_dispatcher_provider_approval",
+    credentialRefId: providerReadiness.credentialRefId,
+    evidenceBindings: [{
+      evidenceId: "ev_dispatcher_provider",
+      evidenceEventId: "evt_dispatcher_provider_evidence",
+      linkEventId: "evt_dispatcher_provider_link",
+      contentHash: providerEvidenceHash,
+      byteCount: 128,
+      mediaType: "application/pdf"
+    }],
+    approvedProviderCapability: providerCapability,
+    approvedProviderReadiness: providerReadiness,
+    approvedPromptArtifact: providerPromptAudit,
+    excerptPolicy: "send-full-technically-eligible",
+    providerRegistry: { require: () => providerCapability },
+    readProviderReadiness: async () => ({
+      schemaVersion: "agent-provider-readiness.v1",
+      generatedAt: fixedNow(),
+      cards: [providerReadiness],
+      actions: [],
+      diagnostics: []
+    }),
+    readPromptArtifactAudit: async () => providerPromptAudit
+  };
+  const { initialContext, followUpContext } =
+    await prepareDispatcherPrrContexts(prrLedger, residentAgentId, taskId);
+  const acceptedGraphContext =
+    await prepareDispatcherAcceptedGraphContext(
+      acceptedGraphLedger,
+      residentAgentId,
+      taskId
+    );
+  const { exportContext, reportContext } =
+    prepareDispatcherGovernanceContexts(
+      exportLedger,
+      residentAgentId,
+      taskId
+    );
+  const repairAction = {
+    actionId: "action_dispatcher_projection",
+    kind: "rebuild-projection",
+    title: "Rebuild the expendable dispatcher fixture projection.",
+    severity: "warning",
+    requiresHumanApproval: true,
+    mutatesCanonicalState: false,
+    allowedNextCommands: ["projection rebuild-readiness", "projection rebuild"]
+  };
+  const projectionFileSystem = new DispatcherProjectionFileSystem(
+    "/workspace/dispatcher-fixture",
+    workspaceId
+  );
+  const projectionLayout = await resolveWorkspaceLayout({
+    rootPath: "/workspace/dispatcher-fixture",
+    expectedWorkspaceId: workspaceId
+  }, projectionFileSystem);
+  const projectionContext = {
+    ledger: destructiveLedger,
+    domainActor: humanActor,
+    residentAgentId,
+    taskId,
+    toolId: "workspace.projection-rebuild.execute",
+    layout: projectionLayout,
+    workspaceFileSystem: projectionFileSystem,
+    projectionFileSystem,
+    eventReader: { async readAll() { return []; } },
+    builder: { projectionName: "graph", async build() { return { "projection.json": "{}" }; } },
+    projectionName: "graph",
+    rebuildId: "rb_dispatcher_graph",
+    proposedAction: repairAction,
+    dataLossRiskSummary: "Canonical state is not modified by this fixture.",
+    readBackupManifest: async () => ({
+      workspaceId,
+      layoutContractVersion: "portable-workspace-layout.v1",
+      ledgerHighWaterMark: 0,
+      coveredCategories: [
+        "manifest", "ledger", "blobs", "derivatives", "jobs", "projections", "cache", "config"
+      ],
+      exportedAt: fixedNow()
+    })
+  };
+  const canonicalAction = {
+    actionId: "repair_dispatcher_ledger",
+    kind: "append-repair-event-required",
+    title: "Record an append-only dispatcher fixture repair.",
+    severity: "error",
+    requiresHumanApproval: true,
+    mutatesCanonicalState: true,
+    allowedNextCommands: ["diagnostics inspect"]
+  };
+  const canonicalRepairContext = {
+    ledger: destructiveLedger,
+    domainActor: humanActor,
+    residentAgentId,
+    taskId,
+    toolId: "workspace.canonical-repair.record",
+    workspace: {
+      workspaceId,
+      label: "Dispatcher fixture workspace",
+      manifestVersion: 1,
+      rootUri: "file:///workspace/dispatcher-fixture",
+      layoutContractVersion: "portable-workspace-layout.v1"
+    },
+    manifestHash: hash("a"),
+    ledgerHighWaterMark: 0,
+    backupManifestRef: {
+      available: true,
+      manifestHash: hash("b"),
+      ledgerHighWaterMark: 0,
+      stale: false
+    },
+    target: {
+      kind: "canonical-root",
+      root: "ledger",
+      repairActionId: canonicalAction.actionId
+    },
+    proposedAction: canonicalAction,
+    dataLossRiskSummary: "Canonical repair remains blocked without an append-only repair service.",
+    readinessChecks: [{
+      checkId: "append_only_repair_service_available",
+      status: "fail",
+      safeMessage: "Append-only workspace repair service is unavailable."
+    }],
+    readinessDiagnosticsHash: hash("c")
+  };
+  const legacyCandidates = Object.freeze([
+    {
+      candidateId: "legacy_candidate_dispatcher_alpha",
+      evidenceId: "ev_dispatcher_legacy_alpha",
+      evidenceContentHash: hash("f"),
+      sourcePath: "fixture-alpha.json"
+    },
+    {
+      candidateId: "legacy_candidate_dispatcher_beta",
+      evidenceId: "ev_dispatcher_legacy_beta",
+      evidenceContentHash: hash("8"),
+      sourcePath: "fixture-beta.json"
+    },
+    {
+      candidateId: "legacy_candidate_dispatcher_gamma",
+      evidenceId: "ev_dispatcher_legacy_gamma",
+      evidenceContentHash: hash("9"),
+      sourcePath: "fixture-gamma.json"
+    }
+  ]);
+  const legacyCandidateIds =
+    legacyCandidates.map(({ candidateId }) => candidateId);
+  let legacyApproval: KnowledgeEvent | undefined;
+  let legacyProposals: readonly KnowledgeEvent[] | undefined;
+  const legacyContext = {
+    runtime: {
+      async stagingPreview() {
+        return {
+          ok: true,
+          command: "legacy staging-preview",
+          sourceCollectionId: "src_dispatcher_legacy",
+          legacyReportId: "legacy_report_dispatcher",
+          reportHash: hash("d"),
+          candidateSetHash: hash("e"),
+          candidates: legacyCandidates,
+          nextActions: []
+        };
+      },
+      async approveStaging() {
+        legacyApproval ??= await legacyLedger.append({
+          type: "legacy.ontology.staging.approved",
+          version: 1,
+          streamId:
+            "legacy_staging_src_dispatcher_legacy_scan_dispatcher_legacy_legacy_stage_dispatcher_legacy",
+          context: {
+            actor: humanActor,
+            occurredAt: fixedNow(),
+            correlationId: "corr_dispatcher_legacy_approval",
+            coreVersion: "0.1.0",
+            packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+          },
+          payload: {
+            stagingBatchId: "legacy_stage_dispatcher_legacy",
+            legacyReportId: "legacy_report_dispatcher",
+            sourceCollectionId: "src_dispatcher_legacy",
+            scanBatchId: "scan_dispatcher_legacy",
+            reportHash: hash("d"),
+            candidateSetHash: hash("e"),
+            approvedBy: humanActor.id,
+            approvedAt: fixedNow(),
+            approvedAssertionCandidateIds: legacyCandidateIds
+          }
+        });
+        return {
+          ok: true as const,
+          command: "legacy approve-staging",
+          sourceCollectionId: "src_dispatcher_legacy",
+          scanBatchId: "scan_dispatcher_legacy",
+          eventIds: [legacyApproval.id],
+          nextActions: [],
+          legacyReportId: "legacy_report_dispatcher",
+          stagingBatchId: "legacy_stage_dispatcher_legacy",
+          reportHash: hash("d"),
+          candidateSetHash: hash("e"),
+          approvedAssertionCandidateIds: legacyCandidateIds
+        };
+      },
+      async stageApproved() {
+        legacyProposals ??= await Promise.all(legacyCandidates.map(
+          async (candidate, index) => {
+            const assertionId = legacyFixtureAssertionId(candidate.candidateId);
+            return await legacyLedger.append({
+              type: "assertion.proposed",
+              version: 1,
+              streamId: `assertion_${assertionId}`,
+              context: {
+                actor: schedulerActor,
+                occurredAt: fixedNow(),
+                correlationId: `corr_dispatcher_legacy_proposal_${index}`,
+                coreVersion: "0.1.0",
+                packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+              },
+              payload: {
+                assertionId,
+                evidenceId: candidate.evidenceId,
+                predicate: "legacy.dispatcher.fixture",
+                object: candidate.candidateId,
+                confidence: 0.8,
+                reviewState: "proposed"
+              }
+            });
+          }
+        ));
+        return {
+          ok: true as const,
+          command: "legacy stage",
+          sourceCollectionId: "src_dispatcher_legacy",
+          scanBatchId: "scan_dispatcher_legacy",
+          eventIds: legacyProposals.map(({ id }) => id),
+          nextActions: [],
+          legacyReportId: "legacy_report_dispatcher",
+          stagingBatchId: "legacy_stage_dispatcher_legacy",
+          proposedAssertionIds: legacyProposals.map(({ payload }) =>
+            String(Reflect.get(payload, "assertionId"))
+          )
+        };
+      }
+    },
+    ledger: legacyLedger,
+    residentAgentId,
+    sourceCollectionId: "src_dispatcher_legacy",
+    scanBatchId: "scan_dispatcher_legacy",
+    stagingBatchId: "legacy_stage_dispatcher_legacy",
+    legacyReportId: "legacy_report_dispatcher",
+    reportHash: hash("d"),
+    candidateSetHash: hash("e"),
+    selectedCandidateIds: legacyCandidateIds
+  };
+  for (const [label, ledger] of [
+    ["destructive", destructiveLedger],
+    ["legacy", legacyLedger]
+  ] as const) {
+    if ((await ledger.readAll()).length === 0) {
+      await ledger.append({
+        type: "evidence.ingested",
+        version: 1,
+        streamId: `evidence_ev_dispatcher_${label}_source`,
+        context: {
+          actor: schedulerActor,
+          occurredAt: fixedNow(),
+          correlationId: `corr_dispatcher_${label}_source`,
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        },
+        payload: {
+          evidenceId: `ev_dispatcher_${label}_source`,
+          source: { kind: "file", label: `${label}-source.txt` },
+          contentHash: label === "destructive" ? hash("b") : hash("c"),
+          mediaType: "text/plain",
+          sizeBytes: 1
+        }
+      });
+    }
+  }
+
+  return [
+    fixture("provider-byte-transfer", [0, 1], providerLedger, {
+      kind: "provider-byte-transfer",
+      workspaceId,
+      residentAgentId,
+      taskId,
+      context: providerContext
+    }),
+    fixture("prr-correspondence", [2, 3], prrLedger, {
+      kind: "prr-correspondence",
+      workspaceId,
+      residentAgentId,
+      taskId,
+      initialContext,
+      followUpContext
+    }),
+    fixture("accepted-graph-review", [4], acceptedGraphLedger, {
+      kind: "accepted-graph-review",
+      workspaceId,
+      residentAgentId,
+      taskId,
+      context: acceptedGraphContext
+    }),
+    fixture("export-report", [5, 6], exportLedger, {
+      kind: "export-report",
+      workspaceId,
+      residentAgentId,
+      taskId,
+      exportContext,
+      reportContext
+    }),
+    fixture("destructive-repair", [7, 8], destructiveLedger, {
+      kind: "destructive-repair",
+      workspaceId,
+      residentAgentId,
+      taskId,
+      projectionContext,
+      canonicalRepairContext
+    }),
+    fixture("legacy-staging", [9, 10], legacyLedger, {
+      kind: "legacy-staging",
+      workspaceId,
+      residentAgentId,
+      taskId,
+      context: legacyContext
+    })
+  ];
+
+  function fixture(
+    kind: ResidentFactoryKind,
+    ordinals: readonly number[],
+    ledger: EventLedger,
+    binding: Record<string, unknown>
+  ): ResidentFactoryFixture {
+    return { kind, ordinals, ledger, binding, workspaceId, residentAgentId, taskId };
+  }
+}
+
+function requiredBindingContext(
+  fixture: ResidentFactoryFixture,
+  key: string
+): Record<string, unknown> {
+  const value = Reflect.get(fixture.binding, key);
+  if (typeof value !== "object" || value === null) {
+    throw new Error(`Resident fixture ${fixture.kind} is missing ${key}.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+async function prepareDispatcherPrrContexts(
+  ledger: InMemoryEventLedger,
+  residentAgentId: string,
+  taskId: string
+): Promise<{
+  readonly initialContext: PrrCorrespondenceAdapterContext;
+  readonly followUpContext: PrrCorrespondenceAdapterContext;
+}> {
+  const lifecycle = new PrrLifecycleService({ ledger, actor: humanActor });
+  const transport = new DispatcherCorrespondenceAdapter();
+  const service = new PrrCorrespondenceService({
+    ledger,
+    actor: humanActor,
+    adapters: { gmail: transport }
+  });
+  const initialCreated = await lifecycle.createRequest({
+    prrRequestId: "prr_dispatcher_initial",
+    jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+    agency: { name: "Initial Agency", email: "records@example.gov" },
+    requester: { name: "Investigator", email: "investigator@example.org" },
+    requestText: "Provide the initial dispatcher fixture records."
+  });
+  const followCreated = await lifecycle.createRequest({
+    prrRequestId: "prr_dispatcher_followup",
+    jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+    agency: { name: "Follow-up Agency", email: "records@example.gov" },
+    requester: { name: "Investigator", email: "investigator@example.org" },
+    requestText: "Provide the follow-up dispatcher fixture records."
+  });
+  const followInitial = await service.sendInitialRequest({
+    prrRequestId: "prr_dispatcher_followup",
+    correspondenceId: "corr_dispatcher_followup_initial",
+    provider: "gmail",
+    from: "investigator@example.org",
+    to: ["records@example.gov"],
+    subject: "Dispatcher fixture request",
+    body: "Provide the follow-up dispatcher fixture records.",
+    approvedBy: humanActor.id
+  });
+  const followSubject = "Follow-up on dispatcher fixture request";
+  const followBody = "Please provide a status update for the dispatcher fixture records.";
+  const followDraft = await ledger.append({
+    type: "prr.followup.drafted",
+    version: 1,
+    streamId: "prr_dispatcher_followup",
+    context: {
+      actor: humanActor,
+      occurredAt: fixedNow(),
+      causationId: followInitial.id,
+      correlationId: followInitial.context.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      prrRequestId: "prr_dispatcher_followup",
+      correspondenceId: "corr_dispatcher_followup",
+      subject: followSubject,
+      bodyHash: hashText(followBody),
+      citedRules: []
+    }
+  });
+  const capabilities: AdapterCapabilities = {
+    provider: "gmail",
+    canSend: true,
+    canSync: true,
+    canFetchAttachments: true,
+    credentialMode: "cestus-oauth"
+  };
+  return {
+    initialContext: contextFor({
+      toolId: "prr.initial-send.execute",
+      prrRequestId: "prr_dispatcher_initial",
+      correspondenceId: "corr_dispatcher_initial",
+      sourceEventId: initialCreated.id,
+      requestCreatedEventId: initialCreated.id,
+      status: "draft",
+      subject: "Dispatcher fixture request",
+      body: "Provide the initial dispatcher fixture records.",
+      providerIdempotencyKey:
+        "send_prr_dispatcher_initial_corr_dispatcher_initial"
+    }),
+    followUpContext: contextFor({
+      toolId: "prr.follow-up.execute",
+      prrRequestId: "prr_dispatcher_followup",
+      correspondenceId: "corr_dispatcher_followup",
+      sourceEventId: followDraft.id,
+      requestCreatedEventId: followCreated.id,
+      status: "sent",
+      initialSentEventId: followInitial.id,
+      subject: followSubject,
+      body: followBody,
+      providerIdempotencyKey:
+        "followup_prr_dispatcher_followup_corr_dispatcher_followup"
+    })
+  };
+
+  function contextFor(input: {
+    readonly toolId: "prr.initial-send.execute" | "prr.follow-up.execute";
+    readonly prrRequestId: string;
+    readonly correspondenceId: string;
+    readonly sourceEventId: string;
+    readonly requestCreatedEventId: string;
+    readonly status: "draft" | "sent";
+    readonly initialSentEventId?: string;
+    readonly subject: string;
+    readonly body: string;
+    readonly providerIdempotencyKey: string;
+  }): PrrCorrespondenceAdapterContext {
+    const message: PrrCorrespondenceCurrentMessage = {
+      from: "investigator@example.org",
+      to: ["records@example.gov"],
+      cc: [],
+      subject: input.subject,
+      body: input.body,
+      renderedBody: input.body,
+      attachments: [],
+      requiresLegalConfirmation: false
+    };
+    return {
+      ledger,
+      correspondenceService: service,
+      domainActor: humanActor,
+      residentAgentId,
+      taskId,
+      toolId: input.toolId,
+      prrRequestId: input.prrRequestId,
+      correspondenceId: input.correspondenceId,
+      provider: "gmail",
+      messageSourceEventId: input.sourceEventId,
+      approvedMessage: {
+        from: message.from,
+        to: [...message.to],
+        cc: [...message.cc],
+        subject: message.subject,
+        subjectHash: hashText(message.subject),
+        bodyHash: hashText(message.body),
+        renderedBodyHash: hashText(message.renderedBody),
+        attachments: [],
+        requiresLegalConfirmation: false,
+        providerIdempotencyKey: input.providerIdempotencyKey
+      },
+      approvedRequestState: {
+        requestCreatedEventId: input.requestCreatedEventId,
+        status: input.status,
+        jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+        confirmedStalling: false,
+        ...(input.initialSentEventId === undefined
+          ? {}
+          : { initialSentEventId: input.initialSentEventId })
+      },
+      approvedProviderCapabilities: capabilities,
+      readCurrentMessage: async () => message,
+      readProviderCapabilities: async () => capabilities
+    };
+  }
+}
+
+async function prepareDispatcherAcceptedGraphContext(
+  ledger: InMemoryEventLedger,
+  residentAgentId: string,
+  taskId: string
+): Promise<Record<string, unknown>> {
+  const service = new AssertionService({ ledger });
+  const evidence = await ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: "evidence_ev_dispatcher_assertion",
+    context: {
+      actor: schedulerActor,
+      occurredAt: fixedNow(),
+      correlationId: "corr_dispatcher_assertion",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_dispatcher_assertion",
+      source: { kind: "file", label: "dispatcher-assertion.pdf" },
+      contentHash: hash("8"),
+      mediaType: "application/pdf",
+      sizeBytes: 128
+    }
+  });
+  const proposal = await service.propose({
+    assertionId: "as_dispatcher_fixture",
+    evidenceId: "ev_dispatcher_assertion",
+    subjectRef: "ent_dispatcher_agency",
+    predicate: "agency.name",
+    object: "Dispatcher Fixture Agency",
+    confidence: 0.95,
+    actor: schedulerActor
+  });
+  return {
+    ledger,
+    assertionService: service,
+    reviewer: humanActor,
+    residentAgentId,
+    taskId,
+    assertionId: "as_dispatcher_fixture",
+    proposalEventId: proposal.id,
+    evidenceId: "ev_dispatcher_assertion",
+    evidenceEventId: evidence.id,
+    evidenceContentHash: hash("8"),
+    reviewerRationaleDraft: "The fixture binds one reviewed assertion.",
+    ontologyPackVersions: { core: "0.1.0" }
+  };
+}
+
+function prepareDispatcherGovernanceContexts(
+  ledger: SeededLedger,
+  residentAgentId: string,
+  taskId: string
+): {
+  readonly exportContext: Record<string, unknown>;
+  readonly reportContext: Record<string, unknown>;
+} {
+  const governanceService = new GovernanceService({ ledger, actor: humanActor });
+  const common = {
+    ledger,
+    governanceService,
+    actor: humanActor,
+    residentAgentId,
+    taskId,
+    requestedEvidenceIds: ["ev_source_public"],
+    includedEvidenceIds: ["ev_source_public"],
+    includedContentHashes: [hash("1")],
+    sensitiveOptIns: [],
+    defaultPublicSafeOnly: true,
+    policy: { policyId: "gov_policy_default", version: "0.2.0" },
+    causationEventId: "evt_review_governance_public"
+  };
+  return {
+    exportContext: {
+      ...common,
+      toolId: "governance.export.generate",
+      artifactKind: "export",
+      artifactId: "exp_dispatcher_fixture",
+      outputArtifactHash: hash("9")
+    },
+    reportContext: {
+      ...common,
+      toolId: "governance.report.generate",
+      artifactKind: "report",
+      artifactId: "report_dispatcher_fixture",
+      outputArtifactHash: hash("a")
+    }
+  };
+}
+
+class DispatcherCorrespondenceAdapter implements CorrespondenceAdapter {
+  private readonly sentByIdempotency = new Map<string, SentMessageResult>();
+
+  async capabilities(): Promise<AdapterCapabilities> {
+    return {
+      provider: "gmail",
+      canSend: true,
+      canSync: true,
+      canFetchAttachments: true,
+      credentialMode: "cestus-oauth"
+    };
+  }
+
+  async sendApprovedMessage(input: ApprovedMessageInput): Promise<SentMessageResult> {
+    const existing = this.sentByIdempotency.get(input.idempotencyKey);
+    if (existing !== undefined) return existing;
+    const digest = createHash("sha256").update(input.idempotencyKey).digest("hex");
+    const result: SentMessageResult = {
+      provider: "gmail",
+      providerMessageId: `msg_${digest.slice(0, 24)}`,
+      providerThreadId: `thread_${digest.slice(0, 24)}`,
+      sentAt: fixedNow(),
+      rawMetadata: { transport: "dispatcher-fixture" }
+    };
+    this.sentByIdempotency.set(input.idempotencyKey, result);
+    return result;
+  }
+
+  async syncSince(): Promise<SyncResult> {
+    return { checkpoint: "dispatcher-fixture", messages: [] };
+  }
+}
+
+class SeededLedger implements EventLedger {
+  private readonly appended = new InMemoryEventLedger();
+  private readonly seeded: KnowledgeEvent[];
+
+  constructor(events: readonly KnowledgeEvent[]) {
+    this.seeded = structuredClone([...events]);
+  }
+
+  append(
+    event: AppendableKnowledgeEvent,
+    options?: AppendOptions
+  ): Promise<KnowledgeEvent> {
+    return this.appended.append(event, options);
+  }
+
+  async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+    return [
+      ...structuredClone(this.seeded.filter((event) => event.streamId === streamId)),
+      ...await this.appended.readStream(streamId)
+    ];
+  }
+
+  async readAll(): Promise<KnowledgeEvent[]> {
+    return [...structuredClone(this.seeded), ...await this.appended.readAll()];
+  }
+}
+
+class AppendAttemptLedger extends InMemoryEventLedger {
+  readonly attemptedTypes: string[] = [];
+
+  override append(
+    event: AppendableKnowledgeEvent,
+    options?: AppendOptions
+  ): Promise<KnowledgeEvent> {
+    this.attemptedTypes.push(event.type);
+    return super.append(event, options);
+  }
+}
+
+class DispatcherProjectionFileSystem {
+  private readonly files = new Map<string, string>();
+  private readonly directories = new Set<string>();
+
+  constructor(rootPath: string, workspaceId: string) {
+    this.directories.add(rootPath);
+    this.files.set(`${rootPath}/cestus-workspace.json`, JSON.stringify({
+      version: 1,
+      layoutVersion: 1,
+      workspaceId,
+      label: "Dispatcher fixture workspace",
+      createdAt: fixedNow(),
+      createdBy: "dispatcher-fixture",
+      coreVersion: "0.1.0"
+    }));
+    this.directories.add(`${rootPath}/ledger`);
+    this.files.set(`${rootPath}/ledger/ontology.sqlite`, "sqlite");
+    for (const directory of [
+      "blobs",
+      "derivatives",
+      "jobs",
+      "projections",
+      "cache",
+      "config"
+    ]) {
+      this.directories.add(`${rootPath}/${directory}`);
+    }
+  }
+
+  async exists(path: string): Promise<boolean> {
+    return this.files.has(path) || this.directories.has(path);
+  }
+
+  async readText(path: string): Promise<string> {
+    const value = this.files.get(path);
+    if (value === undefined) throw new Error("Missing dispatcher fixture file.");
+    return value;
+  }
+
+  async stat(path: string): Promise<WorkspaceStats> {
+    if (this.directories.has(path)) return { kind: "directory", sizeBytes: 0 };
+    const value = this.files.get(path);
+    if (value !== undefined) {
+      return { kind: "file", sizeBytes: Buffer.byteLength(value) };
+    }
+    throw new Error("Missing dispatcher fixture path.");
+  }
+
+  async lstat(path: string): Promise<WorkspaceStats> {
+    return this.stat(path);
+  }
+
+  async list(): Promise<readonly string[]> {
+    return [];
+  }
+
+  async realpath(path: string): Promise<string> {
+    return path;
+  }
+
+  async availableBytes(): Promise<number> {
+    return 1_000_000;
+  }
+
+  async writeText(path: string, content: string): Promise<void> {
+    this.files.set(path, content);
+  }
+
+  async remove(path: string): Promise<void> {
+    this.files.delete(path);
+    this.directories.delete(path);
+  }
+
+  async promoteDirectory(from: string, to: string): Promise<void> {
+    this.directories.add(to);
+    for (const [path, content] of [...this.files.entries()]) {
+      if (path.startsWith(`${from}/`)) {
+        this.files.set(`${to}${path.slice(from.length)}`, content);
+      }
+    }
+  }
+}
+
+function residentCatalogRows(): readonly ResidentCatalogRow[] {
+  return [
+    catalogRow("provider-byte-transfer", 0, "createProviderByteTransferAdapter",
+      "providerByteTransferDescriptor", "provider-byte-transfer.adapter.v1", "provider.bytes.transfer"),
+    catalogRow("provider-byte-transfer", 1, "createProviderParseExecutionAdapter",
+      "providerParseExecuteDescriptor", "provider-parse-execution.adapter.v1", "ingestion.provider-parse.execute"),
+    catalogRow("prr-correspondence", 2, "createPrrInitialSendExecutionAdapter",
+      "prrInitialSendExecuteDescriptor", "prr-initial-send-execution.adapter.v1", "prr.initial-send.execute"),
+    catalogRow("prr-correspondence", 3, "createPrrFollowUpExecutionAdapter",
+      "prrFollowUpExecuteDescriptor", "prr-follow-up-execution.adapter.v1", "prr.follow-up.execute"),
+    catalogRow("accepted-graph-review", 4, "createAcceptedGraphAssertionReviewAdapter",
+      "acceptedGraphAssertionReviewDescriptor", "accepted-graph-assertion-review.adapter.v1",
+      "ontology.assertion.accept"),
+    catalogRow("export-report", 5, "createExportGenerationAdapter",
+      "exportGenerateDescriptor", "export-generation.adapter.v1", "governance.export.generate"),
+    catalogRow("export-report", 6, "createReportGenerationAdapter",
+      "reportGenerateDescriptor", "report-generation.adapter.v1", "governance.report.generate"),
+    catalogRow("destructive-repair", 7, "createWorkspaceProjectionRebuildAdapter",
+      "workspaceProjectionRebuildDescriptor", "workspace-projection-rebuild.adapter.v1",
+      "workspace.projection-rebuild.execute"),
+    catalogRow("destructive-repair", 8, "createBlockedCanonicalRepairAdapter",
+      "workspaceCanonicalRepairDescriptor", "blocked-canonical-repair.adapter.v1",
+      "workspace.canonical-repair.record"),
+    catalogRow("legacy-staging", 9, "createLegacyStagingApprovalAdapter",
+      "legacyStagingApproveDescriptor", "legacy-staging-approval.adapter.v1",
+      "legacy.staging.approve"),
+    {
+      ...catalogRow("legacy-staging", 10, "createLegacyStagingExecutionAdapter",
+        "legacyStagingExecuteDescriptor", "legacy-staging-execution.adapter.v1",
+        "legacy.staging.execute"),
+      authorizationKind: "automatic-policy"
+    }
+  ];
+}
+
+function catalogRow(
+  kind: ResidentFactoryKind,
+  ordinal: number,
+  constructorName: string,
+  descriptorName: string,
+  implementationRevision: string,
+  toolId: string
+): ResidentCatalogRow {
+  return {
+    kind,
+    ordinal,
+    constructorName,
+    descriptorName,
+    implementationRevision,
+    toolId,
+    toolVersion: "0.1.0",
+    authorizationKind: "human-approval"
+  };
+}
+
+function expectedResidentCatalogImports(): Readonly<Record<string, readonly string[]>> {
+  return {
+    "./adapters/provider-byte-transfer.js": [
+      "createProviderByteTransferAdapter",
+      "createProviderParseExecutionAdapter",
+      "providerByteTransferDescriptor",
+      "providerParseExecuteDescriptor"
+    ],
+    "./adapters/prr-correspondence.js": [
+      "createPrrInitialSendExecutionAdapter",
+      "createPrrFollowUpExecutionAdapter",
+      "prrInitialSendExecuteDescriptor",
+      "prrFollowUpExecuteDescriptor"
+    ],
+    "./adapters/accepted-graph-review.js": [
+      "createAcceptedGraphAssertionReviewAdapter",
+      "acceptedGraphAssertionReviewDescriptor"
+    ],
+    "./adapters/export-report.js": [
+      "createExportGenerationAdapter",
+      "createReportGenerationAdapter",
+      "exportGenerateDescriptor",
+      "reportGenerateDescriptor"
+    ],
+    "./adapters/destructive-repair.js": [
+      "createWorkspaceProjectionRebuildAdapter",
+      "createBlockedCanonicalRepairAdapter",
+      "workspaceProjectionRebuildDescriptor",
+      "workspaceCanonicalRepairDescriptor"
+    ],
+    "./adapters/legacy-staging.js": [
+      "createLegacyStagingApprovalAdapter",
+      "createLegacyStagingExecutionAdapter",
+      "legacyStagingApproveDescriptor",
+      "legacyStagingExecuteDescriptor"
+    ]
+  };
+}
+
+function staticNamedImports(sourceFile: ts.SourceFile): Record<string, readonly string[]> {
+  return Object.fromEntries(sourceFile.statements.flatMap((statement) => {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.importClause?.namedBindings === undefined ||
+      !ts.isNamedImports(statement.importClause.namedBindings)
+    ) {
+      return [];
+    }
+    return [[
+      statement.moduleSpecifier.text,
+      statement.importClause.namedBindings.elements.map((element) => element.propertyName?.text ?? element.name.text)
+    ]];
+  }));
+}
+
+function dynamicLoaderNodes(sourceFile: ts.SourceFile): readonly string[] {
+  const violations: string[] = [];
+  visit(sourceFile);
+  return violations;
+
+  function visit(node: ts.Node): void {
+    if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        violations.push("dynamic import");
+      } else if (
+        ts.isIdentifier(node.expression) &&
+        ["require", "eval", "Function"].includes(node.expression.text)
+      ) {
+        violations.push(node.expression.text);
+      }
+    }
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Function") {
+      violations.push("new Function");
+    }
+    ts.forEachChild(node, visit);
+  }
+}
+
+function topLevelImportedCatalogReads(sourceFile: ts.SourceFile): readonly string[] {
+  const importedNames = new Set(residentCatalogRows().flatMap((row) => [
+    row.constructorName,
+    row.descriptorName
+  ]));
+  const violations: string[] = [];
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (declaration.initializer === undefined) continue;
+      visit(declaration.initializer);
+    }
+  }
+  return violations;
+
+  function visit(node: ts.Node): void {
+    if (ts.isIdentifier(node) && importedNames.has(node.text)) {
+      violations.push(node.text);
+    }
+    ts.forEachChild(node, visit);
+  }
+}
+
+function residentInvocationFor(
+  row: ResidentCatalogRow,
+  fixture: ResidentFactoryFixture
+): Record<string, unknown> {
+  const authorizationKind = row.authorizationKind ?? (row.ordinal === 10 ? "automatic-policy" : "human-approval");
+  return {
+    authorizationKind,
+    logicalLocator: {
+      workspaceId: fixture.workspaceId,
+      residentAgentId: fixture.residentAgentId,
+      taskId: fixture.taskId,
+      attemptId: "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      runId: "run_dispatcher_catalog",
+      planId: "plan_dispatcher_catalog",
+      planRevision: 1,
+      stepOrdinal: row.ordinal,
+      toolRequestId: `toolreq_dispatcher_${row.ordinal}`,
+      toolId: row.toolId,
+      toolVersion: row.toolVersion,
+      executionCapabilityHash: hash("0")
+    },
+    requestEventId: `evt_dispatcher_request_${row.ordinal}`,
+    executionClaimEventId: `evt_dispatcher_claim_${row.ordinal}`,
+    previewHash: hash("1"),
+    ...(authorizationKind === "human-approval"
+      ? {
+          decisionEventId: `evt_dispatcher_decision_${row.ordinal}`,
+          approvedBy: humanActor.id,
+          approvedPreviewHash: hash("1")
+        }
+      : {})
+  };
+}
+
+function dispatcherSource(): string {
+  return readFileSync(
+    fileURLToPath(new URL("../src/domain-execution-dispatcher.ts", import.meta.url)),
+    "utf8"
+  );
+}
+
+function hash(fill: string): `sha256:${string}` {
+  return `sha256:${fill.repeat(64).slice(0, 64)}`;
+}
+
+function hashText(value: string): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function residentTestHash(value: unknown): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update(residentTestCanonicalJson(value))
+    .digest("hex")}`;
+}
+
+function residentTestCanonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(residentTestCanonicalJson).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${residentTestCanonicalJson(
+        Reflect.get(value, key)
+      )}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
 
 const domainDescriptor: AgentDomainToolDescriptor = Object.freeze({
   toolId: "ontology.assertion.accept",

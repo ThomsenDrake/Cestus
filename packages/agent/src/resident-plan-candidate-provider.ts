@@ -1,5 +1,15 @@
 import { isIP } from "node:net";
 import { types } from "node:util";
+import {
+  validateKnowledgeEvent,
+  validateResidentLoopEventSequence,
+  type KnowledgeEvent
+} from "../../ontology/src/contracts.js";
+import type {
+  ResidentLoopReplayV2,
+  ResidentObservationEventV2,
+  ResidentPlanEventV2
+} from "./plan-observation-contracts.js";
 import { isAgentSecretSafeText } from "./secret-safety.js";
 import { approvalClassForSideEffect } from "./permission-policy.js";
 
@@ -11,23 +21,28 @@ interface NormalizedRecord {
 
 interface NormalizedArray extends ReadonlyArray<NormalizedValue> {}
 
-export interface ResidentInitialPlanCandidate {
-  readonly schemaVersion: "resident-initial-plan-candidate.v1";
-  readonly plan: NormalizedRecord;
-  readonly providerPosture: NormalizedRecord;
-  readonly policyConstraints: NormalizedRecord;
+export type ResidentUnboundPlanV2 = NormalizedRecord;
+export type ResidentLoopProviderPosture = NormalizedRecord;
+export type ResidentLoopPolicyConstraintsV2 = NormalizedRecord;
+
+export interface ResidentInitialPlanCandidateV2 {
+  readonly kind: "initial";
+  readonly proposedPlan: ResidentUnboundPlanV2;
+  readonly providerPosture: ResidentLoopProviderPosture;
+  readonly policyConstraints: ResidentLoopPolicyConstraintsV2;
 }
 
-export interface ResidentReplanCandidate {
-  readonly schemaVersion: "resident-replan-candidate.v1";
-  readonly plan: NormalizedRecord;
-  readonly providerPosture: NormalizedRecord;
-  readonly policyConstraints: NormalizedRecord;
+export interface ResidentReplanCandidateV2 {
+  readonly kind: "replan";
+  readonly priorPlan: ResidentPlanEventV2;
+  readonly priorPlanReadback: ResidentLoopReplayV2;
+  readonly replanObservationReadback: ResidentObservationEventV2;
+  readonly proposedPlan: ResidentUnboundPlanV2;
 }
 
 export interface ResidentPlanCandidateProvider {
-  createInitialCandidate(input: unknown): Promise<ResidentInitialPlanCandidate>;
-  createReplanCandidate(input: unknown): Promise<ResidentReplanCandidate>;
+  createInitialCandidate(input: unknown): Promise<ResidentInitialPlanCandidateV2>;
+  createReplanCandidate(input: unknown): Promise<ResidentReplanCandidateV2>;
 }
 
 const hashPattern = /^sha256:[a-f0-9]{64}$/;
@@ -74,43 +89,43 @@ const hardMaximums: Readonly<Record<typeof budgetFields[number], number>> = Obje
  * authorizes a plan; the later CF-1/Task136 boundary reparses this data.
  */
 export function createResidentPlanCandidateProvider(): ResidentPlanCandidateProvider {
-  let latest: ResidentInitialPlanCandidate | ResidentReplanCandidate | undefined;
-
   return Object.freeze({
-    async createInitialCandidate(input: unknown): Promise<ResidentInitialPlanCandidate> {
+    async createInitialCandidate(input: unknown): Promise<ResidentInitialPlanCandidateV2> {
       try {
-        if (latest !== undefined) throw unavailable();
-        const envelope = exactRecord(input, ["plan", "providerPosture", "policyConstraints"]);
-        const plan = requireRecord(envelope, "plan");
+        const envelope = exactRecord(input, ["proposedPlan", "providerPosture", "policyConstraints"]);
+        const proposedPlan = requireRecord(envelope, "proposedPlan");
         const providerPosture = requireRecord(envelope, "providerPosture");
         const policyConstraints = requireRecord(envelope, "policyConstraints");
-        validatePlan(plan, providerPosture, policyConstraints);
-        if (number(plan, "planRevision") !== 0 || value(plan, "priorPlanReadback") !== null || value(plan, "replanObservationReadback") !== null || !isInitialBudget(requireRecord(plan, "budget"))) {
-          throw unavailable();
-        }
-        const candidate = freezeInitial(plan, providerPosture, policyConstraints);
-        latest = candidate;
+        const candidate = parseResidentUntrustedPlanCandidate(Object.freeze({
+          kind: "initial",
+          proposedPlan,
+          providerPosture,
+          policyConstraints
+        }));
+        if (candidate.kind !== "initial") throw unavailable();
         return candidate;
       } catch {
         throw unavailable();
       }
     },
 
-    async createReplanCandidate(input: unknown): Promise<ResidentReplanCandidate> {
+    async createReplanCandidate(input: unknown): Promise<ResidentReplanCandidateV2> {
       try {
         const envelope = exactRecord(input, [
-          "plan", "providerPosture", "policyConstraints", "priorPlanReadback", "replanObservationReadback"
+          "priorPlan", "priorPlanReadback", "replanObservationReadback", "proposedPlan"
         ]);
-        const plan = requireRecord(envelope, "plan");
-        const providerPosture = requireRecord(envelope, "providerPosture");
-        const policyConstraints = requireRecord(envelope, "policyConstraints");
+        const priorPlan = requireRecord(envelope, "priorPlan");
         const priorPlanReadback = requireRecord(envelope, "priorPlanReadback");
-        const observationReadback = requireRecord(envelope, "replanObservationReadback");
-        if (latest === undefined) throw unavailable();
-        validatePlan(plan, providerPosture, policyConstraints);
-        validateReplan(plan, providerPosture, policyConstraints, priorPlanReadback, observationReadback, latest);
-        const candidate = freezeReplan(plan, providerPosture, policyConstraints);
-        latest = candidate;
+        const replanObservationReadback = requireRecord(envelope, "replanObservationReadback");
+        const proposedPlan = requireRecord(envelope, "proposedPlan");
+        const candidate = parseResidentUntrustedPlanCandidate(Object.freeze({
+          kind: "replan",
+          priorPlan,
+          priorPlanReadback,
+          replanObservationReadback,
+          proposedPlan
+        }));
+        if (candidate.kind !== "replan") throw unavailable();
         return candidate;
       } catch {
         throw unavailable();
@@ -119,7 +134,73 @@ export function createResidentPlanCandidateProvider(): ResidentPlanCandidateProv
   });
 }
 
+export function parseResidentUntrustedPlanCandidate(
+  input: unknown
+): ResidentInitialPlanCandidateV2 | ResidentReplanCandidateV2 {
+  try {
+    const candidate = requireNormalizedRecord(normalizeImmutablePlainData(input));
+    const kind = string(candidate, "kind");
+    if (kind === "initial") {
+      requireExactKeys(candidate, [
+        "kind", "proposedPlan", "providerPosture", "policyConstraints"
+      ]);
+      const proposedPlan = requireRecord(candidate, "proposedPlan");
+      const providerPosture = requireRecord(candidate, "providerPosture");
+      const policyConstraints = requireRecord(candidate, "policyConstraints");
+      validatePlan(proposedPlan, providerPosture, policyConstraints);
+      if (
+        number(proposedPlan, "planRevision") !== 0 ||
+        value(proposedPlan, "priorPlanReadback") !== null ||
+        value(proposedPlan, "replanObservationReadback") !== null ||
+        !isInitialBudget(requireRecord(proposedPlan, "budget"))
+      ) {
+        throw unavailable();
+      }
+      return Object.freeze({
+        kind: "initial",
+        proposedPlan,
+        providerPosture,
+        policyConstraints
+      });
+    }
+    if (kind === "replan") {
+      requireExactKeys(candidate, [
+        "kind", "priorPlan", "priorPlanReadback",
+        "replanObservationReadback", "proposedPlan"
+      ]);
+      const priorPlan = requireRecord(candidate, "priorPlan");
+      const priorPlanReadback = requireRecord(candidate, "priorPlanReadback");
+      const replanObservationReadback =
+        requireRecord(candidate, "replanObservationReadback");
+      const proposedPlan = requireRecord(candidate, "proposedPlan");
+      const durable = validateDurableReplanTuple(
+        priorPlan,
+        priorPlanReadback,
+        replanObservationReadback
+      );
+      validateReplan(proposedPlan, priorPlan, replanObservationReadback);
+      return Object.freeze({
+        kind: "replan",
+        priorPlan: durable.priorPlan,
+        priorPlanReadback: durable.priorPlanReadback,
+        replanObservationReadback: durable.replanObservationReadback,
+        proposedPlan
+      });
+    }
+    throw unavailable();
+  } catch {
+    throw unavailable();
+  }
+}
+
 function validatePlan(plan: NormalizedRecord, posture: NormalizedRecord, constraints: NormalizedRecord): void {
+  validateUnboundPlan(plan);
+  validateConstraints(constraints);
+  validateStepsAgainstConstraints(requireArray(plan, "steps"), constraints);
+  validatePosture(posture, plan, constraints);
+}
+
+function validateUnboundPlan(plan: NormalizedRecord): void {
   requireExactKeys(plan, [
     "schemaVersion", "residentAgentId", "workspaceId", "taskId", "attemptId", "runId", "runMode", "workflowDescriptor",
     "policy", "authority", "sourceEventIds", "contextPackRefs", "budget", "causationId", "correlationId", "planId",
@@ -138,30 +219,21 @@ function validatePlan(plan: NormalizedRecord, posture: NormalizedRecord, constra
   const sourceIds = requireArray(plan, "sourceEventIds");
   if (string(requireRecord(plan, "authority"), "ledgerHighWaterEventId") !== sourceIds[sourceIds.length - 1]) throw unavailable();
   validateBudget(requireRecord(plan, "budget"));
-  validateConstraints(constraints);
-  validateSteps(requireArray(plan, "steps"), constraints);
-  validatePosture(posture, plan, constraints);
+  validateUnboundSteps(requireArray(plan, "steps"));
 }
 
 function validateReplan(
   plan: NormalizedRecord,
-  posture: NormalizedRecord,
-  constraints: NormalizedRecord,
-  priorPlanReadback: NormalizedRecord,
-  observationReadback: NormalizedRecord,
-  prior: ResidentInitialPlanCandidate | ResidentReplanCandidate
+  priorPlan: NormalizedRecord,
+  observationReadback: NormalizedRecord
 ): void {
-  const priorPlan = prior.plan;
-  if (number(plan, "planRevision") !== number(priorPlan, "planRevision") + 1 || string(plan, "planId") === string(priorPlan, "planId")) {
-    throw unavailable();
-  }
-  requireExactKeys(priorPlanReadback, [
-    "planRecordEventId", "workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"
-  ]);
-  requireExactKeys(observationReadback, [
-    "observationEventId", "workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"
-  ]);
-  if (!sameReadback(priorPlanReadback, priorPlan, "planRecordEventId") || !sameReadback(observationReadback, priorPlan, "observationEventId")) {
+  validateUnboundPlan(plan);
+  const priorPayload = requireRecord(priorPlan, "payload");
+  const observationPayload = requireRecord(observationReadback, "payload");
+  if (
+    number(plan, "planRevision") !== number(priorPayload, "planRevision") + 1 ||
+    string(plan, "planId") === string(priorPayload, "planId")
+  ) {
     throw unavailable();
   }
   const embeddedPrior = requireRecord(plan, "priorPlanReadback");
@@ -169,26 +241,156 @@ function validateReplan(
   requireExactKeys(embeddedPrior, [
     "planRecordEventId", "workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision", "priorPlanRecordEventId"
   ]);
-  if (string(embeddedPrior, "priorPlanRecordEventId") !== string(priorPlanReadback, "planRecordEventId") || !sameRecordExcept(embeddedPrior, priorPlanReadback, "priorPlanRecordEventId")) {
+  if (
+    string(embeddedPrior, "planRecordEventId") !== string(priorPlan, "id") ||
+    string(embeddedPrior, "priorPlanRecordEventId") !== string(priorPlan, "id") ||
+    !sameReadback(embeddedPrior, priorPayload, "planRecordEventId")
+  ) {
     throw unavailable();
   }
-  if (!sameRecord(embeddedObservation, observationReadback)) throw unavailable();
+  requireExactKeys(embeddedObservation, [
+    "observationEventId", "workspaceId", "residentAgentId", "taskId",
+    "attemptId", "runId", "planId", "planRevision"
+  ]);
+  if (
+    string(embeddedObservation, "observationEventId") !==
+      string(observationReadback, "id") ||
+    !sameReadback(embeddedObservation, priorPayload, "observationEventId")
+  ) {
+    throw unavailable();
+  }
   for (const key of [
     "residentAgentId", "workspaceId", "taskId", "attemptId", "runId", "runMode", "workflowDescriptor", "policy", "authority",
-    "sourceEventIds", "contextPackRefs", "causationId", "correlationId"
+    "sourceEventIds", "contextPackRefs", "correlationId"
   ] as const) {
-    if (!sameValue(value(plan, key), value(priorPlan, key))) throw unavailable();
+    if (!sameValue(value(plan, key), value(priorPayload, key))) throw unavailable();
   }
-  if (!sameRecord(posture, prior.providerPosture) || !isConstraintSubset(constraints, prior.policyConstraints)) throw unavailable();
-  if (!isBudgetNarrower(requireRecord(plan, "budget"), requireRecord(priorPlan, "budget"))) throw unavailable();
-  const priorSteps = requireArray(priorPlan, "steps");
+  if (string(plan, "causationId") !== string(observationReadback, "id")) {
+    throw unavailable();
+  }
+  if (
+    !isBudgetNarrower(
+      requireRecord(plan, "budget"),
+      requireRecord(observationPayload, "budget")
+    )
+  ) {
+    throw unavailable();
+  }
+  const priorSteps = requireArray(priorPayload, "steps");
   for (const step of requireArray(plan, "steps")) {
-    if (!(step instanceof Object) || Array.isArray(step)) throw unavailable();
-    const ordinal = number(step as NormalizedRecord, "ordinal");
-    const matching = priorSteps.find((candidate) => number(candidate as NormalizedRecord, "ordinal") === ordinal);
-    if (matching === undefined || !sameRecord(step as NormalizedRecord, matching as NormalizedRecord)) throw unavailable();
+    const unboundStep = requireNormalizedRecord(step);
+    const ordinal = number(unboundStep, "ordinal");
+    const matching = priorSteps.find((candidate) =>
+      number(requireNormalizedRecord(candidate), "ordinal") === ordinal
+    );
+    if (
+      matching === undefined ||
+      !sameUnboundStep(unboundStep, requireNormalizedRecord(matching))
+    ) {
+      throw unavailable();
+    }
   }
 }
+
+function validateDurableReplanTuple(
+  priorPlan: NormalizedRecord,
+  priorPlanReadback: NormalizedRecord,
+  replanObservationReadback: NormalizedRecord
+): {
+  readonly priorPlan: ResidentPlanEventV2;
+  readonly priorPlanReadback: ResidentLoopReplayV2;
+  readonly replanObservationReadback: ResidentObservationEventV2;
+} {
+  const parsedPrior = validateKnowledgeEvent(priorPlan);
+  const parsedObservation = validateKnowledgeEvent(replanObservationReadback);
+  if (
+    !parsedPrior.success ||
+    parsedPrior.data.type !== "agent.resident-plan.recorded.v2" ||
+    !parsedObservation.success ||
+    parsedObservation.data.type !== "agent.resident-observation.recorded.v2"
+  ) {
+    throw unavailable();
+  }
+
+  requireExactKeys(priorPlanReadback, [
+    "identity", "events", "plans", "observations",
+    "toolSteps", "suspensions", "results"
+  ]);
+  const identity = requireRecord(priorPlanReadback, "identity");
+  requireExactKeys(identity, [
+    "residentAgentId", "workspaceId", "taskId", "attemptId", "runId"
+  ]);
+  const priorPayload = requireRecord(priorPlan, "payload");
+  for (const key of [
+    "residentAgentId", "workspaceId", "taskId", "attemptId", "runId"
+  ] as const) {
+    if (!sameValue(value(identity, key), value(priorPayload, key))) {
+      throw unavailable();
+    }
+  }
+
+  const eventValues = requireArray(priorPlanReadback, "events");
+  const eventRecords = eventValues.map(requireNormalizedRecord);
+  const parsedEvents: KnowledgeEvent[] = [];
+  for (const event of eventRecords) {
+    const parsed = validateKnowledgeEvent(event);
+    if (
+      !parsed.success ||
+      !residentReplayEventTypes.has(parsed.data.type)
+    ) {
+      throw unavailable();
+    }
+    parsedEvents.push(parsed.data);
+  }
+  if (!validateResidentLoopEventSequence(parsedEvents).success) {
+    throw unavailable();
+  }
+
+  const replayGroups = [
+    ["plans", "agent.resident-plan.recorded.v2"],
+    ["observations", "agent.resident-observation.recorded.v2"],
+    ["toolSteps", "agent.resident-tool-step.recorded.v2"],
+    ["suspensions", "agent.resident-loop.suspended.v2"],
+    ["results", "agent.resident-loop.result.recorded.v2"]
+  ] as const;
+  for (const [key, type] of replayGroups) {
+    const supplied = requireArray(priorPlanReadback, key);
+    const expected = Object.freeze(
+      eventRecords.filter((event) => value(event, "type") === type)
+    );
+    if (!sameValue(supplied, expected)) throw unavailable();
+  }
+
+  const plans = requireArray(priorPlanReadback, "plans");
+  const observations = requireArray(priorPlanReadback, "observations");
+  if (
+    plans.length === 0 ||
+    observations.length === 0 ||
+    !sameValue(plans[plans.length - 1], priorPlan) ||
+    !sameValue(
+      observations[observations.length - 1],
+      replanObservationReadback
+    ) ||
+    !sameValue(eventRecords[eventRecords.length - 1], replanObservationReadback)
+  ) {
+    throw unavailable();
+  }
+
+  return Object.freeze({
+    priorPlan: priorPlan as unknown as ResidentPlanEventV2,
+    priorPlanReadback: priorPlanReadback as unknown as ResidentLoopReplayV2,
+    replanObservationReadback:
+      replanObservationReadback as unknown as ResidentObservationEventV2
+  });
+}
+
+const residentReplayEventTypes = new Set<KnowledgeEvent["type"]>([
+  "agent.resident-plan.recorded.v2",
+  "agent.resident-observation.recorded.v2",
+  "agent.resident-tool-step.recorded.v2",
+  "agent.resident-loop.suspended.v2",
+  "agent.resident-loop.result.recorded.v2"
+]);
 
 function validateWorkflow(workflow: NormalizedRecord): void {
   requireExactKeys(workflow, ["workflowDescriptorId", "workflowDescriptorVersion", "workflowDescriptorHash"]);
@@ -278,17 +480,36 @@ function validateConstraints(constraints: NormalizedRecord): void {
   if (requiredApprovalClasses.some((entry) => typeof entry !== "string" || ![...releasedApprovalClasses].some((released) => released === entry))) throw unavailable();
 }
 
-function validateSteps(steps: NormalizedArray, constraints: NormalizedRecord): void {
+function validateUnboundSteps(steps: NormalizedArray): void {
   if (steps.length === 0) throw unavailable();
-  const allowed = requireArray(constraints, "toolAllowlist");
   for (const [index, stepValue] of steps.entries()) {
     const step = requireNormalizedRecord(stepValue);
-    requireExactKeys(step, ["ordinal", "purpose", "toolId", "toolVersion", "allowlistEntryHash", "expectedSafeOutputClass", "prerequisiteStepOrdinals"]);
+    requireExactKeys(step, [
+      "ordinal", "purpose", "toolId", "toolVersion", "allowlistEntryHash",
+      "expectedSafeOutputClass", "prerequisiteStepOrdinals"
+    ]);
     if (number(step, "ordinal") !== index + 1) throw unavailable();
     safe(string(step, "purpose"));
-    safe(string(step, "toolId")); safe(string(step, "toolVersion")); hash(string(step, "allowlistEntryHash"));
-    if (!outputClasses.has(string(step, "expectedSafeOutputClass"))) throw unavailable();
-    validatePrerequisites(requireArray(step, "prerequisiteStepOrdinals"), index + 1);
+    safe(string(step, "toolId"));
+    safe(string(step, "toolVersion"));
+    hash(string(step, "allowlistEntryHash"));
+    if (!outputClasses.has(string(step, "expectedSafeOutputClass"))) {
+      throw unavailable();
+    }
+    validatePrerequisites(
+      requireArray(step, "prerequisiteStepOrdinals"),
+      index + 1
+    );
+  }
+}
+
+function validateStepsAgainstConstraints(
+  steps: NormalizedArray,
+  constraints: NormalizedRecord
+): void {
+  const allowed = requireArray(constraints, "toolAllowlist");
+  for (const stepValue of steps) {
+    const step = requireNormalizedRecord(stepValue);
     const allowlist = allowed.find((entry) => {
       const record = requireNormalizedRecord(entry);
       return string(record, "toolId") === string(step, "toolId") &&
@@ -384,13 +605,24 @@ function sameReadback(readback: NormalizedRecord, plan: NormalizedRecord, idKey:
   return true;
 }
 
-function isConstraintSubset(next: NormalizedRecord, prior: NormalizedRecord): boolean {
-  const priorAutomatic = requireArray(prior, "permittedAutomaticActionClasses");
-  if (requireArray(next, "permittedAutomaticActionClasses").some((entry) => !priorAutomatic.includes(entry))) return false;
-  const nextRequired = requireArray(next, "requiredApprovalClasses");
-  if (requireArray(prior, "requiredApprovalClasses").some((entry) => !nextRequired.includes(entry))) return false;
-  const previousTools = requireArray(prior, "toolAllowlist");
-  return requireArray(next, "toolAllowlist").every((entry) => previousTools.some((previous) => sameValue(entry, previous)));
+function sameUnboundStep(
+  proposed: NormalizedRecord,
+  durable: NormalizedRecord
+): boolean {
+  requireExactKeys(durable, [
+    "ordinal", "purpose", "toolId", "toolVersion", "allowlistEntryHash",
+    "expectedSafeOutputClass", "prerequisiteStepOrdinals",
+    "toolRequestId", "executionCapabilityHash"
+  ]);
+  for (const key of [
+    "ordinal", "purpose", "toolId", "toolVersion", "allowlistEntryHash",
+    "expectedSafeOutputClass", "prerequisiteStepOrdinals"
+  ] as const) {
+    if (!sameValue(value(proposed, key), value(durable, key))) return false;
+  }
+  requirePattern(string(durable, "toolRequestId"), /^toolreq_[a-zA-Z0-9_-]+$/);
+  hash(string(durable, "executionCapabilityHash"));
+  return true;
 }
 
 function isBudgetNarrower(next: NormalizedRecord, prior: NormalizedRecord): boolean {
@@ -415,18 +647,21 @@ function isBudgetNarrower(next: NormalizedRecord, prior: NormalizedRecord): bool
 }
 
 function isInitialBudget(budget: NormalizedRecord): boolean {
+  let hasAction = false;
   for (const field of budgetFields) {
-    if (number(requireRecord(budget, "consumed"), field) !== 0 || number(requireRecord(budget, "actionConsumption"), field) !== 0 || number(requireRecord(budget, "remaining"), field) !== number(requireRecord(budget, "ceilings"), field)) return false;
+    const consumed = number(requireRecord(budget, "consumed"), field);
+    const action = number(requireRecord(budget, "actionConsumption"), field);
+    if (
+      consumed !== action ||
+      (field === "planRevisions" && action !== 0) ||
+      number(requireRecord(budget, "remaining"), field) !==
+        number(requireRecord(budget, "ceilings"), field) - consumed
+    ) {
+      return false;
+    }
+    hasAction ||= action > 0;
   }
-  return true;
-}
-
-function freezeInitial(plan: NormalizedRecord, providerPosture: NormalizedRecord, policyConstraints: NormalizedRecord): ResidentInitialPlanCandidate {
-  return Object.freeze({ schemaVersion: "resident-initial-plan-candidate.v1", plan, providerPosture, policyConstraints });
-}
-
-function freezeReplan(plan: NormalizedRecord, providerPosture: NormalizedRecord, policyConstraints: NormalizedRecord): ResidentReplanCandidate {
-  return Object.freeze({ schemaVersion: "resident-replan-candidate.v1", plan, providerPosture, policyConstraints });
+  return hasAction;
 }
 
 function exactRecord(input: unknown, keys: readonly string[]): NormalizedRecord {
@@ -606,16 +841,6 @@ function requirePattern(candidate: string, pattern: RegExp): void {
 function eventOrIdentityPattern(key: "taskId" | "attemptId" | "runId" | "causationId"): RegExp {
   if (key === "causationId") return eventPattern;
   return new RegExp(`^${key.slice(0, -2)}_[a-zA-Z0-9_-]+$`);
-}
-
-function sameRecord(left: NormalizedRecord, right: NormalizedRecord): boolean {
-  return sameValue(left, right);
-}
-
-function sameRecordExcept(left: NormalizedRecord, right: NormalizedRecord, except: string): boolean {
-  const leftKeys = Object.keys(left).filter((key) => key !== except);
-  const rightKeys = Object.keys(right);
-  return leftKeys.length === rightKeys.length && leftKeys.every((key) => sameValue(left[key], right[key]));
 }
 
 function sameValue(left: NormalizedValue | undefined, right: NormalizedValue | undefined): boolean {

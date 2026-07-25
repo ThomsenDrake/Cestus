@@ -822,3 +822,66 @@ Implementation evidence:
   packages/product bytes, provider behavior, credentials, network behavior,
   external systems, `neo`, and remote refs remain unchanged. This mechanical
   pin synchronization is an assurance checkpoint, not a product release.
+
+## RV-1-E-1017 forward assurance-scope amendment
+
+The historical V4 candidate, approval, integration, JSON hash, assurance
+fingerprint, mission fingerprint, and every prior review above remain
+immutable evidence for their exact commits. They are not rewritten. Human
+scope authority is recorded at program commit
+`9aa73c2cb9063d97ed438fa074911ba527995cc9` and Task136 two-parent merge
+`d0136f6960f0355fe7ea29320498c80dd276c963`.
+
+The forward amendment preserves all 29 card IDs/order, all 28 raw release
+pins, eleven historical compatibility records, nine Task136 prerequisites,
+and every existing transfer. It expands only Task136's finite owned scope by
+adopting these two previously unowned release-graph paths:
+
+```text
+packages/agent/src/adapters/legacy-staging.ts
+packages/agent/test/legacy-staging-adapter.test.ts
+```
+
+The exact current Task136 scope is 32 ordered paths: 14 sources, 17 tests,
+and one claim. The adopted pair occupies positions 9 and 10 immediately
+before the gateway pair; the newline-delimited ordered-path SHA-256 is
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+The Task136 command contains all 17 tests in owned-path order.
+
+The two paths are finite baseline adoptions with source blob
+`99fbafda3844435109bc249b015b111b9258c210` and test blob
+`de7cef3123a15fb82891943dc51005165c8c9fcd`, exact candidate
+`3be15212776ab3c96e66bf0bade4630960c362eb`, and published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`. Before record 29, candidate,
+integration, and current HEAD must match. After record 29 they migrate to
+Task136 candidate/integration/current equality with the other 30 paths.
+
+The amended contract/checker keeps the finite mutation corpus and adds both
+paths to baseline and record-29 blob mismatch proof. The forward exact pins
+are:
+
+```text
+V4 JSON SHA-256:
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
+V4 assurance fingerprint:
+da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
+Mission immutable-envelope fingerprint:
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
+Mission source fingerprint:
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
+```
+
+The amendment also freezes the secret-safe ordinal-10 design: the released
+adapter derives ordered `selectedCandidateBindingHashes` from authoritative
+current candidates using the exact versioned canonical preimage in the
+Task136 design, binds them into `normalizedInputHash` and the complete
+preview hash, and exposes no raw predicate/object values. Fresh dispatcher
+execution and gateway recovery independently recompute from exact proposal
+and evidence durable facts; neither trusts a receipt as its own oracle and no
+report-store port is added.
+
+This is a pre-product authority amendment candidate, not Task12 product
+editing, approval, integration, strict record 29, assurance-only transition,
+publication, Wave 3 start, or product release. Task12 remains implementing
+and the strict frontier remains **28 of 29** pending completely fresh design
+and executability reviews of one exact candidate.
