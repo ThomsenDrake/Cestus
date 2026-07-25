@@ -35679,3 +35679,84 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1065 — Task14 fixed-construction loader oracle correction authorized
+
+- Recorded at: 2026-07-25T22:51:10Z
+- Fresh stage-one source implementer
+  `/root/task136_e1064_task14_stage1_green` stopped without editing or
+  committing after proving that E-1064's two-source GREEN cannot satisfy all
+  frozen test oracles. The Task136 lineage remains exact clean head
+  `f91633e7a52692dd7b54fa78ef0d7d30fdfb22c6`, tree
+  `48755883656deab1c1fa5121998678883a4f348c`; source and test blobs are
+  unchanged.
+- The approved design and Task14 plan require the authenticated mounted store
+  to privately construct T120, directly invoke the dispatcher default
+  binder, and construct G. E-1064 correctly forbids passing either constructor
+  through the store binder, any wrapper, registrar, hidden callback, global,
+  `this` carrier, attached property, or later runtime input. Its exact
+  three-argument binder therefore requires fixed store-local static imports.
+- Frozen loader-policy blob
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476` instead admits the dispatcher
+  default and named G constructor only in
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, requires the
+  dispatcher binder call there, and rejects either store-local import as an
+  alternate transfer. Frozen local import-policy blob
+  `7c464d5f664345e1651330111977d7509cb713d7` likewise requires both imports
+  in wake runtime while independently requiring the store binder and its sole
+  wake call to have exactly three arguments. These constraints make correct
+  fixed construction impossible in JavaScript without the forbidden carrier.
+- Preserve E-1064 as valid historical evidence but supersede its immediate
+  source-edit sequence. No source checkpoint or Task14 candidate exists.
+  Authorize a causal forward test-only oracle correction in exactly
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`
+  and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from the two exact blobs above. Freeze both Task14 sources at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; freeze every other path.
+- Relocate the one permitted Task14 dispatcher default import, its exact
+  one-shot `bindPackageOwnedResidentDomainExecutionPort` call, the one
+  permitted named `createResidentLoopToolGateway` import, and its exact
+  constructor call to
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`. Require no
+  corresponding import, call, alias, capture, storage, return, re-export,
+  dynamic load, or transfer in wake runtime or any other production file.
+  Preserve the dispatcher default-only/G named-only ABI, exact single-use
+  lexical census, protected mention ownership, private permit interlock,
+  released adapter exceptions, agent-barrel exclusion, and every existing
+  hostile alias/destructuring/wrapper/prototype/loader control.
+- Preserve the recursive binder analyzer and require exact store declaration
+  parameters `(store, rawBinding, domainExecution)`, exact sole production
+  wake caller with three arguments, no function-bearing or wrapper-bearing
+  binder parameter, and no alternate binder importer. The tests must reject
+  moving either fixed import/call back to wake, duplicating it, changing
+  import form or identity, aliasing or exporting it, or transporting it by
+  an object/function carrier.
+- Against the frozen rejected sources, the corrected loader test must fail
+  because fixed imports/calls remain in wake rather than the store; the
+  corrected local import test must fail because store imports/calls are
+  absent and the rejected binder/call remain five-argument and
+  callback-bearing. Analyzer/control collection must itself pass, and no
+  fixture, API, type, or unrelated failure may substitute for those causal
+  product mismatches.
+- Establish a new exact focused, loader, and 17-test Task136 card signature
+  from execution rather than retaining E-1064's now-unreachable GREEN count.
+  Run relevant boundaries and adapter controls, standalone typecheck, factory
+  readiness, mission **20/20**, V4 **20/20**, all four exact markers,
+  truthful repository legacy-staging first stop, exact two-test scope,
+  source/other-test freezes, ancestry, dependencies, diff, and clean state.
+- Commit one exact test-only candidate and admit only that SHA to a completely
+  fresh independent read-only reviewer. No author, reviewer, verifier, or
+  analyst of any changed test byte may approve it. Changed bytes invalidate
+  review. Only after approval, append-only recording, and history-preserving
+  integration may a separate event reauthorize the two-source stage-one
+  GREEN.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is test-oracle recovery authority, not test approval or
+  integration, source correction, Task14 approval, Task15 authority, Task136
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
