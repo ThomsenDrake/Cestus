@@ -1234,6 +1234,25 @@ describe("agent domain execution dispatcher", () => {
       event.type === "agent.resident-domain.completed.v1"
     )).toEqual([]);
   });
+
+  it("rejects fresh legacy execution when each assertion proposal globally precedes its causal evidence", async () => {
+    const reversed = await reversedChronologyLegacyCandidateFixture();
+    const beforeExecution = await reversed.fixture.ledger.readAll();
+    for (const proposal of reversed.proposals) {
+      const evidenceIndex = beforeExecution.findIndex(
+        (event) => event.id === proposal.context.causationId
+      );
+      expect(evidenceIndex).toBeGreaterThan(
+        beforeExecution.findIndex((event) => event.id === proposal.id)
+      );
+    }
+
+    await expect(executeResidentCatalogRow(
+      reversed.fixture,
+      residentCatalogRows()[10]!,
+      "reversed-evidence-chronology"
+    )).rejects.toThrow(/chronolog|evidence|order|preced/i);
+  });
 });
 
 type ResidentFactoryKind =
@@ -2433,6 +2452,51 @@ async function outOfOrderLegacyCandidateFixture(): Promise<{
   };
 }
 
+async function reversedChronologyLegacyCandidateFixture(): Promise<{
+  readonly fixture: ResidentFactoryFixture;
+  readonly proposals: readonly KnowledgeEventOf<"assertion.proposed">[];
+}> {
+  const chronology = reversedDispatcherLegacyChronology();
+  const fixture = (await residentFactoryFixtures({
+    legacyLedger: new SeededLedger(chronology.events)
+  }))[5]!;
+  const context = requiredBindingContext(fixture, "context");
+  const runtime = requiredBindingContext(
+    { ...fixture, binding: context },
+    "runtime"
+  );
+  return {
+    fixture: {
+      ...fixture,
+      binding: {
+        ...fixture.binding,
+        context: {
+          ...context,
+          runtime: {
+            ...runtime,
+            async stageApproved() {
+              return {
+                ok: true as const,
+                command: "legacy stage",
+                sourceCollectionId: "src_dispatcher_legacy",
+                scanBatchId: "scan_dispatcher_legacy",
+                eventIds: chronology.proposals.map(({ id }) => id),
+                nextActions: [],
+                legacyReportId: "legacy_report_dispatcher",
+                stagingBatchId: "legacy_stage_dispatcher_legacy",
+                proposedAssertionIds: chronology.proposals.map(
+                  ({ payload }) => payload.assertionId
+                )
+              };
+            }
+          }
+        }
+      }
+    },
+    proposals: chronology.proposals
+  };
+}
+
 function successfulResidentEventsForTool(
   events: readonly unknown[],
   toolId: string
@@ -3354,9 +3418,105 @@ function legacyFixtureAssertionId(candidateId: string): string {
   ].join(":")).digest("hex")}`;
 }
 
+function reversedDispatcherLegacyChronology(): {
+  readonly events: readonly KnowledgeEvent[];
+  readonly proposals: readonly KnowledgeEventOf<"assertion.proposed">[];
+} {
+  const candidates = [
+    {
+      candidateId: "legacy_candidate_dispatcher_alpha",
+      evidenceId: "ev_dispatcher_legacy_alpha",
+      evidenceContentHash: hash("f"),
+      predicate: "legacy.dispatcher.fixture",
+      object: "legacy_candidate_dispatcher_alpha",
+      confidence: 0.8,
+      subjectRef: "agency:dispatcher-alpha",
+      sourcePath: "fixture-alpha.json"
+    },
+    {
+      candidateId: "legacy_candidate_dispatcher_beta",
+      evidenceId: "ev_dispatcher_legacy_beta",
+      evidenceContentHash: hash("8"),
+      predicate: "legacy.dispatcher.fixture",
+      object: "legacy_candidate_dispatcher_beta",
+      confidence: 0.8,
+      sourcePath: "fixture-beta.json"
+    },
+    {
+      candidateId: "legacy_candidate_dispatcher_gamma",
+      evidenceId: "ev_dispatcher_legacy_gamma",
+      evidenceContentHash: hash("9"),
+      predicate: "legacy.dispatcher.fixture",
+      object: "legacy_candidate_dispatcher_gamma",
+      confidence: 0.8,
+      sourcePath: "fixture-gamma.json"
+    }
+  ] as const;
+  const evidences = candidates.map((candidate) => ({
+    id: `evt_dispatcher_chronology_${candidate.evidenceId}`,
+    type: "evidence.ingested" as const,
+    version: 1 as const,
+    streamId: `evidence_${candidate.evidenceId}`,
+    sequence: 1,
+    context: {
+      actor: schedulerActor,
+      occurredAt: fixedNow(),
+      correlationId:
+        `corr_dispatcher_chronology_${candidate.evidenceId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      evidenceId: candidate.evidenceId,
+      source: {
+        kind: "file" as const,
+        label: candidate.sourcePath
+      },
+      contentHash: candidate.evidenceContentHash,
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  })) satisfies readonly KnowledgeEventOf<"evidence.ingested">[];
+  const proposals = candidates.map((candidate, index) => ({
+    id: `evt_dispatcher_chronology_proposal_${index}`,
+    type: "assertion.proposed" as const,
+    version: 1 as const,
+    streamId:
+      `assertion_${legacyFixtureAssertionId(candidate.candidateId)}`,
+    sequence: 1,
+    context: {
+      actor: schedulerActor,
+      occurredAt: fixedNow(),
+      causationId: evidences[index]!.id,
+      correlationId:
+        `corr_dispatcher_chronology_proposal_${index}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      assertionId: legacyFixtureAssertionId(candidate.candidateId),
+      evidenceId: candidate.evidenceId,
+      predicate: candidate.predicate,
+      object: candidate.object,
+      confidence: candidate.confidence,
+      ...(
+        "subjectRef" in candidate
+          ? { subjectRef: candidate.subjectRef }
+          : {}
+      ),
+      reviewState: "proposed" as const
+    }
+  })) satisfies readonly KnowledgeEventOf<"assertion.proposed">[];
+  return {
+    events: [...proposals, ...evidences],
+    proposals
+  };
+}
+
 async function residentFactoryFixtures(
   input: {
     readonly destructiveLedger?: EventLedger;
+    readonly legacyLedger?: EventLedger;
   } = {}
 ): Promise<readonly ResidentFactoryFixture[]> {
   const workspaceId = "ws_dispatcher_catalog";
@@ -3368,7 +3528,7 @@ async function residentFactoryFixtures(
   const exportLedger = new SeededLedger(goldenGovernanceLedgerEvents);
   const destructiveLedger =
     input.destructiveLedger ?? new InMemoryEventLedger();
-  const legacyLedger = new InMemoryEventLedger();
+  const legacyLedger = input.legacyLedger ?? new InMemoryEventLedger();
   const providerEvidenceHash = hash("1");
   const providerContextPack = buildContextPackRef({
     contextPackId: "provider-transfer.v1",
