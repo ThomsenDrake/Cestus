@@ -32996,3 +32996,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1020 — Corrected 32-path Task136 assurance amendment admitted to fresh dual review
+
+- Recorded at: 2026-07-25T15:05:16Z
+- Exact corrected amendment candidate
+  `9f0e64244cd79ec7de2685820e46d78bc3483020`, tree
+  `7d2f450dd688998b1a8403f2f0e6995bfc2bd17f`, has sole parent E-1019
+  Task136 authority merge
+  `21ace835f6d739aea05da30551cf1bec57a5c496`. That merge has exact parents
+  preserved E-1018 review-admission merge
+  `eb593c837c9de97a6d86fc4137a5e792658743f9` and E-1019 registry authority
+  `58c3910d15f27b2cb24a2dcec1f508d757a36ab5`.
+- Rejected exact candidate
+  `40a8d0f630dd986ed4d03ade7422ef2b4d3e5f70`, tree
+  `d5a589a63fce8b663c79e0a73578a7f2533ef992`, and its E-1018 reviews
+  remain immutable ancestors. The correction changes exactly the eight
+  E-1019-authorized authority paths: Task136 design, implementation plan,
+  product claim, V4 authority-transfer claim, V4 JSON, V4 checker test,
+  mission JSON, and mission checker. It changes no V4 checker source,
+  mission-checker test, package/product byte, dependency manifest, registry
+  history, runtime route, provider, credential, or external behavior.
+- The V4 JSON is exact canonical two-space
+  `JSON.stringify(value, null, 2) + LF`, SHA-256
+  `3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930`.
+  The unchanged structural assurance fingerprint is
+  `da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec`.
+  Synchronized mission source and immutable-envelope fingerprints are
+  `sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b`
+  and
+  `sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab`.
+- The corrected plan contains exact independently reconstructed 17-test card
+  arrays, a 35-test cross-boundary array, fourteen-source and thirty-two-path
+  manifests, the adopted adapter test in the differential allowlist, the
+  union of seven exact source-only GREEN commit deltas, and separate exact
+  three-test Task12 binding-RED path/blob and causality proof. Its Task16
+  command includes the adapter test. The product claim ends with an explicit
+  true-EOF current-authority section, so preserved E-957 through E-976
+  history cannot restore obsolete pins during sequential interpretation.
+- Coordinator reproduction passes canonical JSON, exact 29-card order,
+  thirty-two paths classified `14/17/1`, ordered-path SHA-256
+  `8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`,
+  V4 assurance **20/20**, mission **20/20**, standalone typecheck, factory
+  readiness, syntax, diff, scope, freeze, ancestry, dependency, and clean
+  state. Contract mode emits exactly release graph `records=29`, composition
+  `green=1 red=20`, command cards `cards=29`, and ABI `green=1 red=15`.
+- Clean repository mode exits `1`, emits those four markers, and stops first
+  only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`.
+  It emits no repository-prefix, release-closure, or `29/29` success.
+- Admit only exact `9f0e6424` as the forward amendment
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  design reviewer `/root/task136_e1020_design_review` and executability
+  reviewer `/root/task136_e1020_exec_review`. They must inspect the full
+  amendment and E-1019 correction, independently reproduce every advertised
+  gate, verify future Task12–Task18 executability and exact current pins, and
+  bind their verdict only to exact candidate/tree above. Neither may edit,
+  commit, merge, substitute bytes, authorize Task12, or make product/release
+  claims. Both E-1018 reviewers and every candidate author or analyst of the
+  changed bytes are ineligible. Any changed byte invalidates both reviews.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is amendment review admission, not amendment approval or
+  integration, Task12 product authority, Task13 authority, a Task136 product
+  candidate, strict record 29, assurance-only transition, publication, Wave
+  3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
