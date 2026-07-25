@@ -738,22 +738,6 @@ function validateResidentLegacyCandidateEvidence(
   ).map((candidateId) =>
     residentString(candidateId, "resident legacy selected candidate ID")
   );
-  if (preview.selectedCandidateBindingHashes === undefined) {
-    // This is the released pre-binding preview guard. Binding-aware previews
-    // cannot enter this compatibility lane.
-    const proposedObjects = selectedEvents.map((event) =>
-      residentString(
-        Reflect.get(Reflect.get(event as object, "payload"), "object"),
-        "resident legacy proposed candidate ID"
-      )
-    );
-    if (!residentSameStrings(proposedObjects, selectedCandidateIds)) {
-      throw new Error(
-        "Resident legacy candidate evidence is outside the exact selected-candidate order."
-      );
-    }
-    return;
-  }
   const importedEvidenceIds = residentArray(
     preview.importedEvidenceIds,
     "resident legacy imported evidence IDs"

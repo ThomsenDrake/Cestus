@@ -2198,18 +2198,6 @@ function validateResidentLegacyProposalReceiptEvents(
     "importedEvidenceIds",
     "resident legacy imported evidence IDs"
   );
-  if (preview.selectedCandidateBindingHashes === undefined) {
-    // This is the released pre-binding recovery guard. Binding-aware previews
-    // cannot enter this compatibility lane.
-    validateResidentLegacyCompatibilityProposalReceiptEvents(
-      events,
-      preview,
-      allEvents,
-      selectedCandidateIds,
-      importedEvidenceIds
-    );
-    return;
-  }
   const evidenceContentHashes = residentReceiptStringArray(
     preview,
     "evidenceContentHashes",
@@ -2333,68 +2321,6 @@ function validateResidentLegacyProposalReceiptEvents(
     throw new Error(
       "Resident recovery legacy proposal receipt does not match the exact approved candidate bindings."
     );
-  }
-}
-
-function validateResidentLegacyCompatibilityProposalReceiptEvents(
-  events: readonly KnowledgeEvent[],
-  preview: Record<string, unknown>,
-  allEvents: readonly KnowledgeEvent[],
-  selectedCandidateIds: readonly string[],
-  importedEvidenceIds: readonly string[]
-): void {
-  if (selectedCandidateIds.length !== importedEvidenceIds.length) {
-    throw new Error(
-      "Resident recovery legacy preview has incomplete candidate evidence bindings."
-    );
-  }
-  for (const [index, event] of events.entries()) {
-    const candidateId = selectedCandidateIds[index]!;
-    const evidenceId = importedEvidenceIds[index]!;
-    const payload = residentGatewayRecord(
-      event.payload,
-      "resident legacy proposal receipt payload"
-    );
-    const assertionId = `as_legacy_${createHash("sha256").update([
-      residentReceiptString(
-        preview,
-        "sourceCollectionId",
-        "resident legacy source collection ID"
-      ),
-      residentReceiptString(
-        preview,
-        "scanBatchId",
-        "resident legacy scan batch ID"
-      ),
-      residentReceiptString(
-        preview,
-        "stagingBatchId",
-        "resident legacy staging batch ID"
-      ),
-      residentReceiptString(
-        preview,
-        "candidateSetHash",
-        "resident legacy candidate-set hash"
-      ),
-      candidateId
-    ].join(":")).digest("hex")}`;
-    const evidenceEvents = allEvents.filter((candidate) =>
-      candidate.type === "evidence.ingested" &&
-      candidate.payload.evidenceId === evidenceId
-    );
-    if (
-      event.type !== "assertion.proposed" ||
-      evidenceEvents.length !== 1 ||
-      payload.assertionId !== assertionId ||
-      payload.evidenceId !== evidenceId ||
-      payload.object !== candidateId ||
-      payload.reviewState !== "proposed" ||
-      event.context.causationId !== evidenceEvents[0]?.id
-    ) {
-      throw new Error(
-        "Resident recovery legacy proposal receipt is outside the exact selected-candidate order or payload."
-      );
-    }
   }
 }
 
