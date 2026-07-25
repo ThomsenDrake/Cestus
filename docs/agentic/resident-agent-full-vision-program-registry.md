@@ -34851,3 +34851,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1052 — Exact chronology-corrected Task13 source candidate approved
+
+- Recorded at: 2026-07-25T20:33:23Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1051_task13_source_review` returns **APPROVED** with no
+  defects, missing tests, or specification drift for exact Task13 candidate
+  `92078539b9c7f5060d973441623b66a8c0ba272f`, tree
+  `17fda951b456316d933d64f219ead195b89a66c9`, and no other bytes. Review
+  occurred beneath clean E-1051 review-authority merge
+  `ac6ea99b9e96f8367e047d01c5444853d88dd8ef`; no byte changed.
+- The reviewer independently reproduces sole parent
+  `eda7f17c7e5462e9d94f781ca2549d5127db6ec2`, exact subject, one-source
+  correction **12 insertions / 4 deletions**, full two-source Task13 range
+  **139 insertions / 9 deletions**, exact orchestrator/projection blobs
+  `47317a4554ef2ba2accc14ae480d9b1632d19bc9` /
+  `e203840a748dd1cb47cdcd751000298b02c42559`, and exact frozen tests
+  `c12c00292efccd6fef621d86b5f693a0da3ad8e2` /
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`.
+- Independent attacks confirm current-owner selection orders lease generation
+  then ledger order, excludes released and terminal claims, includes expired
+  only for the stale boundary, and interlocks only a validated later exact
+  same-claim suspension. Released, older, foreign-attempt, nonresident, and
+  mismatched claims or checkpoints cannot block released approval recovery.
+  Cancellation precedence and exact W projection precedence remain intact.
+- The reviewer independently reproduces RED parent
+  **16 passed + 2 causal failures**, GREEN selector **2/2**, claims
+  **18/18**, boundary **70/70**, and exact Task136 card
+  **321 = 310 passed + 11 preserved Task14-through-16 RED failures**.
+  Typecheck and factory pass; mission and V4 pass **20/20** each; markers are
+  exact **29 / 20 / 29 / 15**. Repository retains the truthful
+  legacy-staging source first stop and emits no prefix, closure, `29/29`,
+  record-29, or release success.
+- Exact source/test/public-type/Task12/later/dependency/unrelated freezes,
+  scope, diff, ancestry, real dependencies, and clean state pass.
+- Advance only exact `92078539` Task13 source
+  `reviewing -> approved`. Authorize its exact history-preserving no-ff merge
+  into this program branch, fresh integration-tree gates, and a separate
+  append-only integrated event. This event contains no Task14 implementation
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact Task13 source approval, not integration, Task14
+  authority, Task136 product candidacy, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
+
+## RV-1-E-1053 — Exact chronology-corrected Task13 source integrated
+
+- Recorded at: 2026-07-25T20:36:39Z
+- Exact independently approved Task13 source candidate
+  `92078539b9c7f5060d973441623b66a8c0ba272f`, tree
+  `17fda951b456316d933d64f219ead195b89a66c9`, is integrated by exact
+  history-preserving no-ff merge
+  `9099358376ab05911f97716049581295476e2523`. Its exact first parent is
+  E-1052 approval commit
+  `65c023e558a13e556a26bfeee0c89d93e3e205d5`; its exact second parent is
+  the reviewed candidate.
+- The integrated tree has exact final Task13 source blobs orchestrator
+  `47317a4554ef2ba2accc14ae480d9b1632d19bc9` and projection
+  `e203840a748dd1cb47cdcd751000298b02c42559`, with approved/frozen tests
+  claims `c12c00292efccd6fef621d86b5f693a0da3ad8e2` and projection
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`. Rejected candidate
+  `23d9f056`, its original source bytes, and every earlier RED, GREEN,
+  rejection, review, and authority commit remain immutable ancestors.
+- Fresh integration-tree execution passes exact Task13 claims, projection,
+  approval, and recovery boundaries **70/70**. Standalone typecheck and
+  factory readiness pass; mission and V4 pass **20/20** each; all four
+  contract markers remain exact **29 / 20 / 29 / 15**.
+- Exact final blobs, one-source correction and full two-source scope,
+  test/Task12/later/public-type freezes, dependency quiet, diff, ancestry, and
+  clean state pass. Repository mode remains pre-release and stops first at the
+  legacy-staging adopted-source blob mismatch; no prefix, closure, `29/29`,
+  record-29, or release success is emitted.
+- Advance exact Task13 source `approved -> integrated`. This event
+  intentionally contains no Task14 implementation authorization. A separate
+  later append-only event after the exact Task136 authority merge is required.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains overall `implementing`; strict product frontier remains
+  **28 of 29**. This is Task13 source integration, not Task14 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
