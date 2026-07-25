@@ -34936,3 +34936,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1054 — Integrated Task13 authorizes exact Task14 mounted W GREEN
+
+- Recorded at: 2026-07-25T20:37:43Z
+- E-1053 integrated exact independently approved Task13 source by program
+  commit `dcd36f96f261905b40471a0b394350a0403441c0`. Exact Task136 authority
+  merge `522c2d729a4b00228aae85c3cc0009038edb2d79` has exact parents E-1051
+  review-authority merge
+  `ac6ea99b9e96f8367e047d01c5444853d88dd8ef` and E-1053 integrated
+  program authority. The committed-plan precondition for separate Task14
+  implementation authority is satisfied.
+- Authorize Task14 GREEN in exactly
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`. Starting
+  blobs are respectively
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca` and
+  `5e4ff153b12c1c16cd76327db2e3081dbd0a29f8`.
+- Freeze exact Task14 RED tests wake runtime
+  `6ce99e3db17f5621a623ae50ba2f39d9a9ad1873`, mounted lifecycle store
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, and wake-runtime import
+  policy `66f8c9fd90a2438ccfc7fab534968e99d01bccc6`; freeze every Task12/13
+  source and test, Task15-through-16 byte, public ontology/agent ABI, claim,
+  contract, dependency, route, provider, credential, external-system, and
+  unrelated path.
+- Implement the committed non-barrel one-shot
+  `bindResidentLoopCapabilitiesForFactory` boundary. Accept only the exact
+  issued wake runtime plus exact Core/P/H binding and dispatcher WeakMap
+  capability. From the same authenticated mounted ledger and lifecycle store,
+  construct T120, bind default dispatcher execution for the exact
+  workspace/resident/task tuple, construct prebound G with W-private
+  currentness closures, and close over `createSafeId("reconciliation")`
+  without exposing it.
+- Implement the exact mounted W port with consumable opaque currentness.
+  `reverifyAfterAwait` consumes the old token and returns only exact current,
+  recordable-stale suspension-only capability, or unavailable. Issue
+  recordable-stale only after fresh authentication of the same mounted
+  workspace, ledger, and lifecycle store with changed currentness.
+  Unauthenticated or unavailable mount/store returns exact non-durable
+  `resident-loop-unavailable.v1` and claims no durable event.
+- Implement the exact monotone five-state durable prefix: no checkpoint;
+  orchestration resident-loop-suspension checkpoint; checkpoint plus resident
+  S; plus R-resumable; plus resident-loop-suspended release. Only
+  `suspendAndRelease` creates state 1. Recovery accepts states 1 through 4,
+  validates the locator against mounted authority rather than trusting caller
+  instruction, appends only the missing suffix, rereads each assigned event
+  before the next append, never duplicates semantic keys, never releases
+  before S/R, and never performs a tool effect. Unknown-outcome reclaim
+  reissues only a non-executable claimed stage and preserves the burned
+  request.
+- Current Task14 focused signature is exactly
+  **34 = 30 passed + 4 Task14 RED failures**: runtime bind, complete prefix
+  recovery, currentness/suspension-only issuance, and import policy. Turn
+  exact focused tests **34/34** without changing tests. Run all three Task14
+  tests, exact card and relevant portable-workspace/mounted-authority/
+  ontology boundaries, standalone typecheck, factory, mission, V4, markers,
+  truthful repository first stop, exact two-source scope, all freezes,
+  ancestry, real dependencies, diff, and clean-state gates.
+- Commit exactly the two sources with subject
+  `feat(local-runtime): issue mounted resident loop authority`. A separate
+  later append-only event must admit one exact Task14 candidate to a
+  completely fresh independent read-only reviewer. Every prior author,
+  reviewer, verifier, analyst, and coordinator is ineligible to approve
+  changed Task14 source bytes; changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded Task14 source authority, not Task14 approval
+  or integration, Task15 authority, Task136 product candidacy, strict record
+  29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
