@@ -776,6 +776,36 @@ describe("resident-loop tool gateway", () => {
     }
   });
 
+  it("rejects a correctly self-hashed legacy recovery prefix whose proposals globally precede their causal evidence", async () => {
+    const legacyBinding = await prepareRealGatewayLegacyBinding();
+    try {
+      const fixture = await appendSemanticResidentRecoveryReceipt({
+        ordinal: 10,
+        mutation: "evidence-chronology",
+        legacyBinding
+      });
+      const allEvents = await fixture.ledger.readAll();
+      const proposals = allEvents.filter(
+        (
+          event
+        ): event is KnowledgeEventOf<"assertion.proposed"> =>
+          event.type === "assertion.proposed"
+      );
+      for (const proposal of proposals) {
+        const proposalIndex = allEvents.findIndex(
+          (event) => event.id === proposal.id
+        );
+        const evidenceIndex = allEvents.findIndex(
+          (event) => event.id === proposal.context.causationId
+        );
+        expect(evidenceIndex).toBeGreaterThan(proposalIndex);
+      }
+      await expectSemanticResidentReceiptRejected(fixture);
+    } finally {
+      legacyBinding.cleanup();
+    }
+  });
+
   it.each([
     "candidate-order",
     "candidate-payload"
@@ -1677,6 +1707,31 @@ class TargetStreamHostileResidentLedger extends InMemoryEventLedger {
   }
 }
 
+class SeededResidentLedger extends InMemoryEventLedger {
+  private readonly seededEvents: readonly KnowledgeEvent[];
+
+  constructor(events: readonly KnowledgeEvent[]) {
+    super();
+    this.seededEvents = structuredClone(events);
+  }
+
+  override async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+    return [
+      ...structuredClone(
+        this.seededEvents.filter((event) => event.streamId === streamId)
+      ),
+      ...await super.readStream(streamId)
+    ];
+  }
+
+  override async readAll(): Promise<KnowledgeEvent[]> {
+    return [
+      ...structuredClone(this.seededEvents),
+      ...await super.readAll()
+    ];
+  }
+}
+
 type ResidentLifecycleAppendType =
   | "agent.resident-domain.requested.v1"
   | "agent.resident-domain.execution-claimed.v1"
@@ -2492,6 +2547,7 @@ type SemanticReceiptMutation =
   | "candidate-payload"
   | "binding-hash"
   | "missing-binding-hashes"
+  | "evidence-chronology"
   | "idempotent-after-claim"
   | "projection-artifacts"
   | "projection-read-model";
@@ -2681,6 +2737,74 @@ function realGatewayLegacyCandidateBindingHash(
   );
 }
 
+async function reversedGatewayLegacyChronology(
+  binding: RealGatewayLegacyBinding,
+  suffix: string
+): Promise<{
+  readonly events: readonly KnowledgeEvent[];
+  readonly proposals: readonly KnowledgeEventOf<"assertion.proposed">[];
+  readonly evidences: readonly [
+    KnowledgeEventOf<"evidence.ingested">,
+    KnowledgeEventOf<"evidence.ingested">
+  ];
+}> {
+  const buildLedger = new InMemoryEventLedger();
+  const firstEvidence = await appendEvidence(buildLedger, {
+    evidenceId: binding.candidates[0].evidenceId,
+    contentHash: binding.candidates[0].evidenceContentHash
+  });
+  const secondEvidence = await appendEvidence(buildLedger, {
+    evidenceId: binding.candidates[1].evidenceId,
+    contentHash: binding.candidates[1].evidenceContentHash
+  });
+  if (
+    firstEvidence.type !== "evidence.ingested" ||
+    secondEvidence.type !== "evidence.ingested"
+  ) {
+    throw new Error("Reversed legacy chronology requires evidence events.");
+  }
+  const evidences = [firstEvidence, secondEvidence] as const;
+  const proposals: KnowledgeEventOf<"assertion.proposed">[] = [];
+  for (const [index, candidate] of binding.candidates.entries()) {
+    const assertionId = `as_legacy_${createHash("sha256").update([
+      binding.sourceCollectionId,
+      binding.scanBatchId,
+      binding.stagingBatchId,
+      binding.candidateSetHash,
+      candidate.candidateId
+    ].join(":")).digest("hex")}`;
+    const proposed = await buildLedger.append({
+      type: "assertion.proposed",
+      version: 1,
+      streamId: `assertion_${assertionId}`,
+      context: residentEventContext(
+        evidences[index]!.id,
+        `corr_gateway_domain_${suffix}`
+      ),
+      payload: {
+        assertionId,
+        evidenceId: candidate.evidenceId,
+        predicate: candidate.predicate,
+        object: candidate.object,
+        confidence: candidate.confidence,
+        ...(candidate.subjectRef === undefined
+          ? {}
+          : { subjectRef: candidate.subjectRef }),
+        reviewState: "proposed"
+      }
+    });
+    if (proposed.type !== "assertion.proposed") {
+      throw new Error("Reversed legacy chronology requires proposals.");
+    }
+    proposals.push(proposed);
+  }
+  return {
+    events: [...proposals, ...evidences],
+    proposals,
+    evidences
+  };
+}
+
 interface SemanticResidentReceiptFixture {
   readonly ledger: InMemoryEventLedger;
   readonly gateway: object;
@@ -2786,7 +2910,6 @@ async function appendSemanticResidentRecoveryReceipt(input: {
     "authorization",
     "branch"
   )}`;
-  const ledger = new InMemoryEventLedger();
   const firstLegacyCandidate = input.ordinal === 10
     ? input.legacyBinding?.candidates[0]
     : undefined;
@@ -2801,25 +2924,36 @@ async function appendSemanticResidentRecoveryReceipt(input: {
       "Ordinal-10 semantic recovery requires real released legacy candidates."
     );
   }
-  const source = await appendEvidence(ledger, {
-    evidenceId:
-      firstLegacyCandidate?.evidenceId ?? `ev_gateway_${suffix}_a`,
-    ...(firstLegacyCandidate === undefined
-      ? {}
-      : {
-          contentHash: input.mutation === "evidence-content-hash"
-            ? hashCanonical({
-                foreignEvidenceContentHash:
-                  firstLegacyCandidate.evidenceContentHash
-              })
-            : firstLegacyCandidate.evidenceContentHash
-        })
-  });
-  const secondSource = input.ordinal === 10
+  const chronology =
+    input.ordinal === 10 && input.mutation === "evidence-chronology"
+      ? await reversedGatewayLegacyChronology(input.legacyBinding!, suffix)
+      : undefined;
+  const ledger = chronology === undefined
+    ? new InMemoryEventLedger()
+    : new SeededResidentLedger(chronology.events);
+  const source = chronology === undefined
     ? await appendEvidence(ledger, {
-        evidenceId: secondLegacyCandidate!.evidenceId,
-        contentHash: secondLegacyCandidate!.evidenceContentHash
+        evidenceId:
+          firstLegacyCandidate?.evidenceId ?? `ev_gateway_${suffix}_a`,
+        ...(firstLegacyCandidate === undefined
+          ? {}
+          : {
+              contentHash: input.mutation === "evidence-content-hash"
+                ? hashCanonical({
+                    foreignEvidenceContentHash:
+                      firstLegacyCandidate.evidenceContentHash
+                  })
+                : firstLegacyCandidate.evidenceContentHash
+            })
       })
+    : chronology.evidences[0];
+  const secondSource = input.ordinal === 10
+    ? chronology === undefined
+      ? await appendEvidence(ledger, {
+          evidenceId: secondLegacyCandidate!.evidenceId,
+          contentHash: secondLegacyCandidate!.evidenceContentHash
+        })
+      : chronology.evidences[1]
     : undefined;
   const catalog = semanticResidentCatalogFixture(
     input.ordinal,
@@ -3036,19 +3170,23 @@ async function appendSemanticResidentRecoveryReceipt(input: {
   const preInvocationLedgerFingerprint = ledgerFingerprint(
     await ledger.readAll()
   );
-  const domainEvents = await appendSemanticResidentDomainEvents({
-    ledger,
-    catalog,
-    mutation: input.mutation,
-    claim,
-    source,
-    secondSource,
-    suffix
-  });
+  const domainEvents = chronology === undefined
+    ? await appendSemanticResidentDomainEvents({
+        ledger,
+        catalog,
+        mutation: input.mutation,
+        claim,
+        source,
+        secondSource,
+        suffix
+      })
+    : chronology.proposals;
   const postInvocationLedgerFingerprint = ledgerFingerprint(
     await ledger.readAll()
   );
-  const evidenceMode = input.mutation === "idempotent-after-claim"
+  const evidenceMode =
+    input.mutation === "idempotent-after-claim" ||
+    input.mutation === "evidence-chronology"
     ? "idempotent-existing-ledger-events" as const
     : input.ordinal === 7
       ? "nonledger-projection-artifacts" as const
