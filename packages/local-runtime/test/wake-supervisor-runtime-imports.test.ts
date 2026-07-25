@@ -293,6 +293,7 @@ function fixedConstructorUseAnalysis(
           ts.isCallExpression(node.parent.parent) &&
           node.parent.parent.expression === node.parent &&
           node.parent.parent.questionDotToken === undefined &&
+          node.parent.parent.arguments.length === 1 &&
           !node.parent.parent.arguments.some(ts.isSpreadElement) &&
           isInsideMountedStoreBinder(node.parent.parent)
         ) {
@@ -322,13 +323,284 @@ function fixedConstructorUseAnalysis(
       current !== undefined;
       current = current.parent
     ) {
-      if (ts.isFunctionDeclaration(current)) {
-        return current.name?.text ===
-          "bindMountedResidentLoopAuthorityForFactory";
+      if (ts.isFunctionLike(current)) {
+        return ts.isFunctionDeclaration(current) &&
+          current.name?.text ===
+            "bindMountedResidentLoopAuthorityForFactory";
       }
     }
     return false;
   }
+}
+
+interface MountedBinderSource {
+  readonly sourceFile: ts.SourceFile;
+  readonly label: string;
+}
+
+interface MountedBinderCall {
+  readonly file: string;
+  readonly argumentCount: number;
+}
+
+interface MountedBinderOwnershipAnalysis {
+  readonly binderImporters: readonly string[];
+  readonly binderCalls: readonly MountedBinderCall[];
+  readonly violations: readonly string[];
+}
+
+const mountedBinderName =
+  "bindMountedResidentLoopAuthorityForFactory";
+const mountedBinderModule =
+  "./mounted-wake-lifecycle-store.js";
+const mountedBinderWakePath =
+  "packages/local-runtime/src/wake-supervisor-runtime.ts";
+
+function mountedBinderOwnershipAnalysis(
+  program: ts.Program,
+  sources: readonly MountedBinderSource[]
+): MountedBinderOwnershipAnalysis {
+  const checker = program.getTypeChecker();
+  const binderImporters = new Set<string>();
+  const binderCalls: MountedBinderCall[] = [];
+  const violations = new Set<string>();
+  const exactImports: Array<{
+    readonly source: MountedBinderSource;
+    readonly element: ts.ImportSpecifier;
+    readonly symbol: ts.Symbol | undefined;
+  }> = [];
+
+  for (const source of sources) {
+    for (const statement of source.sourceFile.statements) {
+      if (
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isMountedBinderModule(statement.moduleSpecifier.text)
+      ) {
+        const clause = statement.importClause;
+        const bindings = clause?.namedBindings;
+        const binderElements = bindings !== undefined &&
+          ts.isNamedImports(bindings)
+          ? bindings.elements.filter((element) =>
+              (element.propertyName?.text ?? element.name.text) ===
+                mountedBinderName
+            )
+          : [];
+        const alternateCarrier =
+          clause?.name !== undefined ||
+          (bindings !== undefined && ts.isNamespaceImport(bindings));
+        if (binderElements.length > 0 || alternateCarrier) {
+          binderImporters.add(source.label);
+        }
+        if (alternateCarrier) {
+          reject(source.label);
+        }
+        for (const element of binderElements) {
+          const exact =
+            source.label === mountedBinderWakePath &&
+            statement.moduleSpecifier.text === mountedBinderModule &&
+            clause !== undefined &&
+            clause.isTypeOnly === false &&
+            clause.name === undefined &&
+            bindings !== undefined &&
+            ts.isNamedImports(bindings) &&
+            statement.attributes === undefined &&
+            element.isTypeOnly === false &&
+            element.propertyName === undefined &&
+            element.name.text === mountedBinderName;
+          if (!exact) {
+            reject(source.label);
+            continue;
+          }
+          exactImports.push({
+            source,
+            element,
+            symbol: checker.getSymbolAtLocation(element.name)
+          });
+        }
+      } else if (
+        ts.isImportEqualsDeclaration(statement) &&
+        ts.isExternalModuleReference(statement.moduleReference) &&
+        statement.moduleReference.expression !== undefined &&
+        ts.isStringLiteral(statement.moduleReference.expression) &&
+        isMountedBinderModule(statement.moduleReference.expression.text)
+      ) {
+        binderImporters.add(source.label);
+        reject(source.label);
+      } else if (
+        ts.isExportDeclaration(statement) &&
+        statement.moduleSpecifier !== undefined &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isMountedBinderModule(statement.moduleSpecifier.text)
+      ) {
+        binderImporters.add(source.label);
+        reject(source.label);
+      }
+    }
+
+    visitDynamicImports(source.sourceFile, source.label);
+  }
+
+  if (exactImports.length !== 1) {
+    reject(mountedBinderWakePath);
+  } else {
+    const exactImport = exactImports[0]!;
+    const { symbol } = exactImport;
+    if (
+      symbol === undefined ||
+      symbol.declarations?.length !== 1 ||
+      symbol.declarations[0] !== exactImport.element
+    ) {
+      reject(exactImport.source.label);
+    } else {
+      const references: Array<{
+        readonly source: MountedBinderSource;
+        readonly identifier: ts.Identifier;
+      }> = [];
+      for (const source of sources) {
+        visitReferences(source);
+      }
+      const calls = references.filter(({ source, identifier }) =>
+        source.label === mountedBinderWakePath &&
+        ts.isCallExpression(identifier.parent) &&
+        identifier.parent.expression === identifier &&
+        identifier.parent.questionDotToken === undefined &&
+        identifier.parent.arguments.length === 3 &&
+        !identifier.parent.arguments.some(ts.isSpreadElement)
+      );
+      if (references.length !== 1 || calls.length !== 1) {
+        reject(exactImport.source.label);
+      } else {
+        const call = calls[0]!.identifier.parent as ts.CallExpression;
+        binderCalls.push({
+          file: calls[0]!.source.label,
+          argumentCount: call.arguments.length
+        });
+      }
+
+      function visitReferences(source: MountedBinderSource): void {
+        visit(source.sourceFile);
+
+        function visit(node: ts.Node): void {
+          if (
+            ts.isIdentifier(node) &&
+            node !== exactImport.element.name &&
+            checker.getSymbolAtLocation(node) === symbol
+          ) {
+            references.push({ source, identifier: node });
+          }
+          if (
+            ts.isCallExpression(node) &&
+            isMountedBinderLikeCall(node) &&
+            !(
+              ts.isIdentifier(node.expression) &&
+              checker.getSymbolAtLocation(node.expression) === symbol
+            )
+          ) {
+            reject(source.label);
+          }
+          ts.forEachChild(node, visit);
+        }
+      }
+    }
+  }
+
+  return {
+    binderImporters: [...binderImporters].sort(),
+    binderCalls: binderCalls.sort((left, right) =>
+      left.file.localeCompare(right.file)
+    ),
+    violations: [...violations].sort()
+  };
+
+  function reject(label: string): void {
+    violations.add(`${label}: alternate mounted binder ownership`);
+  }
+
+  function visitDynamicImports(
+    sourceFile: ts.SourceFile,
+    label: string
+  ): void {
+    visit(sourceFile);
+
+    function visit(node: ts.Node): void {
+      if (
+        ts.isCallExpression(node) &&
+        node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+        node.arguments.length > 0 &&
+        ts.isStringLiteral(node.arguments[0]!) &&
+        isMountedBinderModule(node.arguments[0]!.text)
+      ) {
+        binderImporters.add(label);
+        reject(label);
+      }
+      ts.forEachChild(node, visit);
+    }
+  }
+}
+
+function isMountedBinderModule(specifier: string): boolean {
+  return specifier === mountedBinderModule ||
+    specifier.endsWith("/mounted-wake-lifecycle-store.js");
+}
+
+function isMountedBinderLikeCall(node: ts.CallExpression): boolean {
+  if (ts.isIdentifier(node.expression)) {
+    return node.expression.text === mountedBinderName;
+  }
+  if (ts.isPropertyAccessExpression(node.expression)) {
+    return node.expression.name.text === mountedBinderName;
+  }
+  return ts.isElementAccessExpression(node.expression) &&
+    node.expression.argumentExpression !== undefined &&
+    ts.isStringLiteral(node.expression.argumentExpression) &&
+    node.expression.argumentExpression.text === mountedBinderName;
+}
+
+function mountedBinderControlAnalysis(
+  text: string
+): MountedBinderOwnershipAnalysis {
+  const fileName = `/${mountedBinderWakePath}`;
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    noResolve: true,
+    skipLibCheck: true,
+    target: ts.ScriptTarget.ES2022
+  };
+  const host = ts.createCompilerHost(options);
+  const getSourceFile = host.getSourceFile.bind(host);
+  const fileExists = host.fileExists.bind(host);
+  const readFile = host.readFile.bind(host);
+  host.fileExists = (path) => path === fileName || fileExists(path);
+  host.readFile = (path) => path === fileName ? text : readFile(path);
+  host.getSourceFile = (
+    path,
+    languageVersion,
+    onError,
+    shouldCreateNewSourceFile
+  ) => path === fileName
+    ? ts.createSourceFile(
+        path,
+        text,
+        languageVersion,
+        true,
+        ts.ScriptKind.TS
+      )
+    : getSourceFile(
+        path,
+        languageVersion,
+        onError,
+        shouldCreateNewSourceFile
+      );
+  const program = ts.createProgram([fileName], options, host);
+  const sourceFile = program.getSourceFile(fileName);
+  if (sourceFile === undefined) {
+    throw new Error("mounted binder control source missing");
+  }
+  return mountedBinderOwnershipAnalysis(program, [{
+    sourceFile,
+    label: mountedBinderWakePath
+  }]);
 }
 
 describe("wake supervisor runtime import boundary", () => {
@@ -565,6 +837,51 @@ describe("wake supervisor runtime import boundary", () => {
           create(input);
         }
       `],
+      ["dispatcher zero-argument call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort();
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher two-argument call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(
+            firstBinding,
+            secondBinding
+          );
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher spread-argument call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(
+            ...bindings
+          );
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher optional-property call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault?.bindPackageOwnedResidentDomainExecutionPort(input);
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher optional call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort?.(input);
+          createResidentLoopToolGateway(input);
+        }
+      `],
       ["constructor carrier", `
         import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
         import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
@@ -599,65 +916,193 @@ describe("wake supervisor runtime import boundary", () => {
       ).not.toEqual(exactFixedConstruction);
     }
 
-    const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
-    const binderImporters: string[] = [];
-    const binderCalls: Array<{ file: string; argumentCount: number }> = [];
-    for (const file of productionTypeScriptFiles(packagesRoot)) {
-      const productionFile = ts.createSourceFile(
-        file,
-        readFileSync(file, "utf8"),
-        ts.ScriptTarget.Latest,
-        true,
-        ts.ScriptKind.TS
-      );
-      const localBinderNames = new Set<string>();
-      const binderNamespaces = new Set<string>();
-      for (const statement of productionFile.statements) {
-        if (
-          !ts.isImportDeclaration(statement) ||
-          !ts.isStringLiteral(statement.moduleSpecifier) ||
-          !statement.moduleSpecifier.text.endsWith("mounted-wake-lifecycle-store.js")
+    const exactBinderOwnership = {
+      binderImporters: [mountedBinderWakePath],
+      binderCalls: [{
+        file: mountedBinderWakePath,
+        argumentCount: 3
+      }],
+      violations: []
+    };
+    expect(mountedBinderControlAnalysis(`
+      import {
+        bindMountedResidentLoopAuthorityForFactory
+      } from "./mounted-wake-lifecycle-store.js";
+      bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+    `)).toEqual(exactBinderOwnership);
+    for (const [name, text] of [
+      ["unused import with shadowed parameter call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invoke(
+          bindMountedResidentLoopAuthorityForFactory: (...args: unknown[]) => unknown
         ) {
-          continue;
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
         }
-        const bindings = statement.importClause?.namedBindings;
-        if (bindings !== undefined && ts.isNamedImports(bindings)) {
-          for (const element of bindings.elements) {
-            if (
-              (element.propertyName?.text ?? element.name.text) ===
-              "bindMountedResidentLoopAuthorityForFactory"
-            ) {
-              localBinderNames.add(element.name.text);
-            }
-          }
-        } else if (bindings !== undefined && ts.isNamespaceImport(bindings)) {
-          binderNamespaces.add(bindings.name.text);
+      `],
+      ["unused import with shadowed local call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invoke() {
+          const bindMountedResidentLoopAuthorityForFactory = alternateBinder;
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
         }
-      }
-      if (localBinderNames.size > 0 || binderNamespaces.size > 0) {
-        binderImporters.push(sourceLabel(packagesRoot, file));
-      }
-      const visit = (node: ts.Node): void => {
-        if (ts.isCallExpression(node)) {
-          const direct =
-            ts.isIdentifier(node.expression) &&
-            localBinderNames.has(node.expression.text);
-          const namespaced =
-            ts.isPropertyAccessExpression(node.expression) &&
-            ts.isIdentifier(node.expression.expression) &&
-            binderNamespaces.has(node.expression.expression.text) &&
-            node.expression.name.text === "bindMountedResidentLoopAuthorityForFactory";
-          if (direct || namespaced) {
-            binderCalls.push({
-              file: sourceLabel(packagesRoot, file),
-              argumentCount: node.arguments.length
-            });
-          }
+      `],
+      ["unused import with shadowed function call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invoke() {
+          function bindMountedResidentLoopAuthorityForFactory() {}
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
         }
-        ts.forEachChild(node, visit);
-      };
-      visit(productionFile);
+      `],
+      ["aliased named import", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory as bindMounted
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMounted(store, binding, execution);
+      `],
+      ["namespace import", `
+        import * as mounted from "./mounted-wake-lifecycle-store.js";
+        mounted.bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["default import", `
+        import bindMountedResidentLoopAuthorityForFactory
+          from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+      `],
+      ["import-equals carrier", `
+        import mounted = require("./mounted-wake-lifecycle-store.js");
+        mounted.bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["dynamic import carrier", `
+        void import("./mounted-wake-lifecycle-store.js").then((mounted) =>
+          mounted.bindMountedResidentLoopAuthorityForFactory(
+            store,
+            binding,
+            execution
+          )
+        );
+      `],
+      ["duplicate imports", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+      `],
+      ["duplicate declarations", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        declare function bindMountedResidentLoopAuthorityForFactory(
+          store: unknown,
+          binding: unknown,
+          execution: unknown
+        ): unknown;
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+      `],
+      ["zero-argument call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory();
+      `],
+      ["two-argument call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding);
+      `],
+      ["four-argument call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution,
+          alternate
+        );
+      `],
+      ["spread call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(...argumentsTuple);
+      `],
+      ["optional call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory?.(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["property carrier", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        const mounted = { bindMountedResidentLoopAuthorityForFactory };
+        mounted.bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["different lexical symbol call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+        function invoke(
+          bindMountedResidentLoopAuthorityForFactory: (...args: unknown[]) => unknown
+        ) {
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+        }
+      `]
+    ] as const) {
+      expect.soft(
+        mountedBinderControlAnalysis(text).violations,
+        name
+      ).not.toEqual([]);
     }
+
+    const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
+    const productionFiles = productionTypeScriptFiles(packagesRoot);
+    const productionProgram = ts.createProgram(productionFiles, {
+      module: ts.ModuleKind.ESNext,
+      noResolve: true,
+      skipLibCheck: true,
+      target: ts.ScriptTarget.ES2022
+    });
+    const binderOwnership = mountedBinderOwnershipAnalysis(
+      productionProgram,
+      productionFiles.flatMap((file) => {
+        const sourceFile = productionProgram.getSourceFile(file);
+        return sourceFile === undefined
+          ? []
+          : [{
+              sourceFile,
+              label: sourceLabel(packagesRoot, file)
+            }];
+      })
+    );
 
     const productAnalysis = {
       declarationCount: declarations.length,
@@ -666,8 +1111,9 @@ describe("wake supervisor runtime import boundary", () => {
       ),
       binderParameterCount: declarations[0]?.parameters.length ?? 0,
       callbackOrWrapperParameterIndexes: constructorParameterIndexes,
-      binderImporters,
-      binderCalls,
+      binderImporters: binderOwnership.binderImporters,
+      binderCalls: binderOwnership.binderCalls,
+      binderOwnershipViolations: binderOwnership.violations,
       wakeFixedConstructorImports: wakeFile.statements.flatMap((statement) =>
         ts.isImportDeclaration(statement) &&
         ts.isStringLiteral(statement.moduleSpecifier) &&
@@ -701,6 +1147,7 @@ describe("wake supervisor runtime import boundary", () => {
         file: "packages/local-runtime/src/wake-supervisor-runtime.ts",
         argumentCount: 3
       }],
+      binderOwnershipViolations: [],
       wakeFixedConstructorImports: [],
       dispatcherImports: [{
         defaultName: "dispatcherDefault",
