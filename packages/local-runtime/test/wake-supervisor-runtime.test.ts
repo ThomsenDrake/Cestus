@@ -2,14 +2,22 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { AssertionService } from "../../ontology/src/assertion-service.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
+import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
 import {
   inspectMountedArtifactAuthorityOperationForMountedOfficialFlowFeasibility,
   inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores,
   inspectMountedArtifactAuthorityOperation,
   issueMountedArtifactAuthorityOperationForFactory
 } from "../src/mounted-artifact-authority-operation.js";
-import { createWakeSupervisorRuntime } from "../src/wake-supervisor-runtime.js";
+import { issueMountedProviderAuthority } from "../src/mounted-provider-authority.js";
+import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
+import { createResidentLoopFactoryComposition } from "../src/resident-loop-factory-composition.js";
+import {
+  bindResidentLoopCapabilitiesForFactory,
+  createWakeSupervisorRuntime
+} from "../src/wake-supervisor-runtime.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
 
@@ -254,6 +262,29 @@ describe("wake supervisor runtime", () => {
     expect(source).toContain("bindResidentLoopCapabilitiesForFactory");
     expect(rejectedBindings).toHaveLength(8);
     expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0 });
+
+    const mounted = await residentFixture("exact");
+    const before = await mounted.handle.ledger.readAll();
+    expect(mounted.binding.provider.highWaterOrdinal).toBe(6);
+    expect(mounted.binding.provider.durableLedgerEventCount).toBe(7);
+    expect(before).toHaveLength(7);
+
+    const issued = await bindResidentLoopCapabilitiesForFactory(
+      mounted.composition.wakeRuntime,
+      mounted.binding,
+      mounted.domainExecution
+    );
+
+    expect(Reflect.ownKeys(issued).map(String).sort()).toEqual([
+      "currentnessToken",
+      "gateway",
+      "handoffReader",
+      "mountedAuthority",
+      "planObservation"
+    ]);
+    expect(Object.isFrozen(issued)).toBe(true);
+    expect(Object.isFrozen(issued.mountedAuthority)).toBe(true);
+    expect(await mounted.handle.ledger.readAll()).toEqual(before);
   });
 
   it("recovers every missing suspension-prefix suffix without an effect", async () => {
@@ -288,3 +319,218 @@ describe("wake supervisor runtime", () => {
     expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, localWrite: 0, projectionSubstitute: 0 });
   });
 });
+
+async function residentFixture(suffix: string) {
+  const root = mkdtempSync(join(tmpdir(), "cestus-wake-resident-"));
+  directories.push(root);
+  const workspaceId = `ws_wake_resident_${suffix}`;
+  const workspaceRoot = join(root, workspaceId);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: "Wake resident authority",
+    createdAt: "2026-07-16T00:00:00.000Z",
+    createdBy: "wake-resident-authority-test"
+  });
+  const handle = createSqlitePrrRuntime({
+    config: resolveLocalRuntimeConfig({
+      cwd: root,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: workspaceRoot
+      }
+    }),
+    actor: { id: "actor_wake_resident", kind: "human", label: "Wake resident authority" },
+    now: () => "2026-07-16T00:00:00.000Z"
+  });
+  handles.push(handle);
+  await handle.residentIdentity.ready();
+
+  const taskId = `task_wake_resident_${suffix}`;
+  const attemptId = `attempt_${"a".repeat(64)}`;
+  const runId = `run_wake_resident_${suffix}`;
+  const runType = "evidence-triage" as const;
+  const identity = (await handle.ledger.readAll()).find(
+    (event) => event.type === "agent.identity.initialized"
+  );
+  if (identity === undefined) throw new Error("resident fixture identity is required");
+  const taskCreated = await handle.ledger.append({
+    type: "agent.task.created",
+    version: 1,
+    streamId: `agent_task_${taskId}`,
+    context: {
+      actor: { id: "agent_default", kind: "agent", label: "Resident agent" },
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      causationId: identity.id,
+      correlationId: `corr_${taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      residentAgentId: "agent_default",
+      title: "Wake resident authority",
+      requestedBy: "agent_default",
+      priority: "normal",
+      sourceEventIds: [identity.id],
+      inputArtifactHashes: []
+    }
+  });
+  const taskQueued = await handle.ledger.append({
+    type: "agent.task.status.changed",
+    version: 1,
+    streamId: `agent_task_${taskId}`,
+    context: {
+      actor: { id: "agent_default", kind: "agent", label: "Resident agent" },
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      causationId: taskCreated.id,
+      correlationId: `corr_${taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      status: "queued",
+      changedBy: "agent_default"
+    }
+  });
+  const evidenceContentHash = `sha256:${"8".repeat(64)}` as const;
+  const evidence = await handle.ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: `evidence_ev_wake_resident_${suffix}`,
+    context: {
+      actor: { id: "agent_wake_resident", kind: "agent", label: "Wake resident authority" },
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      correlationId: `corr_wake_resident_evidence_${suffix}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      evidenceId: `ev_wake_resident_${suffix}`,
+      source: { kind: "file", label: `wake-resident-${suffix}.json` },
+      contentHash: evidenceContentHash,
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  });
+  if (evidence.type !== "evidence.ingested") {
+    throw new Error("resident fixture evidence is required");
+  }
+  const assertionService = new AssertionService({ ledger: handle.ledger });
+  const proposal = await assertionService.propose({
+    assertionId: `as_wake_resident_${suffix}`,
+    evidenceId: `ev_wake_resident_${suffix}`,
+    subjectRef: `ent_wake_resident_${suffix}`,
+    predicate: "agency.name",
+    object: "Wake Resident Authority",
+    confidence: 0.95,
+    actor: { id: "agent_wake_resident", kind: "agent", label: "Wake resident authority" }
+  });
+  if (proposal.type !== "assertion.proposed") {
+    throw new Error("resident fixture assertion proposal is required");
+  }
+  const claim = await handle.ledger.append({
+    type: "agent.task.orchestration.claimed",
+    version: 1,
+    streamId: `agent_task_orchestration_${taskId}_${runType}`,
+    context: {
+      actor: { id: "agent_default", kind: "agent", label: "Resident agent" },
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      causationId: taskQueued.id,
+      correlationId: `corr_${taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      runType,
+      attemptId,
+      retryGeneration: 0,
+      leaseClaimGeneration: 1,
+      workerId: "agent_default",
+      claimedAt: "2026-07-16T00:00:00.000Z",
+      leaseExpiresAt: "2026-07-16T01:00:00.000Z",
+      idempotencyKey: `claim_wake_resident_${suffix}`,
+      selectedOrderingPosition: {
+        priorityRank: 0,
+        queuedAt: "2026-07-16T00:00:00.000Z",
+        taskId,
+        runType,
+        retryGeneration: 0
+      },
+      activeBudgetSnapshot: {
+        maxProviderInvocations: 1,
+        remainingProviderInvocations: 1,
+        contextByteBudget: 32_768,
+        promptByteBudget: 32_768,
+        derivativeArtifactByteBudget: 65_536,
+        wallClockBudgetMs: 120_000
+      },
+      causationEventId: taskQueued.id
+    }
+  });
+  if (claim.type !== "agent.task.orchestration.claimed") {
+    throw new Error("resident fixture orchestration claim is required");
+  }
+
+  const policy = Object.freeze({
+    policyVersion: "policy.wake-resident.v1",
+    policyDigest: `sha256:${"a".repeat(64)}` as const,
+    lockStateDigest: `sha256:${"b".repeat(64)}` as const
+  });
+  const composition = createResidentLoopFactoryComposition(Object.freeze({
+    runtimeHandle: handle,
+    actor: { id: "agent_wake_resident", kind: "agent", label: "Wake resident authority" },
+    supervisorEpoch: `epoch_wake_resident_${suffix}`,
+    policy,
+    now: () => "2026-07-16T00:00:00.000Z",
+    createSafeId: (kind: "lease" | "diagnostic" | "reconciliation") =>
+      `${kind}_wake_resident_${suffix}`
+  }));
+  await composition.start();
+  const operation = issueMountedArtifactAuthorityOperationForFactory(composition.wakeRuntime);
+  const providerAuthority = issueMountedProviderAuthority(Object.freeze({ operation }));
+  const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
+    taskId,
+    attemptId,
+    approvedRunId: runId,
+    runType,
+    retryGeneration: 0
+  });
+  const binding = await composition.bind(Object.freeze({
+    providerAuthority,
+    handoffAuthorityWitness: handoff.binding.authorityWitness
+  }));
+  const domainExecution = await dispatcherDefault.createPackageOwnedResidentDomainExecutionCapability({
+    kind: "accepted-graph-review",
+    workspaceId,
+    residentAgentId: "agent_default",
+    taskId,
+    context: {
+      ledger: handle.ledger,
+      assertionService,
+      reviewer: { id: "actor_wake_resident", kind: "human", label: "Wake resident authority" },
+      residentAgentId: "agent_default",
+      taskId,
+      assertionId: proposal.payload.assertionId,
+      proposalEventId: proposal.id,
+      evidenceId: evidence.payload.evidenceId,
+      evidenceEventId: evidence.id,
+      evidenceContentHash,
+      reviewerRationaleDraft: "The mounted fixture binds one reviewed assertion.",
+      ontologyPackVersions: { ...proposal.context.packVersions }
+    }
+  });
+  return Object.freeze({
+    handle,
+    composition,
+    binding,
+    domainExecution,
+    taskId,
+    attemptId,
+    runId,
+    runType,
+    claim
+  });
+}
