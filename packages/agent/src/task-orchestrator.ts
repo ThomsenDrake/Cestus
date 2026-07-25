@@ -942,6 +942,18 @@ async function handleSuspendedApprovalWaits(
     if (checkpointClaim === undefined) {
       continue;
     }
+    const task = snapshot.tasks.get(attempt.taskId);
+    if (task?.latestStatus?.event.payload.status === "canceled") {
+      continue;
+    }
+    const owningClaim = activeClaimForAttempt(attempt, tickedAt, { includeExpired: true });
+    if (owningClaim !== undefined) {
+      const residentSuspensionInterlock = residentSuspensionInterlockFor(attempt, owningClaim);
+      if (residentSuspensionInterlock !== undefined) {
+        summary.skipped.push(residentSuspensionInterlock);
+        return true;
+      }
+    }
     const checkpointRelease = attempt.releases.findLast((release) =>
       release.event.payload.checkpointEventId === checkpoint.event.id
     );
@@ -966,10 +978,6 @@ async function handleSuspendedApprovalWaits(
     if (!checkpointMatchesProviderApprovalPolicy(checkpoint.event, providerPolicy, selected)) {
       summary.approvalWaiting.push(approvalSummary(checkpointClaim.event, providerPolicy));
       return true;
-    }
-    const task = snapshot.tasks.get(attempt.taskId);
-    if (task?.latestStatus?.event.payload.status === "canceled") {
-      continue;
     }
     const inspection = await approval.inspect({
       ledger: input.ledger,
