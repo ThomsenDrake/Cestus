@@ -34583,3 +34583,62 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1047 — Exact Task13 approval-wait chronology RED admitted to fresh review
+
+- Recorded at: 2026-07-25T20:03:10Z
+- Exact test-only candidate
+  `0eb366becff68e15d65836ccddec6e3ed8a9a623`, tree
+  `642cad52efd5afe9939e90c8994b207c9fd3c9a8`, has sole parent E-1046
+  rejection-authority merge
+  `1261be53a7df170621d5b0d766d3924f99c7960e` and exact subject
+  `test(agent): close Task13 approval-wait chronology`.
+- It changes exactly
+  `packages/agent/test/task-orchestrator-claims.test.ts` by
+  **427 insertions** to blob
+  `c12c00292efccd6fef621d86b5f693a0da3ad8e2`. Rejected Task13 sources
+  remain frozen at orchestrator
+  `f55b6edeab86639de2b7e840fa009d3f0fb16921` and projection
+  `e203840a748dd1cb47cdcd751000298b02c42559`; projection test remains
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`.
+- The exact focused chronology selector fails exactly **2** new cases with
+  **16 skipped** and no fixture, API, or type error. The complete claims file
+  is **16 passed + 2 causal failures**. The live waiting branch exposes one
+  approval-wait result and no W-owned skip; the live approved branch exposes
+  approval verification, runner dispatch, and one runner invocation; the
+  expired approved branch exposes the missing W-owned skip before its exact
+  no-reclaim/no-dispatch assertions.
+- Exact 17-test Task136 card is
+  **321 = 308 passed + 13 failed**, consisting only of the **11** preserved
+  Task14-through-16 RED failures plus these **2** new Task13 chronology RED
+  failures. Standalone typecheck and factory readiness pass; mission and V4
+  pass **20/20** each; all four contract markers are exact
+  **29 / 20 / 29 / 15**. Exact one-file scope, source/projection-test freezes,
+  ancestry, real dependencies, diff, and clean state pass.
+- Repository mode exits `1` after the markers and stops first only at the
+  legacy-staging adopted-source blob mismatch; it emits no prefix, closure,
+  `29/29`, record-29, or release success.
+- Admit only exact `0eb366be` as Task13 test-only
+  `candidate -> reviewing`. Assign a completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed these
+  changed test bytes. The reviewer must inspect the complete one-file diff
+  against E-1046, confirm the real ledger chronology and all three decision
+  branches, exact event/result/runner negatives, no fixture-only substitute,
+  preserved released controls, and causal source binding; and independently
+  reproduce exact identity, parent, tree, subject, blob, scope, focused/file/
+  card signatures, typecheck, factory, mission, V4, markers, truthful
+  repository first stop, freezes, ancestry, dependencies, diff, and clean
+  state.
+- The test author, E-1045 source reviewer, every prior Task136 author,
+  reviewer, verifier, or analyst, and coordinator are ineligible to approve
+  the changed bytes. The reviewer may not edit, commit, merge, authorize
+  source correction, substitute a SHA, or make product/record-29/release/
+  prefix/Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED review admission, not Task13 source
+  approval or integration, source-correction authority, Task14 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
