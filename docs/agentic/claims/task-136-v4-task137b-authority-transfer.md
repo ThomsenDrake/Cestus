@@ -851,7 +851,7 @@ The Task136 command contains all 17 tests in owned-path order.
 The two paths are finite baseline adoptions with source blob
 `99fbafda3844435109bc249b015b111b9258c210` and test blob
 `de7cef3123a15fb82891943dc51005165c8c9fcd`, exact candidate
-`c244106459ca050a5f8b61a00755abf184721956`, and published integration
+`3be15212776ab3c96e66bf0bade4630960c362eb`, and published integration
 `dc05c43c4b9a592d0396acd034bfc32e177fd09a`. Before record 29, candidate,
 integration, and current HEAD must match. After record 29 they migrate to
 Task136 candidate/integration/current equality with the other 30 paths.

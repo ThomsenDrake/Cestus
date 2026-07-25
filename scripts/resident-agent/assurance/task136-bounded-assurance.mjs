@@ -423,7 +423,7 @@ const task136BaselinePins = Object.freeze([
     "packages/agent/test/legacy-staging-adapter.test.ts"
   ]).map((path) => Object.freeze({
     sourceId: "Task136-LEGACY-STAGING-ADOPTION",
-    candidateSha: "c244106459ca050a5f8b61a00755abf184721956",
+    candidateSha: "3be15212776ab3c96e66bf0bade4630960c362eb",
     integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
     path,
     blobSha: path.endsWith(".test.ts")

@@ -330,7 +330,7 @@ const task136BaselineFixtureBlobs = [
       "de7cef3123a15fb82891943dc51005165c8c9fcd"
     ]
   ].map(([path, blobSha]) => ({
-    candidateSha: "c244106459ca050a5f8b61a00755abf184721956",
+    candidateSha: "3be15212776ab3c96e66bf0bade4630960c362eb",
     integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
     path,
     blobSha
@@ -1685,7 +1685,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
       "packages/agent/src/adapters/legacy-staging.ts",
       "packages/agent/test/legacy-staging-adapter.test.ts"
     ].flatMap((path) => [
-      ["c244106459ca050a5f8b61a00755abf184721956", path],
+      ["3be15212776ab3c96e66bf0bade4630960c362eb", path],
       ["dc05c43c4b9a592d0396acd034bfc32e177fd09a", path],
       ["HEAD", path]
     ]),

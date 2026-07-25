@@ -313,7 +313,7 @@ path-list hash. The historical thirty-path hash is not current authority.
 The legacy-staging adapter source/test pair is adopted as Task136 baseline
 authority, not transferred from another release-graph card. Before record 29,
 both paths must equal their exact bytes at candidate
-`c244106459ca050a5f8b61a00755abf184721956`, published integration
+`3be15212776ab3c96e66bf0bade4630960c362eb`, published integration
 `dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and current HEAD. Their frozen
 blobs are source `99fbafda3844435109bc249b015b111b9258c210` and test
 `de7cef3123a15fb82891943dc51005165c8c9fcd`.
