@@ -25,7 +25,7 @@ const permittedResidentImports = Object.freeze({
       "./adapters/legacy-staging.js"
     ]
   },
-  wakeRuntime: {
+  mountedStore: {
     dispatcherDefault: "../../agent/src/domain-execution-dispatcher.js",
     gatewayNamedConstructor: "../../agent/src/resident-loop-tool-gateway.js"
   },
@@ -250,6 +250,87 @@ function sourceLabel(packagesRoot: string, path: string): string {
   return `packages/${relative(packagesRoot, path).replaceAll("\\", "/")}`;
 }
 
+interface FixedConstructorUseAnalysis {
+  readonly dispatcherRuntimeReferenceCount: number;
+  readonly dispatcherBinderCallCount: number;
+  readonly gatewayRuntimeReferenceCount: number;
+  readonly gatewayConstructorCallCount: number;
+}
+
+function fixedConstructorUseAnalysis(
+  sourceFile: ts.SourceFile,
+  dispatcherLocal: string | null,
+  gatewayLocal: string | null
+): FixedConstructorUseAnalysis {
+  let dispatcherRuntimeReferenceCount = 0;
+  let dispatcherBinderCallCount = 0;
+  let gatewayRuntimeReferenceCount = 0;
+  let gatewayConstructorCallCount = 0;
+  visit(sourceFile);
+  return {
+    dispatcherRuntimeReferenceCount,
+    dispatcherBinderCallCount,
+    gatewayRuntimeReferenceCount,
+    gatewayConstructorCallCount
+  };
+
+  function visit(node: ts.Node): void {
+    if (
+      ts.isIdentifier(node) &&
+      !(
+        ts.isImportClause(node.parent) ||
+        ts.isImportSpecifier(node.parent)
+      )
+    ) {
+      if (dispatcherLocal !== null && node.text === dispatcherLocal) {
+        dispatcherRuntimeReferenceCount += 1;
+        if (
+          ts.isPropertyAccessExpression(node.parent) &&
+          node.parent.expression === node &&
+          node.parent.questionDotToken === undefined &&
+          node.parent.name.text ===
+            "bindPackageOwnedResidentDomainExecutionPort" &&
+          ts.isCallExpression(node.parent.parent) &&
+          node.parent.parent.expression === node.parent &&
+          node.parent.parent.questionDotToken === undefined &&
+          !node.parent.parent.arguments.some(ts.isSpreadElement) &&
+          isInsideMountedStoreBinder(node.parent.parent)
+        ) {
+          dispatcherBinderCallCount += 1;
+        }
+      }
+      if (gatewayLocal !== null && node.text === gatewayLocal) {
+        gatewayRuntimeReferenceCount += 1;
+        if (
+          ts.isCallExpression(node.parent) &&
+          node.parent.expression === node &&
+          node.parent.questionDotToken === undefined &&
+          node.parent.arguments.length === 1 &&
+          !ts.isSpreadElement(node.parent.arguments[0]!) &&
+          isInsideMountedStoreBinder(node.parent)
+        ) {
+          gatewayConstructorCallCount += 1;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  function isInsideMountedStoreBinder(node: ts.Node): boolean {
+    for (
+      let current: ts.Node | undefined = node.parent;
+      current !== undefined;
+      current = current.parent
+    ) {
+      if (ts.isFunctionDeclaration(current)) {
+        return current.name?.text ===
+          "bindMountedResidentLoopAuthorityForFactory";
+      }
+    }
+    return false;
+  }
+}
+
 describe("wake supervisor runtime import boundary", () => {
   it("permits zero production importers before R0 factory integration", () => {
     const source = readFileSync(new URL("../src/wake-supervisor-runtime.ts", import.meta.url), "utf8");
@@ -300,10 +381,24 @@ describe("wake supervisor runtime import boundary", () => {
       "residentExecutionPort"
     ] as const;
 
-    expect(source).toContain(`from "${permittedResidentImports.wakeRuntime.dispatcherDefault}"`);
-    expect(source).toContain(`from "${permittedResidentImports.wakeRuntime.gatewayNamedConstructor}"`);
-    expect(source).toMatch(/import\s+\w+\s+from\s+"..\/..\/agent\/src\/domain-execution-dispatcher\.js"/);
-    expect(source).toMatch(/import\s*\{[^}]*createResidentLoopToolGateway[^}]*\}\s*from\s+"..\/..\/agent\/src\/resident-loop-tool-gateway\.js"/s);
+    expect.soft(source).not.toContain(
+      `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
+    );
+    expect.soft(source).not.toContain(
+      `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
+    );
+    expect.soft(mountedStoreSource).toContain(
+      `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
+    );
+    expect.soft(mountedStoreSource).toContain(
+      `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
+    );
+    expect.soft(mountedStoreSource).toMatch(
+      /import\s+\w+\s+from\s+"..\/..\/agent\/src\/domain-execution-dispatcher\.js"/
+    );
+    expect.soft(mountedStoreSource).toMatch(
+      /import\s*\{[^}]*createResidentLoopToolGateway[^}]*\}\s*from\s+"..\/..\/agent\/src\/resident-loop-tool-gateway\.js"/s
+    );
     const wakeFile = ts.createSourceFile(
       "wake-supervisor-runtime.ts",
       source,
@@ -383,11 +478,12 @@ describe("wake supervisor runtime import boundary", () => {
       );
     })).toEqual([true, true, true, true, true, true, true, true, true, false]);
 
-    const dispatcherImports = wakeFile.statements.flatMap((statement) => {
+    const dispatcherImports = mountedStoreFile.statements.flatMap((statement) => {
       if (
         !ts.isImportDeclaration(statement) ||
         !ts.isStringLiteral(statement.moduleSpecifier) ||
-        statement.moduleSpecifier.text !== permittedResidentImports.wakeRuntime.dispatcherDefault
+        statement.moduleSpecifier.text !==
+          permittedResidentImports.mountedStore.dispatcherDefault
       ) {
         return [];
       }
@@ -396,11 +492,12 @@ describe("wake supervisor runtime import boundary", () => {
         hasNamedBindings: statement.importClause?.namedBindings !== undefined
       }];
     });
-    const gatewayImports = wakeFile.statements.flatMap((statement) => {
+    const gatewayImports = mountedStoreFile.statements.flatMap((statement) => {
       if (
         !ts.isImportDeclaration(statement) ||
         !ts.isStringLiteral(statement.moduleSpecifier) ||
-        statement.moduleSpecifier.text !== permittedResidentImports.wakeRuntime.gatewayNamedConstructor
+        statement.moduleSpecifier.text !==
+          permittedResidentImports.mountedStore.gatewayNamedConstructor
       ) {
         return [];
       }
@@ -416,6 +513,91 @@ describe("wake supervisor runtime import boundary", () => {
         hasNamespaceBinding: bindings !== undefined && ts.isNamespaceImport(bindings)
       }];
     });
+    const fixedConstructorUse = fixedConstructorUseAnalysis(
+      mountedStoreFile,
+      dispatcherImports[0]?.defaultName ?? null,
+      gatewayImports[0]?.named[0]?.local ?? null
+    );
+    const exactFixedConstruction = {
+      dispatcherRuntimeReferenceCount: 1,
+      dispatcherBinderCallCount: 1,
+      gatewayRuntimeReferenceCount: 1,
+      gatewayConstructorCallCount: 1
+    };
+    const fixedConstructionControl = (text: string) => {
+      const control = ts.createSourceFile(
+        "mounted-wake-lifecycle-store-control.ts",
+        text,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TS
+      );
+      return fixedConstructorUseAnalysis(
+        control,
+        "dispatcherDefault",
+        "createResidentLoopToolGateway"
+      );
+    };
+    expect(fixedConstructionControl(`
+      import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+      import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+      function bindMountedResidentLoopAuthorityForFactory() {
+        dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+        createResidentLoopToolGateway(input);
+      }
+    `)).toEqual(exactFixedConstruction);
+    for (const [name, text] of [
+      ["dispatcher alias", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        const bind = dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort;
+        function bindMountedResidentLoopAuthorityForFactory() {
+          bind(input);
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["gateway wrapper", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        const create = (input: unknown) => createResidentLoopToolGateway(input);
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          create(input);
+        }
+      `],
+      ["constructor carrier", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        const constructors = { dispatcherDefault, createResidentLoopToolGateway };
+        function bindMountedResidentLoopAuthorityForFactory() {
+          constructors.dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          constructors.createResidentLoopToolGateway(input);
+        }
+      `],
+      ["duplicate constructors", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          createResidentLoopToolGateway(input);
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["out-of-binder calls", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function alternateConstruction() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          createResidentLoopToolGateway(input);
+        }
+      `]
+    ] as const) {
+      expect.soft(
+        fixedConstructionControl(text),
+        name
+      ).not.toEqual(exactFixedConstruction);
+    }
 
     const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
     const binderImporters: string[] = [];
@@ -486,11 +668,28 @@ describe("wake supervisor runtime import boundary", () => {
       callbackOrWrapperParameterIndexes: constructorParameterIndexes,
       binderImporters,
       binderCalls,
+      wakeFixedConstructorImports: wakeFile.statements.flatMap((statement) =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        ([
+          permittedResidentImports.mountedStore.dispatcherDefault,
+          permittedResidentImports.mountedStore.gatewayNamedConstructor
+        ] as readonly string[]).includes(statement.moduleSpecifier.text)
+          ? [statement.moduleSpecifier.text]
+          : []
+      ),
       dispatcherImports,
-      gatewayImports
+      gatewayImports,
+      fixedConstructorUse
     };
-    for (const pattern of forbiddenLoaderForms) expect(source).not.toMatch(pattern);
-    for (const transfer of forbiddenTransfers) expect(source).not.toContain(transfer);
+    for (const productSource of [source, mountedStoreSource]) {
+      for (const pattern of forbiddenLoaderForms) {
+        expect(productSource).not.toMatch(pattern);
+      }
+      for (const transfer of forbiddenTransfers) {
+        expect(productSource).not.toContain(transfer);
+      }
+    }
     expect(agentBarrel).not.toMatch(/ResidentDomainExecution|ResidentLoopToolGateway|PackageOwnedResident|BoundedAgentLoop/);
     expect(productAnalysis).toEqual({
       declarationCount: 1,
@@ -502,6 +701,7 @@ describe("wake supervisor runtime import boundary", () => {
         file: "packages/local-runtime/src/wake-supervisor-runtime.ts",
         argumentCount: 3
       }],
+      wakeFixedConstructorImports: [],
       dispatcherImports: [{
         defaultName: "dispatcherDefault",
         hasNamedBindings: false
@@ -513,7 +713,8 @@ describe("wake supervisor runtime import boundary", () => {
           local: "createResidentLoopToolGateway"
         }],
         hasNamespaceBinding: false
-      }]
+      }],
+      fixedConstructorUse: exactFixedConstruction
     });
   });
 });
