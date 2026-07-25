@@ -132,6 +132,37 @@ describe("legacy staging domain execution adapter", () => {
     expect(JSON.stringify(preview)).not.toMatch(/assertion\.accepted|entity\.resolved|relationship\.accepted/i);
   });
 
+  it("rejects a current selected candidate whose omitted assertion material would omit binding hashes", async () => {
+    writeTask136LegacyBindingFixture(sourceRoot);
+    const prepared = await prepareLegacyStagingContext({
+      sourceCollectionId: "src_task136_legacy_binding",
+      sourceLabel: "Task136 real legacy binding source",
+      scanBatchId: "scan_task136_legacy_binding",
+      importBatchId: "imp_task136_legacy_binding",
+      stagingBatchId: "legacy_stage_task136_legacy_binding"
+    });
+    const completeCandidate = prepared.preview.candidates[0]!;
+    const preBindingCandidate = {
+      ...completeCandidate
+    } as Record<string, unknown>;
+    delete preBindingCandidate.predicate;
+    delete preBindingCandidate.object;
+    delete preBindingCandidate.confidence;
+    delete preBindingCandidate.subjectRef;
+    const preBindingPreview = {
+      ...prepared.preview,
+      candidates: [preBindingCandidate]
+    } as unknown as typeof prepared.preview;
+
+    expect(() => buildLegacyStagingApprovalPreview(legacyPreviewInput(
+      prepared,
+      {
+        preview: preBindingPreview,
+        selectedCandidateIds: [completeCandidate.candidateId]
+      }
+    ))).toThrow(/binding/i);
+  });
+
   it("rejects unknown or swapped legacy staging tool metadata before building a preview", async () => {
     const prepared = await prepareLegacyStagingContext();
     const selectedCandidateIds = prepared.preview.candidates.map((candidate) => candidate.candidateId);
