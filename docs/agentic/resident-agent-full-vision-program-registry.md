@@ -35410,3 +35410,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1060 — Stage-one RED narrowed to independently causal construction controls
+
+- Recorded at: 2026-07-25T22:06:08Z
+- Coordinator audit of E-1059 finds that copied, swapped, pre-Core, foreign,
+  and replayed identity negatives would also return at the same earlier
+  high-water defect on frozen sources. They could pass without exercising
+  their named identity mismatch and therefore are not independently causal
+  before the construction/high-water checkpoint.
+- Preserve E-1059 as historical evidence and retain its exact sequencing, but
+  narrow the immediate stage-one RED to exactly two executable failures:
+  one real exact unwrapped mounted construction success assertion that exposes
+  the source ordinal **6** versus mounted ordinal/durable count **7** defect,
+  and one recursively resolved import/construction AST assertion that exposes
+  the replaceable five-argument helper and production call.
+- In
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, retain only
+  the real exact success construction as new functional coverage. Forward
+  restore the copied/swapped identity table and the downstream prefix test to
+  their last valid pre-E-1056 non-claiming controls from blob
+  `6ce99e3db17f5621a623ae50ba2f39d9a9ad1873`. They may not be described as
+  executable identity or prefix proof in this stage.
+- Forward restore
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts` exactly
+  to pre-E-1056 blob
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`. Retain no source-text
+  currentness or reclaim claim.
+- Strengthen
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  exactly as E-1059 requires. The analyzer itself must collect and execute
+  successfully; only its product assertion may fail against frozen source.
+- Expected focused shape is
+  **34 = 32 passed + 2 stage-one RED failures** with no later-behavior claim.
+  Expected exact Task136 card shape is
+  **321 = 312 passed + 9 failed**, consisting only of the **7** preserved
+  Task15-through-16 REDs and these **2** stage-one Task14 REDs. The test author
+  must establish rather than assume those counts.
+- After the exact stage-one RED is independently approved and integrated, a
+  separate source authorization may correct only the fixed construction
+  boundary and source-versus-durable high-water comparison. After that exact
+  source checkpoint passes stage one, a separate authority event must add
+  real identity, currentness, prefix, and reclaim tables; those later tests
+  may not reuse the stage-one success assertion as their own causal proof.
+- All E-1059 scope, freeze, gate, fresh-review, history-preservation, and
+  non-release constraints otherwise remain in force.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is a narrower test-only causal correction, not approval,
+  integration, source correction, Task14 approval, Task15 authority, Task136
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
