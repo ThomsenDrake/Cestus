@@ -32927,6 +32927,67 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-1021 — Corrected amendment candidate rejected; final plan-only correction authorized
+
+- Recorded at: 2026-07-25T15:19:13Z
+- Completely fresh independent read-only design reviewer
+  `/root/task136_e1020_design_review` and executability reviewer
+  `/root/task136_e1020_exec_review` each bind a rejection to exact amendment
+  candidate `9f0e64244cd79ec7de2685820e46d78bc3483020`, tree
+  `7d2f450dd688998b1a8403f2f0e6995bfc2bd17f`. Candidate `9f0e6424`,
+  E-1020 admission and merge, rejected `40a8d0f6`, and every earlier
+  authority, candidate, review, rejection, RED, GREEN, design, plan, claim,
+  contract, fixture, release, and integration remain immutable ancestors.
+- Both reviewers independently reproduce the exact eight-file E-1019
+  correction, no package or dependency delta, canonical V4 SHA-256
+  `3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930`,
+  unchanged assurance fingerprint
+  `da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec`,
+  exact 29-card order, thirty-two-path `14/17/1` classification and ordered
+  hash, mission **20/20** and exact source/envelope fingerprints, V4
+  **20/20**, all four markers, typecheck, factory readiness, baseline freezes,
+  ancestry, dependencies, diff, and clean state. Repository mode exits `1`
+  first only at the expected G136-SC dispatcher blob mismatch and emits no
+  prefix or closure success.
+- The implementation plan still instructs Task6 review admission and the
+  final self-review gate to record an exact six-path V4 candidate, conflicting
+  with the current exact nine-authority-path amendment and eight-file
+  E-1019 correction. Following that instruction would append false immutable
+  scope evidence. Both occurrences must name the exact nine cumulative
+  amendment authority paths while preserving the exact eight-file correction
+  distinction.
+- Task12 explicitly changes
+  `packages/agent/src/adapters/legacy-staging.ts`, but the later Task16 and
+  Task17 no-activation gates compare from the pre-product authority merge and
+  require the entire `packages/agent/src/adapters` directory to remain
+  unchanged. Both commands must fail after the required Task12 GREEN. Narrow
+  each guard to freeze every adapter path except the one authorized
+  legacy-staging source, and separately require that source to be the sole
+  adapter-directory delta. The candidate-to-integration whole-directory
+  equality gate remains valid and unchanged.
+- Reject exact `9f0e6424`; it is neither approved nor integrated. Authorize
+  only a forward plan-only correction in
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`.
+  No design, claim, contract, checker, mission, test, package/product,
+  dependency, registry-history, runtime, route, provider, credential, or
+  external-system byte may change.
+- The plan-only descendant must receive a completely new independent
+  read-only design/executability pair. Both E-1020 reviewers and all earlier
+  candidate authors, reviewers, or changed-byte analysts are ineligible.
+  Reproduce exact candidate identity, one-file correction scope, all
+  previously passing canonicalization, mission, V4, marker, factory,
+  typecheck, graph/order/scope/hash/freeze/ancestry/dependency/diff/clean
+  gates, both future adapter-delta proofs, and the truthful repository first
+  stop. Any changed byte invalidates both reviews.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is a candidate-bound rejection and final plan-only
+  authority correction, not amendment approval or integration, Task12
+  product authority, Task13 authority, a Task136 product candidate, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
+
 ## RV-1-E-1019 — Exact 32-path amendment candidate rejected; narrow authority correction authorized
 
 - Recorded at: 2026-07-25T14:54:19Z
