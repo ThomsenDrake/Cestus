@@ -32927,6 +32927,51 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-1023 — Exact final Task136 32-path assurance amendment approved
+
+- Recorded at: 2026-07-25T15:38:13Z
+- Completely fresh independent read-only design reviewer
+  `/root/task136_e1022_design_review` returns `APPROVED` with no findings for
+  exact immutable candidate
+  `b949744fcd6658d578f9bc3d987563cf82051dc9`, tree
+  `bc218fb006f1282e47c73effddc78b9461ceeea1`, sole parent
+  `26c03e23e806782cd0a9da7d0646054ba1631f53`. It excludes admission merge
+  `cacb5b1a795d2766731beb6f5aece8a2f384196d` and independently validates
+  the secret-safe versioned binding preimage, adapter derivation, independent
+  dispatcher/recovery recomputation, exact scope distinctions, Task12–Task18
+  design consistency, and both legacy-only adapter controls.
+- Different completely fresh independent read-only executability reviewer
+  `/root/task136_e1022_exec_review` returns `APPROVED` with no findings for
+  the same exact candidate/tree/parent. It independently reproduces the exact
+  nine cumulative amendment authority paths, E-1019 eight-file correction,
+  E-1021 plan-only correction, no package or dependency delta, exact future
+  Task12 six-path RED/GREEN sequence, all Task12–Task18 commands and
+  candidate/integration/release gates, and both adapter controls.
+- Both reviewers independently reproduce canonical V4 SHA-256
+  `3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930`,
+  assurance fingerprint
+  `da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec`,
+  mission source/envelope pins, mission **20/20**, V4 **20/20**, all four
+  exact markers, typecheck, factory readiness, exact 29-card order, nine
+  Task136 prerequisites, thirty-two-path `14/17/1` classification and
+  ordered hash, immutable historical inputs and baseline pins, ancestry,
+  real dependencies, diff, and clean state.
+- Repository mode exits `1` after all four markers and stops first only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`.
+  It emits no repository-prefix, release-closure, or `29/29` success. No
+  candidate byte changed during review.
+- Advance the exact amendment `reviewing -> approved`. Authorize only the
+  repository-prescribed history-preserving no-ff merge of exact
+  `b949744f` into this program branch, followed by fresh integration-tree
+  gates and a separate append-only integrated event. No Task12 product
+  authorization may be combined with that integrated event.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is assurance-amendment approval, not integration,
+  Task12 product authority, Task13 authority, a Task136 product candidate,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-1021 — Corrected amendment candidate rejected; final plan-only correction authorized
 
 - Recorded at: 2026-07-25T15:19:13Z
