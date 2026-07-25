@@ -35228,3 +35228,96 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1058 — Exact Task14 RED rejected; executable mounted-table correction authorized
+
+- Recorded at: 2026-07-25T21:53:03Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1057_task14_red_review` rejects exact test-only candidate
+  `97cb528d04d092ca87d7a6d3e82fb57b3c470a1c`, tree
+  `8614bc1d6a463d9cfd558c8192d764368e8bb4de`. The review remained clean
+  beneath E-1057 review-authority merge
+  `02c6832ff7759a00858551c4c4ddae76f5138e48` and changed no byte.
+- The currentness and reclaim controls in
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts` are
+  source-text slice, substring, and spelling assertions. Comments,
+  unreachable code, or field/category literals can satisfy them. They do not
+  execute competing releases, terminals, generations, runs, causation,
+  owners, suffixes, approval decisions, claimed rereads, receipt/terminal
+  absence, burned-request preservation, cancellation/ineligibility, zero
+  append, or zero effect.
+- E-1057's downstream-layering description is therefore too broad: only the
+  exact runtime-binding and canonical-prefix aggregates stop at the real W
+  issuance failure. The two mounted-store controls fail independently on
+  source text and provide no executable downstream oracle.
+- The import-policy AST control checks only call arity, parameter names, and
+  absence of inline `FunctionType` syntax. It does not resolve aliased,
+  nested, intersection, union, or object-wrapped parameter types and can
+  accept a replaceable construction function hidden behind another type
+  spelling.
+- Preserve rejected test candidate `97cb528d`, all three rejected test blobs
+  wake `70556992b09541bf3df561f2ea11dc3e2fe95184`, store
+  `7aa88e838202607816bf04a2ae72f93906a66f6b`, imports
+  `42ecbc7b28545893fca9c146990f0a7c564f0e6a`, rejected source candidate
+  `79380b78` and its source blobs, and all earlier history as immutable
+  ancestors. Neither rejected candidate is approved or integrated.
+- Authorize the smallest forward test-only correction in the same exact three
+  paths:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`,
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`.
+  Freeze both rejected Task14 sources and every other path.
+- Replace the mounted currentness and reclaim source-text assertions with
+  executable real-mounted tables. Use the exact authenticated mounted store
+  and ledger, exact Core/P/H binding, exact package-owned dispatcher
+  capability, exact dispatcher default binder, and exact named G constructor.
+  Direct package-private test construction may supply those exact functions
+  to the rejected five-argument store helper solely to reach the frozen state
+  machine; no structural wrapper, alternate function, fixture-only authority,
+  substituted port, or changed product API is permitted. The same unchanged
+  tests must continue through the fixed three-argument package-private helper
+  after source correction.
+- Make every currentness mutation a real durable ledger transition and assert
+  the exact current, recordable-stale, or unavailable result, token
+  consumption, same fresh mounted identity, zero unauthorized append, and
+  zero effect. Exercise competing release, terminal, new generation, run,
+  causation, owner, target and foreign suffix cases separately and admit only
+  the approved exact causal advance.
+- Make every canonical-prefix mutation a real durable event sequence and
+  assert exact no-append/no-release/no-effect failure for changed S, R,
+  release, semantic key, causation, order, result, deadline, next action,
+  duplicate, skipped, missing, or extra target suffix. Preserve independent
+  foreign-stream controls, state-0 rejection, and exact states 1 through 4
+  suffix-only completion.
+- Make every reclaim mutation a real released prefix and exact gateway
+  readback. Approval-required cases require one later independent matching
+  unexpired decision. Effect-outcome-unknown cases require the exact
+  reread-only non-executable claim, no receipt or terminal, complete binding
+  and budget, preserved burned request, and no effect. Ordinary categories
+  forbid gateway IDs; canceled or ineligible work appends no claim.
+- Strengthen the AST analyzer by recursively resolving local type aliases,
+  unions, intersections, arrays/tuples, object properties, call signatures,
+  method signatures, and nested parameter annotations. Reject every
+  callback-bearing or wrapper-bearing construction parameter and every
+  production importer except the exact wake runtime; require the exact
+  three-argument store call and fixed direct imports.
+- The corrected descendant must fail causally against frozen sources with no
+  fixture, collection, API, import, or type failure and establish a new exact
+  signature. Run focused, analyzer, exact card, relevant boundaries,
+  typecheck, factory, mission **20/20**, V4 **20/20**, markers, truthful
+  repository first stop, exact three-test scope, all freezes, ancestry, real
+  dependencies, diff, and clean state.
+- Admit one exact corrected test-only SHA to a completely fresh independent
+  read-only reviewer. No earlier test/source author, reviewer, verifier,
+  analyst, or coordinator may approve changed bytes. Do not modify either
+  Task14 source until the corrected RED is independently approved, recorded,
+  integrated by two-parent history-preserving merge, and followed by a
+  separate source-correction authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is rejected-RED disposition and narrower test-only
+  correction authority, not test approval or integration, source correction,
+  Task14 approval, Task15 authority, Task136 product candidacy, strict record
+  29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
