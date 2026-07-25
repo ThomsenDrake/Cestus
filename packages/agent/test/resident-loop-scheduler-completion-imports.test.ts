@@ -125,7 +125,22 @@ describe("resident-loop scheduler completion import boundary", () => {
         control.name
       ).toEqual(control.violations);
     }
-    expect(protectedResidentTransfers(sources)).toEqual([]);
+    for (const control of task14GatewayConstructorControls()) {
+      expect.soft(
+        task14GatewayConstructorAnalysis(control.sources),
+        control.name
+      ).toEqual(control.expected);
+    }
+    expect.soft(protectedResidentTransfers(sources)).toEqual([]);
+    expect.soft(task14GatewayConstructorAnalysis(sources)).toEqual({
+      importSources: [
+        "packages/local-runtime/src/mounted-wake-lifecycle-store.ts"
+      ],
+      callSources: [
+        "packages/local-runtime/src/mounted-wake-lifecycle-store.ts"
+      ],
+      violations: []
+    });
     for (const control of gatewayDefaultStaticControls()) {
       expect(
         exactGatewayDefaultStaticAnalysis(control.source.sourceFile).violations,
@@ -595,7 +610,7 @@ function task12ProtectedMentionAnalysis(
     violations.add("packages/agent/src/resident-loop-tool-gateway.ts");
   }
   if (task14BinderOccurrences > 1) {
-    violations.add("packages/local-runtime/src/wake-supervisor-runtime.ts");
+    violations.add("packages/local-runtime/src/mounted-wake-lifecycle-store.ts");
   }
   return {
     definitionSources: [...definitionSources].sort(),
@@ -1055,7 +1070,7 @@ function isExactTask14BinderCall(
 ): boolean {
   if (
     record.sourcePath !==
-      "packages/local-runtime/src/wake-supervisor-runtime.ts" ||
+      "packages/local-runtime/src/mounted-wake-lifecycle-store.ts" ||
     !ts.isIdentifier(node) ||
     !ts.isPropertyAccessExpression(node.parent) ||
     node.parent.name !== node ||
@@ -1105,7 +1120,7 @@ function protectedMentionControls(): ProtectedMentionControls {
   const gatewayPath =
     "packages/agent/src/resident-loop-tool-gateway.ts";
   const task14Path =
-    "packages/local-runtime/src/wake-supervisor-runtime.ts";
+    "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
   const dispatcherPermitFrame = (
     body: readonly string[]
   ): readonly string[] => [
@@ -1904,9 +1919,139 @@ interface DispatcherTransferControl {
   readonly violations: readonly string[];
 }
 
+interface Task14GatewayConstructorAnalysis {
+  readonly importSources: readonly string[];
+  readonly callSources: readonly string[];
+  readonly violations: readonly string[];
+}
+
+interface Task14GatewayConstructorControl {
+  readonly name: string;
+  readonly sources: readonly SourceRecord[];
+  readonly expected: Task14GatewayConstructorAnalysis;
+}
+
+function task14GatewayConstructorControls():
+  readonly Task14GatewayConstructorControl[] {
+  const mountedStorePath =
+    "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
+  const wakeRuntimePath =
+    "packages/local-runtime/src/wake-supervisor-runtime.ts";
+  const exact = [
+    "import { createResidentLoopToolGateway } from " +
+      "'../../agent/src/resident-loop-tool-gateway.js';",
+    "function bindMountedResidentLoopAuthorityForFactory() {",
+    "  createResidentLoopToolGateway(input);",
+    "}"
+  ].join("\n");
+  const unsafe = (
+    name: string,
+    sourcePath: string,
+    lines: readonly string[]
+  ): Task14GatewayConstructorControl => ({
+    name,
+    sources: [sourceRecordFromText(sourcePath, lines.join("\n"))],
+    expected: {
+      importSources: [sourcePath],
+      callSources: [],
+      violations: [`${sourcePath}: alternate gateway constructor transfer`]
+    }
+  });
+  return [
+    {
+      name: "exact mounted-store gateway constructor ownership",
+      sources: [sourceRecordFromText(mountedStorePath, exact)],
+      expected: {
+        importSources: [mountedStorePath],
+        callSources: [mountedStorePath],
+        violations: []
+      }
+    },
+    unsafe(
+      "wake-runtime gateway constructor ownership",
+      wakeRuntimePath,
+      [
+        "import { createResidentLoopToolGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "createResidentLoopToolGateway(input);"
+      ]
+    ),
+    unsafe(
+      "aliased mounted-store gateway constructor",
+      mountedStorePath,
+      [
+        "import { createResidentLoopToolGateway as createGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "createGateway(input);"
+      ]
+    ),
+    unsafe(
+      "captured mounted-store gateway constructor",
+      mountedStorePath,
+      [
+        "import { createResidentLoopToolGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "const createGateway = createResidentLoopToolGateway;",
+        "createGateway(input);"
+      ]
+    ),
+    unsafe(
+      "wrapped mounted-store gateway constructor",
+      mountedStorePath,
+      [
+        "import { createResidentLoopToolGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "const createGateway = (input: unknown) => " +
+          "createResidentLoopToolGateway(input);",
+        "createGateway(input);"
+      ]
+    ),
+    unsafe(
+      "stored mounted-store gateway constructor",
+      mountedStorePath,
+      [
+        "import { createResidentLoopToolGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "holder.createGateway = createResidentLoopToolGateway;",
+        "holder.createGateway(input);"
+      ]
+    ),
+    unsafe(
+      "returned mounted-store gateway constructor",
+      mountedStorePath,
+      [
+        "import { createResidentLoopToolGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "function expose() { return createResidentLoopToolGateway; }",
+        "expose()(input);"
+      ]
+    ),
+    unsafe(
+      "exported mounted-store gateway constructor",
+      mountedStorePath,
+      [
+        "import { createResidentLoopToolGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "export { createResidentLoopToolGateway };",
+        "createResidentLoopToolGateway(input);"
+      ]
+    ),
+    unsafe(
+      "duplicated mounted-store gateway constructor",
+      mountedStorePath,
+      [
+        "import { createResidentLoopToolGateway } from " +
+          "'../../agent/src/resident-loop-tool-gateway.js';",
+        "createResidentLoopToolGateway(input);",
+        "createResidentLoopToolGateway(input);"
+      ]
+    )
+  ];
+}
+
 function dispatcherTransferControls(): readonly DispatcherTransferControl[] {
   const task14Path =
-    "packages/local-runtime/src/wake-supervisor-runtime.ts";
+    "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
   const exactTask14 = sourceRecordFromText(task14Path, [
     "import dispatcherDefault from " +
       "'../../agent/src/domain-execution-dispatcher.js';",
@@ -4314,12 +4459,121 @@ const releasedDispatcherImportSignatures =
     ]
   ]);
 
+function task14GatewayConstructorAnalysis(
+  sources: readonly SourceRecord[]
+): Task14GatewayConstructorAnalysis {
+  const mountedStorePath =
+    "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
+  const exactModuleSpecifier =
+    "../../agent/src/resident-loop-tool-gateway.js";
+  const importSources = new Set<string>();
+  const callSources = new Set<string>();
+  const violations = new Set<string>();
+
+  for (const record of sources) {
+    const declarations = record.sourceFile.statements.filter(
+      (statement): statement is ts.ImportDeclaration =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        (
+          statement.moduleSpecifier.text ===
+            "./resident-loop-tool-gateway.js" ||
+          statement.moduleSpecifier.text.endsWith(
+            "/resident-loop-tool-gateway.js"
+          )
+        ) &&
+        statement.importClause?.namedBindings !== undefined &&
+        ts.isNamedImports(statement.importClause.namedBindings) &&
+        statement.importClause.namedBindings.elements.some((element) =>
+          (element.propertyName?.text ?? element.name.text) ===
+            "createResidentLoopToolGateway"
+        )
+    );
+    if (declarations.length === 0) {
+      continue;
+    }
+    importSources.add(record.sourcePath);
+    const declaration = declarations.length === 1
+      ? declarations[0]
+      : undefined;
+    const bindings = declaration?.importClause?.namedBindings;
+    const element = bindings !== undefined &&
+      ts.isNamedImports(bindings) &&
+      bindings.elements.length === 1
+      ? bindings.elements[0]
+      : undefined;
+    const exactImport =
+      record.sourcePath === mountedStorePath &&
+      declaration !== undefined &&
+      ts.isStringLiteral(declaration.moduleSpecifier) &&
+      declaration.moduleSpecifier.text === exactModuleSpecifier &&
+      declaration.importClause?.isTypeOnly === false &&
+      declaration.importClause.name === undefined &&
+      declaration.attributes === undefined &&
+      element !== undefined &&
+      element.isTypeOnly === false &&
+      element.propertyName === undefined &&
+      element.name.text === "createResidentLoopToolGateway";
+    if (!exactImport || element === undefined) {
+      reject(record.sourcePath);
+      continue;
+    }
+
+    const references = identifierReferences(
+      record.sourceFile,
+      element.name.text
+    ).filter((reference) => !isNonReferencePropertyName(reference));
+    const calls = references.filter((reference) =>
+      ts.isCallExpression(reference.parent) &&
+      reference.parent.expression === reference &&
+      reference.parent.questionDotToken === undefined &&
+      reference.parent.arguments.length === 1 &&
+      !ts.isSpreadElement(reference.parent.arguments[0]!) &&
+      isInsideMountedStoreBinder(reference.parent)
+    );
+    if (
+      references.length !== 2 ||
+      references.filter((reference) => reference === element.name).length !==
+        1 ||
+      calls.length !== 1
+    ) {
+      reject(record.sourcePath);
+      continue;
+    }
+    callSources.add(record.sourcePath);
+  }
+
+  return {
+    importSources: [...importSources].sort(),
+    callSources: [...callSources].sort(),
+    violations: [...violations].sort()
+  };
+
+  function reject(sourcePath: string): void {
+    violations.add(`${sourcePath}: alternate gateway constructor transfer`);
+  }
+
+  function isInsideMountedStoreBinder(node: ts.Node): boolean {
+    for (
+      let current: ts.Node | undefined = node.parent;
+      current !== undefined;
+      current = current.parent
+    ) {
+      if (ts.isFunctionDeclaration(current)) {
+        return current.name?.text ===
+          "bindMountedResidentLoopAuthorityForFactory";
+      }
+    }
+    return false;
+  }
+}
+
 function dispatcherTransferViolations(
   sources: readonly SourceRecord[]
 ): readonly string[] {
   const violations = new Set<string>();
   const task14Path =
-    "packages/local-runtime/src/wake-supervisor-runtime.ts";
+    "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
   for (const record of sources) {
     const imports: ts.ImportDeclaration[] = [];
     for (const statement of record.sourceFile.statements) {
@@ -4499,8 +4753,9 @@ function protectedResidentTransfers(
             clause?.name !== undefined &&
             clause.namedBindings === undefined &&
             clause.isTypeOnly === false;
-          const plannedWakeNamedConstructor =
-            sourcePath === "packages/local-runtime/src/wake-supervisor-runtime.ts" &&
+          const plannedMountedStoreNamedConstructor =
+            sourcePath ===
+              "packages/local-runtime/src/mounted-wake-lifecycle-store.ts" &&
             clause !== undefined &&
             clause?.name === undefined &&
             clause.namedBindings !== undefined &&
@@ -4508,7 +4763,8 @@ function protectedResidentTransfers(
             clause.namedBindings.elements.length === 1 &&
             clause.namedBindings.elements[0]?.name.text ===
               "createResidentLoopToolGateway";
-          if (!exactDispatcherDefault && !plannedWakeNamedConstructor) {
+          if (!exactDispatcherDefault &&
+            !plannedMountedStoreNamedConstructor) {
             violations.push(`${sourcePath}: alternate gateway import`);
           }
         }
