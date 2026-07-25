@@ -34044,3 +34044,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1037 — Exact reversed-evidence chronology RED admitted to fresh review
+
+- Recorded at: 2026-07-25T18:25:59Z
+- Exact test-only RED
+  `f00f9fcad6c8e10f0dc6208f3d7ff60df906cf6e`, tree
+  `9ddbf07372356a9cd6ae6c9e266acc0e38d6a4e5`, has sole parent E-1036
+  chronology-authority merge
+  `4df77546c122a7ba1953870cfa448eeb79026eb0` and exact subject
+  `test(agent): reject reversed legacy evidence chronology`. It changes
+  exactly the dispatcher and gateway tests authorized by E-1036.
+- Exact changed test blobs are dispatcher
+  `7bddefd21e4823c61b13f0fdc13f18e251172c64` and gateway
+  `2db635799e8e92e84170c5487d94cb4f0877cc93`. Adapter test remains frozen
+  at `741bf9c02184c0367c4b4aa08a1b06202bac362e`; candidate sources remain
+  frozen at legacy-staging adapter
+  `a8e0d185e0ad3e7f5b4b10be62ce4d26ad56c919`, dispatcher
+  `44a5a16152d0bde813aca9dc54cb8fa33195c841`, and gateway
+  `bfa042dbe19e96af0fcdb828de1175258d619f16`.
+- Both new tests seed an exact canonical ledger sequence with proposal first
+  and its uniquely matched evidence second. Each proposal's causation ID
+  names the later fixed canonical evidence event ID; assertion/evidence
+  identities, complete seven-field binding, normalized input, preview,
+  receipt, resident lifecycle, fingerprints, event-family evidence, and
+  terminal hashes are recomputed from that reversed durable prefix. One test
+  reaches real fresh dispatcher attestation and one reaches real gateway
+  recovery. Their explicit index assertions prove proposal index is lower
+  than evidence index before invoking the rejection oracle.
+- Focused plus loader collects
+  **86 = 84 passed + 2 failed**. The only failures are the fresh dispatcher
+  and gateway recovery assertions requiring rejection; current frozen sources
+  instead fulfill and complete the reversed chronology. All 84 prior binding,
+  fixture, currentness, chronology, identity, attestation/readback/evidence,
+  at-most-once, loader, and adapter controls remain passing. Typecheck passes
+  with no collection, API, schema, dependency, or unrelated failure.
+- The exact 17-test card collects
+  **319 = 304 passed + 15 failed**: two current chronology failures plus the
+  preserved thirteen Task13-through-16 RED failures. Factory readiness,
+  mission **20/20**, V4 **20/20**, all four exact markers, scope, source and
+  adapter-test freezes, ancestry, dependency quiet, diff, and clean state
+  pass. Repository mode exits `1` after those markers at the legacy-staging
+  source blob mismatch and emits no prefix, closure, `29/29`, record-29, or
+  release success.
+- Admit only exact `f00f9fca` as test-only RED
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1037_chronology_red_review`. The reviewer must
+  inspect both changed tests against E-1036 and the approved design/plan,
+  independently reconstruct the reversed chronology and every recomputed
+  hash, prove both real boundaries are reached and fail only because the
+  sources omit global evidence-before-proposal comparison, preserve all prior
+  controls, and reproduce exact identity, blobs, scope, freezes, focused/card,
+  typecheck, factory, mission, V4, markers, repository first stop, ancestry,
+  dependencies, diff, and clean state.
+- The reviewer has not authored, reviewed, or analyzed either changed test
+  byte. The implementer, E-1035 source reviewer, all prior implementers,
+  reviewers, gate verifiers and analysts, and the coordinator are ineligible.
+  It may not edit, commit, merge, authorize source work or Task13, substitute
+  a SHA, or make product/release/prefix/Wave claims. Changed bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED review admission, not approval,
+  integration, source authority, Task12 or Task136 product candidacy, Task13
+  authority, strict record 29, assurance-only transition, publication, Wave
+  3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
