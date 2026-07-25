@@ -35006,3 +35006,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1055 — Exact Task14 mounted W source candidate admitted to fresh review
+
+- Recorded at: 2026-07-25T21:08:48Z
+- Exact Task14 source candidate
+  `79380b780daf79ee01f4717272b283bcf22862ff`, tree
+  `1180cd19d8270459705c3055e7568cab6a481c35`, has sole parent E-1054
+  authority merge `24d29664c0bf868ebe35bf6a03e9aa28d0eda4c4`
+  and exact subject
+  `feat(local-runtime): issue mounted resident loop authority`.
+- It changes exactly the two authorized sources by
+  **1440 insertions / 9 deletions**. Exact candidate blobs are wake runtime
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and mounted lifecycle store
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`. Frozen Task14 tests remain
+  wake `6ce99e3db17f5621a623ae50ba2f39d9a9ad1873`, store
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, and imports
+  `66f8c9fd90a2438ccfc7fab534968e99d01bccc6`.
+- Exact RED was **34 = 30 passed + 4 Task14 failures**. Candidate focused
+  passes **34/34**; focused plus protected-owner analyzer passes **36/36**;
+  relevant portable-workspace, mounted-authority, and ontology boundaries
+  pass **133/133**. Exact Task136 card is
+  **321 = 314 passed + 7 preserved Task15-through-16 RED failures**.
+- Standalone typecheck and factory readiness pass; mission and V4 pass
+  **20/20** each; all four markers remain exact
+  **29 / 20 / 29 / 15**. Repository mode exits `1` after markers and stops
+  first only at the legacy-staging adopted-source blob mismatch. Exact
+  two-source scope, all test/Task12/13/later/public/claim/contract/dependency
+  freezes, real dependencies, ancestry, diff, and clean state pass.
+- Admit only exact `79380b78` as Task14 source
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1055_task14_source_review`, who has never
+  authored, reviewed, verified, or analyzed either candidate source byte.
+- The reviewer must inspect the complete two-source diff against the approved
+  Task14 design and plan and independently attack: one-shot exact wake runtime
+  and Core/P/H/dispatcher identity binding; default-only dispatcher import
+  without object transfer; same authenticated ledger/store/tuple use; closed
+  safe-ID and prebound G; opaque single-consumption current/stale identities;
+  before-and-after currentness; same fresh mount requirements; exact
+  unavailable non-durability; all five prefix states; exact locator,
+  instruction, event, semantic-key, causation, order, readback, missing-suffix
+  and at-most-once rules; hostile target versus foreign-stream isolation; no
+  caller-trusted instruction, tool effect, fallback write, report store,
+  protected cross-owner call, public widening, provider, credential, route,
+  or activation; and bounded non-executable unknown-outcome reclaim.
+- The reviewer must independently reproduce exact identity, parent, tree,
+  subject, blobs, scope, RED/GREEN, focused/analyzer/card/boundary counts,
+  typecheck, factory, mission, V4, markers, truthful repository first stop,
+  freezes, ancestry, real dependencies, diff, and clean state. It may not
+  edit, commit, merge, authorize Task15, substitute a SHA, or make
+  product/record-29/release/prefix/Wave claims. Changed bytes invalidate
+  review.
+- The Task14 author, every prior Task136 author/reviewer/verifier/analyst,
+  and coordinator are ineligible to approve changed Task14 bytes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact Task14 source review admission, not approval or
+  integration, Task15 authority, Task136 product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
