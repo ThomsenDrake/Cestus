@@ -38,15 +38,16 @@ commit, or force-push is permitted.
 
 ## Frozen Product Ceiling
 
-The exact product ceiling is 30 paths: 13 sources, 16 tests, and this one
+The exact product ceiling is 32 paths: 14 sources, 17 tests, and this one
 claim.
 
-### Thirteen sources
+### Fourteen sources
 
 - `packages/agent/src/bounded-agent-loop.ts`
 - `packages/agent/src/plan-observation-contracts.ts`
 - `packages/agent/src/plan-observation-projection.ts`
 - `packages/agent/src/resident-plan-candidate-provider.ts`
+- `packages/agent/src/adapters/legacy-staging.ts`
 - `packages/agent/src/resident-loop-tool-gateway.ts`
 - `packages/local-runtime/src/wake-supervisor-runtime.ts`
 - `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
@@ -57,12 +58,13 @@ claim.
 - `packages/agent/src/task-orchestrator.ts`
 - `packages/agent/src/task-orchestrator-projection.ts`
 
-### Sixteen tests
+### Seventeen tests
 
 - `packages/agent/test/bounded-agent-loop.test.ts`
 - `packages/agent/test/plan-observation-contracts.test.ts`
 - `packages/agent/test/plan-observation-projection.test.ts`
 - `packages/agent/test/resident-plan-candidate-provider.test.ts`
+- `packages/agent/test/legacy-staging-adapter.test.ts`
 - `packages/agent/test/resident-loop-tool-gateway.test.ts`
 - `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`
 - `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
@@ -80,11 +82,15 @@ claim.
 
 - `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`
 
-The exact sixteen-test command is:
+The exact seventeen-test command is:
 
 ```bash
-npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 ```
+
+The canonical interleaved path order is the exact order in the approved
+design and V4 contract. Its newline-delimited SHA-256 is
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
 
 ## Composition And Effect Limits
 
@@ -801,6 +807,68 @@ causal Task12 RED, Task12 source GREEN, a product candidate, approval,
 integration, strict record 29, assurance transition, publication, or product
 release. Task136 remains `implementing`; the strict product frontier remains
 **28 of 29**.
+
+## RV-1-E-1017 forward 32-path assurance amendment
+
+Human product-and-scope authority is recorded by program commit
+`9aa73c2cb9063d97ed438fa074911ba527995cc9` and history-preserving Task136
+merge `d0136f6960f0355fe7ea29320498c80dd276c963`, with exact parents
+`4a7f7c621b980f0559b4f893be2c0d672411937d` and
+`9aa73c2cb9063d97ed438fa074911ba527995cc9`. E-1016 remains valid historical
+evidence, but its four-file proposal is superseded because fresh dispatch
+also substitutes `candidateId` for the independent assertion object and the
+required released adapter source/test were outside the prior assurance
+boundary.
+
+The current bounded amendment expands this claim from the historical
+30-path, 13-source, 16-test ceiling to the exact 32-path, 14-source, 17-test
+ceiling at the top of this file. It adopts only
+`packages/agent/src/adapters/legacy-staging.ts` and
+`packages/agent/test/legacy-staging-adapter.test.ts`, keeps the exact 29-card
+graph/order and nine Task136 prerequisites, and changes no product byte.
+
+The two adopted paths are finite pre-record baselines. Source blob
+`99fbafda3844435109bc249b015b111b9258c210` and test blob
+`de7cef3123a15fb82891943dc51005165c8c9fcd` must match exact candidate
+`c244106459ca050a5f8b61a00755abf184721956`, published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and current HEAD until record
+29. After record 29, all 32 Task136 candidate/integration/current blobs must
+match.
+
+The amendment exposes only ordered
+`selectedCandidateBindingHashes` in the ordinal-10 preview. Each hash uses the
+version-domain and exact canonical preimage in the amended design: candidate
+ID, evidence ID, evidence content hash, predicate, independent scalar object,
+confidence, and explicit optional-subject-reference presence/value. The
+adapter derives it from authoritative current candidates and binds it into
+`normalizedInputHash` and the complete preview hash. Dispatcher fresh
+execution and gateway recovery independently recompute it from exact
+`assertion.proposed` plus matched `evidence.ingested` durable facts. No raw
+predicate/object enters the preview, the receipt is not its own oracle, and no
+report-store port, fallback, runtime route, provider, credential, or external
+effect is added.
+
+The forward current assurance pins are:
+
+```text
+Task136 ordered-path SHA-256:
+8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41
+V4 JSON SHA-256:
+3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438
+V4 assurance fingerprint:
+da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
+Mission immutable-envelope fingerprint:
+sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae
+Mission source fingerprint:
+sha256:b83a29bf17abdb2a6c1c70a48783e35e9adb1ae6e5b995667ec94a66008f21c8
+```
+
+The historical V4 hashes and all earlier product/review evidence above remain
+true for their exact earlier commits; they are not current amendment pins.
+Task12 remains `implementing`, no Task136 product candidate exists, record 29
+does not exist, and the strict frontier remains **28 of 29**. Product editing
+requires separate post-amendment authorization after fresh independent design
+and executability approvals and history-preserving integration.
 
 ## RV-1-E-957 Task12 Causal-RED Oracle Repair
 

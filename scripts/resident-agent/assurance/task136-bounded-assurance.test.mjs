@@ -27,8 +27,8 @@ const task136V4ClaimPath = "docs/agentic/claims/task-136-v4-task137b-authority-t
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
-const v4ContractSha256 = "81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a";
-const v4AssuranceFingerprint = "34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6";
+const v4ContractSha256 = "3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438";
+const v4AssuranceFingerprint = "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
 const historicalTask135bSha256 = "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409";
@@ -165,6 +165,8 @@ const task136OwnedPaths = [
   "packages/agent/test/plan-observation-projection.test.ts",
   "packages/agent/src/resident-plan-candidate-provider.ts",
   "packages/agent/test/resident-plan-candidate-provider.test.ts",
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/resident-loop-tool-gateway.ts",
   "packages/agent/test/resident-loop-tool-gateway.test.ts",
   "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
@@ -188,7 +190,7 @@ const task136OwnedPaths = [
   "packages/agent/test/task-orchestrator-projection.test.ts",
   "docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md"
 ];
-const task136SixteenTestCommand = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
+const task136SeventeenTestCommand = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
 const exactTask136HistoricalPathDispositions = [
   [
     "Task137A",
@@ -318,6 +320,21 @@ const exactRawPrefixPins1Through28 = [
 ];
 const rawPrefixPins = new Map(exactRawPrefixPins1Through28);
 const task136BaselineFixtureBlobs = [
+  ...[
+    [
+      "packages/agent/src/adapters/legacy-staging.ts",
+      "99fbafda3844435109bc249b015b111b9258c210"
+    ],
+    [
+      "packages/agent/test/legacy-staging-adapter.test.ts",
+      "de7cef3123a15fb82891943dc51005165c8c9fcd"
+    ]
+  ].map(([path, blobSha]) => ({
+    candidateSha: "c244106459ca050a5f8b61a00755abf184721956",
+    integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
+    path,
+    blobSha
+  })),
   {
     candidateSha: "70814c1259871c5458a3578fae8a5c8281540377",
     integrationSha: "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
@@ -562,7 +579,7 @@ test("requires corrected producer ownership and exact Task136 scope and command"
     task136?.ownedPaths,
     task136OwnedPaths.map((path) => ({ disposition: "owned", path }))
   );
-  assert.equal(task136?.command, task136SixteenTestCommand);
+  assert.equal(task136?.command, task136SeventeenTestCommand);
 
   const cardMutants = [
     {
@@ -1358,7 +1375,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   })).digest("hex");
   assert.equal(fingerprint, v4AssuranceFingerprint);
 
-  const task136CommandArguments = task136SixteenTestCommand.split(" ").slice(3);
+  const task136CommandArguments = task136SeventeenTestCommand.split(" ").slice(3);
   const staticCases = [
     {
       id: "thirtieth card",
@@ -1513,7 +1530,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
         id: `Task136 command relabeled ${argument}`,
         mutate(mutant) {
           const task136 = mutant.releaseGraph.cards.find((card) => card.id === "Task136");
-          task136.command = task136SixteenTestCommand.replace(argument, `${argument}.drift`);
+          task136.command = task136SeventeenTestCommand.replace(argument, `${argument}.drift`);
         }
       }
     ]),
@@ -1664,6 +1681,14 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   const beforeRecord29Records = releaseRecordsFor(contract).slice(0, 28);
   const beforeRecord29Registry = releaseRecordMarkdown(beforeRecord29Records);
   const baselineCases = [
+    ...[
+      "packages/agent/src/adapters/legacy-staging.ts",
+      "packages/agent/test/legacy-staging-adapter.test.ts"
+    ].flatMap((path) => [
+      ["c244106459ca050a5f8b61a00755abf184721956", path],
+      ["dc05c43c4b9a592d0396acd034bfc32e177fd09a", path],
+      ["HEAD", path]
+    ]),
     [
       "70814c1259871c5458a3578fae8a5c8281540377",
       "packages/agent/src/domain-execution-dispatcher.ts"
@@ -1713,7 +1738,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   assert.equal(successfulRecord29Adapter.commandCalls.length, 29);
 
   const transferredAndAdoptedProductPaths = task136OwnedPaths.slice(2, -1);
-  assert.equal(transferredAndAdoptedProductPaths.length, 27);
+  assert.equal(transferredAndAdoptedProductPaths.length, 29);
   for (const path of transferredAndAdoptedProductPaths) {
     const adapter = fakeRepositoryAdapter(records, {
       blobMismatch: { commitish: "HEAD", path }
@@ -2770,7 +2795,14 @@ test("requires the durable V4 claim to retain history and the RV-1-E-941 authori
     "c8fd4c43c6eb7a29755b83edf65004254ceb52ff49f840c972885f885426e566",
     "cbf1cb3317cc9581f976a2cd27a2f4c1745aecf2b00650a59e93f46bc9dc40a4",
     "15125944a80d1f605487560f1dd13e28603a7b72335baf53a2d1c081177008f3",
-    "Task136 product/package byte may change before the exact six-file V4"
+    "Task136 product/package byte may change before the exact six-file V4",
+    "RV-1-E-1017 forward assurance-scope amendment",
+    "32 ordered paths: 14 sources, 17 tests",
+    "8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41",
+    "3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438",
+    "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec",
+    "sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae",
+    "selectedCandidateBindingHashes"
   ];
 
   for (const evidence of requiredEvidence) {
