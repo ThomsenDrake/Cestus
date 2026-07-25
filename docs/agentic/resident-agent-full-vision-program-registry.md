@@ -34519,3 +34519,67 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1046 — Exact Task13 candidate rejected; causal approval-wait chronology RED authorized
+
+- Recorded at: 2026-07-25T19:48:13Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1045_task13_review` rejects exact Task13 candidate
+  `23d9f05689940761abb82264968ae764f396c14d`, tree
+  `3ffe36c1bcdc7ada8ee3843ec460eb85cc12df68`. The review remained clean
+  and did not edit, commit, merge, or substitute the candidate.
+- The candidate handles suspended approval waits before its resident active
+  and stale interlocks, while approval-wait checkpoint selection does not
+  treat a later exact `resident-loop-suspension` checkpoint as superseding an
+  older approval-wait checkpoint. The reviewer independently reproduced an
+  older approval suspension plus an expired generation-2 claim plus a later
+  exact same-claim resident checkpoint yielding no `not-claimable` skip,
+  appending a generation-3 claim and `runner-dispatching`, and invoking the
+  runner once.
+- The same defect lets an active resident-owned claim return
+  `approvalWaiting` while waiting or dispatch generically after approval
+  instead of returning the sole exact `not-claimable` skip. The expired path
+  can reclaim and dispatch before the resident stale interlock. Cancellation
+  remains protected because cancellation handling precedes both paths.
+  Frozen focused **36/36** did not expose this chronology, so the exact
+  candidate is not approved or integrated and Task14 remains unauthorized.
+- Preserve rejected candidate `23d9f056`, tree `3ffe36c1`, both candidate
+  source blobs orchestrator
+  `f55b6edeab86639de2b7e840fa009d3f0fb16921` and projection
+  `e203840a748dd1cb47cdcd751000298b02c42559`, projection test
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`, all Task12 bytes, all later
+  Task136 bytes, and all earlier authority, RED, GREEN, candidate, review,
+  rejection, claim, contract, and release history in ancestry.
+- Authorize a narrower causal test-only correction in exactly
+  `packages/agent/test/task-orchestrator-claims.test.ts`, starting from
+  rejected frozen blob
+  `21b5797a3d8dfae73cb97f9cfbe6d1323843dc8f`. Add two functional cases:
+  live waiting/approved and expired approved, each with an older
+  approval-wait checkpoint followed by a later exact same-claim
+  resident-loop-suspension checkpoint. Require the sole exact
+  `not-claimable` skip, zero runner invocations, no generic release,
+  `stale-recovered`, generation-plus-one claim, or dispatch checkpoint, and
+  no approval-wait result that bypasses W ownership.
+- The corrected test-only descendant must fail causally against the two
+  frozen rejected sources without fixture, API, or type failure; preserve
+  cancellation, ordinary-claim, nonresident-checkpoint, projection, Task12,
+  loader, adapter, later-task, and public-type controls; and establish its own
+  exact pass/fail signature. Run focused, exact card, typecheck, factory,
+  mission **20/20**, V4 **20/20**, all four markers, truthful repository
+  first stop, exact one-test-file scope, blob freezes, ancestry, dependency,
+  diff, and clean-state gates.
+- Admit one exact corrected test-only RED SHA to a completely fresh
+  independent read-only reviewer. No author, reviewer, verifier, analyst, or
+  coordinator of the changed bytes may approve them. Changed bytes invalidate
+  review. Do not modify either Task13 product source until the causal RED is
+  independently approved, recorded append-only, integrated with a
+  history-preserving two-parent merge, and followed by a separate explicit
+  source-correction authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact-candidate rejection and test-only RED authority,
+  not Task13 approval or integration, source correction authority, Task14
+  authority, Task136 product candidacy, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
