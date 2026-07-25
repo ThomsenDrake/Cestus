@@ -34374,3 +34374,40 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1043 — Exact Task12 source candidate integrated
+
+- Recorded at: 2026-07-25T19:25:01Z
+- Exact independently approved Task12 source candidate
+  `2d07a3f0f81f106bce82643a76a75ad93418c289`, tree
+  `8afe03e411ef864bcff783301c6d45f0c229bdf9`, is integrated by exact
+  history-preserving no-ff merge
+  `67824312d43571a1a21975e6779ba5047cc7bd27`. Its exact first parent is
+  E-1042 approval commit
+  `dc844a38885dd683d9d717ce3611a5466d103c2f`; its exact second parent is
+  the reviewed candidate. Every rejected candidate, RED, review, correction,
+  fixture adaptation, assurance amendment, authority event, and earlier
+  Task136 history remains an immutable ancestor.
+- The integrated tree has exact final Task12 blobs legacy adapter source/test
+  `a8e0d185e0ad3e7f5b4b10be62ce4d26ad56c919` /
+  `741bf9c02184c0367c4b4aa08a1b06202bac362e`, dispatcher source/test
+  `230a0b53ee19e29cc3301750c0ff23bcb9225314` /
+  `7bddefd21e4823c61b13f0fdc13f18e251172c64`, and gateway source/test
+  `2e7d7a79763758037c56cedd91a70f63c8d8feea` /
+  `2db635799e8e92e84170c5487d94cb4f0877cc93`.
+- Fresh integration-tree gates pass focused plus loader **86/86**, factory
+  readiness, mission **20/20**, V4 **20/20**, all four exact markers,
+  six-blob equality, dependency quiet, diff, ancestry, and clean state.
+  Repository mode remains pre-release and stops at the adopted legacy-staging
+  source mismatch; no prefix, closure, `29/29`, record-29, or release success
+  is emitted.
+- Advance exact Task12 source `approved -> integrated`. This event
+  intentionally contains no Task13 implementation authorization. A separate
+  later append-only event after the exact Task136 authority merge is required.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains overall `implementing`; strict product frontier remains
+  **28 of 29**. This is Task12 source integration, not Task13 authority, a
+  Task136 product candidate, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
