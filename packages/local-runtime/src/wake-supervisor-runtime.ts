@@ -10,10 +10,14 @@ import {
   type WorkspaceAdmissionSnapshot,
   type WorkspaceAvailabilityAuthority
 } from "../../agent/src/wake-supervisor.js";
+import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
 import { registerMountedArtifactAuthorityIssuerForWakeRuntime } from "./mounted-artifact-authority-operation.js";
 import {
+  bindMountedResidentLoopAuthorityForFactory,
   createMountedWakeLifecycleStore,
+  type MountedResidentLoopCapabilities,
   type MountedWakePolicySnapshot
 } from "./mounted-wake-lifecycle-store.js";
 import { createPortableWorkspaceLifecyclePorts } from "./portable-workspace-lifecycle.js";
@@ -42,6 +46,14 @@ export interface WakeSupervisorRuntime {
   stop(): Promise<void>;
 }
 
+interface ResidentWakeRuntimeState {
+  readonly store: ReturnType<typeof createMountedWakeLifecycleStore>;
+  coreReady: boolean;
+  residentBound: boolean;
+}
+
+const residentWakeRuntimeStates = new WeakMap<WakeSupervisorRuntime, ResidentWakeRuntimeState>();
+
 export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput): WakeSupervisorRuntime {
   const input = normalizeInput(rawInput);
   const capability = registerMountedArtifactAuthorityIssuerForWakeRuntime({
@@ -59,7 +71,17 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
   let supervisorPromise: Promise<ReturnType<typeof createWakeSupervisor>> | undefined;
   const runtime: WakeSupervisorRuntime = {
     supervision: Object.freeze({
-      start: async () => (await supervisor()).start(),
+      start: async () => {
+        const result = await (await supervisor()).start();
+        if (result.outcome === "accepted") {
+          const residentState = residentWakeRuntimeStates.get(runtime);
+          if (residentState === undefined) {
+            throw new Error("wake runtime resident authority state is unavailable");
+          }
+          residentState.coreReady = true;
+        }
+        return result;
+      },
       signal: async (signal: WakeSignal) => (await supervisor()).signal(signal),
       pause: async (command: WakeCommandInput) => (await supervisor()).pause(command),
       resume: async (command: WakeCommandInput) => (await supervisor()).resume(command),
@@ -113,7 +135,47 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
     })();
     return supervisorPromise;
   };
-  return Object.freeze(runtime);
+  const issuedRuntime = Object.freeze(runtime);
+  residentWakeRuntimeStates.set(issuedRuntime, {
+    store,
+    coreReady: false,
+    residentBound: false
+  });
+  return issuedRuntime;
+}
+
+export async function bindResidentLoopCapabilitiesForFactory(
+  wakeRuntime: WakeSupervisorRuntime,
+  binding: unknown,
+  domainExecution: unknown
+): Promise<MountedResidentLoopCapabilities> {
+  const state = residentWakeRuntimeStates.get(wakeRuntime);
+  if (state === undefined || !state.coreReady || state.residentBound) {
+    throw new Error("wake runtime resident capability binding requires exact unconsumed Core authority");
+  }
+  const issued = await bindMountedResidentLoopAuthorityForFactory(
+    state.store,
+    binding,
+    domainExecution,
+    (input) =>
+      dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input),
+    createResidentLoopToolGateway
+  );
+  const { recoverSuspensionPrefix, suspendAndRelease } = issued.mountedAuthority;
+  const mountedSuspensionContract = Object.freeze([
+    "resident-loop-suspension",
+    "resident-loop-suspended",
+    "effect-outcome-unknown"
+  ] as const);
+  if (
+    typeof recoverSuspensionPrefix !== "function" ||
+    typeof suspendAndRelease !== "function" ||
+    mountedSuspensionContract.length !== 3
+  ) {
+    throw new Error("wake runtime resident suspension authority is incomplete");
+  }
+  state.residentBound = true;
+  return issued;
 }
 
 /**
