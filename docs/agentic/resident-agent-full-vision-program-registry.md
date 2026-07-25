@@ -35760,3 +35760,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1066 — Exact Task14 fixed-construction loader RED admitted to fresh review
+
+- Recorded at: 2026-07-25T23:09:42Z
+- Exact test-only candidate
+  `a6068aaef1fc255b11c203d847f31a26976a7c20`, tree
+  `72d88a8eaebc7ece64a9019d2a8a8c0910e0fb62`, has sole parent E-1065
+  authority merge `2cbb56eda6e38935c149296c67bc5a8da0f80a31`
+  and exact subject
+  `test(local-runtime): bind mounted construction imports`.
+- It changes exactly
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`
+  and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **479 insertions / 22 deletions**. Exact new blobs are
+  `d497c2d87f5329ffedf6513b6d65ed027426d568` and
+  `175e83ac53f47dce49a909ecb249c8603815d895`.
+  Both frozen Task14 sources remain exact
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; every other path is unchanged.
+- The corrected repository-wide loader oracle requires the one dispatcher
+  default import/direct binder call and the one named G constructor
+  import/direct call only in the mounted store. The corrected local oracle
+  requires those fixed identities there, no corresponding wake imports,
+  exact single-use calls inside
+  `bindMountedResidentLoopAuthorityForFactory`, the exact three-argument
+  store binder and sole wake caller, and no function-bearing or
+  wrapper-bearing binder parameter.
+- Executable controls reject wrong wake ownership, aliases, wrappers,
+  constructor objects/carriers, storage, return, export, duplication,
+  out-of-binder calls, alternate import forms, protected-name transfers,
+  dynamic loading, and all preserved Task12/released-adapter escapes.
+  Recursive type controls retain aliases, unions, intersections, tuples,
+  arrays, nested objects, call signatures, and method signatures. Control and
+  product analysis collection succeeds before the frozen sources fail.
+- Exact focused Task14 signature remains
+  **34 = 32 passed + 2 causal failures**: the approved source-high-water
+  mismatch and local fixed-construction ownership. Exact combined loader
+  signature is **7 = 5 passed + 2 causal ownership failures**. Exact 17-test
+  Task136 card signature is
+  **321 = 311 passed + 10 failed**, consisting only of the **7** preserved
+  Task15-through-16 REDs plus Task14 high-water, local import ownership, and
+  repository-wide loader ownership.
+- Adapter controls pass **84/84**, released cross-boundary controls pass
+  **443/443**, and the relevant mounted/portable/ontology boundary subset
+  passes **44/44**. Standalone typecheck and factory readiness pass; mission
+  and V4 pass **20/20** each; all four markers remain exact
+  **29 / 20 / 29 / 15**. Repository mode exits at the truthful first stop
+  `Task136-LEGACY-STAGING-ADOPTION` source mismatch and emits no prefix,
+  closure, record-29, or release success.
+- Exact scope, source and other-path freezes, ancestry, dependencies,
+  connectivity, diff, and clean state pass. No fixture, analyzer, API,
+  collection, or type failure substitutes for the three Task14 RED
+  identities.
+- Admit only exact `a6068aae` as Task14 loader-oracle test-only
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1066_task14_loader_red_review`, who has never
+  authored, reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect both complete changed tests against E-1065,
+  independently prove the JavaScript fixed-construction contradiction,
+  attack the exact import/call lexical census with wrong owners, multiple or
+  shadowed bindings, aliases, destructuring, calls with changed arity,
+  wrappers, carriers, storage, returns, exports, namespace/dynamic imports,
+  and calls outside the exact binder, and confirm that every prior protected
+  mention, default-only/named-only ABI, released-adapter, permit, barrel, and
+  recursive binder control remains effective. It must reproduce exact
+  candidate identity, tree, parent, subject, scope, blobs, causal test
+  identities/counts, typecheck, factory, mission, V4, markers, truthful
+  repository first stop, freezes, ancestry, dependencies, diff, and clean
+  state.
+- The test author, E-1064 source implementer, all earlier Task14 source/test
+  authors, reviewers, verifiers, analysts, every prior Task136 participant,
+  and coordinator are ineligible to approve changed bytes. The reviewer may
+  not edit, commit, merge, authorize source correction or Task15, substitute
+  a SHA, or make product/record-29/release/prefix/Wave claims. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test-only review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority, Task136
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
