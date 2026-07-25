@@ -33504,3 +33504,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1029 — Integrated causal RED authorizes the smallest Task12 source GREEN
+
+- Recorded at: 2026-07-25T16:22:49Z
+- E-1028 integrated exact independently approved test-only RED
+  `21935b2197a35c25b194ae57ec5365dd88351049` by program commit
+  `c353f2d6a75d223b405b559d8befa135089f455d`. Exact history-preserving
+  Task136 authority merge
+  `0a096a82eb5402ef5b8f5fbd1dfe29b98b06ac93` has exact parents E-1026
+  review-authority merge
+  `04f1884a8373e29e85775969d30d76c8b04c79bc` and that E-1028 integrated
+  program authority. The required independent RED approval, append-only
+  record, and Task136-lineage integration gates are satisfied.
+- Authorize the smallest GREEN in exactly these three product sources and no
+  others: `packages/agent/src/adapters/legacy-staging.ts`,
+  `packages/agent/src/domain-execution-dispatcher.ts`, and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. Starting blobs are
+  respectively `99fbafda3844435109bc249b015b111b9258c210`,
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, and
+  `76c429687575152df55d12d76d307f35f7f64c08`.
+- Freeze the exact approved RED tests at legacy-staging adapter
+  `8e143a1dd692ea292124b44ee4b84bd1a934e44f`, dispatcher
+  `13058371223c7f99b089f41c4aabcae734eaa19d`, and gateway
+  `8a1bc1239dc216e261ac2a7164bdd6158fa8bc63`. Every other source, test,
+  loader, claim, ontology, Task14 runtime, authority surface, dependency,
+  route, provider, credential, and external-system byte remains frozen.
+- Implement exactly the approved
+  `legacy-selected-candidate-binding.v1` canonical preimage with
+  `candidateId`, `evidenceId`, `evidenceContentHash`, `predicate`,
+  independent scalar `object`, `confidence`, and explicit optional
+  `subjectRef` presence/value. The adapter must derive ordered secret-safe
+  `selectedCandidateBindingHashes` from authoritative current candidates and
+  bind them into `normalizedInputHash` and the complete preview hash. It must
+  accept no caller-provided hash and expose no raw predicate or object in the
+  preview.
+- Fresh dispatcher execution and gateway recovery must independently
+  recompute the same ordered bindings from exact `assertion.proposed`
+  payloads and uniquely matched `evidence.ingested` events. Treat
+  `payload.object` as the independent candidate object, never as
+  `candidateId`; compare against the approved preview before attestation or
+  terminalization; retain exact assertion/evidence identity, review state,
+  causation, event order, before/after currentness, private permit/branding,
+  attestation/result identity, branch-specific exact readback, complete
+  evidence, and at-most-once behavior. Do not trust a receipt as its own
+  oracle and do not add a report-store port, fallback write, public API
+  widening, or runtime activation.
+- First make the focused adapter/dispatcher/gateway and loader-policy commands
+  turn the approved **79 = 76 passed + 3 failed** RED into exact GREEN without
+  changing any test. Then run every E-1025 focused, boundary, loader,
+  released adapter and cross-boundary, 17-test card, typecheck, UI, factory,
+  mission **20/20**, V4 **20/20**, marker, repository-first-stop, scope,
+  source/test/blob-freeze, ancestry, dependency, diff, clean-state,
+  calibrated-differential, and timeout-variance gate. Measure every signature;
+  do not predict or inherit counts.
+- Commit exactly one three-source GREEN with subject
+  `fix(agent): bind legacy candidate receipt semantics`. Do not admit a
+  Task12 product candidate in the same commit. A later separate registry
+  event must bind one exact GREEN candidate and assign a completely fresh
+  independent source reviewer. No implementer, coordinator, RED reviewer,
+  prior source/test reviewer, or analyst of the changed GREEN bytes may
+  approve them; changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded three-source GREEN authority, not a Task12 or
+  Task136 product candidate, approval or integration, Task13 authority,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
