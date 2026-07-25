@@ -32927,6 +32927,83 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
 
+## RV-1-E-1026 — Exact Task12 candidate-binding causal RED admitted to fresh review
+
+- Recorded at: 2026-07-25T16:07:25Z
+- Exact test-only RED
+  `21935b2197a35c25b194ae57ec5365dd88351049`, tree
+  `1cd13613c17b18a80d5876cd684f143eaf10ee10`, has sole parent exact E-1025
+  Task12 implementation-authority merge
+  `52b2491bdf8a24d61f806aea8c497921a8f9ffdc` and exact subject
+  `test(agent): expose legacy candidate binding drift`. E-1025 authority
+  merge has exact parents integrated 32-path authority
+  `c80b8e67926579a6b5ef3dbc44da8af6b1a6d014` and E-1025 program authority
+  `39f31e70e8f11f82946367f9d9dc4d6015d806cc`.
+- The RED changes exactly the three authorized tests. Exact test blobs are
+  legacy-staging adapter
+  `8e143a1dd692ea292124b44ee4b84bd1a934e44f`, dispatcher
+  `13058371223c7f99b089f41c4aabcae734eaa19d`, and gateway
+  `8a1bc1239dc216e261ac2a7164bdd6158fa8bc63`. Exact product sources remain
+  frozen at legacy-staging adapter
+  `99fbafda3844435109bc249b015b111b9258c210`, dispatcher
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, and gateway
+  `76c429687575152df55d12d76d307f35f7f64c08`. No package manifest,
+  dependency lock, authority file, claim, loader, ontology, Task14 runtime,
+  route, provider, credential, or external-system byte changed.
+- The focused three-file command collects exactly **79** tests:
+  **76 passed + 3 failed**. The three failures are the exact adapter preview,
+  fresh-dispatch, and gateway-recovery cases authorized by E-1025. They
+  isolate respectively the missing ordered `selectedCandidateBindingHashes`,
+  the dispatcher's rejected equality between independent assertion object and
+  candidate ID, and the gateway's same rejected equality during recovery.
+  There is no fixture, API, schema, collection, dependency, type, or unrelated
+  failure. The valid selected candidate uses an independent scalar object
+  different from its candidate ID.
+- The exact 17-test Task136 card command collects **314** tests:
+  **298 passed + 16 failed**. Exactly three failures are this Task12 RED and
+  the other thirteen are the preserved Task13-through-16 causal REDs. The
+  loader-policy command remains **2/2**, and the independently executed five
+  released adapter-control files remain **65/65**. Standalone typecheck, UI
+  build, factory readiness, mission **20/20**, V4 **20/20**, and all four
+  exact contract markers pass.
+- Scope, three-source freezes, exact test blobs, dependency quiet, diff check,
+  named rejected-candidate/design/plan/amendment/authority ancestry, and
+  clean state are exact. Repository mode exits `1` after all four markers and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/test/legacy-staging-adapter.test.ts`.
+  It emits no repository-prefix, release-closure, or `29/29` success. That
+  test-first mismatch truthfully supersedes the pre-RED dispatcher first stop
+  while these exact RED bytes are present.
+- Admit only exact `21935b21` as a test-only causal RED
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1026_binding_red_review`. The reviewer must inspect
+  all three changed tests against the approved design, Task12 plan, and
+  E-1025; independently reproduce exact candidate identity, scope, frozen
+  sources, focused causality, loader and released-adapter controls, 17-test
+  card accounting, typecheck, UI, factory, mission, V4, markers,
+  repository-first-stop, ancestry, dependencies, diff, and clean state; and
+  verify that predicate, object, confidence, optional-subject-reference
+  presence, optional-subject-reference value, evidence-content hash,
+  candidate order, and binding hash are independent real-boundary mutations
+  that will each reject after GREEN. It must also verify preservation of all
+  earlier valid Task12 lifecycle, locator/hash target-stream, real opaque
+  identity, before/after currentness, chronology, branding, attestation,
+  exact-readback, evidence-table, ordinal-7/ordinal-10, denial/failure
+  field-set, released-adapter, loader, and at-most-once controls.
+- The reviewer has not authored, reviewed, or analyzed any changed RED byte.
+  Every author, prior reviewer, coordinator, or analyst of these changed test
+  bytes is ineligible. It may not edit, commit, merge, substitute a SHA,
+  authorize source work or Task13, or make product/release claims. Any changed
+  byte invalidates this review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED review admission, not RED approval or
+  integration, source-correction authority, Task12 product candidate,
+  Task13 authority, a Task136 product candidate, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
+
 ## RV-1-E-1023 — Exact final Task136 32-path assurance amendment approved
 
 - Recorded at: 2026-07-25T15:38:13Z
