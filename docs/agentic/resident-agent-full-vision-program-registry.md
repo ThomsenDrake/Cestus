@@ -32773,3 +32773,77 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task13, Task136 product-candidate, record-29, assurance, publication,
   release, `neo`, push, provider, credential, external-system, pull-request,
   or unrelated action is authorized by this checkpoint.
+
+## RV-1-E-1017 — E-1016 audit corrected; reviewed 32-path assurance amendment authorized
+
+- Recorded at: 2026-07-25T14:28:52Z
+- The human product-and-scope authority accepts E-1016 as valid historical
+  evidence that the mounted ordinal-10 preview cannot support independent
+  exact receipt validation, but corrects its proposed remedy. E-1016 and
+  every earlier contract hash, claim, design, plan, RED, GREEN, candidate,
+  rejection, review, approval, integration, release, and authority commit
+  remain preserved unchanged in ancestry.
+- The four-path proposal in E-1016 is incomplete. In addition to the gateway
+  defect, `packages/agent/src/domain-execution-dispatcher.ts` incorrectly
+  equates `assertion.proposed.payload.object` with `candidateId` during fresh
+  execution. The released adapter source and test required to repair the
+  missing preview authority are outside Task136's frozen thirty-path V4
+  ownership and exact sixteen-test card command. Neither a four-file repair
+  nor an unrecorded supporting adapter edit is authorized.
+- Before any further product edit, authorize one forward reviewed design,
+  plan, and assurance-scope amendment. It must preserve the exact 29-card
+  release graph and order while expanding Task136 from thirty to exactly
+  thirty-two owned paths by adopting
+  `packages/agent/src/adapters/legacy-staging.ts` and
+  `packages/agent/test/legacy-staging-adapter.test.ts`. The amended Task136
+  boundary must contain exactly fourteen sources, seventeen tests, and one
+  product claim, and the adapter test must join the exact card command.
+- The amendment must select and document one canonical ordered thirty-two
+  path list and derive every Task136 path hash from that order. The obsolete
+  thirty-path hash remains immutable historical evidence but may not be
+  retained as current authority. The amendment is limited to the Task136
+  design, Task136 implementation plan, Task136 product claim, Task136 V4
+  authority-transfer claim, `task136-bounded-assurance-v4.json`,
+  `task136-bounded-assurance.mjs`,
+  `task136-bounded-assurance.test.mjs`,
+  `software-factory-mission-state.v1.json`, and
+  `check-software-factory-mission-state.mjs`, plus only a directly required
+  mission-checker test synchronization if deterministic validation proves
+  it necessary.
+- The amended design must expose only an ordered, secret-safe
+  `selectedCandidateBindingHashes` value in `AgentDomainPreview`, never raw
+  candidate predicate or object values. One versioned canonical hash
+  preimage must contain exactly candidate ID, evidence ID, evidence content
+  hash, predicate, independent scalar object, confidence, and explicit
+  optional-subject-reference presence and value. The adapter must derive
+  ordered hashes from authoritative current candidate objects and bind them
+  into both `normalizedInputHash` and the complete preview hash.
+- The amended dispatcher fresh path and gateway recovery path must
+  independently recompute those hashes from the exact
+  `assertion.proposed` payload and matched `evidence.ingested` event while
+  retaining assertion identity, evidence identity, review state, causation,
+  event order, currentness, attestation, and at-most-once validation. A
+  receipt is never its own oracle, no report-store port is added, and raw
+  secret-bearing candidate values are not added to the mounted preview.
+- The exact amendment candidate requires completely fresh independent
+  design and executability reviews. After both approve, integrate it only
+  through forward history-preserving authority merges, synchronize the
+  mission's exact V4 SHA and immutable-envelope fingerprint, and reproduce
+  mission **20/20**, V4 assurance **20/20**, all four contract markers,
+  factory readiness, exact 29-card order, and the truthful repository first
+  stop. No Task12 product edit is authorized until that approval and
+  integration are recorded append-only.
+- Only after amendment integration may a separate registry event authorize
+  Task12 implementation in exactly the adapter source/test, dispatcher
+  source/test, and gateway source/test named by the human authority. That
+  later work must establish a causal test-only RED before the smallest
+  three-source GREEN and must receive a completely fresh exact-candidate
+  review. Task13 authority remains separate and later.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is an append-only scope correction and bounded
+  amendment authorization, not a product edit, Task12 candidate or
+  approval, Task13 authority, Task136 product candidate, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
