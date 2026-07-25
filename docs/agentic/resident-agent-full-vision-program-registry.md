@@ -33788,3 +33788,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1033 — Exact missing-binding-array causal RED integrated
+
+- Recorded at: 2026-07-25T17:36:09Z
+- Exact approved test-only RED
+  `2a4a69a97712070ac5b9c31521223df1d6ac4a52`, tree
+  `4bf07d59785f76deeca79c0e6058f2e76811ca11`, is integrated by exact
+  history-preserving no-ff merge
+  `058cdd46086ed30ffa5691a053784be9a5140a0a`. Its first parent is E-1032
+  approval commit `28194284ba535b18e98c2f386b5802416821adf1`; its second parent is the
+  exact reviewed RED.
+- Because the test-only RED descends from rejected source GREEN `0b40ed92`,
+  the history-preserving merge necessarily retains those rejected source
+  bytes in its ancestry and integration tree. That preservation does not
+  approve or integrate the rejected source candidate. Exact source status
+  remains rejected under E-1030; only the exact three RED test blobs advance.
+- Fresh integration-tree gates retain focused
+  **82 = 79 passed + 3 failed**, factory readiness, mission **20/20**, V4
+  **20/20**, all four markers, exact test-blob equality, dependency quiet,
+  diff, ancestry, and clean state. Repository mode retains the truthful
+  legacy-staging source first stop and emits no prefix, closure, `29/29`,
+  record-29, or release success.
+- Advance only exact test-only RED `approved -> integrated`. This event
+  intentionally contains no source-correction authorization. A separate
+  append-only event after the exact Task136 authority merge is mandatory
+  before any source byte changes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED integration, not source approval or
+  correction authority, Task12 or Task136 product candidacy, Task13
+  authority, strict record 29, assurance-only transition, publication, Wave
+  3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
