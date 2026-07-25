@@ -2198,6 +2198,151 @@ function validateResidentLegacyProposalReceiptEvents(
     "importedEvidenceIds",
     "resident legacy imported evidence IDs"
   );
+  if (preview.selectedCandidateBindingHashes === undefined) {
+    // This is the released pre-binding recovery guard. Binding-aware previews
+    // cannot enter this compatibility lane.
+    validateResidentLegacyCompatibilityProposalReceiptEvents(
+      events,
+      preview,
+      allEvents,
+      selectedCandidateIds,
+      importedEvidenceIds
+    );
+    return;
+  }
+  const evidenceContentHashes = residentReceiptStringArray(
+    preview,
+    "evidenceContentHashes",
+    "resident legacy evidence content hashes"
+  ).map((contentHash) =>
+    residentGatewayHashString(
+      contentHash,
+      "resident legacy evidence content hash"
+    )
+  );
+  const expectedBindingHashes = residentReceiptStringArray(
+    preview,
+    "selectedCandidateBindingHashes",
+    "resident legacy selected candidate binding hashes"
+  ).map((bindingHash) =>
+    residentGatewayHashString(
+      bindingHash,
+      "resident legacy selected candidate binding hash"
+    )
+  );
+  if (
+    selectedCandidateIds.length !== importedEvidenceIds.length ||
+    selectedCandidateIds.length !== evidenceContentHashes.length ||
+    selectedCandidateIds.length !== expectedBindingHashes.length
+  ) {
+    throw new Error(
+      "Resident recovery legacy preview has incomplete candidate evidence bindings."
+    );
+  }
+  const actualBindingHashes: `sha256:${string}`[] = [];
+  for (const [index, event] of events.entries()) {
+    const candidateId = selectedCandidateIds[index]!;
+    const evidenceId = importedEvidenceIds[index]!;
+    const expectedEvidenceContentHash = evidenceContentHashes[index]!;
+    const payload = residentGatewayRecord(
+      event.payload,
+      "resident legacy proposal receipt payload"
+    );
+    const assertionId = `as_legacy_${createHash("sha256").update([
+      residentReceiptString(
+        preview,
+        "sourceCollectionId",
+        "resident legacy source collection ID"
+      ),
+      residentReceiptString(
+        preview,
+        "scanBatchId",
+        "resident legacy scan batch ID"
+      ),
+      residentReceiptString(
+        preview,
+        "stagingBatchId",
+        "resident legacy staging batch ID"
+      ),
+      residentReceiptString(
+        preview,
+        "candidateSetHash",
+        "resident legacy candidate-set hash"
+      ),
+      candidateId
+    ].join(":")).digest("hex")}`;
+    const evidenceEvents = allEvents.filter((candidate) =>
+      candidate.type === "evidence.ingested" &&
+      candidate.payload.evidenceId === evidenceId
+    );
+    const evidenceEvent = evidenceEvents[0];
+    const evidencePayload = evidenceEvent === undefined
+      ? undefined
+      : residentGatewayRecord(
+          evidenceEvent.payload,
+          "resident legacy evidence receipt payload"
+        );
+    const evidenceContentHash = evidencePayload === undefined
+      ? undefined
+      : residentGatewayHashString(
+          evidencePayload.contentHash,
+          "resident legacy durable evidence content hash"
+        );
+    if (
+      event.type !== "assertion.proposed" ||
+      evidenceEvents.length !== 1 ||
+      payload.assertionId !== assertionId ||
+      payload.evidenceId !== evidenceId ||
+      evidenceContentHash !== expectedEvidenceContentHash ||
+      payload.reviewState !== "proposed" ||
+      event.context.causationId !== evidenceEvent?.id
+    ) {
+      throw new Error(
+        "Resident recovery legacy proposal receipt is outside the exact selected-candidate order or payload."
+      );
+    }
+    const subjectRefPresent = Object.hasOwn(payload, "subjectRef");
+    actualBindingHashes.push(residentGatewayLegacyCandidateBindingHash({
+      candidateId,
+      evidenceId,
+      evidenceContentHash,
+      predicate: residentGatewayLegacyString(
+        payload.predicate,
+        "resident legacy proposal predicate"
+      ),
+      object: residentGatewayLegacyAssertionObject(
+        payload.object,
+        "resident legacy proposal object"
+      ),
+      confidence: residentGatewayLegacyConfidence(
+        payload.confidence,
+        "resident legacy proposal confidence"
+      ),
+      subjectRef: {
+        present: subjectRefPresent,
+        value: subjectRefPresent
+          ? residentGatewayLegacyString(
+              payload.subjectRef,
+              "resident legacy proposal subject reference"
+            )
+          : null
+      }
+    }));
+  }
+  if (!sameStrings(actualBindingHashes, expectedBindingHashes)) {
+    throw new Error(
+      "Resident recovery legacy proposal receipt does not match the exact approved candidate bindings."
+    );
+  }
+}
+
+function validateResidentLegacyCompatibilityProposalReceiptEvents(
+  events: readonly KnowledgeEvent[],
+  preview: Record<string, unknown>,
+  allEvents: readonly KnowledgeEvent[],
+  selectedCandidateIds: readonly string[],
+  importedEvidenceIds: readonly string[]
+): void {
   if (selectedCandidateIds.length !== importedEvidenceIds.length) {
     throw new Error(
       "Resident recovery legacy preview has incomplete candidate evidence bindings."
@@ -2744,6 +2889,43 @@ function residentGatewayNonnegativeInteger(value: unknown, label: string): numbe
   return value;
 }
 
+function residentGatewayLegacyString(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${label} must be canonical.`);
+  }
+  return value;
+}
+
+function residentGatewayLegacyAssertionObject(
+  value: unknown,
+  label: string
+): string | number | boolean | null {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  ) {
+    return value;
+  }
+  throw new Error(`${label} must be a canonical scalar.`);
+}
+
+function residentGatewayLegacyConfidence(
+  value: unknown,
+  label: string
+): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 1
+  ) {
+    throw new Error(`${label} must be canonical.`);
+  }
+  return value;
+}
+
 function rejectResidentGatewayUnknown(
   record: Record<string, unknown>,
   allowed: readonly string[],
@@ -2757,6 +2939,24 @@ function rejectResidentGatewayUnknown(
 function residentGatewayHash(value: unknown): `sha256:${string}` {
   return `sha256:${createHash("sha256")
     .update(residentGatewayCanonicalJson(value))
+    .digest("hex")}`;
+}
+
+function residentGatewayLegacyCandidateBindingHash(input: {
+  readonly candidateId: string;
+  readonly evidenceId: string;
+  readonly evidenceContentHash: `sha256:${string}`;
+  readonly predicate: string;
+  readonly object: string | number | boolean | null;
+  readonly confidence: number;
+  readonly subjectRef: {
+    readonly present: boolean;
+    readonly value: string | null;
+  };
+}): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update("legacy-selected-candidate-binding.v1\n")
+    .update(residentGatewayCanonicalJson(input))
     .digest("hex")}`;
 }
 
