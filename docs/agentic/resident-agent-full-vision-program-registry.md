@@ -34110,3 +34110,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   authority, strict record 29, assurance-only transition, publication, Wave
   3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1038 — Exact reversed-evidence chronology RED approved
+
+- Recorded at: 2026-07-25T18:35:59Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1037_chronology_red_review` returns **APPROVED** with no
+  findings for exact test-only RED
+  `f00f9fcad6c8e10f0dc6208f3d7ff60df906cf6e`, tree
+  `9ddbf07372356a9cd6ae6c9e266acc0e38d6a4e5`, and no other bytes. Review
+  occurred beneath clean E-1037 review-authority merge
+  `d5adb3da15b9f922410a84ac628f9ede4d0e1728`; no byte changed.
+- The reviewer independently reproduces sole parent
+  `4df77546c122a7ba1953870cfa448eeb79026eb0`, exact two-test scope and
+  blobs, source and adapter-test freezes, dependency quiet, diff, ancestry,
+  and clean state. Focused plus loader remains
+  **86 = 84 passed + 2 intended failures**; card remains
+  **319 = 304 passed + 15 expected RED failures**.
+- The dispatcher seed contains six canonical events with unique evidence
+  matches and proposal/evidence global indices `[0,3]`, `[1,4]`, and `[2,5]`.
+  The reviewer independently recomputes all three candidate-binding hashes
+  and exact normalized input matching real completed execution. Gateway
+  recovery uses real ledger-produced canonical events and independently
+  recomputes preview, invocation, receipt-envelope, pre/post fingerprint, and
+  resident lifecycle hashes. Both real boundaries complete solely because
+  frozen validators omit the evidence-index-before-proposal-index comparison.
+- Typecheck, factory readiness, mission **20/20**, V4 **20/20**, all four
+  markers, current fingerprints, repository first stop, scope, freezes, and
+  clean state pass. Repository emits no prefix, closure, `29/29`, record-29,
+  or release success.
+- Advance only exact `f00f9fca` test-only RED
+  `reviewing -> approved`. Authorize its exact history-preserving no-ff merge
+  into this program branch, fresh integration-tree gates, and a separate
+  append-only integrated event. This event contains no source-correction
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED approval, not integration or source
+  authority, Task12 or Task136 product candidacy, Task13 authority, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
