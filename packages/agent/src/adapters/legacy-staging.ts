@@ -124,8 +124,6 @@ export function buildLegacyStagingApprovalPreview(input: BuildLegacyStagingPrevi
   const selectedCandidates = selectedCandidatesFor(validated.preview.candidates, validated.selectedCandidateIds);
   const importedEvidenceIds = selectedCandidates.map((candidate) => candidate.evidenceId);
   const evidenceContentHashes = selectedCandidates.map((candidate) => candidate.evidenceContentHash);
-  // Pre-binding runtimes can omit assertion semantics; complete current
-  // candidates always enter the strict, versioned binding path.
   const selectedCandidateBindingHashes =
     legacySelectedCandidateBindingHashes(selectedCandidates);
   const descriptor = descriptorForLegacyStagingTool(validated.toolId, validated.toolVersion);
@@ -137,9 +135,7 @@ export function buildLegacyStagingApprovalPreview(input: BuildLegacyStagingPrevi
     reportHash: validated.preview.reportHash,
     candidateSetHash: validated.preview.candidateSetHash,
     selectedCandidateIds: [...validated.selectedCandidateIds],
-    ...(selectedCandidateBindingHashes === undefined
-      ? {}
-      : { selectedCandidateBindingHashes }),
+    selectedCandidateBindingHashes,
     importedEvidenceIds,
     evidenceContentHashes
   }));
@@ -208,9 +204,7 @@ export function buildLegacyStagingApprovalPreview(input: BuildLegacyStagingPrevi
     reportHash: validated.preview.reportHash,
     candidateSetHash: validated.preview.candidateSetHash,
     selectedCandidateIds: [...validated.selectedCandidateIds],
-    ...(selectedCandidateBindingHashes === undefined
-      ? {}
-      : { selectedCandidateBindingHashes }),
+    selectedCandidateBindingHashes,
     importedEvidenceIds,
     evidenceContentHashes
   };
@@ -218,19 +212,7 @@ export function buildLegacyStagingApprovalPreview(input: BuildLegacyStagingPrevi
 
 function legacySelectedCandidateBindingHashes(
   candidates: readonly LegacyApprovedAssertionCandidate[]
-): readonly `sha256:${string}`[] | undefined {
-  const bindingKeys = [
-    "predicate",
-    "object",
-    "confidence",
-    "subjectRef"
-  ] as const;
-  const anyBindingMaterial = candidates.some((candidate) =>
-    bindingKeys.some((key) => Object.hasOwn(candidate, key))
-  );
-  if (!anyBindingMaterial) {
-    return undefined;
-  }
+): readonly `sha256:${string}`[] {
   if (candidates.some((candidate) =>
     !hasCanonicalLegacySelectedCandidateBindingMaterial(candidate)
   )) {
