@@ -27,7 +27,7 @@ const task136V4ClaimPath = "docs/agentic/claims/task-136-v4-task137b-authority-t
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
-const v4ContractSha256 = "3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438";
+const v4ContractSha256 = "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930";
 const v4AssuranceFingerprint = "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
@@ -2799,9 +2799,9 @@ test("requires the durable V4 claim to retain history and the RV-1-E-941 authori
     "RV-1-E-1017 forward assurance-scope amendment",
     "32 ordered paths: 14 sources, 17 tests",
     "8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41",
-    "3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438",
+    "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930",
     "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec",
-    "sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae",
+    "sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab",
     "selectedCandidateBindingHashes"
   ];
 

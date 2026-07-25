@@ -862,13 +862,13 @@ are:
 
 ```text
 V4 JSON SHA-256:
-3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
 V4 assurance fingerprint:
 da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
 Mission immutable-envelope fingerprint:
-sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
 Mission source fingerprint:
-sha256:b83a29bf17abdb2a6c1c70a48783e35e9adb1ae6e5b995667ec94a66008f21c8
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
 ```
 
 The amendment also freezes the secret-safe ordinal-10 design: the released

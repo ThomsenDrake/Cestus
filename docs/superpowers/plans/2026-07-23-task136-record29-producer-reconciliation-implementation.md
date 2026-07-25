@@ -8,12 +8,13 @@ calibrate the record-29 assurance prefix, and publish the preserved milestone
 to `neo`.
 
 **Architecture:** Work is split into two sequential candidates with different
-trust boundaries. A six-file Level-3 V4 authority candidate first transfers
-the seven exact producer seams and five adopted baselines to Task136 without
+trust boundaries. A nine-file Level-3 V4 authority amendment first transfers
+the seven exact producer seams and seven adopted baselines to Task136 without
 changing product bytes. A later Level-2 mission-critical product candidate
-implements the fourteen approved sources against one permanent seventeen-test
-RED, after which strict release record 29 and a two-file assurance-only prefix
-transition close V4.
+implements the fourteen approved sources against the historical permanent
+sixteen-test RED plus the later three-test Task12 binding RED, ending with
+seventeen current test paths. Strict release record 29 and a two-file
+assurance-only prefix transition then close V4.
 
 **Tech Stack:** TypeScript, Zod, Node.js ESM, Vitest, `node:test`, Git
 worktrees, append-only Markdown registry records, JSON/SHA-256 release
@@ -45,8 +46,8 @@ contracts.
   `/home/drake/.codex/worktrees/program-coordinator-recovery/Cestus` on
   `codex/resident-agent-full-vision-program-watchdog-recovery`.
 - The V4 authority correction is Level 3 mission assurance. Its exact
-  six-file candidate requires a fresh scrutiny reviewer and a different
-  black-box executability reviewer.
+  nine-file amendment candidate requires a fresh scrutiny reviewer and a
+  different black-box executability reviewer.
 - Task136 product implementation is Level 2 mission-critical orchestration
   crossing public package, durable state, provenance/projection, human-gate,
   and external-effect boundaries. It requires a completely fresh independent
@@ -61,11 +62,11 @@ contracts.
   claim bytes from integration
   `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`.
 - The prospective V4 JSON SHA-256 is exactly
-  `3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438`.
+  `3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930`.
 - The prospective V4 assurance fingerprint is exactly
   `da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec`.
 - The synchronized mission immutable-envelope fingerprint is exactly
-  `sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae`.
+  `sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab`.
 - No adapter source other than `packages/agent/src/adapters/legacy-staging.ts`,
   scheduler source/type, agent barrel, released Task137
   policy, portable-workspace lifecycle, mounted-artifact authority,
@@ -198,7 +199,7 @@ Use `apply_patch` to append the next registry event. It must:
 cite d475edd5cafd57a6f7db6c26aeeecb48bd9459cd
 cite the exact reviewed plan commit
 name the fresh plan architecture and executability approvals
-authorize the six-file V4 correction first
+authorize the nine-file V4 amendment first
 authorize the thirty-two-path Task136 product only after V4 integration
 retain strict frontier 28/29
 state exactly:
@@ -337,7 +338,7 @@ not described as passing; it is the exact candidate-differential baseline.
 - [ ] **Step 4: Append the claim-only checkpoint**
 
 Use `apply_patch` to append the authority merge SHA, its two parents, the
-unchanged `20/20` pre-RED result, exact six-file ceiling, known prospective
+unchanged `20/20` pre-RED result, exact nine-file ceiling, known prospective
 hashes, full-baseline statuses/hashes, and prohibition on product bytes to
 `task-136-v4-task137b-authority-transfer.md`.
 
@@ -367,7 +368,7 @@ Expected: one claim-only commit and clean state.
 
 - Consumes: the unchanged record-28 V4 contract/checker.
 - Produces: permanent tests for seven source-specific seam groups, exact
-  Task136 card expansion, five baseline adoptions, record-29 migration, and
+  Task136 card expansion, seven baseline adoptions, record-29 migration, and
   all 28 raw prefix pins.
 
 - [ ] **Step 1: Broaden the existing finite corpus against the real schema**
@@ -413,7 +414,7 @@ assert.deepEqual(
   task136?.ownedPaths,
   task136OwnedPaths.map((path) => ({ disposition: "owned", path }))
 );
-assert.equal(task136?.command, task136SixteenTestCommand);
+assert.equal(task136?.command, task136SeventeenTestCommand);
 assert.deepEqual(
   contract.releaseCompatibility.historicalRecords.map(
     ({ cardId, canonicalJsonSha256 }) => [cardId, canonicalJsonSha256]
@@ -447,18 +448,29 @@ assert.deepEqual(
 assert.deepEqual([...rawPrefixPins], exactRawPrefixPins1Through28);
 ```
 
-Define `task136OwnedPaths`, `task136SixteenTestCommand`,
+Define `task136OwnedPaths`, `task136SeventeenTestCommand`,
 `exactTask136HistoricalPathDispositions`, and
 `exactRawPrefixPins1Through28` as literal constants copied byte-for-byte from
 the approved design. Do not add a top-level contract key for baseline
 adoptions.
 
-Prove the five baseline adoptions through the existing injected repository
+Prove the seven baseline adoptions through the existing injected repository
 fixture. The prospective finite checker validates these exact pre-record-29
 candidate/integration/HEAD tuples:
 
 ```js
 const task136BaselineFixtureBlobs = [
+  ...[
+    ["packages/agent/src/adapters/legacy-staging.ts",
+      "99fbafda3844435109bc249b015b111b9258c210"],
+    ["packages/agent/test/legacy-staging-adapter.test.ts",
+      "de7cef3123a15fb82891943dc51005165c8c9fcd"]
+  ].map(([path, blobSha]) => ({
+    candidateSha: "3be15212776ab3c96e66bf0bade4630960c362eb",
+    integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
+    path,
+    blobSha
+  })),
   {
     candidateSha: "70814c1259871c5458a3578fae8a5c8281540377",
     integrationSha: "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
@@ -500,6 +512,14 @@ Then exercise every tuple:
 const beforeRecord29Records = releaseRecordsFor(contract).slice(0, 28);
 const beforeRecord29Registry = releaseRecordMarkdown(beforeRecord29Records);
 const baselineCases = [
+  ...[
+    "packages/agent/src/adapters/legacy-staging.ts",
+    "packages/agent/test/legacy-staging-adapter.test.ts"
+  ].flatMap((path) => [
+    ["3be15212776ab3c96e66bf0bade4630960c362eb", path],
+    ["dc05c43c4b9a592d0396acd034bfc32e177fd09a", path],
+    ["HEAD", path]
+  ]),
   ["70814c1259871c5458a3578fae8a5c8281540377",
     "packages/agent/src/domain-execution-dispatcher.ts"],
   ["253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
@@ -638,6 +658,8 @@ const task136TransferredSourceGroups = Object.freeze([
 ]);
 
 const task136BaselineAdoptions = Object.freeze([
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/domain-execution-dispatcher.ts",
   "packages/agent/src/task-orchestrator.ts",
   "packages/agent/test/task-orchestrator-claims.test.ts",
@@ -653,6 +675,10 @@ or transitive/inferred transfers.
 Use these literal baselines:
 
 ```text
+legacy candidate:       3be15212776ab3c96e66bf0bade4630960c362eb
+legacy integration:     dc05c43c4b9a592d0396acd034bfc32e177fd09a
+legacy source blob:     99fbafda3844435109bc249b015b111b9258c210
+legacy test blob:       de7cef3123a15fb82891943dc51005165c8c9fcd
 dispatcher candidate:   70814c1259871c5458a3578fae8a5c8281540377
 dispatcher integration: 253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5
 dispatcher blob:        96b0ade273696b9ffcf497119f1943f128821a58
@@ -693,7 +719,7 @@ TASK136_ABI_CORPUS_OK green=1 red=15
 Expected contract SHA:
 
 ```text
-3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
 ```
 
 - [ ] **Step 5: Record and commit GREEN**
@@ -739,7 +765,7 @@ Use `apply_patch` to change only:
 {
   "mission": {
     "frozenAuthority": {
-      "sha256": "3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438"
+      "sha256": "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930"
     }
   }
 }
@@ -749,7 +775,7 @@ and the checker constant to:
 
 ```ts
 const expectedImmutableEnvelopeFingerprint =
-  "sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae";
+  "sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab";
 ```
 
 Do not edit `scripts/check-software-factory-mission-state.test.mjs`.
@@ -764,9 +790,9 @@ npm run factory:check
 
 Expected: valid calibrated summary, mission tests `20/20`, and factory
 readiness. The source fingerprint is exactly
-`sha256:b83a29bf17abdb2a6c1c70a48783e35e9adb1ae6e5b995667ec94a66008f21c8`;
+`sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b`;
 the immutable-envelope fingerprint is exactly
-`sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae`.
+`sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab`.
 
 - [ ] **Step 3: Record and commit pin evidence**
 
@@ -785,7 +811,7 @@ test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
 Expected: one atomic pin-sync commit and clean state.
 
-### Task 6: Admit and review the exact six-file V4 candidate
+### Task 6: Admit and review the exact nine-file V4 amendment candidate
 
 **Files:**
 
@@ -824,6 +850,9 @@ actual="$(
 )"
 expected="$(
   printf '%s\n' \
+    docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md \
+    docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md \
+    docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md \
     docs/agentic/claims/task-136-v4-task137b-authority-transfer.md \
     docs/agentic/contracts/software-factory-mission-state.v1.json \
     docs/agentic/contracts/task136-bounded-assurance-v4.json \
@@ -835,7 +864,8 @@ expected="$(
 test "$actual" = "$expected"
 ```
 
-Expected scope is exactly the six V4 paths in the frozen file map. Also run:
+Expected scope is exactly the nine authority paths in the frozen file map.
+Also run:
 
 ```bash
 git diff --quiet "$v4_authority_merge_sha"..HEAD -- \
@@ -1535,8 +1565,10 @@ Run the exact card command:
 npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 ```
 
-Expected: nonzero only because the thirteen approved sources lack the exact
-designed behavior/API; every newly added contract test fails at its own
+Expected: nonzero only because this historical Task9 RED exercises thirteen
+of the fourteen approved sources that lack the exact designed behavior/API;
+the later Task12 binding RED causally exercises the adopted adapter source.
+Every newly added contract test fails at its own
 behavior/API assertion while real fixtures and existing released controls
 load.
 Syntax, fixture, dependency, invented path, or unrelated inherited failures
@@ -1592,7 +1624,10 @@ test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one permanent RED commit, no production source change, and clean
-state. All later GREEN tasks preserve these sixteen test blobs byte-for-byte.
+state. Tasks10 and 11 preserve all sixteen test blobs byte-for-byte. The
+separately authorized Task12 binding RED may replace exactly the adapter,
+dispatcher, and gateway test blobs; it preserves the other thirteen. Every
+later GREEN preserves all seventeen then-current test blobs byte-for-byte.
 
 ### Task 10: Implement the ontology and T120 V2 seam
 
@@ -2506,7 +2541,7 @@ path is unchanged.
 - [ ] **Step 4: Run exact card GREEN and commit**
 
 ```bash
-npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 npm run typecheck
 git diff --check
 git add \
@@ -2610,6 +2645,7 @@ TASK136_TESTS=(
   packages/agent/test/plan-observation-contracts.test.ts
   packages/agent/test/plan-observation-projection.test.ts
   packages/agent/test/resident-plan-candidate-provider.test.ts
+  packages/agent/test/legacy-staging-adapter.test.ts
   packages/agent/test/resident-loop-tool-gateway.test.ts
   packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
   packages/local-runtime/test/wake-supervisor-runtime.test.ts
@@ -2623,7 +2659,7 @@ TASK136_TESTS=(
   packages/agent/test/task-orchestrator-claims.test.ts
   packages/agent/test/task-orchestrator-projection.test.ts
 )
-test "${#TASK136_TESTS[@]}" -eq 16
+test "${#TASK136_TESTS[@]}" -eq 17
 TASK136_CROSS_TESTS=(
   "${TASK136_TESTS[@]}"
   packages/agent/test/execution-loop.test.ts
@@ -2645,7 +2681,7 @@ TASK136_CROSS_TESTS=(
   packages/local-runtime/test/resident-loop-provider-posture.test.ts
   packages/local-runtime/test/agent-handoff-projection.test.ts
 )
-test "${#TASK136_CROSS_TESTS[@]}" -eq 34
+test "${#TASK136_CROSS_TESTS[@]}" -eq 35
 npm test -- "${TASK136_CROSS_TESTS[@]}"
 ```
 
@@ -2695,6 +2731,7 @@ TASK136_SOURCES=(
   packages/agent/src/plan-observation-contracts.ts
   packages/agent/src/plan-observation-projection.ts
   packages/agent/src/resident-plan-candidate-provider.ts
+  packages/agent/src/adapters/legacy-staging.ts
   packages/agent/src/resident-loop-tool-gateway.ts
   packages/local-runtime/src/wake-supervisor-runtime.ts
   packages/local-runtime/src/mounted-wake-lifecycle-store.ts
@@ -2714,6 +2751,8 @@ TASK136_OWNED_PATHS=(
   packages/agent/test/plan-observation-projection.test.ts
   packages/agent/src/resident-plan-candidate-provider.ts
   packages/agent/test/resident-plan-candidate-provider.test.ts
+  packages/agent/src/adapters/legacy-staging.ts
+  packages/agent/test/legacy-staging-adapter.test.ts
   packages/agent/src/resident-loop-tool-gateway.ts
   packages/agent/test/resident-loop-tool-gateway.test.ts
   packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
@@ -2743,16 +2782,48 @@ actual_scope="$(
 )"
 expected_scope="$(printf '%s\n' "${TASK136_OWNED_PATHS[@]}" | sort)"
 test "$actual_scope" = "$expected_scope"
+TASK136_GREEN_SHAS=(
+  "$task136_t120_green_sha"
+  "$task136_c_green_sha"
+  "$task136_g_green_sha"
+  "$task136_orchestrator_green_sha"
+  "$task136_w_green_sha"
+  "$task136_h_green_sha"
+  "$task136_r_green_sha"
+)
 actual_green="$(
-  git diff --name-only "$task136_red_sha..$task136_candidate_sha" | sort
+  for green_sha in "${TASK136_GREEN_SHAS[@]}"; do
+    git diff --name-only "$green_sha^..$green_sha"
+  done | sort
 )"
 expected_green="$(printf '%s\n' "${TASK136_SOURCES[@]}" | sort)"
 test "$actual_green" = "$expected_green"
+TASK136_TASK12_RED_TESTS=(
+  packages/agent/test/legacy-staging-adapter.test.ts
+  packages/agent/test/domain-execution-dispatcher.test.ts
+  packages/agent/test/resident-loop-tool-gateway.test.ts
+)
+actual_task12_red="$(
+  git diff --name-only \
+    "$task136_task12_binding_red_sha^..$task136_task12_binding_red_sha" |
+    sort
+)"
+expected_task12_red="$(
+  printf '%s\n' "${TASK136_TASK12_RED_TESTS[@]}" | sort
+)"
+test "$actual_task12_red" = "$expected_task12_red"
+for path in "${TASK136_TASK12_RED_TESTS[@]}"; do
+  test "$(git rev-parse "$task136_task12_binding_red_sha:$path")" = \
+    "$(git rev-parse "$task136_candidate_sha:$path")"
+done
 git merge-base --is-ancestor "$task136_claim_checkpoint_sha" \
   "$task136_red_sha"
 git merge-base --is-ancestor "$task136_red_sha" "$task136_t120_green_sha"
 git merge-base --is-ancestor "$task136_t120_green_sha" "$task136_c_green_sha"
-git merge-base --is-ancestor "$task136_c_green_sha" "$task136_g_green_sha"
+git merge-base --is-ancestor "$task136_c_green_sha" \
+  "$task136_task12_binding_red_sha"
+git merge-base --is-ancestor "$task136_task12_binding_red_sha" \
+  "$task136_g_green_sha"
 git merge-base --is-ancestor "$task136_g_green_sha" \
   "$task136_orchestrator_green_sha"
 git merge-base --is-ancestor "$task136_orchestrator_green_sha" \
@@ -2888,6 +2959,7 @@ const approvedTestPaths = new Set([
   "packages/agent/test/plan-observation-contracts.test.ts",
   "packages/agent/test/plan-observation-projection.test.ts",
   "packages/agent/test/resident-plan-candidate-provider.test.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/test/resident-loop-tool-gateway.test.ts",
   "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
   "packages/local-runtime/test/wake-supervisor-runtime.test.ts",
@@ -3042,8 +3114,10 @@ Dispatch:
    replay, at-most-once permit/receipt semantics, mounted identity,
    orchestration ownership, H exact readback, adapter ABI preservation,
    no-fallback, no-activation, and exact scope;
-2. a different fresh executability reviewer to independently reproduce RED
-   causality from `task136_red_sha`, candidate GREEN, all exact commands,
+2. a different fresh executability reviewer to independently reproduce both
+   the original Task9 RED causality from `task136_red_sha` and the separate
+   three-test Task12 binding RED causality from
+   `task136_task12_binding_red_sha`, then candidate GREEN, all exact commands,
    real-mounted fixture, V4/repository behavior, full differential,
    scope/ancestry/dependency/clean/no-default gates.
 
