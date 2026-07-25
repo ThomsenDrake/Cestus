@@ -32327,3 +32327,110 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, or product release. `neo`, push, Wave 3,
   credential, provider, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1012 — Exact `e362a31c` Task12 correction rejected; semantic receipt repair authorized
+
+- Recorded at: 2026-07-25T00:21:12Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1011_gateway_fix_fresh_review` rejects exact Task12
+  correction candidate `e362a31c3d549298ef9b3fa808d0c90f14208099`,
+  tree `1a05a9ef616bfc85f08ba6b88b7cb5b3b976e037`, and no other
+  candidate. Review occurred beneath clean history-preserving E-1011
+  admission merge `4ffac1c6336f0541fc91f8f7ce976fd7b0bfff93`,
+  whose exact first parent is the candidate and whose exact second parent is
+  E-1011 program authority `6359a4fd27b854a9a9465762d8bd9eb208e95efa`.
+  No candidate byte, registry byte, branch, or repository state changed
+  during review.
+- Rejection is mandatory because a self-consistent but semantically invalid
+  outcome receipt can still terminalize recovery. The source validates the
+  receipt's self-hashed envelope, event existence, type family, and selected
+  fingerprints, but does not enforce the approved complete per-ordinal
+  evidence table. A forged ordinal-2 receipt can, for example, select two
+  contiguous post-claim `prr.request.sent` events with internally consistent
+  fingerprints and envelope hash and pass recovery even though the binding
+  table requires exactly one event with exact package-owned identity.
+- Ordinals 2 through 6 and 9 do not require exactly one event with the exact
+  catalog-bound context, invocation input, payload, result identity, and
+  branch-specific fields. Ordinal 10 does not enforce the exact ordered
+  selected-candidate evidence and payload identity. Idempotent existing
+  ledger evidence is not proven to predate the permanent claim. Ordinal 7
+  accepts arbitrary nonempty artifact hashes and read-model values rather
+  than binding both to the approved preview outputs and exact read-model
+  change. The current regression corrupts only `envelopeHash`; it does not
+  exercise a correctly self-hashed but semantically invalid receipt.
+- The reviewer independently reproduced focused **54/54**, exact Task12
+  boundary **98/98**, gateway/loader **36/36**, released cross-boundary
+  **443/443**, exact adapters **79/79**, standalone typecheck, UI build,
+  factory readiness, mission **20/20** with exact fingerprint
+  `sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`,
+  V4 assurance **20/20**, all four exact contract markers, the expected
+  nonzero product card **287 = 274 passed + 13 later REDs**, exact identity,
+  tree, topology, scope, freezes, ancestry, dependency, diff, and clean-state
+  checks. Both causal REDs reproduced exactly: first RED `251eb9dc` is
+  **35 = 30 passed + 5 failed** and second RED `5c1c0628` is
+  **36 = 34 passed + 2 failed**.
+- Repository mode truthfully exits `1`, emits the four markers, stops first
+  and only at
+  `blob mismatch: G136-SC:packages/agent/src/domain-execution-dispatcher.ts`,
+  and emits neither repository-prefix nor release-closure success. The
+  fresh parallel full-suite observation remains explicitly non-passing:
+  **3,290 = 3,226 passed + 59 failed + 5 pending**, with the sole excess
+  failure the frozen loader duration at **35.747667535 seconds**.
+- Fresh identical serialized baseline/current runs use
+  `--testTimeout=60000 --no-file-parallelism --maxWorkers=1`. Exact baseline
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1` is
+  **3,231 = 3,181 passed + 45 failed + 5 pending**; exact current candidate
+  is **3,290 = 3,227 passed + 58 failed + 5 pending**. The fresh occurrence
+  comparator emits
+  `TASK136_E1010_FIX1_CALIBRATED_DIFFERENTIAL_OK removed=8 mapped=14 addedPassed=54 retainedLaterRed=13`.
+  Passing gates do not override the candidate-bound semantic defect.
+- The smallest forward TDD correction is authorized in exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts` and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. First add causal
+  regressions against exact rejected source blob
+  `fc20fb3e928b3bb4cda463fdf8f4dc319e327735` using otherwise valid,
+  correctly self-hashed receipts whose evidence is semantically invalid:
+  duplicate or wrong-count ordinal 2-through-6 or 9 events; wrong context,
+  invocation input, payload, result identity, or branch fields; reordered or
+  payload-divergent ordinal-10 candidates; idempotent evidence at or after
+  the claim; and ordinal-7 artifacts or read-model change divergent from the
+  approved preview. Each case must fail for the intended receipt semantic,
+  not for envelope shape, branding, hash, fixture, API, or type failure.
+- Then apply only the smallest G repair: validate the complete approved
+  branch-specific per-ordinal evidence table before terminalizing any
+  recovered receipt; require exact event count and order, exact
+  package-owned context/input/payload/result identities, exact branch fields,
+  ordinal-7 approved-preview artifact/read-model binding, ordinal-10
+  candidate ordering and payload identity, and pre-claim chronology for
+  idempotent existing-ledger evidence. Preserve the already corrected W
+  bracketing, exact durable lifecycle, approval chronology, failed-receipt
+  mapping, recovery nonexecutability, and at-most-once behavior.
+- Preserve exact frozen blobs: dispatcher source
+  `30e4a3ea4eea197f5f3881359a12b909210177ab`, dispatcher test
+  `0eaf2fe609de31657acfedde1e2630cbacedbcdc`, loader
+  `48ecf05ca86bfc9a0c610996a95a1c903b091476`, Task136 claim
+  `49074087ae30d06f4d16d5e29fbe8935781d0fa1`, ontology
+  `73003baf6bb5c6c8737e69ff2972d5faed6eed3c`, ontology Task136 test
+  `f1a8bc5eeaf33eaaa9fdd4b793245b4c8aa4f423`, and Task14 runtime
+  `2ec8fd3584125dc6a6d0b5f44a068758285ce9ca`. Preserve candidate
+  source/test blobs `fc20fb3e928b3bb4cda463fdf8f4dc319e327735`
+  and `c1c1f8a581a89158dd87bb56871399cf1eb9c7ef` in ancestry. Preserve
+  every earlier design, plan, RED, GREEN, fixture, candidate, rejection,
+  review, recovery, handoff, and authority commit without amendment or
+  reconstruction.
+- The correction must establish exact causal RED and GREEN signatures, then
+  rerun every E-1011 focused, boundary, adapter, typecheck, UI, factory,
+  mission, V4, marker, repository-first-stop, product-card, scope, freeze,
+  ancestry, dependency, diff, clean-state, calibrated-differential, and
+  timeout-variance check. Produce one forward exact candidate and obtain a
+  completely fresh independent read-only review. The E-1011 reviewer, the
+  implementer, coordinator, every earlier source/test author or reviewer,
+  and every analyst of the new changed bytes are ineligible to approve that
+  candidate. Changed candidate bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns Task12 `reviewing -> implementing`; strict product frontier
+  remains **28 of 29**. This is exact source rejection and bounded G repair
+  authority, not Task12 approval/integration, Task13 authority, a Task136
+  product candidate, strict record 29, assurance transition, publication, or
+  product release. `neo`, push, Wave 3, credential, provider,
+  external-system, pull-request, and unrelated actions remain unauthorized.
