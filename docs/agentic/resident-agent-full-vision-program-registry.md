@@ -33974,3 +33974,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1036 — Exact strict-binding candidate rejected; chronology RED authorized
+
+- Recorded at: 2026-07-25T18:09:22Z
+- Completely fresh independent read-only source reviewer
+  `/root/task136_e1035_source_review` returns **REJECTED** for exact Task12
+  source candidate
+  `32b7f7f062bd97678f8b430245aa7757fd6119fe`, tree
+  `c0ef35b0eaf487aca1210c7df02418f3de514188`, and no other bytes. Review
+  occurred beneath clean E-1035 review-authority merge
+  `a8f41ffb59264cbbefcfaf136353dcccf299b641`. No candidate or registry byte
+  changed during review.
+- The reviewer confirms exact identity, sole parent, three-source scope and
+  blobs, frozen corrected RED tests, diff and clean state; focused **82/82**,
+  loader-inclusive **84/84**, typecheck, UI build, factory readiness, mission
+  **20/20**, V4 **20/20**, and all four markers. It also confirms mandatory
+  binding arrays and strict independent recomputation are correct and that
+  the preview-copy probe is not a finding.
+- Exact candidate nevertheless omits the design's explicit durable event-order
+  invariant in both strict binding validators. Dispatcher fresh validation
+  finds a unique matching `evidence.ingested` event anywhere in `allEvents`
+  and checks identity, content, review state, and causation, but never requires
+  the evidence's global index to precede the corresponding
+  `assertion.proposed` event. Gateway recovery has the same omission. The
+  ledger validates schema and appends order; it does not enforce causal-target
+  existence or precedence.
+- Therefore an otherwise canonical self-hashed durable graph can place
+  `assertion.proposed` before its uniquely matched `evidence.ingested`, point
+  the proposal causation ID to that later event, recompute all preview,
+  receipt, lifecycle, and fingerprint hashes, and pass both current
+  validators. This contradicts the approved design's retained assertion/
+  evidence event order. Existing binding mutations do not cover this
+  chronology inversion.
+- Reject exact `32b7f7f0`; advance it `reviewing -> implementing`. It is not
+  approved or integrated. Preserve it, rejected `0b40ed92`, every RED,
+  review, gate packet, amendment, authority, fixture adaptation, and earlier
+  candidate in immutable ancestry.
+- Authorize first one causal test-only correction in exactly
+  `packages/agent/test/domain-execution-dispatcher.test.ts` and
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`. Starting blobs are
+  dispatcher `6562d5531b63789a0dc826d8eca6f5d48a692738` and gateway
+  `26a6ea3fc8ff0b321b29c0569823f5d364978bb4`. Freeze adapter test
+  `741bf9c02184c0367c4b4aa08a1b06202bac362e`, all three candidate source
+  blobs, and every other path.
+- Each corrected test must construct an otherwise exact, canonical,
+  self-hashed durable lifecycle in which the proposal precedes its uniquely
+  matched evidence event, while the proposal causation ID names that later
+  evidence and every binding, preview, receipt, event-family, fingerprint,
+  lifecycle, and terminal hash is recomputed. One test must reach real fresh
+  dispatcher attestation validation and one real gateway recovery
+  validation. Both must fail only because the current source accepts
+  reversed durable chronology. Preserve all prior strict-binding mutations,
+  real fixtures, currentness, chronology controls, exact identities,
+  attestation/readback/evidence/at-most-once assertions, loader, and released
+  adapters.
+- Commit one exact two-test causal RED and obtain a completely fresh
+  independent read-only test review. The candidate author, E-1035 reviewer,
+  E-1029 gate verifier, all prior implementers/reviewers/analysts, and the
+  coordinator are ineligible to approve corrected bytes. Only after exact RED
+  approval, append-only integration, and a separate source authorization may
+  dispatcher and gateway require the evidence event's global index to be
+  lower than the corresponding proposal event's global index.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 returns to Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is a candidate-bound rejection and two-test RED
+  authorization, not Task12 approval/integration, Task13 authority, a
+  Task136 product candidate, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
