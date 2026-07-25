@@ -44,7 +44,9 @@ the automatic adapter/T120 bridge and unknown-result mapping, and did not
 freeze mounted-ledger identity. RV-1-E-934 and the reviewed design at
 `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` corrected that construction
 without adding a producer seam or product path: 22 transferred paths, five
-exact baseline-adopted paths, and a 30-path Task136 card. Rejected Task12
+exact baseline-adopted paths, and the historical 30-path Task136 card. The
+RV-1-E-1017 forward amendment below adopts the legacy-staging source/test
+pair, yielding seven baseline adoptions and the current 32-path card. Rejected Task12
 checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` then proved one remaining
 written ABI gap: the design named an executable human-approved stage but no
 same-process operation could advance the exact still-live human-request brand
@@ -257,7 +259,7 @@ source for the dispatcher test and exact adopted-source baseline:
 ]
 ```
 
-Task136 owns exactly 30 paths in this order at record 29:
+Task136 owns exactly 32 paths in this order at record 29:
 
 ```text
 packages/agent/src/bounded-agent-loop.ts
@@ -268,6 +270,8 @@ packages/agent/test/plan-observation-contracts.test.ts
 packages/agent/test/plan-observation-projection.test.ts
 packages/agent/src/resident-plan-candidate-provider.ts
 packages/agent/test/resident-plan-candidate-provider.test.ts
+packages/agent/src/adapters/legacy-staging.ts
+packages/agent/test/legacy-staging-adapter.test.ts
 packages/agent/src/resident-loop-tool-gateway.ts
 packages/agent/test/resident-loop-tool-gateway.test.ts
 packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
@@ -295,8 +299,84 @@ docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 Its exact card command is:
 
 ```text
-npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 ```
+
+The canonical newline-delimited path-list SHA-256 is
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+The order above is the only source for contract order, release-record
+`ownedPathBlobs` order, candidate/integration blob comparison, and every
+path-list hash. The historical thirty-path hash is not current authority.
+
+### RV-1-E-1017 secret-safe ordinal-10 binding amendment
+
+The legacy-staging adapter source/test pair is adopted as Task136 baseline
+authority, not transferred from another release-graph card. Before record 29,
+both paths must equal their exact bytes at candidate
+`c244106459ca050a5f8b61a00755abf184721956`, published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and current HEAD. Their frozen
+blobs are source `99fbafda3844435109bc249b015b111b9258c210` and test
+`de7cef3123a15fb82891943dc51005165c8c9fcd`.
+
+`AgentDomainPreview` exposes one additional ordered field only:
+
+```ts
+readonly selectedCandidateBindingHashes: readonly `sha256:${string}`[];
+```
+
+It never exposes raw candidate predicate or object values. For each exact
+current selected candidate, in selected-candidate order, the adapter computes:
+
+```text
+sha256(
+  utf8("legacy-selected-candidate-binding.v1\n") ||
+  utf8(stableJson({
+    candidateId,
+    evidenceId,
+    evidenceContentHash,
+    predicate,
+    object,
+    confidence,
+    subjectRef: {
+      present: Object.hasOwn(candidate, "subjectRef"),
+      value: Object.hasOwn(candidate, "subjectRef")
+        ? candidate.subjectRef
+        : null
+    }
+  }))
+)
+```
+
+The canonical JSON object has exactly the seven displayed top-level fields;
+the version domain is the literal prefix, and `subjectRef` always has exactly
+`present` then `value`. Absence is distinct from a present empty or other
+valid scalar value. Predicate, independent scalar object, confidence, and
+subject reference remain inside the hash preimage and never enter the
+preview. Candidate ID, evidence ID, and evidence content hash remain in their
+released preview fields and are also covered by this non-substitutable
+binding.
+
+The adapter derives the ordered hashes from the authoritative current
+candidate objects, includes the exact array in `normalizedInputHash`, and
+returns it in the preview. The existing complete preview hash therefore binds
+the array a second time. It must not accept caller-supplied hashes or compute
+them from fixture-only fields.
+
+After ordinal-10 execution, the dispatcher independently reconstructs each
+preimage from the exact ordered `assertion.proposed` payload and its uniquely
+matched `evidence.ingested` event. It compares the recomputed ordered hashes
+to the approved current preview before issuing the attestation. It retains
+exact assertion/evidence IDs, review state, causation, event order,
+currentness, exact result, private branding, and at-most-once checks. In
+particular, `payload.object` is the candidate's independent scalar object and
+is never substituted with `candidateId`.
+
+Recovery performs the same independent recomputation from the durable
+proposal and evidence events before terminalizing a receipt. It also retains
+the complete branch-specific evidence table, receipt hash, request/approval/
+claim chronology, mounted preview, currentness, and at-most-once rules. The
+receipt is not its own oracle, no report-store port is added, and no runtime
+route or fallback write is introduced.
 
 ## Historical Compatibility And Immutable Release Evidence
 
@@ -1689,13 +1769,13 @@ and one final LF produce:
 
 ```text
 V4 JSON SHA-256:
-81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a
+3a6e963cf76c94dbe791cd6562d3baef31c27310d141493819e5958c1076d438
 
 V4 assurance fingerprint:
-34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6
+da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
 
 Mission immutable-envelope fingerprint after pin synchronization:
-sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5
+sha256:10d859b4fbd96afbe2ebda94406288d960d4e99cfc0b5949b2a2e352db072fae
 ```
 
 The mission JSON changes only `mission.frozenAuthority.sha256`; card count
@@ -1714,8 +1794,8 @@ minimum history-preserving sequence is:
 2. In the existing V4-assurance lineage, forward-merge current program
    authority. Commit a claim-only checkpoint, then a permanent causal RED that
    fails only for the absent seven seam mappings, direct CF1-HR and G136-SC
-   prerequisites, 30-path Task136 scope, 16-test command, eleven compatibility
-   entries, five exact baseline adoptions, record-29 migration, and raw pins.
+   prerequisites, 32-path Task136 scope, 17-test command, eleven compatibility
+   entries, seven exact baseline adoptions, record-29 migration, and raw pins.
    Apply the smallest GREEN contract/checker change, then synchronize the two
    mission pins. Preserve each commit separately.
 3. Run assurance 20/20, all four exact contract markers, factory readiness,
@@ -1728,11 +1808,11 @@ minimum history-preserving sequence is:
    reset, rebase, amend, reconstruction, or discarded history.
 5. Commit claim-only recovery evidence. Commit one permanent product RED that
    adds the exact producer and Task136 negative tests before source GREEN.
-   Apply only the 13 product source files required by those tests. The final
-   Task136 product candidate has exactly the 30-path card scope above. The RED
+   Apply only the 14 product source files required by those tests. The final
+   Task136 product candidate has exactly the 32-path card scope above. The RED
    must exercise `createResidentBoundedAgentLoopFactory` with the real mounted
    fixture and must not add a default runtime or route call site.
-6. Run the exact 16-test card command, the original focused and cross-boundary
+6. Run the exact 17-test card command, the original focused and cross-boundary
    Task136/Task120/execution-loop/portable-workspace/Task138 suites, standalone
    typecheck, factory readiness, assurance 20/20, all contract markers,
    repository-prefix behavior, diff/scope/ancestry/dependency/clean checks,
@@ -1770,7 +1850,7 @@ The correction is complete only when all of the following hold:
   stop only at incomplete 29, while changed transferred bytes or a dispatcher
   source or task-orchestrator path that differs from its exact candidate/
   integration baseline fails source currentness;
-- after record 29, Task136 owns and matches all 30 blobs, all 29 commands pass,
+- after record 29, Task136 owns and matches all 32 blobs, all 29 commands pass,
   every exact prerequisite integration is ancestral, and closure is complete;
 - focused, cross-boundary, typecheck, factory, V4, marker, repository, diff,
   scope, ancestry, dependency, clean-state, and full-verification differential

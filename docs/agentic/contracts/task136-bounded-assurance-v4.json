@@ -1213,13 +1213,21 @@
             "disposition": "owned",
             "path": "packages/agent/src/resident-plan-candidate-provider.ts"
           },
-          {
-            "disposition": "owned",
-            "path": "packages/agent/test/resident-plan-candidate-provider.test.ts"
-          },
-          {
-            "disposition": "owned",
-            "path": "packages/agent/src/resident-loop-tool-gateway.ts"
+        {
+          "disposition": "owned",
+          "path": "packages/agent/test/resident-plan-candidate-provider.test.ts"
+        },
+        {
+          "disposition": "owned",
+          "path": "packages/agent/src/adapters/legacy-staging.ts"
+        },
+        {
+          "disposition": "owned",
+          "path": "packages/agent/test/legacy-staging-adapter.test.ts"
+        },
+        {
+          "disposition": "owned",
+          "path": "packages/agent/src/resident-loop-tool-gateway.ts"
           },
           {
             "disposition": "owned",
@@ -1307,7 +1315,7 @@
           }
         ],
         "transferToIds": [],
-        "command": "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts"
+      "command": "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts"
       }
     ]
   },

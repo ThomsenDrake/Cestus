@@ -39,7 +39,7 @@ const expectedCardIds = Object.freeze([
   "Task136"
 ]);
 
-const expectedAssuranceFingerprint = "34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6";
+const expectedAssuranceFingerprint = "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec";
 const immutableContractPins = Object.freeze([
   Object.freeze({ label: "v1", path: "docs/agentic/contracts/task136-bounded-assurance-v1.json", sha256: "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed" }),
   Object.freeze({ label: "v2", path: "docs/agentic/contracts/task136-bounded-assurance-v2.json", sha256: "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4" }),
@@ -316,6 +316,8 @@ const task136TransferredSourceGroups = Object.freeze([
   "C136-P"
 ]);
 const task136BaselineAdoptions = Object.freeze([
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/domain-execution-dispatcher.ts",
   "packages/agent/src/task-orchestrator.ts",
   "packages/agent/test/task-orchestrator-claims.test.ts",
@@ -389,6 +391,8 @@ const task136OwnedPaths = Object.freeze([
   "packages/agent/test/plan-observation-projection.test.ts",
   "packages/agent/src/resident-plan-candidate-provider.ts",
   "packages/agent/test/resident-plan-candidate-provider.test.ts",
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/resident-loop-tool-gateway.ts",
   "packages/agent/test/resident-loop-tool-gateway.test.ts",
   "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
@@ -412,8 +416,20 @@ const task136OwnedPaths = Object.freeze([
   "packages/agent/test/task-orchestrator-projection.test.ts",
   "docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md"
 ]);
-const task136Command = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
+const task136Command = "npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts";
 const task136BaselinePins = Object.freeze([
+  ...Object.freeze([
+    "packages/agent/src/adapters/legacy-staging.ts",
+    "packages/agent/test/legacy-staging-adapter.test.ts"
+  ]).map((path) => Object.freeze({
+    sourceId: "Task136-LEGACY-STAGING-ADOPTION",
+    candidateSha: "c244106459ca050a5f8b61a00755abf184721956",
+    integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
+    path,
+    blobSha: path.endsWith(".test.ts")
+      ? "de7cef3123a15fb82891943dc51005165c8c9fcd"
+      : "99fbafda3844435109bc249b015b111b9258c210"
+  })),
   Object.freeze({
     sourceId: "G136-SC",
     candidateSha: "70814c1259871c5458a3578fae8a5c8281540377",
@@ -1002,8 +1018,9 @@ function validateTask136FiniteTransfer(graph) {
 
   assertExactStrings(
     [
-      task136.ownedPaths[23],
-      ...task136.ownedPaths.slice(25, 29)
+      ...task136.ownedPaths.slice(8, 10),
+      task136.ownedPaths[25],
+      ...task136.ownedPaths.slice(27, 31)
     ].map((ownedPath) => ownedPath.path),
     task136BaselineAdoptions,
     "Task136 baseline adoptions"
