@@ -34463,3 +34463,59 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1045 — Exact Task13 orchestration interlock admitted to fresh review
+
+- Recorded at: 2026-07-25T19:38:18Z
+- Exact Task13 source candidate
+  `23d9f05689940761abb82264968ae764f396c14d`, tree
+  `3ffe36c1bcdc7ada8ee3843ec460eb85cc12df68`, has sole parent E-1044
+  authority merge `3c7c0766f69ce07d66956211df716335c8566879`
+  and exact subject `fix(agent): reserve resident suspension for W`. It
+  changes exactly the two authorized sources by
+  **127 insertions / 5 deletions**.
+- Exact candidate source blobs are orchestrator
+  `f55b6edeab86639de2b7e840fa009d3f0fb16921` and projection
+  `e203840a748dd1cb47cdcd751000298b02c42559`. Frozen tests remain claims
+  `21b5797a3d8dfae73cb97f9cfbe6d1323843dc8f` and projection
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`. Public orchestrator types,
+  all Task12 bytes, all later-task bytes, dependencies, and unrelated paths
+  remain frozen.
+- The exact Task13 RED had two aggregate failures covering active,
+  cancellation, stale-recovery, and projection paths. Candidate GREEN passes
+  focused **36/36**. It validates strict checkpoint schema, same stream,
+  task, run type, attempt, retry generation, lease-claim generation,
+  causation, and complete owning instruction before generic paths; preserves
+  exact one `not-claimable` skip with no release/stale-recovered/new claim;
+  and projects exact blocked, nonrecoverable W-owned state before expired
+  lease handling.
+- Exact card is
+  **319 = 308 passed + 11 frozen Task14-through-16 RED failures**.
+  Standalone typecheck, factory readiness, mission **20/20**, V4 **20/20**,
+  all four markers, exact scope, test/Task12/later-source freezes, public-type
+  freeze, ancestry, real dependencies, diff, and clean state pass.
+  Repository mode exits `1` after the markers and stops first only at the
+  legacy-staging adopted source blob mismatch; it emits no prefix, closure,
+  `29/29`, record-29, or release success.
+- Admit only exact `23d9f056` as Task13 source
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1045_task13_review`. The reviewer must inspect both
+  sources and full two-commit range against Task13 design/plan, independently
+  attack all same-claim dimensions, active/cancel/stale ordering, exact skip
+  counts, no release/reclaim/generation increment, projection precedence,
+  ordinary/nonresident preservation, and no public type widening; and
+  reproduce exact identity, scope, blobs, focused/card counts, typecheck,
+  factory, mission, V4, markers, repository first stop, freezes, ancestry,
+  dependencies, diff, and clean state.
+- The reviewer has never authored, reviewed, or analyzed changed Task13 source
+  bytes. The implementer, all prior Task136 authors/reviewers/verifiers/
+  analysts, and coordinator are ineligible. It may not edit, commit, merge,
+  authorize Task14, substitute a SHA, or make product/record-29/release/
+  prefix/Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is Task13 source review admission, not approval or
+  integration, Task14 authority, Task136 product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
