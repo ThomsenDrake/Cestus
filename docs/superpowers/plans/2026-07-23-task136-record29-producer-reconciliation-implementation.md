@@ -1019,8 +1019,10 @@ comparison.
 - [ ] **Step 5: Record `candidate -> reviewing`**
 
 In the program worktree, append one registry lifecycle event containing the
-exact V4 candidate SHA, exact six paths, RED/GREEN SHAs, all gate results, and
-two fresh review assignments. Commit it without merging the candidate.
+exact V4 candidate SHA, exact nine cumulative amendment authority paths,
+exact eight-file E-1019 correction, exact one-file E-1021 correction,
+RED/GREEN SHAs, all gate results, and two fresh review assignments. Commit it
+without merging the candidate.
 
 - [ ] **Step 6: Obtain both fresh reviews**
 
@@ -2527,16 +2529,21 @@ git diff --quiet "$task136_authority_merge_sha"..HEAD -- \
   packages/agent/src/index.ts \
   packages/agent/src/scheduler-types.ts \
   packages/agent/src/adapters \
+  ':(exclude)packages/agent/src/adapters/legacy-staging.ts' \
   packages/local-runtime/src/agent-runtime-factory.ts \
   packages/local-runtime/src/agent-http-routes.ts \
   packages/local-runtime/src/http-handler.ts \
   packages/local-runtime/src/operator-status-providers.ts \
   packages/local-runtime/src/server.ts
+test "$(
+  git diff --name-only "$task136_authority_merge_sha"..HEAD -- \
+    packages/agent/src/adapters
+)" = "packages/agent/src/adapters/legacy-staging.ts"
 ```
 
 Expected: real mounted fixture passes, fabricated/swapped/stale capabilities
-fail before effect, import graph passes, and every activation/ABI-forbidden
-path is unchanged.
+fail before effect, import graph passes, legacy-staging is the sole adapter
+delta, and every other activation/ABI-forbidden path is unchanged.
 
 - [ ] **Step 4: Run exact card GREEN and commit**
 
@@ -2867,17 +2874,24 @@ git diff --quiet "$task136_authority_merge_sha..$task136_candidate_sha" -- \
   packages/agent/src/index.ts \
   packages/agent/src/scheduler-types.ts \
   packages/agent/src/adapters \
+  ':(exclude)packages/agent/src/adapters/legacy-staging.ts' \
   packages/local-runtime/src/agent-runtime-factory.ts \
   packages/local-runtime/src/agent-http-routes.ts \
   packages/local-runtime/src/http-handler.ts \
   packages/local-runtime/src/operator-status-providers.ts \
   packages/local-runtime/src/server.ts
+test "$(
+  git diff --name-only \
+    "$task136_authority_merge_sha..$task136_candidate_sha" -- \
+    packages/agent/src/adapters
+)" = "packages/agent/src/adapters/legacy-staging.ts"
 ```
 
 The prerequisite order above corresponds exactly to T120-R,
 Task136-FC-Ports, Task139-P2, C136-P, G136-R, Task137B-W, Task138-H, CF1-HR,
-and G136-SC. Expected: all are ancestors; Task138 and every forbidden ABI,
-adapter, route, default-runtime, server, status, and barrel path are unchanged.
+and G136-SC. Expected: all are ancestors; legacy-staging is the sole adapter
+delta; Task138 and every other forbidden ABI, adapter, route, default-runtime,
+server, status, and barrel path are unchanged.
 
 - [ ] **Step 6: Capture the fresh full-verification differential**
 
@@ -4052,10 +4066,13 @@ the freshly read mission workflow.
 ## Plan Self-Review Gate
 
 - [ ] Every approved design section is mapped to one task and one exact gate.
-- [ ] The V4 correction changes exactly six cumulative paths, preserves a
-  twenty-test corpus, and leaves the mission-state test untouched.
-- [ ] The product candidate is exactly 14 sources, 17 permanent RED tests,
-  and one append-only claim; GREEN changes sources only.
+- [ ] The V4 amendment changes exactly nine cumulative authority paths; the
+  E-1019 correction changes exactly eight and the E-1021 correction changes
+  exactly the plan. It preserves a twenty-test corpus and leaves the
+  mission-state test untouched.
+- [ ] The product candidate is exactly 14 sources, 17 test paths incorporating
+  the historical Task9 RED and later Task12 binding RED, and one append-only
+  claim; GREEN changes sources only.
 - [ ] Seven producer seams, four orchestration paths, and zero new loader/ABI
   paths are explicitly covered.
 - [ ] Strict record 29 contains exactly nine prerequisites and 32 integration
