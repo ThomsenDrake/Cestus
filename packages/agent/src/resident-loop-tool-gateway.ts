@@ -2264,6 +2264,10 @@ function validateResidentLegacyProposalReceiptEvents(
       candidate.payload.evidenceId === evidenceId
     );
     const evidenceEvent = evidenceEvents[0];
+    const proposalEventIndex = allEvents.indexOf(event);
+    const evidenceEventIndex = evidenceEvent === undefined
+      ? -1
+      : allEvents.indexOf(evidenceEvent);
     const evidencePayload = evidenceEvent === undefined
       ? undefined
       : residentGatewayRecord(
@@ -2279,6 +2283,9 @@ function validateResidentLegacyProposalReceiptEvents(
     if (
       event.type !== "assertion.proposed" ||
       evidenceEvents.length !== 1 ||
+      proposalEventIndex < 0 ||
+      evidenceEventIndex < 0 ||
+      evidenceEventIndex >= proposalEventIndex ||
       payload.assertionId !== assertionId ||
       payload.evidenceId !== evidenceId ||
       evidenceContentHash !== expectedEvidenceContentHash ||
