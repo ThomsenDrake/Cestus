@@ -470,6 +470,7 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       live.portPreview.catalogOrdinal,
       live.portPreview.implementationRevision,
       undefined,
+      live.portPreview,
       trustedCurrentTime
     );
     if (
@@ -536,6 +537,7 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       live.portPreview.catalogOrdinal,
       live.portPreview.implementationRevision,
       undefined,
+      live.portPreview,
       trustedCurrentTime
     );
     assertFreshResidentExecutionPrefix(
@@ -755,6 +757,7 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       portPreview.catalogOrdinal,
       portPreview.implementationRevision,
       allEvents,
+      portPreview,
       input.now()
     );
     const {
@@ -1307,6 +1310,7 @@ function validateResidentRecoveryPrefix(
   catalogOrdinal: number,
   implementationRevision: string,
   allEvents: readonly KnowledgeEvent[] | undefined,
+  portPreview: ResidentPortPreview | undefined,
   trustedCurrentTime: string
 ): ValidatedResidentRecoveryPrefix {
   if (
@@ -1455,10 +1459,13 @@ function validateResidentRecoveryPrefix(
         }
         validateResidentOutcomeReceipt(
           event,
+          request,
+          approval,
           claim,
           catalogOrdinal,
           implementationRevision,
-          allEvents
+          allEvents,
+          portPreview
         );
         receipt = event;
         stage = "receipted";
@@ -1628,10 +1635,13 @@ function assertResidentLiveApprovalDeadline(
 
 function validateResidentOutcomeReceipt(
   receipt: ResidentOutcomeEvent,
+  request: ResidentRequestedEvent,
+  approval: ResidentHumanApprovedEvent | undefined,
   claim: ResidentClaimedEvent,
   catalogOrdinal: number,
   implementationRevision: string,
-  allEvents: readonly KnowledgeEvent[] | undefined
+  allEvents: readonly KnowledgeEvent[] | undefined,
+  portPreview: ResidentPortPreview | undefined
 ): void {
   if (
     allEvents === undefined ||
@@ -1736,9 +1746,13 @@ function validateResidentOutcomeReceipt(
     }
     case "idempotent-existing-ledger-events": {
       const fingerprint = residentGatewayHash(beforeReceipt);
+      const selectedIndexes = receipt.payload.domainEventIds.map((eventId) =>
+        allEvents.findIndex((event) => event.id === eventId)
+      );
       if (
         catalogOrdinal === 7 ||
         receipt.payload.domainEventIds.length === 0 ||
+        selectedIndexes.some((index) => index < 0 || index >= claimIndex) ||
         receipt.payload.preInvocationLedgerFingerprint !== fingerprint ||
         receipt.payload.postInvocationLedgerFingerprint !== fingerprint
       ) {
@@ -1764,6 +1778,506 @@ function validateResidentOutcomeReceipt(
       break;
     }
   }
+  if (portPreview !== undefined) {
+    validateResidentReceiptCatalogSemantics(
+      receipt,
+      request,
+      approval,
+      claim,
+      selectedEvents as readonly KnowledgeEvent[],
+      portPreview,
+      allEvents
+    );
+  }
+}
+
+function validateResidentReceiptCatalogSemantics(
+  receipt: ResidentOutcomeEvent,
+  request: ResidentRequestedEvent,
+  approval: ResidentHumanApprovedEvent | undefined,
+  claim: ResidentClaimedEvent,
+  selectedEvents: readonly KnowledgeEvent[],
+  portPreview: ResidentPortPreview,
+  allEvents: readonly KnowledgeEvent[]
+): void {
+  const preview = residentGatewayRecord(
+    portPreview.currentPreview.preview,
+    "resident recovery approved catalog preview"
+  );
+  const expectedPreviewHash = hashAgentToolPreview(
+    portPreview.currentPreview.preview
+  );
+  if (
+    portPreview.catalogOrdinal !== receipt.payload.catalogOrdinal ||
+    portPreview.implementationRevision !==
+      receipt.payload.implementationRevision ||
+    portPreview.executionCapabilityHash !==
+      receipt.payload.executionCapabilityHash ||
+    portPreview.descriptor.toolId !==
+      receipt.payload.logicalLocator.toolId ||
+    portPreview.descriptor.toolVersion !==
+      receipt.payload.logicalLocator.toolVersion ||
+    portPreview.descriptor.sideEffectClass !==
+      request.payload.sideEffectClass ||
+    portPreview.descriptor.requiredApprovalClass !==
+      request.payload.requiredApprovalClass ||
+    request.payload.previewHash !== expectedPreviewHash ||
+    !sameStrings(
+      request.payload.inputArtifactHashes,
+      portPreview.currentPreview.inputArtifactHashes
+    )
+  ) {
+    throw new Error(
+      "Resident recovery receipt semantic catalog binding does not match the mounted preview."
+    );
+  }
+  const authorizationKind = request.payload.authorizationKind;
+  const canonicalInvocationInput = {
+    authorizationKind,
+    logicalLocator: receipt.payload.logicalLocator,
+    requestEventId: request.id,
+    executionClaimEventId: claim.id,
+    authorization: claim.payload.authorization,
+    previewHash: request.payload.previewHash,
+    ...(authorizationKind === "human-approval"
+      ? {
+          approvedPreviewHash:
+            requireResidentReceiptApproval(approval).payload
+              .approvedPreviewHash,
+          approvedBy:
+            requireResidentReceiptApproval(approval).payload.approvedBy
+        }
+      : {}),
+    currentPreview: portPreview.currentPreview
+  };
+  if (
+    receipt.payload.residentInvocationInputHash !==
+      residentGatewayHash(canonicalInvocationInput)
+  ) {
+    throw new Error(
+      "Resident recovery receipt invocation hash does not bind the exact mounted preview and authorization."
+    );
+  }
+
+  const expectedResult =
+    expectedResidentReceiptResult(receipt.payload.catalogOrdinal, preview);
+  if (
+    !sameStrings(
+      receipt.payload.artifactHashes,
+      expectedResult.artifactHashes
+    ) ||
+    !sameStrings(
+      receipt.payload.readModelChanges,
+      [expectedResult.readModelChange]
+    ) ||
+    receipt.payload.resultSummary !== expectedResult.resultSummary
+  ) {
+    throw new Error(
+      "Resident recovery receipt result identity is outside its exact catalog row."
+    );
+  }
+  const expectedEventCount = receipt.payload.catalogOrdinal === 7
+    ? 0
+    : receipt.payload.catalogOrdinal === 10
+      ? residentReceiptStringArray(
+          preview,
+          "selectedCandidateIds",
+          "resident legacy selected candidates"
+        ).length
+      : 1;
+  if (
+    expectedEventCount === 0
+      ? selectedEvents.length !== 0
+      : selectedEvents.length !== expectedEventCount
+  ) {
+    throw new Error(
+      "Resident recovery receipt has the wrong exact catalog event cardinality."
+    );
+  }
+  if (receipt.payload.catalogOrdinal === 7) {
+    return;
+  }
+  const approver = authorizationKind === "human-approval"
+    ? requireResidentReceiptApproval(approval).payload.approvedBy
+    : undefined;
+  switch (receipt.payload.catalogOrdinal) {
+    case 2:
+    case 3:
+      validateResidentPrrReceiptEvent(
+        selectedEvents[0]!,
+        preview,
+        receipt.payload.catalogOrdinal,
+        approver
+      );
+      return;
+    case 4:
+      validateResidentAcceptedAssertionReceiptEvent(
+        selectedEvents[0]!,
+        preview,
+        approver
+      );
+      return;
+    case 5:
+    case 6:
+      validateResidentGeneratedReceiptEvent(
+        selectedEvents[0]!,
+        preview,
+        receipt.payload.catalogOrdinal,
+        approver
+      );
+      return;
+    case 9:
+      validateResidentLegacyApprovalReceiptEvent(
+        selectedEvents[0]!,
+        preview,
+        approver
+      );
+      return;
+    case 10:
+      validateResidentLegacyProposalReceiptEvents(
+        selectedEvents,
+        preview,
+        allEvents
+      );
+      return;
+  }
+}
+
+function expectedResidentReceiptResult(
+  catalogOrdinal: number,
+  preview: Record<string, unknown>
+): {
+  readonly artifactHashes: readonly string[];
+  readonly readModelChange: string;
+  readonly resultSummary: string;
+} {
+  switch (catalogOrdinal) {
+    case 2:
+      return {
+        artifactHashes: [],
+        readModelChange: "prr",
+        resultSummary:
+          "PRR correspondence was recorded by the authoritative domain service."
+      };
+    case 3:
+      return {
+        artifactHashes: [],
+        readModelChange: "prr-timeline",
+        resultSummary:
+          "PRR correspondence was recorded by the authoritative domain service."
+      };
+    case 4:
+      return {
+        artifactHashes: [],
+        readModelChange: "ontology-graph",
+        resultSummary:
+          "The human-reviewed assertion was accepted through the ontology assertion service."
+      };
+    case 5:
+    case 6: {
+      const artifactKind = catalogOrdinal === 5 ? "export" : "report";
+      return {
+        artifactHashes: [
+          residentReceiptString(
+            preview,
+            "outputArtifactHash",
+            "resident governed output artifact hash"
+          )
+        ],
+        readModelChange: "governance-generated-artifacts",
+        resultSummary:
+          `Governance recorded the approved ${artifactKind} generation without publishing or transferring artifact bytes.`
+      };
+    }
+    case 7: {
+      const outputs = residentGatewayArray(
+        preview.expectedArtifactOutputs,
+        "resident projection approved artifact outputs"
+      );
+      return {
+        artifactHashes: outputs.map((output) =>
+          residentGatewayString(
+            residentGatewayRecord(
+              output,
+              "resident projection approved artifact output"
+            ).artifactHash,
+            "resident projection approved artifact hash"
+          )
+        ),
+        readModelChange: "workspace-projection-artifacts",
+        resultSummary:
+          "Workspace-ops rebuilt the approved expendable projection artifacts."
+      };
+    }
+    case 9:
+      return {
+        artifactHashes: [
+          residentReceiptString(
+            preview,
+            "reportHash",
+            "resident legacy report hash"
+          ),
+          residentReceiptString(
+            preview,
+            "candidateSetHash",
+            "resident legacy candidate-set hash"
+          )
+        ],
+        readModelChange: "legacy-staging",
+        resultSummary:
+          "Legacy ontology staging approval was recorded."
+      };
+    case 10:
+      return {
+        artifactHashes: [],
+        readModelChange: "legacy-staging",
+        resultSummary:
+          "Legacy ontology staging appended evidence-tied assertion proposals."
+      };
+    default:
+      throw new Error("Resident recovery receipt catalog row is unsupported.");
+  }
+}
+
+function validateResidentPrrReceiptEvent(
+  event: KnowledgeEvent,
+  preview: Record<string, unknown>,
+  catalogOrdinal: 2 | 3,
+  approver: string | undefined
+): void {
+  const initial = catalogOrdinal === 2;
+  const payload = residentGatewayRecord(
+    event.payload,
+    "resident PRR receipt event payload"
+  );
+  const attachmentBindings = residentGatewayArray(
+    preview.attachmentBindings,
+    "resident PRR approved attachment bindings"
+  );
+  const attachmentEvidenceIds = attachmentBindings.map((binding) =>
+    residentGatewayString(
+      residentGatewayRecord(
+        binding,
+        "resident PRR approved attachment binding"
+      ).evidenceId,
+      "resident PRR approved attachment evidence ID"
+    )
+  );
+  if (
+    approver === undefined ||
+    event.type !==
+      (initial ? "prr.request.sent" : "prr.followup.sent") ||
+    event.context.actor.kind !== "human" ||
+    event.context.actor.id !== approver ||
+    payload.approvedBy !== approver ||
+    payload.prrRequestId !== preview.prrRequestId ||
+    payload.correspondenceId !== preview.correspondenceId ||
+    payload.provider !== preview.provider ||
+    payload.subject !== preview.subject ||
+    payload.bodyHash !== preview.renderedBodyHash ||
+    (
+      initial &&
+      (
+        payload.idempotencyKey !== preview.providerIdempotencyKey ||
+        residentGatewayCanonicalJson(payload.attachmentEvidenceIds) !==
+          residentGatewayCanonicalJson(attachmentEvidenceIds)
+      )
+    )
+  ) {
+    throw new Error(
+      "Resident recovery PRR receipt event does not match its exact approved correspondence input."
+    );
+  }
+}
+
+function validateResidentAcceptedAssertionReceiptEvent(
+  event: KnowledgeEvent,
+  preview: Record<string, unknown>,
+  approver: string | undefined
+): void {
+  const payload = residentGatewayRecord(
+    event.payload,
+    "resident accepted-assertion receipt payload"
+  );
+  if (
+    approver === undefined ||
+    event.type !== "assertion.accepted" ||
+    event.context.actor.kind !== "human" ||
+    event.context.actor.id !== approver ||
+    event.context.causationId !== preview.proposalEventId ||
+    payload.assertionId !== preview.assertionId ||
+    payload.acceptedBy !== approver ||
+    payload.rationale !== preview.reviewerRationaleDraft
+  ) {
+    throw new Error(
+      "Resident recovery accepted assertion receipt does not match its approved evidence and human context."
+    );
+  }
+}
+
+function validateResidentGeneratedReceiptEvent(
+  event: KnowledgeEvent,
+  preview: Record<string, unknown>,
+  catalogOrdinal: 5 | 6,
+  approver: string | undefined
+): void {
+  const artifactKind = catalogOrdinal === 5 ? "export" : "report";
+  const payload = residentGatewayRecord(
+    event.payload,
+    "resident governed generation receipt payload"
+  );
+  const artifactId = catalogOrdinal === 5
+    ? payload.exportId
+    : payload.reportId;
+  if (
+    approver === undefined ||
+    event.type !== `${artifactKind}.generated` ||
+    event.context.actor.id !== approver ||
+    event.context.causationId !== preview.causationEventId ||
+    artifactId !== preview.artifactId ||
+    payload.generatedBy !== approver ||
+    residentGatewayCanonicalJson(payload.policy) !==
+      residentGatewayCanonicalJson(preview.policy) ||
+    residentGatewayCanonicalJson(payload.includedEvidenceIds) !==
+      residentGatewayCanonicalJson(preview.includedEvidenceIds) ||
+    residentGatewayCanonicalJson(payload.includedContentHashes) !==
+      residentGatewayCanonicalJson(preview.includedContentHashes) ||
+    residentGatewayCanonicalJson(payload.sensitiveOptIns) !==
+      residentGatewayCanonicalJson(preview.sensitiveOptIns) ||
+    payload.defaultPublicSafeOnly !== preview.defaultPublicSafeOnly
+  ) {
+    throw new Error(
+      "Resident recovery governed generation receipt does not match its exact approved payload and context."
+    );
+  }
+}
+
+function validateResidentLegacyApprovalReceiptEvent(
+  event: KnowledgeEvent,
+  preview: Record<string, unknown>,
+  approver: string | undefined
+): void {
+  const payload = residentGatewayRecord(
+    event.payload,
+    "resident legacy approval receipt payload"
+  );
+  if (
+    approver === undefined ||
+    event.type !== "legacy.ontology.staging.approved" ||
+    event.context.actor.kind !== "human" ||
+    event.context.actor.id !== approver ||
+    payload.approvedBy !== approver ||
+    payload.sourceCollectionId !== preview.sourceCollectionId ||
+    payload.scanBatchId !== preview.scanBatchId ||
+    payload.stagingBatchId !== preview.stagingBatchId ||
+    payload.legacyReportId !== preview.legacyReportId ||
+    payload.reportHash !== preview.reportHash ||
+    payload.candidateSetHash !== preview.candidateSetHash ||
+    residentGatewayCanonicalJson(
+      payload.approvedAssertionCandidateIds
+    ) !== residentGatewayCanonicalJson(preview.selectedCandidateIds)
+  ) {
+    throw new Error(
+      "Resident recovery legacy approval receipt does not match its exact human branch and selected candidates."
+    );
+  }
+}
+
+function validateResidentLegacyProposalReceiptEvents(
+  events: readonly KnowledgeEvent[],
+  preview: Record<string, unknown>,
+  allEvents: readonly KnowledgeEvent[]
+): void {
+  const selectedCandidateIds = residentReceiptStringArray(
+    preview,
+    "selectedCandidateIds",
+    "resident legacy selected candidates"
+  );
+  const importedEvidenceIds = residentReceiptStringArray(
+    preview,
+    "importedEvidenceIds",
+    "resident legacy imported evidence IDs"
+  );
+  if (selectedCandidateIds.length !== importedEvidenceIds.length) {
+    throw new Error(
+      "Resident recovery legacy preview has incomplete candidate evidence bindings."
+    );
+  }
+  for (const [index, event] of events.entries()) {
+    const candidateId = selectedCandidateIds[index]!;
+    const evidenceId = importedEvidenceIds[index]!;
+    const payload = residentGatewayRecord(
+      event.payload,
+      "resident legacy proposal receipt payload"
+    );
+    const assertionId = `as_legacy_${createHash("sha256").update([
+      residentReceiptString(
+        preview,
+        "sourceCollectionId",
+        "resident legacy source collection ID"
+      ),
+      residentReceiptString(
+        preview,
+        "scanBatchId",
+        "resident legacy scan batch ID"
+      ),
+      residentReceiptString(
+        preview,
+        "stagingBatchId",
+        "resident legacy staging batch ID"
+      ),
+      residentReceiptString(
+        preview,
+        "candidateSetHash",
+        "resident legacy candidate-set hash"
+      ),
+      candidateId
+    ].join(":")).digest("hex")}`;
+    const evidenceEvents = allEvents.filter((candidate) =>
+      candidate.type === "evidence.ingested" &&
+      candidate.payload.evidenceId === evidenceId
+    );
+    if (
+      event.type !== "assertion.proposed" ||
+      evidenceEvents.length !== 1 ||
+      payload.assertionId !== assertionId ||
+      payload.evidenceId !== evidenceId ||
+      payload.object !== candidateId ||
+      payload.reviewState !== "proposed" ||
+      event.context.causationId !== evidenceEvents[0]?.id
+    ) {
+      throw new Error(
+        "Resident recovery legacy proposal receipt is outside the exact selected-candidate order or payload."
+      );
+    }
+  }
+}
+
+function requireResidentReceiptApproval(
+  approval: ResidentHumanApprovedEvent | undefined
+): ResidentHumanApprovedEvent {
+  if (approval === undefined) {
+    throw new Error(
+      "Resident recovery receipt semantic validation requires its exact human approval."
+    );
+  }
+  return approval;
+}
+
+function residentReceiptString(
+  preview: Record<string, unknown>,
+  key: string,
+  label: string
+): string {
+  return residentGatewayString(Reflect.get(preview, key), label);
+}
+
+function residentReceiptStringArray(
+  preview: Record<string, unknown>,
+  key: string,
+  label: string
+): readonly string[] {
+  return residentGatewayStringArray(Reflect.get(preview, key), label);
 }
 
 function copyResidentLogicalLocator(value: unknown): ResidentLogicalLocator {
@@ -2049,6 +2563,7 @@ async function appendAndRereadResidentLifecycleEvent<
     catalogOrdinal,
     implementationRevision,
     allEvents,
+    undefined,
     trustedCurrentTime
   );
   const durable = stream.find((candidate) => candidate.id === appended.id);
