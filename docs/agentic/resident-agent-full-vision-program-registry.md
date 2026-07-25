@@ -33821,3 +33821,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   authority, strict record 29, assurance-only transition, publication, Wave
   3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1034 — Integrated missing-binding RED authorizes exact three-source repair
+
+- Recorded at: 2026-07-25T17:36:50Z
+- E-1033 integrated exact independently approved test-only RED
+  `2a4a69a97712070ac5b9c31521223df1d6ac4a52` by program commit
+  `f3849d7bdebed563ee22a247dce49e2c54878d81`. Exact history-preserving
+  Task136 authority merge
+  `d9a84e8d543f749a74f3c86375fa22fe6b65a05b` has exact parents E-1031
+  review-authority merge
+  `60ccd8cccbe58ac053c0f7730f322eae88b0184d` and that E-1033 integrated
+  program authority. The new causal RED is approved, recorded, and integrated.
+- Authorize the smallest forward source repair in exactly
+  `packages/agent/src/adapters/legacy-staging.ts`,
+  `packages/agent/src/domain-execution-dispatcher.ts`, and
+  `packages/agent/src/resident-loop-tool-gateway.ts`. Starting rejected blobs
+  are respectively `207a57d401eaae0c89361a654e319f98cea3469a`,
+  `9c134607804d442f004ea7cb24ca89adf1a5bf80`, and
+  `ec6163d18928a7f5fa09cada18a22c7759b93e2a`.
+- Freeze exact approved RED tests at legacy-staging adapter
+  `741bf9c02184c0367c4b4aa08a1b06202bac362e`, dispatcher
+  `6562d5531b63789a0dc826d8eca6f5d48a692738`, and gateway
+  `26a6ea3fc8ff0b321b29c0569823f5d364978bb4`; freeze every other source,
+  test, claim, authority, loader, dependency, route, provider, credential,
+  and external-system byte.
+- Remove the all-binding-material-absent exception from adapter preview
+  construction. Every selected current candidate must contain complete
+  canonical assertion binding material; otherwise preview construction must
+  reject. Every successful ordinal-10 preview must contain the nonoptional
+  ordered `selectedCandidateBindingHashes` array and include it in
+  `normalizedInputHash` and complete preview hashing.
+- Remove the missing-array compatibility branches and helpers from dispatcher
+  fresh execution and gateway recovery. Both must require the binding-hash
+  array, independently recompute the ordered hashes from exact durable
+  assertion/evidence facts, and reject absence, partial/noncanonical binding,
+  order drift, or hash mismatch before attestation or terminalization.
+  Preserve all strict binding code, exact evidence causation/content,
+  object independence, currentness, chronology, identities, private
+  brand/permit, attestation, branch readback, evidence, and at-most-once
+  behavior. Add no fallback, report store, public ABI, route, or activation.
+- Turn exact focused **82 = 79 passed + 3 failed** and loader-inclusive
+  **84 = 81 passed + 3 failed** into exact GREEN without changing a test.
+  Run all E-1030/E-1029 focused, boundary, adapter, cross-boundary, card,
+  typecheck, UI, factory, mission, V4, marker, repository-first-stop, scope,
+  test/source freeze, ancestry, dependency, diff, clean-state, calibrated
+  differential, and timeout-variance gates. Measure all results.
+- Commit exactly one three-source repair with subject
+  `fix(agent): require legacy candidate binding hashes`. A later separate
+  append-only event must bind one exact Task12 source candidate to a
+  completely fresh independent reviewer. The implementer, both RED reviewers,
+  rejected-GREEN gate verifier and author, coordinator, all prior source/test
+  reviewers, and every analyst of changed repair bytes are ineligible to
+  approve them. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded source-repair authority, not Task12 or
+  Task136 product candidacy, approval or integration, Task13 authority,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
