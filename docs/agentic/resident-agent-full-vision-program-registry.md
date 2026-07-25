@@ -34642,3 +34642,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1048 — Exact Task13 approval-wait chronology RED approved
+
+- Recorded at: 2026-07-25T20:12:12Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1047_task13_red_review` returns **APPROVED** with no
+  findings for exact test-only RED
+  `0eb366becff68e15d65836ccddec6e3ed8a9a623`, tree
+  `642cad52efd5afe9939e90c8994b207c9fd3c9a8`, and no other bytes. Review
+  occurred beneath clean E-1047 review-authority merge
+  `583b1d02400569a51d760cf277bc2d4585f4830c`; no byte changed.
+- The reviewer independently reproduces sole parent
+  `1261be53a7df170621d5b0d766d3924f99c7960e`, exact subject, exact
+  one-test-file **427-insertion** scope, test blob
+  `c12c00292efccd6fef621d86b5f693a0da3ad8e2`, rejected-source and
+  projection-test freezes, dependency quiet, diff, ancestry, and clean state.
+- Real ledger history validates queued/status, generation-1 claim,
+  context-ready, approval-wait, approval-suspended release, generation-2
+  same-attempt claim, and then the later causally bound exact same-claim
+  resident-loop-suspension. The explicit approval-reader port supplies only
+  the waiting or approved boundary decision; it does not replace durable
+  event parsing, claim ownership, checkpoint validation, orchestration, or
+  runner dispatch.
+- The reviewer reproduces focused **2 failed + 16 skipped**, complete claims
+  **16 passed + 2 failed**, and exact card
+  **321 = 308 passed + 13 failed**, with exactly the **11** preserved later
+  REDs and **2** chronology REDs. Typecheck and factory pass; mission and V4
+  pass **20/20** each; markers are exact **29 / 20 / 29 / 15**. Repository
+  retains the truthful legacy-staging source first stop and emits no prefix,
+  closure, `29/29`, record-29, or release success.
+- Advance only exact `0eb366be` test-only RED
+  `reviewing -> approved`. Authorize its exact history-preserving no-ff merge
+  into this program branch, fresh integration-tree gates, and a separate
+  append-only integrated event. This event contains no source-correction
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED approval, not integration or source
+  authority, Task13 source approval or integration, Task14 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
