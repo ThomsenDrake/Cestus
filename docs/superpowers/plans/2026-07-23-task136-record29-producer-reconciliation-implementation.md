@@ -8,12 +8,13 @@ calibrate the record-29 assurance prefix, and publish the preserved milestone
 to `neo`.
 
 **Architecture:** Work is split into two sequential candidates with different
-trust boundaries. A six-file Level-3 V4 authority candidate first transfers
-the seven exact producer seams and five adopted baselines to Task136 without
+trust boundaries. A nine-file Level-3 V4 authority amendment first transfers
+the seven exact producer seams and seven adopted baselines to Task136 without
 changing product bytes. A later Level-2 mission-critical product candidate
-implements the thirteen approved sources against one permanent sixteen-test
-RED, after which strict release record 29 and a two-file assurance-only prefix
-transition close V4.
+implements the fourteen approved sources against the historical permanent
+sixteen-test RED plus the later three-test Task12 binding RED, ending with
+seventeen current test paths. Strict release record 29 and a two-file
+assurance-only prefix transition then close V4.
 
 **Tech Stack:** TypeScript, Zod, Node.js ESM, Vitest, `node:test`, Git
 worktrees, append-only Markdown registry records, JSON/SHA-256 release
@@ -23,6 +24,15 @@ contracts.
 
 - Approved design SHA:
   `d475edd5cafd57a6f7db6c26aeeecb48bd9459cd`.
+- RV-1-E-954 preserves rejected Task12 checkpoint
+  `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` and rejected fresh-decision
+  candidate `eb36b46edb19ff68fe3738093702b0a49f0eede2`, and authorizes only
+  the three-document dual-context dispatcher correction forward-merged at
+  `1c6b0866949761e56fce21411e83038b8a992365`. No Task12 test or source work
+  resumes until this exact documentation descendant receives approval from a
+  completely new fresh independent architecture reviewer and a different
+  completely new fresh independent executability reviewer and is integrated.
+  Neither prior `eb36b46e` reviewer is eligible.
 - Planning authority SHA:
   `050cb93f` is the RV-1-E-935 commit; use `git rev-parse 050cb93f` and record
   its full SHA before implementation authorization.
@@ -36,8 +46,8 @@ contracts.
   `/home/drake/.codex/worktrees/program-coordinator-recovery/Cestus` on
   `codex/resident-agent-full-vision-program-watchdog-recovery`.
 - The V4 authority correction is Level 3 mission assurance. Its exact
-  six-file candidate requires a fresh scrutiny reviewer and a different
-  black-box executability reviewer.
+  nine-file amendment candidate requires a fresh scrutiny reviewer and a
+  different black-box executability reviewer.
 - Task136 product implementation is Level 2 mission-critical orchestration
   crossing public package, durable state, provenance/projection, human-gate,
   and external-effect boundaries. It requires a completely fresh independent
@@ -52,12 +62,13 @@ contracts.
   claim bytes from integration
   `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`.
 - The prospective V4 JSON SHA-256 is exactly
-  `81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a`.
+  `3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930`.
 - The prospective V4 assurance fingerprint is exactly
-  `34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6`.
+  `da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec`.
 - The synchronized mission immutable-envelope fingerprint is exactly
-  `sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
-- No adapter source, scheduler source/type, agent barrel, released Task137
+  `sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab`.
+- No adapter source other than `packages/agent/src/adapters/legacy-staging.ts`,
+  scheduler source/type, agent barrel, released Task137
   policy, portable-workspace lifecycle, mounted-artifact authority,
   `task-orchestrator-types.ts`, projection types, default runtime, route,
   provider, credential, network, unrelated external system, fallback write,
@@ -76,9 +87,12 @@ contracts.
 
 ## Frozen File Map
 
-### Pre-product V4 authority candidate: exactly six paths
+### Pre-product V4 authority amendment candidate: exactly nine paths
 
 ```text
+docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md
+docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 docs/agentic/contracts/task136-bounded-assurance-v4.json
 scripts/resident-agent/assurance/task136-bounded-assurance.mjs
 scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
@@ -87,7 +101,7 @@ docs/agentic/contracts/software-factory-mission-state.v1.json
 scripts/check-software-factory-mission-state.mjs
 ```
 
-### Task136 record-29 product candidate: exactly thirty paths
+### Task136 record-29 product candidate: exactly thirty-two paths
 
 ```text
 packages/agent/src/bounded-agent-loop.ts
@@ -98,6 +112,8 @@ packages/agent/test/plan-observation-contracts.test.ts
 packages/agent/test/plan-observation-projection.test.ts
 packages/agent/src/resident-plan-candidate-provider.ts
 packages/agent/test/resident-plan-candidate-provider.test.ts
+packages/agent/src/adapters/legacy-staging.ts
+packages/agent/test/legacy-staging-adapter.test.ts
 packages/agent/src/resident-loop-tool-gateway.ts
 packages/agent/test/resident-loop-tool-gateway.test.ts
 packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
@@ -122,9 +138,13 @@ packages/agent/test/task-orchestrator-projection.test.ts
 docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 ```
 
-The thirteen product sources are the thirteen `.ts` files under `src` above;
-the sixteen tests are the sixteen `.test.ts` files; the thirtieth path is the
-Task136 claim. No producer claim transfers.
+The fourteen product sources are the fourteen `.ts` files under `src` above;
+the seventeen tests are the seventeen `.test.ts` files; the thirty-second
+path is the Task136 claim. No producer claim transfers. The exact
+newline-delimited path-order SHA-256 is
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+The legacy-staging source/test pair is a finite baseline adoption at positions
+9 and 10, not a producer transfer.
 
 ### Post-release record-29 assurance transition: exactly two paths
 
@@ -179,8 +199,8 @@ Use `apply_patch` to append the next registry event. It must:
 cite d475edd5cafd57a6f7db6c26aeeecb48bd9459cd
 cite the exact reviewed plan commit
 name the fresh plan architecture and executability approvals
-authorize the six-file V4 correction first
-authorize the thirty-path Task136 product only after V4 integration
+authorize the nine-file V4 amendment first
+authorize the thirty-two-path Task136 product only after V4 integration
 retain strict frontier 28/29
 state exactly:
 Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
@@ -318,7 +338,7 @@ not described as passing; it is the exact candidate-differential baseline.
 - [ ] **Step 4: Append the claim-only checkpoint**
 
 Use `apply_patch` to append the authority merge SHA, its two parents, the
-unchanged `20/20` pre-RED result, exact six-file ceiling, known prospective
+unchanged `20/20` pre-RED result, exact nine-file ceiling, known prospective
 hashes, full-baseline statuses/hashes, and prohibition on product bytes to
 `task-136-v4-task137b-authority-transfer.md`.
 
@@ -348,7 +368,7 @@ Expected: one claim-only commit and clean state.
 
 - Consumes: the unchanged record-28 V4 contract/checker.
 - Produces: permanent tests for seven source-specific seam groups, exact
-  Task136 card expansion, five baseline adoptions, record-29 migration, and
+  Task136 card expansion, seven baseline adoptions, record-29 migration, and
   all 28 raw prefix pins.
 
 - [ ] **Step 1: Broaden the existing finite corpus against the real schema**
@@ -394,7 +414,7 @@ assert.deepEqual(
   task136?.ownedPaths,
   task136OwnedPaths.map((path) => ({ disposition: "owned", path }))
 );
-assert.equal(task136?.command, task136SixteenTestCommand);
+assert.equal(task136?.command, task136SeventeenTestCommand);
 assert.deepEqual(
   contract.releaseCompatibility.historicalRecords.map(
     ({ cardId, canonicalJsonSha256 }) => [cardId, canonicalJsonSha256]
@@ -428,18 +448,29 @@ assert.deepEqual(
 assert.deepEqual([...rawPrefixPins], exactRawPrefixPins1Through28);
 ```
 
-Define `task136OwnedPaths`, `task136SixteenTestCommand`,
+Define `task136OwnedPaths`, `task136SeventeenTestCommand`,
 `exactTask136HistoricalPathDispositions`, and
 `exactRawPrefixPins1Through28` as literal constants copied byte-for-byte from
 the approved design. Do not add a top-level contract key for baseline
 adoptions.
 
-Prove the five baseline adoptions through the existing injected repository
+Prove the seven baseline adoptions through the existing injected repository
 fixture. The prospective finite checker validates these exact pre-record-29
 candidate/integration/HEAD tuples:
 
 ```js
 const task136BaselineFixtureBlobs = [
+  ...[
+    ["packages/agent/src/adapters/legacy-staging.ts",
+      "99fbafda3844435109bc249b015b111b9258c210"],
+    ["packages/agent/test/legacy-staging-adapter.test.ts",
+      "de7cef3123a15fb82891943dc51005165c8c9fcd"]
+  ].map(([path, blobSha]) => ({
+    candidateSha: "3be15212776ab3c96e66bf0bade4630960c362eb",
+    integrationSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a",
+    path,
+    blobSha
+  })),
   {
     candidateSha: "70814c1259871c5458a3578fae8a5c8281540377",
     integrationSha: "253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
@@ -481,6 +512,14 @@ Then exercise every tuple:
 const beforeRecord29Records = releaseRecordsFor(contract).slice(0, 28);
 const beforeRecord29Registry = releaseRecordMarkdown(beforeRecord29Records);
 const baselineCases = [
+  ...[
+    "packages/agent/src/adapters/legacy-staging.ts",
+    "packages/agent/test/legacy-staging-adapter.test.ts"
+  ].flatMap((path) => [
+    ["3be15212776ab3c96e66bf0bade4630960c362eb", path],
+    ["dc05c43c4b9a592d0396acd034bfc32e177fd09a", path],
+    ["HEAD", path]
+  ]),
   ["70814c1259871c5458a3578fae8a5c8281540377",
     "packages/agent/src/domain-execution-dispatcher.ts"],
   ["253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5",
@@ -536,7 +575,7 @@ node --test scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
 ```
 
 Expected: nonzero solely because the real contract lacks the approved finite
-transfers/adoptions, new prerequisites, 30-path scope, 16-test command,
+transfers/adoptions, new prerequisites, 32-path scope, 17-test command,
 11-entry compatibility, record-29 migration, and expanded raw pins. Exactly
 the broadened graph, corrected-ownership/command, compatibility/raw-pin, and
 finite-mutation tests fail; the other sixteen top-level tests remain green.
@@ -594,8 +633,8 @@ append Task136 to transferToIds for T120-R, C136-P, G136-R,
 Task137B-W, CF1-HR, and Task136-FC-Ports in the exact approved order
 append Task136 to G136-SC after G136-R
 add CF1-HR and G136-SC to Task136 prerequisiteIds
-replace Task136 ownedPaths with the exact thirty-path ordered list
-replace Task136 command with the exact sixteen-test command
+replace Task136 ownedPaths with the exact thirty-two-path ordered list
+replace Task136 command with the exact seventeen-test command
 retain exactly 29 cards and every other card byte except the approved
 source-specific transfer fields
 expand releaseCompatibility to the exact eleven source-ordered entries
@@ -619,6 +658,8 @@ const task136TransferredSourceGroups = Object.freeze([
 ]);
 
 const task136BaselineAdoptions = Object.freeze([
+  "packages/agent/src/adapters/legacy-staging.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/src/domain-execution-dispatcher.ts",
   "packages/agent/src/task-orchestrator.ts",
   "packages/agent/test/task-orchestrator-claims.test.ts",
@@ -634,6 +675,10 @@ or transitive/inferred transfers.
 Use these literal baselines:
 
 ```text
+legacy candidate:       3be15212776ab3c96e66bf0bade4630960c362eb
+legacy integration:     dc05c43c4b9a592d0396acd034bfc32e177fd09a
+legacy source blob:     99fbafda3844435109bc249b015b111b9258c210
+legacy test blob:       de7cef3123a15fb82891943dc51005165c8c9fcd
 dispatcher candidate:   70814c1259871c5458a3578fae8a5c8281540377
 dispatcher integration: 253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5
 dispatcher blob:        96b0ade273696b9ffcf497119f1943f128821a58
@@ -674,13 +719,13 @@ TASK136_ABI_CORPUS_OK green=1 red=15
 Expected contract SHA:
 
 ```text
-81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
 ```
 
 - [ ] **Step 5: Record and commit GREEN**
 
 Append exact RED/GREEN ancestry, `20/20`, markers, contract hash, assurance
-fingerprint `34628c66…`, and unchanged product/raw-record evidence to the
+fingerprint `da850dfd…`, and unchanged product/raw-record evidence to the
 claim.
 
 ```bash
@@ -720,7 +765,7 @@ Use `apply_patch` to change only:
 {
   "mission": {
     "frozenAuthority": {
-      "sha256": "81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a"
+      "sha256": "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930"
     }
   }
 }
@@ -730,7 +775,7 @@ and the checker constant to:
 
 ```ts
 const expectedImmutableEnvelopeFingerprint =
-  "sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5";
+  "sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab";
 ```
 
 Do not edit `scripts/check-software-factory-mission-state.test.mjs`.
@@ -745,9 +790,9 @@ npm run factory:check
 
 Expected: valid calibrated summary, mission tests `20/20`, and factory
 readiness. The source fingerprint is exactly
-`sha256:097cf3e8490fe33caab5c663bc1a2e0e1049283b499eb98d4828e9a405210ff0`;
+`sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b`;
 the immutable-envelope fingerprint is exactly
-`sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5`.
+`sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab`.
 
 - [ ] **Step 3: Record and commit pin evidence**
 
@@ -766,7 +811,7 @@ test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
 Expected: one atomic pin-sync commit and clean state.
 
-### Task 6: Admit and review the exact six-file V4 candidate
+### Task 6: Admit and review the exact nine-file V4 amendment candidate
 
 **Files:**
 
@@ -805,6 +850,9 @@ actual="$(
 )"
 expected="$(
   printf '%s\n' \
+    docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md \
+    docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md \
+    docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md \
     docs/agentic/claims/task-136-v4-task137b-authority-transfer.md \
     docs/agentic/contracts/software-factory-mission-state.v1.json \
     docs/agentic/contracts/task136-bounded-assurance-v4.json \
@@ -816,7 +864,8 @@ expected="$(
 test "$actual" = "$expected"
 ```
 
-Expected scope is exactly the six V4 paths in the frozen file map. Also run:
+Expected scope is exactly the nine authority paths in the frozen file map.
+Also run:
 
 ```bash
 git diff --quiet "$v4_authority_merge_sha"..HEAD -- \
@@ -970,8 +1019,10 @@ comparison.
 - [ ] **Step 5: Record `candidate -> reviewing`**
 
 In the program worktree, append one registry lifecycle event containing the
-exact V4 candidate SHA, exact six paths, RED/GREEN SHAs, all gate results, and
-two fresh review assignments. Commit it without merging the candidate.
+exact V4 candidate SHA, exact nine cumulative amendment authority paths,
+exact eight-file E-1019 correction, exact one-file E-1021 correction,
+RED/GREEN SHAs, all gate results, and two fresh review assignments. Commit it
+without merging the candidate.
 
 - [ ] **Step 6: Obtain both fresh reviews**
 
@@ -1322,8 +1373,8 @@ implementation-authority SHA
 V4 candidate, approval, integration, and product-authority SHAs
 Task136 authority-merge SHA and both parents
 strict frontier 28/29
-frozen 30-path ceiling and 16-test command
-13-source / 16-test / 1-claim classification
+frozen 32-path ceiling and 17-test command
+14-source / 17-test / 1-claim classification
 real-mounted factory requirement and no-runtime-activation limit
 preserved-history, no-provider, no-network, no-fallback, and no-PR limits
 ```
@@ -1345,7 +1396,7 @@ test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
 Expected: one claim-only commit and clean state.
 
-### Task 9: Commit the permanent sixteen-test product RED
+### Task 9: Commit the historical permanent sixteen-test product RED
 
 **Files:**
 
@@ -1412,6 +1463,7 @@ resident-loop-scheduler-completion-imports.test.ts
 domain-execution-dispatcher.test.ts
   "mints only closed-catalog package capabilities through the default API"
   "uses six literal static adapter modules and eleven constructors without initialization-order drift"
+  "requires exact per-ordinal contexts and rejects rewritten or crossed family bindings"
   "attests only the catalog-specific admissible domain outcome"
   "allows the ordinal-10 automatic compatibility bridge and no other ordinal"
 agent-resident-loop-contracts.test.ts
@@ -1447,6 +1499,29 @@ labels and assert zero provider, gateway invocation, approval consumption,
 ledger append, projection substitute, fallback, local write, route, and
 default-runtime effect on the fail-closed branches. Do not condense distinct
 authorization branches into optional fields.
+
+The dispatcher/G tests must also prove legitimate positive package-owned
+execution for every catalog ordinal 2 through 7 and 9 through 10 with separate
+real adapter-specific contexts and services. PRR supplies independently valid
+`initialContext` and `followUpContext` fixtures for ordinals 2 and 3;
+export/report supplies independently valid `exportContext` and
+`reportContext` fixtures for ordinals 5 and 6. Each pair must share the same
+exact ledger object and matching workspace/resident/task tuple, while
+retaining the exact distinct ordinal-specific tool IDs, lifecycle/readback or
+governed artifact inputs, idempotency data, and service bindings. Each context
+must be passed unchanged to its exact static constructor; deriving,
+spread/copy-rewriting, substituting, swapping, or cross-using the other
+context must fail before constructor I/O. For ordinals 2 through 6 and 9
+through 10, require one wholly `new-ledger-events` execution and one wholly
+`idempotent-existing-ledger-events` execution with the exact catalog event
+type/order/context. For ordinal 7, require exact
+`nonledger-projection-artifacts`, the exact read-model change, zero event IDs,
+and zero ledger delta.
+Ordinals 0, 1, and 8 must never produce a successful attestation, outcome
+receipt, or terminal. A fixture that only constructs an adapter that throws,
+a family fixture that rewrites one context for the other ordinal, or a table
+that only presents a forged permit and observes rejection, is not positive
+admissibility evidence.
 
 - [ ] **Step 2: Freeze import/loader and ABI negatives**
 
@@ -1489,11 +1564,13 @@ permitted ownership graph.
 Run the exact card command:
 
 ```bash
-npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 ```
 
-Expected: nonzero only because the thirteen approved sources lack the exact
-designed behavior/API; every newly added contract test fails at its own
+Expected: nonzero only because this historical Task9 RED exercises thirteen
+of the fourteen approved sources that lack the exact designed behavior/API;
+the later Task12 binding RED causally exercises the adopted adapter source.
+Every newly added contract test fails at its own
 behavior/API assertion while real fixtures and existing released controls
 load.
 Syntax, fixture, dependency, invented path, or unrelated inherited failures
@@ -1549,7 +1626,10 @@ test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Expected: one permanent RED commit, no production source change, and clean
-state. All later GREEN tasks preserve these sixteen test blobs byte-for-byte.
+state. Tasks10 and 11 preserve all sixteen test blobs byte-for-byte. The
+separately authorized Task12 binding RED may replace exactly the adapter,
+dispatcher, and gateway test blobs; it preserves the other thirteen. Every
+later GREEN preserves all seventeen then-current test blobs byte-for-byte.
 
 ### Task 10: Implement the ontology and T120 V2 seam
 
@@ -1849,18 +1929,88 @@ remain byte-identical.
 **Files:**
 
 - Modify:
+  `packages/agent/src/adapters/legacy-staging.ts`
+- Modify:
+  `packages/agent/test/legacy-staging-adapter.test.ts`
+- Modify:
   `packages/agent/src/domain-execution-dispatcher.ts`
 - Modify:
+  `packages/agent/test/domain-execution-dispatcher.test.ts`
+- Modify:
   `packages/agent/src/resident-loop-tool-gateway.ts`
+- Modify:
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`
 
 **Interfaces:**
 
-- Consumes: six exact package adapter contexts, an authenticated mounted
-  ledger, W currentness closures, trusted safe-ID capability, and canonical
-  plan/locator bindings.
+- Consumes: six exact package adapter binding variants. Provider and legacy
+  retain one legitimate shared family context; accepted-graph retains one
+  context; PRR requires exact `initialContext` and `followUpContext`;
+  export/report requires exact `exportContext` and `reportContext`; and
+  destructive-repair retains its separate projection and canonical-repair
+  contexts. For internal G composition only, it also consumes the
+  authenticated ledger/clock, opaque package-owned resident execution port,
+  W-private before/after-effect currentness closures, trusted tool-request-ID
+  closure, and canonical plan/locator bindings.
 - Produces: default-only opaque dispatcher capability/port, default-only G
   permit consumer, isolated durable resident gateway lifecycle, invocation
-  attestation, outcome receipt, and at-most-once recovery.
+  attestation, outcome receipt, at-most-once recovery, and ordered secret-safe
+  legacy candidate binding hashes.
+
+RV-1-E-1017 supersedes every earlier Task12 two-source/no-adapter scope
+sentence. Preserve those sentences only as historical evidence of the
+rejected candidates. The current Task12 sequence is exactly one causal
+three-test RED commit followed by the smallest three-source GREEN commit.
+
+- [ ] **Step 0: Commit the causal six-field candidate-binding RED**
+
+In the three authorized tests, use real released staging preparation,
+`InMemoryEventLedger`, real dispatcher fresh execution, and real gateway
+recovery. Do not add fixture-only preview fields. First establish a legitimate
+selected candidate whose independent scalar `object` differs from
+`candidateId`; the same exact case must pass fresh dispatch and recovery after
+GREEN.
+
+Build one table-driven mutation corpus from an otherwise valid, correctly
+self-hashed lifecycle and mutate each dimension independently:
+
+```ts
+const bindingMutations = [
+  "predicate",
+  "object",
+  "confidence",
+  "subjectRef-presence",
+  "subjectRef-value",
+  "evidence-content-hash",
+  "candidate-order",
+  "binding-hash"
+] as const;
+```
+
+Each mutation must fail for its own semantic mismatch after reaching the real
+adapter/dispatcher/gateway boundary. Retain all earlier Task12 lifecycle,
+loader, real-adapter, W-currentness, chronology, private-brand, attestation,
+exact-readback, semantic-receipt, and at-most-once controls.
+
+```bash
+npm test -- \
+  packages/agent/test/legacy-staging-adapter.test.ts \
+  packages/agent/test/domain-execution-dispatcher.test.ts \
+  packages/agent/test/resident-loop-tool-gateway.test.ts
+npm run typecheck
+git diff --check
+git add \
+  packages/agent/test/legacy-staging-adapter.test.ts \
+  packages/agent/test/domain-execution-dispatcher.test.ts \
+  packages/agent/test/resident-loop-tool-gateway.test.ts
+git commit -m "test(agent): expose legacy candidate binding drift"
+task136_task12_binding_red_sha="$(git rev-parse HEAD)"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+```
+
+Expected: only the intended fresh-dispatch and recovery binding cases fail
+against the three frozen rejected sources. There is no fixture, API,
+collection, dependency, or type failure.
 
 - [ ] **Step 1: Preserve legacy named exports and add one default API**
 
@@ -1890,6 +2040,24 @@ export-report, destructive-repair, and legacy-staging. It accepts no adapter,
 descriptor, executor/factory function, implementation/revision/identity
 string, or lookup callback.
 
+The exact context fields are:
+
+```text
+provider-byte-transfer: context
+prr-correspondence: initialContext (ordinal 2), followUpContext (ordinal 3)
+accepted-graph-review: context
+export-report: exportContext (ordinal 5), reportContext (ordinal 6)
+destructive-repair: projectionContext (ordinal 7), canonicalRepairContext (ordinal 8)
+legacy-staging: context
+```
+
+Validate every context independently. Both PRR contexts must reference the
+same exact ledger object, both export/report contexts must reference the same
+exact ledger object, and the existing destructive pair must continue to do so.
+Each context's resident/task identity must equal the union's exact values; the
+union's one exact workspace value plus those matches freezes the same
+workspace/resident/task tuple for the pair.
+
 - [ ] **Step 2: Build the lazy closed catalog with literal static imports**
 
 Use eleven source-owned catalog entries and implementation revisions inside
@@ -1910,15 +2078,57 @@ sha256(canonical JSON {
 Store resolved identities/ledger bindings in a private WeakMap. Existing
 `createAgentDomainExecutionDispatcher({ adapters })` never enters it.
 
-- [ ] **Step 3: Add the private one-shot permit interlock**
+For PRR, call `createPrrInitialSendExecutionAdapter(initialContext)` and
+`createPrrFollowUpExecutionAdapter(followUpContext)`. For export/report, call
+`createExportGenerationAdapter(exportContext)` and
+`createReportGenerationAdapter(reportContext)`. Pass each exact supplied
+context unchanged. Never derive, spread, copy-and-rewrite, substitute, swap,
+or cross-use one ordinal's context to construct another. Provider and legacy
+retain their singular shared context; destructive-repair retains its two
+separate contexts.
+
+- [ ] **Step 3: Freeze G construction, fresh decisions, and the private permit interlock**
 
 Default-export from G one frozen permit-consumer object whose initializer
 references only a local function. The dispatcher is its sole production
-direct importer. G issues a WeakMap permit only after appending/rereading one
-permanent claim in the current `executeFreshAuthorized` frame. The consumer
+direct importer. The import-gated internal G constructor accepts exactly the
+authenticated ledger and `now`, opaque resident port, W-private before-effect
+and after-effect currentness closures, and trusted tool-request-ID closure. It
+accepts no raw adapter, executor, claim, attestation, decision, provider,
+lookup, fallback, public resolver, or caller-replaceable callback. There is no
+public or named permit issuer or decision resolver, and G's default export has
+no operation other than permit consumption.
+
+The constructed frozen G object has exactly these operations:
+
+```text
+preparePlannedStepBindings
+requestFreshAuthorized(locator)
+readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)
+executeFreshAuthorized
+rereadAndIssueFromLedger
+```
+
+`requestFreshAuthorized(locator)` performs package-owned preview rebuilding
+and W revalidation before and after the await, then appends/rereads the exact
+automatic or human request. Automatic issuance is valid only for catalog
+ordinal 10. `readFreshHumanDecision` accepts only that G instance's exact
+unconsumed live human-request brand, rereads one later independent durable
+approval bound to the exact request/preview/deadline with W revalidation,
+consumes the transition, and returns a distinct same-instance human-approved
+brand. The independent actor/path appends the decision; G only rereads it and
+never appends or synthesizes it. The method accepts no locator, raw decision,
+callback, ID, DTO, or permit.
+
+`executeFreshAuthorized` accepts only the fresh same-instance ordinal-10
+automatic-request brand or the fresh same-instance human-approved brand. It
+consumes that transition and issues a WeakMap permit only after
+appending/rereading one permanent claim in its current frame. The consumer
 requires exact port/locator/authorization branch/claim/catalog ordinal/current
 preview/canonical invocation input, deletes the permit before returning its
-binding, and rejects reuse. A reread `claimed` stage never obtains a permit.
+binding, and rejects reuse. Every stage returned by
+`rereadAndIssueFromLedger`, including requested and human-approved, is
+recovery/reread-only and nonexecutable; it never obtains or recreates a permit.
 
 - [ ] **Step 4: Attest evidence and persist the resident lifecycle**
 
@@ -1943,7 +2153,20 @@ interface ResidentDomainInvocationAttestationV1 {
 }
 ```
 
-Enforce the approved ordinal 0–10 admissibility table. Only ordinal 10 may
+Enforce the approved ordinal 0–10 admissibility table through separate real
+adapter-specific positive fixtures. Ordinals 2 and 3 must execute against
+their independently valid `initialContext` and `followUpContext`; ordinals 5
+and 6 must execute against their independently valid `exportContext` and
+`reportContext`. The pair shares only its exact ledger identity and matching
+workspace/resident/task tuple, and every context is passed unchanged to its
+exact static constructor. Ordinals 2 through 6 and 9 through 10 must each
+attest both wholly `new-ledger-events` evidence and wholly
+`idempotent-existing-ledger-events` evidence. Ordinal 7 alone must attest exact
+`nonledger-projection-artifacts` with zero ledger delta. Ordinals 0, 1, and 8
+must never yield a successful attestation, receipt, or terminal.
+Construction-only contexts that throw, a rewritten family context, and
+forged-permit rejection are insufficient to satisfy these positive cases.
+Only ordinal 10 may
 construct the non-durable `approvalClass: "none"` compatibility DTO with
 equal preview hashes and internal actor label
 `resident-automatic-policy`; none of those compatibility-only fields enter
@@ -1952,26 +2175,45 @@ approval/denial, permanent claim, outcome receipt, then completed or proven
 failed. A post-claim throw/missing receipt yields only the exact automatic or
 human `effect-outcome-unknown` binding; it never retries or guesses terminal.
 
+For ordinal 10, implement the exact design's
+`legacy-selected-candidate-binding.v1` preimage. The adapter derives ordered
+`selectedCandidateBindingHashes` from authoritative current candidates,
+includes the array in `normalizedInputHash`, and returns only the hashes in
+the complete preview. It never accepts caller-provided binding hashes and
+never exposes raw predicate or object values in the preview.
+
+Fresh dispatcher execution and gateway recovery independently recompute each
+binding from the exact ordered `assertion.proposed` payload and uniquely
+matched `evidence.ingested` event. Compare the recomputed array to the
+approved preview before attestation or terminalization. Preserve exact
+assertion/evidence identity, review state, causation, candidate order,
+currentness, attestation, and at-most-once rules. Treat `payload.object` as
+the independent candidate object, never as `candidateId`; never trust receipt
+fields as their own oracle and never add a report-store port.
+
 - [ ] **Step 5: Run and commit the seam GREEN**
 
 ```bash
 npm test -- \
+  packages/agent/test/legacy-staging-adapter.test.ts \
   packages/agent/test/domain-execution-dispatcher.test.ts \
   packages/agent/test/resident-loop-tool-gateway.test.ts \
   packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
 npm run typecheck
 git diff --check
 git add \
+  packages/agent/src/adapters/legacy-staging.ts \
   packages/agent/src/domain-execution-dispatcher.ts \
   packages/agent/src/resident-loop-tool-gateway.ts
-git commit -m "feat(agent): add package-owned resident execution"
+git commit -m "fix(agent): bind legacy candidate receipt semantics"
 task136_g_green_sha="$(git rev-parse HEAD)"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected: dispatcher/G focused and loader-policy files pass; only the two
-sources change; no adapter, scheduler, scheduler-type, barrel, or test byte
-changes.
+Expected: adapter/dispatcher/G focused and loader-policy files pass; the GREEN
+changes exactly the three sources, preserves the causal RED's three test
+blobs, and changes no scheduler, scheduler-type, barrel, report-store,
+runtime-route, or unrelated byte.
 
 ### Task 13: Implement the four-path orchestration interlock
 
@@ -2287,21 +2529,26 @@ git diff --quiet "$task136_authority_merge_sha"..HEAD -- \
   packages/agent/src/index.ts \
   packages/agent/src/scheduler-types.ts \
   packages/agent/src/adapters \
+  ':(exclude)packages/agent/src/adapters/legacy-staging.ts' \
   packages/local-runtime/src/agent-runtime-factory.ts \
   packages/local-runtime/src/agent-http-routes.ts \
   packages/local-runtime/src/http-handler.ts \
   packages/local-runtime/src/operator-status-providers.ts \
   packages/local-runtime/src/server.ts
+test "$(
+  git diff --name-only "$task136_authority_merge_sha"..HEAD -- \
+    packages/agent/src/adapters
+)" = "packages/agent/src/adapters/legacy-staging.ts"
 ```
 
 Expected: real mounted fixture passes, fabricated/swapped/stale capabilities
-fail before effect, import graph passes, and every activation/ABI-forbidden
-path is unchanged.
+fail before effect, import graph passes, legacy-staging is the sole adapter
+delta, and every other activation/ABI-forbidden path is unchanged.
 
 - [ ] **Step 4: Run exact card GREEN and commit**
 
 ```bash
-npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 npm run typecheck
 git diff --check
 git add \
@@ -2312,9 +2559,9 @@ task136_r_green_sha="$(git rev-parse HEAD)"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected: exact sixteen-file card command and typecheck pass; only the two R
-sources are committed; all sixteen RED test blobs and the claim blob remain
-unchanged after `task136_red_sha`.
+Expected: exact seventeen-file card command and typecheck pass; only the two R
+sources are committed; all seventeen then-current test blobs and the claim
+blob remain unchanged after the Task12 binding RED.
 
 ### Task 17: Admit one exact Task136 candidate and obtain fresh dual review
 
@@ -2327,7 +2574,7 @@ unchanged after `task136_red_sha`.
 **Interfaces:**
 
 - Consumes: the claim/RED and seven source-only GREEN commits.
-- Produces: one immutable 30-path candidate packet and a completely fresh
+- Produces: one immutable 32-path candidate packet and a completely fresh
   architecture/executability review pair. It does not integrate or release.
 
 - [ ] **Step 1: Run the exact card and all producer commands**
@@ -2338,6 +2585,7 @@ TASK136_TESTS=(
   packages/agent/test/plan-observation-contracts.test.ts
   packages/agent/test/plan-observation-projection.test.ts
   packages/agent/test/resident-plan-candidate-provider.test.ts
+  packages/agent/test/legacy-staging-adapter.test.ts
   packages/agent/test/resident-loop-tool-gateway.test.ts
   packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
   packages/local-runtime/test/wake-supervisor-runtime.test.ts
@@ -2351,7 +2599,7 @@ TASK136_TESTS=(
   packages/agent/test/task-orchestrator-claims.test.ts
   packages/agent/test/task-orchestrator-projection.test.ts
 )
-test "${#TASK136_TESTS[@]}" -eq 16
+test "${#TASK136_TESTS[@]}" -eq 17
 npm test -- "${TASK136_TESTS[@]}"
 npm test -- \
   packages/agent/test/plan-observation-contracts.test.ts \
@@ -2404,6 +2652,7 @@ TASK136_TESTS=(
   packages/agent/test/plan-observation-contracts.test.ts
   packages/agent/test/plan-observation-projection.test.ts
   packages/agent/test/resident-plan-candidate-provider.test.ts
+  packages/agent/test/legacy-staging-adapter.test.ts
   packages/agent/test/resident-loop-tool-gateway.test.ts
   packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
   packages/local-runtime/test/wake-supervisor-runtime.test.ts
@@ -2417,7 +2666,7 @@ TASK136_TESTS=(
   packages/agent/test/task-orchestrator-claims.test.ts
   packages/agent/test/task-orchestrator-projection.test.ts
 )
-test "${#TASK136_TESTS[@]}" -eq 16
+test "${#TASK136_TESTS[@]}" -eq 17
 TASK136_CROSS_TESTS=(
   "${TASK136_TESTS[@]}"
   packages/agent/test/execution-loop.test.ts
@@ -2439,7 +2688,7 @@ TASK136_CROSS_TESTS=(
   packages/local-runtime/test/resident-loop-provider-posture.test.ts
   packages/local-runtime/test/agent-handoff-projection.test.ts
 )
-test "${#TASK136_CROSS_TESTS[@]}" -eq 34
+test "${#TASK136_CROSS_TESTS[@]}" -eq 35
 npm test -- "${TASK136_CROSS_TESTS[@]}"
 ```
 
@@ -2489,6 +2738,7 @@ TASK136_SOURCES=(
   packages/agent/src/plan-observation-contracts.ts
   packages/agent/src/plan-observation-projection.ts
   packages/agent/src/resident-plan-candidate-provider.ts
+  packages/agent/src/adapters/legacy-staging.ts
   packages/agent/src/resident-loop-tool-gateway.ts
   packages/local-runtime/src/wake-supervisor-runtime.ts
   packages/local-runtime/src/mounted-wake-lifecycle-store.ts
@@ -2508,6 +2758,8 @@ TASK136_OWNED_PATHS=(
   packages/agent/test/plan-observation-projection.test.ts
   packages/agent/src/resident-plan-candidate-provider.ts
   packages/agent/test/resident-plan-candidate-provider.test.ts
+  packages/agent/src/adapters/legacy-staging.ts
+  packages/agent/test/legacy-staging-adapter.test.ts
   packages/agent/src/resident-loop-tool-gateway.ts
   packages/agent/test/resident-loop-tool-gateway.test.ts
   packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
@@ -2537,16 +2789,48 @@ actual_scope="$(
 )"
 expected_scope="$(printf '%s\n' "${TASK136_OWNED_PATHS[@]}" | sort)"
 test "$actual_scope" = "$expected_scope"
+TASK136_GREEN_SHAS=(
+  "$task136_t120_green_sha"
+  "$task136_c_green_sha"
+  "$task136_g_green_sha"
+  "$task136_orchestrator_green_sha"
+  "$task136_w_green_sha"
+  "$task136_h_green_sha"
+  "$task136_r_green_sha"
+)
 actual_green="$(
-  git diff --name-only "$task136_red_sha..$task136_candidate_sha" | sort
+  for green_sha in "${TASK136_GREEN_SHAS[@]}"; do
+    git diff --name-only "$green_sha^..$green_sha"
+  done | sort
 )"
 expected_green="$(printf '%s\n' "${TASK136_SOURCES[@]}" | sort)"
 test "$actual_green" = "$expected_green"
+TASK136_TASK12_RED_TESTS=(
+  packages/agent/test/legacy-staging-adapter.test.ts
+  packages/agent/test/domain-execution-dispatcher.test.ts
+  packages/agent/test/resident-loop-tool-gateway.test.ts
+)
+actual_task12_red="$(
+  git diff --name-only \
+    "$task136_task12_binding_red_sha^..$task136_task12_binding_red_sha" |
+    sort
+)"
+expected_task12_red="$(
+  printf '%s\n' "${TASK136_TASK12_RED_TESTS[@]}" | sort
+)"
+test "$actual_task12_red" = "$expected_task12_red"
+for path in "${TASK136_TASK12_RED_TESTS[@]}"; do
+  test "$(git rev-parse "$task136_task12_binding_red_sha:$path")" = \
+    "$(git rev-parse "$task136_candidate_sha:$path")"
+done
 git merge-base --is-ancestor "$task136_claim_checkpoint_sha" \
   "$task136_red_sha"
 git merge-base --is-ancestor "$task136_red_sha" "$task136_t120_green_sha"
 git merge-base --is-ancestor "$task136_t120_green_sha" "$task136_c_green_sha"
-git merge-base --is-ancestor "$task136_c_green_sha" "$task136_g_green_sha"
+git merge-base --is-ancestor "$task136_c_green_sha" \
+  "$task136_task12_binding_red_sha"
+git merge-base --is-ancestor "$task136_task12_binding_red_sha" \
+  "$task136_g_green_sha"
 git merge-base --is-ancestor "$task136_g_green_sha" \
   "$task136_orchestrator_green_sha"
 git merge-base --is-ancestor "$task136_orchestrator_green_sha" \
@@ -2562,7 +2846,7 @@ git diff --check "$task136_authority_merge_sha..$task136_candidate_sha"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
-Expected: exact 30-path candidate, exact 13-source post-RED GREEN, complete
+Expected: exact 32-path candidate, exact 14-source post-RED GREEN, complete
 linear ancestry, real dependencies, clean diff, and clean worktree.
 
 - [ ] **Step 5: Prove every released prerequisite and forbidden boundary**
@@ -2590,17 +2874,24 @@ git diff --quiet "$task136_authority_merge_sha..$task136_candidate_sha" -- \
   packages/agent/src/index.ts \
   packages/agent/src/scheduler-types.ts \
   packages/agent/src/adapters \
+  ':(exclude)packages/agent/src/adapters/legacy-staging.ts' \
   packages/local-runtime/src/agent-runtime-factory.ts \
   packages/local-runtime/src/agent-http-routes.ts \
   packages/local-runtime/src/http-handler.ts \
   packages/local-runtime/src/operator-status-providers.ts \
   packages/local-runtime/src/server.ts
+test "$(
+  git diff --name-only \
+    "$task136_authority_merge_sha..$task136_candidate_sha" -- \
+    packages/agent/src/adapters
+)" = "packages/agent/src/adapters/legacy-staging.ts"
 ```
 
 The prerequisite order above corresponds exactly to T120-R,
 Task136-FC-Ports, Task139-P2, C136-P, G136-R, Task137B-W, Task138-H, CF1-HR,
-and G136-SC. Expected: all are ancestors; Task138 and every forbidden ABI,
-adapter, route, default-runtime, server, status, and barrel path are unchanged.
+and G136-SC. Expected: all are ancestors; legacy-staging is the sole adapter
+delta; Task138 and every other forbidden ABI, adapter, route, default-runtime,
+server, status, and barrel path are unchanged.
 
 - [ ] **Step 6: Capture the fresh full-verification differential**
 
@@ -2682,6 +2973,7 @@ const approvedTestPaths = new Set([
   "packages/agent/test/plan-observation-contracts.test.ts",
   "packages/agent/test/plan-observation-projection.test.ts",
   "packages/agent/test/resident-plan-candidate-provider.test.ts",
+  "packages/agent/test/legacy-staging-adapter.test.ts",
   "packages/agent/test/resident-loop-tool-gateway.test.ts",
   "packages/agent/test/resident-loop-scheduler-completion-imports.test.ts",
   "packages/local-runtime/test/wake-supervisor-runtime.test.ts",
@@ -2803,7 +3095,7 @@ Expected:
 test and verify statuses are identical; every baseline test retains its exact
 identity/status **and occurrence count**; every baseline file retains its
 exact identity/status occurrence; any new file is a passing member of the
-frozen sixteen paths;
+frozen seventeen paths;
 failure/skip/deferred counts are identical; any positive suite-count delta is
 entirely passed; and the positive test/pass delta consists only of new passing
 tests in those paths. A green baseline remains green. An inherited nonzero
@@ -2817,7 +3109,7 @@ In the program worktree, append and commit one registry event naming exact:
 ```text
 task136 candidate SHA and clean branch
 authority-merge, claim, RED, seven GREEN SHAs
-30 owned paths and 13-source/16-test/1-claim classification
+32 owned paths and 14-source/17-test/1-claim classification
 focused, producer, cross-boundary, typecheck, factory, 20/20 and markers
 expected pre-release repository source-currentness rejection
 scope, ancestry, prerequisites, dependencies, Task138/no-activation proofs
@@ -2836,8 +3128,10 @@ Dispatch:
    replay, at-most-once permit/receipt semantics, mounted identity,
    orchestration ownership, H exact readback, adapter ABI preservation,
    no-fallback, no-activation, and exact scope;
-2. a different fresh executability reviewer to independently reproduce RED
-   causality from `task136_red_sha`, candidate GREEN, all exact commands,
+2. a different fresh executability reviewer to independently reproduce both
+   the original Task9 RED causality from `task136_red_sha` and the separate
+   three-test Task12 binding RED causality from
+   `task136_task12_binding_red_sha`, then candidate GREEN, all exact commands,
    real-mounted fixture, V4/repository behavior, full differential,
    scope/ancestry/dependency/clean/no-default gates.
 
@@ -3060,7 +3354,7 @@ Expected:
 `TASK136_FULL_DIFFERENTIAL_OK mode=exact phase=product-integration`;
 test and verify statuses, every suite/test count, and every test
 identity/status equal the reviewed candidate. The candidate SHA remains
-unchanged, all 30 candidate/integration blobs match, all product gates
+unchanged, all 32 candidate/integration blobs match, all product gates
 reproduce, forbidden/default/Task138 paths remain unchanged, and repository
 mode still rejects only changed pre-release source currentness because strict
 record 29 is not yet present. Missing candidate evidence requires rerunning
@@ -3133,10 +3427,10 @@ for (const entry of card.ownedPaths) {
 }
 NODE
 )
-test "${#TASK136_OWNED_PATHS[@]}" -eq 30
+test "${#TASK136_OWNED_PATHS[@]}" -eq 32
 test "$(printf '%s\n' "${TASK136_OWNED_PATHS[@]}" | sha256sum |
   cut -d' ' -f1)" = \
-  "3714c878ab1221121c56f5329a9ba307632c261c282abd43136a92c2cf9ce8e5"
+  "8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41"
 : > /tmp/task136-record29-owned-blobs.txt
 for path in "${TASK136_OWNED_PATHS[@]}"; do
   candidate_blob="$(
@@ -3149,7 +3443,7 @@ for path in "${TASK136_OWNED_PATHS[@]}"; do
   printf '%s %s\n' "$integration_blob" "$path" \
     >> /tmp/task136-record29-owned-blobs.txt
 done
-test "$(wc -l < /tmp/task136-record29-owned-blobs.txt)" -eq 30
+test "$(wc -l < /tmp/task136-record29-owned-blobs.txt)" -eq 32
 ```
 
 Use `apply_patch` to append one registry event that labels the following
@@ -3172,7 +3466,7 @@ reviews = exact two fresh thread IDs, candidate SHA, APPROVED
 integrationSha = exact product integration merge
 releaseEventId = task136-release-v4-Task136
 prerequisites = the nine exact contract-ordered card/integration/event IDs
-ownedPathBlobs = the 30 exact path/disposition owned/blob tuples
+ownedPathBlobs = the 32 exact path/disposition owned/blob tuples
 ```
 
 The nine prerequisite entries and SHAs are exactly:
@@ -3772,13 +4066,16 @@ the freshly read mission workflow.
 ## Plan Self-Review Gate
 
 - [ ] Every approved design section is mapped to one task and one exact gate.
-- [ ] The V4 correction changes exactly six cumulative paths, preserves a
-  twenty-test corpus, and leaves the mission-state test untouched.
-- [ ] The product candidate is exactly 13 sources, 16 permanent RED tests,
-  and one append-only claim; GREEN changes sources only.
+- [ ] The V4 amendment changes exactly nine cumulative authority paths; the
+  E-1019 correction changes exactly eight and the E-1021 correction changes
+  exactly the plan. It preserves a twenty-test corpus and leaves the
+  mission-state test untouched.
+- [ ] The product candidate is exactly 14 sources, 17 test paths incorporating
+  the historical Task9 RED and later Task12 binding RED, and one append-only
+  claim; GREEN changes sources only.
 - [ ] Seven producer seams, four orchestration paths, and zero new loader/ABI
   paths are explicitly covered.
-- [ ] Strict record 29 contains exactly nine prerequisites and 30 integration
+- [ ] Strict record 29 contains exactly nine prerequisites and 32 integration
   blobs in contract order, is first gated as a clean committed non-release
   candidate, and advances the frontier only in the later released event.
 - [ ] Post-release assurance changes exactly its claim/test and preserves

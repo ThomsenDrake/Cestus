@@ -2,9 +2,12 @@
 
 **Date:** 2026-07-22
 
-**Status:** Approach 1 is program-owner approved. This exact written revision
-requires program-owner review before implementation planning or any assurance,
-mission-state, product, or Task136 RED change.
+**Status:** Approach 1 remains program-owner approved. RV-1-E-954 authorizes
+this exact forward written correction after preserving and rejecting exact
+candidate `eb36b46edb19ff68fe3738093702b0a49f0eede2`. This descendant requires
+a completely new fresh independent architecture and executability review pair
+before coordinator approval, history-preserving integration, or any further
+Task136 RED or source change.
 
 **Revision note:** the first committed written revision at
 `7bafcef52aefa096112d6b2d6928ce4ae4c89b4b` failed independent design review
@@ -38,10 +41,29 @@ orchestrator summary reason and left domain-evidence causation undefined; the
 second specified a loader forbidden by released repository policy, exposed no
 cycle-safe non-barrel runtime API or pre-request preview operation, omitted
 the automatic adapter/T120 bridge and unknown-result mapping, and did not
-freeze mounted-ledger identity. RV-1-E-934 and this descendant correct that
-construction without adding a producer seam or product path: 22 transferred
-paths, five exact baseline-adopted paths, and a 30-path Task136 card. The
-strict frontier and all 29 card IDs/order remain unchanged.
+freeze mounted-ledger identity. RV-1-E-934 and the reviewed design at
+`d475edd5cafd57a6f7db6c26aeeecb48bd9459cd` corrected that construction
+without adding a producer seam or product path: 22 transferred paths, five
+exact baseline-adopted paths, and the historical 30-path Task136 card. The
+RV-1-E-1017 forward amendment below adopts the legacy-staging source/test
+pair, yielding seven baseline adoptions and the current 32-path card. Rejected Task12
+checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb` then proved one remaining
+written ABI gap: the design named an executable human-approved stage but no
+same-process operation could advance the exact still-live human-request brand
+through a later independent durable decision, and its dispatcher oracle proved
+only forged-permit rejection rather than legitimate positive admissibility for
+catalog ordinals 2 through 7 and 9 through 10. RV-1-E-952 froze the missing
+same-instance transition and real adapter-specific positive evidence without
+adding a path, seam, export, resolver, or callback. Exact descendant
+`eb36b46edb19ff68fe3738093702b0a49f0eede2` preserved those corrections and
+passed its fresh architecture review, but its different fresh executability
+review rejected it with one P1: the PRR and export/report factory variants
+still supplied one singular family context even though each of those families
+constructs two ordinal-specific adapters with different trusted bindings.
+RV-1-E-954 freezes the smallest correction: exact `initialContext` and
+`followUpContext` inputs for ordinals 2 and 3, and exact `exportContext` and
+`reportContext` inputs for ordinals 5 and 6. The strict frontier and all 29
+card IDs/order remain unchanged.
 
 ## Decision And Authority
 
@@ -59,6 +81,14 @@ The governing repository evidence is:
   `fea8a7d267170d4a5216b7eb4aa64865dd18a3e4`;
 - zero-path loader/ABI addendum `RV-1-E-934` at exact revised-design base
   `1512cd7d76156842febf9fe1ca955bf2c05c22e2`;
+- fresh-decision ABI correction authority `RV-1-E-952`, preserving rejected
+  Task12 checkpoint `b54281b06ef420189ec0b1ffd82caa5d8bf4c2eb`,
+  forward-merged at
+  `ea739b5140b00b9c4660267e89c36e8614b853b3`;
+- dual-context dispatcher correction authority `RV-1-E-954`, preserving
+  rejected exact candidate
+  `eb36b46edb19ff68fe3738093702b0a49f0eede2`, forward-merged at
+  `1c6b0866949761e56fce21411e83038b8a992365`;
 - the clean, history-preserving Task136 checkpoint
   `72e1ee6624c582218995e3e075e2303998811834`;
 - strict record-28 integration
@@ -229,7 +259,7 @@ source for the dispatcher test and exact adopted-source baseline:
 ]
 ```
 
-Task136 owns exactly 30 paths in this order at record 29:
+Task136 owns exactly 32 paths in this order at record 29:
 
 ```text
 packages/agent/src/bounded-agent-loop.ts
@@ -240,6 +270,8 @@ packages/agent/test/plan-observation-contracts.test.ts
 packages/agent/test/plan-observation-projection.test.ts
 packages/agent/src/resident-plan-candidate-provider.ts
 packages/agent/test/resident-plan-candidate-provider.test.ts
+packages/agent/src/adapters/legacy-staging.ts
+packages/agent/test/legacy-staging-adapter.test.ts
 packages/agent/src/resident-loop-tool-gateway.ts
 packages/agent/test/resident-loop-tool-gateway.test.ts
 packages/agent/test/resident-loop-scheduler-completion-imports.test.ts
@@ -267,8 +299,84 @@ docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 Its exact card command is:
 
 ```text
-npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts packages/agent/test/resident-plan-candidate-provider.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/resident-loop-tool-gateway.test.ts packages/agent/test/resident-loop-scheduler-completion-imports.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/ontology/test/agent-resident-loop-contracts.test.ts packages/local-runtime/test/resident-loop-factory-ports.test.ts packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-projection.test.ts
 ```
+
+The canonical newline-delimited path-list SHA-256 is
+`8fc076b8b7f3c23f513381fd771bf26ee81ad967c28b741bdb1c766d52554a41`.
+The order above is the only source for contract order, release-record
+`ownedPathBlobs` order, candidate/integration blob comparison, and every
+path-list hash. The historical thirty-path hash is not current authority.
+
+### RV-1-E-1017 secret-safe ordinal-10 binding amendment
+
+The legacy-staging adapter source/test pair is adopted as Task136 baseline
+authority, not transferred from another release-graph card. Before record 29,
+both paths must equal their exact bytes at candidate
+`3be15212776ab3c96e66bf0bade4630960c362eb`, published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and current HEAD. Their frozen
+blobs are source `99fbafda3844435109bc249b015b111b9258c210` and test
+`de7cef3123a15fb82891943dc51005165c8c9fcd`.
+
+`AgentDomainPreview` exposes one additional ordered field only:
+
+```ts
+readonly selectedCandidateBindingHashes: readonly `sha256:${string}`[];
+```
+
+It never exposes raw candidate predicate or object values. For each exact
+current selected candidate, in selected-candidate order, the adapter computes:
+
+```text
+sha256(
+  utf8("legacy-selected-candidate-binding.v1\n") ||
+  utf8(stableJson({
+    candidateId,
+    evidenceId,
+    evidenceContentHash,
+    predicate,
+    object,
+    confidence,
+    subjectRef: {
+      present: Object.hasOwn(candidate, "subjectRef"),
+      value: Object.hasOwn(candidate, "subjectRef")
+        ? candidate.subjectRef
+        : null
+    }
+  }))
+)
+```
+
+The canonical JSON object has exactly the seven displayed top-level fields;
+the version domain is the literal prefix, and `subjectRef` always has exactly
+`present` then `value`. Absence is distinct from a present empty or other
+valid scalar value. Predicate, independent scalar object, confidence, and
+subject reference remain inside the hash preimage and never enter the
+preview. Candidate ID, evidence ID, and evidence content hash remain in their
+released preview fields and are also covered by this non-substitutable
+binding.
+
+The adapter derives the ordered hashes from the authoritative current
+candidate objects, includes the exact array in `normalizedInputHash`, and
+returns it in the preview. The existing complete preview hash therefore binds
+the array a second time. It must not accept caller-supplied hashes or compute
+them from fixture-only fields.
+
+After ordinal-10 execution, the dispatcher independently reconstructs each
+preimage from the exact ordered `assertion.proposed` payload and its uniquely
+matched `evidence.ingested` event. It compares the recomputed ordered hashes
+to the approved current preview before issuing the attestation. It retains
+exact assertion/evidence IDs, review state, causation, event order,
+currentness, exact result, private branding, and at-most-once checks. In
+particular, `payload.object` is the candidate's independent scalar object and
+is never substituted with `candidateId`.
+
+Recovery performs the same independent recomputation from the durable
+proposal and evidence events before terminalizing a receipt. It also retains
+the complete branch-specific evidence table, receipt hash, request/approval/
+claim chronology, mounted preview, currentness, and at-most-once rules. The
+receipt is not its own oracle, no report-store port is added, and no runtime
+route or fallback write is introduced.
 
 ## Historical Compatibility And Immutable Release Evidence
 
@@ -694,11 +802,15 @@ issuer, binder, or resolver exists for the barrel to re-export.
 `ResidentDomainFactoryBindingsV1` is a closed discriminated union with exactly
 six variants: provider-byte-transfer, PRR-correspondence,
 accepted-graph-review, export-report, destructive-repair, and legacy-staging.
-Each variant accepts only the existing package adapter context for that family.
-It forbids an adapter object, descriptor, executor function, factory function,
-implementation name, implementation revision, identity string, or lookup
-callback. Hostile accessors, inherited keys, extra keys, proxies, sparse
-arrays, and post-call mutation fail before a constructor or I/O runs.
+Provider-byte-transfer, accepted-graph-review, and legacy-staging retain one
+existing package adapter context because each exact selected pair or singleton
+legitimately shares that binding. PRR-correspondence and export-report require
+two exact ordinal-specific contexts. Destructive-repair retains its two
+already separate contexts. No variant accepts any other context, adapter
+object, descriptor, executor function, factory function, implementation name,
+implementation revision, identity string, or lookup callback. Hostile
+accessors, inherited keys, extra keys, proxies, sparse arrays, and post-call
+mutation fail before a constructor or I/O runs.
 
 ```ts
 type ResidentLegacyStagingContextV1 =
@@ -718,7 +830,8 @@ type ResidentDomainFactoryBindingsV1 = {
     }
   | {
       readonly kind: "prr-correspondence";
-      readonly context: PrrCorrespondenceAdapterContext;
+      readonly initialContext: PrrCorrespondenceAdapterContext;
+      readonly followUpContext: PrrCorrespondenceAdapterContext;
     }
   | {
       readonly kind: "accepted-graph-review";
@@ -726,7 +839,8 @@ type ResidentDomainFactoryBindingsV1 = {
     }
   | {
       readonly kind: "export-report";
-      readonly context: ExportReportAdapterContext;
+      readonly exportContext: ExportReportAdapterContext;
+      readonly reportContext: ExportReportAdapterContext;
     }
   | {
       readonly kind: "destructive-repair";
@@ -740,11 +854,16 @@ type ResidentDomainFactoryBindingsV1 = {
 );
 ```
 
-Every selected context must contain a present validated `EventLedger`; both
-destructive-repair contexts must reference the same one. Every context
-resident/task identity that it carries must equal the union's exact
-`residentAgentId`/`taskId`. The top-level workspace identity is retained for
-later W comparison and is not caller authority.
+Every selected context must contain a present validated `EventLedger`.
+`initialContext` and `followUpContext` must reference the same exact ledger
+object; `exportContext` and `reportContext` must reference the same exact
+ledger object; and both destructive-repair contexts must continue to reference
+the same exact ledger object. Each context is validated independently, and
+every resident/task identity it carries must equal the union's exact
+`residentAgentId`/`taskId`. The union's one exact `workspaceId` plus those
+matching resident/task values forms the retained workspace/resident/task tuple
+for both contexts in either paired family. The top-level workspace identity is
+retained for later W comparison and is not caller authority.
 
 The dispatcher uses literal static imports for the exact descriptors and these
 eleven existing package constructors:
@@ -793,11 +912,23 @@ evaluation has completed. Neither the imported modules nor callers provide
 the revisions. No dynamic import, computed loader, `require`, evaluator, or
 loader-policy exemption is permitted.
 
+The dispatcher independently validates every supplied context and instantiates
+exactly the one or two catalog ordinals named by the selected union variant.
+For PRR it passes `initialContext` unchanged to
+`createPrrInitialSendExecutionAdapter` and `followUpContext` unchanged to
+`createPrrFollowUpExecutionAdapter`. For export/report it passes
+`exportContext` unchanged to `createExportGenerationAdapter` and
+`reportContext` unchanged to `createReportGenerationAdapter`. It never
+derives, spreads, copies-and-rewrites, substitutes, swaps, or cross-uses one
+context to construct the other ordinal. Provider and legacy continue to pass
+their singular context unchanged to both exact constructors;
+destructive-repair continues to pass its two already separate contexts to
+their respective constructors.
+
 The dispatcher validates each constructed adapter through
 `createAgentDomainToolRegistry`, requires its imported canonical descriptor to
-equal the catalog entry, and instantiates exactly the one or two catalog
-ordinals named by the selected union variant. It copies and freezes those
-resolved functions, binding identities, and validated binding-ledger
+equal the catalog entry, copies and freezes the resolved functions, binding
+identities, exact workspace/resident/task tuple, and validated binding-ledger
 identities in a module-private WeakMap, and returns only an opaque capability.
 
 During W's one-shot composition,
@@ -1018,6 +1149,47 @@ require the exact `decisionEventId`, `approvedBy`, and
 `approvedPreviewHash`, and human denial terminates from requested without a
 claim. No combined branch has an optional `decisionEventId`.
 
+The import-gated internal G object has exactly these frozen operations:
+
+```text
+preparePlannedStepBindings
+requestFreshAuthorized(locator)
+readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)
+executeFreshAuthorized
+rereadAndIssueFromLedger
+```
+
+Its internal constructor composition accepts only the authenticated ledger
+and `now`, the opaque package-owned resident execution port, W-private
+before-effect and after-effect currentness closures, and the trusted
+tool-request-ID closure. The constructor accepts no raw adapter, executor,
+claim, attestation, decision, provider, lookup, fallback, public resolver, or
+caller-replaceable callback. It is non-barrel and import-gated to W. G's
+default export remains only the frozen package-private permit consumer, the
+dispatcher remains that default's sole production direct importer, and there
+is no public or named permit issuer, decision resolver, or raw execution
+callback.
+
+`requestFreshAuthorized(locator)` first rebuilds the package-owned current
+preview and revalidates W before and after that await, then appends and rereads
+the exact automatic or human resident request. Automatic request issuance is
+permitted only for catalog ordinal 10; every other executable ordinal requires
+the human branch. The returned request is branded to that exact live G
+instance and transition.
+
+`readFreshHumanDecision(requested: OpaqueFreshHumanRequestedStage)` accepts
+only the exact unconsumed same-instance human-request brand. It revalidates W,
+rereads exactly one later independent durable human approval caused by that
+request and bound to its exact preview and unexpired deadline, revalidates W
+again, consumes the requested-to-approved transition, and returns a distinct
+same-instance `human-approved` brand. The independent actor/path appends the
+decision; G never appends or synthesizes it and only performs the exact durable
+reread. The method accepts no locator, raw decision, callback, decision or
+request ID, approval DTO, or caller-supplied permit.
+Reusing the request, supplying a copied or foreign-instance brand, or observing
+zero, multiple, stale, self, denied, revoked, mismatched-preview, or expired
+decisions fails closed without a claim or effect.
+
 Request append/reread binds the exact plan, locator, current preview and hash,
 policy allowlist, side-effect/output/approval classes, source/context/artifact
 provenance, authority, budgets, and capability hash. Human approval requires
@@ -1033,16 +1205,15 @@ post-claim failed names the receipt; and proven pre-claim failed names the
 request. Correlation, locator, and capability hash remain identical across the
 whole prefix.
 
-`executeFreshAuthorized` accepts only a newly issued automatic `requested` or
-human `human-approved` stage. It revalidates W currentness, appends and rereads
-the permanent claim, then creates a non-serializable, in-memory, one-shot
-execution permit bound to that exact claim and privately resolved catalog
-entry. Only that permit can call the dispatcher's private
+`executeFreshAuthorized` accepts only a fresh same-instance automatic
+`requested` brand for ordinal 10 or the fresh same-instance human
+`human-approved` brand returned by `readFreshHumanDecision`. It consumes that
+transition, revalidates W currentness, appends and rereads the permanent claim,
+then creates a non-serializable, in-memory, one-shot execution permit bound to
+that exact claim and privately resolved catalog entry. Only that permit can
+call the dispatcher's private
 `invokeAndAttest(permit, residentInvocationInput)` operation; the claim ID is
-read from the consumed permit rather than accepted as a separate string. A
-stage reconstructed by `rereadAndIssueFromLedger` never has an execution
-permit: a reread `claimed` stage is observation/reconciliation-only and can
-never execute or reexecute the effect.
+read from the consumed permit rather than accepted as a separate string.
 
 After the dispatcher returns its branded invocation attestation, G verifies
 its exact claim, capability, catalog ordinal, implementation revision,
@@ -1076,8 +1247,12 @@ approver, and approved-preview hash. That branch is never represented as
 `rereadAndIssueFromLedger(locator)` accepts exactly one valid prefix with no
 duplicate, gap, foreign event, changed canonical bytes, or second terminal.
 It can reissue request, human-approved, claimed, completed, denied, or failed
-readbacks. A receipt after a crash permits terminal finalization without an
-effect; a claim without a receipt yields only `effect-outcome-unknown`.
+readbacks, but every brand it returns is recovery/reread-only and
+nonexecutable, including a reread automatic request or human-approved stage.
+It never issues or recreates an execution permit and can never be passed to
+`readFreshHumanDecision` or `executeFreshAuthorized`. A receipt after a crash
+permits terminal finalization without an effect; a claim without a receipt
+yields only `effect-outcome-unknown`.
 Each issued readback maps only to the same authorization/stage branch in
 `ResidentLoopV2GatewayReadbacks`: completed supplies its exact claim, receipt,
 and terminal IDs; human denied supplies only its request and denial IDs;
@@ -1415,8 +1590,12 @@ The permanent RED matrix covers at least:
   impostor; changed/missing/reordered/duplicate catalog entries; descriptor/
   implementation-revision drift; function-stringification provenance; a
   legacy caller-registered dispatcher minting or satisfying a resident
-  capability; missing/optional/foreign retained ledgers, unequal destructive
-  ledgers, or a workspace/resident/task mismatch; any dynamic/computed loader,
+  capability; missing/optional/foreign per-ordinal contexts or retained
+  ledgers; unequal PRR, export/report, or destructive paired ledgers; a
+  workspace/resident/task mismatch between either paired context and the
+  union; derivation, spread/copy-rewrite, substitution, swapping, or cross-use
+  of `initialContext`/`followUpContext` or
+  `exportContext`/`reportContext`; any dynamic/computed loader,
   `require`, evaluator, loader exemption, or module-initialization read of a
   statically imported adapter value; a barrel-first/adapter-first import that
   triggers TDZ or changes descriptors; a named/namespace/barrel resident
@@ -1440,6 +1619,15 @@ The permanent RED matrix covers at least:
   automatic stage carrying any of those fields or an approval event; request/
   claim causation drift; changed preview; reused authorization; duplicate
   permanent claim; claim-expiry reexecution; or a terminal stream;
+- G construction with anything beyond the authenticated ledger/clock, opaque
+  resident port, W-private before/after-effect currentness closures, and
+  trusted tool-request-ID closure; a public or named permit issuer, decision
+  resolver, raw callback, or a default export wider than the dispatcher-only
+  permit consumer; a copied, replayed, recovery-issued, consumed, or
+  foreign-instance human-request/human-approved brand; zero, multiple, stale,
+  self, denied, revoked, preview-mismatched, or expired decisions; decision
+  read without W revalidation; automatic issuance for any ordinal other than
+  10; or any recovery/reread brand acquiring execution authority;
 - the ordinal-10 automatic compatibility bridge used for any other ordinal,
   used with an approval class other than `none`, carrying a preview mismatch,
   accepting a caller actor label, or leaking its internal label/legacy
@@ -1468,6 +1656,21 @@ The permanent RED matrix covers at least:
   newly appended event; ordinal 7 carrying an event ID, an empty/mismatched
   projection-artifact set, a wrong read-model change, or any ledger advance;
   and any adapter/source/DTO widening used to inject the resident claim;
+- executable positive package-owned fixtures for each exact catalog ordinal
+  2 through 7 and 9 through 10. Ordinals 2 and 3 use independently built real
+  `initialContext` and `followUpContext` values, and ordinals 5 and 6 use
+  independently built real `exportContext` and `reportContext` values; the
+  paired contexts share only their required exact ledger identity and matching
+  workspace/resident/task tuple and each is passed unchanged to its static
+  constructor. All selected contexts use real adapter-specific services rather
+  than construction-only throwers. Ordinals 2 through 6 and 9 through 10 each
+  prove both wholly `new-ledger-events` and wholly
+  `idempotent-existing-ledger-events` evidence; ordinal 7 alone proves exact
+  `nonledger-projection-artifacts` with zero ledger delta; and ordinals 0, 1,
+  and 8 prove that no successful attestation, receipt, or terminal can exist.
+  Forged-permit rejection, one family context rewritten for another ordinal,
+  and construction-only fixtures are necessary negatives but are never
+  sufficient positive admissibility evidence;
 - G a structural/replayed invocation attestation, empty overall evidence,
   ordinal-7 empty events treated as an event-backed result, changed normalized
   result or envelope hash, or completion without the exact outcome receipt; a
@@ -1529,9 +1732,12 @@ The permanent RED matrix covers at least:
 
 ## Assurance And Mission-State Migration
 
-The authority correction changes exactly six files:
+The forward assurance amendment changes exactly nine files:
 
 ```text
+docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md
+docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md
+docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md
 docs/agentic/contracts/task136-bounded-assurance-v4.json
 scripts/resident-agent/assurance/task136-bounded-assurance.mjs
 scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
@@ -1546,7 +1752,12 @@ G136-SC dispatcher-test transfer and dispatcher-source baseline-adoption
 validator. It also adds exact source/target scope and command validators, the
 eleven-entry compatibility constant, source-specific historical target/
 current-head migration branches, the 28 raw pins, and new exact fingerprints.
-The baseline validator requires the dispatcher source blob
+The baseline validator requires the adopted legacy-staging source and test
+blobs `99fbafda3844435109bc249b015b111b9258c210` and
+`de7cef3123a15fb82891943dc51005165c8c9fcd` at common candidate
+`3be15212776ab3c96e66bf0bade4630960c362eb`, published integration
+`dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and pre-record-29 HEAD.
+It also requires the dispatcher source blob
 `96b0ade273696b9ffcf497119f1943f128821a58` at the G136-SC candidate,
 G136-SC integration, and pre-record-29 HEAD; it does not invent historical
 G136-SC ownership for that previously unowned source. The same finite baseline
@@ -1566,13 +1777,16 @@ and one final LF produce:
 
 ```text
 V4 JSON SHA-256:
-81a34419ae5d25853279be96c14a95c65dcc127d1bb5f5b09cecbbf03c55b53a
+3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930
 
 V4 assurance fingerprint:
-34628c6687644f224ef426254a6461c25f549d696c5de08bd9dccc14b7946af6
+da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec
 
 Mission immutable-envelope fingerprint after pin synchronization:
-sha256:ac80fb8d78cbd1c8abb135604327b284c638304796cc74dc094ce6168aaa5ce5
+sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab
+
+Mission source fingerprint after pin synchronization:
+sha256:5b5b6b71dc5d0f4b96954ac00d3e7b8a4ccb7c31465eabac149b7f312f39028b
 ```
 
 The mission JSON changes only `mission.frozenAuthority.sha256`; card count
@@ -1591,25 +1805,25 @@ minimum history-preserving sequence is:
 2. In the existing V4-assurance lineage, forward-merge current program
    authority. Commit a claim-only checkpoint, then a permanent causal RED that
    fails only for the absent seven seam mappings, direct CF1-HR and G136-SC
-   prerequisites, 30-path Task136 scope, 16-test command, eleven compatibility
-   entries, five exact baseline adoptions, record-29 migration, and raw pins.
+   prerequisites, 32-path Task136 scope, 17-test command, eleven compatibility
+   entries, seven exact baseline adoptions, record-29 migration, and raw pins.
    Apply the smallest GREEN contract/checker change, then synchronize the two
    mission pins. Preserve each commit separately.
 3. Run assurance 20/20, all four exact contract markers, factory readiness,
    repository strict 28/28 followed only by expected incomplete-29 closure,
    typecheck, exact scope/diff/ancestry/dependency/clean gates, and obtain a
    fresh independent architecture/executability review pair on one exact
-   six-file candidate. Integrate only after both approve.
+   nine-file amendment candidate. Integrate only after both approve.
 4. Forward-merge that approved program authority into the existing clean
    Task136 lineage at `72e1ee6624c582218995e3e075e2303998811834` without
    reset, rebase, amend, reconstruction, or discarded history.
 5. Commit claim-only recovery evidence. Commit one permanent product RED that
    adds the exact producer and Task136 negative tests before source GREEN.
-   Apply only the 13 product source files required by those tests. The final
-   Task136 product candidate has exactly the 30-path card scope above. The RED
+   Apply only the 14 product source files required by those tests. The final
+   Task136 product candidate has exactly the 32-path card scope above. The RED
    must exercise `createResidentBoundedAgentLoopFactory` with the real mounted
    fixture and must not add a default runtime or route call site.
-6. Run the exact 16-test card command, the original focused and cross-boundary
+6. Run the exact 17-test card command, the original focused and cross-boundary
    Task136/Task120/execution-loop/portable-workspace/Task138 suites, standalone
    typecheck, factory readiness, assurance 20/20, all contract markers,
    repository-prefix behavior, diff/scope/ancestry/dependency/clean checks,
@@ -1647,7 +1861,7 @@ The correction is complete only when all of the following hold:
   stop only at incomplete 29, while changed transferred bytes or a dispatcher
   source or task-orchestrator path that differs from its exact candidate/
   integration baseline fails source currentness;
-- after record 29, Task136 owns and matches all 30 blobs, all 29 commands pass,
+- after record 29, Task136 owns and matches all 32 blobs, all 29 commands pass,
   every exact prerequisite integration is ancestral, and closure is complete;
 - focused, cross-boundary, typecheck, factory, V4, marker, repository, diff,
   scope, ancestry, dependency, clean-state, and full-verification differential

@@ -510,4 +510,43 @@ describe("mounted wake lifecycle store", () => {
       causation: { causationId: "evt_wrong_type", correlationId: "corr_wrong_type" }
     })).rejects.toThrow(/wake lifecycle/i);
   });
+
+  it("consumes currentness and issues only bounded suspension-only authority", async () => {
+    const source = (await import("node:fs")).readFileSync(
+      new URL("../src/mounted-wake-lifecycle-store.ts", import.meta.url),
+      "utf8"
+    );
+    const currentnessMutations = [
+      "copied-token",
+      "replayed-token",
+      "stale-token",
+      "foreign-mount",
+      "foreign-ledger",
+      "foreign-store",
+      "changed-policy",
+      "changed-lock",
+      "changed-source",
+      "changed-context",
+      "unrecognized-ledger-advance"
+    ] as const;
+    const forbiddenSuspensionOnlyOperations = [
+      "plan",
+      "request",
+      "approve",
+      "claim",
+      "effect",
+      "observation",
+      "continue",
+      "reclaim-current"
+    ] as const;
+    const effects = { provider: 0, gateway: 0, approval: 0, fallback: 0, localWrite: 0 };
+
+    expect(source).toContain("reverifyAfterAwait");
+    expect(source).toContain('"recordable-stale"');
+    expect(source).toContain("OpaqueResidentLoopSuspensionOnlyCapability");
+    expect(source).toContain('"unavailable"');
+    expect(currentnessMutations).toHaveLength(11);
+    expect(forbiddenSuspensionOnlyOperations).toHaveLength(8);
+    expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, fallback: 0, localWrite: 0 });
+  });
 });

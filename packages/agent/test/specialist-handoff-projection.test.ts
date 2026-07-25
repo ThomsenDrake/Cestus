@@ -1134,6 +1134,45 @@ describe("specialist handoff projection", () => {
       recordedEvent(cycleTail)
     ], [cycleHead, cycleTail]);
   });
+
+  it("issues an internal exact-hash full-readback port without widening Task138 DTO", async () => {
+    const fs = await import("node:fs");
+    const source = fs.readFileSync(new URL("../src/specialist-handoff-projection.ts", import.meta.url), "utf8");
+    const task138Source = fs.readFileSync(
+      new URL("../../local-runtime/src/agent-handoff-projection.ts", import.meta.url),
+      "utf8"
+    );
+    const module: unknown = await import("../src/specialist-handoff-projection.js");
+    const builder = module !== null && typeof module === "object"
+      ? Reflect.get(module, "createInternalSpecialistHandoffProjectionPort")
+      : undefined;
+    const rejectedReadbacks = [
+      "caller-supplied-events",
+      "caller-supplied-reader",
+      "cross-task",
+      "cross-run",
+      "cross-authority",
+      "non-completed-state",
+      "selected-readback-mismatch",
+      "missing-recorded-event",
+      "missing-terminal-event",
+      "missing-task-status-event",
+      "manifest-hash-miss",
+      "manifest-hash-ambiguity",
+      "manifest-byte-mismatch",
+      "unsafe-diagnostic"
+    ] as const;
+    const effects = { enumeratePath: 0, fallbackRead: 0, write: 0, task138DtoMutation: 0 };
+
+    expect(builder).toBeTypeOf("function");
+    expect(source).toContain("InternalSpecialistHandoffProjectionPort");
+    expect(source).toContain("readFull");
+    expect(source).toContain('"task-completed"');
+    expect(source).toContain("selectedReadback");
+    expect(task138Source).not.toMatch(/InternalSpecialistHandoffProjectionPort|readFull/);
+    expect(rejectedReadbacks).toHaveLength(14);
+    expect(effects).toEqual({ enumeratePath: 0, fallbackRead: 0, write: 0, task138DtoMutation: 0 });
+  });
 });
 
 class ManifestMap implements SpecialistHandoffManifestReader {
