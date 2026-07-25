@@ -830,7 +830,7 @@ graph/order and nine Task136 prerequisites, and changes no product byte.
 The two adopted paths are finite pre-record baselines. Source blob
 `99fbafda3844435109bc249b015b111b9258c210` and test blob
 `de7cef3123a15fb82891943dc51005165c8c9fcd` must match exact candidate
-`c244106459ca050a5f8b61a00755abf184721956`, published integration
+`3be15212776ab3c96e66bf0bade4630960c362eb`, published integration
 `dc05c43c4b9a592d0396acd034bfc32e177fd09a`, and current HEAD until record
 29. After record 29, all 32 Task136 candidate/integration/current blobs must
 match.
