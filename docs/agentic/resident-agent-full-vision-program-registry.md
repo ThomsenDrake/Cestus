@@ -34411,3 +34411,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1044 — Integrated Task12 authorizes exact Task13 orchestration GREEN
+
+- Recorded at: 2026-07-25T19:26:09Z
+- E-1043 integrated exact independently approved Task12 source by program
+  commit `649fe33559c7585b15c89cf60dc190205e0b0879`. Exact Task136 authority
+  merge `f4a7c3f8517b1910bb8fcdc486d60ecfe1bf59ec` has exact parents E-1041
+  review-authority merge
+  `a35b59b48072aca3868f0c3189e77ea7eb665dca` and E-1043 integrated
+  program authority. The committed-plan precondition for separate Task13
+  implementation authority is satisfied.
+- Authorize Task13 GREEN in exactly
+  `packages/agent/src/task-orchestrator.ts` and
+  `packages/agent/src/task-orchestrator-projection.ts`. Starting blobs are
+  respectively `72b11352c8a3c79237404257d676c1ef27fef5db` and
+  `e4656da434f0ba48d670be085ba503dd7c51588b`.
+- Freeze exact Task13 RED tests
+  `packages/agent/test/task-orchestrator-claims.test.ts` at
+  `21b5797a3d8dfae73cb97f9cfbe6d1323843dc8f` and
+  `packages/agent/test/task-orchestrator-projection.test.ts` at
+  `23bdb9415de1a5fa536b75e0d8262b33c224dfe6`; freeze every Task12
+  source/test blob, every later Task136 source/test, claim, authority,
+  dependency, route, provider, credential, and external-system byte.
+- Implement the committed Task13 four-path orchestration interlock exactly.
+  Before generic expired-lease handling, validate same task, attempt, retry
+  generation, lease-claim generation, event causation, and complete strict
+  `residentLoopSuspension` instruction against the owning claim. Active,
+  cancellation, and stale-recovery paths append exactly one existing
+  `not-claimable` skip summary and append no generic release,
+  `stale-recovered`, or generation-plus-one claim. Ordinary claims and
+  nonresident checkpoint kinds retain released behavior.
+- Projection must recognize the same exact checkpoint before its expired-lease
+  branch and retain W-owned state exactly as `blocked`, nonrecoverable,
+  diagnostic reason `resident-loop-suspension-owned-by-w`, with the exact
+  checkpoint. Do not modify public orchestrator or projection types.
+- Turn the exact Task13 four-path REDs GREEN, run the two focused tests,
+  standalone typecheck, exact card and relevant released controls, factory,
+  mission, V4, markers, truthful repository first stop, exact two-source
+  scope, test/Task12/later-source freezes, ancestry, dependencies, diff, and
+  clean state. Commit exact two sources with subject
+  `fix(agent): reserve resident suspension for W`.
+- A separate later append-only event must admit one exact Task13 candidate to
+  a completely fresh independent reviewer. The implementer, every Task12
+  author/reviewer/verifier/analyst, prior Task13 test author/reviewer, and
+  coordinator are ineligible to approve changed Task13 bytes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded Task13 source authority, not a Task13 or
+  Task136 candidate, approval or integration, Task14 authority, strict record
+  29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
