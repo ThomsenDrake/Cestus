@@ -33672,3 +33672,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1031 — Exact missing-binding-array causal RED admitted to fresh review
+
+- Recorded at: 2026-07-25T17:26:09Z
+- Exact test-only RED
+  `2a4a69a97712070ac5b9c31521223df1d6ac4a52`, tree
+  `4bf07d59785f76deeca79c0e6058f2e76811ca11`, has sole parent E-1030
+  correction-authority merge
+  `5bd5ee7c28ddab484786dbc86c9912c9280473e0` and exact subject
+  `test(agent): reject missing legacy binding hashes`. It changes exactly
+  the three E-1030-authorized tests and no product or authority byte.
+- Exact test blobs are legacy-staging adapter
+  `741bf9c02184c0367c4b4aa08a1b06202bac362e`, dispatcher
+  `6562d5531b63789a0dc826d8eca6f5d48a692738`, and gateway
+  `26a6ea3fc8ff0b321b29c0569823f5d364978bb4`. Rejected source blobs remain
+  frozen exactly at legacy-staging adapter
+  `207a57d401eaae0c89361a654e319f98cea3469a`, dispatcher
+  `9c134607804d442f004ea7cb24ca89adf1a5bf80`, and gateway
+  `ec6163d18928a7f5fa09cada18a22c7759b93e2a`.
+- The corrected legitimate dispatcher and gateway current-candidate fixtures
+  now carry complete canonical predicate, independent scalar object,
+  confidence, evidence, and optional-subject-reference semantics. The
+  released real selected-candidate positive retains object unequal to
+  candidate ID. An additional complete object-equal-to-candidate-ID case is
+  used only to isolate omission of the binding-hash array from the rejected
+  compatibility guard; it is not a substitute for current binding material.
+- Focused three tests collect **82 = 79 passed + 3 failed**; with loader they
+  collect **84 = 81 passed + the same 3 failures**. The exact failures require
+  adapter current-preview construction, dispatcher fresh execution, and
+  gateway recovery to reject an absent `selectedCandidateBindingHashes`
+  array. Dispatcher and recovery mutations recompute their surrounding
+  preview/lifecycle hashes, so the failures isolate the missing array rather
+  than stale hashing, object identity, fixture shape, or receipt self-oracle.
+  The object-unequal positive, all eight E-1026 mutations, prior Task12
+  lifecycle/currentness/chronology/brand/attestation/readback/evidence/
+  at-most-once controls, and loader policy remain passing.
+- The exact 17-test card collects
+  **317 = 301 passed + 16 failed**: three current Task12 causal failures plus
+  the preserved thirteen Task13-through-16 RED failures. Five other released
+  adapter-control files remain **65/65**. Standalone typecheck, factory
+  readiness, mission **20/20**, V4 **20/20**, all four exact markers, exact
+  scope and blobs, source freezes, ancestry, dependency quiet, diff, and clean
+  state pass.
+- Repository mode exits `1` after the four markers and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no prefix, closure, `29/29`, record-29, or release success.
+- Admit only exact `2a4a69a9` as a test-only causal RED
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1031_fixture_red_review`. The reviewer must inspect
+  all three changed tests against E-1030, the amended design, and Task12 plan;
+  independently reproduce exact identity, blobs, three-test scope, frozen
+  sources, causal signatures, fixture completeness, all prior controls, card
+  accounting, adapter controls, typecheck, factory, mission, V4, markers,
+  repository first stop, scope, ancestry, dependencies, diff, and clean
+  state; and prove that no all-binding-material-absent compatibility lane is
+  needed after GREEN.
+- The reviewer has not authored, reviewed, or analyzed any corrected RED byte.
+  The implementer, rejected-GREEN author, E-1029 gate verifier, E-1026
+  reviewer, coordinator, every earlier changed-test author or reviewer, and
+  every analyst of these bytes is ineligible. It may not edit, commit, merge,
+  substitute a SHA, authorize source work or Task13, or make product/release
+  claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains Task12 `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED review admission, not RED approval or
+  integration, source-correction authority, Task12 or Task136 product
+  candidacy, Task13 authority, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
