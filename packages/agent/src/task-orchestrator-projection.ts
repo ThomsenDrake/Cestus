@@ -1,5 +1,6 @@
 import {
   hashAgentTaskOrchestratorPromptBindingReceipt,
+  validateKnowledgeEvent,
   type KnowledgeEvent
 } from "../../ontology/src/contracts.js";
 import type {
@@ -13,6 +14,8 @@ import type {
   TaskOrchestratorProjectionState,
   TaskOrchestratorSuspendedCheckpointProjection
 } from "./projection-types.js";
+
+const residentLoopSuspensionCheckpointKind = "resident-loop-suspension" as const;
 
 export interface BuildTaskOrchestratorProjectionOptions {
   readonly now?: string | Date | undefined;
@@ -330,6 +333,9 @@ function projectAttempt(input: {
   const latestClaimRelease = latestClaim === undefined
     ? undefined
     : input.draft.releases.findLast((release) => release.claimEventId === latestClaim.event.id && release.order > latestClaim.order);
+  const residentSuspensionProjection = latestClaim === undefined || latestCheckpoint === undefined
+    ? undefined
+    : residentSuspensionProjectionFor(latestCheckpoint, latestClaim, input.draft);
   const activeClaims = input.draft.claims.filter((claim) =>
     !input.draft.releases.some((release) => release.claimEventId === claim.event.id && release.order > claim.order) &&
     input.draft.completion === undefined &&
@@ -381,6 +387,10 @@ function projectAttempt(input: {
     state = "handoff-pending";
     diagnosticReason = "handoff-readback-missing";
     recoverable = true;
+  } else if (residentSuspensionProjection !== undefined) {
+    state = residentSuspensionProjection.state;
+    recoverable = residentSuspensionProjection.recoverable;
+    diagnosticReason = residentSuspensionProjection.diagnosticReason;
   } else if (activeLease?.expired === true) {
     state = "stale-claim-recoverable";
     diagnosticReason = "claim-lease-expired";
@@ -397,13 +407,14 @@ function projectAttempt(input: {
   }
 
   const attemptId = latestClaim?.attemptId ?? input.draft.completion?.attemptId ?? "attempt_unknown";
-  const latestCheckpointProjection: TaskOrchestratorLatestCheckpointProjection | undefined = latestCheckpoint === undefined
+  const retainedCheckpoint = residentSuspensionProjection?.checkpoint ?? latestCheckpoint;
+  const latestCheckpointProjection: TaskOrchestratorLatestCheckpointProjection | undefined = retainedCheckpoint === undefined
     ? undefined
     : freezeProjected({
-      checkpointEventId: latestCheckpoint.event.id,
-      checkpointKind: latestCheckpoint.checkpointKind,
+      checkpointEventId: retainedCheckpoint.event.id,
+      checkpointKind: retainedCheckpoint.checkpointKind,
       attemptId,
-      ...(latestCheckpoint.runId === undefined ? {} : { runId: latestCheckpoint.runId })
+      ...(retainedCheckpoint.runId === undefined ? {} : { runId: retainedCheckpoint.runId })
     });
 
   return freezeProjected({
@@ -439,6 +450,49 @@ function projectAttempt(input: {
     diagnosticReason,
     eventIds: freezeArray(input.draft.eventIds),
     causationIds: freezeArray(input.draft.causationIds)
+  });
+}
+
+function residentSuspensionProjectionFor(
+  checkpoint: CheckpointRecord,
+  claim: ClaimRecord,
+  draft: AttemptDraft
+): {
+  readonly state: "blocked";
+  readonly recoverable: false;
+  readonly diagnosticReason: "resident-loop-suspension-owned-by-w";
+  readonly checkpoint: CheckpointRecord;
+} | undefined {
+  const parsed = validateKnowledgeEvent(checkpoint.event);
+  if (!parsed.success || parsed.data.type !== "agent.task.orchestration.checkpointed") {
+    return undefined;
+  }
+  const payload = parsed.data.payload;
+  const instruction = payload.residentLoopSuspension;
+  if (
+    checkpoint.order <= claim.order ||
+    payload.checkpointKind !== residentLoopSuspensionCheckpointKind ||
+    instruction === undefined ||
+    parsed.data.streamId !== claim.event.streamId ||
+    payload.taskId !== draft.taskId ||
+    payload.runType !== draft.runType ||
+    payload.attemptId !== claim.attemptId ||
+    payload.retryGeneration !== draft.retryGeneration ||
+    payload.leaseClaimGeneration !== claim.leaseClaimGeneration ||
+    parsed.data.context.causationId !== claim.event.id ||
+    payload.runId !== instruction.runId ||
+    instruction.taskId !== draft.taskId ||
+    instruction.attemptId !== claim.attemptId ||
+    instruction.orchestrationClaimEventId !== claim.event.id ||
+    instruction.leaseClaimGeneration !== claim.leaseClaimGeneration
+  ) {
+    return undefined;
+  }
+  return Object.freeze({
+    state: "blocked",
+    recoverable: false,
+    diagnosticReason: "resident-loop-suspension-owned-by-w",
+    checkpoint
   });
 }
 
