@@ -1,9 +1,11 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { createLegacyImportRuntime, type LegacyImportRuntime } from "../../ingestion/src/legacy-runtime.js";
+import { sha256, stableJson } from "../../ingestion/src/legacy-report.js";
+import type { LegacyApprovedAssertionCandidate } from "../../ingestion/src/legacy-staging.js";
 import { createFakeMountedWorkspace } from "../../ingestion/test/runtime-test-helpers.js";
 import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-cestus-fixtures.js";
 import {
@@ -38,8 +40,20 @@ afterEach(() => {
 
 describe("legacy staging domain execution adapter", () => {
   it("builds approval previews with exact report, candidate, evidence, and consequence binding", async () => {
-    const prepared = await prepareLegacyStagingContext();
-    const selectedCandidateIds = prepared.preview.candidates.map((candidate) => candidate.candidateId);
+    writeTask136LegacyBindingFixture(sourceRoot);
+    const prepared = await prepareLegacyStagingContext({
+      sourceCollectionId: "src_task136_legacy_binding",
+      sourceLabel: "Task136 real legacy binding source",
+      scanBatchId: "scan_task136_legacy_binding",
+      importBatchId: "imp_task136_legacy_binding",
+      stagingBatchId: "legacy_stage_task136_legacy_binding"
+    });
+    const selectedCandidateIds = [...prepared.preview.candidates]
+      .sort((left, right) =>
+        Number(Object.hasOwn(right, "subjectRef")) -
+        Number(Object.hasOwn(left, "subjectRef"))
+      )
+      .map(({ candidateId }) => candidateId);
 
     const preview = buildLegacyStagingApprovalPreview(legacyPreviewInput(prepared, {
       toolRequestId: "toolreq_legacy_staging_approve",
@@ -57,9 +71,9 @@ describe("legacy staging domain execution adapter", () => {
       toolVersion: "0.1.0",
       sideEffectClass: "ledger-review",
       requiredApprovalClass: "ledger-review",
-      sourceCollectionId: "src_old_cestus",
-      scanBatchId: "scan_old_cestus_001",
-      stagingBatchId: "legacy_stage_001",
+      sourceCollectionId: "src_task136_legacy_binding",
+      scanBatchId: "scan_task136_legacy_binding",
+      stagingBatchId: "legacy_stage_task136_legacy_binding",
       legacyReportId: prepared.inspected.legacyReportId,
       reportHash: prepared.inspected.reportHash,
       candidateSetHash: prepared.inspected.candidateSetHash,
@@ -83,6 +97,38 @@ describe("legacy staging domain execution adapter", () => {
       prepared.inspected.candidateSetHash,
       prepared.preview.candidates[0]?.evidenceContentHash
     ]));
+    const selectedCandidates = selectedCandidateIds.map((candidateId) =>
+      prepared.preview.candidates.find((candidate) =>
+        candidate.candidateId === candidateId
+      )!
+    );
+    const expectedBindingHashes = selectedCandidates.map(
+      legacySelectedCandidateBindingHash
+    );
+    expect(selectedCandidates[0]?.object).not.toBe(
+      selectedCandidates[0]?.candidateId
+    );
+    expect(
+      Reflect.get(preview, "selectedCandidateBindingHashes")
+    ).toEqual(expectedBindingHashes);
+    expect(preview.normalizedInputHash).toBe(sha256(stableJson({
+      sourceCollectionId: preview.sourceCollectionId,
+      scanBatchId: preview.scanBatchId,
+      stagingBatchId: preview.stagingBatchId,
+      legacyReportId: preview.legacyReportId,
+      reportHash: preview.reportHash,
+      candidateSetHash: preview.candidateSetHash,
+      selectedCandidateIds: preview.selectedCandidateIds,
+      selectedCandidateBindingHashes: expectedBindingHashes,
+      importedEvidenceIds: preview.importedEvidenceIds,
+      evidenceContentHashes: preview.evidenceContentHashes
+    })));
+    expect(JSON.stringify(preview)).not.toContain(
+      String(selectedCandidates[0]?.object)
+    );
+    expect(JSON.stringify(preview)).not.toContain(
+      String(selectedCandidates[0]?.predicate)
+    );
     expect(JSON.stringify(preview)).not.toMatch(/assertion\.accepted|entity\.resolved|relationship\.accepted/i);
   });
 
@@ -390,32 +436,46 @@ describe("legacy staging domain execution adapter", () => {
   );
 });
 
-async function prepareLegacyStagingContext() {
+async function prepareLegacyStagingContext(
+  input: {
+    readonly sourceCollectionId?: string;
+    readonly sourceLabel?: string;
+    readonly scanBatchId?: string;
+    readonly importBatchId?: string;
+    readonly stagingBatchId?: string;
+  } = {}
+) {
+  const sourceCollectionId =
+    input.sourceCollectionId ?? "src_old_cestus";
+  const sourceLabel = input.sourceLabel ?? "Old Cestus";
+  const scanBatchId = input.scanBatchId ?? "scan_old_cestus_001";
+  const importBatchId = input.importBatchId ?? "imp_old_cestus_001";
+  const stagingBatchId = input.stagingBatchId ?? "legacy_stage_001";
   const workspace = createFakeMountedWorkspace("Legacy staging adapter workspace");
   const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor: humanActor });
   const inspected = await runtime.inspect({
-    sourceCollectionId: "src_old_cestus",
-    label: "Old Cestus",
+    sourceCollectionId,
+    label: sourceLabel,
     sourceRoot,
-    scanBatchId: "scan_old_cestus_001"
+    scanBatchId
   });
   expect(inspected.ok).toBe(true);
   if (!inspected.ok) {
     throw new Error("legacy inspect failed");
   }
   await runtime.approveRawImport({
-    sourceCollectionId: "src_old_cestus",
-    scanBatchId: "scan_old_cestus_001",
-    importBatchId: "imp_old_cestus_001",
+    sourceCollectionId,
+    scanBatchId,
+    importBatchId,
     approvedBy: humanActor.id
   });
   await runtime.importApproved({
-    sourceCollectionId: "src_old_cestus",
-    scanBatchId: "scan_old_cestus_001",
-    importBatchId: "imp_old_cestus_001"
+    sourceCollectionId,
+    scanBatchId,
+    importBatchId
   });
   const preview = await runtime.stagingPreview({
-    sourceCollectionId: "src_old_cestus",
+    sourceCollectionId,
     legacyReportId: inspected.legacyReportId
   });
   expect(preview.ok).toBe(true);
@@ -431,9 +491,9 @@ async function prepareLegacyStagingContext() {
     context: {
       runtime,
       ledger: workspace.ledger,
-      sourceCollectionId: "src_old_cestus",
-      scanBatchId: "scan_old_cestus_001",
-      stagingBatchId: "legacy_stage_001",
+      sourceCollectionId,
+      scanBatchId,
+      stagingBatchId,
       legacyReportId: inspected.legacyReportId,
       reportHash: inspected.reportHash,
       candidateSetHash: inspected.candidateSetHash
@@ -585,6 +645,55 @@ function eventContext() {
     coreVersion: "0.1.0",
     packVersions: { core: "0.1.0", ontology: "0.1.0" }
   };
+}
+
+function legacySelectedCandidateBindingHash(
+  candidate: LegacyApprovedAssertionCandidate
+): `sha256:${string}` {
+  const subjectRefPresent = Object.hasOwn(candidate, "subjectRef");
+  return sha256(
+    "legacy-selected-candidate-binding.v1\n" +
+    stableJson({
+      candidateId: candidate.candidateId,
+      evidenceId: candidate.evidenceId,
+      evidenceContentHash: candidate.evidenceContentHash,
+      predicate: candidate.predicate,
+      object: candidate.object,
+      confidence: candidate.confidence,
+      subjectRef: {
+        present: subjectRefPresent,
+        value: subjectRefPresent ? candidate.subjectRef : null
+      }
+    })
+  );
+}
+
+function writeTask136LegacyBindingFixture(root: string): void {
+  writeFileSync(
+    join(root, "ontology", "claims.json"),
+    JSON.stringify({
+      legacyCestusType: "claims",
+      claims: [{
+        id: "legacy_gateway_binding_subject",
+        subjectRef: "agency:gateway-primary",
+        predicate: "agency.name",
+        object: "Gateway Primary Agency",
+        confidence: 0.93
+      }]
+    }, null, 2)
+  );
+  writeFileSync(
+    join(root, "ontology", "claims-secondary.json"),
+    JSON.stringify({
+      legacyCestusType: "claims",
+      claims: [{
+        id: "legacy_gateway_binding_secondary",
+        predicate: "agency.status",
+        object: "active",
+        confidence: 0.81
+      }]
+    }, null, 2)
+  );
 }
 
 function eventOfType<Type extends KnowledgeEvent["type"]>(
