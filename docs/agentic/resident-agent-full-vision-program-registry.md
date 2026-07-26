@@ -36033,3 +36033,85 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1069 — Corrected Task14 loader RED rejected; registrar-placement correction authorized
+
+- Recorded at: 2026-07-26T00:22:16Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1068_task14_loader_red_review` returns
+  **NEEDS CHANGES** for exact corrected test-only candidate
+  `877ede2d28dfa3c72337c92e48cf89baaa44d3af`, tree
+  `6fc5f6914e3f388aee41d9a6e633c392e6badaea`, and no other bytes. Review
+  occurred beneath clean E-1068 review-authority merge
+  `c1723431b38e9441925161e57cf0e85103f60dd7`; no byte changed.
+- The corrected wake binder ownership analysis proves exact file, direct
+  named value import symbol, unique reference, direct/nonoptional/nonspread
+  call form, and three-argument arity, but it does not constrain the call's
+  containing function. Its own positive control admits a top-level call.
+  Moving the sole exact imported-symbol call into
+  `alternateConstruction()` therefore yields one importer, one valid call,
+  and zero violations even though the approved design requires the one-shot
+  `bindResidentLoopCapabilitiesForFactory` registrar chain.
+- The reviewer initially investigated a possible type-only dispatcher import
+  gap, then correctly retracted it after verifying that the complete global
+  loader requires `importClause.isTypeOnly === false`. It is not a defect and
+  must not broaden the correction.
+- The reviewer independently confirms exact candidate identity, parent,
+  tree, subject, two-test scope, blobs, frozen sources, rejected ancestry,
+  dependencies, Vitest **4.1.9**, diff, and clean state. Focused remains
+  **34 = 32 passed + 2 causal failures**, combined loader remains
+  **7 = 5 passed + 2 causal failures**, and the exact card remains
+  **321 = 311 passed + 10 failures**.
+- Adapter controls pass exact corrected **83/83**, cross-boundary passes
+  **443/443**, and relevant mounted/portable/ontology boundaries pass
+  **44/44**. Typecheck, factory, mission **20/20**, V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, and truthful repository legacy-staging first stop
+  pass.
+- Serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending**; default full execution is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**. Calibrated comparison
+  passes `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Reject exact `877ede2d`. It is not approved, integrated, a Task14 source or
+  product candidate, record 29, or a release. Preserve it, rejected
+  `a6068aae`, all exact blobs, causal evidence, reviews, and earlier history
+  in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `ab6536a9b2845cee6724cbe146bd0eb058c3fa06`. Freeze the corrected global
+  loader test at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, both Task14 sources, and every
+  other path.
+- Require the exact imported store-binder symbol call's nearest
+  function-like boundary to be the exact top-level exported
+  `bindResidentLoopCapabilitiesForFactory` function declaration in
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`. Preserve its exact
+  three parameters `(wakeRuntime, binding, domainExecution)`, direct
+  nonoptional/nonspread three-argument call, unique symbol/reference, sole
+  production importer, and every existing ownership/loader control.
+- Replace the invalid top-level positive control with an exact registrar
+  declaration and add independently executing negatives for a top-level
+  call, a wrong top-level helper, a nested function/arrow inside the registrar
+  that performs the call, and an identically named non-top-level declaration.
+  No text-only, wrapper, property, carrier, or alternate-symbol call may
+  satisfy the registrar check.
+- Against frozen sources, retain the same exact focused **32+2**, loader
+  **5+2**, and card **311+10** signatures and the same three Task14 RED
+  identities. No fixture, analyzer, API, collection, type, or unrelated
+  failure may substitute.
+- Reproduce exact adapter **83/83**, cross-boundary **443/443**, relevant
+  **44/44**, typecheck, factory, mission, V4, markers, truthful repository
+  first stop, serialized/default variance, calibrated differential, one-test
+  scope, global/source/other-path freezes, ancestry, dependencies,
+  connectivity, diff, and clean state. Commit one exact corrected test-only
+  candidate and admit only that SHA to a completely fresh independent
+  read-only reviewer. No prior author, reviewer, verifier, or analyst of
+  changed bytes may approve it; changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test rejection and one-test forward-correction
+  authority, not test approval or integration, source correction, Task14
+  approval, Task15 authority, Task136 product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
