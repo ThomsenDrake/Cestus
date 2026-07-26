@@ -35930,3 +35930,106 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1068 — Corrected Task14 loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T00:00:42Z
+- Exact corrected test-only candidate
+  `877ede2d28dfa3c72337c92e48cf89baaa44d3af`, tree
+  `6fc5f6914e3f388aee41d9a6e633c392e6badaea`, has sole parent E-1067
+  authority merge `dcc727f1ff3c37a5e7650b55697c79079f30877a`
+  and exact subject
+  `test(local-runtime): close mounted constructor provenance`.
+  Rejected candidate `a6068aaef1fc255b11c203d847f31a26976a7c20`
+  remains an ancestor.
+- It changes exactly the two E-1067-authorized tests by
+  **656 insertions / 70 deletions**. Exact new blobs are agent/global loader
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d` and local loader
+  `ab6536a9b2845cee6724cbe146bd0eb058c3fa06`.
+  Both Task14 sources remain frozen at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`;
+  every other path is unchanged.
+- Both dispatcher analyses now require exactly one direct, nonoptional,
+  nonspread argument inside the exact mounted-store binder. Independently
+  executing zero-, two-, spread-, optional-property, optional-call, and
+  out-of-binder controls are rejected while the exact one-argument control is
+  admitted.
+- The local production scan now constructs a TypeScript program and binds the
+  exact direct named value import symbol for
+  `bindMountedResidentLoopAuthorityForFactory`. It requires one exact import
+  in wake runtime, one reference to that unique import symbol, and one direct
+  nonoptional three-argument nonspread call. Controls reject unused import
+  plus shadowed parameter/local/function calls, aliased named, namespace,
+  default, import-equals, dynamic and duplicate imports, duplicate
+  declarations, zero/two/four/spread/optional calls, object carriers, and a
+  second different lexical symbol call.
+- All E-1065/E-1066 correct ownership, alias, wrapper, storage, return,
+  export/re-export, protected-mention, permit-interlock, released-adapter,
+  agent-barrel, recursive type, and dynamic-loader controls remain.
+  Analyzer/control collection succeeds before the frozen sources produce the
+  same three Task14 RED identities.
+- Exact focused signature is
+  **34 = 32 passed + 2 causal failures**. Exact combined loader signature is
+  **7 = 5 passed + 2 causal ownership failures**. Exact 17-test Task136 card
+  signature is
+  **321 = 311 passed + 10 failed**, containing only the **7** preserved
+  Task15-through-16 REDs plus Task14 source-high-water, local ownership, and
+  global ownership.
+- Audit correction: E-1066's prose reports adapter controls **84/84**, but
+  its own retained `/tmp/e1066-adapters.json` artifact and the reconstructed
+  exact seven-suite command are **83/83**: the six released adapter suites
+  pass **80/80** and registry controls pass **3/3**. Preserve E-1066 as
+  historical evidence but use exact artifact-backed **83/83** here and
+  forward. Cross-boundary controls pass **443/443** and the relevant
+  mounted/portable/ontology subset passes **44/44**.
+- Typecheck and factory pass; mission and V4 pass **20/20** each; markers
+  remain exact **29 / 20 / 29 / 15**. Repository mode emits the contract
+  markers then truthfully stops only at the
+  `Task136-LEGACY-STAGING-ADOPTION` legacy-staging source mismatch.
+- Fresh serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending**, with the exact E-1066
+  failure set. Its calibrated comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`. The first default
+  run has one additional frozen prerequisite-checker variance; the isolated
+  prerequisite suite passes **18/18**, and the default rerun exactly
+  reproduces E-1066:
+  **3,310 = 3,247 passed + 58 failed + 5 pending** with the identical failure
+  set. No collection or timeout status occurs.
+- Exact two-test scope, source/other-path freezes, rejected ancestry,
+  dependencies, real non-symlinked Vitest **4.1.9**, connectivity, diff, and
+  clean state pass.
+- Admit only exact `877ede2d` as corrected Task14 loader-oracle test-only
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1068_task14_loader_red_review`, who has never
+  authored, reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect both complete cumulative test blobs against
+  E-1065 through E-1067, reproduce the rejected counterexamples, and attack
+  exact argument arity, optional/spread syntax, static import forms, duplicate
+  and shadowed bindings, TypeScript symbol identity under the production
+  program, unresolved/no-resolve behavior, wrong file/containing function,
+  aliases, property/namespace/object/function carriers, and all preserved
+  protected-transfer controls. It must prove the exact imported store binder
+  rather than an identifier spelling supplies the sole wake call and that the
+  fixed dispatcher/G calls occur directly inside the exact mounted-store
+  binder.
+- The reviewer must independently reproduce exact candidate/tree/parent/
+  subject/scope/blobs, focused/loader/card identities, exact adapter
+  **83/83**, cross-boundary **443/443**, relevant **44/44**, typecheck,
+  factory, mission, V4, markers, truthful repository first stop, serialized/
+  default variance and calibrated differential, freezes, ancestry,
+  dependencies, connectivity, diff, and clean state.
+- The correction author, rejected author and reviewer, E-1064 source
+  implementer, all earlier Task14 participants, every prior Task136
+  participant, and coordinator are ineligible to approve changed bytes. The
+  reviewer may not edit, commit, merge, authorize source correction or
+  Task15, substitute a SHA, or make product/record-29/release/prefix/Wave
+  claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority, Task136
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
