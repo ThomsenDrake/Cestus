@@ -39947,3 +39947,95 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1115 — Exact corrected Task14 recovery RED admitted to fresh review
+
+- Recorded at: 2026-07-26T17:07:43Z
+- Exact corrected test-only candidate
+  `e81676c912afbf9ca7bb8f6e827ab718e599ab00`, tree
+  `c6e2adc9617312860aefcecb4253b7949ee3a108`, has sole parent exact E-1114
+  correction-authority merge
+  `ad75be51e499071bcce13b0c1e7fbda9f5eb5d7c` and exact subject
+  `test(local-runtime): correct Task14 recovery oracles`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` by
+  **75 insertions / 15 deletions**, from integrated blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6` to exact corrected blob
+  `52dad6d80670f53bc6a8314315f21456cb258673`. No product source, mounted
+  test, import policy, claim, contract, mission byte, dependency, route,
+  configuration, or unrelated path changes.
+- The corrected semantic-key row constructs exactly two schema-valid
+  orchestration checkpoints in the same exact target stream. Both bind the
+  same locator `resumeIdempotencyKey`, task, attempt, run, claim generation,
+  causation, and canonical event family; the second differs in exact
+  instruction canonical bytes. Explicit pre-W assertions prove the two-event
+  stable-key conflict. Frozen recovery already rejects that genuine conflict
+  without append, release, effect, or foreign-stream change, so the prior
+  false product failure is correctly removed while the assertion remains a
+  real regression control.
+- The corrected positive effect-outcome-unknown fixture uses exact
+  package-owned `agent_default` actors for its manually seeded request and
+  execution claim and retains the independent human approval actor. Explicit
+  assertions bind all three actors before W executes. Every locator,
+  capability, request/decision/claim, preview, chronology, causation,
+  correlation, evidence, budget, receipt-absence, terminal-absence,
+  mutation, no-effect, and at-most-once control remains exact.
+- Against frozen sources, the corrected positive reaches the intended
+  product boundary and fails only because W performs zero reads of the exact
+  resident-domain stream instead of the required one G
+  `rereadAndIssueFromLedger` read. Independent coordinator reproduction of
+  the two corrected rows is exact **one passed + one failed**; no fixture,
+  schema, collection, API, type, import, or earlier-boundary failure occurs.
+- The stabilized corrected focused command is exact
+  **94 = 53 passed + 41 source-causal Task14 failures**. Wake behavior is
+  **72 = 31 passed + 41 failed**, mounted is **17/17**, wake import policy is
+  **5/5**, and the adjusted failure partition is exact
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**.
+- Exact Task136 card is
+  **381 = 333 passed + 48 failed**, consisting only of the corrected
+  **41** Task14 failures plus **7** preserved Task15-through-16 REDs.
+  Exact 37-file cross-boundary execution is
+  **1,040 = 992 passed + 48 failed** with the same partition and zero new,
+  missing, fixture, collection, analyzer, dependency, or timeout variance.
+- Loaders pass **7/7**, adapters **83/83**, released boundaries **443/443**,
+  relevant boundaries **44/44**, prerequisites **18/18**, and FC-Core
+  controls **2/2**. Standalone typecheck, factory readiness, mission
+  **20/20**, V4 **20/20**, and markers **29 / 20 / 29 / 15** pass.
+- Clean normalized repository mode exits `1` after all four markers and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Exact source/import freezes, E-1114 authority and all prior RED/review/
+  rejection/integration ancestry, real Vitest/TypeScript dependencies, scope,
+  diff, full/connectivity integrity, and candidate clean state pass. The
+  paused E-1113 three-source working diff is not an ancestor, candidate,
+  review input, approval, or integration and remains untouched in its
+  separate Task136 worktree.
+- Admit only exact `e81676c9` as corrected Task14 test-only RED
+  `candidate -> reviewing`. Assign one completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed corrected
+  blob `52dad6d8`.
+- The reviewer must inspect the complete **75 insertion / 15 deletion** diff
+  and retained fixture context; independently prove the two-checkpoint
+  stable-key/canonical conflict is real and causally rejected, prove the
+  unknown-outcome fixture exactly matches G's actor and claimed-stage
+  authority, and prove its sole corrected failure reaches the missing exact
+  domain-stream reread. It must reproduce exact identity/scope/freezes/
+  ancestry/dependencies/diff/clean state; focused/card/loader/boundary/
+  FC-Core/typecheck/factory/mission/V4/marker/repository-first-stop gates and
+  corrected failure accounting.
+- Candidate author `/root/task136_e1114_red_correction`, E-1113 defect analyst,
+  every prior Task14 test author/reviewer/verifier/analyst, amendment
+  reviewers, and the coordinator are ineligible to approve. The fresh
+  reviewer may not edit, commit, merge, substitute a SHA, authorize source
+  resumption or Task15, or make prefix, record-29, release, or Wave claims.
+  Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED review admission, not RED approval or
+  integration, resumed Task14 source authority, source candidacy, Task15
+  authority, Task136 product candidacy, repository closure, strict record 29,
+  assurance transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
