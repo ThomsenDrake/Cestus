@@ -523,6 +523,31 @@ describe("wake supervisor runtime", () => {
     );
     const before = await hostile.handle.ledger.readAll();
     const effectsBefore = residentEffectEventIds(before);
+    if (mutation === "semantic-key") {
+      const checkpoints = before.filter(
+        (
+          event
+        ): event is KnowledgeEventOf<"agent.task.orchestration.checkpointed"> =>
+          event.type === "agent.task.orchestration.checkpointed" &&
+          event.streamId === hostile.checkpoint.streamId &&
+          event.payload.resumeIdempotencyKey ===
+            hostile.locator.checkpointSemanticKey
+      );
+      expect(checkpoints).toHaveLength(2);
+      const [canonical, conflicting] = checkpoints;
+      expect(conflicting?.context.causationId).toBe(canonical?.context.causationId);
+      expect(canonical?.context.causationId).toBe(hostile.claim.id);
+      expect(conflicting?.payload).toEqual({
+        ...canonical?.payload,
+        residentLoopSuspension: {
+          ...canonical?.payload.residentLoopSuspension,
+          suspensionSemanticKey: residentHash("d")
+        }
+      });
+      expect(residentCanonicalJson(conflicting?.payload)).not.toBe(
+        residentCanonicalJson(canonical?.payload)
+      );
+    }
 
     await expect(
       hostile.capabilities.mountedAuthority.recoverSuspensionPrefix(hostile.locator),
@@ -656,6 +681,29 @@ describe("wake supervisor runtime", () => {
     const instruction = released.checkpoint.payload.residentLoopSuspension!;
     const before = await released.handle.ledger.readAll();
     const requestBefore = before.find((event) => event.id === instruction.requestEventId);
+    const approvalBefore = before.find(
+      (event) =>
+        event.type === "agent.resident-domain.human-approved.v1" &&
+        event.payload.decisionEventId === instruction.decisionEventId
+    );
+    const executionClaimBefore = before.find(
+      (event) => event.id === instruction.executionClaimEventId
+    );
+    expect(requestBefore?.context.actor).toEqual({
+      id: "agent_default",
+      kind: "agent",
+      label: "Cestus Agent"
+    });
+    expect(executionClaimBefore?.context.actor).toEqual({
+      id: "agent_default",
+      kind: "agent",
+      label: "Cestus Agent"
+    });
+    expect(approvalBefore?.context.actor).toEqual({
+      id: instruction.approvedBy,
+      kind: "human",
+      label: "Wake resident reviewer"
+    });
     const domainStreamId = residentDomainStreamId(
       instruction.logicalLocator as Readonly<Record<string, unknown>>
     );
@@ -1208,7 +1256,7 @@ async function residentSuspensionMaterial(
         version: 1,
         streamId: durableRequest.streamId,
         context: {
-          actor: { id: "agent_wake_resident", kind: "agent", label: "Wake resident authority" },
+          actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
           occurredAt: "2026-07-16T00:00:00.000Z",
           causationId: approval.id,
           correlationId: durableRequest.payload.correlationId,
@@ -2043,15 +2091,6 @@ async function seededHostileResidentPrefix(
   const mounted = await issuedResidentFixture(suffix);
   const material = await residentSuspensionMaterial(mounted);
   const instruction = material.checkpoint.residentLoopSuspension;
-  const checkpointPayload = mutation === "semantic-key"
-    ? {
-        ...material.checkpoint,
-        residentLoopSuspension: {
-          ...instruction,
-          suspensionSemanticKey: residentHash("d")
-        }
-      }
-    : material.checkpoint;
   const checkpointCausationId = mutation === "causation"
     ? mounted.claim.context.causationId
     : mounted.claim.id;
@@ -2063,9 +2102,25 @@ async function seededHostileResidentPrefix(
     version: 1,
     streamId: `agent_task_orchestration_${mounted.taskId}_${mounted.runType}`,
     context: residentPrefixContext(mounted, checkpointCausationId),
-    payload: checkpointPayload
+    payload: material.checkpoint
   }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
   const constructed: KnowledgeEvent[] = [checkpoint];
+  if (mutation === "semantic-key") {
+    const conflictingCheckpoint = await mounted.handle.ledger.append({
+      type: "agent.task.orchestration.checkpointed",
+      version: 1,
+      streamId: checkpoint.streamId,
+      context: residentPrefixContext(mounted, checkpointCausationId),
+      payload: {
+        ...material.checkpoint,
+        residentLoopSuspension: {
+          ...instruction,
+          suspensionSemanticKey: residentHash("d")
+        }
+      }
+    }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
+    constructed.push(conflictingCheckpoint);
+  }
 
   const appendSuspension = async (
     kind: "canonical" | "changed-s" | "deadline" | "next-action"
@@ -2196,9 +2251,14 @@ async function seededHostileResidentPrefix(
   }
 
   const expectedConstructedTypes = Object.freeze(
-    mutation === "semantic-key" || mutation === "causation"
-      ? ["agent.task.orchestration.checkpointed"]
-      : mutation === "changed-s" ||
+    mutation === "semantic-key"
+      ? [
+          "agent.task.orchestration.checkpointed",
+          "agent.task.orchestration.checkpointed"
+        ]
+      : mutation === "causation"
+        ? ["agent.task.orchestration.checkpointed"]
+        : mutation === "changed-s" ||
           mutation === "deadline" ||
           mutation === "next-action"
         ? [
@@ -2325,7 +2385,7 @@ async function appendResidentRequestedStage(
     version: 1,
     streamId,
     context: {
-      actor: { id: "agent_wake_resident", kind: "agent", label: "Wake resident authority" },
+      actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
       occurredAt: "2026-07-16T00:00:00.000Z",
       causationId: plan.id,
       correlationId: plan.payload.correlationId,
