@@ -40102,3 +40102,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, strict record 29, assurance transition, publication,
   Wave 3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1117 — Exact Task14 G-actor RED descendant admitted to fresh review
+
+- Recorded at: 2026-07-26T17:48:57Z
+- Exact corrected test-only descendant
+  `e684225129a2d2fb64090f380b804272f4da2b36`, tree
+  `20b94c8ff3c37866d3a94dd83a8a61bd066d6002`, has sole parent exact E-1116
+  authority merge `8283c1a0f9d305cebae649cebaa2aa53a6e51e5c`
+  and exact subject `test(local-runtime): bind exact G recovery actor`.
+  Rejected candidate `e81676c912afbf9ca7bb8f6e827ab718e599ab00`
+  and its review remain immutable ancestors.
+- The descendant changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` from rejected
+  blob `52dad6d80670f53bc6a8314315f21456cb258673` to exact blob
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713` by **four insertions and four
+  deletions**. The only semantic delta is four literal replacements of actor
+  label `Resident agent` with exact G canonical label `Cestus Agent`: two
+  manually seeded request/claim contexts and their two positive assertions.
+- Actor IDs remain exact `agent_default`, kinds remain exact `agent`, and the
+  human approval actor remains independent and unchanged. The approved
+  two-checkpoint stable-key conflict, zero-versus-one domain-stream-read
+  failure, all other fixture and mutation controls, every other test byte,
+  all product sources, authority, dependencies, routes, configuration, and
+  releases remain frozen.
+- Candidate-bound corrected two-row execution is exact
+  **one passed + one intended causal failure**. Focused is
+  **94 = 53 passed + 41 failed**, with partition
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**. Exact Task136 card is
+  **381 = 333 passed + 48 failed** and exact 37-file execution is
+  **1,040 = 992 passed + 48 failed**, containing only 41 corrected Task14
+  failures plus seven preserved Task15-through-16 REDs.
+- Loaders **7/7**, adapters **83/83**, released controls **443/443**,
+  relevant boundaries **44/44**, prerequisites **18/18**, FC-Core **2/2**,
+  standalone typecheck, factory readiness, mission **20/20**, V4 **20/20**,
+  and markers **29 / 20 / 29 / 15** pass. Clean repository mode stops first
+  only at the legacy-staging source blob mismatch and emits no prefix,
+  closure, record-29, repository, or release success.
+- Exact one-test scope, four-literal delta, source/test/import freezes,
+  rejected-candidate and authority ancestry, real dependencies, diff,
+  full/connectivity integrity, timeout variance, and clean state pass. The
+  paused E-1113 three-source working diff remains separate, uncommitted, and
+  outside candidate ancestry and review input.
+- Admit only exact `e6842251` as corrected Task14 test-only RED
+  `candidate -> reviewing`. Assign a different completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `736a2b76`.
+- The reviewer must inspect the complete descendant and cumulative correction
+  diffs; independently bind request and claim to exact G actor
+  `{ id: "agent_default", kind: "agent", label: "Cestus Agent" }`, retain the
+  independent human actor, prove the genuine two-checkpoint stable-key
+  conflict and intended missing domain-stream reread, and reproduce all exact
+  causal counts and identity/scope/freeze/ancestry/dependency/diff/integrity/
+  clean and repository-first-stop gates.
+- Candidate author, E-1113 analyst, E-1115 reviewer, every prior Task14 test
+  author/reviewer/verifier/analyst, amendment reviewers, and the coordinator
+  are ineligible to approve. The fresh reviewer may not edit, commit, merge,
+  substitute a SHA, authorize source resumption or Task15, or make prefix,
+  record-29, release, or Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED review admission, not approval,
+  integration, resumed source authority, source candidacy, Task15 authority,
+  Task136 product candidacy, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
