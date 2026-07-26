@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 const canonicalSourcePath = "docs/agentic/contracts/software-factory-mission-state.v1.json";
 const canonicalFrozenAuthorityPath = "docs/agentic/contracts/task136-bounded-assurance-v4.json";
 const expectedSchemaVersion = "software-factory-mission-state.v1";
-const expectedImmutableEnvelopeFingerprint = "sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab";
+const expectedImmutableEnvelopeFingerprint = "sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e";
 const acceptedStatuses = [
   "claimed",
   "implementing",

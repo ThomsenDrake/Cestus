@@ -885,3 +885,63 @@ editing, approval, integration, strict record 29, assurance-only transition,
 publication, Wave 3 start, or product release. Task12 remains implementing
 and the strict frontier remains **28 of 29** pending completely fresh design
 and executability reviews of one exact candidate.
+
+## RV-1-E-1109 forward exact-identity 33-path amendment
+
+This true-EOF claim records the current forward assurance authority. Every
+earlier V1-V4 contract hash, strict release record, candidate, review,
+fixture, RED, GREEN, integration, and release remains immutable evidence for
+its exact commit.
+
+The permanent E-1109 causal RED is commit
+`2f5834947b350c96171ed665b8280902661cbf7a`. The unchanged 20-test assurance
+corpus produced exactly 19 passes and one causal failure: the old contract
+carried `Task136-FC-Core.transferToIds: []` instead of exact `["Task136"]`.
+No package/product byte changed.
+
+The finite GREEN transfers only
+`packages/local-runtime/src/resident-loop-factory-composition.ts` from
+Task136-FC-Core to Task136. The FC-Core tests and claim remain owned, and the
+FC-Core command remains unchanged. Historical record 19 retains `owned`
+disposition for all four paths, exact raw SHA-256
+`5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920`,
+and exact compact canonical SHA-256
+`ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1`.
+
+The exact graph remains 29 cards. Task136 now has ten prerequisites and 33
+ordered paths = 15 sources, 17 tests, and one claim. The composition source is
+one-based position 23, and the exact newline-delimited path SHA-256 is
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+The card command remains the exact existing 17-test command. Compatibility
+grows from eleven to twelve entries with FC-Core immediately before FC-Ports.
+Only the source migrates to Task136 at record 29.
+
+The released FC-Core composition tests remain FC-Core-owned and are added
+unchanged to the mandatory cross-boundary control, taking it from 35 to 37
+tests. The product design requires a private non-barrel one-shot issuer seam
+at actual composition allocation: privately register or brand the exact
+completed frozen readback against the exact wake runtime before returning,
+then reject copied outer/provider/handoff/authority-binding allocations before
+store I/O. Structural, first-seen, timing, allocation-order, call-stack,
+source-text, global, and process-local heuristics remain forbidden.
+
+The final canonical synchronized pins are:
+
+```text
+V4 JSON SHA-256:
+96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+V4 assurance fingerprint:
+f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4
+Mission frozen-authority SHA-256:
+96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+Mission immutable-envelope fingerprint:
+sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e
+Mission source fingerprint:
+sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac
+```
+
+The amendment candidate contains exactly nine authority paths and no
+package/product byte. It is review-ready only after final committed-byte
+validation. It is not approved, integrated, Task14 GREEN authority, a Task136
+product candidate, strict record 29, repository closure, publication, Wave 3
+start, or product release.
