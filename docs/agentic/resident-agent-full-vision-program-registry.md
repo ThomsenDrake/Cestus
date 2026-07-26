@@ -38853,3 +38853,100 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1102 — Corrected Task14 downstream causal RED admitted to fresh review
+
+- Recorded at: 2026-07-26T12:47:55Z
+- Exact corrected test-only candidate
+  `a675c80e491840962891a6b63d0f36e1c8924268`, tree
+  `4c11f0f36c006914847e197d9b3564c6d50aa556`, has sole parent exact E-1101
+  authority merge `571f729687f2303b30434aa0ebf896f30f00a025`
+  and exact subject `test(local-runtime): close mounted recovery causality`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` by
+  **928 insertions / 314 deletions**, from rejected blob
+  `83964ba1cecd3e5beed8a3743cd287d949af0eae` to exact blob
+  `d4ba9688dec4f45e3175a883df1215c98ecb1dd1`.
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts` remains
+  exact rejected-candidate blob
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`; it needs no correction because
+  its executable mounted-store invalidation/no-append control remained valid.
+- Checkpoint sources remain frozen at wake
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` and mounted store
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`; local/global import policies
+  remain exact `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`; every other path is unchanged.
+- Pre-Core now uses the same exact unstarted composition/runtime/handle/ledger
+  before binding/capability issuance and asserts exact zero append/effect.
+  States 1 through 3 bind complete returned readbacks, IDs, stream,
+  causation, payloads, budgets, bindings, and exact suffix deltas. State 4
+  remains exact and idempotent.
+- Every hostile target prefix is seeded directly at its actual replaced,
+  omitted, reordered, or gapped state with valid internal event-schema
+  invariants. The same authenticated ledger contains an independent foreign
+  stream whose byte-exact readback coexists with an unchanged target
+  readback. Direct execution converts seven formerly passing generic
+  duplicate checks into named source-causal failures.
+- Approval-required includes stale, expired, self-authored, wrong request,
+  wrong preview, duplicate, and multiple-decision negatives. Exact ledger
+  observation hooks are installed on the same ledger object before W/G
+  binding; the valid unknown row proves frozen W performs no package-owned G
+  reread. Locator, capability, approval, binding, budget, receipt, and
+  terminal mutations use schema-valid durable states and fail because W
+  issues a token without independent G validation.
+- Focused three-file result is exact
+  **94 = 52 passed + 42 source-causal Task14 failures** with zero fixture,
+  schema, collection, API, type, import, analyzer, or unrelated failure.
+  The **42** failures are copied binding identities (**3**), state-recovery
+  budgets (**2**), currentness transitions (**7**), opaque token identity
+  (**1**), hostile prefixes (**12**), approval controls (**8**), G/unknown
+  controls (**8**), and canceled reclaim (**1**).
+- Exact Task136 card is
+  **381 = 332 passed + 49 failed**, consisting only of **42** Task14 failures
+  plus **7** preserved Task15-through-16 REDs. Frozen loaders pass **7/7**;
+  adapters **83/83**, released cross-boundary **443/443**, relevant
+  boundaries **44/44**, prerequisites **18/18**, typecheck, factory, mission
+  **20/20**, hardened V4 **20/20**, and markers **29 / 20 / 29 / 15** pass.
+- Serialized full is exact
+  **3,370 = 3,271 passed + 94 failed + 5 pending**. Default full is
+  **3,370 = 3,269 passed + 96 failed + 5 pending**, with zero timeout
+  signatures and only the scheduler-completion and wake import-policy
+  contention identities; both pass in isolated frozen loaders **7/7**.
+- Rejected-parent differential passes
+  `removedPassed=1 renamedPassed=1 correctedPassToCausalFail=7 addedCausalFail=14`.
+  Immutable comparator passes
+  `removed=8 mapped=14 addedPassed=84 retainedLaterRed=49`.
+- Repository mode exits one after exact markers solely at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success.
+  A hardened isolated clone reproduces V4, markers, first stop, both integrity
+  modes, config isolation, and clean state. Exact scope, freezes, ancestry,
+  dependencies, diff, and candidate/program clean states pass.
+- Admit only exact `a675c80e` as corrected Task14 downstream test-only RED
+  `candidate -> reviewing`. Assign a completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed either
+  rejected or corrected candidate blob.
+- The reviewer must inspect all corrected helpers and independently execute
+  every pre-Core, states 0 through 4, direct hostile-prefix, same-ledger
+  foreign-stream, approval, unknown/G, currentness, construction, budget,
+  no-append/no-release/no-effect, chronology, token, category, and
+  at-most-once case. It must prove all **42** failures are independently
+  source-causal and that every passing negative reaches its named boundary.
+- The reviewer must reproduce exact identity/scope/blobs/freezes/ancestry/
+  dependencies/diff/integrity/config/clean state; focused/card/loaders/
+  boundaries/typecheck/factory/mission/hardened V4/markers/truthful first
+  stop; serialized/default zero-timeout variance; parent and immutable
+  differentials.
+- The candidate author, E-1100 reviewer, every earlier Task14 test/source
+  author, reviewer, verifier, and analyst, and the coordinator are ineligible
+  to approve. The fresh reviewer may not edit, commit, merge, authorize source
+  correction or Task15, substitute a SHA, or make prefix, record-29, release,
+  or Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact corrected RED review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
