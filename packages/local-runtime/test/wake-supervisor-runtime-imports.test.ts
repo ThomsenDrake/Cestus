@@ -629,6 +629,7 @@ function mountedBinderOwnershipAnalysis(
     const registrarWakeSymbol = wakeSymbol;
     const exactStateReads: ts.CallExpression[] = [];
     const stateDeclarations: ts.VariableDeclaration[] = [];
+    const activeImmediateLiteralExecutions = new Set<ts.Node>();
     visitRegistrarStateReads(registrarBody, true);
     function visitRegistrarStateReads(
       node: ts.Node,
@@ -718,6 +719,18 @@ function mountedBinderOwnershipAnalysis(
     interface ImmediateCallResult {
       readonly returnedFunction: LiteralFunction | undefined;
     }
+    function executeImmediateLiteralOnce(
+      node: ts.Node,
+      execute: () => ImmediateCallResult | undefined
+    ): ImmediateCallResult | undefined {
+      if (activeImmediateLiteralExecutions.has(node)) return undefined;
+      activeImmediateLiteralExecutions.add(node);
+      try {
+        return execute();
+      } finally {
+        activeImmediateLiteralExecutions.delete(node);
+      }
+    }
     function visitImmediateLiteralExecution(node: ts.Node): boolean {
       if (ts.isCallExpression(node)) {
         return executeImmediateLiteralCall(node) !== undefined;
@@ -731,6 +744,14 @@ function mountedBinderOwnershipAnalysis(
       return false;
     }
     function executeImmediateLiteralCall(
+      call: ts.CallExpression
+    ): ImmediateCallResult | undefined {
+      return executeImmediateLiteralOnce(
+        call,
+        () => executeImmediateLiteralCallUnguarded(call)
+      );
+    }
+    function executeImmediateLiteralCallUnguarded(
       call: ts.CallExpression
     ): ImmediateCallResult | undefined {
       const expression = unwrapLiteralExpression(call.expression);
@@ -796,16 +817,29 @@ function mountedBinderOwnershipAnalysis(
           expression.name.text === "apply"
         )
       ) {
-        const invoked =
-          immediateLiteralFunctionValue(expression.expression);
+        const receiver = unwrapLiteralExpression(expression.expression);
+        const receiverCall = ts.isCallExpression(receiver)
+          ? receiver
+          : undefined;
+        const bound = receiverCall !== undefined
+          ? exactLiteralBind(receiverCall)
+          : undefined;
+        const invoked = bound?.functionValue ??
+          immediateLiteralFunctionValue(receiver);
         if (invoked === undefined) return undefined;
         const invocationArguments =
           expression.name.text === "call"
             ? [...call.arguments.slice(1)]
             : exactApplyArguments(call.arguments);
         if (invocationArguments === undefined) return undefined;
+        if (bound !== undefined && receiverCall !== undefined) {
+          visitInvocationArguments(receiverCall.arguments);
+        }
         visitInvocationArguments(call.arguments);
-        visitLiteralInvocation(invoked, invocationArguments);
+        visitLiteralInvocation(invoked, [
+          ...(bound?.boundArguments ?? []),
+          ...invocationArguments
+        ]);
         return {
           returnedFunction: exactReturnedLiteralFunction(invoked)
         };
@@ -813,6 +847,14 @@ function mountedBinderOwnershipAnalysis(
       return undefined;
     }
     function executeImmediateLiteralConstruction(
+      construction: ts.NewExpression
+    ): ImmediateCallResult | undefined {
+      return executeImmediateLiteralOnce(
+        construction,
+        () => executeImmediateLiteralConstructionUnguarded(construction)
+      );
+    }
+    function executeImmediateLiteralConstructionUnguarded(
       construction: ts.NewExpression
     ): ImmediateCallResult | undefined {
       const invoked = literalOrCallReturnedFunctionValue(
@@ -833,6 +875,14 @@ function mountedBinderOwnershipAnalysis(
       };
     }
     function executeImmediateLiteralTag(
+      tagged: ts.TaggedTemplateExpression
+    ): ImmediateCallResult | undefined {
+      return executeImmediateLiteralOnce(
+        tagged,
+        () => executeImmediateLiteralTagUnguarded(tagged)
+      );
+    }
+    function executeImmediateLiteralTagUnguarded(
       tagged: ts.TaggedTemplateExpression
     ): ImmediateCallResult | undefined {
       const invoked = literalOrCallReturnedFunctionValue(tagged.tag);
@@ -935,18 +985,20 @@ function mountedBinderOwnershipAnalysis(
     function literalOrCallReturnedFunctionValue(
       expression: ts.Expression
     ): LiteralFunction | undefined {
-      const literal = literalFunctionValue(expression);
-      if (literal !== undefined) return literal;
-      const unwrapped = unwrapLiteralExpression(expression);
-      return ts.isCallExpression(unwrapped)
-        ? executeImmediateLiteralCall(unwrapped)?.returnedFunction
-        : undefined;
+      return immediateLiteralFunctionValue(expression);
     }
     function visitLiteralInvocation(
       invoked: LiteralFunction,
       arguments_: readonly InvocationArgument[]
     ): void {
       invoked.parameters.forEach((parameter, index) => {
+        if (parameter.dotDotDotToken !== undefined) {
+          visitCollectedRestBinding(
+            parameter.name,
+            arguments_.slice(index)
+          );
+          return;
+        }
         visitBindingDefaults(
           parameter.name,
           parameter.initializer,
@@ -955,6 +1007,15 @@ function mountedBinderOwnershipAnalysis(
       });
       if (invoked.asteriskToken !== undefined) return;
       visitRegistrarStateReads(invoked.body, true);
+    }
+    function visitCollectedRestBinding(
+      name: ts.BindingName,
+      values: readonly InvocationArgument[]
+    ): void {
+      if (ts.isIdentifier(name)) return;
+      if (ts.isArrayBindingPattern(name)) {
+        visitArrayBindingDefaults(name, values);
+      }
     }
     function visitBindingDefaults(
       name: ts.BindingName,
@@ -1057,19 +1118,71 @@ function mountedBinderOwnershipAnalysis(
           : undefined;
       const effects =
         returned === undefined ? statements : statements.slice(0, -1);
-      if (!effects.every(ts.isExpressionStatement)) {
-        return { known: false, value: undefined };
-      }
+      const locals = new Map<string, InvocationArgument>();
       for (const effect of effects) {
-        visitRegistrarStateReads(effect.expression, true);
+        if (ts.isExpressionStatement(effect)) {
+          visitRegistrarStateReads(effect.expression, true);
+          continue;
+        }
+        if (
+          ts.isVariableStatement(effect) &&
+          (effect.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+          effect.declarationList.declarations.every(
+            (declaration) =>
+              ts.isIdentifier(declaration.name) &&
+              declaration.initializer !== undefined
+          )
+        ) {
+          for (const declaration of effect.declarationList.declarations) {
+            if (
+              !ts.isIdentifier(declaration.name) ||
+              declaration.initializer === undefined
+            ) {
+              return { known: false, value: undefined };
+            }
+            visitRegistrarStateReads(declaration.initializer, true);
+            locals.set(
+              declaration.name.text,
+              resolveGetterLocalValue(
+                declaration.initializer,
+                locals
+              )
+            );
+          }
+          continue;
+        }
+        visitRegistrarStateReads(effect, true);
+        return { known: false, value: undefined };
       }
       if (returned?.expression !== undefined) {
         visitRegistrarStateReads(returned.expression, true);
       }
       return {
         known: true,
-        value: returned?.expression
+        value: returned?.expression === undefined
+          ? undefined
+          : resolveGetterLocalValue(returned.expression, locals)
       };
+    }
+    function resolveGetterLocalValue(
+      expression: ts.Expression,
+      locals: ReadonlyMap<string, InvocationArgument>
+    ): InvocationArgument {
+      let value: InvocationArgument = expression;
+      const resolving = new Set<string>();
+      while (value !== null && value !== undefined) {
+        const unwrapped = unwrapLiteralExpression(value);
+        if (
+          !ts.isIdentifier(unwrapped) ||
+          !locals.has(unwrapped.text) ||
+          resolving.has(unwrapped.text)
+        ) {
+          return unwrapped;
+        }
+        resolving.add(unwrapped.text);
+        value = locals.get(unwrapped.text);
+      }
+      return value;
     }
     function bindingElementPropertyName(
       element: ts.BindingElement
@@ -1093,14 +1206,59 @@ function mountedBinderOwnershipAnalysis(
         return name.text;
       }
       if (!ts.isComputedPropertyName(name)) return undefined;
-      const expression = unwrapLiteralExpression(name.expression);
-      return (
+      return exactConstantPropertyName(name.expression);
+    }
+    function exactConstantPropertyName(
+      value: ts.Expression
+    ): string | undefined {
+      const expression = unwrapLiteralExpression(value);
+      if (
         ts.isStringLiteral(expression) ||
         ts.isNumericLiteral(expression) ||
         ts.isNoSubstitutionTemplateLiteral(expression)
-      )
-        ? expression.text
-        : undefined;
+      ) {
+        return expression.text;
+      }
+      if (
+        ts.isBinaryExpression(expression) &&
+        expression.operatorToken.kind === ts.SyntaxKind.CommaToken
+      ) {
+        return isExactConstantOperand(expression.left)
+          ? exactConstantPropertyName(expression.right)
+          : undefined;
+      }
+      if (ts.isCommaListExpression(expression)) {
+        const operands = expression.elements;
+        const final = operands.at(-1);
+        return (
+          final !== undefined &&
+          operands.slice(0, -1).every(isExactConstantOperand)
+        )
+          ? exactConstantPropertyName(final)
+          : undefined;
+      }
+      return undefined;
+    }
+    function isExactConstantOperand(value: ts.Expression): boolean {
+      const expression = unwrapLiteralExpression(value);
+      return (
+        ts.isStringLiteral(expression) ||
+        ts.isNumericLiteral(expression) ||
+        ts.isNoSubstitutionTemplateLiteral(expression) ||
+        expression.kind === ts.SyntaxKind.TrueKeyword ||
+        expression.kind === ts.SyntaxKind.FalseKeyword ||
+        expression.kind === ts.SyntaxKind.NullKeyword ||
+        (
+          ts.isBinaryExpression(expression) &&
+          expression.operatorToken.kind === ts.SyntaxKind.CommaToken &&
+          isExactConstantOperand(expression.left) &&
+          isExactConstantOperand(expression.right)
+        ) ||
+        (
+          ts.isCommaListExpression(expression) &&
+          expression.elements.every(isExactConstantOperand)
+        )
+      );
     }
     function exactObjectLiteralProperty(
       object: ts.ObjectLiteralExpression,
@@ -1109,7 +1267,7 @@ function mountedBinderOwnershipAnalysis(
       readonly known: boolean;
       readonly value: InvocationArgument;
     } {
-      let value: InvocationArgument = undefined;
+      let selected: ts.ObjectLiteralElementLike | undefined;
       for (const property of object.properties) {
         if (ts.isSpreadAssignment(property)) {
           return { known: false, value: undefined };
@@ -1119,19 +1277,27 @@ function mountedBinderOwnershipAnalysis(
           return { known: false, value: undefined };
         }
         if (propertyName !== name) continue;
-        if (ts.isPropertyAssignment(property)) {
-          value = property.initializer;
-        } else if (ts.isShorthandPropertyAssignment(property)) {
-          value = property.name;
-        } else if (ts.isMethodDeclaration(property)) {
-          value = null;
-        } else if (ts.isGetAccessorDeclaration(property)) {
-          return exactGetterValue(property);
-        } else {
-          return { known: false, value: undefined };
-        }
+        selected = property;
       }
-      return { known: true, value };
+      if (selected === undefined) {
+        return { known: true, value: undefined };
+      }
+      if (ts.isPropertyAssignment(selected)) {
+        return { known: true, value: selected.initializer };
+      }
+      if (ts.isShorthandPropertyAssignment(selected)) {
+        return { known: true, value: selected.name };
+      }
+      if (ts.isMethodDeclaration(selected)) {
+        return { known: true, value: null };
+      }
+      if (ts.isGetAccessorDeclaration(selected)) {
+        return exactGetterValue(selected);
+      }
+      if (ts.isSetAccessorDeclaration(selected)) {
+        return { known: true, value: undefined };
+      }
+      return { known: false, value: undefined };
     }
     function exactReturnedLiteralFunction(
       invoked: LiteralFunction
@@ -1708,6 +1874,116 @@ function adversarialLiteralEvaluatorRuntimeProbe(): {
   };
 }
 
+function nineGapLiteralEvaluatorRuntimeProbe(): readonly {
+  readonly diagnosticCodes: readonly number[];
+  readonly name: string;
+  readonly stateReadCount: number | undefined;
+}[] {
+  const cases = [
+    {
+      name: "constructor-returned literal reused as constructor",
+      source: `
+        new (new (function Maker() {
+          return function Returned() { read(); };
+        })())();
+      `
+    },
+    {
+      name: "tag-returned literal reused as tag",
+      source: `
+        ((function makeTag() {
+          return function returnedTag() {
+            read();
+            return "done";
+          };
+        })\`inner\`)\`outer\`;
+      `
+    },
+    {
+      name: "selected getter read in const initializer",
+      source: `
+        (({ value }) => void value)({
+          get value() {
+            const current = read();
+            return current;
+          }
+        });
+      `
+    },
+    {
+      name: "duplicate getters use runtime last definition",
+      source: `
+        (({ value }) => void value)({
+          get value() { return 0; },
+          get value() { read(); return 1; }
+        });
+      `
+    },
+    {
+      name: "computed sequence key selects absent property",
+      source: `
+        (({ [(0, "missing")]: value = read() }) => void value)({});
+      `
+    },
+    {
+      name: "setter-only read supplies undefined",
+      source: `
+        (({ value = read() }) => void value)({
+          set value(input) { void input; }
+        });
+      `
+    },
+    {
+      name: "function rest destructuring collects suffix array",
+      source: `
+        ((...[value = read()]) => void value)();
+      `
+    },
+    {
+      name: "literal bind result invoked through call",
+      source: `
+        (function invoked() { read(); })
+          .bind(undefined).call(undefined);
+      `
+    },
+    {
+      name: "returned literal bind result invoked through apply",
+      source: `
+        (() => function returned() { read(); })()
+          .bind(undefined).apply(undefined, []);
+      `
+    }
+  ] as const;
+  return cases.map(({ name, source }) => {
+    const result = ts.transpileModule(`
+      let stateReadCount = 0;
+      const read = () => {
+        stateReadCount += 1;
+        return {};
+      };
+      ${source}
+      (globalThis as {
+        stateReadCount?: number;
+      }).stateReadCount = stateReadCount;
+    `, {
+      compilerOptions: {
+        module: ts.ModuleKind.None,
+        target: ts.ScriptTarget.ES2022
+      },
+      reportDiagnostics: true
+    });
+    const context: { stateReadCount?: number } = {};
+    runInNewContext(result.outputText, context);
+    return {
+      diagnosticCodes: (result.diagnostics ?? []).map(
+        (diagnostic) => diagnostic.code
+      ),
+      name,
+      stateReadCount: context.stateReadCount
+    };
+  });
+}
+
 describe("wake supervisor runtime import boundary", () => {
   it("permits zero production importers before R0 factory integration", () => {
     const source = readFileSync(new URL("../src/wake-supervisor-runtime.ts", import.meta.url), "utf8");
@@ -2088,6 +2364,53 @@ describe("wake supervisor runtime import boundary", () => {
       diagnosticCodes: [],
       stateReadCounts: [1, 1, 1, 1, 1]
     });
+    expect(nineGapLiteralEvaluatorRuntimeProbe()).toEqual([
+      {
+        diagnosticCodes: [],
+        name: "constructor-returned literal reused as constructor",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "tag-returned literal reused as tag",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "selected getter read in const initializer",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "duplicate getters use runtime last definition",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "computed sequence key selects absent property",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "setter-only read supplies undefined",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "function rest destructuring collects suffix array",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "literal bind result invoked through call",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "returned literal bind result invoked through apply",
+        stateReadCount: 1
+      }
+    ]);
     for (const [name, outerSyntax] of [
       ["nested array-rest binding default state read", `
         (([
@@ -2126,6 +2449,75 @@ describe("wake supervisor runtime import boundary", () => {
           residentWakeRuntimeStates.get(wakeRuntime);
           return "tagged";
         })())\`tag\`;
+      `],
+      ["constructor-returned literal reused as constructor state read", `
+        new (new (function Maker() {
+          return function Returned() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          };
+        })())();
+      `],
+      ["tag-returned literal reused as tag state read", `
+        ((function makeTag() {
+          return function returnedTag() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "done";
+          };
+        })\`inner\`)\`outer\`;
+      `],
+      ["selected getter const-initializer state read", `
+        (({ value }: { value: unknown }) => void value)({
+          get value() {
+            const current =
+              residentWakeRuntimeStates.get(wakeRuntime);
+            return current;
+          }
+        });
+      `],
+      ["last duplicate getter state read", `
+        (({ value }: { value: unknown }) => void value)({
+          get value() { return 0; },
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 1;
+          }
+        });
+      `],
+      ["computed sequence-key absent default state read", `
+        (({
+          [(0, "missing")]:
+            value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({});
+      `],
+      ["setter-only selected default state read", `
+        (({
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({
+          set value(input: unknown) { void input; }
+        });
+      `],
+      ["function rest destructuring default state read", `
+        ((...[
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ]) => void value)();
+      `],
+      ["literal bind result call state read", `
+        (function invoked() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        }).bind(undefined).call(undefined);
+      `],
+      ["returned literal bind result apply state read", `
+        (() => function returned() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        })().bind(undefined).apply(undefined, []);
+      `],
+      ["computed sequence-key operand state read", `
+        (({
+          [(
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "value"
+          )]: value
+        }) => void value)({ value: 1 });
       `]
     ] as const) {
       expect.soft(
@@ -2154,6 +2546,18 @@ describe("wake supervisor runtime import boundary", () => {
           selected: 1
         });
       `],
+      ["unselected getter const initializer remains deferred", `
+        (({ selected }: { selected: unknown }) => {
+          void selected;
+        })({
+          get deferred() {
+            const current =
+              residentWakeRuntimeStates.get(wakeRuntime);
+            return current;
+          },
+          selected: 1
+        });
+      `],
       ["literal setter body remains deferred", `
         (({ value }) => {
           void value;
@@ -2161,6 +2565,25 @@ describe("wake supervisor runtime import boundary", () => {
           set value(input: unknown) {
             residentWakeRuntimeStates.get(wakeRuntime);
             void input;
+          }
+        });
+      `],
+      ["duplicate last getter wins without reading the first", `
+        (({ value }: { value: unknown }) => void value)({
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 0;
+          },
+          get value() { return 1; }
+        });
+      `],
+      ["selected getter const return keeps default deferred", `
+        (({
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({
+          get value() {
+            const current = 1;
+            return current;
           }
         });
       `],
@@ -2173,6 +2596,54 @@ describe("wake supervisor runtime import boundary", () => {
         }) => {
           void value;
         })({ value: 1 });
+      `],
+      ["computed sequence key supplied value keeps default deferred", `
+        (({
+          [(0, "value")]:
+            value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({ value: 1 });
+      `],
+      ["supplied function rest-array value keeps default deferred", `
+        ((...[
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ]) => void value)("supplied");
+      `],
+      ["nested constructor and tag chains terminate at runtime values", `
+        const createDeferredConstructor = () => function Deferred() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        };
+        const createDeferredTag = () => function deferredTag() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return "tagged";
+        };
+        new (new (function Maker() {
+          return function Returned() {
+            return createDeferredConstructor();
+          };
+        })())();
+        ((function makeTag() {
+          return function returnedTag() {
+            return createDeferredTag();
+          };
+        })\`inner\`)\`outer\`;
+      `],
+      ["bound call arguments retain bound-before-call order", `
+        (function invoked(
+          first: unknown,
+          second = residentWakeRuntimeStates.get(wakeRuntime)
+        ) {
+          void first;
+          void second;
+        }).bind(undefined, "bound").call(undefined, "supplied");
+      `],
+      ["returned bound apply arguments retain bound-before-call order", `
+        (() => function returned(
+          first: unknown,
+          second = residentWakeRuntimeStates.get(wakeRuntime)
+        ) {
+          void first;
+          void second;
+        })().bind(undefined, "bound").apply(undefined, ["supplied"]);
       `],
       ["named runtime constructor and tag remain literal-bounded", `
         const createDeferredConstructor = () => function Deferred() {
