@@ -37825,3 +37825,107 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1088 — Exact Task14 finite-semantics evaluator loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T08:22:47Z
+- Exact corrected one-test candidate
+  `d5770498d4973c234e0f244f357d7f72941ee191`, tree
+  `4b4978d5a2795511e5c57f9496033e163d58aa28`, has sole parent exact E-1087
+  authority merge `53239af6ed50466cf99097b5dc71971040f9eaaf`
+  and exact subject `test(local-runtime): close finite evaluator gaps`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **880 insertions / 55 deletions** to exact blob
+  `171aaec12affa44c72a01c9208843564e433ef30`. The global loader remains
+  frozen at `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 sources remain
+  frozen at `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; every other path is
+  unchanged.
+- A controls-only checkpoint first changed the authorized test to exact blob
+  `ca41e4b129eac7b14ab4a682374e2020d08ba636`. All FA1–FA13, FR1–FR4, and
+  P1 diagnostics/runtime controls passed while their analyzer expectations
+  reproduced the locked E-1087 failures. The focused title contained exactly
+  those eighteen new failures plus the seven preserved frozen-source/product
+  failures. This permanent causal RED is preserved in the candidate's
+  parent-to-candidate development evidence and author receipts.
+- The final bounded evaluator turns exactly the finite E-1087 table green:
+  constant unary/template computed keys, spread arguments, immediate local
+  literal calls, one exact generator advancement, array-like apply, bound
+  `this`, object spread/rest, accessor descriptor merging, method-valued
+  nested binding, repeated bind, literal `__proto__`, constant-false and
+  return reachability, supplied positional spreads, optional short-circuit,
+  and private resident-wake-state provenance. All eighteen paired
+  diagnostics/runtime/analyzer controls pass after the helper correction.
+- The correction retains exact literal-only bounds, recursion/cycle limits,
+  one-time operand evaluation, and fail-closed unsupported dynamic control
+  flow. It does not authorize or implement a general JavaScript interpreter.
+  Every cumulative E-1065 through E-1087 control, realistic registrar
+  positive, generator/async timing rule, undefined provenance, apply
+  behavior, recursive binding, accessor deferral, optional/wrapped
+  invocation, argument order, double-traversal prevention, and termination
+  remains green.
+- Exact post-commit focused signature is
+  **34 = 32 passed + 2 causal failures**; loaders are
+  **7 = 5 passed + 2 causal failures**; the Task136 card is
+  **321 = 311 passed + 10 failures**, with the exact authorized title
+  occurrence set. Adapters pass **83/83**, cross-boundary **443/443**,
+  relevant mounted/portable/ontology boundaries **44/44**, isolated
+  prerequisites **18/18**, standalone typecheck, factory readiness, and
+  mission **20/20** pass.
+- Authority-exact serialized full is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with the exact E-1087
+  occurrence multiset and zero actual timeout signatures. Default full is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, with the exact E-1087
+  occurrence multiset, zero actual timeout signatures, and only the three
+  prerequisite-checker identities relative to serialized. Comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- A fresh hardened real clone detached at the exact candidate/tree, with
+  inherited repository Git variables unset and system/global config
+  disabled, passes V4 **20/20**, markers **29 / 20 / 29 / 15**, both
+  repository integrity modes, connectivity, config isolation, and clean
+  state. Repository mode exits one and truthfully stops only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`;
+  no success, prefix, closure, record-29, repository, or release marker is
+  emitted.
+- Exact candidate/tree/parent/subject, one-test scope, starting/control/final
+  blobs, freezes, rejected `f3973263`, `0737bf60`, `7c94b80c`, and
+  `e47edf1e`, incident `989531c5`, recovery `45cb7f19`, dispatch history,
+  dependencies, real non-symlinked Vitest **4.1.9** and TypeScript **5.9.3**,
+  connectivity, `diff --check`, isolated config, both `fsck` modes, and
+  candidate/program clean states pass.
+- Admit only exact `d5770498` as Task14 finite-semantics evaluator loader
+  test-only `candidate -> reviewing`. Assign completely fresh independent
+  read-only reviewer `/root/task136_e1088_task14_finite_evaluator_review`,
+  who has never authored, reviewed, verified, or analyzed any corrected
+  candidate byte.
+- The reviewer must independently execute every FA1–FA13, FR1–FR4, P1, and
+  cumulative prior diagnostics/runtime/analyzer control, plus the realistic
+  registrar positive. It must inspect the finite bounded implementation for
+  direct false accepts, false rejects, provenance bypass, double evaluation,
+  unbounded recursion, or regression within the exact E-1087 semantic
+  boundary. It must not invent broader dynamic-language requirements or
+  require a general interpreter. Any defect requires executable local
+  TypeScript/runtime proof bound to the exact candidate.
+- The reviewer must independently reproduce exact identity/scope/blob/
+  freezes/rejected and incident ancestry, dependencies, connectivity,
+  config/diff/integrity/clean state; standalone typecheck; focused/loader/
+  card title occurrence sets; adapters **83/83**; cross **443/443**;
+  relevant **44/44**; prerequisites **18/18**; factory; mission; hardened
+  exact-candidate isolated V4; markers; truthful repository first stop;
+  authority-exact serialized/default occurrence sets; zero timeout variance;
+  and calibrated differential.
+- The candidate author, controls author, all earlier loader authors,
+  reviewers, verifiers, and analysts of changed bytes, the coordinator, and
+  any agent that has inspected exact blob `171aaec1` are ineligible to
+  approve. The fresh reviewer may not edit, commit, merge, authorize source
+  correction or Task15, substitute a SHA, or make product, record-29,
+  release, prefix, or Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
