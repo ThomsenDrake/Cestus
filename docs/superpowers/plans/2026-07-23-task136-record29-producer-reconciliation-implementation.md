@@ -2669,6 +2669,8 @@ TASK136_TESTS=(
 test "${#TASK136_TESTS[@]}" -eq 17
 TASK136_CROSS_TESTS=(
   "${TASK136_TESTS[@]}"
+  packages/local-runtime/test/resident-loop-factory-composition.test.ts
+  packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts
   packages/agent/test/execution-loop.test.ts
   packages/agent/test/tool-gateway.test.ts
   packages/agent/test/scheduler.test.ts
@@ -2688,7 +2690,7 @@ TASK136_CROSS_TESTS=(
   packages/local-runtime/test/resident-loop-provider-posture.test.ts
   packages/local-runtime/test/agent-handoff-projection.test.ts
 )
-test "${#TASK136_CROSS_TESTS[@]}" -eq 35
+test "${#TASK136_CROSS_TESTS[@]}" -eq 37
 npm test -- "${TASK136_CROSS_TESTS[@]}"
 ```
 
@@ -4093,3 +4095,97 @@ the freshly read mission workflow.
 - [ ] `neo` publication verifies exact local/tracking/remote SHA equality.
 - [ ] The repository's documentation placeholder audit passes with no
   unresolved implementation token or instruction to invent a future value.
+
+## RV-1-E-1109 Current 33-Path Amendment Execution
+
+This true-EOF section supersedes the plan's current 32-path counts, nine
+prerequisites, eleven compatibility entries, 14-source manifests, 35-test
+cross-boundary array, and their derived hashes. Earlier task execution,
+candidate, review, RED, GREEN, fixture, integration, and release evidence
+remains historical truth for its exact commit.
+
+The pre-product amendment remains exactly the nine authority paths in the
+frozen file map. It changes no package/product path and leaves the
+mission-state test untouched. Test-first execution is:
+
+1. Commit a permanent assurance RED in the existing 20-test corpus proving
+   the old FC-Core `transferToIds: []` cannot satisfy the exact transfer.
+2. Update the V4 contract and checker with one finite FC-Core transfer branch,
+   the exact twelve-entry compatibility sequence, ten Task136 prerequisites,
+   33-path Task136 scope, position-23 insertion, record-19 currentness and
+   record-29 source-only migration, and finite mutation coverage.
+3. Synchronize the exact design, this plan, Task136 product claim, V4 transfer
+   claim, mission frozen-authority SHA, mission source fingerprint, and mission
+   immutable-envelope pin.
+4. Admit one exact clean nine-path candidate. Obtain a completely fresh
+   independent design review and a different completely fresh independent
+   executability review, both candidate-bound and read-only.
+5. After both approvals, perform only the repository-prescribed
+   history-preserving integration. Then append a separate Task14 GREEN
+   authorization; do not combine amendment integration with source authority.
+
+The canonical Task136 path order inserts only
+`packages/local-runtime/src/resident-loop-factory-composition.ts` at one-based
+position 23. The exact path hash is
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+The exact totals are 33 paths = 15 sources, 17 tests, and one claim. The
+17-test card command is unchanged.
+
+The exact prerequisite prefix becomes:
+
+```text
+T120-R
+Task136-FC-Core
+Task136-FC-Ports
+```
+
+and the other seven prerequisite IDs retain their order. Compatibility grows
+to twelve entries by inserting Task136-FC-Core immediately before
+Task136-FC-Ports. Its sole described migrating path is the composition source,
+with historical disposition `owned`; the complete four-path record remains
+bound by compact hash
+`ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1`.
+The FC-Core tests and claim remain FC-Core-owned and never migrate.
+
+Add the two released FC-Core tests to every mandatory Task136 cross-boundary
+control, producing an exact 37-test array:
+
+```bash
+npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts
+```
+
+The assurance candidate must reproduce 20/20 V4, mission 20/20, all four
+contract markers, factory readiness, exact 29-card order, exact path/count/hash
+checks, 12 compatibility entries, 28 raw pins, V1-V3 pins, scope, diff,
+ancestry, dependency, and clean-state gates. Repository mode must truthfully
+stop at the pre-record-29 legacy-staging currentness mismatch and emit no
+prefix or release-closure success marker.
+
+After amendment integration, the separate Task14 GREEN authority is exactly:
+
+```text
+packages/local-runtime/src/resident-loop-factory-composition.ts
+packages/local-runtime/src/wake-supervisor-runtime.ts
+packages/local-runtime/src/mounted-wake-lifecycle-store.ts
+```
+
+It uses the already approved and integrated 42-failure causal RED. The
+composition implementation privately performs a one-shot registration of the
+exact completed frozen readback against the exact wake runtime at its actual
+allocation/issuance point. W rejects copied outer/provider/handoff/
+authority-binding allocations before store I/O. No structural, first-seen,
+timing, allocation-order, call-stack, source-text, global, or other heuristic
+acceptance is permitted.
+
+Current synchronized pins are:
+
+```text
+V4 JSON SHA-256 96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+V4 assurance fingerprint f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4
+Mission immutable envelope sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e
+Mission source fingerprint sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac
+```
+
+Task136 and Task14 remain `implementing`, strict frontier 28 of 29. This
+amendment is not product source authority, a Task136 product candidate, strict
+record 29, repository closure, publication, Wave 3 start, or product release.
