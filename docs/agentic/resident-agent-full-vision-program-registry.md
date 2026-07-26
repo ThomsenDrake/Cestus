@@ -38103,3 +38103,65 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1091 — Exact Task14 spread-precedence evaluator loader RED approved
+
+- Recorded at: 2026-07-26T09:41:18Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1090_task14_spread_precedence_review` returns
+  **APPROVED** with no findings for exact corrected one-test candidate
+  `66895ec8bdbc9f7a5f8cf4984d5f4c70cbf6fea8`, tree
+  `5f36393f5ed8c3a1c78024eb338fe34c9469fb47`, changed blob
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff`, and no other bytes. Review
+  occurred beneath clean E-1090 review-authority merge
+  `24a89a2eb37c7cb11d478357dbc7458c5689e40a`; no byte changed.
+- The reviewer independently verifies sole parent
+  `5f23956f135e46bd16ff50ad53ea12db125a4909`, exact subject, exact one-test
+  **120 insertion / 5 deletion** scope, rejected parent blob
+  `171aaec12affa44c72a01c9208843564e433ef30`, reconstructed controls-only
+  blob `6d772ea251e138ca89dd17caf1d3eab57f218d55`, and final blob
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff`.
+- Direct parent-versus-candidate execution proves the causal correction. The
+  spread-then-later-getter case has empty diagnostics and exactly one runtime
+  state read; the parent analyzer falsely accepts it and the candidate
+  rejects it. The adjacent getter-then-later-spread control has empty
+  diagnostics, zero state reads, and remains accepted. All finite
+  FA1–FA13, FR1–FR4, P1, cumulative controls, and the realistic positive
+  reproduce their required diagnostics, runtime, provenance, and analyzer
+  results.
+- Exact focused result is **34 = 32 passed + 2 causal failures**; loaders are
+  **7 = 5 passed + 2 causal failures**; the Task136 card is
+  **321 = 311 passed + 10 authorized failures** with the exact occurrence
+  multiset. Adapters pass **83/83**, released cross-boundary controls
+  **443/443**, relevant mounted/portable/ontology boundaries **44/44**,
+  isolated prerequisites **18/18**, standalone typecheck, factory readiness,
+  and mission **20/20** pass.
+- A hardened detached exact-candidate clone with real copied dependencies,
+  inherited repository Git variables unset, and system/global config disabled
+  passes V4 **20/20**, markers **29 / 20 / 29 / 15**, both repository
+  integrity modes, connectivity, config isolation, and clean state.
+  Repository mode exits one solely at the truthful legacy-staging source
+  mismatch and emits no prefix, closure, record-29, repository, or release
+  success marker.
+- Authority-exact serialized full is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with exact historical
+  occurrences and zero timeout signatures. Default full is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, with only the three
+  prerequisite-checker identities relative to serialized and zero timeout
+  signatures. Independent immutable-baseline comparison is exact
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact identity, scope, global-loader and Task14-source freezes, rejected and
+  incident ancestry, real dependencies, connectivity, config, both `fsck`
+  modes, diff hygiene, and candidate/program clean states pass.
+- Advance only exact `66895ec8` test-only RED
+  `reviewing -> approved`. Authorize its history-preserving no-ff merge into
+  this program branch, fresh integration-tree gates, and a separate
+  append-only integrated event. This event contains no source-correction or
+  Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test RED approval, not integration, source
+  correction, Task14 approval, Task15 authority, product candidacy, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
