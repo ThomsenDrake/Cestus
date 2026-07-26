@@ -36293,3 +36293,97 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1072 — Exact Task14 argument-provenance loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T01:30:16Z
+- Exact corrected one-test candidate
+  `60dcd68763283a5fca91b4148f340a204a850e01`, tree
+  `b3935511fe7b2e368cdf509f1a91607be24fedc6`, has sole parent E-1071
+  authority merge `3f731006ff363f1abe3af4a95d3be85ec4dad9bd`
+  and exact subject
+  `test(local-runtime): bind exact mounted store arguments`. Rejected
+  candidates `77b6c5a4`, `877ede2d`, and `a6068aae` remain ancestors.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **771 insertions / 9 deletions** to exact blob
+  `c2b63a104aee8ac97ef0f6e1736052d8a4b38922`. The global loader remains
+  frozen at `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 sources remain
+  frozen at `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; every other path is
+  unchanged.
+- The corrected oracle resolves the exact non-exported top-level private
+  `residentWakeRuntimeStates` `WeakMap` symbol, the exact top-level exported
+  registrar and its `wakeRuntime`, `binding`, and `domainExecution` parameter
+  symbols, one unique registrar-lexical direct nonoptional
+  `residentWakeRuntimeStates.get(wakeRuntime)` state declaration before the
+  call, and the exact direct arguments
+  `(state.store, binding, domainExecution)`. Its state census recursively
+  covers registrar blocks while excluding nested function scopes.
+- Independently executing counterexamples reject alternate maps, getters,
+  runtime arguments, state aliases, destructuring, direct and nested
+  duplicate state reads, state reads after the call, shadowed values,
+  optional/property/element/call chains, literals, object constructions,
+  call results, foreign stores, reordered arguments, aliases of binding or
+  domain execution, and shape-equivalent symbol-distinct values. E-1065
+  through E-1070 import, call, placement, wrapper, carrier, protected-
+  transfer, recursive-type, loader, and causal controls remain. No
+  async-keyword syntax rule was added.
+- Exact final-byte focused signature is
+  **34 = 32 passed + 2 causal failures**. Exact combined loader signature is
+  **7 = 5 passed + 2 causal failures**. Exact Task136 card is
+  **321 = 311 passed + 10 failures**, with the identical three Task14 and
+  seven later-task RED identities. No control, fixture, analyzer, API,
+  collection, type, or unrelated failure substitutes.
+- Adapter controls pass **83/83**, cross-boundary passes **443/443**, and
+  relevant mounted/portable/ontology boundaries pass **44/44**. Typecheck,
+  factory, mission **20/20**, V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, and diff check pass. Clean repository mode emits
+  markers and truthfully stops only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`;
+  no prefix or closure success is emitted.
+- Authority-exact serialized full execution with 60-second test timeout,
+  no file parallelism, and one worker is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with no timeout. Default
+  full execution is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**; only the same three
+  frozen prerequisite-checker contention failures exceed serialized, and
+  the isolated prerequisite suite passes **18/18**. Calibrated comparison
+  passes `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact candidate/tree/parent/subject, one-test scope, global/source/
+  other-path freezes, rejected ancestry, dependencies, real non-symlinked
+  Vitest **4.1.9**, connectivity, diff, and clean state pass.
+- Admit only exact `60dcd687` as Task14 argument-provenance loader test-only
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1072_task14_argument_red_review`, who has never
+  authored, reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect the complete cumulative local loader blob and
+  frozen global loader against E-1065 through E-1071 and independently
+  attack TypeScript symbol provenance, exact private-map declaration and
+  uniqueness, registrar and parameter identity, unique direct state read
+  and lexical census, statement order, direct `.store`, exact binding/domain
+  arguments, aliases, shadows, wrong maps/getters/runtime arguments,
+  destructuring, optional/property/element/call chains, literals, object and
+  call results, reordered arguments, nested scopes, and shape-equivalent
+  values. It must prove the realistic production-form positive and every
+  independent negative actually execute.
+- The reviewer must reproduce exact candidate/tree/parent/subject/scope/
+  blob/freezes/ancestry, final-byte focused/loader/card causal identities,
+  adapter **83/83**, cross **443/443**, relevant **44/44**, typecheck,
+  factory, mission, V4, markers, truthful repository first stop,
+  serialized/default variance, isolated prerequisite suite, calibrated
+  differential, dependencies, connectivity, diff, and clean state.
+- The correction author, rejected authors/reviewers, E-1064 source
+  implementer, all earlier Task14 and Task136 participants, and coordinator
+  are ineligible to approve changed bytes. The reviewer may not edit,
+  commit, merge, authorize source correction or Task15, substitute a SHA,
+  or make product/record-29/release/prefix/Wave claims. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
