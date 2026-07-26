@@ -626,14 +626,25 @@ function mountedBinderOwnershipAnalysis(
     const registrarBody = registrar.body;
     const privateMapSymbol = mapSymbol;
     const registrarWakeSymbol = wakeSymbol;
+    const exactStateReads: ts.CallExpression[] = [];
     const stateDeclarations: ts.VariableDeclaration[] = [];
-    visitRegistrarStateDeclarations(registrarBody);
-    function visitRegistrarStateDeclarations(node: ts.Node): void {
+    visitRegistrarStateReads(registrarBody);
+    function visitRegistrarStateReads(node: ts.Node): void {
       if (
         node !== registrarBody &&
         ts.isFunctionLike(node)
       ) {
         return;
+      }
+      if (
+        ts.isCallExpression(node) &&
+        isExactPrivateStateRead(
+          node,
+          privateMapSymbol,
+          registrarWakeSymbol
+        )
+      ) {
+        exactStateReads.push(node);
       }
       if (
         ts.isVariableDeclaration(node) &&
@@ -650,11 +661,17 @@ function mountedBinderOwnershipAnalysis(
       ) {
         stateDeclarations.push(node);
       }
-      ts.forEachChild(node, visitRegistrarStateDeclarations);
+      ts.forEachChild(node, visitRegistrarStateReads);
     }
-    if (stateDeclarations.length !== 1) return false;
+    if (
+      exactStateReads.length !== 1 ||
+      stateDeclarations.length !== 1
+    ) {
+      return false;
+    }
     const stateDeclaration = stateDeclarations[0]!;
     if (
+      stateDeclaration.initializer !== exactStateReads[0] ||
       stateDeclaration.getStart(sourceFile) >= call.getStart(sourceFile) ||
       !ts.isIdentifier(stateDeclaration.name)
     ) {
@@ -1425,6 +1442,159 @@ describe("wake supervisor runtime import boundary", () => {
           {
             const duplicateState =
               residentWakeRuntimeStates.get(wakeRuntime);
+            void duplicateState;
+          }
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra bare exact state read before binder call", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra bare exact state read after binder call", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const result = bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return result;
+        }
+      `],
+      ["extra let exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          let duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+          void duplicateState;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra var exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          var duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+          void duplicateState;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra multi-declaration exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const duplicateMarker = true,
+            duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+          void duplicateMarker;
+          void duplicateState;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["nested-block bare exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          }
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["nested-block multi-declaration exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            var duplicateMarker = true,
+              duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+            void duplicateMarker;
             void duplicateState;
           }
           return bindMountedResidentLoopAuthorityForFactory(
