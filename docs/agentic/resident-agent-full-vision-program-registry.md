@@ -39866,3 +39866,424 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   post-record assurance transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1114 — Task14 GREEN halted; two frozen-RED oracle corrections authorized
+
+- Recorded at: 2026-07-26T16:32:00Z
+- E-1113 implementer `/root/task136_e1107_task14_green` verifies exact clean
+  authority merge `64c1b1d1f1b3541a3a9194807d5dbe5a21dfb2b8`, reproduces
+  the approved focused RED as
+  **94 = 52 passed + 42 failed**, and changes only the three authorized
+  sources. The bounded iteration closes forty failures and reaches exact
+  **92 passed + 2 failed** before stopping. Its three-source working diff is
+  preserved locally and uncommitted; it has one scoped implicit-`any`
+  typecheck error. No source candidate, approval, or integration exists.
+- Completely fresh independent read-only causality analyst
+  `/root/task136_e1113_red_oracle_audit` inspects immutable authority
+  `64c1b1d1`, exact frozen wake-test blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6`, the approved design/plan,
+  ontology, T120 stable-key logic, and exact G source. It confirms two
+  test-oracle defects. The analyst did not edit any byte and is ineligible
+  to approve corrected test bytes.
+- The hostile `semantic-key` row changes only the sole state-1 checkpoint's
+  `residentLoopSuspension.suspensionSemanticKey` from one schema-valid
+  content hash to another. The exact recovery locator binds the distinct
+  orchestration checkpoint `resumeIdempotencyKey`; no earlier authenticated
+  event or versioned formula binds the instruction's expected
+  `suspensionSemanticKey`. At state 1 the approved design makes that durable
+  checkpoint the sole source for all later canonical bytes. Rejecting the
+  current single-checkpoint fixture would require a hardcoded value or
+  heuristic and is not lawful product behavior.
+- Correct that row into a true stable-key/canonical-byte conflict. Append two
+  orchestration checkpoints with the same exact locator/
+  `resumeIdempotencyKey` but different otherwise schema-valid canonical
+  bytes, retain exact task/attempt/run/claim/causation authority, and require
+  rejection without append, release, effect, or foreign-stream impact. This
+  preserves the test count and causally exercises the approved duplicate
+  stable-key/canonical-conflict rule.
+- The positive `effect-outcome-unknown` reclaim fixture manually appends its
+  durable resident-domain request with actor
+  `agent_wake_resident`. Exact package-owned G's actor is `agent_default`;
+  G's real writer uses it and `validateResidentRecoveryPrefix` rejects any
+  other request actor before issuing the reread-only claimed stage. W may
+  not catch or bypass that rejection, because G is the exact recovery oracle
+  and at-most-once authority.
+- Correct the durable unknown-outcome fixture to use G's exact canonical
+  `agent_default` actor for both the request and execution claim while
+  retaining the independent human approval actor and every exact locator,
+  capability, request/decision/claim binding, chronology, budget, preview,
+  evidence, receipt-absence, terminal-absence, stream-read, no-effect, and
+  mutation control. Prefer G's real request path if it can seed the exact
+  claimed-without-receipt stage without performing an effect; otherwise the
+  minimal manually seeded fixture must exactly reproduce G's canonical event
+  actor and payload.
+- Halt E-1113 source execution before any commit. Authorize one forward
+  test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, based on
+  clean immutable `64c1b1d1` authority and starting blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6`. Freeze the three Task14 source
+  blobs, mounted test, both import-policy tests, every other source/test,
+  claims, contracts, mission bytes, dependencies, routes, and releases.
+- The corrected test-only descendant must reproduce a causal RED against the
+  frozen three sources with no fixture, schema, API, collection, type,
+  loader, analyzer, dependency, timeout, or unrelated failure; preserve all
+  other approved Task14 assertions and the exact failure partition except
+  where the two corrected rows establish a freshly observed equivalent
+  signature. Reproduce focused/card/loaders/adapters/boundaries/FC-Core/
+  typecheck/factory/mission/V4/marker/repository-first-stop/scope/freeze/
+  ancestry/dependency/diff/integrity/clean gates.
+- Admit one exact corrected test-only candidate SHA/tree to a completely
+  fresh independent read-only reviewer who has never authored, reviewed,
+  verified, or analyzed the corrected bytes. Changed bytes invalidate
+  review. Only after approval, append-only recording, and history-preserving
+  integration may a separate event resume the preserved smallest
+  three-source Task14 GREEN. Do not combine RED integration with resumed
+  source authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is a test-oracle correction authorization, not a test
+  candidate, RED approval or integration, resumed source authority, Task14
+  source candidate, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1115 — Exact corrected Task14 recovery RED admitted to fresh review
+
+- Recorded at: 2026-07-26T17:07:43Z
+- Exact corrected test-only candidate
+  `e81676c912afbf9ca7bb8f6e827ab718e599ab00`, tree
+  `c6e2adc9617312860aefcecb4253b7949ee3a108`, has sole parent exact E-1114
+  correction-authority merge
+  `ad75be51e499071bcce13b0c1e7fbda9f5eb5d7c` and exact subject
+  `test(local-runtime): correct Task14 recovery oracles`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` by
+  **75 insertions / 15 deletions**, from integrated blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6` to exact corrected blob
+  `52dad6d80670f53bc6a8314315f21456cb258673`. No product source, mounted
+  test, import policy, claim, contract, mission byte, dependency, route,
+  configuration, or unrelated path changes.
+- The corrected semantic-key row constructs exactly two schema-valid
+  orchestration checkpoints in the same exact target stream. Both bind the
+  same locator `resumeIdempotencyKey`, task, attempt, run, claim generation,
+  causation, and canonical event family; the second differs in exact
+  instruction canonical bytes. Explicit pre-W assertions prove the two-event
+  stable-key conflict. Frozen recovery already rejects that genuine conflict
+  without append, release, effect, or foreign-stream change, so the prior
+  false product failure is correctly removed while the assertion remains a
+  real regression control.
+- The corrected positive effect-outcome-unknown fixture uses exact
+  package-owned `agent_default` actors for its manually seeded request and
+  execution claim and retains the independent human approval actor. Explicit
+  assertions bind all three actors before W executes. Every locator,
+  capability, request/decision/claim, preview, chronology, causation,
+  correlation, evidence, budget, receipt-absence, terminal-absence,
+  mutation, no-effect, and at-most-once control remains exact.
+- Against frozen sources, the corrected positive reaches the intended
+  product boundary and fails only because W performs zero reads of the exact
+  resident-domain stream instead of the required one G
+  `rereadAndIssueFromLedger` read. Independent coordinator reproduction of
+  the two corrected rows is exact **one passed + one failed**; no fixture,
+  schema, collection, API, type, import, or earlier-boundary failure occurs.
+- The stabilized corrected focused command is exact
+  **94 = 53 passed + 41 source-causal Task14 failures**. Wake behavior is
+  **72 = 31 passed + 41 failed**, mounted is **17/17**, wake import policy is
+  **5/5**, and the adjusted failure partition is exact
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**.
+- Exact Task136 card is
+  **381 = 333 passed + 48 failed**, consisting only of the corrected
+  **41** Task14 failures plus **7** preserved Task15-through-16 REDs.
+  Exact 37-file cross-boundary execution is
+  **1,040 = 992 passed + 48 failed** with the same partition and zero new,
+  missing, fixture, collection, analyzer, dependency, or timeout variance.
+- Loaders pass **7/7**, adapters **83/83**, released boundaries **443/443**,
+  relevant boundaries **44/44**, prerequisites **18/18**, and FC-Core
+  controls **2/2**. Standalone typecheck, factory readiness, mission
+  **20/20**, V4 **20/20**, and markers **29 / 20 / 29 / 15** pass.
+- Clean normalized repository mode exits `1` after all four markers and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Exact source/import freezes, E-1114 authority and all prior RED/review/
+  rejection/integration ancestry, real Vitest/TypeScript dependencies, scope,
+  diff, full/connectivity integrity, and candidate clean state pass. The
+  paused E-1113 three-source working diff is not an ancestor, candidate,
+  review input, approval, or integration and remains untouched in its
+  separate Task136 worktree.
+- Admit only exact `e81676c9` as corrected Task14 test-only RED
+  `candidate -> reviewing`. Assign one completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed corrected
+  blob `52dad6d8`.
+- The reviewer must inspect the complete **75 insertion / 15 deletion** diff
+  and retained fixture context; independently prove the two-checkpoint
+  stable-key/canonical conflict is real and causally rejected, prove the
+  unknown-outcome fixture exactly matches G's actor and claimed-stage
+  authority, and prove its sole corrected failure reaches the missing exact
+  domain-stream reread. It must reproduce exact identity/scope/freezes/
+  ancestry/dependencies/diff/clean state; focused/card/loader/boundary/
+  FC-Core/typecheck/factory/mission/V4/marker/repository-first-stop gates and
+  corrected failure accounting.
+- Candidate author `/root/task136_e1114_red_correction`, E-1113 defect analyst,
+  every prior Task14 test author/reviewer/verifier/analyst, amendment
+  reviewers, and the coordinator are ineligible to approve. The fresh
+  reviewer may not edit, commit, merge, substitute a SHA, authorize source
+  resumption or Task15, or make prefix, record-29, release, or Wave claims.
+  Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED review admission, not RED approval or
+  integration, resumed Task14 source authority, source candidacy, Task15
+  authority, Task136 product candidacy, repository closure, strict record 29,
+  assurance transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
+
+## RV-1-E-1116 — Exact corrected Task14 recovery RED rejected; actor-label correction authorized
+
+- Recorded at: 2026-07-26T17:32:49Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1115_red_review` returns `REJECTED` for exact candidate
+  `e81676c912afbf9ca7bb8f6e827ab718e599ab00`, tree
+  `c6e2adc9617312860aefcecb4253b7949ee3a108`, sole parent
+  `ad75be51e499071bcce13b0c1e7fbda9f5eb5d7c`, and exact corrected wake-test
+  blob `52dad6d80670f53bc6a8314315f21456cb258673`. Review remained read-only
+  beneath E-1115 admission merge
+  `184bb074d06885b302de9b158b43d4bb7db8bcd3`; no byte changed.
+- Frozen G defines and emits exact package-owned event actor
+  `{ id: "agent_default", kind: "agent", label: "Cestus Agent" }` through
+  its private canonical event-context builder. The candidate instead seeds
+  and asserts request and execution-claim actor label `Resident agent`.
+  Frozen recovery checks ID and kind, so the wrong-label structural copy
+  still reaches the missing domain-stream-reread failure. Matching causality
+  and counts therefore do not satisfy E-1114's exact G-produced actor-byte
+  requirement.
+- The reviewer otherwise independently approves the causal two-checkpoint
+  stable-key/canonical-byte conflict, the independent human actor, all
+  retained fixture and mutation controls, and the intended exact
+  zero-versus-one domain-stream-read failure. It reproduces corrected
+  two-row **one passed + one failed**, focused
+  **94 = 53 passed + 41 failed**, partition
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**, Task136 card
+  **381 = 333 passed + 48 failed**, and exact 37-file
+  **1,040 = 992 passed + 48 failed**.
+- Independent loaders **7/7**, adapters **83/83**, released controls
+  **443/443**, relevant boundaries **44/44**, prerequisites **18/18**,
+  FC-Core **2/2**, typecheck, factory, mission **20/20**, V4 **20/20**,
+  markers **29 / 20 / 29 / 15**, truthful legacy-staging repository first
+  stop, scope, freezes, ancestry, dependencies, diff, connectivity, timeout
+  variance, and clean state all pass. Those gates do not override the exact
+  actor-byte defect.
+- Preserve exact rejected candidate `e81676c9`, its test blob, review,
+  admission, E-1114 authority, and all earlier Task14 history in ancestry.
+  It is not approved, integrated, resumed source authority, a Task14 source
+  candidate, or product evidence.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`: change only
+  the manually seeded request and execution-claim actor labels and their
+  explicit positive assertions from `Resident agent` to exact canonical
+  `Cestus Agent`. Preserve their exact `agent_default` IDs and `agent` kinds,
+  the independent human actor, the causal semantic-key correction, every
+  other test byte and control, and all frozen product/authority/dependency
+  bytes.
+- Reproduce the exact causal two-row, focused, partition, card,
+  cross-boundary, loader/control, typecheck/factory/mission/V4/marker,
+  repository-first-stop, scope/freeze/ancestry/dependency/diff/integrity/
+  clean gates. Admit one exact clean descendant to a different completely
+  fresh independent reviewer. The E-1115 reviewer and every prior author,
+  reviewer, verifier, or analyst of changed bytes are ineligible to approve
+  the descendant. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact candidate rejection and narrow test correction
+  authority, not corrected RED approval/integration, resumed source
+  authority, source candidacy, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance transition, publication,
+  Wave 3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1117 — Exact Task14 G-actor RED descendant admitted to fresh review
+
+- Recorded at: 2026-07-26T17:48:57Z
+- Exact corrected test-only descendant
+  `e684225129a2d2fb64090f380b804272f4da2b36`, tree
+  `20b94c8ff3c37866d3a94dd83a8a61bd066d6002`, has sole parent exact E-1116
+  authority merge `8283c1a0f9d305cebae649cebaa2aa53a6e51e5c`
+  and exact subject `test(local-runtime): bind exact G recovery actor`.
+  Rejected candidate `e81676c912afbf9ca7bb8f6e827ab718e599ab00`
+  and its review remain immutable ancestors.
+- The descendant changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` from rejected
+  blob `52dad6d80670f53bc6a8314315f21456cb258673` to exact blob
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713` by **four insertions and four
+  deletions**. The only semantic delta is four literal replacements of actor
+  label `Resident agent` with exact G canonical label `Cestus Agent`: two
+  manually seeded request/claim contexts and their two positive assertions.
+- Actor IDs remain exact `agent_default`, kinds remain exact `agent`, and the
+  human approval actor remains independent and unchanged. The approved
+  two-checkpoint stable-key conflict, zero-versus-one domain-stream-read
+  failure, all other fixture and mutation controls, every other test byte,
+  all product sources, authority, dependencies, routes, configuration, and
+  releases remain frozen.
+- Candidate-bound corrected two-row execution is exact
+  **one passed + one intended causal failure**. Focused is
+  **94 = 53 passed + 41 failed**, with partition
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**. Exact Task136 card is
+  **381 = 333 passed + 48 failed** and exact 37-file execution is
+  **1,040 = 992 passed + 48 failed**, containing only 41 corrected Task14
+  failures plus seven preserved Task15-through-16 REDs.
+- Loaders **7/7**, adapters **83/83**, released controls **443/443**,
+  relevant boundaries **44/44**, prerequisites **18/18**, FC-Core **2/2**,
+  standalone typecheck, factory readiness, mission **20/20**, V4 **20/20**,
+  and markers **29 / 20 / 29 / 15** pass. Clean repository mode stops first
+  only at the legacy-staging source blob mismatch and emits no prefix,
+  closure, record-29, repository, or release success.
+- Exact one-test scope, four-literal delta, source/test/import freezes,
+  rejected-candidate and authority ancestry, real dependencies, diff,
+  full/connectivity integrity, timeout variance, and clean state pass. The
+  paused E-1113 three-source working diff remains separate, uncommitted, and
+  outside candidate ancestry and review input.
+- Admit only exact `e6842251` as corrected Task14 test-only RED
+  `candidate -> reviewing`. Assign a different completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `736a2b76`.
+- The reviewer must inspect the complete descendant and cumulative correction
+  diffs; independently bind request and claim to exact G actor
+  `{ id: "agent_default", kind: "agent", label: "Cestus Agent" }`, retain the
+  independent human actor, prove the genuine two-checkpoint stable-key
+  conflict and intended missing domain-stream reread, and reproduce all exact
+  causal counts and identity/scope/freeze/ancestry/dependency/diff/integrity/
+  clean and repository-first-stop gates.
+- Candidate author, E-1113 analyst, E-1115 reviewer, every prior Task14 test
+  author/reviewer/verifier/analyst, amendment reviewers, and the coordinator
+  are ineligible to approve. The fresh reviewer may not edit, commit, merge,
+  substitute a SHA, authorize source resumption or Task15, or make prefix,
+  record-29, release, or Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED review admission, not approval,
+  integration, resumed source authority, source candidacy, Task15 authority,
+  Task136 product candidacy, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
+
+## RV-1-E-1118 — Exact Task14 G-actor RED descendant approved
+
+- Recorded at: 2026-07-26T18:14:54Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1117_red_rereview` returns **APPROVED** with no findings
+  for exact corrected test-only candidate
+  `e684225129a2d2fb64090f380b804272f4da2b36`, tree
+  `20b94c8ff3c37866d3a94dd83a8a61bd066d6002`, sole parent
+  `8283c1a0f9d305cebae649cebaa2aa53a6e51e5c`, and exact wake-test blob
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713`. Review remained read-only
+  beneath exact clean E-1117 admission merge
+  `d409023a809d58eb8a5d8c398281d24f06799fca`; no byte or ref changed.
+- The reviewer independently proves the semantic-key case uses two
+  schema-valid conflicting canonical checkpoints bound to the same exact
+  target stream and trusted identities and now passes frozen W. The
+  unknown-outcome case binds request and claim to G's exact package-owned
+  actor `{ id: "agent_default", kind: "agent", label: "Cestus Agent" }`,
+  retains the independent human actor, reaches the intended product
+  boundary, and fails only at the exact domain-stream read assertion
+  (**actual zero versus required one**).
+- Mandated serialized 120-second mode reproduces exact focused
+  **94 = 53 passed + 41 source-causal Task14 failures**, partition
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**. Exact Task136 card is
+  **381 = 333 passed + 48 failed** and exact 37-file cross-boundary
+  execution is **1,040 = 992 passed + 48 failed**, consisting only of the
+  **41** corrected Task14 failures plus seven preserved Task15-through-16
+  REDs.
+- Loaders pass **7/7**, adapters **83/83**, released controls **443/443**,
+  relevant boundaries **44/44**, prerequisites **18/18**, and FC-Core
+  controls **2/2**. Standalone typecheck, factory readiness, mission
+  **20/20**, V4 **20/20**, and all four contract markers pass. The unchanged
+  frozen import-policy control reproduces its known ordinary 30-second
+  harness-time variance and passes **5/5** in the mandated serialized
+  120-second mode; this is not candidate-byte or product variance.
+- Clean repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success.
+  Exact candidate identity, cumulative and four-literal diffs, scope,
+  source/test/import freezes, rejected-candidate and authority ancestry,
+  dependencies, full/connectivity integrity, configuration isolation, and
+  final clean state pass.
+- Advance only exact `e6842251` corrected Task14 test-only RED
+  `reviewing -> approved`. Authorize its history-preserving no-ff merge into
+  this program branch, fresh integration-tree focused/card/cross-boundary/
+  loader/control/typecheck/factory/mission/V4/marker/repository-first-stop/
+  scope/freeze/ancestry/dependency/diff/integrity/clean gates, and a
+  separate append-only integrated event. This event contains no resumed
+  Task14 source authority, source candidacy, or Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact corrected RED approval, not integration,
+  resumed source authority, Task14 source candidacy, Task15 authority,
+  Task136 product candidacy, repository closure, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
+
+## RV-1-E-1119 — Exact Task14 G-actor RED descendant integrated
+
+- Recorded at: 2026-07-26T18:31:54Z
+- Exact independently approved corrected test-only RED
+  `e684225129a2d2fb64090f380b804272f4da2b36`, tree
+  `20b94c8ff3c37866d3a94dd83a8a61bd066d6002`, is integrated by exact
+  history-preserving no-ff merge
+  `1565730f0f99d6a9bade9bd496d651b7e4bc4afe`, tree
+  `189c8991c987c4de07998323e8e08014fa3b4023`. Its first parent is exact
+  E-1118 approval commit
+  `49da32129c51021bc473c5f4e50144e9d80e2d96`; its second parent is the exact
+  reviewed candidate.
+- Integrated wake-test blob is exact
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713`. Mounted test remains exact
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`; local/global import policies
+  remain exact `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`. Composition, wake-runtime,
+  and mounted-store sources remain frozen at exact
+  `8e69a7ac55f16a9d3e1c2646c985ffc6539fe064` /
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`.
+- Fresh integration-tree 120-second serialized focused execution is exact
+  **94 = 53 passed + 41 source-causal Task14 failures**, with wake
+  **31 passed + 41 failed**, mounted **17/17**, import policy **5/5**, and
+  exact partition **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**. Exact Task136 card
+  is **381 = 333 passed + 48 failed**: 41 Task14 failures plus seven
+  preserved Task15-through-16 REDs.
+- Fresh exact 37-file cross-boundary execution is
+  **1,040 = 992 passed + 48 failed** with the same complete failure set.
+  Loaders pass **7/7**, adapters **83/83**, released controls **443/443**,
+  relevant mounted/portable/ontology boundaries **44/44**, isolated
+  prerequisites **18/18**, and FC-Core controls **2/2**.
+- Standalone typecheck, factory readiness, mission **20/20**, hardened V4
+  **20/20**, and exact contract markers
+  **29 / 20 / 29 / 15** pass. One initial unisolated parallel mission run
+  encountered only temporary-fixture write-quota errors; the exact suite
+  passed **20/20** under the already prescribed `/dev/shm` isolation. No
+  product, authority, or repository byte changed.
+- Clean normalized repository mode exits `1` after all four markers and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no prefix, closure, record-29, repository, or release success.
+- Exact merge parents, candidate tree/parent/subject/single-test scope,
+  corrected and rejected test ancestry, source/test/import freezes, real
+  Vitest and TypeScript dependencies, diff hygiene, full and connectivity
+  integrity, and final clean state pass. Both fsck modes report no missing or
+  corrupt object; ordinary unreachable objects remain informational.
+- Advance only exact `e6842251` corrected Task14 test-only RED
+  `approved -> integrated`. This event intentionally contains no resumed
+  Task14 source authority, source candidacy, Task15 authority, or product
+  transition. A separate append-only authority event and exact Task136
+  history-preserving merge are mandatory before the preserved three-source
+  Task14 working diff may proceed.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED integration, not resumed source
+  authority, Task14 source candidacy, Task15 authority, Task136 product
+  candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
