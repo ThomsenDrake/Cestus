@@ -39128,3 +39128,67 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1105 — Exact one-claim Task14 binding RED approved
+
+- Recorded at: 2026-07-26T14:18:35Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1104_binding_red_review` returns **APPROVED** with no
+  findings for exact candidate
+  `757674afa466005e366c27cc51a606ddf2376a95`, tree
+  `34d94f0d28d7e95bf31b1699390fda996a91dd41`, changed wake-test blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6`, exact
+  **38 insertion / 33 deletion** scope, and no other candidate. Review
+  remained read-only beneath exact clean E-1104 authority merge
+  `92445547c7e9f32ee3385e9f38cc10eeb4fe5a21`; no byte changed.
+- The reviewer independently proves the binding fixture has exactly one
+  schema-valid checkpoint-referenced execution claim. Its locator,
+  capability hash, complete human authorization tuple, context, causation,
+  and correlation are exact; only `claim.payload.requestEventId` differs
+  from the checkpoint's exact request. No original exact or duplicate claim
+  exists. All new pre-W controls pass, and the named row fails only because
+  frozen W returns `resident-loop-currentness-token.v1` without performing
+  G's complete referenced-claim binding validation.
+- Focused is exact
+  **94 = 52 passed + 42 source-causal Task14 failures**, with file split
+  mounted **17/17**, import policy **5/5**, and wake behavior
+  **72 = 30 passed + 42 failed**. The failure partition remains exact
+  **3 / 2 / 7 / 1 / 12 / 8 / 8 / 1**, with no fixture, schema, collection,
+  API, type, import, analyzer, or unrelated failure.
+- Task136 card is exact
+  **381 = 332 passed + 49 failed**, consisting only of the **42** Task14
+  failures plus the **7** preserved Task15-through-16 REDs. Loaders pass
+  **7/7**, adapters **83/83**, released cross-boundary **443/443**, relevant
+  boundaries **44/44**, prerequisites **18/18**, standalone typecheck,
+  factory readiness, mission **20/20**, hardened V4 **20/20**, and markers
+  **29 / 20 / 29 / 15**.
+- Repository mode exits one solely at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success
+  marker. Serialized full is exact
+  **3,370 = 3,271 passed + 94 failed + 5 pending**; mandated-timeout default
+  full is exact
+  **3,370 = 3,269 passed + 96 failed + 5 pending**, with zero timeout
+  signatures and only the two admitted import-policy contention identities.
+- Rejected-candidate focused comparison is exact **94 versus 94**, with zero
+  occurrence addition, removal, or status drift. Fresh immutable baseline
+  is exact
+  **3,231 = 3,181 passed + 45 failed + 5 pending** and comparator output is
+  exact `removed=8 mapped=14 addedPassed=84 retainedLaterRed=49`.
+  Candidate identity/scope/blobs/freezes/ancestry/dependencies/diff, full and
+  connectivity integrity, isolated config, hardened detached no-local clone,
+  and candidate/program clean states pass.
+- Advance only exact `757674af` corrected downstream test-only RED
+  `reviewing -> approved`. Authorize its history-preserving no-ff merge into
+  this program branch, fresh integration-tree focused/card/loader/boundary/
+  typecheck/factory/mission/V4/marker/repository-first-stop/scope/freeze/
+  ancestry/dependency/diff/integrity/clean gates, and a separate append-only
+  integrated event. This event contains no Task14 source-correction or
+  Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact corrected RED approval, not integration,
+  source correction, Task14 approval, Task15 authority, product candidacy,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
