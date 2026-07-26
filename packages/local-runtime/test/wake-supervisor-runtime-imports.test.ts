@@ -3005,7 +3005,8 @@ function residentFactoryIssuerAnalysis(
       ts.isAsExpression(expression) ||
       ts.isTypeAssertionExpression(expression) ||
       ts.isNonNullExpression(expression) ||
-      ts.isSatisfiesExpression(expression)
+      ts.isSatisfiesExpression(expression) ||
+      ts.isAwaitExpression(expression)
     ) {
       return expressionResolvesToRegistrar(expression.expression, resolving);
     }
@@ -3180,6 +3181,28 @@ function residentFactoryIssuerAnalysis(
         ((operand & (staticFalsy | staticNullish)) !== 0 ? staticTruthy : 0)
       );
     }
+    const prefixOperand = ts.isPrefixUnaryExpression(value)
+      ? unwrapRegistrarExpression(value.operand)
+      : undefined;
+    if (
+      ts.isPrefixUnaryExpression(value) &&
+      prefixOperand !== undefined &&
+      ts.isNumericLiteral(prefixOperand)
+    ) {
+      const operand = Number(prefixOperand.text);
+      const result = value.operator === ts.SyntaxKind.PlusToken
+        ? operand
+        : value.operator === ts.SyntaxKind.MinusToken
+          ? -operand
+          : value.operator === ts.SyntaxKind.TildeToken
+            ? ~operand
+            : undefined;
+      if (result !== undefined) {
+        return result === 0 || Number.isNaN(result)
+          ? staticFalsy
+          : staticTruthy;
+      }
+    }
     if (
       ts.isPrefixUnaryExpression(value) ||
       ts.isDeleteExpression(value)
@@ -3344,7 +3367,8 @@ function residentFactoryIssuerAnalysis(
       ts.isAsExpression(current) ||
       ts.isTypeAssertionExpression(current) ||
       ts.isNonNullExpression(current) ||
-      ts.isSatisfiesExpression(current)
+      ts.isSatisfiesExpression(current) ||
+      ts.isAwaitExpression(current)
     ) {
       current = current.expression;
     }
@@ -3698,6 +3722,12 @@ describe("wake supervisor runtime import boundary", () => {
          }`
       ],
       [
+        "exported awaited alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           await registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
         "exported conditional-expression alias binding",
         `${exactComposition}
          export const exposedRegistrar = true
@@ -3721,6 +3751,27 @@ describe("wake supervisor runtime import boundary", () => {
         `${exactComposition}
          export const exposedRegistrar =
            undefined ?? registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported awaited logical-or result alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           false ||
+             await registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported awaited logical-and result alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           true &&
+             await registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported awaited nullish result alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           undefined ??
+             await registerResidentLoopFactoryAuthorityReadback;`
       ],
       [
         "exported comma-expression alias binding",
@@ -3775,6 +3826,8 @@ describe("wake supervisor runtime import boundary", () => {
       export function unrelatedCallableDeclaration() {
         return unrelatedLocalExport;
       }
+      export const unrelatedAwaitedResult =
+        await unrelatedLocalExport;
       export const unrelatedConditional = true
         ? unrelatedLocalExport
         : unrelatedExportedBinding;
@@ -3783,6 +3836,16 @@ describe("wake supervisor runtime import boundary", () => {
       export const discardedLogicalAnd = false &&
         registerResidentLoopFactoryAuthorityReadback;
       export const discardedNullish = ({}) ??
+        registerResidentLoopFactoryAuthorityReadback;
+      export const discardedAwaitedLogicalOr = true ||
+        await registerResidentLoopFactoryAuthorityReadback;
+      export const discardedAwaitedLogicalAnd = false &&
+        await registerResidentLoopFactoryAuthorityReadback;
+      export const discardedAwaitedNullish = ({}) ??
+        await registerResidentLoopFactoryAuthorityReadback;
+      export const discardedNegativeLogicalOr = -1 ||
+        registerResidentLoopFactoryAuthorityReadback;
+      export const discardedNegativeZeroLogicalAnd = -0 &&
         registerResidentLoopFactoryAuthorityReadback;
       export const unrelatedCommaResult = (
         registerResidentLoopFactoryAuthorityReadback,
