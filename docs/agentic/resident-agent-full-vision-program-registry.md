@@ -38165,3 +38165,45 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1092 — Exact Task14 spread-precedence evaluator loader RED integrated
+
+- Recorded at: 2026-07-26T09:51:33Z
+- Exact independently approved test-only RED
+  `66895ec8bdbc9f7a5f8cf4984d5f4c70cbf6fea8`, tree
+  `5f36393f5ed8c3a1c78024eb338fe34c9469fb47`, is integrated by exact
+  history-preserving no-ff merge
+  `8ed6bb057015caa662c666b7f9e212257130b441`. Its first parent is E-1091
+  approval commit `19f54edd64c2969ce2983854dfd130d712d4dae7`; its second parent is the
+  exact reviewed RED.
+- The integrated test blob is exact
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff`. The global loader remains
+  exact `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 wake and mounted
+  store sources remain frozen at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`. All rejected candidates,
+  incident/recovery commits, and earlier authority remain ancestors; their
+  preservation does not approve any rejected candidate.
+- Fresh integration-tree focused execution is exact
+  **34 = 32 passed + 2 causal failures**; loaders are
+  **7 = 5 passed + 2 causal failures**; the Task136 card is
+  **321 = 311 passed + 10 authorized failures** with the exact occurrence
+  set. Standalone typecheck, factory readiness, and mission **20/20** pass.
+- Fresh integration-tree V4 passes **20/20** and contract markers remain exact
+  **29 / 20 / 29 / 15**. Repository mode exits one solely at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, release-closure, record-29, repository, or release
+  success marker. Full and connectivity-only repository integrity, exact
+  blobs, diff hygiene, and clean state pass.
+- Advance only exact `66895ec8` test-only RED
+  `approved -> integrated`. This event intentionally contains no source
+  correction or Task15 authority. A separate append-only event after the
+  exact Task136 authority merge is mandatory before either Task14 source may
+  change.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test-only RED integration, not source
+  correction, Task14 approval, Task15 authority, product candidacy, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
