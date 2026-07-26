@@ -40753,3 +40753,77 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1126 — Corrected Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-26T20:47:20Z
+- Exact corrected test-only descendant
+  `db03309fd5669a5016a3a806cc2314cee16504fa`, tree
+  `24f8a3b8a45db96a8d6ad0ce292f51528f139103`, has sole parent exact E-1125
+  authority merge `2e72cd1914f8996eba741e9ae38428d21230b3d1` and exact subject
+  `test(local-runtime): resolve registrar export symbols`. Rejected
+  `619fd752` and exact E-1124 review remain immutable ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+193 / -2** from rejected blob
+  `5fec928fabe7c7bb59acc3a3308eea46f87ff10d` to exact blob
+  `8d3996fcac46dd4a2c8efac6cf24255232b13f64`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; all product and other test
+  bytes remain frozen.
+- Against the unchanged rejected analyzer, all four new controls fail only
+  because local named re-export, exported-name alias, imported local-alias
+  re-export, and exported local-alias binding expose the registrar without a
+  `registrar-reexport` violation. After the correction, all four reject by
+  TypeScript symbol identity and the unrelated-local-export positive remains
+  accepted. No spelling or source-text heuristic is used.
+- Exact production focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; the runtime attack remains exact,
+  pre-store, and non-consuming for hostile explicit-issuer attempts while
+  exposing the missing-issuer slot poison.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed**. The complete
+  failure set is only the two issuer REDs plus seven preserved
+  Task15-through-16 REDs.
+- Retained loader controls pass **7/7** with only the new static production
+  RED in the combined execution. Adapters pass **83/83**, released controls
+  **443/443**, relevant boundaries **44/44**, prerequisites **18/18**,
+  FC-Core **2/2**, standalone typecheck, factory, mission **20/20**, V4
+  **20/20**, and markers **29 / 20 / 29 / 15**.
+- Clean repository mode stops first only at the legacy-staging source blob
+  mismatch and emits no prefix, closure, record-29, repository, or release
+  success. Exact one-test scope, source/runtime/other-test freezes,
+  rejected-candidate and authority ancestry, real dependencies, diff
+  hygiene, full/connectivity integrity, and clean state pass.
+- Fresh serialized full is exact
+  **3,372 = 3,313 passed + 54 failed + 5 pending**; fresh default full is
+  **3,372 = 3,312 passed + 55 failed + 5 pending**. Both failure occurrence
+  sets are identity-equivalent to E-1124 with `added=0 removed=0`; the sole
+  default-only delta is the frozen scheduler importer contention identity,
+  which passes isolated.
+- Admit only exact `db03309f` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a different completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `8d3996fc`.
+- The reviewer must inspect the full correction and cumulative two-test RED;
+  independently reproduce all four local export/alias mutations and the
+  unrelated positive, causal runtime/static production failures,
+  focused/card/cross/full differentials, controls, assurance,
+  repository-first-stop, exact scope/freezes/ancestry/dependencies/diff/
+  integrity/clean state. It must prove the static gate supplements rather
+  than substitutes for runtime exact identity. Candidate author, E-1124
+  reviewer, E-1122 reviewer/analyst, every prior Task14 test/source
+  author/reviewer/verifier/analyst, amendment reviewers, and coordinator are
+  ineligible to approve. Changed bytes invalidate review. The reviewer may
+  not edit, commit, merge, authorize source correction or Task15, or make
+  prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  Task15 authority, Task136 product candidacy, repository closure, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
