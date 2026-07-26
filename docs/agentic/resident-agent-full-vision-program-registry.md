@@ -36471,3 +36471,97 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start,
   or product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1074 — Exact Task14 complete-state-read loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T02:18:15Z
+- Exact corrected one-test candidate
+  `ff0d2b2c72cc0fb5bc67bc57a20fe75fb0ea0477`, tree
+  `ca8098157ce5c2ae8277f8b937cfadf28ad9c19b`, has sole parent E-1073
+  authority merge `b43394e7ac604fc945d70bad1760554a8749d60a`
+  and exact subject
+  `test(local-runtime): census every mounted state read`. Rejected
+  candidates `60dcd687`, `77b6c5a4`, `877ede2d`, and `a6068aae` remain
+  ancestors.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **174 insertions / 4 deletions** to exact blob
+  `6d26d2ce9332621a01e487ab5309d55843a64940`. The global loader remains
+  frozen at `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 sources remain
+  frozen at `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; every other path is
+  unchanged.
+- The corrected registrar traversal collects every exact direct
+  `residentWakeRuntimeStates.get(wakeRuntime)` call in the complete
+  registrar lexical body while excluding nested function-like scopes. It
+  requires exactly one occurrence, exactly one qualifying
+  single-declaration `const` state initializer, exact node identity between
+  that initializer and the sole occurrence, and declaration order before
+  the exact mounted-binder call.
+- Seven independently executing controls first reproduced E-1073's false
+  accepts, then passed after the minimal analyzer correction: a valid
+  pre-call state plus an extra bare read before or after the call, an extra
+  `let` read, an extra `var` read, an extra multi-declaration read, a
+  nested-block bare read, and a nested-block multi-declaration read. The
+  earlier nested-block duplicate-`const` control and every E-1065 through
+  E-1073 symbol/import/call/placement/argument/alias/shadow/wrapper/carrier/
+  protected-transfer/recursive-type control remain. No async-keyword rule
+  was added.
+- Exact post-commit focused signature is
+  **34 = 32 passed + 2 causal failures**. Exact combined loader signature is
+  **7 = 5 passed + 2 causal failures**. Exact Task136 card is
+  **321 = 311 passed + 10 failures**, with the identical three Task14 and
+  seven later-task RED identities. No control, fixture, analyzer, API,
+  collection, type, or unrelated failure substitutes.
+- Adapter controls pass **83/83**, cross-boundary passes **443/443**, and
+  relevant mounted/portable/ontology boundaries pass **44/44**. Typecheck,
+  factory, mission **20/20**, V4 **20/20**, and markers
+  **29 / 20 / 29 / 15** pass. Clean repository mode exits one after markers
+  and truthfully stops only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`;
+  no prefix or closure marker is emitted.
+- Serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending**, with exact E-1072
+  reviewed failure occurrences and no timeout. Default full execution is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, with the exact reviewed
+  contention-calibrated failure set; isolated prerequisites pass **18/18**.
+  Calibrated comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact candidate/tree/parent/subject, one-test scope, content and patch
+  identity, global/source/other-path freezes, rejected ancestry,
+  dependencies, real non-symlinked Vitest **4.1.9** and TypeScript **5.9.3**,
+  connectivity, diff, and clean state pass.
+- Admit only exact `ff0d2b2c` as Task14 complete-state-read loader test-only
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1074_task14_state_read_red_review`, who has never
+  authored, reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect the complete cumulative local/global loader
+  against E-1065 through E-1073 and independently attack every direct-read
+  expression/declaration form, lexical block, nested-function exclusion,
+  symbol identity, node identity, uniqueness, and pre-call order, plus all
+  prior import, call, placement, argument, alias, shadow, wrapper, carrier,
+  protected-transfer, recursive-type, and causal controls. It must prove
+  every new negative actually executes and the realistic production-form
+  positive remains admitted. It must search for false accepts and false
+  rejects beyond the named examples.
+- The reviewer must independently reproduce exact candidate/tree/parent/
+  subject/scope/blob/freezes/ancestry, focused/loader/card causal identities,
+  adapter **83/83**, cross **443/443**, relevant **44/44**, typecheck,
+  factory, mission, V4, markers, truthful repository first stop,
+  serialized/default occurrence sets, isolated prerequisite suite,
+  calibrated differential, dependencies, connectivity, diff, and clean
+  state.
+- The correction author, all rejected authors/reviewers, E-1064 source
+  implementer, earlier Task14/Task136 participants, and coordinator are
+  ineligible to approve changed bytes. The reviewer may not edit, commit,
+  merge, authorize source correction or Task15, substitute a SHA, or make
+  product/record-29/release/prefix/Wave claims. Changed bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
