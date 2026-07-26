@@ -39420,3 +39420,114 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1109 — Task136 exact-identity 33-path assurance amendment authorized
+
+- Recorded at: 2026-07-26T15:15:14Z
+- The human product-and-scope decision explicitly selects E-1108's
+  scope-expansion option and rejects any product-behavior weakening. Preserve
+  the approved exact package-owned identity invariant. Structural-copy,
+  first-seen, timing, allocation-order, call-stack, source-text, hidden-global,
+  process-local rendezvous, and other heuristic acceptance remain forbidden.
+  E-1108 remains valid historical evidence of the two-source impossibility;
+  this event supplies the missing forward scope authority.
+- Authorize one reviewed design/plan/V4/mission assurance amendment that
+  transfers exactly
+  `packages/local-runtime/src/resident-loop-factory-composition.ts` from
+  `Task136-FC-Core` to `Task136`. The current and historical record-19 source
+  blob remains exact
+  `8e69a7ac55f16a9d3e1c2646c985ffc6539fe064`; exact released candidate
+  `c6efd58a3e385d0097b4df9f73703a75b145e660`, integration
+  `7a7a650e7db97c1aad63447e3669e66ddf3dc7fe`, release event
+  `task136-release-v4-Task136-FC-Core`, raw record SHA-256
+  `5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920`,
+  and compact canonical record SHA-256
+  `ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1`
+  are immutable historical release evidence.
+- `Task136-FC-Core.transferToIds` becomes exactly `["Task136"]`. Only the
+  composition source changes from current `owned` to current `transferred`;
+  both FC-Core tests and its product claim remain owned by FC-Core and retain
+  their existing command and release evidence. Task136 gains the exact direct
+  `Task136-FC-Core` prerequisite immediately before `Task136-FC-Ports`, for
+  exactly ten prerequisites. The finite compatibility and migration logic
+  must preserve record 19's historical `owned` disposition and exact raw and
+  canonical hashes while moving current-HEAD authority for only that source
+  to Task136 when and only when strict record 29 exists.
+- Expand Task136 from 32 to exactly **33 ordered paths: 15 sources, 17 tests,
+  and one product claim**. Insert the transferred composition source at
+  one-based position **23**, immediately after
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts` and before
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`, preserving
+  every other path's relative order. The exact newline-delimited canonical
+  33-path SHA-256 is
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+  The exact Task136 card command remains the existing 17-test command.
+- Add the released FC-Core control command
+  `npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts`
+  to the mandatory Task136 cross-boundary gates, expanding that exact array
+  from 35 to 37 tests. The finite release-compatibility sequence grows from
+  eleven to twelve entries with Task136-FC-Core immediately before
+  Task136-FC-Ports. Preserve the exact 29-card order, all 28 raw strict-record
+  pins, every historical record/candidate/integration/review/release fact,
+  every earlier V1-V4 hash for its exact commit, and every prior Task136 RED,
+  GREEN, rejection, approval, and integration in ancestry.
+- The amendment scope is exactly these nine authority paths:
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`,
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`,
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`, and
+  `scripts/check-software-factory-mission-state.mjs`. No package/product byte,
+  mission-state test, V1-V3 contract, registry release record, raw historical
+  record, unrelated claim, or other path may change in the amendment.
+- Update every derived 33-path order/count/hash, Task136/FC-Core transfer and
+  prerequisite, twelve-entry compatibility, record-19 historical parser,
+  pre-record source-currentness, record-29 migration, command/gate,
+  mutation-corpus, claim, design, plan, V4 assurance, mission frozen-authority
+  digest, mission source fingerprint, and immutable-envelope pin. Derive the
+  new V4 JSON hash, assurance fingerprint, mission frozen-authority SHA, source
+  fingerprint, and immutable-envelope fingerprint only from exact final
+  canonical bytes; do not invent, retain, or relabel the obsolete 32-path
+  pins as current authority.
+- The amended design must require a private non-barrel, one-shot issuer seam
+  at the actual Core composition allocation point. The composition source
+  privately registers or brands the exact completed frozen authority readback
+  against its exact issued wake-runtime identity before returning it. W may
+  accept only that original outer/provider/handoff/authority-binding
+  allocation and must reject copies and substitutions before mounted-store
+  I/O. No caller-visible brand, copyable structural field, replaceable
+  callback, report-store port, fallback, default runtime, route, provider,
+  credential, network, or activation authority may be added.
+- Author the amendment test-first so the hardened assurance corpus causally
+  rejects the old 32-path authority before the finite 33-path GREEN. Admit one
+  exact clean amendment candidate. Obtain a completely fresh independent
+  design reviewer and a different completely fresh independent executability
+  reviewer, both bound to that exact candidate and both ineligible if they
+  authored, reviewed, verified, or analyzed any changed byte. They must
+  independently reproduce mission **20/20**, V4 **20/20**, all four exact
+  contract markers, factory readiness, exact 29-card order, truthful
+  pre-record-29 repository first stop, scope, immutable hashes, raw pins,
+  ancestry, dependencies, diff, and clean state. Changed bytes invalidate
+  both reviews.
+- After both exact-candidate reviews return **APPROVED** with no findings,
+  record approval append-only and integrate the amendment by the
+  repository-prescribed history-preserving two-parent sequence. Only after
+  integration and mission-pin synchronization may a separate append-only
+  Task14 GREEN event authorize exactly
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`,
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` against the
+  already approved and integrated **42-failure** causal RED. Do not combine
+  amendment integration with Task14 source authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or strict record 29 exists.
+  This is assurance-amendment authority, not an amendment candidate,
+  approval, integration, Task14 GREEN authority, source correction, Task15
+  authority, product candidacy, repository closure, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
