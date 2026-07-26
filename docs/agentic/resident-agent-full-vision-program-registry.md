@@ -36565,3 +36565,94 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1075 — Task14 complete-state-read RED rejected; outer-evaluated function-like syntax authorized
+
+- Recorded at: 2026-07-26T02:43:23Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1074_task14_state_read_red_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `ff0d2b2c72cc0fb5bc67bc57a20fe75fb0ea0477`, tree
+  `ca8098157ce5c2ae8277f8b937cfadf28ad9c19b`, and no other bytes. Review
+  occurred beneath clean E-1074 review-authority merge
+  `ccbeaa7b1205a325ce4ea4a2320c95ec0324da88`; no repository byte or ref
+  changed.
+- The candidate correctly counts every exact direct state read in ordinary
+  registrar blocks, loops, conditionals, `try` statements, and static
+  blocks, but returns at an entire nested function-like AST node. That skips
+  its deferred body as intended and also skips computed method/accessor
+  names and applicable decorator expressions that execute while the
+  surrounding object or class is evaluated in the registrar.
+- Independent exact TypeScript-checker and runtime controls used a valid
+  pre-call state plus one object-literal computed method name and one class
+  computed method name, each containing the exact private-map read. The
+  candidate census reported one and accepted; instrumented registrar
+  execution observed three `WeakMap.get` calls. Separate arrow/function
+  default-parameter controls increased reads only when those functions were
+  later invoked, proving the distinction between outer-evaluated syntax and
+  genuinely deferred nested execution.
+- The reviewer independently confirms exact candidate/tree/parent/subject/
+  scope/blob/freezes/rejected ancestry/dependencies/Vitest/TypeScript/
+  connectivity/diff/clean state. Focused remains **32+2**, loaders **5+2**,
+  card **311+10**, adapters **83/83**, cross-boundary **443/443**, and
+  relevant boundaries **44/44**. Typecheck, factory, mission **20/20**, V4
+  **20/20**, markers **29 / 20 / 29 / 15**, and truthful repository
+  legacy-staging first stop pass.
+- Serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with no timeout. A fresh
+  default retry is
+  **3,310 = 3,247 passed + 58 failed + 5 pending** with only the calibrated
+  prerequisite contention delta. Isolated prerequisites pass **18/18** and
+  comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Reject exact `ff0d2b2c`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it, rejected
+  `60dcd687`, `77b6c5a4`, `877ede2d`, `a6068aae`, their exact blobs,
+  reviews, evidence, and all earlier history in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `6d26d2ce9332621a01e487ab5309d55843a64940`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, both Task14 sources at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- When traversal reaches a nested function-like declaration, inspect its
+  computed property name and decorator expressions that execute during
+  evaluation of the containing object or class before excluding its
+  deferred parameters and body. Include applicable decorators attached to
+  the function-like member and its parameters. Traverse those expressions
+  with the same symbol-exact census so nested arrows/functions inside the
+  expressions remain excluded unless invoked by outer-evaluated syntax.
+- Preserve exclusion of nested function, arrow, method, accessor, and
+  constructor bodies and their deferred default-parameter initializers.
+  Preserve ordinary lexical traversal and every E-1065 through E-1074
+  import, call, placement, argument, state-read, alias, shadow, wrapper,
+  carrier, protected-transfer, recursive-type, loader, and causal control.
+  Do not broaden the source contract or add an async-keyword rule.
+- Add independently executing controls for a valid state read plus exact
+  reads in object-literal and class computed method names, computed getter
+  or setter names, and applicable method/accessor/parameter decorator
+  expressions. Add admitted controls proving uninvoked nested function and
+  arrow bodies/default parameters do not count, including when nested in a
+  computed name or decorator expression. Prove every negative and positive
+  control actually executes.
+- Against frozen sources retain exact focused **32+2**, loaders **5+2**,
+  card **311+10**, and the identical RED titles with no fixture, analyzer,
+  API, collection, type, or unrelated failure. Reproduce adapter **83/83**,
+  cross **443/443**, relevant **44/44**, typecheck, factory, mission, V4,
+  markers, truthful repository first stop, serialized/default variance,
+  isolated prerequisites, calibrated differential, one-test scope,
+  global/source/other-path freezes, ancestry, dependencies, connectivity,
+  diff, and clean state.
+- Commit one exact corrected test-only candidate and admit only that SHA to
+  a completely fresh independent read-only reviewer. No prior author,
+  reviewer, verifier, or analyst of changed bytes may approve it; changed
+  bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test rejection and one-test outer-evaluated
+  syntax correction authority, not test approval or integration, source
+  correction, Task14 approval, Task15 authority, Task136 product candidacy,
+  strict record 29, assurance-only transition, publication, Wave 3 start,
+  or product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
