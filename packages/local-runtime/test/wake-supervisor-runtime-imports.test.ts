@@ -1623,6 +1623,8 @@ function mountedBinderOwnershipAnalysis(
     } {
       let selected: ts.ObjectLiteralElementLike | undefined;
       let selectedGetter: ts.GetAccessorDeclaration | undefined;
+      let selectedSpreadValue: InvocationArgument;
+      let hasSelectedSpreadValue = false;
       let prototype: ts.ObjectLiteralExpression | undefined;
       for (const property of object.properties) {
         if (ts.isSpreadAssignment(property)) {
@@ -1636,11 +1638,8 @@ function mountedBinderOwnershipAnalysis(
           if (spreadProperty.own) {
             selected = undefined;
             selectedGetter = undefined;
-            return {
-              known: true,
-              own: true,
-              value: spreadProperty.value
-            };
+            selectedSpreadValue = spreadProperty.value;
+            hasSelectedSpreadValue = true;
           }
           continue;
         }
@@ -1661,6 +1660,7 @@ function mountedBinderOwnershipAnalysis(
           continue;
         }
         if (propertyName !== name) continue;
+        hasSelectedSpreadValue = false;
         if (ts.isGetAccessorDeclaration(property)) {
           selectedGetter = property;
           selected = property;
@@ -1674,6 +1674,13 @@ function mountedBinderOwnershipAnalysis(
         selected = property;
       }
       if (selected === undefined) {
+        if (hasSelectedSpreadValue) {
+          return {
+            known: true,
+            own: true,
+            value: selectedSpreadValue
+          };
+        }
         if (prototype !== undefined) {
           const inherited =
             exactObjectLiteralProperty(prototype, name);
@@ -3151,6 +3158,114 @@ describe("wake supervisor runtime import boundary", () => {
           `${control.id} ${control.name} must preserve exact ownership`
         ).toEqual(exactBinderOwnership);
       }
+    }
+    {
+      const outerSyntax = `
+        (({ value }) => void value)({
+          ...{ value: 1 },
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 2;
+          }
+        });
+      `;
+      const runtimeResult = ts.transpileModule(`
+        let stateReadCount = 0;
+        const wakeRuntime = {};
+        const runtimeStates =
+          new WeakMap<object, { store: unknown }>();
+        runtimeStates.set(wakeRuntime, { store: "canonical" });
+        const residentWakeRuntimeStates = {
+          get(value: object) {
+            stateReadCount += 1;
+            return runtimeStates.get(value);
+          }
+        };
+        ${outerSyntax}
+        (globalThis as {
+          stateReadCount?: number;
+        }).stateReadCount = stateReadCount;
+      `, {
+        compilerOptions: {
+          module: ts.ModuleKind.None,
+          target: ts.ScriptTarget.ES2022
+        },
+        reportDiagnostics: true
+      });
+      const runtimeContext: {
+        stateReadCount?: number;
+      } = {};
+      runInNewContext(runtimeResult.outputText, runtimeContext);
+      expect.soft(
+        (runtimeResult.diagnostics ?? []).map(
+          (diagnostic) => diagnostic.code
+        ),
+        "spread-then-later-getter diagnostics"
+      ).toEqual([]);
+      expect.soft(
+        runtimeContext.stateReadCount,
+        "spread-then-later-getter runtime private-state read count"
+      ).toBe(1);
+      expect.soft(
+        mountedBinderControlAnalysis(
+          exactRegistrarWith(outerSyntax)
+        ),
+        "spread-then-later-getter override must reject exact ownership"
+      ).not.toEqual(exactBinderOwnership);
+    }
+    {
+      const outerSyntax = `
+        (({ value }) => void value)({
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 2;
+          },
+          ...{ value: 1 }
+        });
+      `;
+      const runtimeResult = ts.transpileModule(`
+        let stateReadCount = 0;
+        const wakeRuntime = {};
+        const runtimeStates =
+          new WeakMap<object, { store: unknown }>();
+        runtimeStates.set(wakeRuntime, { store: "canonical" });
+        const residentWakeRuntimeStates = {
+          get(value: object) {
+            stateReadCount += 1;
+            return runtimeStates.get(value);
+          }
+        };
+        ${outerSyntax}
+        (globalThis as {
+          stateReadCount?: number;
+        }).stateReadCount = stateReadCount;
+      `, {
+        compilerOptions: {
+          module: ts.ModuleKind.None,
+          target: ts.ScriptTarget.ES2022
+        },
+        reportDiagnostics: true
+      });
+      const runtimeContext: {
+        stateReadCount?: number;
+      } = {};
+      runInNewContext(runtimeResult.outputText, runtimeContext);
+      expect.soft(
+        (runtimeResult.diagnostics ?? []).map(
+          (diagnostic) => diagnostic.code
+        ),
+        "later-spread-overrides-earlier-getter diagnostics"
+      ).toEqual([]);
+      expect.soft(
+        runtimeContext.stateReadCount,
+        "later-spread-overrides-earlier-getter runtime private-state read count"
+      ).toBe(0);
+      expect.soft(
+        mountedBinderControlAnalysis(
+          exactRegistrarWith(outerSyntax)
+        ),
+        "later-spread-overrides-earlier-getter preserves exact ownership"
+      ).toEqual(exactBinderOwnership);
     }
     expect(mountedBinderControlAnalysis(`
       const residentWakeRuntimeStates =
