@@ -40287,3 +40287,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1120 — Integrated corrected RED resumes exact three-source Task14 GREEN
+
+- Recorded at: 2026-07-26T18:32:50Z
+- E-1119 integrated exact independently approved corrected Task14 causal RED
+  through program merge
+  `1565730f0f99d6a9bade9bd496d651b7e4bc4afe` and integrated event
+  `2f87cadb08f4487e01a65f68d6d766f1cb0dc880`. Exact history-preserving
+  Task136 authority merge
+  `29545e990f10278fb6e59886ee6438f1f9ca354b` has first parent prior Task136
+  authority `64c1b1d1f1b3541a3a9194807d5dbe5a21dfb2b8` and second parent exact
+  E-1119 program authority. Its tree is exact
+  `c323f3cedc725c168a8dd7dbf704fb3003a435a0`.
+- The integrated corrected RED is exact focused
+  **94 = 53 passed + 41 source-causal Task14 failures**, partition
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**. Its wake-test blob is exact
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713`; mounted and local/global
+  import-policy blobs remain exact
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3` /
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`.
+- Resume the previously paused E-1113 Task14 GREEN only in exactly:
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`,
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`. Their
+  committed starting blobs remain exact
+  `8e69a7ac55f16a9d3e1c2646c985ffc6539fe064` /
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`.
+- The preserved uncommitted three-source working diff is unchanged across the
+  corrected-RED authority merge and has exact binary-patch fingerprint
+  `f3c8be3d541c85467161672ff2ec27448da0b429`. It remains authorized
+  in-progress work, not a source checkpoint, candidate, review input,
+  approval, integration, product evidence, record 29, or release. Correct
+  its known TypeScript error and adapt only the minimum source behavior
+  required by the newly integrated causal RED.
+- Apply the approved 33-path design and Task14 plan exactly. Privately
+  register or brand the exact authority readback at its actual composition
+  issuance point so W authenticates only the original package-owned outer,
+  provider, handoff, and authority-binding allocations. Reject structural
+  copies before store I/O. Do not use structural-copy, first-seen, timing,
+  allocation-order, call-stack, source-text, hidden-global, process-local,
+  or other heuristic acceptance.
+- Preserve every other Task14 boundary: same exact ledger/Core/P/H/G
+  identities, private one-shot binding, before/after W currentness, complete
+  authenticated prefix validation and suffix-only recovery, exact
+  current/stale/unavailable categories, reclaim rules, chronology,
+  causation, actor, capability, suspension/release/readback bindings,
+  no-fallback/no-activation behavior, and at-most-once effects. Preserve
+  every Task136 Task12/13 byte and all tests, claims, contracts, mission,
+  dependencies, routes, providers, credentials, releases, and unrelated
+  paths.
+- First reproduce the integrated corrected causal RED against committed
+  sources. Then finish the smallest exact three-source GREEN and derive its
+  fresh focused/card/37-file pass/fail signatures from execution. Require all
+  41 Task14 failures to close with no fixture/API/type/import/unrelated
+  failure while the seven preserved Task15-through-16 REDs remain causal.
+- Reproduce loaders **7/7**, adapters **83/83**, released controls
+  **443/443**, relevant boundaries **44/44**, prerequisites **18/18**,
+  FC-Core **2/2**, standalone typecheck, factory, mission **20/20**, V4
+  **20/20**, all four markers, truthful legacy-staging repository first
+  stop, exact three-source scope, all test/source/import freezes, ancestry,
+  real dependencies, diff, full/connectivity integrity, timeout variance,
+  and final clean state.
+- Commit one exact three-source Task14 GREEN candidate and stop. A completely
+  fresh independent candidate-bound source reviewer who has never authored,
+  reviewed, verified, or analyzed the changed source bytes must inspect the
+  exact candidate against the approved design/plan and reproduce every gate.
+  Changed bytes invalidate review. No Task15 work may begin before exact
+  Task14 approval, history-preserving integration, and a separate Task15
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact resumed three-source GREEN authority, not
+  source candidacy, Task14 approval/integration, Task15 authority, Task136
+  product candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
