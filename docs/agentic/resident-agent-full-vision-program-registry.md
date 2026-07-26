@@ -38281,3 +38281,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1094 — Task14 stale wake-test ownership oracle correction authorized
+
+- Recorded at: 2026-07-26T09:58:52Z
+- Fresh E-1093 stage-one source implementer
+  `/root/task136_e1093_task14_construction_green` stopped before editing or
+  committing after proving an exact frozen-test contradiction. The Task136
+  lineage remains exact clean head
+  `52e554c20137879a78bec437f8543a177abcacb0`; both Task14 sources and every
+  test blob remain unchanged.
+- Frozen wake functional-test blob
+  `8269ba2abea46e3b16cb7491cf613e7768969111` requires
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` to contain exact
+  static import strings for both the dispatcher default and named gateway
+  constructor. Exact independently approved local import-policy blob
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff` forbids those same strings in
+  wake runtime and requires them in
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`.
+- E-1093 correctly requires fixed mounted-store ownership. Preserve E-1093 as
+  valid historical evidence but supersede its immediate source-edit sequence:
+  no two-source edit can relocate both imports and produce focused **34/34**
+  while both contradictory test assertions remain frozen. No source
+  checkpoint or Task14 candidate exists.
+- Authorize the smallest forward test-only oracle correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, starting from
+  exact blob `8269ba2abea46e3b16cb7491cf613e7768969111`. Remove only the two stale
+  raw-source string expectations that require dispatcher and gateway imports
+  in wake runtime. Do not replace them with another duplicate source-text
+  ownership oracle.
+- Retain the functional test's exact public registrar lookup, real portable
+  workspace/SQLite/started-Core/provider/H/package-owned dispatcher fixture,
+  source ordinal **6**, durable row count **7**, unwrapped identity,
+  zero-append/effect controls, and causal `stale or foreign` construction
+  failure. Exact local import-policy blob `04f8ba16` and repository-wide
+  loader blob `9dbd3692` remain the sole comprehensive fixed-import ownership
+  oracles and may not change.
+- Freeze both Task14 sources at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; freeze mounted test
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, both import-policy tests, and
+  every other path.
+- The corrected test-only descendant must preserve exact baseline signatures:
+  focused **34 = 32 passed + 2 causal failures**, loaders
+  **7 = 5 passed + 2 causal failures**, and Task136 card
+  **321 = 311 passed + 10 authorized failures**. It must introduce no
+  fixture, collection, API, analyzer, import, type, or unrelated failure and
+  must not weaken the dedicated ownership policies.
+- Reproduce focused, loader, card, released adapter and boundary controls,
+  standalone typecheck, factory readiness, mission **20/20**, V4 **20/20**,
+  markers **29 / 20 / 29 / 15**, truthful repository first stop, exact
+  one-test scope, all freezes, ancestry, real dependencies, diff, integrity,
+  and clean state. Commit one exact test-only candidate and admit only its
+  exact SHA to a completely fresh independent read-only reviewer.
+- No source author/reviewer, test author, prior changed-test
+  reviewer/verifier/analyst, or coordinator may approve the corrected bytes.
+  Changed bytes invalidate review. Only after exact approval, append-only
+  recording, and history-preserving integration may a separate event
+  reauthorize the two-source E-1093 checkpoint.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is one-test oracle-correction authority, not test
+  approval or integration, source correction, Task14 approval, Task15
+  authority, product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
