@@ -40678,3 +40678,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1125 — Exact Task14 issuer RED rejected; local-export oracle correction authorized
+
+- Recorded at: 2026-07-26T20:22:46Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1124_exact_issuer_red_review` returns **REJECTED** for exact
+  candidate `619fd75205ad8391befa9495015ee61b69e1fa87`, tree
+  `f166b945f64dd5ffd9c0d185ae6552bf687e7737`, sole parent
+  `40672ca2d07caeb84bd6b6f14c010cd2f6231ab0`, and no other candidate.
+  Review remained read-only beneath exact clean E-1124 envelope
+  `7eea725da22e45784c3f0e8f68a92850397c9d8a`; no byte or ref changed.
+- The runtime RED is causal and approved as retained evidence. Four hostile
+  explicit-issuer variants reject before guarded-readback/store inspection;
+  frozen two-argument registrar accepts the missing-issuer attack, reads the
+  guard twice, poisons the slot, and blocks legitimate issuance.
+- The static oracle does not close E-1123's required re-export boundary. Its
+  export analysis examines only `ExportDeclaration` nodes whose direct
+  `moduleSpecifier` names the wake runtime. Appending local
+  `export { registerResidentLoopFactoryAuthorityReadback };` to otherwise
+  canonical composition exposes the registrar while the exact analyzer still
+  reports one declaration, only composition as importer/caller, and
+  `violations: []`.
+- Reject exact `619fd752`; it is not approved, integrated, source authority,
+  Task14 approval, Task15 authority, a Task136 product candidate, strict
+  record 29, repository closure, or release. Preserve its two test blobs,
+  causal runtime evidence, reviewer result, E-1124 admission, rejected
+  `f607eb3c` sources, and every earlier design, plan, RED, GREEN, rejection,
+  review, authority, assurance, product, and release commit in ancestry.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `5fec928fabe7c7bb59acc3a3308eea46f87ff10d`. Add causal mutation controls
+  for local named re-export, named re-export with an exported alias, imported
+  local alias re-export, and an exported local alias binding of the canonical
+  registrar. Each must expose the registrar and cause the exact analyzer to
+  reject the production module.
+- Resolve re-export exposure by TypeScript symbol identity, including local
+  `ExportDeclaration` without a module specifier and exported declarations
+  whose initializer or alias resolves to the registrar. Do not reject
+  unrelated local exports, rely on spelling alone, scan source text, broaden
+  the production importer/caller allowance, or turn the static policy into
+  the runtime authority oracle.
+- Freeze runtime-test blob
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`, rejected sources at
+  composition `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`, wake runtime
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, mounted test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, global import policy
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, FC-Core controls, and every
+  other source/test/claim/design/plan/contract/mission/dependency/route/
+  provider/credential/release/unrelated byte.
+- Preserve the exact runtime RED and both production issuer failures.
+  Reproduce focused **96 = 94 passed + two causal failures**, card
+  **383 = 374 passed + nine failed**, cross-boundary
+  **1,042 = 1,033 passed + nine failed**, all controls and assurance gates,
+  truthful repository first stop, exact one-test scope, freezes, ancestry,
+  dependencies, differentials, diff/integrity, timeout variance, and clean
+  state. Derive any changed signature from execution rather than assuming it.
+- Commit one exact one-test descendant and admit it to a different completely
+  fresh independent read-only reviewer. The E-1124 reviewer, candidate
+  author, correction-scope analyst, all prior Task14 test/source
+  authors/reviewers/verifiers/analysts, amendment reviewers, and coordinator
+  are ineligible to approve. Changed bytes invalidate review. No source may
+  change until exact corrected RED approval, append-only recording,
+  history-preserving integration, and a separate two-source GREEN
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact RED rejection and one-test oracle-correction
+  authority, not a corrected candidate, source correction, Task14
+  approval/integration, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
