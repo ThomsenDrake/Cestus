@@ -36115,3 +36115,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1070 — Exact Task14 registrar-bound loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T00:44:34Z
+- Exact corrected one-test candidate
+  `77b6c5a454d2316984e4612fb0b647c62202a561`, tree
+  `acade69a0f8cb415412b013525cdd2049f29a10c`, has sole parent E-1069
+  authority merge `d49db6eccb58d48115891d835084a667d20701ed`
+  and exact subject
+  `test(local-runtime): bind exact wake registrar call`.
+  Rejected candidates `877ede2d` and `a6068aae` remain ancestors.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **172 insertions / 2 deletions** to exact blob
+  `aeb7c0182e015ffc74247f9bddd295c5fd5b000e`.
+  The global loader remains frozen at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 sources remain frozen
+  at `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`;
+  every other path is unchanged.
+- The imported mounted-store binder call must now have as its nearest
+  function-like boundary the exact non-default exported top-level
+  `bindResidentLoopCapabilitiesForFactory` function declaration in wake
+  runtime, with a body, no generator marker, exact required parameter names
+  `(wakeRuntime, binding, domainExecution)`, and the existing exact direct
+  nonoptional/nonspread three-argument imported-symbol call.
+- The prior invalid top-level positive is replaced with an exact exported
+  registrar control. Independently executing negatives reject a top-level
+  call, wrong top-level helper, nested function, nested arrow, identically
+  named non-top-level declaration, and same-name wrapper route. All prior
+  symbol, shadowing, import-form, arity, property/carrier, dispatcher/G,
+  protected-transfer, recursive-type, and loader controls remain.
+- Exact focused signature remains
+  **34 = 32 passed + 2 causal failures**. Exact combined loader signature
+  remains **7 = 5 passed + 2 causal failures**. Exact Task136 card remains
+  **321 = 311 passed + 10 failures**, with the identical three Task14 and
+  seven later-task RED identities. No control, fixture, analyzer, API,
+  collection, type, or unrelated failure substitutes.
+- Adapter controls pass **83/83**, cross-boundary passes **443/443**, and
+  relevant mounted/portable/ontology boundaries pass **44/44**. Typecheck,
+  factory, mission **20/20**, V4 **20/20**, and markers
+  **29 / 20 / 29 / 15** pass. Clean repository mode emits markers then stops
+  only at the truthful `Task136-LEGACY-STAGING-ADOPTION` source mismatch.
+- Authority-exact serialized full execution with 60-second test timeout,
+  no file parallelism, and one worker is
+  **3,310 = 3,250 passed + 55 failed + 5 pending**. Default full execution is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**; only the same three frozen
+  prerequisite-checker contention failures exceed serialized. Calibrated
+  comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`; no timeout or
+  collection status occurs.
+- Exact one-test scope, global/source/other-path freezes, rejected ancestry,
+  dependencies, real non-symlinked Vitest **4.1.9**, connectivity, diff, and
+  clean state pass.
+- Admit only exact `77b6c5a4` as Task14 registrar-bound loader test-only
+  `candidate -> reviewing`. Assign completely fresh independent read-only
+  reviewer `/root/task136_e1070_task14_registrar_red_review`, who has never
+  authored, reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect the complete cumulative local loader blob and
+  frozen global loader against E-1065 through E-1069, reproduce every prior
+  rejected counterexample, and independently attack exact TypeScript symbol
+  identity, unique import/reference/call, zero/two/four/spread/optional
+  arity, top-level/wrong/nested/same-name containment, alias/namespace/
+  default/type-only/import-equals/dynamic/re-export imports, property/object/
+  function/return/yield/storage carriers, duplicate and shadowed bindings,
+  wrong file, and alternate symbols.
+- The reviewer must determine whether the approved exact registrar also
+  requires async/export/parameter and call-argument identity beyond what the
+  candidate enforces, and prove that the real production call—not merely a
+  shape-equivalent control—satisfies the exact one-shot chain. It must
+  reproduce exact candidate/tree/parent/subject/scope/blob/freezes/ancestry,
+  causal signatures, adapter **83/83**, cross **443/443**, relevant **44/44**,
+  typecheck, factory, mission, V4, markers, repository first stop,
+  serialized/default differential, dependencies, connectivity, diff, and
+  clean state.
+- The correction author, rejected authors/reviewers, E-1064 source
+  implementer, all earlier Task14 and Task136 participants, and coordinator
+  are ineligible to approve changed bytes. The reviewer may not edit, commit,
+  merge, authorize source correction or Task15, substitute a SHA, or make
+  product/record-29/release/prefix/Wave claims. Changed bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority, Task136
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
