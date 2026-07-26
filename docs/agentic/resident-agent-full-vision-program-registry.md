@@ -39644,3 +39644,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1111 — Exact Task136 33-path assurance amendment approved
+
+- Recorded at: 2026-07-26T16:01:31Z
+- Completely fresh independent read-only design reviewer
+  `/root/task136_e1110_design_review` returns `APPROVED` with no findings for
+  exact immutable candidate
+  `ac8b2b6746b27f1e9f56517cc2d7dcca42630d78`, tree
+  `bb01c997862c7959e93db97f26747cbd3080597c`, sole parent causal assurance
+  RED `2f5834947b350c96171ed665b8280902661cbf7a`. It excludes review-admission
+  merge `03665ea8d8739f6bfcf74cc7d1310d6f18f7bad6` from the candidate bytes and
+  independently finds the exact nine-path cumulative authority range clean.
+- The design review approves the finite transfer of only
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`, the
+  33-path `15/17/1` boundary, position 23 and ordered-path SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  ten prerequisites, twelve compatibility entries, and the exact 37-test
+  cross-boundary gate. It independently confirms the private non-barrel
+  one-shot issuer at the actual Core composition allocation point, exact
+  outer/provider/handoff/authority-binding allocation authentication, and
+  copy rejection before mounted-store I/O. Structural-copy, first-seen,
+  timing, allocation-order, callback, global, report-store, fallback, and
+  activation alternatives remain forbidden.
+- Different completely fresh independent read-only executability reviewer
+  `/root/task136_e1110_executability_review` returns `APPROVED` with no
+  findings for the same exact candidate/tree/parent. It independently
+  reproduces the causal RED as **19 passed + 1 failed**, candidate V4
+  assurance **20/20**, mission **20/20**, exact markers
+  **29 / 20 / 29 / 15**, standalone typecheck, factory readiness, exact
+  29-card order, all canonical hashes and fingerprints, scope, ancestry,
+  connectivity, dependency, diff, and clean state.
+- The stabilized exact 37-file cross-boundary command independently collects
+  **1,040 tests: 991 passed + 49 failed**. The five failing files contain only
+  the approved **42 Task14 causal REDs** and seven preserved Task15-through-16
+  REDs; both released FC-Core controls pass **2/2**. The exact 17-test
+  Task136 card command remains **332 passed + 49 failed**.
+- Historical record 19 remains exact: released candidate
+  `c6efd58a3e385d0097b4df9f73703a75b145e660`, integration
+  `7a7a650e7db97c1aad63447e3669e66ddf3dc7fe`, composition source blob
+  `8e69a7ac55f16a9d3e1c2646c985ffc6539fe064`, raw record SHA-256
+  `5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920`,
+  and compact canonical record SHA-256
+  `ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1`.
+  Both FC-Core tests and its claim remain owned. All V1-V3 and all 28 raw
+  strict-record pins remain exact.
+- Exact current derived pins remain canonical V4 JSON SHA-256
+  `96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5`,
+  assurance fingerprint
+  `f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4`,
+  mission source fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  and immutable-envelope fingerprint
+  `sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e`.
+- Clean repository mode exits `1` after all four markers and stops first only
+  at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker. No candidate byte changed during review.
+- Advance only exact `ac8b2b67` from `reviewing -> approved`. Authorize the
+  repository-prescribed history-preserving no-ff merge of that exact candidate
+  into this program branch, followed by fresh integration-tree gates and a
+  separate append-only integrated event. Do not combine amendment integration
+  with Task14 GREEN source authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is assurance-amendment approval, not integration,
+  Task14 three-source GREEN authority, product source correction, Task15
+  authority, product candidacy, repository closure, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
