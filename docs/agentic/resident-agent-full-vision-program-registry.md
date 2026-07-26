@@ -39531,3 +39531,116 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1110 — Exact Task136 33-path assurance amendment admitted to fresh dual review
+
+- Recorded at: 2026-07-26T15:44:55Z
+- Exact forward amendment candidate
+  `ac8b2b6746b27f1e9f56517cc2d7dcca42630d78`, tree
+  `bb01c997862c7959e93db97f26747cbd3080597c`, has sole parent permanent
+  causal assurance RED
+  `2f5834947b350c96171ed665b8280902661cbf7a`, tree
+  `541dc13472b9f6e18daf564ece76f4b9e23c8cbd`. The RED has sole parent
+  exact E-1109 Task136 authority merge
+  `269c7ba85bf389a40a1403093a385d6ab97ad62e`. Exact subjects are
+  `test(agentic): require Task136 FC-Core transfer` and
+  `docs(agentic): expand Task136 to 33-path authority`.
+- The permanent RED changes only
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  The unchanged old 32-path authority executes the exact 20-test assurance
+  corpus as **19 passed + 1 failed**. The sole failure is causal: actual
+  `Task136-FC-Core.transferToIds` is `[]` rather than exact `["Task136"]`.
+  No contract, mission, fixture, parser, command, dependency, type, or
+  unrelated failure occurs.
+- The cumulative candidate range
+  `269c7ba85bf389a40a1403093a385d6ab97ad62e..ac8b2b6746b27f1e9f56517cc2d7dcca42630d78`
+  changes exactly the nine E-1109 authority paths by **525 insertions and 13
+  deletions**: Task136 design, plan, product claim, V4 authority-transfer
+  claim, V4 JSON, assurance implementation, assurance test, mission JSON, and
+  mission checker. It changes no package/product byte, mission-state test,
+  V1-V3 contract, registry release record, raw historical record, dependency,
+  route, provider, credential, network, fallback, or unrelated path.
+- The candidate preserves all 29 card IDs/order and all 28 raw pins.
+  Task136-FC-Core now transfers only
+  `packages/local-runtime/src/resident-loop-factory-composition.ts` to
+  Task136; its two tests and claim remain owned. Task136 has exactly ten
+  prerequisites and exactly **33 ordered paths: 15 sources, 17 tests, and one
+  claim**. The transferred source is position 23 immediately before the
+  FC-Ports group. Exact newline-delimited path SHA-256 is
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  the Task136 card command remains the exact 17-test command.
+- Release compatibility is exactly twelve entries, with Task136-FC-Core
+  immediately before Task136-FC-Ports. It binds only the transferred
+  composition source to historical `owned` disposition and compact canonical
+  record hash
+  `ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1`.
+  Raw record-19 SHA-256
+  `5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920`,
+  source blob `8e69a7ac55f16a9d3e1c2646c985ffc6539fe064`,
+  candidate `c6efd58a3e385d0097b4df9f73703a75b145e660`, integration
+  `7a7a650e7db97c1aad63447e3669e66ddf3dc7fe`, FC-Core tests/claim, and
+  every historical release byte remain immutable. Pre-record 29 currentness
+  stays at FC-Core; only the exact source migrates to Task136 at record 29.
+- Exact current derived pins are canonical two-space/final-LF V4 JSON
+  `96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5`,
+  assurance fingerprint
+  `f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4`,
+  mission source fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  and mission immutable-envelope fingerprint
+  `sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e`.
+  All earlier pins remain historical evidence for their exact commits.
+- The amended design specifies a private non-barrel, one-shot issuer seam at
+  the exact Core allocation point. Composition registers the exact completed
+  frozen readback against its exact wake runtime before return; W must accept
+  only the original outer/provider/handoff/authority-binding allocations and
+  reject copies before mounted-store I/O. It adds no structural/timing/
+  allocation/first-seen/global heuristic, caller-visible copyable brand,
+  replaceable callback, report-store port, fallback, or activation.
+- Writer and independent coordinator reproduction pass V4 assurance
+  **20/20**, mission **20/20**, standalone typecheck, factory readiness,
+  exact 29-card order, all four markers
+  **29 / 20 / 29 / 15**, canonical JSON/path/hash/count/scope/raw-pin/
+  V1-V3/ancestry/dependency/diff/clean gates, and exact no-product scope.
+  The stabilized 37-test cross-boundary command collects **37 files and
+  1,040 tests**: **32 files / 991 tests pass** and exactly **5 files / 49
+  tests fail**. Those are only the approved **42 Task14 causal REDs** and
+  **7 preserved Task15-through-16 REDs**; both added released FC-Core tests
+  pass. A 30-second wake-import timeout was independently isolated as timing
+  variance; the same test passes **5/5** and the complete serialized command
+  has the exact 49-failure signature under the mandated 120-second ceiling.
+- From exact clean candidate bytes, repository mode emits all four contract
+  markers, exits `1`, and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Admit only exact `ac8b2b67` as assurance amendment
+  `candidate -> reviewing`. Assign one completely fresh independent read-only
+  design reviewer and a different completely fresh independent read-only
+  executability reviewer. Both must bind every conclusion to the exact
+  candidate/tree/parent, inspect the complete nine-path cumulative range and
+  RED ancestry, and independently reproduce all required gates.
+- The design reviewer must verify exact package-owned identity semantics,
+  issuer-point registration, original allocation rejection of outer/provider/
+  handoff/authority-binding copies, no heuristic acceptance, exact finite
+  ownership/compatibility/migration model, historical release preservation,
+  and consistency through Tasks14-18 and record 29. The executability reviewer
+  must independently reproduce causal RED **19/20**, candidate GREEN
+  **20/20**, mission **20/20**, all markers, exact hashes/scope, 37-test
+  stabilized causal accounting, record-19 history/currentness, record-29
+  migration mutations, typecheck, factory, repository first stop, ancestry,
+  dependencies, diff, and clean state.
+- Amendment author `/root/task136_e1109_assurance_amendment`, E-1108 scope
+  analyst `/root/task136_e1108_scope_analysis`, the coordinator, and every
+  earlier analyst, author, reviewer, or verifier of a changed candidate byte
+  are ineligible to approve. Reviewers may not edit, commit, merge, substitute
+  a SHA, authorize Task14, or make record-29/release/Wave claims. Changed
+  candidate bytes invalidate both reviews.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is amendment review admission, not approval,
+  integration, Task14 three-source GREEN authority, product source
+  correction, Task15 authority, product candidacy, repository closure,
+  strict record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
