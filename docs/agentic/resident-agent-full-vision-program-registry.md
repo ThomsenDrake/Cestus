@@ -37633,3 +37633,52 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1086 — Exact E-1084 reviewer eligibility and dispatch corrected after global slot refusal
+
+- Recorded at: 2026-07-26T07:19:10Z
+- The E-1085 transport parent's attempted no-context nested spawn also failed
+  before child creation because the collaboration runtime enforces the same
+  global thread cap across nesting. The transport parent did not inspect or
+  analyze exact candidate `f3973263`; no E-1084 review began and no candidate
+  byte changed.
+- Audit correction: E-1084's blanket exclusion of every historical Task14
+  or Task136 participant is broader than the controlling human independence
+  rule. The controlling rule excludes an author, prior reviewer, verifier,
+  or analyst of the changed candidate bytes. Preserve E-1084 and E-1085 as
+  valid historical evidence, but supersede only that overbroad blanket
+  wording for this dispatch.
+- Preserved agent `/root/task136_e1058_task14_red_correction` is eligible for
+  the E-1084 exact-candidate review. Its completed historical work occurred
+  at old Task136 authority `79548f3f62350ccc1353620305531c071577c6c7`,
+  concerned different runtime source/test boundaries, produced no retained
+  commit, and ended clean. It has never authored, reviewed, verified, or
+  analyzed `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  at any E-1065 through E-1084 candidate, including exact changed blob
+  `4a177e1870a78f3a732bc9ae25edc8fc22a99f0a`; those bytes did not exist
+  during its earlier work.
+- Assign `/root/task136_e1058_task14_red_correction` as the completely fresh
+  independent read-only reviewer of exact candidate
+  `f39732638a7ab455bf80a09432dccb8a856bedc7`, tree
+  `acb82c2de78a0abc183b6bfbc96a7ab3fc7a4cfb`, and no other candidate. It
+  must discard its prior task context as non-authoritative, reread current
+  committed authority through E-1086, inspect the current candidate bytes
+  for the first time, and satisfy every E-1084 adversarial and gate
+  requirement.
+- All authors and reviewers of earlier changed loader bytes, the E-1083
+  author, the coordinator, and every person or agent who has inspected the
+  current changed blob remain ineligible. Changed bytes invalidate this
+  reassignment and require another fresh candidate-bound review.
+- Commit this event atomically on the program branch and forward-merge it
+  into the Task136 lineage with a history-preserving two-parent merge before
+  reviewer activation. Preserve every earlier candidate, reviewer, dispatch
+  refusal, authority, incident, recovery, design, plan, RED, GREEN, fixture,
+  assurance, and release commit.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is an exact reviewer-eligibility and dispatch correction,
+  not candidate approval or rejection, test integration, source correction,
+  Task14 approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
