@@ -2575,6 +2575,10 @@ function residentFactoryIssuerAnalysis(
   const registrarImporters = new Set<string>();
   const registrarCallers = new Set<string>();
   const violations = new Set<string>();
+  const staticTruthy = 1;
+  const staticFalsy = 2;
+  const staticNullish = 4;
+  const staticUnknown = staticTruthy | staticFalsy | staticNullish;
   const registrarImportSymbols = new Set<ts.Symbol>();
   const registrarDeclarations: ts.FunctionDeclaration[] = [];
   const exactImports: Array<{
@@ -2793,6 +2797,14 @@ function residentFactoryIssuerAnalysis(
           violations.add(`${source.label}:registrar-reexport`);
         }
         if (
+          ts.isFunctionDeclaration(statement) &&
+          hasExportModifier(statement) &&
+          statement.body !== undefined &&
+          functionBodyReturnsRegistrar(statement.body, new Set())
+        ) {
+          violations.add(`${source.label}:registrar-reexport`);
+        }
+        if (
           ts.isExportAssignment(statement) &&
           expressionResolvesToRegistrar(statement.expression, new Set())
         ) {
@@ -3007,6 +3019,64 @@ function residentFactoryIssuerAnalysis(
           new Set(resolving)
         );
     }
+    if (ts.isBinaryExpression(expression)) {
+      const leftTruthiness = expressionStaticTruthiness(expression.left);
+      if (
+        expression.operatorToken.kind === ts.SyntaxKind.BarBarToken
+      ) {
+        if (leftTruthiness === true) {
+          return expressionResolvesToRegistrar(expression.left, resolving);
+        }
+        if (leftTruthiness === false) {
+          return expressionResolvesToRegistrar(expression.right, resolving);
+        }
+        return expressionResolvesToRegistrar(
+          expression.left,
+          new Set(resolving)
+        ) ||
+          expressionResolvesToRegistrar(
+            expression.right,
+            new Set(resolving)
+          );
+      }
+      if (
+        expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+      ) {
+        if (leftTruthiness === false) {
+          return expressionResolvesToRegistrar(expression.left, resolving);
+        }
+        if (leftTruthiness === true) {
+          return expressionResolvesToRegistrar(expression.right, resolving);
+        }
+        return expressionResolvesToRegistrar(
+          expression.left,
+          new Set(resolving)
+        ) ||
+          expressionResolvesToRegistrar(
+            expression.right,
+            new Set(resolving)
+          );
+      }
+      if (
+        expression.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+      ) {
+        const leftNullishness = expressionStaticNullishness(expression.left);
+        if (leftNullishness === true) {
+          return expressionResolvesToRegistrar(expression.right, resolving);
+        }
+        if (leftNullishness === false) {
+          return expressionResolvesToRegistrar(expression.left, resolving);
+        }
+        return expressionResolvesToRegistrar(
+          expression.left,
+          new Set(resolving)
+        ) ||
+          expressionResolvesToRegistrar(
+            expression.right,
+            new Set(resolving)
+          );
+      }
+    }
     if (
       ts.isBinaryExpression(expression) &&
       expression.operatorToken.kind === ts.SyntaxKind.CommaToken
@@ -3032,6 +3102,155 @@ function residentFactoryIssuerAnalysis(
       return functionBodyReturnsRegistrar(expression.body, resolving);
     }
     return false;
+  }
+
+  function expressionStaticTruthiness(
+    expression: ts.Expression
+  ): boolean | undefined {
+    const outcomes = expressionStaticOutcomes(expression, new Set());
+    if (outcomes === staticTruthy) return true;
+    return (outcomes & staticTruthy) === 0 ? false : undefined;
+  }
+
+  function expressionStaticNullishness(
+    expression: ts.Expression
+  ): boolean | undefined {
+    const outcomes = expressionStaticOutcomes(expression, new Set());
+    if (outcomes === staticNullish) return true;
+    return (outcomes & staticNullish) === 0 ? false : undefined;
+  }
+
+  function expressionStaticOutcomes(
+    expression: ts.Expression,
+    resolving: Set<ts.Symbol>
+  ): number {
+    const value = unwrapRegistrarExpression(expression);
+    if (value.kind === ts.SyntaxKind.TrueKeyword) return staticTruthy;
+    if (value.kind === ts.SyntaxKind.FalseKeyword) return staticFalsy;
+    if (
+      value.kind === ts.SyntaxKind.NullKeyword ||
+      expressionIsDefinitelyUndefined(value, new Set(resolving))
+    ) {
+      return staticNullish;
+    }
+    if (ts.isIdentifier(value)) {
+      const initializer = localConstInitializer(value, resolving);
+      return initializer === undefined
+        ? staticUnknown
+        : expressionStaticOutcomes(initializer, resolving);
+    }
+    if (ts.isNumericLiteral(value)) {
+      return Number(value.text) === 0 ? staticFalsy : staticTruthy;
+    }
+    if (ts.isBigIntLiteral(value)) {
+      return BigInt(value.text.slice(0, -1)) === 0n
+        ? staticFalsy
+        : staticTruthy;
+    }
+    if (
+      ts.isStringLiteral(value) ||
+      ts.isNoSubstitutionTemplateLiteral(value)
+    ) {
+      return value.text.length === 0 ? staticFalsy : staticTruthy;
+    }
+    if (
+      ts.isObjectLiteralExpression(value) ||
+      ts.isArrayLiteralExpression(value) ||
+      ts.isArrowFunction(value) ||
+      ts.isFunctionExpression(value) ||
+      ts.isClassExpression(value) ||
+      ts.isNewExpression(value) ||
+      ts.isRegularExpressionLiteral(value)
+    ) {
+      return staticTruthy;
+    }
+    if (ts.isTemplateExpression(value)) {
+      return staticTruthy | staticFalsy;
+    }
+    if (
+      ts.isPrefixUnaryExpression(value) &&
+      value.operator === ts.SyntaxKind.ExclamationToken
+    ) {
+      const operand = expressionStaticOutcomes(
+        value.operand,
+        new Set(resolving)
+      );
+      return (
+        ((operand & staticTruthy) !== 0 ? staticFalsy : 0) |
+        ((operand & (staticFalsy | staticNullish)) !== 0 ? staticTruthy : 0)
+      );
+    }
+    if (
+      ts.isPrefixUnaryExpression(value) ||
+      ts.isDeleteExpression(value)
+    ) {
+      return staticTruthy | staticFalsy;
+    }
+    if (ts.isTypeOfExpression(value)) return staticTruthy;
+    if (ts.isConditionalExpression(value)) {
+      const condition = expressionStaticOutcomes(
+        value.condition,
+        new Set(resolving)
+      );
+      return (
+        ((condition & staticTruthy) !== 0
+          ? expressionStaticOutcomes(value.whenTrue, new Set(resolving))
+          : 0) |
+        ((condition & (staticFalsy | staticNullish)) !== 0
+          ? expressionStaticOutcomes(value.whenFalse, new Set(resolving))
+          : 0)
+      );
+    }
+    if (ts.isBinaryExpression(value)) {
+      if (value.operatorToken.kind === ts.SyntaxKind.CommaToken) {
+        return expressionStaticOutcomes(value.right, resolving);
+      }
+      const left = expressionStaticOutcomes(
+        value.left,
+        new Set(resolving)
+      );
+      const right = expressionStaticOutcomes(value.right, new Set(resolving));
+      if (value.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+        return (
+          (left & staticTruthy) |
+          ((left & (staticFalsy | staticNullish)) !== 0 ? right : 0)
+        );
+      }
+      if (
+        value.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+      ) {
+        return (
+          (left & (staticFalsy | staticNullish)) |
+          ((left & staticTruthy) !== 0 ? right : 0)
+        );
+      }
+      if (
+        value.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+      ) {
+        return (
+          (left & (staticTruthy | staticFalsy)) |
+          ((left & staticNullish) !== 0 ? right : 0)
+        );
+      }
+    }
+    return staticUnknown;
+  }
+
+  function localConstInitializer(
+    identifier: ts.Identifier,
+    resolving: Set<ts.Symbol>
+  ): ts.Expression | undefined {
+    const symbol = checker.getSymbolAtLocation(identifier);
+    if (symbol === undefined || resolving.has(symbol)) return undefined;
+    const declaration = (symbol.declarations ?? []).find(
+      (candidate): candidate is ts.VariableDeclaration =>
+        ts.isVariableDeclaration(candidate) &&
+        candidate.initializer !== undefined &&
+        (candidate.parent.flags & ts.NodeFlags.Const) !== 0
+    );
+    if (declaration?.initializer === undefined) return undefined;
+    resolving.add(symbol);
+    return declaration.initializer;
   }
 
   function boundCallableTarget(
@@ -3472,11 +3691,36 @@ describe("wake supervisor runtime import boundary", () => {
            registerResidentLoopFactoryAuthorityReadback;`
       ],
       [
+        "exported callable declaration result",
+        `${exactComposition}
+         export function exposedRegistrar() {
+           return registerResidentLoopFactoryAuthorityReadback;
+         }`
+      ],
+      [
         "exported conditional-expression alias binding",
         `${exactComposition}
          export const exposedRegistrar = true
            ? registerResidentLoopFactoryAuthorityReadback
            : registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported logical-or result alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           false || registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported logical-and result alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           true && registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported nullish result alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           undefined ?? registerResidentLoopFactoryAuthorityReadback;`
       ],
       [
         "exported comma-expression alias binding",
@@ -3528,9 +3772,18 @@ describe("wake supervisor runtime import boundary", () => {
         unrelatedExportedBinding["bind"](undefined);
       export const unrelatedCallableResult = () =>
         unrelatedLocalExport;
+      export function unrelatedCallableDeclaration() {
+        return unrelatedLocalExport;
+      }
       export const unrelatedConditional = true
         ? unrelatedLocalExport
         : unrelatedExportedBinding;
+      export const discardedLogicalOr = true ||
+        registerResidentLoopFactoryAuthorityReadback;
+      export const discardedLogicalAnd = false &&
+        registerResidentLoopFactoryAuthorityReadback;
+      export const discardedNullish = ({}) ??
+        registerResidentLoopFactoryAuthorityReadback;
       export const unrelatedCommaResult = (
         registerResidentLoopFactoryAuthorityReadback,
         unrelatedLocalExport
