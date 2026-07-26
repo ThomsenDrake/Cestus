@@ -36937,3 +36937,125 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1079 — Task14 bounded-invocation RED rejected; fixture incident recovery and exact evaluator correction authorized
+
+- Recorded at: 2026-07-26T04:38:11Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1078_task14_invocation_red_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `e47edf1e4837a5e7cdf235dc96f1efa3dd7ab258`, tree
+  `547ce1bfb3646922d3f4f4bd3394ef808c8c4711`, and no other candidate.
+  Review began beneath exact clean E-1078 authority merge
+  `e9811281580f8db109b2e025cbec67ac11eae57d`.
+- The exact candidate fails committed-byte typecheck with four `TS2375`
+  diagnostics at local-loader lines 759, 772, 787, and 809 because explicit
+  `returnedFunction: undefined` values violate the optional result property
+  under `exactOptionalPropertyTypes`, plus `TS2345` at line 896 because
+  unchecked `statements[0]` remains `Statement | undefined`.
+- Eight independent TypeScript/runtime-backed evaluator defects also block
+  approval. The candidate falsely accepts `.apply(..., null)` even though
+  runtime treats `null` as an empty argument list and executes applicable
+  defaults; it misses destructured parameter defaults; it misses an exact
+  returned literal immediately invoked through `.call`, `.apply`, or an
+  immediately invoked `.bind` result; and it misses constructor-returned
+  and tag-returned literal functions immediately called. It falsely rejects
+  a locally shadowed identifier named `undefined` by treating identifier
+  text as the global undefined value.
+- Generator timing was independently verified and is correct: parameter
+  defaults execute when the generator is called, while its body remains
+  deferred until iteration. Preserve that behavior.
+- Valid independent receipts remain focused **32+2**, loaders **5+2**, card
+  **311+10**, adapters **83/83**, cross-boundary **443/443**, relevant
+  boundaries **44/44**, isolated prerequisites **18/18**, factory readiness,
+  mission **20/20**, isolated exact-candidate V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, and truthful repository legacy-staging first stop.
+  Serialized full is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with exact E-1076
+  occurrences and no timeout; default is the calibrated
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, differing only by the
+  three prerequisite-checker identities. Comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Reject exact `e47edf1e`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it and every
+  earlier rejected candidate, blob, review, receipt, and authority commit in
+  ancestry.
+- Incident record: the reviewer's first discarded archive-level V4 attempt
+  propagated `GIT_DIR` and a temporary `core.worktree` into fixture
+  repository operations. It created exact accidental Task136 commit
+  `989531c51c0d75d257482f15c63ee75fe250706b`, parent
+  `e9811281580f8db109b2e025cbec67ac11eae57d`, subject `fixture`, author
+  `Task136 Test <task136@example.test>`, deleting only E-1078's 96 registry
+  lines. Preserve `989531c5` permanently as incident evidence; never reset,
+  revert, rebase, amend, squash, hide, or reconstruct it.
+- The same discarded attempt left repository-wide
+  `core.worktree=/tmp/task136-e1078-pristine.ZDOiQW` and uncommitted apparent
+  changes. Exact incident cleanup removed only that config key and restored
+  the program worktree via direct inverse patches. Program is clean at
+  E-1078 commit `7188bf6f49e0b8654eff0b18cefdac80c0d59d23`
+  with registry blob `27078ab189463067e02f6bc5b715e0a7bfacee90`,
+  original program global-loader blob `48ecf05c...`, and original program
+  local-loader blob `7c464d5f...`; no `core.worktree` key remains.
+- After config repair, the real Task136 worktree is clean except for one
+  uncommitted 96-line E-1078 registry restoration: working blob
+  `27078ab189463067e02f6bc5b715e0a7bfacee90`, accidental-HEAD blob
+  `81ac3003e37968ec8f09f262022f45596c785efd`, and parent-E-1078 blob
+  `27078ab189463067e02f6bc5b715e0a7bfacee90`. No other real Task136 path is
+  dirty.
+- Authorize the exact forward-only incident recovery before any test edit:
+  first commit this E-1079 event atomically on the program branch; remove
+  only the uncommitted Task136 registry restoration through a direct inverse
+  patch so exact accidental HEAD `989531c5` is clean; then merge the exact
+  E-1079 program commit into `989531c5` with a no-fast-forward two-parent
+  merge. Resolve only the registry merge result so its blob equals the
+  program E-1079 registry exactly, containing E-1078 once followed by
+  E-1079 once. The merge tree must preserve Task136 candidate bytes and
+  change no other path relative to the two histories. Verify both worktrees
+  clean and `core.worktree` absent.
+- Only after that recovery merge, authorize the smallest forward correction
+  in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `cd98bdc0df3d2270fc76e83f5c1303ca5005e491`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, Task14 sources at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- Correct the five strict typing failures without weakening the evaluator:
+  use one result shape compatible with `exactOptionalPropertyTypes` and
+  narrow the sole returned statement before use. Add independent type-level
+  controls or exact diagnostics assertions as appropriate; final committed
+  bytes must pass standalone `npm run typecheck`.
+- Extend the bounded literal evaluator for exact `.apply` null/absent/
+  global-undefined empty arguments, recursive exact object/array binding
+  patterns and defaults, returned-literal `.call/.apply/.bind` chains, and
+  constructor/tag returned-literal chains. Determine global undefined by
+  TypeScript symbol/declaration provenance, not identifier text; locally
+  shadowed `undefined` must remain an ordinary supplied argument. Preserve
+  exact literal-only bounds, generator default/body timing, sparse-array
+  behavior, argument/default mapping, double-traversal prevention, all
+  earlier deferred positives, and every E-1065 through E-1078 control.
+- Add independently executing controls for all five type defects and eight
+  evaluator defects, with runtime read counts for each. Preserve realistic
+  registrar acceptance and the complete existing positive/negative table.
+  Do not broaden product behavior or add an async-keyword rule.
+- Against frozen sources retain exact focused **32+2**, loaders **5+2**,
+  card **311+10**, and exact RED titles. Reproduce typecheck, adapters
+  **83/83**, cross **443/443**, relevant **44/44**, factory, mission, V4,
+  markers, truthful first stop, serialized/default occurrence sets,
+  isolated prerequisites, calibrated differential, one-test scope, freezes,
+  ancestry including `989531c5`, dependencies, connectivity, diff, and clean
+  state. Never run archive fixtures with inherited repository-level Git
+  environment or config; use a real isolated temporary clone/worktree for
+  Git-mutating fixture verification.
+- Commit one exact corrected test-only candidate and admit only that SHA to
+  a completely fresh independent read-only reviewer. No prior author,
+  reviewer, verifier, or analyst of changed bytes may approve it; changed
+  bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact rejection, incident recovery, and one-test
+  forward-correction authority, not test approval or integration, source
+  correction, Task14 approval, Task15 authority, product candidacy, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
