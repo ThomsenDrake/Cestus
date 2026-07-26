@@ -40827,3 +40827,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1127 — Corrected Task14 issuer RED rejected; expression-alias oracle correction authorized
+
+- Recorded at: 2026-07-26T22:10:42Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1126_exact_red_review` returns **REJECTED** for exact
+  candidate `db03309fd5669a5016a3a806cc2314cee16504fa`, tree
+  `24f8a3b8a45db96a8d6ad0ce292f51528f139103`, sole parent
+  `2e72cd1914f8996eba741e9ae38428d21230b3d1`, and no substitute candidate.
+  Review remained read-only beneath exact clean Task136 envelope
+  `df19c712c68e4e283cee5e7bd228c3df3f2a6f03`; no byte or ref changed.
+- Exact corrected blob `8d3996fcac46dd4a2c8efac6cf24255232b13f64`
+  closes E-1125's four direct local-export controls but leaves four
+  candidate-bound local AST symbol-resolution gaps. An exported destructured
+  alias, bound-callable alias, conditional-expression alias, and
+  comma-expression alias can each retain the canonical registrar symbol while
+  the analyzer reports one declaration, only composition as importer/caller,
+  and `violations: []`.
+- The direct exported-alias control still rejects with
+  `registrar-reexport`, and the unrelated-local-export positive remains
+  accepted. The defect is confined to the oracle's resolver: it follows
+  identifiers and transparent TypeScript wrapper expressions but does not
+  project binding-pattern values or resolve the callable, conditional, and
+  comma-expression result forms. The static gate therefore does not yet
+  completely supplement the unchanged runtime exact-identity control.
+- Reject exact `db03309f`; it is not approved, source authority, Task14
+  approval/integration, Task15 authority, a Task136 product candidate, strict
+  record 29, repository closure, or release. Preserve rejected candidates
+  `db03309f`, `619fd752`, and `f607eb3c`, their test/source blobs and review
+  evidence, and every earlier design, plan, RED, GREEN, rejection, review,
+  authority, assurance, product, and release commit in ancestry.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `8d3996fcac46dd4a2c8efac6cf24255232b13f64`. Add one abstract local mutation
+  control for each rejected destructured, bound-callable, conditional, and
+  comma-expression alias, plus narrow unrelated positives that prove binding
+  projection and result-value analysis do not reject an unexported or
+  discarded registrar reference.
+- Resolve only exported registrar exposure through TypeScript AST and symbol
+  identity. Project object/array binding elements to their selected
+  initializer values; treat a bound registrar as callable exposure; inspect
+  both possible conditional results; and inspect only the value-producing
+  operand of a comma expression. Preserve transparent wrapper handling.
+  Do not scan source text, rely on spelling, reject unrelated local exports,
+  treat discarded values as exports, broaden the production importer/caller
+  allowance, or turn the static policy into the runtime authority oracle.
+- Freeze runtime test
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`, rejected sources at composition
+  `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`, wake runtime
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, mounted-store test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, global import policy, FC-Core
+  controls, and every other source/test/claim/design/plan/contract/mission/
+  dependency/route/provider/credential/release/unrelated byte.
+- Preserve focused **96 = 94 passed + two causal issuer failures**, card
+  **383 = 374 passed + nine failed**, cross-boundary
+  **1,042 = 1,033 passed + nine failed**, typecheck, factory, mission
+  **20/20**, V4 **20/20**, markers **29 / 20 / 29 / 15**, and the exact
+  legacy-staging repository first stop. Reproduce exact one-test scope,
+  freezes, ancestry, dependencies, diff/integrity, timeout envelope, and
+  final clean state; derive any changed full signature from execution.
+- Commit one exact one-test descendant and admit it to a different completely
+  fresh independent read-only reviewer. The E-1126 and E-1124 reviewers,
+  candidate author, correction-scope analyst, all prior Task14 test/source
+  authors/reviewers/verifiers/analysts, amendment reviewers, and coordinator
+  are ineligible to approve. Changed bytes invalidate review. No product
+  source may change until exact corrected RED approval, append-only recording,
+  history-preserving integration, and a separate two-source GREEN
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact RED rejection and one-test oracle-correction
+  authority, not a corrected candidate, source correction, Task14
+  approval/integration, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
