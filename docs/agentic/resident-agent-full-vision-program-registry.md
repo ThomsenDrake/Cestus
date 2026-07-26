@@ -38018,3 +38018,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1090 — Exact Task14 spread-precedence evaluator loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T09:11:30Z
+- Exact corrected one-test candidate
+  `66895ec8bdbc9f7a5f8cf4984d5f4c70cbf6fea8`, tree
+  `5f36393f5ed8c3a1c78024eb338fe34c9469fb47`, has sole parent exact E-1089
+  authority merge `5f23956f135e46bd16ff50ad53ea12db125a4909`
+  and exact subject `test(local-runtime): preserve spread property precedence`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **120 insertions / 5 deletions** from rejected blob
+  `171aaec12affa44c72a01c9208843564e433ef30` to exact blob
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff`. The global loader remains
+  frozen at `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 sources remain
+  frozen at `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; every other path is
+  unchanged.
+- The controls-only checkpoint at blob
+  `6d772ea251e138ca89dd17caf1d3eab57f218d55` proves the exact
+  spread-then-later-getter causal RED: diagnostics empty, runtime read count
+  one, and analyzer false acceptance. The adjacent getter-then-later-spread
+  control has diagnostics empty, runtime read count zero, and correct
+  analyzer acceptance.
+- The final resolver records an exact spread-owned value but continues the
+  property fold, allowing a later explicit property or accessor to clear and
+  override it. After correction the spread-then-getter case rejects and the
+  getter-then-spread case remains accepted. Runtime left-to-right
+  overwrite/later-definition precedence, descriptor merging, and one-time
+  evaluation remain bounded and exact.
+- All FA1–FA13, FR1–FR4, P1, cumulative E-1065 through E-1089 controls,
+  realistic positive, literal bounds, cycle/provenance interlocks, and
+  termination remain green. No semantic variant beyond E-1089 was added.
+- Exact post-commit signatures remain focused
+  **34 = 32 passed + 2 failures**, loaders
+  **7 = 5 passed + 2 failures**, Task136 card
+  **321 = 311 passed + 10 failures** with exact authorized titles, adapters
+  **83/83**, cross-boundary **443/443**, relevant boundaries **44/44**,
+  isolated prerequisites **18/18**, typecheck, factory, and mission
+  **20/20**.
+- Authority-exact serialized full is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with exact occurrences
+  and zero actual timeouts. Default full is
+  **3,310 = 3,247 passed + 58 failed + 5 pending** with exact occurrences,
+  zero actual timeouts, and only the three prerequisite identities.
+  Differential passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- A fresh hardened real clone detached at the exact candidate/tree passes V4
+  **20/20**, markers **29 / 20 / 29 / 15**, truthful repository exit one
+  solely at the legacy-staging mismatch with no success marker, both
+  repository integrity modes, connectivity, isolated config, and clean
+  state.
+- Exact identity, parent, tree, subject, one-test scope, start/control/final
+  blobs, freezes, rejected and incident ancestry, dependencies, real Vitest
+  **4.1.9**, real TypeScript **5.9.3**, diff hygiene, config, both `fsck`
+  modes, and candidate/program clean state pass.
+- Admit only exact `66895ec8` as Task14 spread-precedence evaluator loader
+  test-only `candidate -> reviewing`. Assign completely fresh independent
+  read-only reviewer
+  `/root/task136_e1090_task14_spread_precedence_review`, who has never
+  authored, reviewed, verified, or analyzed any corrected candidate byte.
+- The reviewer must independently execute the exact E-1089 precedence pair,
+  every finite FA1–FA13/FR1–FR4/P1 and cumulative control, and the realistic
+  positive. It may inspect for direct precedence regression within the
+  finite E-1089 boundary, but must not invent new semantic requirements or
+  broaden toward a general interpreter. Any defect requires executable local
+  TypeScript/runtime proof bound to this exact candidate.
+- The reviewer must reproduce every E-1089 identity, targeted, full,
+  occurrence, timeout, differential, hardened assurance, marker,
+  repository-first-stop, freeze, ancestry, dependency, config, integrity,
+  diff, and clean-state gate. It may not edit, commit, merge, authorize
+  source correction or Task15, substitute a SHA, or make product, record-29,
+  release, prefix, or Wave claims.
+- The candidate author, controls author, all earlier loader authors,
+  reviewers, verifiers, and analysts of changed bytes, the coordinator, and
+  anyone who has inspected blob `04f8ba16` are ineligible to approve.
+  Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
