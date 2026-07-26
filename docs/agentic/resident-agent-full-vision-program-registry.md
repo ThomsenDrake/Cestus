@@ -36204,3 +36204,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1071 — Task14 registrar-bound RED rejected; exact call-argument provenance authorized
+
+- Recorded at: 2026-07-26T01:03:06Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1070_task14_registrar_red_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `77b6c5a454d2316984e4612fb0b647c62202a561`, tree
+  `acade69a0f8cb415412b013525cdd2049f29a10c`, and no other bytes. Review
+  occurred beneath clean E-1070 review-authority merge
+  `3b2f005a371c89d97275bf8ab2823165fc95905b`; no byte changed.
+- The registrar oracle now proves exact imported-symbol identity, unique
+  reference, direct/nonoptional/nonspread three-argument call, and exact
+  top-level registrar containment, but it does not prove the identities of
+  the three call arguments. Its own admitted control passes
+  `(wakeRuntime, binding, domainExecution)`, making the wrong first identity
+  a committed false accept.
+- E-1064 and the approved W design require the registrar to recover the exact
+  private state for the exact wake-runtime parameter and call the mounted
+  binder with exact authenticated `state.store`, exact registrar `binding`,
+  and exact registrar `domainExecution`. The candidate also falsely accepts
+  substituted, reordered, aliased, shadowed, property-derived, call-result,
+  literal, or foreign values for arguments two and three.
+- The design and plan require semantic asynchronous completion but do not
+  require the `async` keyword syntax itself. The reviewer correctly makes no
+  async-syntax finding; do not broaden the correction.
+- The reviewer independently confirms exact candidate/tree/parent/subject/
+  scope/blob/freezes/rejected ancestry/dependencies/Vitest/connectivity/diff/
+  clean state. Focused remains **32+2**, loader **5+2**, card **311+10**,
+  adapters **83/83**, cross-boundary **443/443**, and relevant boundaries
+  **44/44**. Typecheck, factory, mission **20/20**, V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, and truthful repository legacy-staging first stop
+  pass.
+- Serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with no timeout. Default
+  full execution is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**; only the same three
+  prerequisite-checker contention drifts exceed serialized, and the isolated
+  prerequisite suite passes **18/18**. Calibrated comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Reject exact `77b6c5a4`. It is not approved, integrated, a Task14 source or
+  product candidate, record 29, or a release. Preserve it, rejected
+  `877ede2d`, rejected `a6068aae`, their exact blobs, reviews, evidence, and
+  all earlier history in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `aeb7c0182e015ffc74247f9bddd295c5fd5b000e`.
+  Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, both Task14 sources, and every
+  other path.
+- Extend the TypeScript-symbol provenance analysis within the exact registrar.
+  Require one unique registrar-local state declaration whose initializer is
+  the direct nonoptional one-argument
+  `residentWakeRuntimeStates.get(wakeRuntime)` call using the exact registrar
+  `wakeRuntime` parameter symbol. Require mounted-binder argument zero to be
+  exact direct `.store` access on that exact state symbol, argument one to be
+  the exact registrar `binding` parameter symbol, and argument two to be the
+  exact registrar `domainExecution` parameter symbol.
+- Reject alternate maps, getters, runtime arguments, state aliases,
+  destructuring, shadowed state/parameters, optional/property/element/call
+  chains, literals, object constructions, call results, foreign stores,
+  reordered arguments, aliases of binding/domain execution, and any
+  shape-equivalent but symbol-distinct value. Preserve all E-1065 through
+  E-1070 correct import, call, placement, wrapper, carrier, protected-
+  transfer, recursive-type, loader, and causal controls. Do not add an
+  async-syntax rule.
+- Replace the invalid positive with the exact private-state read and exact
+  `(state.store, binding, domainExecution)` call. Add independently executing
+  negative controls for every argument class above. Against frozen sources,
+  retain exact focused **32+2**, loader **5+2**, card **311+10**, and the same
+  three Task14 RED identities without fixture, analyzer, API, collection,
+  type, or unrelated failure.
+- Reproduce adapter **83/83**, cross **443/443**, relevant **44/44**,
+  typecheck, factory, mission, V4, markers, truthful repository first stop,
+  authority-exact serialized/default variance, calibrated comparison,
+  one-test scope, global/source/other-path freezes, ancestry, dependencies,
+  connectivity, diff, and clean state. Commit one exact corrected test-only
+  candidate and admit only that SHA to a completely fresh independent
+  read-only reviewer. No prior author, reviewer, verifier, or analyst of
+  changed bytes may approve it; changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test rejection and one-test provenance-
+  correction authority, not test approval or integration, source correction,
+  Task14 approval, Task15 authority, Task136 product candidacy, strict record
+  29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
