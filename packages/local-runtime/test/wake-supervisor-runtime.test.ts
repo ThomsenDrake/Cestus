@@ -692,12 +692,12 @@ describe("wake supervisor runtime", () => {
     expect(requestBefore?.context.actor).toEqual({
       id: "agent_default",
       kind: "agent",
-      label: "Resident agent"
+      label: "Cestus Agent"
     });
     expect(executionClaimBefore?.context.actor).toEqual({
       id: "agent_default",
       kind: "agent",
-      label: "Resident agent"
+      label: "Cestus Agent"
     });
     expect(approvalBefore?.context.actor).toEqual({
       id: instruction.approvedBy,
@@ -1256,7 +1256,7 @@ async function residentSuspensionMaterial(
         version: 1,
         streamId: durableRequest.streamId,
         context: {
-          actor: { id: "agent_default", kind: "agent", label: "Resident agent" },
+          actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
           occurredAt: "2026-07-16T00:00:00.000Z",
           causationId: approval.id,
           correlationId: durableRequest.payload.correlationId,
@@ -2385,7 +2385,7 @@ async function appendResidentRequestedStage(
     version: 1,
     streamId,
     context: {
-      actor: { id: "agent_default", kind: "agent", label: "Resident agent" },
+      actor: { id: "agent_default", kind: "agent", label: "Cestus Agent" },
       occurredAt: "2026-07-16T00:00:00.000Z",
       causationId: plan.id,
       correlationId: plan.payload.correlationId,
