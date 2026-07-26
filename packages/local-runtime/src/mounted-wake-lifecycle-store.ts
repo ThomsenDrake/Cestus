@@ -12,6 +12,8 @@ import {
 } from "../../ontology/src/contracts.js";
 import { isConcurrencyConflict } from "../../ontology/src/event-ledger.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
 import type {
   ActiveClaimReconciliationPort,
   ClaimReconciliationAdmissionTuple,
@@ -212,15 +214,6 @@ interface ResidentLoopBoundState {
   readonly planObservation: ResidentPlanObservationStoreV2;
 }
 
-type ResidentGatewayConstructor = (input: {
-  readonly ledger: FactoryAuthenticatedMountedWakeStoreAuthority["ledger"];
-  readonly now: () => string;
-  readonly residentDomainExecutionPort: object;
-  readonly reverifyBeforeEffect: () => Promise<OpaqueResidentLoopCurrentnessToken>;
-  readonly reverifyAfterEffect: () => Promise<OpaqueResidentLoopCurrentnessToken>;
-  readonly createTrustedToolRequestId: () => string;
-}) => object;
-
 type ReconciliationAppendInput = Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0];
 type ReconciliationLookupInput = Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0];
 type ResidentCheckpointEvent = KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
@@ -391,10 +384,13 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
     if (identity === undefined) {
       throw new Error("mounted wake lifecycle store requires durable resident identity readback");
     }
-    const sourceHighWater = events.filter((event) => !wakeLifecycleTypes.has(event.type as MountedWakeLifecycleEventType)).at(-1);
-    if (sourceHighWater === undefined) {
+    const sourceHighWaterIndex = events.findLastIndex(
+      (event) => !wakeLifecycleTypes.has(event.type as MountedWakeLifecycleEventType)
+    );
+    if (sourceHighWaterIndex < 0) {
       throw new Error("mounted wake lifecycle store requires durable mounted ledger readback");
     }
+    const sourceHighWater = events[sourceHighWaterIndex]!;
 
     const facts = {
       schemaVersion: "portable-workspace-mounted-facts.v1" as const,
@@ -413,7 +409,7 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
       policyAndLockReadbackEventId: identity.id,
       highWaterMark: sourceHighWater.id,
       highWaterReadbackEventId: sourceHighWater.id,
-      highWaterOrdinal: events.length
+      highWaterOrdinal: sourceHighWaterIndex + 1
     };
     const observedActiveClaim = activeClaimFromEvents(events, workspaceId, input.supervisorEpoch, input.now);
     return Object.freeze({
@@ -739,18 +735,14 @@ export function createMountedWakeLifecycleStore(rawInput: MountedWakeLifecycleSt
 export async function bindMountedResidentLoopAuthorityForFactory(
   store: MountedWakeLifecycleStore,
   rawBinding: unknown,
-  domainExecution: unknown,
-  bindDomainExecutionPort: (input: unknown) => object,
-  createGateway: ResidentGatewayConstructor
+  domainExecution: unknown
 ): Promise<MountedResidentLoopCapabilities> {
   const mounted = mountedResidentStoreStates.get(store);
   if (
     mounted === undefined ||
     mounted.bound ||
     domainExecution === null ||
-    typeof domainExecution !== "object" ||
-    typeof bindDomainExecutionPort !== "function" ||
-    typeof createGateway !== "function"
+    typeof domainExecution !== "object"
   ) {
     throw new Error("mounted resident-loop factory binding is unavailable");
   }
@@ -758,7 +750,7 @@ export async function bindMountedResidentLoopAuthorityForFactory(
   const snapshot = await mounted.readSnapshot();
   assertResidentFactoryBindingCurrent(binding, snapshot, mounted);
 
-  const domainPort = bindDomainExecutionPort({
+  const domainPort = dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort({
     capability: domainExecution,
     mountedLedger: mounted.ledger,
     workspaceId: binding.provider.workspaceId,
@@ -800,7 +792,7 @@ export async function bindMountedResidentLoopAuthorityForFactory(
     return gatewayToken;
   };
   let trustedIdOrdinal = 0;
-  const gateway = createGateway({
+  const gateway = createResidentLoopToolGateway({
     ledger: mounted.ledger,
     now: mounted.input.now,
     residentDomainExecutionPort: domainPort,
