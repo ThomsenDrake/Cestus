@@ -39866,3 +39866,84 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   post-record assurance transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1114 — Task14 GREEN halted; two frozen-RED oracle corrections authorized
+
+- Recorded at: 2026-07-26T16:32:00Z
+- E-1113 implementer `/root/task136_e1107_task14_green` verifies exact clean
+  authority merge `64c1b1d1f1b3541a3a9194807d5dbe5a21dfb2b8`, reproduces
+  the approved focused RED as
+  **94 = 52 passed + 42 failed**, and changes only the three authorized
+  sources. The bounded iteration closes forty failures and reaches exact
+  **92 passed + 2 failed** before stopping. Its three-source working diff is
+  preserved locally and uncommitted; it has one scoped implicit-`any`
+  typecheck error. No source candidate, approval, or integration exists.
+- Completely fresh independent read-only causality analyst
+  `/root/task136_e1113_red_oracle_audit` inspects immutable authority
+  `64c1b1d1`, exact frozen wake-test blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6`, the approved design/plan,
+  ontology, T120 stable-key logic, and exact G source. It confirms two
+  test-oracle defects. The analyst did not edit any byte and is ineligible
+  to approve corrected test bytes.
+- The hostile `semantic-key` row changes only the sole state-1 checkpoint's
+  `residentLoopSuspension.suspensionSemanticKey` from one schema-valid
+  content hash to another. The exact recovery locator binds the distinct
+  orchestration checkpoint `resumeIdempotencyKey`; no earlier authenticated
+  event or versioned formula binds the instruction's expected
+  `suspensionSemanticKey`. At state 1 the approved design makes that durable
+  checkpoint the sole source for all later canonical bytes. Rejecting the
+  current single-checkpoint fixture would require a hardcoded value or
+  heuristic and is not lawful product behavior.
+- Correct that row into a true stable-key/canonical-byte conflict. Append two
+  orchestration checkpoints with the same exact locator/
+  `resumeIdempotencyKey` but different otherwise schema-valid canonical
+  bytes, retain exact task/attempt/run/claim/causation authority, and require
+  rejection without append, release, effect, or foreign-stream impact. This
+  preserves the test count and causally exercises the approved duplicate
+  stable-key/canonical-conflict rule.
+- The positive `effect-outcome-unknown` reclaim fixture manually appends its
+  durable resident-domain request with actor
+  `agent_wake_resident`. Exact package-owned G's actor is `agent_default`;
+  G's real writer uses it and `validateResidentRecoveryPrefix` rejects any
+  other request actor before issuing the reread-only claimed stage. W may
+  not catch or bypass that rejection, because G is the exact recovery oracle
+  and at-most-once authority.
+- Correct the durable unknown-outcome fixture to use G's exact canonical
+  `agent_default` actor for both the request and execution claim while
+  retaining the independent human approval actor and every exact locator,
+  capability, request/decision/claim binding, chronology, budget, preview,
+  evidence, receipt-absence, terminal-absence, stream-read, no-effect, and
+  mutation control. Prefer G's real request path if it can seed the exact
+  claimed-without-receipt stage without performing an effect; otherwise the
+  minimal manually seeded fixture must exactly reproduce G's canonical event
+  actor and payload.
+- Halt E-1113 source execution before any commit. Authorize one forward
+  test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, based on
+  clean immutable `64c1b1d1` authority and starting blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6`. Freeze the three Task14 source
+  blobs, mounted test, both import-policy tests, every other source/test,
+  claims, contracts, mission bytes, dependencies, routes, and releases.
+- The corrected test-only descendant must reproduce a causal RED against the
+  frozen three sources with no fixture, schema, API, collection, type,
+  loader, analyzer, dependency, timeout, or unrelated failure; preserve all
+  other approved Task14 assertions and the exact failure partition except
+  where the two corrected rows establish a freshly observed equivalent
+  signature. Reproduce focused/card/loaders/adapters/boundaries/FC-Core/
+  typecheck/factory/mission/V4/marker/repository-first-stop/scope/freeze/
+  ancestry/dependency/diff/integrity/clean gates.
+- Admit one exact corrected test-only candidate SHA/tree to a completely
+  fresh independent read-only reviewer who has never authored, reviewed,
+  verified, or analyzed the corrected bytes. Changed bytes invalidate
+  review. Only after approval, append-only recording, and history-preserving
+  integration may a separate event resume the preserved smallest
+  three-source Task14 GREEN. Do not combine RED integration with resumed
+  source authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is a test-oracle correction authorization, not a test
+  candidate, RED approval or integration, resumed source authority, Task14
+  source candidate, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
