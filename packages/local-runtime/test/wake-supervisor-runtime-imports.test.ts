@@ -2520,12 +2520,62 @@ const residentFactoryWakePath =
   "packages/local-runtime/src/wake-supervisor-runtime.ts";
 const residentFactoryWakeModule = "./wake-supervisor-runtime.js";
 
+function residentFactoryIssuerProgram(
+  sources: readonly ResidentFactoryIssuerSource[]
+): ts.Program {
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    noLib: true,
+    noResolve: true,
+    skipLibCheck: true,
+    target: ts.ScriptTarget.ES2022
+  };
+  const sourceFiles = new Map(
+    sources.map((source) => [source.label, source.sourceFile] as const)
+  );
+  const baseHost = ts.createCompilerHost(options);
+  const host: ts.CompilerHost = {
+    ...baseHost,
+    fileExists: (fileName) =>
+      sourceFiles.has(fileName) || baseHost.fileExists(fileName),
+    getCurrentDirectory: () => "",
+    getSourceFile: (
+      fileName,
+      languageVersion,
+      onError,
+      shouldCreateNewSourceFile
+    ) => sourceFiles.get(fileName) ??
+      baseHost.getSourceFile(
+        fileName,
+        languageVersion,
+        onError,
+        shouldCreateNewSourceFile
+      ),
+    readFile: (fileName) =>
+      sourceFiles.get(fileName)?.text ?? baseHost.readFile(fileName)
+  };
+  return ts.createProgram([...sourceFiles.keys()], options, host);
+}
+
 function residentFactoryIssuerAnalysis(
   sources: readonly ResidentFactoryIssuerSource[]
 ): ResidentFactoryIssuerAnalysis {
+  const program = residentFactoryIssuerProgram(sources);
+  const checker = program.getTypeChecker();
+  const checkedSources = sources.map((source) => {
+    const sourceFile = program.getSourceFile(source.label);
+    if (sourceFile === undefined) {
+      throw new Error(`resident factory issuer source missing: ${source.label}`);
+    }
+    return {
+      label: source.label,
+      sourceFile
+    };
+  });
   const registrarImporters = new Set<string>();
   const registrarCallers = new Set<string>();
   const violations = new Set<string>();
+  const registrarImportSymbols = new Set<ts.Symbol>();
   const registrarDeclarations: ts.FunctionDeclaration[] = [];
   const exactImports: Array<{
     readonly label: string;
@@ -2536,7 +2586,7 @@ function residentFactoryIssuerAnalysis(
     readonly call: ts.CallExpression;
   }> = [];
 
-  for (const source of sources) {
+  for (const source of checkedSources) {
     for (const statement of source.sourceFile.statements) {
       if (
         source.label === residentFactoryWakePath &&
@@ -2572,6 +2622,10 @@ function residentFactoryIssuerAnalysis(
           violations.add(`${source.label}:alternate-import-carrier`);
         }
         for (const element of named) {
+          const symbol = checker.getSymbolAtLocation(element.name);
+          if (symbol !== undefined) {
+            registrarImportSymbols.add(symbol);
+          }
           if (
             source.label !== residentFactoryCompositionPath ||
             statement.moduleSpecifier.text !== residentFactoryWakeModule ||
@@ -2656,6 +2710,8 @@ function residentFactoryIssuerAnalysis(
     }
   }
 
+  rejectRegistrarExports();
+
   if (
     registrarDeclarations.length !== 1 ||
     !hasExactRegistrarSignature(registrarDeclarations[0])
@@ -2683,7 +2739,7 @@ function residentFactoryIssuerAnalysis(
     );
   }
 
-  const composition = sources.find(
+  const composition = checkedSources.find(
     (source) => source.label === residentFactoryCompositionPath
   )?.sourceFile;
   if (
@@ -2705,6 +2761,95 @@ function residentFactoryIssuerAnalysis(
   function isWakeRuntimeModule(moduleName: string): boolean {
     return moduleName === residentFactoryWakeModule ||
       moduleName.endsWith("/wake-supervisor-runtime.js");
+  }
+
+  function rejectRegistrarExports(): void {
+    for (const source of checkedSources) {
+      for (const statement of source.sourceFile.statements) {
+        if (
+          ts.isExportDeclaration(statement) &&
+          statement.moduleSpecifier === undefined &&
+          statement.exportClause !== undefined &&
+          ts.isNamedExports(statement.exportClause) &&
+          statement.exportClause.elements.some((element) => {
+            const target = checker.getExportSpecifierLocalTargetSymbol(element);
+            return target !== undefined &&
+              symbolResolvesToRegistrar(target, new Set());
+          })
+        ) {
+          violations.add(`${source.label}:registrar-reexport`);
+        }
+        if (
+          ts.isVariableStatement(statement) &&
+          hasExportModifier(statement) &&
+          statement.declarationList.declarations.some((declaration) =>
+            declaration.initializer !== undefined &&
+            expressionResolvesToRegistrar(
+              declaration.initializer,
+              new Set()
+            )
+          )
+        ) {
+          violations.add(`${source.label}:registrar-reexport`);
+        }
+        if (
+          ts.isExportAssignment(statement) &&
+          expressionResolvesToRegistrar(statement.expression, new Set())
+        ) {
+          violations.add(`${source.label}:registrar-reexport`);
+        }
+      }
+    }
+  }
+
+  function hasExportModifier(node: ts.HasModifiers): boolean {
+    return ts.getModifiers(node)?.some((modifier) =>
+      modifier.kind === ts.SyntaxKind.ExportKeyword
+    ) === true;
+  }
+
+  function symbolResolvesToRegistrar(
+    symbol: ts.Symbol,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (registrarImportSymbols.has(symbol)) return true;
+    if (resolving.has(symbol)) return false;
+    resolving.add(symbol);
+    if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+      const target = checker.getAliasedSymbol(symbol);
+      if (
+        target !== symbol &&
+        symbolResolvesToRegistrar(target, resolving)
+      ) {
+        return true;
+      }
+    }
+    return (symbol.declarations ?? []).some((declaration) =>
+      ts.isVariableDeclaration(declaration) &&
+      declaration.initializer !== undefined &&
+      expressionResolvesToRegistrar(declaration.initializer, resolving)
+    );
+  }
+
+  function expressionResolvesToRegistrar(
+    expression: ts.Expression,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (ts.isIdentifier(expression)) {
+      const symbol = checker.getSymbolAtLocation(expression);
+      return symbol !== undefined &&
+        symbolResolvesToRegistrar(symbol, resolving);
+    }
+    if (
+      ts.isParenthesizedExpression(expression) ||
+      ts.isAsExpression(expression) ||
+      ts.isTypeAssertionExpression(expression) ||
+      ts.isNonNullExpression(expression) ||
+      ts.isSatisfiesExpression(expression)
+    ) {
+      return expressionResolvesToRegistrar(expression.expression, resolving);
+    }
+    return false;
   }
 
   function hasExactRegistrarSignature(
@@ -2925,6 +3070,52 @@ describe("wake supervisor runtime import boundary", () => {
     ]);
 
     expect(analyzeControl(exactComposition).violations).toEqual([]);
+    for (const [name, source] of [
+      [
+        "local named re-export",
+        `${exactComposition}
+         export { registerResidentLoopFactoryAuthorityReadback };`
+      ],
+      [
+        "local named re-export with exported alias",
+        `${exactComposition}
+         export {
+           registerResidentLoopFactoryAuthorityReadback as exposedRegistrar
+         };`
+      ],
+      [
+        "imported local alias re-export",
+        `${exactComposition
+          .replace(
+            "registerResidentLoopFactoryAuthorityReadback\n      }",
+            "registerResidentLoopFactoryAuthorityReadback as importedRegistrar\n      }"
+          )
+          .replace(
+            "\n          registerResidentLoopFactoryAuthorityReadback(\n",
+            "\n          importedRegistrar(\n"
+          )}
+         export { importedRegistrar };`
+      ],
+      [
+        "exported local alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           registerResidentLoopFactoryAuthorityReadback;`
+      ]
+    ] as const) {
+      expect.soft(
+        analyzeControl(source).violations,
+        name
+      ).toContain(`${residentFactoryCompositionPath}:registrar-reexport`);
+    }
+    expect(analyzeControl(`${exactComposition}
+      const unrelatedLocalExport = Object.freeze({});
+      export {
+        unrelatedLocalExport as registerResidentLoopFactoryAuthorityReadback
+      };
+      export const unrelatedExportedBinding = () => undefined;
+    `).violations).toEqual([]);
+
     for (const [name, source, extras] of [
       [
         "barrel import",
