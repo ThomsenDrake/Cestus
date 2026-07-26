@@ -41451,3 +41451,90 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1135 — Transparent-value Task14 issuer RED rejected; awaited-result oracle correction authorized
+
+- Recorded at: 2026-07-26T23:47:01Z
+- Fifth completely fresh independent read-only reviewer
+  `/root/task136_e1134_transparent_value_red_review` returns **REJECTED** for
+  exact candidate `1d688e5a6d2df9f9c0ea0a213d4a57b4789d1eb3`, tree
+  `6cd27552eb991063a4383a2432289a598663ba04`, sole parent
+  `a1fa0f241981c8145842087941337a2e87c5e14b`, and no substitute candidate.
+  Review remained read-only beneath exact clean E-1134 admission merge
+  `d9c00e9186e4addf30b697389a00f98b56fe2058`; no byte or ref changed.
+- The reviewer proves the candidate applies await transparency too broadly.
+  It adds `AwaitExpression` to the shared syntactic unwrapping helper, so
+  static truthiness, nullishness, and destructuring projection inspect an
+  arbitrary thenable's pre-await object rather than conservatively treating
+  its awaited result as unknown.
+- Abstract local thenables with false, null, or undefined awaited results
+  demonstrate three false negatives: a value-producing `||` result, a
+  value-producing `??` result, and a destructuring default can each expose
+  the registrar while the candidate reports `violations: []`. Direct
+  `await registrar` correctly rejects; the defect is shared unwrapping, not
+  the explicit registrar-result traversal.
+- Two determinate prefix positives also remain imprecise. A nested bitwise
+  prefix that produces zero and a negative nonzero bigint literal both leave
+  an unreachable registrar operand in the conservative result set. These
+  are local unit-test-oracle precision defects, not product defects.
+- Reject exact `1d688e5a`; it is not approved, integrated, source authority,
+  Task14 approval/integration, Task15 authority, a Task136 product
+  candidate, strict record 29, repository closure, or release. Preserve
+  rejected candidates `1d688e5a`, `5c5f4f47`, `e12008b8`, `86b699cd`,
+  `db03309f`, `619fd752`, and `f607eb3c`, their exact blobs and reviews, and
+  every earlier design, plan, RED, GREEN, rejection, authority, assurance,
+  product, and release commit in ancestry.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `1586160373beac6d155cd725f24d8d06362ff2d8`. Add abstract local mutation
+  controls for false/null/undefined-result thenables across `||`, `??`, and
+  destructuring-default flow, plus determinate discarded positives for a
+  nested numeric prefix result and a negative nonzero bigint prefix result.
+- Remove `AwaitExpression` only from the shared syntactic unwrapping helper.
+  Retain explicit await traversal in registrar expression resolution so
+  `await registrar` and its value-producing operator forms continue to
+  reject. Treat every other awaited result as statically indeterminate for
+  short-circuit and projection purposes; do not infer its resolved value
+  from the operand object's pre-await shape.
+- Replace the one-level numeric prefix classification with a finite recursive
+  AST literal evaluator for unary plus, unary minus, and bitwise complement.
+  Support number and bigint literal results where the operator is defined;
+  preserve conservative outcomes for unsupported or indeterminate operands.
+  Do not execute analyzed fixtures.
+- Continue to use only TypeScript AST/checker symbols. Do not scan text, rely
+  on spelling, execute analyzed fixtures, reject unrelated values, broaden
+  the production importer/caller allowance, or substitute the static oracle
+  for runtime exact identity.
+- Freeze runtime test
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`, rejected sources at composition
+  `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`, wake runtime
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, mounted-store test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, global import policy, FC-Core
+  controls, and every other source/test/claim/design/plan/contract/mission/
+  dependency/route/provider/credential/release/unrelated byte.
+- Preserve focused **96 = 94 passed + two causal issuer failures**, card
+  **383 = 374 passed + nine failed**, cross-boundary
+  **1,042 = 1,033 passed + nine failed**, typecheck, factory, mission
+  **20/20**, V4 **20/20**, markers **29 / 20 / 29 / 15**, and the exact
+  legacy-staging repository first stop. Reproduce exact one-test scope,
+  freezes, ancestry, dependencies, diff/integrity, timeout envelope, and
+  final clean state.
+- Commit one exact one-test descendant and admit it to a sixth completely
+  fresh independent read-only reviewer. Every earlier Task14 reviewer,
+  candidate author, correction-scope analyst, test/source author/reviewer/
+  verifier/analyst, amendment reviewer, and coordinator is ineligible to
+  approve. Changed bytes invalidate review. No product source may change
+  until exact corrected RED approval, append-only recording,
+  history-preserving integration, and a separate two-source GREEN
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact RED rejection and one-test oracle-correction
+  authority, not a corrected candidate, source correction, Task14
+  approval/integration, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
