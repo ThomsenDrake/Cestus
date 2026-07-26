@@ -37356,3 +37356,130 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1083 — Exact Task14 five-gap evaluator loader RED rejected; nine-gap forward correction authorized
+
+- Recorded at: 2026-07-26T06:47:27Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1082_task14_evaluator_red_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `0737bf6037cee2d7308596e023f74a67d1883c2c`, tree
+  `abe66604241f9dedcae60f58762a6f8f53b40a2b`, changed test blob
+  `4896235c73262787164344ef78729c34bdbf4924`, and no other candidate.
+  Review began beneath exact clean E-1082 authority merge
+  `838c27998baa20588fa11078f3fb7362b6e605aa`.
+- Nine independent executable evaluator false accepts block approval. In
+  every case the exact committed analyzer returns accepted mounted-binder
+  ownership, TypeScript transpilation produces zero diagnostics, and runtime
+  performs exactly one hidden state read.
+- Returned-literal resolution stops too early in two cases: a constructor
+  returns an exact literal function that is immediately reused as another
+  constructor, and a tag returns an exact literal function that is
+  immediately reused as another tag.
+- Exact object-literal access semantics remain incomplete in three cases: a
+  selected getter hides its read in a local `const` initializer; duplicate
+  getters use the last definition at runtime while the analyzer selects the
+  first; and a setter-only selected property yields `undefined` and therefore
+  executes a destructuring default, while the analyzer treats it as unknown
+  and skips the default.
+- Binding semantics remain incomplete in two cases: computed sequence key
+  `(0, "missing")` selects an absent property and executes its default, while
+  constant-name resolution cannot resolve the key; and a function rest
+  parameter destructuring default is modeled as one positional argument
+  instead of binding against the collected rest array.
+- Bound-function receiver resolution remains incomplete in two cases: an
+  exact literal function's `.bind(...)` result invoked through `.call(...)`
+  is missed, and an exact returned literal function's `.bind(...)` result
+  invoked through `.apply(...)` is missed.
+- Exact independent receipts remain typecheck and factory pass; mission
+  **20/20**; focused **34 = 32 passed + 2 causal failures**; loaders
+  **7 = 5 passed + 2 causal failures**; Task136 card
+  **321 = 311 passed + 10 failures** with the exact authorized title
+  occurrence set; adapters **83/83**; cross-boundary **443/443**; relevant
+  mounted/portable/ontology boundaries **44/44**; and isolated prerequisites
+  **18/18**.
+- A fresh hardened real clone detached at the exact candidate/tree, with
+  repository Git environment and system/global config disabled, passes V4
+  **20/20**, markers **29 / 20 / 29 / 15**, connectivity, and clean/config
+  isolation. Repository mode exits one after the four markers and truthfully
+  stops only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`;
+  no prefix, closure, record-29, repository, or release success marker is
+  emitted.
+- Authority-exact serialized full is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with the complete
+  authorized occurrence multiset and zero actual timeout signatures.
+  Default full is the calibrated
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, differing only by the
+  three prerequisite-checker occurrences and again containing zero actual
+  timeout signatures. Comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact candidate/tree/parent/subject, one-test scope, blobs, freezes,
+  rejected and incident ancestry, real Vitest **4.1.9**, real TypeScript
+  **5.9.3**, dependencies, connectivity, `diff --check`, config isolation,
+  both repository `fsck` checks, and final clean state pass. The hardened
+  clone was removed only after its post-fixture clean audit.
+- Reject exact `0737bf60`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it, rejected
+  `7c94b80c` and `e47edf1e`, accidental fixture commit `989531c5`,
+  incident-recovery merge `45cb7f19`, and every earlier candidate, blob,
+  review, receipt, authority, design, plan, RED, GREEN, fixture, assurance,
+  and release commit in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `4896235c73262787164344ef78729c34bdbf4924`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, Task14 wake source at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185`, mounted-store source at
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- Extend only the bounded exact evaluator. Permit an exact returned literal
+  from a recognized `new` or tagged-template execution to feed another
+  recognized constructor/tag execution, with cycle/termination guards.
+  Resolve `.call` and `.apply` receivers through the existing exact bound
+  function resolver, including a returned literal followed by `.bind`,
+  without following arbitrary runtime objects.
+- Model exact object-literal property access using runtime last-definition
+  precedence. Execute the selected exact getter's immediate statement list,
+  including local initializers, before resolving its exact returned value.
+  Treat a selected setter-only property as exact `undefined` for reads so the
+  binding default executes. Preserve deferred unselected getters/setters and
+  conservatively reject spreads or unresolved accessor effects.
+- Resolve only exact side-effect-accounted constant computed property names,
+  including sequence expressions whose final value is an exact property key;
+  still traverse all evaluated operands exactly once. Bind a rest parameter
+  against the exact collected suffix array before recursively applying its
+  binding pattern/defaults. Preserve ordinary positional and sparse-array
+  semantics.
+- Add nine independent analyzer negatives matching the review cases, each
+  with diagnostics empty and runtime read count exactly one. Add adjacent
+  bounded positives for non-selected and deferred accessors, duplicate
+  last-write behavior without a read, computed-key operand traversal,
+  rest-array supplied values, nested constructor/tag termination, and
+  bind-call/apply argument ordering. Preserve every cumulative E-1065
+  through E-1082 control, the E-1081 five-case probe, the realistic
+  registrar positive, generator/async timing, shadowed/global undefined,
+  null/absent/sparse apply, recursive binding, optional/wrapped invocation,
+  double-traversal prevention, and exact literal-only termination.
+- Against frozen sources retain exact focused **32+2**, loaders **5+2**,
+  card **311+10**, and the exact RED-title occurrence set. Reproduce
+  standalone typecheck, adapters **83/83**, cross **443/443**, relevant
+  **44/44**, prerequisites **18/18**, factory, mission, exact-candidate
+  isolated V4, markers, truthful repository first stop, authority-exact
+  serialized/default full occurrence sets, zero timeout variance, calibrated
+  differential, one-test scope, freezes, all rejected/incident ancestry,
+  dependencies, connectivity, diff, config, both repository integrity
+  checks, and clean state. Any Git-mutating fixture verification must use a
+  real isolated clone/worktree with inherited repository-level Git
+  environment and config disabled.
+- Commit one exact corrected test-only candidate and admit only that SHA to
+  a completely fresh independent read-only reviewer. No author, reviewer,
+  verifier, analyst, or coordinator who inspected any changed byte may
+  approve it; changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact rejection and one-test forward-correction
+  authority, not test approval or integration, source correction, Task14
+  approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
