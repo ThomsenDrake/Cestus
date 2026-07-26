@@ -36749,3 +36749,95 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1077 — Task14 outer-evaluated-syntax RED rejected; bounded immediate-invocation evaluator authorized
+
+- Recorded at: 2026-07-26T03:34:23Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1076_task14_outer_syntax_red_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `8a2c761744b4afc3e98dc3cfb654664b4e223197`, tree
+  `153e7e4c3b6cfcb6fea2195a444ec93ecdf69797`, and no other bytes. Review
+  occurred beneath clean E-1076 review-authority merge
+  `37c250bda9ca467f5c3f1e60095fc2e086ebab1f`; no repository byte changed.
+- The candidate's outer-evaluated visitor delegates only `CallExpression`
+  nodes to `directlyInvokedFunction`. That helper rejects every optional
+  call, unwraps a narrow transparent-expression set, and accepts only an
+  arrow/function literal that is itself the immediate nonoptional call
+  expression. It misses other syntactically immediate executions of the
+  same exact literal function body.
+- Independent `/tmp` controls using the exact candidate analyzer falsely
+  accepted all seven forms as exact binder ownership:
+  `(() => read())?.()`, `(function(){read()}).call(undefined)`,
+  `.apply(undefined, [])`, `.bind(undefined)()`,
+  `new (function(){read()})()`, `(function(){read()})\`tag\``, and
+  `(() => () => read())()()`. Independent runtime execution of the same
+  seven forms reports exact state-read count **7**. They execute
+  immediately; none is a deferred nested body.
+- The reviewer independently confirms exact candidate/tree/parent/subject/
+  scope/blob/freezes/rejected ancestry/dependencies/Vitest/TypeScript/
+  connectivity/diff/clean state. Focused remains **32+2**, loaders **5+2**,
+  card **311+10**, adapters **83/83**, cross-boundary **443/443**, relevant
+  boundaries **44/44**, typecheck and factory pass, mission/V4 are **20/20**,
+  markers are **29 / 20 / 29 / 15**, and repository mode truthfully stops
+  at the legacy-staging source mismatch.
+- Serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with exact reviewed
+  occurrences and no timeout. Default is
+  **3,310 = 3,247 passed + 58 failed + 5 pending** with the exact calibrated
+  contention set. Isolated prerequisites pass **18/18** and comparison
+  passes `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Reject exact `8a2c7617`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it, rejected
+  `ff0d2b2c`, `60dcd687`, `77b6c5a4`, `877ede2d`, `a6068aae`, their exact
+  blobs, reviews, evidence, and all earlier history in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `59c29fee4de6c11f700b25781839ac56979cea54`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, Task14 sources at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- Replace the direct-call-only helper with a bounded, syntax-exact evaluator
+  for literal arrow/function values in an already outer-evaluated computed
+  name or decorator expression. It must recognize direct optional and
+  nonoptional calls; literal-function `.call` and `.apply`; a
+  literal-function `.bind` result that is itself immediately invoked;
+  `new` on an exact constructable function expression; exact literal
+  function tag invocation; and an exact literal function immediately
+  returned by an already recognized literal-function invocation and then
+  immediately invoked.
+- Preserve transparent TypeScript wrappers and exact argument/default/body
+  evaluation for each recognized invocation. Do not treat uninvoked
+  function/arrow bodies or defaults, a `.bind` result that is not invoked,
+  or generator body creation without immediate iteration as executed.
+  Preserve every E-1065 through E-1076 ordinary lexical, computed-name,
+  decorator, direct-IIFE, state, argument, import, placement, alias, shadow,
+  wrapper, carrier, protected-transfer, recursive-type, loader, and causal
+  control. Do not broaden product source behavior or add an async-keyword
+  rule.
+- Add independently executing negatives for all seven reviewer forms and a
+  runtime probe requiring count **7**. Add admitted deferred controls for
+  uninvoked `.bind`, constructed-but-uninvoked ordinary functions, and
+  invoked generators whose bodies have not been iterated. Prove all new and
+  cumulative controls actually execute and retain the realistic registrar
+  positive.
+- Against frozen sources retain exact focused **32+2**, loaders **5+2**,
+  card **311+10**, and identical RED titles without fixture, analyzer, API,
+  collection, type, or unrelated failure. Reproduce adapters **83/83**,
+  cross **443/443**, relevant **44/44**, typecheck, factory, mission, V4,
+  markers, truthful first stop, serialized/default occurrence sets,
+  isolated prerequisites, calibrated differential, one-test scope, freezes,
+  ancestry, dependencies, connectivity, diff, and clean state.
+- Commit one exact corrected test-only candidate and admit only that SHA to
+  a completely fresh independent read-only reviewer. No prior author,
+  reviewer, verifier, or analyst of changed bytes may approve it; changed
+  bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test rejection and one-test bounded evaluator
+  correction authority, not test approval or integration, source
+  correction, Task14 approval, Task15 authority, Task136 product candidacy,
+  strict record 29, assurance-only transition, publication, Wave 3 start,
+  or product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
