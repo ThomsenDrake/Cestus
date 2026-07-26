@@ -40168,3 +40168,60 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1118 — Exact Task14 G-actor RED descendant approved
+
+- Recorded at: 2026-07-26T18:14:54Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1117_red_rereview` returns **APPROVED** with no findings
+  for exact corrected test-only candidate
+  `e684225129a2d2fb64090f380b804272f4da2b36`, tree
+  `20b94c8ff3c37866d3a94dd83a8a61bd066d6002`, sole parent
+  `8283c1a0f9d305cebae649cebaa2aa53a6e51e5c`, and exact wake-test blob
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713`. Review remained read-only
+  beneath exact clean E-1117 admission merge
+  `d409023a809d58eb8a5d8c398281d24f06799fca`; no byte or ref changed.
+- The reviewer independently proves the semantic-key case uses two
+  schema-valid conflicting canonical checkpoints bound to the same exact
+  target stream and trusted identities and now passes frozen W. The
+  unknown-outcome case binds request and claim to G's exact package-owned
+  actor `{ id: "agent_default", kind: "agent", label: "Cestus Agent" }`,
+  retains the independent human actor, reaches the intended product
+  boundary, and fails only at the exact domain-stream read assertion
+  (**actual zero versus required one**).
+- Mandated serialized 120-second mode reproduces exact focused
+  **94 = 53 passed + 41 source-causal Task14 failures**, partition
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**. Exact Task136 card is
+  **381 = 333 passed + 48 failed** and exact 37-file cross-boundary
+  execution is **1,040 = 992 passed + 48 failed**, consisting only of the
+  **41** corrected Task14 failures plus seven preserved Task15-through-16
+  REDs.
+- Loaders pass **7/7**, adapters **83/83**, released controls **443/443**,
+  relevant boundaries **44/44**, prerequisites **18/18**, and FC-Core
+  controls **2/2**. Standalone typecheck, factory readiness, mission
+  **20/20**, V4 **20/20**, and all four contract markers pass. The unchanged
+  frozen import-policy control reproduces its known ordinary 30-second
+  harness-time variance and passes **5/5** in the mandated serialized
+  120-second mode; this is not candidate-byte or product variance.
+- Clean repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success.
+  Exact candidate identity, cumulative and four-literal diffs, scope,
+  source/test/import freezes, rejected-candidate and authority ancestry,
+  dependencies, full/connectivity integrity, configuration isolation, and
+  final clean state pass.
+- Advance only exact `e6842251` corrected Task14 test-only RED
+  `reviewing -> approved`. Authorize its history-preserving no-ff merge into
+  this program branch, fresh integration-tree focused/card/cross-boundary/
+  loader/control/typecheck/factory/mission/V4/marker/repository-first-stop/
+  scope/freeze/ancestry/dependency/diff/integrity/clean gates, and a
+  separate append-only integrated event. This event contains no resumed
+  Task14 source authority, source candidacy, or Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact corrected RED approval, not integration,
+  resumed source authority, Task14 source candidacy, Task15 authority,
+  Task136 product candidacy, repository closure, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
