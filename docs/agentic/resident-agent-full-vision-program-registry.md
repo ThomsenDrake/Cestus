@@ -38502,3 +38502,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1098 — Task14 mounted-construction source checkpoint reauthorized after oracle integration
+
+- Recorded at: 2026-07-26T10:36:01Z
+- E-1097 integrated exact independently approved wake oracle correction
+  `01262163b6ebd1c54eb9a914e9d7d94f15d3fcb7` by program commit
+  `38efe6b6da4408c17c543751fb8f77d810f057ea`. Exact history-preserving
+  Task136 authority merge
+  `b34fe88a59fcbf307dd3812bffe530504a587283` has exact parents E-1095
+  review-authority merge `887ec04f4561ae6183fd5789cc323376cccf0911`
+  and that E-1097 integrated program authority.
+- The E-1094 contradiction is resolved. Reauthorize only the E-1093 smallest
+  stage-one correction in exactly
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting from
+  rejected source blobs
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`.
+- Freeze exact approved tests at wake runtime
+  `7a6e94cd1fbcd8bcc2433662b133addc7be7cfdb`, mounted store
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, local import policy
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff`, and repository-wide loader
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`. Freeze every other Task136
+  source, test, claim, contract, dependency, route, provider, credential,
+  external-system, and unrelated byte.
+- Correct mounted facts source high-water ordinal to the exact ordinal of the
+  last non-wake-lifecycle source event in the complete authenticated ledger;
+  retain `durableLedgerEventCount` as every durable row. A wake lifecycle
+  lease may increase durable count without changing admitted source
+  high-water or source ordinal.
+- Relocate the one permitted dispatcher default import/direct one-shot binder
+  call and the one permitted named G import/direct constructor call into the
+  authenticated mounted store. The store binder and its sole wake-runtime
+  caller must each accept exactly `(store, rawBinding, domainExecution)`.
+  Retain the same authenticated ledger object, exact mounted identity tuple,
+  one-shot private binding, W-private before/after-effect currentness
+  closures, and trusted safe-ID wrapping. No replaceable callback, wrapper,
+  carrier, global, registrar, alternate importer, or later input is allowed.
+- Leave downstream identity/currentness admissibility, prefix validation and
+  recovery, reclaim categories, suspension/release, readback, and later
+  Task14 behavior unchanged except for minimum construction/source-ordinal
+  plumbing. This remains a source checkpoint, not a full Task14 candidate.
+- Required focused result is **34/34**; loaders are **7/7**; Task136 card is
+  **321 = 314 passed + 7 preserved Task15-through-16 RED failures**.
+  Reproduce adapters, boundaries, typecheck, factory, mission **20/20**, V4
+  **20/20**, markers **29 / 20 / 29 / 15**, truthful legacy-staging first
+  stop, exact scope/freezes/ancestry/dependencies/diff/integrity/clean state.
+- Commit one coherent two-source checkpoint with exact subject
+  `fix(local-runtime): bind mounted resident construction` and stop. After
+  that checkpoint exists, a separate append-only event must bind its exact
+  SHA and source blobs and authorize the E-1058 executable real-mounted
+  identity, currentness, prefix, and reclaim tables before a Task14 source
+  candidate may be admitted.
+- No source author/reviewer, changed-test author/reviewer/verifier/analyst, or
+  coordinator may approve later changed source bytes. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded stage-one source-checkpoint authority, not
+  Task14 approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
