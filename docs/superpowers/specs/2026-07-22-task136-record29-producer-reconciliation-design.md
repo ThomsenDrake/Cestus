@@ -1907,3 +1907,89 @@ Task122 b607b582e227f558d1340b3b9f098f90e356db9f343109ec6a4e37276624171a
 W1-123-BOOTSTRAP-HANDOFF a8ed548c473fca9e7f4016a001032d151c204be2347db43d1ff77b386fd5cd9d
 Task138-H 186ebee9d0364a6a6f93fb1d6adcb80970c63a49352a1c26b598c0323a444fc8
 ```
+
+## RV-1-E-1109 Current Exact-Identity 33-Path Amendment
+
+This true-EOF section is the current design authority. It supersedes only the
+current 32-path mechanics above; every earlier design revision, candidate,
+review, pin, RED, GREEN, release, and strict-record hash remains immutable
+historical evidence for its exact commit. The strict release graph remains
+exactly 29 cards and the product frontier remains 28 of 29.
+
+Transfer exactly
+`packages/local-runtime/src/resident-loop-factory-composition.ts` from
+`Task136-FC-Core` to `Task136`. `Task136-FC-Core.transferToIds` is exactly
+`["Task136"]`; only that source has current disposition `transferred`. The
+two FC-Core tests and
+`docs/agentic/claims/task-136-factory-authority-composition.md` remain current
+`owned`, retain their original command, and never migrate to Task136.
+Historical strict record 19 retains `owned` for all four FC-Core paths.
+
+The immutable record-19 evidence is:
+
+```text
+candidate c6efd58a3e385d0097b4df9f73703a75b145e660
+integration 7a7a650e7db97c1aad63447e3669e66ddf3dc7fe
+composition source blob 8e69a7ac55f16a9d3e1c2646c985ffc6539fe064
+raw record SHA-256 5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920
+compact canonical record SHA-256 ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1
+```
+
+Task136 has exactly ten direct prerequisites. Insert `Task136-FC-Core`
+immediately before `Task136-FC-Ports` while preserving all other prerequisite
+order. Task136 has exactly 33 ordered paths: 15 sources, 17 tests, and one
+product claim. Insert the composition source at one-based position 23,
+immediately after
+`packages/ontology/test/agent-resident-loop-contracts.test.ts` and before
+`packages/local-runtime/src/resident-loop-factory-ports.ts`. Every other path
+retains its relative order. The canonical newline-delimited 33-path SHA-256 is
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+The Task136 card command remains the exact existing 17-test command.
+
+Release compatibility is exactly twelve entries. Insert
+`Task136-FC-Core` immediately before `Task136-FC-Ports`, with only the
+composition source and historical disposition `owned`; its compact hash still
+binds the complete four-path raw record. Before record 29, source currentness
+remains bound to the FC-Core record's exact candidate, integration, and
+current-HEAD blob. At record 29, only the composition source migrates to the
+Task136 candidate, integration, and current HEAD. The FC-Core tests and claim
+remain FC-Core-owned.
+
+The mandatory Task136 cross-boundary control grows from 35 to exactly 37 tests
+by adding, unchanged:
+
+```text
+npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts
+```
+
+The exact-identity repair uses a private non-barrel one-shot issuer seam at
+the actual Core composition allocation and issuance point. Composition
+privately registers or brands the exact completed frozen authority readback
+against the exact issued wake-runtime identity before returning. W accepts
+only the original outer, provider, handoff, and authority-binding allocations
+and rejects any copy or substitution before mounted-store I/O. The seam is
+not caller-visible and exposes no copyable brand, callback, report-store port,
+barrel export, fallback, activation, route, provider, credential, or network
+authority. Structural equality, first-seen state, timing, allocation order,
+call-stack inspection, source-text inspection, hidden globals, and
+process-local rendezvous are forbidden substitutes for package-owned identity.
+
+The synchronized current pins are:
+
+```text
+V4 JSON SHA-256:
+96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+V4 assurance fingerprint:
+f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4
+Mission immutable-envelope fingerprint:
+sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e
+Mission source fingerprint:
+sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac
+```
+
+The amendment changes only the nine authority paths named by RV-1-E-1109 and
+changes no package/product byte. After completely fresh independent design and
+executability approval plus history-preserving integration, a separate
+append-only event may authorize the already approved 42-failure Task14 GREEN
+in exactly the composition source, wake-supervisor source, and mounted-store
+source.

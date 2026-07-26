@@ -27,8 +27,8 @@ const task136V4ClaimPath = "docs/agentic/claims/task-136-v4-task137b-authority-t
 const v1ContractSha256 = "d33864d9964a355067b7be86c78951d3df184a80b80765da3f51aab66e903fed";
 const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463d9e8162ba4";
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
-const v4ContractSha256 = "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930";
-const v4AssuranceFingerprint = "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec";
+const v4ContractSha256 = "96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5";
+const v4AssuranceFingerprint = "f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4";
 const task136FactoryCompositionPath =
   "packages/local-runtime/src/resident-loop-factory-composition.ts";
 const task136ThirtyThreePathSha256 =
@@ -183,6 +183,7 @@ const task136OwnedPaths = [
   "packages/agent/test/specialist-handoff-projection.test.ts",
   "packages/ontology/src/contracts.ts",
   "packages/ontology/test/agent-resident-loop-contracts.test.ts",
+  "packages/local-runtime/src/resident-loop-factory-composition.ts",
   "packages/local-runtime/src/resident-loop-factory-ports.ts",
   "packages/local-runtime/test/resident-loop-factory-ports.test.ts",
   "packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts",
@@ -256,6 +257,10 @@ const exactTask136HistoricalPathDispositions = [
       ["packages/ontology/src/contracts.ts", "owned"],
       ["packages/ontology/test/agent-resident-loop-contracts.test.ts", "owned"]
     ]
+  ],
+  [
+    "Task136-FC-Core",
+    [["packages/local-runtime/src/resident-loop-factory-composition.ts", "owned"]]
   ],
   [
     "Task136-FC-Ports",
@@ -415,6 +420,10 @@ const task136TransferPathsBySource = [
     ]
   ],
   [
+    "Task136-FC-Core",
+    ["packages/local-runtime/src/resident-loop-factory-composition.ts"]
+  ],
+  [
     "Task136-FC-Ports",
     [
       "packages/local-runtime/src/resident-loop-factory-ports.ts",
@@ -481,6 +490,7 @@ test("verifies the 29-card topological graph, exact Task136 transfers, and prere
         "G136-R",
         "Task137B-W",
         "CF1-HR",
+        "Task136-FC-Core",
         "Task136-FC-Ports"
       ].map((id) => [id, cardsById.get(id)?.transferToIds])
     ),
@@ -491,11 +501,13 @@ test("verifies the 29-card topological graph, exact Task136 transfers, and prere
       "G136-R": ["Task136"],
       "Task137B-W": ["CF1-HR", "Task139-PM", "Task136"],
       "CF1-HR": ["Task122", "W1-123-BOOTSTRAP-HANDOFF", "Task136"],
+      "Task136-FC-Core": ["Task136"],
       "Task136-FC-Ports": ["Task136"]
     }
   );
   assert.deepEqual(cardsById.get("Task136")?.prerequisiteIds, [
     "T120-R",
+    "Task136-FC-Core",
     "Task136-FC-Ports",
     "Task139-P2",
     "C136-P",
@@ -614,6 +626,21 @@ test("requires corrected producer ownership and exact Task136 scope and command"
       }
     },
     {
+      id: "Task136-FC-Core test incorrectly transfers",
+      mutate(mutant) {
+        mutant.releaseGraph.cards
+          .find((card) => card.id === "Task136-FC-Core")
+          .ownedPaths[1].disposition = "transferred";
+      }
+    },
+    {
+      id: "Task136-FC-Core command changes",
+      mutate(mutant) {
+        mutant.releaseGraph.cards.find((card) => card.id === "Task136-FC-Core").command =
+          "npm test -- packages/local-runtime/test/resident-loop-factory-composition.test.ts";
+      }
+    },
+    {
       id: "G136-SC command omitted path",
       mutate(mutant) {
         mutant.releaseGraph.cards.find((card) => card.id === "G136-SC").command =
@@ -688,6 +715,7 @@ test("requires frozen v4 compatibility branches and all 28 raw prefix pins", () 
       ["T120-R", "bb2e2bcdd90d1036f0e0ad16719dcc99405ec3170691f115641649dc59b56830"],
       ["Task137B-W", "833ca5cc5aa191fdf9f98c692255133afaaf73b541b36275cab7ed04ef601e29"],
       ["CF1-HR", "d55028e1bd036051f5ec2c9d496267623ff2748e54713d3881a198667ac62f12"],
+      ["Task136-FC-Core", "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1"],
       ["Task136-FC-Ports", "d860a7ea14900431a361e95604d49efa6dbf824d8ccc85a06f27fe277698bc0d"],
       ["G136-SC", "b7ec22083b3b8be5140b3a40b09dfa4e34c2e86f01fe15c3cc3453d16c77d0b0"],
       ["G136-R", "ba3fb8927ec24348f405db53cd6cf200481cb979ca6ce4cbe1216b5ce635d9b8"],
@@ -892,7 +920,7 @@ function rawRecordJson(cardId) {
 }
 
 function registryPrefixRecords() {
-  return expectedIds.slice(0, 17).map((cardId) => recordFromRegistry(cardId));
+  return expectedIds.slice(0, 19).map((cardId) => recordFromRegistry(cardId));
 }
 
 function releaseRecordsFor(contract) {
@@ -1490,6 +1518,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
     },
     ...[
       "T120-R",
+      "Task136-FC-Core",
       "Task136-FC-Ports",
       "Task139-P2",
       "C136-P",
@@ -1729,6 +1758,41 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
 
   const beforeRecord29Records = releaseRecordsFor(contract).slice(0, 28);
   const beforeRecord29Registry = releaseRecordMarkdown(beforeRecord29Records);
+  const task136FcCoreRecord = beforeRecord29Records.find(
+    (record) => record.cardId === "Task136-FC-Core"
+  );
+  assert.equal(
+    task136FcCoreRecord.candidateSha,
+    "c6efd58a3e385d0097b4df9f73703a75b145e660"
+  );
+  assert.equal(
+    task136FcCoreRecord.integrationSha,
+    "7a7a650e7db97c1aad63447e3669e66ddf3dc7fe"
+  );
+  assert.equal(
+    task136FcCoreRecord.ownedPathBlobs.find(
+      ({ path }) => path === task136FactoryCompositionPath
+    ).blobSha,
+    "8e69a7ac55f16a9d3e1c2646c985ffc6539fe064"
+  );
+  for (const commitish of [
+    task136FcCoreRecord.candidateSha,
+    task136FcCoreRecord.integrationSha,
+    "HEAD"
+  ]) {
+    const adapter = fakeRepositoryAdapter(beforeRecord29Records, {
+      blobMismatch: { commitish, path: task136FactoryCompositionPath }
+    });
+    assert.throws(
+      () => assurance.verifyTask136ReleasePrefix(contract, {
+        registryText: beforeRecord29Registry,
+        adapter
+      }),
+      new RegExp(`blob mismatch: Task136-FC-Core:${task136FactoryCompositionPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `FC-Core composition remains current before record 29: ${commitish}`
+    );
+    assert.equal(adapter.commandCalls.length, 0);
+  }
   const baselineCases = [
     ...[
       "packages/agent/src/adapters/legacy-staging.ts",
@@ -1787,7 +1851,7 @@ test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record
   assert.equal(successfulRecord29Adapter.commandCalls.length, 29);
 
   const transferredAndAdoptedProductPaths = task136OwnedPaths.slice(2, -1);
-  assert.equal(transferredAndAdoptedProductPaths.length, 29);
+  assert.equal(transferredAndAdoptedProductPaths.length, 30);
   for (const path of transferredAndAdoptedProductPaths) {
     const adapter = fakeRepositoryAdapter(records, {
       blobMismatch: { commitish: "HEAD", path }
@@ -2851,7 +2915,16 @@ test("requires the durable V4 claim to retain history and the RV-1-E-941 authori
     "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930",
     "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec",
     "sha256:1fcbb344a125ae874ea174022f051486267f0f7afa75e743bdb8fab24632d5ab",
-    "selectedCandidateBindingHashes"
+    "selectedCandidateBindingHashes",
+    "RV-1-E-1109 forward exact-identity 33-path amendment",
+    "2f5834947b350c96171ed665b8280902661cbf7a",
+    "ordered paths = 15 sources, 17 tests, and one claim",
+    "4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e",
+    "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1",
+    "96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5",
+    "f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4",
+    "sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e",
+    "sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac"
   ];
 
   for (const evidence of requiredEvidence) {

@@ -2107,3 +2107,73 @@ All package/product bytes remain unchanged. A new exact amendment candidate
 requires completely fresh independent design and executability approval
 before integration and before any separate six-product-file Task12
 authorization.
+
+## RV-1-E-1109 final current Task136 33-path authority
+
+This true-EOF section controls current sequential interpretation. E-1019 and
+every physically earlier claim section remain immutable historical evidence
+for their exact commits. Their 32-path scope and pins are superseded only as
+current authority.
+
+Task136 and Task14 remain `implementing`; the strict product frontier is
+**28 of 29**. No Task136 product candidate, strict record 29, repository
+closure, Wave 3 start, publication, or product release exists.
+
+Current Task136 scope is exactly 33 ordered paths: 15 sources, 17 tests, and
+this one product claim. Add only
+`packages/local-runtime/src/resident-loop-factory-composition.ts` at one-based
+position 23, after the ontology resident-loop test and before the
+resident-loop factory-ports source. The exact newline-delimited path SHA-256 is
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+The exact 17-test card command remains unchanged.
+
+Task136 has ten prerequisites. `Task136-FC-Core` is inserted immediately
+before `Task136-FC-Ports`; all other prerequisite order is preserved.
+Task136-FC-Core transfers only the composition source. Its two tests and
+factory-authority composition claim remain FC-Core-owned and never migrate.
+The exact released FC-Core two-test command is additionally mandatory in the
+37-test cross-boundary control.
+
+Historical strict record 19 remains byte-for-byte immutable. It binds:
+
+```text
+candidate c6efd58a3e385d0097b4df9f73703a75b145e660
+integration 7a7a650e7db97c1aad63447e3669e66ddf3dc7fe
+composition source blob 8e69a7ac55f16a9d3e1c2646c985ffc6539fe064
+raw record SHA-256 5e78c42b3753cd3ce086ab45862479f2e5569fdaae1fc683528a67101630b920
+compact canonical record SHA-256 ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1
+```
+
+The twelve-entry compatibility sequence inserts FC-Core immediately before
+FC-Ports and describes only the composition source with historical
+disposition `owned`. Pre-record-29 currentness stays bound to FC-Core. Only
+at record 29 does that one source migrate to Task136 candidate, integration,
+and current-HEAD equality.
+
+The Task14 design requires a private non-barrel one-shot issuer seam at the
+actual composition allocation point. Composition privately registers or
+brands the exact completed frozen readback against its exact wake runtime
+before returning. W accepts only the original outer, provider, handoff, and
+authority-binding allocations and rejects copies before mounted-store I/O.
+No caller-visible copyable brand, replaceable callback, report-store port,
+fallback, default runtime, route, provider, credential, network, structural
+copy, first-seen, timing, allocation-order, call-stack, source-text, hidden
+global, or process-local heuristic is permitted.
+
+Current assurance pins are:
+
+```text
+V4 JSON SHA-256:
+96b6104617103b85916df22b46168781c58b4465b729369f3e7179cf0a89b8e5
+V4 assurance fingerprint:
+f73e9d7090dfdd388b18c2b13ca207f3cfa11697fe4473026e0b09492d083df4
+Mission immutable-envelope fingerprint:
+sha256:82e666a86d2b3ccd0ceafd634975d0a7459d3fe7600d27cc8345dd0f531fbc1e
+Mission source fingerprint:
+sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac
+```
+
+The amendment changes exactly the nine E-1109 authority paths and no package
+or product byte. It requires completely fresh independent design and
+executability approvals before history-preserving integration and before a
+separate three-source Task14 GREEN authorization.
