@@ -38464,3 +38464,41 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1097 — Exact Task14 wake ownership oracle correction integrated
+
+- Recorded at: 2026-07-26T10:35:33Z
+- Exact independently approved one-test oracle correction
+  `01262163b6ebd1c54eb9a914e9d7d94f15d3fcb7`, tree
+  `a02ad4ea6806e7c996d25282cdb4774ddb218d14`, is integrated by exact
+  history-preserving no-ff merge
+  `58331539d5531d6906d0eb3f658bd38f84e20bdd`. Its first parent is E-1096
+  approval commit `9045c1ff3e752ebea706a9d344c6a04b6573cb45`; its second parent is the
+  exact reviewed correction.
+- The integrated wake functional-test blob is exact
+  `7a6e94cd1fbcd8bcc2433662b133addc7be7cfdb`. Dedicated local/global import
+  policies remain exact `04f8ba16` / `9dbd3692`; mounted test remains exact
+  `9836c9ae`; both Task14 sources remain frozen at `2d5b12e` / `4fe14efe`.
+- Fresh integration-tree focused execution is exact
+  **34 = 32 passed + 2 causal failures**; loaders are
+  **7 = 5 passed + 2 causal failures**; Task136 card is
+  **321 = 311 passed + 10 authorized failures** with the exact occurrence
+  set. Standalone typecheck, factory readiness, and mission **20/20** pass.
+- Fresh V4 passes **20/20** and markers remain exact
+  **29 / 20 / 29 / 15**. Repository mode exits one solely at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, release-closure, record-29, repository, or release
+  success marker. Exact blobs, diff hygiene, connectivity integrity, and
+  clean state pass.
+- Advance only exact `01262163` oracle correction
+  `approved -> integrated`. This event intentionally contains no source
+  correction or Task15 authority. A separate append-only event after the
+  exact Task136 authority merge is mandatory before either Task14 source may
+  change.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test-oracle integration, not source correction,
+  Task14 approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
