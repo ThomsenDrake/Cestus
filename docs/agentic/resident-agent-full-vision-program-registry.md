@@ -36387,3 +36387,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1073 — Task14 argument-provenance RED rejected; complete direct-read census authorized
+
+- Recorded at: 2026-07-26T01:55:43Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1072_task14_argument_red_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `60dcd68763283a5fca91b4148f340a204a850e01`, tree
+  `b3935511fe7b2e368cdf509f1a91607be24fedc6`, and no other bytes. Review
+  occurred beneath clean E-1072 review-authority merge
+  `3db12409cb02d6235efa6d732f2f1ddf09fc25b3`; no repository byte changed.
+- The registrar traversal at the candidate's local-loader lines 631–655
+  counts an exact private-state read only when it initializes a
+  single-declaration `const`. It therefore falsely accepts one valid
+  pre-call `const state = residentWakeRuntimeStates.get(wakeRuntime)` plus
+  an additional bare direct read after the binder, an additional `let`
+  direct read, or an additional direct read inside a multi-declaration
+  statement.
+- Independent executable controls copied the candidate test to `/tmp`,
+  added each of those three negatives, and ran them without modifying the
+  repository. Every negative returned the exact accepted binder-ownership
+  result. The existing duplicate controls cover only extra qualifying
+  `const` declarations; the existing after-call control makes the sole
+  qualifying declaration late and does not cover a valid pre-call read plus
+  an extra late read.
+- The reviewer independently confirms exact candidate/tree/parent/subject/
+  scope/blob/freezes/rejected ancestry/dependencies/Vitest/connectivity/diff/
+  clean state. Focused remains **32+2**, loader **5+2**, card **311+10**,
+  adapters **83/83**, cross-boundary **443/443**, and relevant boundaries
+  **44/44**. Typecheck, factory, mission **20/20**, V4 **20/20**, exact four
+  markers, and the truthful repository legacy-staging first stop pass.
+- Serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with no timeout. A fresh
+  default retry is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**; only the same three
+  prerequisite-checker contention drifts exceed serialized, and the
+  isolated prerequisite suite passes **18/18**. Calibrated comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Reject exact `60dcd687`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it, rejected
+  `77b6c5a4`, `877ede2d`, `a6068aae`, their exact blobs, reviews, evidence,
+  and all earlier history in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `c2b63a104aee8ac97ef0f6e1736052d8a4b38922`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, both Task14 sources at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- Replace the incomplete declaration-only uniqueness census with a census
+  of every exact direct
+  `residentWakeRuntimeStates.get(wakeRuntime)` occurrence in the registrar's
+  complete lexical body, regardless of expression-statement, `const`,
+  `let`, `var`, or single/multiple-declaration form, while excluding nested
+  function-like scopes. Require exactly one occurrence and require that
+  sole occurrence to be the selected single-declaration `const` state
+  initializer before the exact mounted-binder call.
+- Add independently executing controls for a valid pre-call state plus an
+  extra bare read before and after the call, extra `let` and `var` reads,
+  extra multi-declaration reads, and nested-block forms. Preserve all
+  correct E-1065 through E-1072 symbol, import, call, placement, argument,
+  alias, shadow, wrapper, carrier, protected-transfer, recursive-type,
+  loader, and causal controls. Do not broaden the correction or add an
+  async-keyword syntax rule.
+- Against frozen sources, retain exact focused **32+2**, loader **5+2**,
+  card **311+10**, and the same three Task14 RED identities without fixture,
+  analyzer, API, collection, type, or unrelated failure. Reproduce adapter
+  **83/83**, cross **443/443**, relevant **44/44**, typecheck, factory,
+  mission, V4, markers, truthful repository first stop, authority-exact
+  serialized/default variance, isolated prerequisite suite, calibrated
+  comparison, one-test scope, global/source/other-path freezes, ancestry,
+  dependencies, connectivity, diff, and clean state.
+- Commit one exact corrected test-only candidate and admit only that SHA to
+  a completely fresh independent read-only reviewer. No prior author,
+  reviewer, verifier, or analyst of changed bytes may approve it; changed
+  bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test rejection and one-test direct-read census
+  correction authority, not test approval or integration, source
+  correction, Task14 approval, Task15 authority, Task136 product candidacy,
+  strict record 29, assurance-only transition, publication, Wave 3 start,
+  or product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
