@@ -38207,3 +38207,77 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or product
   release. `neo`, push, provider, credential, external-system, pull-request,
   and unrelated actions remain unauthorized.
+
+## RV-1-E-1093 — Task14 mounted-construction source checkpoint reauthorized
+
+- Recorded at: 2026-07-26T09:52:58Z
+- E-1092 integrated exact independently approved loader RED
+  `66895ec8bdbc9f7a5f8cf4984d5f4c70cbf6fea8` by program commit
+  `693866427db38efdbfef8e8554ef91bf4e14d309`. Exact history-preserving
+  Task136 authority merge
+  `2b7a396b6b9b3d6471a3dd12e6e6e5f216e5e37c` has exact parents E-1090
+  review-authority merge `24a89a2eb37c7cb11d478357dbc7458c5689e40a`
+  and that E-1092 integrated program authority. The causal loader RED is
+  approved, recorded, and integrated.
+- Preserve E-1064 as valid stage-one source requirements and E-1065 as the
+  valid superseding loader-oracle diagnosis. With the corrected loader now
+  approved and integrated, reauthorize only the smallest forward stage-one
+  correction in exactly
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting from
+  rejected source blobs
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`.
+- Freeze exact approved tests at wake runtime
+  `8269ba2abea46e3b16cb7491cf613e7768969111`, mounted store
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`, local import policy
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff`, and repository-wide loader
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`. Freeze every other Task136
+  source, test, claim, contract, loader, dependency, route, provider,
+  credential, external-system, and unrelated byte.
+- Correct the mounted facts source high-water ordinal to the exact ordinal of
+  the last non-wake-lifecycle source event in the complete authenticated
+  ledger. Keep `durableLedgerEventCount` independently equal to every durable
+  row. A required wake lifecycle lease may increase durable count without
+  changing the admitted source high-water mark or source ordinal.
+- Relocate the one permitted dispatcher default import and direct one-shot
+  `bindPackageOwnedResidentDomainExecutionPort` call, and the one permitted
+  named `createResidentLoopToolGateway` import and direct constructor call,
+  into the authenticated mounted store. The package-private store binder and
+  its sole production wake-runtime call must each accept exactly
+  `(store, rawBinding, domainExecution)`. Retain the same authenticated ledger
+  object, exact mounted workspace/resident/task tuple, one-shot private
+  identity binding, W-private before/after-effect currentness closures, and
+  trusted safe-ID wrapping. No caller, wrapper, registrar, carrier, global,
+  later input, or alternate importer may supply, replace, expose, or recover
+  either constructor, the ledger, closures, or opaque resident port.
+- Leave downstream identity/currentness admissibility, monotone prefix
+  validation and recovery, reclaim categories, suspension/release, readback,
+  and all later Task14 behavior unchanged except for minimum construction and
+  source-ordinal plumbing. This is a source checkpoint, not a full Task14
+  candidate. After it exists, a separate append-only event must authorize the
+  E-1058 executable real-mounted identity, currentness, prefix, and reclaim
+  tables before any later Task14 source candidate may be admitted.
+- Required focused result is exact **34/34**. Required loaders are exact
+  **7/7**. Required Task136 card result is
+  **321 = 314 passed + 7 preserved Task15-through-16 RED failures**.
+  Reproduce released adapter and boundary controls, standalone typecheck,
+  factory readiness, mission **20/20**, V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, truthful repository legacy-staging first stop,
+  exact two-source scope, all freezes, ancestry, real dependencies, diff,
+  integrity, and clean state.
+- Commit one coherent two-source stage-one checkpoint with subject
+  `fix(local-runtime): bind mounted resident construction` and stop. A later
+  append-only event must bind its exact SHA and blobs before authorizing any
+  downstream test byte. No Task14 source candidate, approval, or integration
+  exists at this checkpoint.
+- The implementer, all test authors/reviewers/verifiers/analysts, all earlier
+  Task14 source authors/reviewers, and the coordinator are ineligible to
+  approve any later changed source bytes. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded stage-one source-checkpoint authority, not
+  Task14 approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
