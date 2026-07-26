@@ -39192,3 +39192,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1106 — Exact one-claim Task14 binding RED integrated
+
+- Recorded at: 2026-07-26T14:28:40Z
+- Exact independently approved corrected RED
+  `757674afa466005e366c27cc51a606ddf2376a95`, tree
+  `34d94f0d28d7e95bf31b1699390fda996a91dd41`, is integrated by exact
+  history-preserving no-ff merge
+  `727c1a92b646dcfcec618c9816ac43e696ef2bce`. Its first parent is exact
+  E-1105 approval commit
+  `2f6355b6cedb6fa2df3435a469abeca108ce265f`; its second parent is the
+  exact reviewed candidate.
+- The integrated wake-test blob is exact
+  `501b73efcf6efd93019ab7c655dc3219085db3d6`. Mounted test remains exact
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`; Task14 checkpoint sources
+  remain frozen at `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`; local/global import policies
+  remain exact `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`.
+- Fresh integration-tree focused execution is exact
+  **94 = 52 passed + 42 source-causal Task14 failures**; Task136 card is
+  exact **381 = 332 passed + 49 failed**. Loaders pass **7/7**, adapters
+  **83/83**, released cross-boundary **443/443**, relevant boundaries
+  **44/44**, prerequisites **18/18**, and standalone typecheck passes.
+- Fresh factory readiness, mission **20/20**, hardened V4 **20/20**, and
+  markers **29 / 20 / 29 / 15** pass. Repository mode exits one solely at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, release-closure, record-29, repository, or release
+  success marker.
+- Exact merge parents, test/source/import-policy blobs, rejected and approved
+  ancestry, dependencies, diff hygiene, full/connectivity integrity, and
+  clean state pass. Expected unreachable objects remain ordinary fsck
+  informational output; no missing or corrupt object exists.
+- Advance only exact `757674af` corrected downstream test-only RED
+  `approved -> integrated`. This event intentionally contains no Task14
+  source correction or Task15 authority. A separate append-only event after
+  the exact Task136 authority merge is mandatory before either Task14 source
+  may change.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact corrected RED integration, not source
+  correction, Task14 approval, Task15 authority, product candidacy, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
