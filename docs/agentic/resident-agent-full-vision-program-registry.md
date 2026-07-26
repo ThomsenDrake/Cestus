@@ -39769,3 +39769,100 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1113 — Integrated 33-path authority admits exact three-source Task14 GREEN
+
+- Recorded at: 2026-07-26T16:07:35Z
+- E-1112 integrated the exact dual-approved 33-path assurance amendment at
+  program commit `10f17a412b18bd539ab669577b999d22907b8734`.
+  Exact history-preserving Task136 authority merge
+  `0b546d7b22edc3ed3fb8bad07872eacdca86ddfb` has parents E-1110
+  review-authority merge
+  `03665ea8d8739f6bfcf74cc7d1310d6f18f7bad6` and that exact integrated
+  program authority. The condition for a separate expanded Task14 GREEN
+  authorization is satisfied.
+- E-1107 remains valid historical two-source authority and E-1108 remains
+  valid evidence that exact copied-readback rejection was impossible within
+  that scope. E-1109 through E-1112 supply the reviewed and integrated
+  forward authority transfer. Supersede only E-1107's executable two-source
+  ceiling; preserve every earlier Task14 RED, review, rejection, approval,
+  integration, source checkpoint, design, plan, assurance candidate, and
+  authority commit in ancestry.
+- Authorize the smallest Task14 GREEN correction in exactly these three
+  product sources and no others:
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`,
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`. Their exact
+  starting blobs are respectively
+  `8e69a7ac55f16a9d3e1c2646c985ffc6539fe064`,
+  `2acb1d5d1891e5d5df823386c7765cdd50865136`, and
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`.
+- Use the already approved and integrated exact Task14 causal RED. Freeze
+  wake and mounted tests at
+  `501b73efcf6efd93019ab7c655dc3219085db3d6` and
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, local/global import-policy
+  tests at `04f8ba1648957bb8789c827629aa10af5b4fc2ff` and
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, both FC-Core control tests,
+  every other test, every other source, all claims, contracts, mission bytes,
+  dependencies, configuration, routes, and release records.
+- At the actual Core composition allocation and issuance point, privately
+  register or brand the exact completed frozen authority readback against
+  the exact issued wake-runtime identity before returning it. The issuer seam
+  must be private, non-barrel, one-shot, package-owned, and non-copyable. W
+  may authenticate only that original outer/provider/handoff/
+  authority-binding allocation and must reject any copied, spread,
+  structurally equal, foreign, stale, substituted, or rebound value before
+  mounted-store I/O.
+- Preserve the approved exact package-owned identity invariant. Do not use
+  structural shape, first-seen presentation, timing, allocation order,
+  call-stack or source-text inspection, hidden global state, process-local
+  rendezvous, caller-visible symbols or brands, replaceable callbacks, or
+  any other heuristic acceptance. Add no report-store port, fallback write,
+  default runtime, route, provider, credential, network, or activation.
+- Apply the approved Task136 design and Task14 plan exactly. Preserve the
+  private dispatcher capability and exact package-owned opaque G identity;
+  same exact authenticated ledger/store; exact Core/P/H and mounted
+  workspace/resident/task/attempt/run authority; single-use before/after
+  currentness tokens; wrapped trusted safe-ID closure; complete monotone
+  five-state target-prefix validation and missing-suffix-only recovery;
+  exact chronology, causation, semantic keys, readbacks, budgets, authority,
+  decision and claim binding; independently valid foreign-stream control;
+  and complete no-append/no-release/no-effect and at-most-once behavior.
+- Implement reclaim exactly as E-1107 and the integrated plan require.
+  Approval-required work needs exactly one later independent nonexpired
+  matching human decision. Effect-outcome-unknown must use G's exact
+  package-owned reread/validation seam and require exact request, sole claim,
+  capability, approval, binding, budget, receipt absence, and terminal
+  absence. Reissue only the nonexecutable claimed stage; never continue or
+  reexecute an effect.
+- The exact starting focused signature is
+  **94 = 52 passed + 42 source-causal Task14 failures**, partitioned
+  **3 / 2 / 7 / 1 / 12 / 8 / 8 / 1**. GREEN must produce exact
+  **94/94** focused and Task136 card
+  **381 = 374 passed + 7 preserved Task15-through-16 RED failures**, with no
+  fixture, API, schema, type, loader, analyzer, timeout, collection, or
+  unrelated failure. Derive fresh serialized/default full and calibrated
+  differential signatures from execution.
+- Reproduce loaders **7/7**, adapters **83/83**, released boundary controls,
+  relevant boundaries, prerequisites, both FC-Core controls, exact 37-file
+  cross-boundary accounting, standalone typecheck, factory readiness,
+  mission **20/20**, V4 **20/20**, markers **29 / 20 / 29 / 15**, truthful
+  repository legacy-staging first stop with no success marker, exact
+  three-source scope, all freezes, ancestry, dependencies, diff, integrity,
+  timeout variance, RED-to-GREEN and immutable-baseline differentials, and
+  clean state.
+- Commit one coherent exact three-source candidate with subject
+  `feat(local-runtime): issue mounted resident loop authority`. Admit only
+  its exact SHA/tree to a completely fresh independent source reviewer. The
+  implementer, every Task14 test author/reviewer/verifier/analyst, both
+  amendment reviewers, every earlier Task14 source author/reviewer, and the
+  coordinator are ineligible to approve changed source bytes. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact three-source Task14 GREEN authority, not a
+  source candidate, source approval or integration, Task15 authority,
+  Task136 product candidacy, repository closure, strict record 29,
+  post-record assurance transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
