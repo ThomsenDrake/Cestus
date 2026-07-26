@@ -355,6 +355,13 @@ const mountedBinderModule =
   "./mounted-wake-lifecycle-store.js";
 const mountedBinderWakePath =
   "packages/local-runtime/src/wake-supervisor-runtime.ts";
+const mountedBinderRegistrarName =
+  "bindResidentLoopCapabilitiesForFactory";
+const mountedBinderRegistrarParameters = [
+  "wakeRuntime",
+  "binding",
+  "domainExecution"
+] as const;
 
 function mountedBinderOwnershipAnalysis(
   program: ts.Program,
@@ -466,7 +473,8 @@ function mountedBinderOwnershipAnalysis(
         identifier.parent.expression === identifier &&
         identifier.parent.questionDotToken === undefined &&
         identifier.parent.arguments.length === 3 &&
-        !identifier.parent.arguments.some(ts.isSpreadElement)
+        !identifier.parent.arguments.some(ts.isSpreadElement) &&
+        isInsideExactWakeRegistrar(identifier.parent, source.sourceFile)
       );
       if (references.length !== 1 || calls.length !== 1) {
         reject(exactImport.source.label);
@@ -503,6 +511,49 @@ function mountedBinderOwnershipAnalysis(
         }
       }
     }
+  }
+
+  function isInsideExactWakeRegistrar(
+    call: ts.CallExpression,
+    sourceFile: ts.SourceFile
+  ): boolean {
+    for (
+      let current: ts.Node | undefined = call.parent;
+      current !== undefined;
+      current = current.parent
+    ) {
+      if (!ts.isFunctionLike(current)) continue;
+      if (
+        !ts.isFunctionDeclaration(current) ||
+        current.parent !== sourceFile ||
+        current.name?.text !== mountedBinderRegistrarName ||
+        current.body === undefined ||
+        current.asteriskToken !== undefined
+      ) {
+        return false;
+      }
+      const modifiers = current.modifiers ?? [];
+      if (
+        !modifiers.some((modifier) =>
+          modifier.kind === ts.SyntaxKind.ExportKeyword
+        ) ||
+        modifiers.some((modifier) =>
+          modifier.kind === ts.SyntaxKind.DefaultKeyword
+        )
+      ) {
+        return false;
+      }
+      return current.parameters.length ===
+        mountedBinderRegistrarParameters.length &&
+        current.parameters.every((parameter, index) =>
+          ts.isIdentifier(parameter.name) &&
+          parameter.name.text === mountedBinderRegistrarParameters[index] &&
+          parameter.dotDotDotToken === undefined &&
+          parameter.questionToken === undefined &&
+          parameter.initializer === undefined
+        );
+    }
+    return false;
   }
 
   return {
@@ -928,9 +979,128 @@ describe("wake supervisor runtime import boundary", () => {
       import {
         bindMountedResidentLoopAuthorityForFactory
       } from "./mounted-wake-lifecycle-store.js";
-      bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+      export async function bindResidentLoopCapabilitiesForFactory(
+        wakeRuntime: unknown,
+        binding: unknown,
+        domainExecution: unknown
+      ) {
+        return bindMountedResidentLoopAuthorityForFactory(
+          wakeRuntime,
+          binding,
+          domainExecution
+        );
+      }
     `)).toEqual(exactBinderOwnership);
     for (const [name, text] of [
+      ["top-level call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(
+          wakeRuntime,
+          binding,
+          domainExecution
+        );
+      `],
+      ["wrong top-level helper", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function alternateConstruction(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          return bindMountedResidentLoopAuthorityForFactory(
+            wakeRuntime,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["nested function inside registrar", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          function construct() {
+            return bindMountedResidentLoopAuthorityForFactory(
+              wakeRuntime,
+              binding,
+              domainExecution
+            );
+          }
+          return construct();
+        }
+      `],
+      ["nested arrow inside registrar", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const construct = () =>
+            bindMountedResidentLoopAuthorityForFactory(
+              wakeRuntime,
+              binding,
+              domainExecution
+            );
+          return construct();
+        }
+      `],
+      ["identically named non-top-level declaration", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function outer() {
+          function bindResidentLoopCapabilitiesForFactory(
+            wakeRuntime: unknown,
+            binding: unknown,
+            domainExecution: unknown
+          ) {
+            return bindMountedResidentLoopAuthorityForFactory(
+              wakeRuntime,
+              binding,
+              domainExecution
+            );
+          }
+          return bindResidentLoopCapabilitiesForFactory;
+        }
+      `],
+      ["same-name wrapper route", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invokeMountedBinder(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          return bindMountedResidentLoopAuthorityForFactory(
+            wakeRuntime,
+            binding,
+            domainExecution
+          );
+        }
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          return invokeMountedBinder(
+            wakeRuntime,
+            binding,
+            domainExecution
+          );
+        }
+      `],
       ["unused import with shadowed parameter call", `
         import {
           bindMountedResidentLoopAuthorityForFactory
