@@ -40366,3 +40366,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1121 — Exact Task14 three-source GREEN admitted to fresh review
+
+- Recorded at: 2026-07-26T19:11:59Z
+- Exact Task14 source candidate
+  `f607eb3c0a8f9525a03882cd0e42e9174a4a4a58`, tree
+  `1536c913749a68fd9c8a21b4ca255417216a694d`, has sole parent exact E-1120
+  authority merge `c685cc1ff95e0620f0700a9777952ddcd955d9eb` and exact subject
+  `feat(local-runtime): issue mounted resident loop authority`.
+- It changes exactly the three E-1120-authorized sources:
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`
+  **+4 / -1** to blob
+  `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`;
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`
+  **+62 / -0** to blob
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`; and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
+  **+438 / -29** to blob
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`. No test, claim, design,
+  plan, contract, mission, dependency, route, provider, credential, release,
+  or unrelated byte changes.
+- Candidate author reports exact Task14 focused **94/94** and standalone
+  typecheck pass. Exact Task136 card is
+  **381 = 374 passed + seven preserved Task15-through-16 RED failures**.
+  Exact 37-file cross-boundary execution is
+  **1,040 = 1,033 passed + the same seven later RED failures**.
+- Loaders pass **7/7**, adapters **83/83**, released controls **443/443**,
+  relevant mounted/portable/ontology boundaries **44/44**, isolated
+  prerequisites **18/18**, FC-Core controls **2/2**, factory readiness,
+  mission **20/20**, V4 **20/20**, and exact markers
+  **29 / 20 / 29 / 15**.
+- Clean repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success.
+  Exact scope, test/import freezes, corrected-RED and all prior authority
+  ancestry, real dependencies, diff hygiene, connectivity, and clean state
+  pass.
+- Fresh serialized full candidate execution is exact
+  **3,370 = 3,313 passed + 52 failed + 5 pending**. Fresh default full is
+  **3,370 = 3,308 passed + 57 failed + 5 pending**. The five differences
+  are exactly the two admitted import-policy contention identities plus
+  three known prerequisite-checker load identities; loaders **7/7** and
+  prerequisites **18/18** pass isolated and serialized.
+- Exact-parent serialized differential is
+  `mapped=41 added=0 removed=0 retainedPending=5`: every one of the 41
+  integrated Task14 causal failures changes failed-to-passed only in the wake
+  supervisor, with no unrelated occurrence change. Immutable-baseline
+  differential is exact
+  `removed=8 mapped=14 addedPassed=126 retainedLaterRed=7`.
+- Advance only exact `f607eb3c` Task14 source candidate
+  `candidate -> reviewing`. Assign one completely fresh independent
+  read-only source reviewer who has never authored, reviewed, verified, or
+  analyzed the changed source bytes.
+- The reviewer must inspect the exact three-source diff against the approved
+  33-path design and Task14 plan. It must independently prove the private
+  one-shot exact composition-issued authority identity, copied-allocation
+  rejection before store I/O, same exact authenticated ledger/Core/P/H/G
+  identities, before/after currentness, complete prefix and suffix recovery,
+  exact reclaim categories, chronology/causation/actor/capability/readback
+  bindings, no fallback or activation, and at-most-once behavior. Structural,
+  first-seen, timing, allocation-order, call-stack, source-text, global, and
+  process-local heuristic acceptance are forbidden.
+- The reviewer must independently reproduce focused/card/37-file counts,
+  loader/adapter/released/relevant/prerequisite/FC-Core controls, typecheck,
+  factory, mission, V4, markers, repository first stop, exact scope and
+  freezes, ancestry, dependencies, serialized/default and RED-to-GREEN
+  differentials, diff, full/connectivity integrity, and final clean state.
+  Candidate author, corrected-RED authors/reviewers/analysts, amendment
+  reviewers, every earlier Task14 source author/reviewer/verifier/analyst,
+  and the coordinator are ineligible to approve. Changed bytes invalidate
+  review. The reviewer may not edit, commit, merge, substitute a SHA,
+  authorize Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact Task14 source review admission, not approval,
+  integration, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
