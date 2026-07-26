@@ -39237,3 +39237,115 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1107 — Task14 full mounted-authority GREEN authorized
+
+- Recorded at: 2026-07-26T14:29:29Z
+- E-1106 integrated exact independently approved corrected downstream RED
+  `757674afa466005e366c27cc51a606ddf2376a95` by program commit
+  `99070ed123479cd57858c31217ddf65b43d15ff5`. Exact history-preserving
+  Task136 authority merge
+  `24f922967d1db32423ecb6da5449bdef7f243369` has exact parents E-1104
+  review-authority merge
+  `92445547c7e9f32ee3385e9f38cc10eeb4fe5a21` and that E-1106 integrated
+  program authority. The complete causal Task14 RED is approved, recorded,
+  and integrated.
+- Authorize the smallest full Task14 GREEN correction in exactly
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting
+  from exact source-checkpoint blobs
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` and
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`. Freeze approved wake/mounted
+  tests `501b73efcf6efd93019ab7c655dc3219085db3d6` /
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, local/global import policies
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, and every other path.
+- Apply the approved Task136 design and Task14 plan exactly. Preserve the
+  non-barrel one-shot
+  `bindResidentLoopCapabilitiesForFactory(wakeRuntime, binding,
+  domainExecution)` boundary, the exact issued wake-runtime and Core/P/H
+  identities, the dispatcher WeakMap capability and package-owned opaque
+  port, the same authenticated ledger/store object, exact mounted
+  workspace/resident/task/attempt/run authority, private before/after-effect
+  currentness closures, and the wrapped trusted safe-ID closure. No caller,
+  wrapper, registrar, carrier, global, later input, report-store port, or
+  replaceable callback may obtain or substitute these authorities.
+- Complete W's opaque token state machine. Every currentness reverify
+  consumes the old token and accepts only the exact issued identity.
+  `current` requires unchanged mounted identity and the exact permitted
+  causal ledger advance. `recordable-stale` requires freshly authenticated
+  same workspace/ledger/lifecycle identity with changed authority and issues
+  only a single-use suspension capability. Lost or unauthenticated mounted
+  authority returns the exact safe non-durable unavailable envelope and
+  claims no durable event. Copied Core/P/H bindings, copied or foreign
+  tokens, competing release, terminal, generation, run, causation, owner,
+  target suffix, policy/lock/source/context drift, and unrelated authority
+  must fail at their named boundary without consuming a valid foreign token
+  or performing an effect.
+- Implement the exact monotone five-state target prefix:
+  **0** no checkpoint; **1** exact durable resident-loop-suspension
+  orchestration checkpoint; **2** checkpoint plus exact resident `S`;
+  **3** checkpoint plus `S` plus exact `R-resumable`; **4** checkpoint,
+  `S`, `R-resumable`, and exact durable `resident-loop-suspended` release.
+  Only `suspendAndRelease` may create state 1. Recovery accepts only states
+  1 through 4, appends/rereads only the missing suffix under exact
+  stream/global concurrency, never duplicates a semantic key, never releases
+  before exact `S -> R`, never trusts caller-provided future bytes, and never
+  performs or reperforms a tool effect.
+- Validate the complete target prefix at every state: exact stream,
+  chronology, causation, semantic keys, checkpoint/S/R/release IDs and
+  payloads, plan/observation readbacks, category, deadline, next safe action,
+  claim generation, authority binding, cumulative/delta budgets, and exact
+  append/readback deltas. Reject independently replaced, missing, skipped,
+  reordered, extra, or mutated S/R/release/checkpoint/result/deadline/action/
+  causation/semantic-key bytes. Ignore an independently valid foreign stream
+  in the same authenticated ledger while preserving byte-exact target
+  readback and at-most-once behavior.
+- Implement reclaim exactly. Four ordinary categories carry no gateway IDs.
+  Approval-required work accepts exactly one later, independent,
+  nonexpired, matching human decision and rejects absent, stale, expired,
+  self-authored, wrong-request, wrong-preview, duplicate, or multiple
+  decisions. Effect-outcome-unknown must independently use G's
+  logical-locator reread/validation seam on the exact package-owned G
+  identity, require the exact request/claim/capability/automatic-or-complete-
+  human-approval/binding/budget, and require receipt and terminal absence.
+  Reject independent locator, capability, approval, sole-claim request
+  binding, budget, receipt, and terminal mutations. Preserve the burned
+  request, reissue only the nonexecutable claimed stage, allow reconcile/
+  observe/replan only, and never continue or reexecute the effect.
+- After an eligible exact released prefix, append and reread one fresh claim
+  with exact next generation, release causation, owner, lease, selection, and
+  budget; issue a new opaque currentness token only after exact readback.
+  Canceled or terminal work may finish the suspension suffix but returns no
+  token and appends no new claim. Preserve complete no-append/no-release/
+  no-effect and at-most-once controls for every denied, failed, unavailable,
+  copied, hostile, or replay branch.
+- The starting focused signature is
+  **94 = 52 passed + 42 source-causal Task14 failures** with partition
+  **3 / 2 / 7 / 1 / 12 / 8 / 8 / 1**. GREEN must produce exact
+  **94/94** focused and Task136 card
+  **381 = 374 passed + 7 preserved Task15-through-16 RED failures**, with no
+  test, fixture, API, type, loader, analyzer, timeout, or unrelated failure.
+  Establish new exact serialized/default full and calibrated differential
+  signatures from execution; do not merely subtract from a prior report.
+- Reproduce loaders **7/7**, adapters **83/83**, released cross-boundary
+  **443/443**, relevant boundaries **44/44**, prerequisites **18/18**,
+  standalone typecheck, factory readiness, mission **20/20**, hardened V4
+  **20/20**, markers **29 / 20 / 29 / 15**, truthful repository
+  legacy-staging first stop with no success marker, exact two-source scope,
+  every freeze, ancestry, real dependencies, diff, full/connectivity
+  integrity, isolated config, serialized/default timeout variance, causal
+  RED-to-GREEN and immutable-baseline differentials, and clean state.
+- Commit one coherent exact two-source candidate with subject
+  `feat(local-runtime): issue mounted resident loop authority`. Admit only
+  its exact SHA to a completely fresh independent source reviewer. The
+  implementer, every test author/reviewer/verifier/analyst, every earlier
+  Task14 source author/reviewer, and the coordinator are ineligible to
+  approve changed source bytes. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact Task14 two-source GREEN authority, not a source
+  candidate or approval, Task14 integration, Task15 authority, product
+  candidacy, strict record 29, assurance-only transition, publication,
+  Wave 3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
