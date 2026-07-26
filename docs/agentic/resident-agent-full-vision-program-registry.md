@@ -37592,3 +37592,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1085 — Exact E-1084 reviewer dispatch corrected for bounded agent-slot transport
+
+- Recorded at: 2026-07-26T07:17:14Z
+- The attempted root-level dispatch of assigned E-1084 reviewer
+  `/root/task136_e1084_task14_evaluator_red_review` failed before creation
+  because the collaboration runtime's bounded root-child slot was already
+  occupied by completed preserved participants. No reviewer began, no
+  candidate byte was inspected through that assignment, and exact candidate
+  `f39732638a7ab455bf80a09432dccb8a856bedc7`, tree
+  `acb82c2de78a0abc183b6bfbc96a7ab3fc7a4cfb`, and blob
+  `4a177e1870a78f3a732bc9ae25edc8fc22a99f0a` remain unchanged.
+- Preserve E-1084 as valid review-admission history. Correct only the
+  mechanical dispatch path: completed prior reviewer
+  `/root/task136_e1082_task14_evaluator_red_review` may act solely as a
+  transport parent and must spawn, with no inherited turns, completely fresh
+  nested reviewer
+  `/root/task136_e1082_task14_evaluator_red_review/task136_e1084_task14_evaluator_red_review`.
+- The transport parent is ineligible to inspect, analyze, verify, influence,
+  or approve the E-1084 candidate. It may only transmit the exact committed
+  E-1084 assignment and then stop. The nested reviewer has never authored,
+  reviewed, verified, or analyzed any changed candidate byte and alone owns
+  the read-only verdict.
+- Every E-1084 exact-candidate binding, independence rule, adversarial review
+  requirement, full gate, hardened clone constraint, prohibition, and
+  success/failure condition remains unchanged. The nested reviewer must send
+  its evidence and final exact candidate-bound verdict directly to the
+  program coordinator.
+- Commit this event atomically on the program branch and forward-merge it
+  into the Task136 lineage with a history-preserving two-parent merge before
+  transport dispatch. Preserve every earlier candidate, reviewer, authority,
+  incident, recovery, design, plan, RED, GREEN, fixture, assurance, and
+  release commit.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is a mechanical reviewer-dispatch correction, not
+  candidate approval or rejection, test integration, source correction,
+  Task14 approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
