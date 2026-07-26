@@ -39039,3 +39039,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1104 — Exact one-claim Task14 binding RED admitted to fresh review
+
+- Recorded at: 2026-07-26T13:48:26Z
+- Exact corrected one-test candidate
+  `757674afa466005e366c27cc51a606ddf2376a95`, tree
+  `34d94f0d28d7e95bf31b1699390fda996a91dd41`, has sole parent exact E-1103
+  authority merge `600a83484694d89276e7e7b3fb333d33f13c91c1`
+  and exact subject
+  `test(local-runtime): isolate unknown binding mutation`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` by
+  **38 insertions / 33 deletions**, from rejected blob
+  `d4ba9688dec4f45e3175a883df1215c98ecb1dd1` to exact blob
+  `501b73efcf6efd93019ab7c655dc3219085db3d6`. Mounted test remains exact
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`; checkpoint sources remain
+  exact `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`; local/global import policies
+  remain exact `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`; every other path is
+  unchanged.
+- The binding-mutation fixture now appends exactly one schema-valid
+  `agent.resident-domain.execution-claimed.v1` event. The checkpoint's exact
+  `residentLoopSuspension.executionClaimEventId` names that sole claim.
+  Claim locator, execution-capability hash, complete human authorization
+  tuple, event context, and correlation remain exact, while only the claim's
+  `requestEventId` binds a different valid event ID from the checkpoint's
+  exact request. Explicit assertions prove one claim, exact ID linkage,
+  exact retained fields, and the independent request-binding mismatch before
+  W executes. No duplicate or original exact claim coexists.
+- Frozen W wrongly returns a current token for that sole-claim mismatch, so
+  the named row fails at its intended product expectation with no fixture,
+  schema, collection, API, type, import, analyzer, or unrelated failure.
+  Focused three-file execution is exact
+  **94 = 52 passed + 42 source-causal Task14 failures**, with unchanged
+  partition **3 / 2 / 7 / 1 / 12 / 8 / 8 / 1**.
+- Exact Task136 card is
+  **381 = 332 passed + 49 failed**, consisting only of the **42** Task14
+  source failures plus **7** preserved Task15-through-16 REDs. Frozen loaders
+  pass **7/7**; adapters **83/83**, released cross-boundary **443/443**,
+  relevant boundaries **44/44**, prerequisites **18/18**, standalone
+  typecheck, factory readiness, mission **20/20**, hardened V4 **20/20**,
+  and markers **29 / 20 / 29 / 15** pass.
+- Serialized full is exact
+  **3,370 = 3,271 passed + 94 failed + 5 pending**. Mandated-timeout default
+  full is exact
+  **3,370 = 3,269 passed + 96 failed + 5 pending**, with zero timeout
+  signatures and only the two admitted import-policy contention identities.
+  Rejected-candidate focused occurrence comparison retains all **94**
+  path/title/status occurrences with zero addition, removal, or status drift.
+  Immutable comparator remains
+  `removed=8 mapped=14 addedPassed=84 retainedLaterRed=49`.
+- Repository mode exits one after exact markers solely at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success
+  marker. Exact identity, scope, freezes, ancestry, dependencies, diff,
+  full/connectivity integrity, isolated config, and candidate/program clean
+  states pass.
+- Admit only exact `757674af` as corrected Task14 downstream test-only RED
+  `candidate -> reviewing`. Assign a completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed the new
+  changed blob.
+- The reviewer must inspect the entire **38 insertion / 33 deletion** diff
+  and retained fixture context; independently prove the binding row has
+  exactly one schema-valid checkpoint-referenced claim, independently
+  mismatches only the request binding, and reaches frozen W's missing
+  complete-binding validation rather than multiplicity or an earlier
+  boundary. It must also revalidate every retained corrected pre-Core,
+  states 0 through 4, direct hostile-prefix, same-ledger foreign-stream,
+  approval, unknown/G, currentness, construction, budget, no-append/
+  no-release/no-effect, chronology, token, category, and at-most-once case.
+- The reviewer must reproduce exact candidate identity/scope/blobs/freezes/
+  ancestry/dependencies/diff/integrity/config/clean state; focused/card/
+  loaders/boundaries/typecheck/factory/mission/hardened V4/markers/truthful
+  first stop; serialized/default zero-timeout variance; rejected-candidate
+  and immutable differentials.
+- The candidate author, E-1102 reviewer, every prior Task14 test/source
+  author, reviewer, verifier, and analyst, and the coordinator are ineligible
+  to approve. The fresh reviewer may not edit, commit, merge, authorize
+  source correction or Task15, substitute a SHA, or make prefix, record-29,
+  release, or Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact corrected RED review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
