@@ -3181,27 +3181,12 @@ function residentFactoryIssuerAnalysis(
         ((operand & (staticFalsy | staticNullish)) !== 0 ? staticTruthy : 0)
       );
     }
-    const prefixOperand = ts.isPrefixUnaryExpression(value)
-      ? unwrapRegistrarExpression(value.operand)
-      : undefined;
-    if (
-      ts.isPrefixUnaryExpression(value) &&
-      prefixOperand !== undefined &&
-      ts.isNumericLiteral(prefixOperand)
-    ) {
-      const operand = Number(prefixOperand.text);
-      const result = value.operator === ts.SyntaxKind.PlusToken
-        ? operand
-        : value.operator === ts.SyntaxKind.MinusToken
-          ? -operand
-          : value.operator === ts.SyntaxKind.TildeToken
-            ? ~operand
-            : undefined;
-      if (result !== undefined) {
-        return result === 0 || Number.isNaN(result)
-          ? staticFalsy
-          : staticTruthy;
-      }
+    const numericResult = staticNumericResult(value);
+    if (numericResult !== undefined) {
+      const isFalsy = typeof numericResult === "bigint"
+        ? numericResult === 0n
+        : numericResult === 0 || Number.isNaN(numericResult);
+      return isFalsy ? staticFalsy : staticTruthy;
     }
     if (
       ts.isPrefixUnaryExpression(value) ||
@@ -3257,6 +3242,29 @@ function residentFactoryIssuerAnalysis(
       }
     }
     return staticUnknown;
+  }
+
+  function staticNumericResult(
+    expression: ts.Expression
+  ): number | bigint | undefined {
+    const value = unwrapRegistrarExpression(expression);
+    if (ts.isNumericLiteral(value)) return Number(value.text);
+    if (ts.isBigIntLiteral(value)) {
+      return BigInt(value.text.slice(0, -1));
+    }
+    if (!ts.isPrefixUnaryExpression(value)) return undefined;
+    const operand = staticNumericResult(value.operand);
+    if (operand === undefined) return undefined;
+    if (value.operator === ts.SyntaxKind.PlusToken) {
+      return typeof operand === "number" ? +operand : undefined;
+    }
+    if (value.operator === ts.SyntaxKind.MinusToken) {
+      return typeof operand === "bigint" ? -operand : -operand;
+    }
+    if (value.operator === ts.SyntaxKind.TildeToken) {
+      return typeof operand === "bigint" ? ~operand : ~operand;
+    }
+    return undefined;
   }
 
   function localConstInitializer(
@@ -3367,8 +3375,7 @@ function residentFactoryIssuerAnalysis(
       ts.isAsExpression(current) ||
       ts.isTypeAssertionExpression(current) ||
       ts.isNonNullExpression(current) ||
-      ts.isSatisfiesExpression(current) ||
-      ts.isAwaitExpression(current)
+      ts.isSatisfiesExpression(current)
     ) {
       current = current.expression;
     }
@@ -3774,6 +3781,48 @@ describe("wake supervisor runtime import boundary", () => {
              await registerResidentLoopFactoryAuthorityReadback;`
       ],
       [
+        "exported awaited false-thenable logical-or result",
+        `${exactComposition}
+         const falseThenable = {
+           then(resolve: (value: false) => unknown) {
+             resolve(false);
+           }
+         };
+         export const exposedRegistrar =
+           (await falseThenable) ||
+             registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported awaited null-thenable nullish result",
+        `${exactComposition}
+         const nullThenable = {
+           then(resolve: (value: null) => unknown) {
+             resolve(null);
+           }
+         };
+         export const exposedRegistrar =
+           (await nullThenable) ??
+             registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported awaited undefined-property default",
+        `${exactComposition}
+         const undefinedThenable = {
+           exposedRegistrar: Object.freeze({}),
+           then(
+             resolve: (
+               value: { exposedRegistrar: undefined }
+             ) => unknown
+           ) {
+             resolve({ exposedRegistrar: undefined });
+           }
+         };
+         export const {
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         } = await undefinedThenable;`
+      ],
+      [
         "exported comma-expression alias binding",
         `${exactComposition}
          export const exposedRegistrar = (
@@ -3846,6 +3895,10 @@ describe("wake supervisor runtime import boundary", () => {
       export const discardedNegativeLogicalOr = -1 ||
         registerResidentLoopFactoryAuthorityReadback;
       export const discardedNegativeZeroLogicalAnd = -0 &&
+        registerResidentLoopFactoryAuthorityReadback;
+      export const discardedNestedBitwiseLogicalAnd = ~-1 &&
+        registerResidentLoopFactoryAuthorityReadback;
+      export const discardedNegativeBigIntLogicalOr = -1n ||
         registerResidentLoopFactoryAuthorityReadback;
       export const unrelatedCommaResult = (
         registerResidentLoopFactoryAuthorityReadback,
