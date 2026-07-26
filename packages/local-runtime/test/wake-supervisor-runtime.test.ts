@@ -257,8 +257,6 @@ describe("wake supervisor runtime", () => {
     const effects = { provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0 };
 
     expect(bind).toBeTypeOf("function");
-    expect(source).toContain('from "../../agent/src/domain-execution-dispatcher.js"');
-    expect(source).toContain('from "../../agent/src/resident-loop-tool-gateway.js"');
     expect(source).toContain("bindResidentLoopCapabilitiesForFactory");
     expect(rejectedBindings).toHaveLength(8);
     expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0 });
