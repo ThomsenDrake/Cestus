@@ -2783,8 +2783,8 @@ function residentFactoryIssuerAnalysis(
           ts.isVariableStatement(statement) &&
           hasExportModifier(statement) &&
           statement.declarationList.declarations.some((declaration) =>
-            declaration.initializer !== undefined &&
-            expressionResolvesToRegistrar(
+            bindingNameResolvesToRegistrar(
+              declaration.name,
               declaration.initializer,
               new Set()
             )
@@ -2825,10 +2825,155 @@ function residentFactoryIssuerAnalysis(
       }
     }
     return (symbol.declarations ?? []).some((declaration) =>
-      ts.isVariableDeclaration(declaration) &&
-      declaration.initializer !== undefined &&
-      expressionResolvesToRegistrar(declaration.initializer, resolving)
+      (
+        ts.isVariableDeclaration(declaration) &&
+        bindingNameResolvesToRegistrar(
+          declaration.name,
+          declaration.initializer,
+          resolving
+        )
+      ) ||
+      (
+        ts.isBindingElement(declaration) &&
+        bindingElementResolvesToRegistrar(declaration, resolving)
+      )
     );
+  }
+
+  function bindingNameResolvesToRegistrar(
+    name: ts.BindingName,
+    initializer: ts.Expression | undefined,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (ts.isIdentifier(name)) {
+      return initializer !== undefined &&
+        expressionResolvesToRegistrar(initializer, resolving);
+    }
+    return name.elements.some((element) =>
+      ts.isBindingElement(element) &&
+      bindingElementResolvesToRegistrar(
+        element,
+        resolving,
+        initializer
+      )
+    );
+  }
+
+  function bindingElementResolvesToRegistrar(
+    element: ts.BindingElement,
+    resolving: Set<ts.Symbol>,
+    containingInitializer = bindingPatternInitializer(
+      element.parent,
+      resolving
+    )
+  ): boolean {
+    const selected = selectedBindingInitializer(
+      element,
+      containingInitializer,
+      resolving
+    );
+    if (
+      selected !== undefined &&
+      bindingNameResolvesToRegistrar(element.name, selected, resolving)
+    ) {
+      return true;
+    }
+    return selected === undefined &&
+      element.initializer !== undefined &&
+      bindingNameResolvesToRegistrar(
+        element.name,
+        element.initializer,
+        resolving
+      );
+  }
+
+  function bindingPatternInitializer(
+    pattern: ts.ArrayBindingPattern | ts.ObjectBindingPattern,
+    resolving: Set<ts.Symbol>
+  ): ts.Expression | undefined {
+    const parent = pattern.parent;
+    if (ts.isVariableDeclaration(parent)) return parent.initializer;
+    if (ts.isBindingElement(parent)) {
+      return selectedBindingInitializer(
+        parent,
+        bindingPatternInitializer(parent.parent, resolving),
+        resolving
+      );
+    }
+    return undefined;
+  }
+
+  function selectedBindingInitializer(
+    element: ts.BindingElement,
+    initializer: ts.Expression | undefined,
+    resolving: Set<ts.Symbol>
+  ): ts.Expression | undefined {
+    if (initializer === undefined) return undefined;
+    let value = unwrapRegistrarExpression(initializer);
+    if (ts.isIdentifier(value)) {
+      const symbol = checker.getSymbolAtLocation(value);
+      if (symbol !== undefined && !resolving.has(symbol)) {
+        resolving.add(symbol);
+        const declaration = (symbol.declarations ?? []).find(
+          (candidate): candidate is ts.VariableDeclaration =>
+            ts.isVariableDeclaration(candidate) &&
+            candidate.initializer !== undefined
+        );
+        if (declaration?.initializer !== undefined) {
+          value = unwrapRegistrarExpression(declaration.initializer);
+        }
+      }
+    }
+    if (
+      ts.isObjectBindingPattern(element.parent) &&
+      ts.isObjectLiteralExpression(value)
+    ) {
+      const selectedName = bindingPropertyName(
+        element.propertyName ?? element.name
+      );
+      if (selectedName === undefined) return undefined;
+      for (const property of value.properties) {
+        if (
+          ts.isPropertyAssignment(property) &&
+          bindingPropertyName(property.name) === selectedName
+        ) {
+          return property.initializer;
+        }
+        if (
+          ts.isShorthandPropertyAssignment(property) &&
+          property.name.text === selectedName
+        ) {
+          return property.objectAssignmentInitializer ?? property.name;
+        }
+      }
+      return undefined;
+    }
+    if (
+      ts.isArrayBindingPattern(element.parent) &&
+      ts.isArrayLiteralExpression(value)
+    ) {
+      const index = element.parent.elements.indexOf(element);
+      const selected = value.elements[index];
+      return selected !== undefined &&
+          !ts.isOmittedExpression(selected) &&
+          !ts.isSpreadElement(selected)
+        ? selected
+        : undefined;
+    }
+    return undefined;
+  }
+
+  function bindingPropertyName(
+    name: ts.BindingName | ts.PropertyName
+  ): string | undefined {
+    if (
+      ts.isIdentifier(name) ||
+      ts.isStringLiteral(name) ||
+      ts.isNumericLiteral(name)
+    ) {
+      return name.text;
+    }
+    return undefined;
   }
 
   function expressionResolvesToRegistrar(
@@ -2849,7 +2994,45 @@ function residentFactoryIssuerAnalysis(
     ) {
       return expressionResolvesToRegistrar(expression.expression, resolving);
     }
+    if (ts.isConditionalExpression(expression)) {
+      return expressionResolvesToRegistrar(expression.whenTrue, resolving) ||
+        expressionResolvesToRegistrar(expression.whenFalse, resolving);
+    }
+    if (
+      ts.isBinaryExpression(expression) &&
+      expression.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return expressionResolvesToRegistrar(expression.right, resolving);
+    }
+    if (
+      ts.isCallExpression(expression) &&
+      expression.questionDotToken === undefined &&
+      ts.isPropertyAccessExpression(expression.expression) &&
+      expression.expression.questionDotToken === undefined &&
+      expression.expression.name.text === "bind"
+    ) {
+      return expressionResolvesToRegistrar(
+        expression.expression.expression,
+        resolving
+      );
+    }
     return false;
+  }
+
+  function unwrapRegistrarExpression(
+    expression: ts.Expression
+  ): ts.Expression {
+    let current = expression;
+    while (
+      ts.isParenthesizedExpression(current) ||
+      ts.isAsExpression(current) ||
+      ts.isTypeAssertionExpression(current) ||
+      ts.isNonNullExpression(current) ||
+      ts.isSatisfiesExpression(current)
+    ) {
+      current = current.expression;
+    }
+    return current;
   }
 
   function hasExactRegistrarSignature(
@@ -3101,6 +3284,45 @@ describe("wake supervisor runtime import boundary", () => {
         `${exactComposition}
          export const exposedRegistrar =
            registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported object-destructured alias binding",
+        `${exactComposition}
+         const registrarCarrier = {
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };
+         export const { exposedRegistrar } = registrarCarrier;`
+      ],
+      [
+        "exported array-destructured alias binding",
+        `${exactComposition}
+         const registrarCarrier = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ];
+         export const [, exposedRegistrar] = registrarCarrier;`
+      ],
+      [
+        "exported bound-callable alias binding",
+        `${exactComposition}
+         export const exposedRegistrar =
+           registerResidentLoopFactoryAuthorityReadback.bind(undefined);`
+      ],
+      [
+        "exported conditional-expression alias binding",
+        `${exactComposition}
+         export const exposedRegistrar = true
+           ? registerResidentLoopFactoryAuthorityReadback
+           : registerResidentLoopFactoryAuthorityReadback;`
+      ],
+      [
+        "exported comma-expression alias binding",
+        `${exactComposition}
+         export const exposedRegistrar = (
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         );`
       ]
     ] as const) {
       expect.soft(
@@ -3114,6 +3336,25 @@ describe("wake supervisor runtime import boundary", () => {
         unrelatedLocalExport as registerResidentLoopFactoryAuthorityReadback
       };
       export const unrelatedExportedBinding = () => undefined;
+      const unrelatedObjectCarrier = {
+        selectedUnrelated: unrelatedLocalExport,
+        discardedRegistrar: registerResidentLoopFactoryAuthorityReadback
+      };
+      export const { selectedUnrelated } = unrelatedObjectCarrier;
+      const unrelatedArrayCarrier = [
+        registerResidentLoopFactoryAuthorityReadback,
+        unrelatedLocalExport
+      ];
+      export const [, selectedArrayUnrelated] = unrelatedArrayCarrier;
+      export const unrelatedBoundCallable =
+        unrelatedExportedBinding.bind(undefined);
+      export const unrelatedConditional = true
+        ? unrelatedLocalExport
+        : unrelatedExportedBinding;
+      export const unrelatedCommaResult = (
+        registerResidentLoopFactoryAuthorityReadback,
+        unrelatedLocalExport
+      );
     `).violations).toEqual([]);
 
     for (const [name, source, extras] of [
