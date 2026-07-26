@@ -37157,3 +37157,107 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1081 — Exact Task14 complete-evaluator loader RED rejected; five-gap forward correction authorized
+
+- Recorded at: 2026-07-26T05:42:21Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1080_task14_complete_evaluator_red_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `7c94b80cd720051fbca37d2e317e2aa875f1b78b`, tree
+  `df56fa462f382d1924bad4936464ff0166c34df9`, changed test blob
+  `280508424ccb35f4b36124cb66393f8d29c07360`, and no other candidate.
+  Review began beneath exact clean E-1080 authority merge
+  `92d0b04a096b90ef27fbe87cc616f9c954989b79`.
+- Five independent TypeScript/runtime-backed evaluator defects block
+  approval. The candidate skips a nested array-rest binding target and its
+  default; treats an object-literal getter read by destructuring as unknown
+  without evaluating its body; discards a computed property-name expression
+  in a binding pattern; misses an exact literal function returned by a
+  recognized immediate literal call and then used as a constructor; and
+  misses the corresponding returned-literal template-tag chain.
+- One isolated adversarial probe transpiled with zero diagnostics and proved
+  exact runtime read counts `[1,1,1,1,1]`, while the candidate falsely
+  accepted all five snippets as exact binder ownership. This is causal
+  executable evidence, not a stylistic objection or speculative expansion.
+  Renamed bindings, sparse apply mapping, bound-before-call argument
+  concatenation, and the previously approved generator/default behavior
+  remain valid and must be preserved.
+- Exact independent gate receipts remain typecheck pass; focused
+  **34 = 32 passed + 2 causal failures**; loaders
+  **7 = 5 passed + 2 causal failures**; Task136 card
+  **321 = 311 passed + 10 failures** with the exact authorized title
+  occurrence set; adapters **83/83**; cross-boundary **443/443**; relevant
+  mounted/portable/ontology boundaries **44/44**; isolated prerequisites
+  **18/18**; factory readiness; mission **20/20**; isolated exact-candidate
+  V4 **20/20**; and markers **29 / 20 / 29 / 15**.
+- Repository mode exits one after the markers and truthfully stops only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`;
+  no prefix, closure, record-29, or release marker is emitted. Serialized
+  full is **3,310 = 3,250 passed + 55 failed + 5 pending** with the exact
+  authorized non-pass occurrence set and zero actual timeout signatures.
+  Default full is the calibrated
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, differing from serialized
+  only by the three prerequisite-checker occurrences and again containing
+  zero actual timeout signatures. Calibrated comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact parent, tree, subject, one-test scope, blob freezes, rejected and
+  incident ancestry, dependencies, connectivity, `diff --check`, real
+  Vitest **4.1.9**, real TypeScript **5.9.3**, config isolation, and final
+  clean state pass. The isolated clone and both real worktrees remained
+  clean with no `core.worktree`, `include`, or `includeIf` configuration.
+- Reject exact `7c94b80c`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it, exact rejected
+  `e47edf1e`, accidental fixture commit `989531c5`, incident-recovery merge
+  `45cb7f19`, and every earlier rejected candidate, blob, review, receipt,
+  authority, design, plan, RED, GREEN, fixture, assurance, and release commit
+  in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `280508424ccb35f4b36124cb66393f8d29c07360`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, Task14 wake source at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185`, mounted-store source at
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- Traverse nested rest binding targets and their defaults without executing
+  deferred body code or double-counting. Evaluate computed binding-property
+  name expressions at their real parameter-binding time. When exact object
+  destructuring reads an exact literal getter, evaluate the getter's exact
+  immediate body/return semantics while rejecting setters and unresolved
+  accessors conservatively. Permit an exact returned literal from the
+  already bounded call/call-apply/bind resolver to feed `new` and tagged
+  template execution, without broadening beyond exact literal functions or
+  following arbitrary runtime values.
+- Add five independent negative controls matching the review probes, each
+  with TypeScript diagnostics empty and runtime read count exactly one:
+  nested array-rest default, object-literal getter, computed binding-property
+  name, returned-literal constructor, and returned-literal tag. Add matching
+  non-executing or deferred positives where necessary to prove the bounded
+  termination rule. Preserve the complete cumulative E-1065 through E-1080
+  table, realistic registrar acceptance, all eight E-1079 runtime controls,
+  shadowed/global undefined provenance, null/absent/sparse apply behavior,
+  recursive destructuring, call/apply/bind ordering, constructor/tag chains,
+  optional and wrapped invocation, generator and async timing, and exact
+  literal-only termination.
+- Against frozen sources retain exact focused **32+2**, loaders **5+2**,
+  card **311+10**, and the exact RED-title set. Reproduce standalone
+  typecheck, adapters **83/83**, cross **443/443**, relevant **44/44**,
+  prerequisites **18/18**, factory, mission, isolated V4, markers, truthful
+  repository first stop, serialized/default full occurrence sets, zero
+  timeout variance, calibrated differential, one-test scope, freezes,
+  ancestry including `989531c5`, dependencies, connectivity, diff, config,
+  and clean state. Any Git-mutating fixture verification must use a real
+  isolated clone/worktree with inherited repository-level Git environment
+  and config disabled.
+- Commit one exact corrected test-only candidate and admit only that SHA to
+  a completely fresh independent read-only reviewer. No author, reviewer,
+  verifier, analyst, or coordinator who inspected any changed byte may
+  approve it; changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact rejection and one-test forward-correction
+  authority, not test approval or integration, source correction, Task14
+  approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
