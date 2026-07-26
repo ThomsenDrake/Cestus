@@ -37682,3 +37682,146 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1087 — Exact Task14 nine-gap evaluator loader RED rejected; finite semantic correction authorized
+
+- Recorded at: 2026-07-26T07:44:57Z
+- Completely fresh changed-byte reviewer
+  `/root/task136_e1058_task14_red_correction`, assigned by E-1086, returns
+  **NEEDS CHANGES** for exact candidate
+  `f39732638a7ab455bf80a09432dccb8a856bedc7`, tree
+  `acb82c2de78a0abc183b6bfbc96a7ab3fc7a4cfb`, changed test blob
+  `4a177e1870a78f3a732bc9ae25edc8fc22a99f0a`, and no other candidate.
+  Review began beneath exact clean E-1086 authority merge
+  `fb64e12d585b09f51e768aaa1e90a5375c8976a2`.
+- One initial semantic-analysis turn was stopped by a false cybersecurity
+  classifier before any command or repository change. The same reviewer
+  resumed under ordinary local TypeScript/test-oracle wording, preserved the
+  exact candidate binding, and completed the review. This interruption is
+  not a candidate verdict or gate result.
+- The finite confirmed defect list is locked at thirteen false accepts,
+  four false rejects, and one private-state provenance failure. No additional
+  variant is authorized implicitly.
+- For each false accept FA1 through FA13, TypeScript diagnostics are empty,
+  runtime performs exactly one state read, and the analyzer returns the exact
+  accepted ownership tuple with one three-argument mounted binder call and
+  no violation:
+  1. a computed unary missing key;
+  2. a computed template-expression missing key;
+  3. an empty spread call that activates a parameter default;
+  4. a locally declared literal function invoked inside an immediate
+     literal function;
+  5. a literal generator body advanced once through `.next()`;
+  6. an array-like `.apply` argument whose indexed getter reads state;
+  7. a bound `this` getter read;
+  8. a missing-property default over an exact harmless object spread;
+  9. same-key getter-then-setter descriptor merging where the runtime read
+     retains and invokes the getter;
+  10. object-rest copying of a getter property;
+  11. nested destructuring/default from a method-valued property;
+  12. double-bound literal function invocation; and
+  13. an inherited exact `__proto__` getter selected by destructuring.
+- For each false reject FR1 through FR4, TypeScript diagnostics are empty,
+  runtime performs zero state reads, and the analyzer rejects with alternate
+  mounted-binder ownership:
+  1. a selected getter with an unreachable `if (false)` read;
+  2. an immediate literal function with a read after unconditional return;
+  3. positional spread arguments that supply both parameters and keep the
+     second default deferred; and
+  4. optional-call short-circuit that skips a read-bearing argument.
+- Separate provenance defect P1 accepts a private
+  `residentWakeRuntimeStates.set(wakeRuntime, ...)` mutation immediately
+  before the canonical private-map read. Diagnostics are empty, no analyzer
+  violation is emitted, and runtime observes the foreign replacement state.
+  Exact private-map source/receiver/key/value provenance must not be writable
+  or substitutable before the canonical read.
+- Exact independent deterministic evidence remains typecheck and factory
+  pass; mission **20/20**; focused
+  **34 = 32 passed + 2 causal failures**; loaders
+  **7 = 5 passed + 2 causal failures**; Task136 card
+  **321 = 311 passed + 10 failures** with the exact authorized title set;
+  adapters **83/83**; cross-boundary **443/443**; relevant boundaries
+  **44/44**; and isolated prerequisites **18/18**.
+- A fresh real clone detached at the exact candidate/tree, with inherited
+  repository Git variables unset and system/global config disabled, passes
+  V4 **20/20**, markers **29 / 20 / 29 / 15**, both repository integrity
+  checks, connectivity, config isolation, and clean state. Repository mode
+  exits one after the markers and truthfully stops only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`;
+  no success, prefix, closure, record-29, repository, or release marker is
+  emitted.
+- Authority-exact uncontended serialized full is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with zero actual timeout
+  signatures. Default full is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, differing only by the
+  three prerequisite-checker identities and again containing zero actual
+  timeout signatures. Comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact candidate/tree/parent/subject, one-test scope and diff, blobs,
+  freezes, rejected and incident ancestry, dependencies, real Vitest
+  **4.1.9**, real TypeScript **5.9.3**, connectivity, `diff --check`,
+  isolated config, both `fsck` modes, and final candidate/authority clean
+  states pass.
+- Reject exact `f3973263`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it, rejected
+  `0737bf60`, `7c94b80c`, and `e47edf1e`, accidental fixture commit
+  `989531c5`, incident-recovery merge `45cb7f19`, both dispatch refusals,
+  and every earlier candidate, blob, review, receipt, authority, design,
+  plan, RED, GREEN, fixture, assurance, and release commit in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `4a177e1870a78f3a732bc9ae25edc8fc22a99f0a`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, Task14 wake source at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185`, mounted-store source at
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- Add one independent diagnostics/runtime/analyzer control for each exact
+  FA1–FA13, FR1–FR4, and P1 case before changing the helper. Preserve each
+  exact tuple: false accepts must reproduce one runtime read plus analyzer
+  acceptance; false rejects must reproduce zero runtime reads plus analyzer
+  rejection; P1 must reproduce the foreign private-state read. Turn only
+  those controls green.
+- Extend the bounded evaluator with exact, terminating semantics for:
+  constant unary and template property keys; exact spread-call argument
+  expansion; immediate local literal declarations/calls; one explicitly
+  recognized generator `.next()` advancement; exact array-like `.apply`
+  indexed reads; bound `this`; exact object spread and object rest;
+  accessor-descriptor merging; method-valued nested bindings; repeated
+  `.bind`; exact literal `__proto__` inheritance; unreachable constant-false
+  branches, unconditional-return termination, supplied positional spread
+  defaults, and optional-call short-circuit.
+- Add a private-state provenance interlock that rejects any write,
+  replacement, alias, or foreign value flow to the package-owned
+  `residentWakeRuntimeStates` binding/receiver or its canonical
+  `wakeRuntime` key before the one approved read. Do not treat a receipt,
+  fixture declaration, identifier spelling, or user-authored alias as its
+  own oracle.
+- Keep the implementation exact-literal-only and fail closed for unsupported
+  dynamic control flow. Use explicit recursion/cycle bounds and exact
+  one-time operand evaluation; do not build or authorize a general
+  JavaScript interpreter. Preserve all E-1065 through E-1084 controls,
+  realistic registrar acceptance, generator body deferral except the exact
+  `.next()` case, async timing, undefined provenance, null/absent/sparse
+  apply, recursive binding, getter/setter deferral, optional/wrapped
+  invocation, argument order, double-traversal prevention, and termination.
+- Against frozen sources retain exact focused **32+2**, loaders **5+2**,
+  card **311+10**, and the exact RED-title occurrence set. Reproduce
+  standalone typecheck, adapters **83/83**, cross **443/443**, relevant
+  **44/44**, prerequisites **18/18**, factory, mission, exact-candidate
+  isolated V4, markers, truthful repository first stop, authority-exact
+  serialized/default full occurrence sets, zero timeout variance, calibrated
+  differential, one-test scope, freezes, all rejected/incident ancestry,
+  dependencies, connectivity, diff, isolated config, both repository
+  integrity checks, and clean state.
+- Commit one exact corrected test-only candidate and admit only that SHA to
+  a completely fresh independent read-only reviewer who has never authored,
+  reviewed, verified, or analyzed the corrected bytes. Changed bytes
+  invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact rejection and one-test forward-correction
+  authority, not test approval or integration, source correction, Task14
+  approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
