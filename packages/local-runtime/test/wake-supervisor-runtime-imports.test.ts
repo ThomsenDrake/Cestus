@@ -666,23 +666,11 @@ function mountedBinderOwnershipAnalysis(
       ) {
         stateDeclarations.push(node);
       }
-      if (outerEvaluated && ts.isCallExpression(node)) {
-        const invoked = directlyInvokedFunction(node);
-        if (invoked !== undefined) {
-          for (const argument of node.arguments) {
-            visitRegistrarStateReads(argument, true);
-          }
-          invoked.parameters.forEach((parameter, index) => {
-            if (
-              parameter.initializer !== undefined &&
-              callArgumentUsesDefault(node.arguments[index])
-            ) {
-              visitRegistrarStateReads(parameter.initializer, true);
-            }
-          });
-          visitRegistrarStateReads(invoked.body, true);
-          return;
-        }
+      if (
+        outerEvaluated &&
+        visitImmediateLiteralExecution(node)
+      ) {
+        return;
       }
       ts.forEachChild(node, (child) =>
         visitRegistrarStateReads(child, outerEvaluated)
@@ -723,11 +711,216 @@ function mountedBinderOwnershipAnalysis(
         visitRegistrarStateReads(decorator.expression, true);
       }
     }
-    function directlyInvokedFunction(
+    type LiteralFunction =
+      | ts.ArrowFunction
+      | ts.FunctionExpression;
+    type InvocationArgument = ts.Expression | null | undefined;
+    interface ImmediateCallResult {
+      readonly returnedFunction?: LiteralFunction;
+    }
+    function visitImmediateLiteralExecution(node: ts.Node): boolean {
+      if (ts.isCallExpression(node)) {
+        return executeImmediateLiteralCall(node) !== undefined;
+      }
+      if (ts.isNewExpression(node)) {
+        const invoked = literalFunctionValue(node.expression);
+        if (
+          invoked === undefined ||
+          !ts.isFunctionExpression(invoked) ||
+          !isConstructableLiteralFunction(invoked)
+        ) {
+          return false;
+        }
+        const arguments_ = node.arguments ?? [];
+        visitInvocationArguments(arguments_);
+        visitLiteralInvocation(invoked, arguments_);
+        return true;
+      }
+      if (ts.isTaggedTemplateExpression(node)) {
+        const invoked = literalFunctionValue(node.tag);
+        if (invoked === undefined) return false;
+        const substitutions = ts.isTemplateExpression(node.template)
+          ? node.template.templateSpans.map((span) => span.expression)
+          : [];
+        visitInvocationArguments(substitutions);
+        visitLiteralInvocation(invoked, [null, ...substitutions]);
+        return true;
+      }
+      return false;
+    }
+    function executeImmediateLiteralCall(
       call: ts.CallExpression
-    ): ts.ArrowFunction | ts.FunctionExpression | undefined {
-      if (call.questionDotToken !== undefined) return undefined;
-      let expression: ts.Expression = call.expression;
+    ): ImmediateCallResult | undefined {
+      const expression = unwrapLiteralExpression(call.expression);
+      const directlyInvoked = literalFunctionValue(expression);
+      if (directlyInvoked !== undefined) {
+        visitInvocationArguments(call.arguments);
+        visitLiteralInvocation(directlyInvoked, call.arguments);
+        return {
+          returnedFunction: exactReturnedLiteralFunction(directlyInvoked)
+        };
+      }
+      if (ts.isCallExpression(expression)) {
+        const bound = exactLiteralBind(expression);
+        if (bound !== undefined) {
+          visitInvocationArguments(expression.arguments);
+          visitInvocationArguments(call.arguments);
+          visitLiteralInvocation(bound.functionValue, [
+            ...bound.boundArguments,
+            ...call.arguments
+          ]);
+          return {
+            returnedFunction:
+              exactReturnedLiteralFunction(bound.functionValue)
+          };
+        }
+        const priorInvocation = executeImmediateLiteralCall(expression);
+        if (priorInvocation === undefined) return undefined;
+        visitInvocationArguments(call.arguments);
+        if (priorInvocation.returnedFunction === undefined) {
+          return {};
+        }
+        visitLiteralInvocation(
+          priorInvocation.returnedFunction,
+          call.arguments
+        );
+        return {
+          returnedFunction: exactReturnedLiteralFunction(
+            priorInvocation.returnedFunction
+          )
+        };
+      }
+      if (
+        ts.isPropertyAccessExpression(expression) &&
+        (
+          expression.name.text === "call" ||
+          expression.name.text === "apply"
+        )
+      ) {
+        const invoked = literalFunctionValue(expression.expression);
+        if (invoked === undefined) return undefined;
+        const invocationArguments =
+          expression.name.text === "call"
+            ? [...call.arguments.slice(1)]
+            : exactApplyArguments(call.arguments);
+        if (invocationArguments === undefined) return undefined;
+        visitInvocationArguments(call.arguments);
+        visitLiteralInvocation(invoked, invocationArguments);
+        return {
+          returnedFunction: exactReturnedLiteralFunction(invoked)
+        };
+      }
+      return undefined;
+    }
+    function exactLiteralBind(call: ts.CallExpression): {
+      readonly boundArguments: readonly ts.Expression[];
+      readonly functionValue: LiteralFunction;
+    } | undefined {
+      const expression = unwrapLiteralExpression(call.expression);
+      if (
+        !ts.isPropertyAccessExpression(expression) ||
+        expression.name.text !== "bind"
+      ) {
+        return undefined;
+      }
+      const functionValue = literalFunctionValue(expression.expression);
+      return functionValue === undefined
+        ? undefined
+        : {
+            boundArguments: call.arguments.slice(1),
+            functionValue
+          };
+    }
+    function exactApplyArguments(
+      callArguments: readonly ts.Expression[]
+    ): readonly InvocationArgument[] | undefined {
+      const applyArguments = callArguments[1];
+      if (
+        applyArguments === undefined ||
+        callArgumentUsesDefault(applyArguments)
+      ) {
+        return [];
+      }
+      const array = unwrapLiteralExpression(applyArguments);
+      if (
+        !ts.isArrayLiteralExpression(array) ||
+        array.elements.some(ts.isSpreadElement)
+      ) {
+        return undefined;
+      }
+      return array.elements.map((element) =>
+        ts.isOmittedExpression(element) ? undefined : element
+      );
+    }
+    function visitInvocationArguments(
+      arguments_: readonly ts.Expression[]
+    ): void {
+      for (const argument of arguments_) {
+        visitRegistrarStateReads(argument, true);
+      }
+    }
+    function visitLiteralInvocation(
+      invoked: LiteralFunction,
+      arguments_: readonly InvocationArgument[]
+    ): void {
+      invoked.parameters.forEach((parameter, index) => {
+        if (
+          parameter.initializer !== undefined &&
+          callArgumentUsesDefault(arguments_[index])
+        ) {
+          visitRegistrarStateReads(parameter.initializer, true);
+        }
+      });
+      if (invoked.asteriskToken !== undefined) return;
+      visitRegistrarStateReads(invoked.body, true);
+    }
+    function exactReturnedLiteralFunction(
+      invoked: LiteralFunction
+    ): LiteralFunction | undefined {
+      if (
+        invoked.asteriskToken !== undefined ||
+        invoked.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword
+        ) === true
+      ) {
+        return undefined;
+      }
+      if (!ts.isBlock(invoked.body)) {
+        return literalFunctionValue(invoked.body);
+      }
+      const statements = invoked.body.statements.filter(
+        (statement) => !ts.isEmptyStatement(statement)
+      );
+      if (
+        statements.length !== 1 ||
+        !ts.isReturnStatement(statements[0]) ||
+        statements[0].expression === undefined
+      ) {
+        return undefined;
+      }
+      return literalFunctionValue(statements[0].expression);
+    }
+    function literalFunctionValue(
+      expression: ts.Expression
+    ): LiteralFunction | undefined {
+      const unwrapped = unwrapLiteralExpression(expression);
+      return ts.isArrowFunction(unwrapped) ||
+        ts.isFunctionExpression(unwrapped)
+        ? unwrapped
+        : undefined;
+    }
+    function isConstructableLiteralFunction(
+      expression: ts.FunctionExpression
+    ): boolean {
+      return expression.asteriskToken === undefined &&
+        expression.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword
+        ) !== true;
+    }
+    function unwrapLiteralExpression(
+      value: ts.Expression
+    ): ts.Expression {
+      let expression = value;
       while (
         ts.isParenthesizedExpression(expression) ||
         ts.isAsExpression(expression) ||
@@ -738,20 +931,21 @@ function mountedBinderOwnershipAnalysis(
       ) {
         expression = expression.expression;
       }
-      return ts.isArrowFunction(expression) ||
-        ts.isFunctionExpression(expression)
-        ? expression
-        : undefined;
+      return expression;
     }
     function callArgumentUsesDefault(
-      argument: ts.Expression | undefined
+      argument: InvocationArgument
     ): boolean {
-      return argument === undefined ||
+      if (argument === null) return false;
+      if (argument === undefined) return true;
+      const expression = unwrapLiteralExpression(argument);
+      return (
         (
-          ts.isIdentifier(argument) &&
-          argument.text === "undefined"
+          ts.isIdentifier(expression) &&
+          expression.text === "undefined"
         ) ||
-        ts.isVoidExpression(argument);
+        ts.isVoidExpression(expression)
+      );
     }
     if (
       exactStateReads.length !== 1 ||
@@ -1008,6 +1202,71 @@ function outerEvaluatedRuntimeProbe(): {
   const context: { stateReadCount?: number } = {};
   runInNewContext(result.outputText, context);
   return {
+    diagnosticCodes: (result.diagnostics ?? []).map(
+      (diagnostic) => diagnostic.code
+    ),
+    stateReadCount: context.stateReadCount
+  };
+}
+
+function immediateLiteralInvocationRuntimeProbe(): {
+  readonly deferredControlCount: number | undefined;
+  readonly diagnosticCodes: readonly number[];
+  readonly stateReadCount: number | undefined;
+} {
+  const result = ts.transpileModule(`
+    let deferredControlCount = 0;
+    let stateReadCount = 0;
+    const read = () => {
+      stateReadCount += 1;
+    };
+    (() => read())?.();
+    (function () { read(); }).call(undefined);
+    (function () { read(); }).apply(undefined, []);
+    (function () { read(); }).bind(undefined)();
+    new (function () { read(); })();
+    (function () { read(); })\`tag\`;
+    (() => () => read())()();
+    const outerEvaluated = {
+      [(
+        deferredControlCount += 1,
+        (function () { read(); }).bind(undefined),
+        "uninvoked-bind"
+      )]: true,
+      [(
+        deferredControlCount += 1,
+        function () { read(); },
+        "uninvoked-function"
+      )]: true,
+      [(
+        deferredControlCount += 1,
+        (function* () { read(); })(),
+        "uniterated-generator"
+      )]: true
+    };
+    (globalThis as {
+      deferredControlCount?: number;
+      stateReadCount?: number;
+    }).deferredControlCount = deferredControlCount;
+    (globalThis as {
+      deferredControlCount?: number;
+      stateReadCount?: number;
+    }).stateReadCount = stateReadCount;
+    void outerEvaluated;
+  `, {
+    compilerOptions: {
+      module: ts.ModuleKind.None,
+      target: ts.ScriptTarget.ES2022
+    },
+    reportDiagnostics: true
+  });
+  const context: {
+    deferredControlCount?: number;
+    stateReadCount?: number;
+  } = {};
+  runInNewContext(result.outputText, context);
+  return {
+    deferredControlCount: context.deferredControlCount,
     diagnosticCodes: (result.diagnostics ?? []).map(
       (diagnostic) => diagnostic.code
     ),
@@ -1382,6 +1641,11 @@ describe("wake supervisor runtime import boundary", () => {
       diagnosticCodes: [],
       stateReadCount: 14
     });
+    expect(immediateLiteralInvocationRuntimeProbe()).toEqual({
+      deferredControlCount: 3,
+      diagnosticCodes: [],
+      stateReadCount: 7
+    });
     for (const [name, outerSyntax] of [
       ["deferred nested function and arrow bodies and defaults", `
         function deferredFunction(
@@ -1435,6 +1699,37 @@ describe("wake supervisor runtime import boundary", () => {
           }
         }
         void DeferredDecorators;
+      `],
+      ["uninvoked literal-function bind result", `
+        const deferredBind = {
+          [((
+            function deferred() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            }
+          ).bind(undefined), "deferred-bind")]() {}
+        };
+        void deferredBind;
+      `],
+      ["constructed but uninvoked ordinary function literal", `
+        const deferredFunction = {
+          [(
+            function deferred() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            },
+            "deferred-function"
+          )]() {}
+        };
+        void deferredFunction;
+      `],
+      ["invoked generator without iteration", `
+        const deferredGenerator = {
+          [((
+            function* deferred() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            }
+          )(), "deferred-generator")]() {}
+        };
+        void deferredGenerator;
       `]
     ] as const) {
       expect.soft(
@@ -1569,6 +1864,70 @@ describe("wake supervisor runtime import boundary", () => {
           method() {}
         }
         void InvokedDecorator;
+      `)],
+      ["optional invoked arrow in computed name state read", exactRegistrarWith(`
+        const objectValue = {
+          [((() => (
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "optional-invocation"
+          ))?.())!]() {}
+        };
+        void objectValue;
+      `)],
+      ["literal function call invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "call-invocation";
+          }).call(undefined))]() {}
+        };
+        void objectValue;
+      `)],
+      ["literal function apply invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "apply-invocation";
+          }).apply(undefined, []))]() {}
+        };
+        void objectValue;
+      `)],
+      ["immediately invoked literal function bind result state read", exactRegistrarWith(`
+        const objectValue = {
+          [((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "bind-invocation";
+          }).bind(undefined)())]() {}
+        };
+        void objectValue;
+      `)],
+      ["constructed literal function state read", exactRegistrarWith(`
+        class ConstructedDecorator {
+          @((new (function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          })(), decorate))
+          method() {}
+        }
+        void ConstructedDecorator;
+      `)],
+      ["literal function tag invocation state read", exactRegistrarWith(`
+        class TaggedDecorator {
+          @((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return decorate;
+          })\`tag\`)
+          method() {}
+        }
+        void TaggedDecorator;
+      `)],
+      ["immediately returned literal function invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [((() => () => (
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "returned-invocation"
+          ))()())]() {}
+        };
+        void objectValue;
       `)],
       ["prior wrong wake-runtime argument", `
         const residentWakeRuntimeStates =
