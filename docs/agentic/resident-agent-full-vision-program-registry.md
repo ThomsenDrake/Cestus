@@ -38950,3 +38950,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1103 — Corrected Task14 downstream RED rejected; one-row causal correction authorized
+
+- Recorded at: 2026-07-26T13:23:10Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1102_corrected_downstream_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `a675c80e491840962891a6b63d0f36e1c8924268`, tree
+  `4c11f0f36c006914847e197d9b3564c6d50aa556`, changed wake-test blob
+  `d4ba9688dec4f45e3175a883df1215c98ecb1dd1`, retained mounted-test blob
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, and no other candidate.
+  Review remained read-only beneath exact clean E-1102 authority merge
+  `21a8c3b00d44f79531d92466ef92f90d33e8f556`; no byte changed.
+- The row named independent unknown-outcome `binding` mutation is not
+  independently causal. Its base fixture already appends the authoritative
+  `agent.resident-domain.execution-claimed.v1` event and records that event's
+  ID in
+  `residentLoopSuspension.executionClaimEventId`. The `binding` helper then
+  appends a second execution-claimed event while leaving the checkpoint
+  linked to the original exact claim. A correct GREEN may reject claim
+  multiplicity without comparing the checkpoint-referenced claim's complete
+  binding, so this row does not prove the named E-1101 boundary.
+- Reject exact `a675c80e`. It is not approved, integrated, a Task14 source or
+  product candidate, strict record 29, or a release. Preserve it, rejected
+  `a2a16e91`, source checkpoint `c5a09953`, every exact test/source blob and
+  receipt, and all prior design, plan, RED, GREEN, rejection, review,
+  authority, assurance, and release history as immutable ancestors.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, starting
+  from exact rejected blob
+  `d4ba9688dec4f45e3175a883df1215c98ecb1dd1`. Construct the binding-mutation
+  fixture with exactly one schema-valid execution-claimed event whose
+  complete binding is independently changed, and make the checkpoint's
+  `executionClaimEventId` name that exact claim. No duplicate claim may
+  substitute for the binding comparison.
+- Preserve every other corrected pre-Core, states 0 through 4,
+  direct-hostile-prefix, same-ledger foreign-stream, approval, unknown/G,
+  currentness, construction, budget, no-append/no-release/no-effect,
+  chronology, token, category, and at-most-once row byte-for-byte unless the
+  exact one-row fixture plumbing requires the minimum local adaptation.
+  Establish new exact focused, card, serialized, default, parent, and
+  immutable-baseline signatures from execution rather than assuming
+  E-1102's counts.
+- Freeze mounted test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, checkpoint sources
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`, local/global import policies
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, and every other path.
+- The E-1102 reviewer independently reproduced focused
+  **94 = 52 passed + 42 source-causal failures**, Task136 card
+  **381 = 332 passed + 49 failed**, loaders **7/7**, adapters **83/83**,
+  released cross-boundary **443/443**, relevant boundaries **44/44**,
+  prerequisites **18/18**, standalone typecheck, factory readiness, mission
+  **20/20**, hardened V4 **20/20**, and markers **29 / 20 / 29 / 15**.
+  Repository mode stopped truthfully only at the legacy-staging source blob
+  mismatch and emitted no success marker.
+- Authority-exact serialized full was
+  **3,370 = 3,271 passed + 94 failed + 5 pending**. Mandated-timeout default
+  full was
+  **3,370 = 3,269 passed + 96 failed + 5 pending**, differing only by the
+  two admitted import-policy contention identities. An initial ordinary
+  five-second default run added three prerequisite timeouts; all three
+  passed **18/18** isolated and serialized, so that run is discarded as
+  calibrated contention rather than candidate evidence. Rejected-parent and
+  immutable-baseline differentials, exact identity/scope/freezes/ancestry/
+  dependencies/diff, full/connectivity integrity, config isolation, and
+  clean states pass.
+- Reproduce every E-1102 focused, card, loader, boundary, typecheck, factory,
+  mission, V4, marker, truthful repository-first-stop, serialized/default
+  timeout, differential, scope, freeze, ancestry, dependency, integrity,
+  config, diff, and clean-state gate. Commit one exact one-test candidate
+  and admit only its exact SHA to a completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed the new
+  changed blob.
+- The E-1102 reviewer, candidate/test/source authors, every earlier Task14
+  reviewer, verifier, and analyst, and the coordinator are ineligible to
+  approve the changed byte. Changed bytes invalidate review. No Task14 source
+  may change until the corrected RED is independently approved, recorded,
+  integrated, and followed by a separate explicit source-correction
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact rejection and one-test forward-correction
+  authority, not RED approval or integration, source correction, Task14
+  approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
