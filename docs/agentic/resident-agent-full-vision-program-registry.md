@@ -37929,3 +37929,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1089 — Exact Task14 finite-semantics evaluator loader RED rejected; spread-precedence correction authorized
+
+- Recorded at: 2026-07-26T08:49:29Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1088_task14_finite_evaluator_review` returns
+  **NEEDS CHANGES** for exact candidate
+  `d5770498d4973c234e0f244f357d7f72941ee191`, tree
+  `4b4978d5a2795511e5c57f9496033e163d58aa28`, changed test blob
+  `171aaec12affa44c72a01c9208843564e433ef30`, and no other candidate.
+  Review began beneath exact clean E-1088 authority merge
+  `cb5733674cc8fb8bc2a3bc4c80a591219472e35e`.
+- The original finite FA1–FA13, FR1–FR4, and P1 table reproduces all eighteen
+  expected diagnostics/runtime/analyzer tuples. One direct FA8/FA9-bound
+  object-property precedence defect nevertheless blocks approval.
+- Exact executable proof passes an object literal containing an own spread
+  property followed by a later same-key getter into the destructuring
+  binder. TypeScript diagnostics are empty and runtime performs exactly one
+  private-state read from the later getter, but the analyzer falsely accepts
+  exact ownership with one three-argument binder call and no violation.
+- Root cause: the exact object-literal property resolver returns immediately
+  when the earlier spread supplies the requested own key, so it never applies
+  the later explicit getter's runtime override. This is a finite
+  E-1087-bound precedence defect, not a new dynamic-language requirement.
+- Exact independent deterministic evidence remains typecheck and factory
+  pass; mission **20/20**; focused **34 = 32 passed + 2 failures**; loaders
+  **7 = 5 passed + 2 failures**; Task136 card
+  **321 = 311 passed + 10 failures** with the exact authorized titles;
+  adapters **83/83**; cross-boundary **443/443**; relevant boundaries
+  **44/44**; and isolated prerequisites **18/18**.
+- A corrected hardened real clone detached at the exact candidate/tree and
+  run from inside the clone with inherited Git variables unset and
+  system/global config disabled passes V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, both repository integrity modes, connectivity,
+  config isolation, and clean state. Repository mode exits one with the sole
+  truthful legacy-staging first stop and no success marker. A preliminary
+  shared-worktree V4 receipt caused by a missing clone `cd` was explicitly
+  discarded and is not evidence.
+- Authority-exact uncontended serialized full is
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with the exact occurrence
+  multiset and zero actual timeouts. Default is
+  **3,310 = 3,247 passed + 58 failed + 5 pending** with the exact occurrence
+  multiset, zero actual timeouts, and only the three prerequisite identities
+  relative to serialized. Differential passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact identity, scope, blobs, freezes, all rejected/incident ancestry,
+  dependencies, config, connectivity, both `fsck` modes, diff hygiene, and
+  final candidate/authority clean state pass.
+- Reject exact `d5770498`. It is not approved, integrated, a Task14 source
+  or product candidate, record 29, or a release. Preserve it and every
+  earlier candidate, blob, review, receipt, dispatch event, authority,
+  incident, recovery, design, plan, RED, GREEN, fixture, assurance, and
+  release commit in ancestry.
+- Authorize the smallest forward correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `171aaec12affa44c72a01c9208843564e433ef30`. Freeze the global loader at
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, Task14 wake source at
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185`, mounted-store source at
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`, and every other path.
+- Add the exact spread-then-later-getter proof as one independent
+  diagnostics/runtime/analyzer negative before changing the resolver.
+  Require diagnostics empty, runtime state-read count one, and pre-correction
+  analyzer acceptance. Preserve an adjacent later-spread-overrides-earlier-
+  getter control and ordinary data/getter/setter/duplicate/spread ordering.
+- Correct only property precedence: resolve exact object-literal descriptors
+  in runtime left-to-right overwrite order, or equivalently search with
+  complete later-definition precedence, so an earlier spread cannot
+  short-circuit a later explicit property or accessor. Preserve accessor
+  merging only where runtime semantics retain both halves of the same
+  descriptor and preserve exact one-time spread/getter evaluation.
+- Keep all FA1–FA13, FR1–FR4, P1, cumulative E-1065 through E-1088 controls,
+  realistic positive, exact-literal bounds, cycle guards, provenance
+  interlock, and termination green. Do not add another semantic variant or
+  broaden toward a general interpreter.
+- Reproduce every E-1088 targeted, full, timeout, differential, isolated
+  assurance, marker, repository-first-stop, scope, freeze, ancestry,
+  dependency, config, integrity, diff, and clean-state gate. Commit one exact
+  corrected test-only candidate and admit only that SHA to a completely
+  fresh independent read-only reviewer who has never authored, reviewed,
+  verified, or analyzed the corrected bytes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact rejection and one-test precedence-correction
+  authority, not test approval or integration, source correction, Task14
+  approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
