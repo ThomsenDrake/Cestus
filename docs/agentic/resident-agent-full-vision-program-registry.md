@@ -38655,3 +38655,101 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1100 — Exact Task14 downstream executable RED admitted to fresh review
+
+- Recorded at: 2026-07-26T11:47:53Z
+- Exact two-test candidate
+  `a2a16e9162330edbe3546afa90d2c00c0925f021`, tree
+  `b35b7c3addaf771bdf5fddb35d2414abd252d74c`, has sole parent exact E-1099
+  authority merge `15dc92d75b731a215a5adc71d077112c4c1e467f`
+  and exact subject
+  `test(local-runtime): define mounted resident recovery tables`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` by
+  **1,550 insertions / 59 deletions**, from blob
+  `7a6e94cd1fbcd8bcc2433662b133addc7be7cfdb` to
+  `83964ba1cecd3e5beed8a3743cd287d949af0eae`, and
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts` by
+  **13 insertions / 36 deletions**, from blob
+  `9836c9ae07c4b891bf588a31b38975ae977e540f` to
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`.
+- Exact source checkpoint blobs remain frozen at wake
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` and mounted store
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`. Local/global import policies
+  remain exact `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`; every other path is unchanged.
+- Real authenticated mounted/SQLite/Core/P/H/package-owned dispatcher
+  fixtures execute completely. Focused three-file execution is exact
+  **80 = 59 passed + 21 source-causal Task14 failures**. No fixture,
+  collection, API, type, import, analyzer, or mounted-test failure
+  substitutes for a product assertion.
+- The exact failures are: copied Core/P/H identity acceptance (**3**);
+  state-1/state-2 recovery budget-transition defects (**2**); accepted
+  same-task release, terminal, generation, run, causation, owner, and target
+  suffix currentness mutations (**7**); foreign opaque currentness acceptance
+  (**1**); ignored hostile target-prefix causation, order, skipped, missing,
+  and extra-target suffixes (**5**); pending-approval reclaim acceptance
+  (**1**); exact unknown-outcome gateway reread rejected by W/G currentness
+  (**1**); and canceled-work reclaim acceptance (**1**).
+- The complete tables also pass exact construction controls, approved causal
+  advance, unavailable, valid states 0 through 4, all other hostile prefix
+  mutations, independent foreign-stream controls, four ordinary reclaim
+  categories, approved decision, exact unknown-outcome shape/burned request,
+  terminal ineligibility, old-token consumption, category shapes,
+  no-append/no-release/no-effect, chronology, and at-most-once assertions.
+  The mounted test replaces the obsolete source-text aggregate with executable
+  authenticated-store invalidation/no-append coverage.
+- Exact Task136 card is timeout-free
+  **367 = 339 passed + 28 failed**, consisting only of the **21** new Task14
+  failures plus **7** preserved Task15-through-16 REDs. Frozen loaders pass
+  **7/7**; adapters **83/83**, released cross-boundary **443/443**, relevant
+  boundaries **44/44**, prerequisites **18/18**, standalone typecheck,
+  factory readiness, mission **20/20**, V4 **20/20**, and markers
+  **29 / 20 / 29 / 15** pass.
+- Serialized full is exact
+  **3,356 = 3,278 passed + 73 failed + 5 pending**. Default full is
+  **3,356 = 3,277 passed + 74 failed + 5 pending**, with zero timeout
+  signatures and only one known scheduler import-policy prerequisite
+  occurrence relative to serialized. Parent-to-candidate delta is exact
+  **+46 = +25 passed + 21 causal failures**, zero status changes; two old
+  passing aggregates are replaced. Immutable comparator passes
+  `removed=8 mapped=14 addedPassed=91 retainedLaterRed=28`.
+- Repository mode exits one after exact markers solely at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success
+  marker. Exact scope, freezes, ancestry, real dependencies, full and
+  connectivity integrity, diff, isolated config, and candidate/program clean
+  states pass.
+- Admit only exact `a2a16e91` as Task14 downstream test-only RED
+  `candidate -> reviewing`. Assign a completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed either
+  changed test blob.
+- The reviewer must inspect all real fixture helpers and independently execute
+  every construction identity, currentness, prefix, reclaim, budget,
+  no-append/no-release/no-effect, foreign-stream, chronology, category, and
+  at-most-once case. It must prove each of the **21** failures reaches its
+  named frozen-source boundary and that every passing negative remains
+  independently causal rather than stopping at an earlier defect. It must
+  reject structural wrappers, filtered ledgers, fixture-only authority,
+  invalid event shapes, source-text substitutes, secret-unsafe values, or
+  receipt self-oracles.
+- The reviewer must reproduce exact candidate identity/scope/blobs/freezes/
+  ancestry/dependencies/diff/integrity/config/clean state; focused/card/loader
+  occurrence sets; adapters, boundaries, prerequisites, typecheck, factory,
+  mission, hardened V4, markers, truthful repository first stop,
+  serialized/default zero-timeout variance, parent differential, and
+  immutable comparator.
+- The candidate author, every prior Task14 test/source author, reviewer,
+  verifier, and analyst, and the coordinator are ineligible to approve. The
+  reviewer may not edit, commit, merge, authorize source correction or
+  Task15, substitute a SHA, or make prefix, record-29, release, or Wave
+  claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact downstream RED review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
