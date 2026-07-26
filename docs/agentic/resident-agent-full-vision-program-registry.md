@@ -39349,3 +39349,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidacy, strict record 29, assurance-only transition, publication,
   Wave 3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1108 — Task14 exact-binding issuer-seam scope conflict recorded
+
+- Recorded at: 2026-07-26T14:40:27Z
+- Fresh E-1107 implementer `/root/task136_e1107_task14_green` verifies exact
+  clean Task136 authority head
+  `13eda1162e672e58cda0535e949d16b7268c4cec`, exact starting source blobs
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`, exact frozen tests/import
+  policies, and focused
+  **94 = 52 passed + 42 source-causal Task14 failures**. It stops before any
+  edit or commit after proving a finite issuer-seam scope conflict. Both
+  active worktrees remain clean; no Task14 source candidate exists.
+- Exact copied Core/provider/handoff binding rejection is impossible in the
+  two E-1107 source files. Released
+  `packages/local-runtime/src/resident-loop-factory-composition.ts` returns
+  one newly copied, frozen, plain own-data outer readback whose provider,
+  handoff, and authority-binding layers are themselves copied frozen plain
+  objects. It does not register that readback with either authorized W
+  source before returning it.
+- The opaque provider authority and H witness are consumed inside
+  `composition.bind`; neither survives in the returned readback. On first
+  presentation, `wake-supervisor-runtime.ts` and
+  `mounted-wake-lifecycle-store.ts` therefore receive no retained original
+  outer/provider/handoff object identity and no nested opaque witness that
+  can authenticate it. A spread copy has the same prototype, own
+  keys/descriptors, frozen state, values, and retained nested references as
+  the original. No deterministic two-source implementation can distinguish
+  those values.
+- Reject allocation-order, timing, call-stack, source-text, first-seen,
+  hidden-global, process-local rendezvous, or similar heuristics. They are
+  not authenticated authority, would make copied-input acceptance dependent
+  on caller order, and violate the approved exact package-owned identity
+  design. Do not partially implement the other **39** failures while the
+  exact construction contract remains unsatisfied.
+- The missing issuer seam is exact
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`, owned by
+  already released card `Task136-FC-Core` in the immutable 29-card V4 graph.
+  It is outside Task136's exact 32-path product ceiling of **14 sources,
+  17 tests, and one claim**. An unrecorded supporting edit would violate
+  exact Task136 ownership, immutable historical release evidence, and the
+  human-ratified no-supporting-edit rule.
+- E-1107 is superseded as executable source authority. Preserve it as valid
+  historical evidence, but authorize no source edit until an explicit human
+  product-and-scope decision selects and ratifies one forward contract:
+  either a reviewed design/plan/assurance amendment transfers the exact
+  composition issuer seam into Task136 and expands/synchronizes its owned
+  path ceiling and record-29 migration, or a reviewed product-behavior
+  amendment replaces the three exact copied-readback identity requirements
+  with a different causally enforceable construction contract.
+- Any scope-expansion option must state the exact adopted paths and canonical
+  order, update every design/plan/claim/V4/mission/assurance surface and
+  immutable-envelope pin, preserve all earlier record hashes and releases,
+  add or retain causal RED coverage before source editing, obtain fresh
+  independent design and executability reviews, and integrate the amendment
+  through the repository-prescribed history-preserving sequence. No
+  historical release may be rewritten.
+- Any behavior-amendment option must explicitly explain why copied frozen
+  structural readbacks are safe at the Core/W boundary, replace the
+  impossible tests without weakening opaque wake-runtime, dispatcher,
+  mounted-ledger, currentness-token, or H-witness identities, and pass the
+  same fresh design/executability and assurance synchronization gates.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is a clean coordinator recovery checkpoint requiring
+  explicit product/scope direction, not a test or source candidate,
+  approval, integration, Task14 completion, Task15 authority, product
+  candidacy, strict record 29, repository closure, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
