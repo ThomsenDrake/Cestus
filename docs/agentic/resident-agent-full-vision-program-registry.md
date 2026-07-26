@@ -40595,3 +40595,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1124 — Exact Task14 issuer-identity causal RED admitted to fresh review
+
+- Recorded at: 2026-07-26T20:08:29Z
+- Exact test-only candidate
+  `619fd75205ad8391befa9495015ee61b69e1fa87`, tree
+  `f166b945f64dd5ffd9c0d185ae6552bf687e7737`, has sole parent exact E-1123
+  authority merge `40672ca2d07caeb84bd6b6f14c010cd2f6231ab0` and exact subject
+  `test(local-runtime): require exact composition issuer`.
+- It changes exactly the two E-1123-authorized tests:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
+  **+211 / -7** from blob
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713` to
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+558 / -0** from blob
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff` to
+  `5fec928fabe7c7bb59acc3a3308eea46f87ff10d`. No product source or other
+  test, authority, claim, contract, mission, dependency, route, provider,
+  credential, release, or unrelated byte changes.
+- Exact focused execution is
+  **96 = 94 passed + two new source-causal issuer failures**. The runtime
+  control fails only because frozen W accepts the E-1122 missing-issuer
+  direct-import attack, reads the guarded hostile readback twice, burns the
+  one-shot slot, and rejects the later legitimate composition registration.
+  All hostile ledger/store reads remain zero; explicit three-argument hostile
+  variants already reject without fixture/API/collection/type failure.
+- The static control fails at exactly two named production assertions:
+  `issuer-registrar-signature` and `exact-construction-issuer-thread`.
+  Frozen registrar lacks the explicit issuer parameter, and composition does
+  not thread exact normalized `input` through W construction into
+  `(input, wakeRuntime, readback)`. Every mutation control for exposure,
+  import, caller, alias, dynamic, optional/spread, order, omission, copy, and
+  substitution passes.
+- Exact Task136 card is
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution is **1,042 = 1,033 passed + nine failed**. The complete failure
+  set is only the two new E-1123 issuer REDs plus seven preserved
+  Task15-through-16 REDs.
+- Adapters pass **83/83**, released controls **443/443**, relevant
+  boundaries **44/44**, isolated prerequisites **18/18**, FC-Core controls
+  **2/2**, standalone typecheck, factory, mission **20/20**, V4 **20/20**,
+  and markers **29 / 20 / 29 / 15**. The combined loader execution contains
+  only the new static RED; the frozen global loader and all retained local
+  importer controls remain green under the mandated 120-second serialized
+  envelope.
+- Clean repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release success.
+  Exact two-test scope, source/other-test freezes, rejected-source and all
+  authority ancestry, real dependencies, diff hygiene, full/connectivity
+  integrity, and clean state pass.
+- Fresh serialized full is exact
+  **3,372 = 3,313 passed + 54 failed + 5 pending**, exactly the E-1121
+  serialized baseline plus the two new causal REDs. Fresh default full is
+  **3,372 = 3,312 passed + 55 failed + 5 pending**; the sole delta is the
+  frozen scheduler import-policy contention identity, which passes isolated.
+  No timeout, collection, API, type, or fixture failure substitutes for
+  either new RED.
+- Admit only exact `619fd752` as Task14 issuer-identity test-only RED
+  `candidate -> reviewing`. Assign one completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  changed blobs `b53c4caf` or `5fec928f`.
+- The reviewer must inspect both complete changed tests, independently prove
+  the runtime counterexample is causal and pre-store/non-consuming, prove the
+  static control requires exact construction issuer threading and sole
+  importer/caller without becoming the authority oracle, and reproduce the
+  exact focused/card/cross/full differentials and all identity/scope/freeze/
+  ancestry/dependency/diff/integrity/clean and repository-first-stop gates.
+  Candidate author, E-1122 reviewer, correction-scope analyst, every prior
+  Task14 test/source author/reviewer/verifier/analyst, amendment reviewers,
+  and coordinator are ineligible to approve. Changed bytes invalidate
+  review. The reviewer may not edit, commit, merge, substitute a SHA,
+  authorize source correction or Task15, or make prefix, record-29, release,
+  or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test-only RED review admission, not approval,
+  integration, source correction, Task14 approval/integration, Task15
+  authority, Task136 product candidacy, repository closure, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
