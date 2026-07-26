@@ -40511,3 +40511,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1123 — Task14 exact-issuer two-test causal RED authorized
+
+- Recorded at: 2026-07-26T19:35:15Z
+- Separate fresh read-only correction-scope analyst
+  `/root/task136_e1122_registrar_correction_analysis` confirms the committed
+  33-path design is sufficient and requires no design, plan, V4, mission, or
+  ownership amendment. A source-only correction is inadmissible because
+  rejected exact `f607eb3c` passes every current Task14 behavior assertion
+  while retaining the forbidden first-registration path.
+- Authorize a causal test-only forward RED in exactly:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, starting
+  blob `736a2b7648778d7180bc8fb85b10c9b27c1fe713`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting blob `04f8ba1648957bb8789c827629aa10af5b4fc2ff`. No source or other test
+  may change.
+- The runtime RED must reproduce the E-1122 direct-import attack against one
+  real composition-created wake runtime. Hostile registration using
+  arbitrary frozen objects, structural copies, a caller-owned outer
+  composition input, or the original caller-held outer input must fail before
+  proposed-readback inspection and mounted-store I/O, must not consume the
+  legitimate one-shot slot, and must not alter release/effect state. The
+  legitimate completed composition-issued readback must then bind exactly
+  once; replay and a second legitimate registration remain rejected.
+- The importer/caller RED must require one exact production importer and one
+  exact production call site in
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`. Require
+  an explicit opaque issuer-identity argument threaded from the exact W
+  construction input to that call. Reject barrel or re-export exposure,
+  namespace, dynamic-loader, alternate-source, alias, optional/spread,
+  reordered, omitted, copied, structural, and substitute caller forms.
+  Static importer/caller sealing supplements the runtime identity oracle and
+  may not replace it.
+- The future GREEN mechanism is already determined by the approved design,
+  but is not authorized by this event. Composition retains its exact fresh
+  internally normalized construction `input` object and passes that exact
+  object directly when constructing W. W records the exact issuer-input and
+  runtime identity pair before Core start. The non-barrel registrar later
+  requires exactly `(issuerIdentity, wakeRuntime, readback)` and verifies the
+  retained pair by reference identity before reading the proposed readback
+  or performing store I/O. Composition supplies the same unexposed identity
+  only at completed readback allocation. Failed hostile calls are
+  non-consuming.
+- This mechanism adds no visible brand, callback, report-store port, public
+  composition/runtime/readback member, barrel API, global rendezvous,
+  call-stack/source inspection, route, activation, provider, credential,
+  network, fallback, or heuristic acceptance. It preserves the exact
+  package-owned identity invariant at actual composition issuance.
+- Freeze rejected candidate sources at composition
+  `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`, wake runtime
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`. Freeze mounted-store test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, global import policy
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, released FC-Core tests
+  `f9c194670473278eaa94fa5ad65bec06ab12bf91` /
+  `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`, and every Task12/13 source and
+  test, other Task136 path, claim/design/plan/V4/mission byte, dependency,
+  route, provider, credential, release, and unrelated path.
+- Preserve all 94 currently passing Task14 assertions. Against exact frozen
+  `f607eb3c`, require the new runtime and importer/caller controls to fail
+  only at their named missing issuer-identity boundaries, with no fixture,
+  API, schema, collection, type, unrelated, or later-boundary failure.
+  Derive the exact new focused/card/37-file and full signatures from
+  execution rather than assuming a count.
+- Reproduce loaders, adapters, released/relevant/prerequisite/FC-Core
+  controls, typecheck, factory, mission **20/20**, V4 **20/20**, markers,
+  truthful legacy-staging repository first stop, exact two-test scope,
+  source/other-test freezes, rejected-candidate and all authority ancestry,
+  real dependencies, serialized/default and candidate differential,
+  diff/full/connectivity integrity, timeout variance, and final clean state.
+- Commit one exact two-test RED candidate and stop. Admit it to a completely
+  fresh independent read-only test reviewer who has never authored,
+  reviewed, verified, or analyzed the changed test bytes. Changed bytes
+  invalidate review. No product source may change until the exact RED is
+  independently approved, recorded, history-preservingly integrated, and
+  followed by a separate explicit two-source GREEN authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only causal RED authority, not a RED candidate,
+  source correction, Task14 approval/integration, Task15 authority, Task136
+  product candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
