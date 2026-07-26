@@ -2500,6 +2500,335 @@ function nineGapLiteralEvaluatorRuntimeProbe(): readonly {
   });
 }
 
+interface ResidentFactoryIssuerSource {
+  readonly label: string;
+  readonly sourceFile: ts.SourceFile;
+}
+
+interface ResidentFactoryIssuerAnalysis {
+  readonly registrarDeclarationCount: number;
+  readonly registrarImporters: readonly string[];
+  readonly registrarCallers: readonly string[];
+  readonly violations: readonly string[];
+}
+
+const residentFactoryIssuerRegistrar =
+  "registerResidentLoopFactoryAuthorityReadback";
+const residentFactoryCompositionPath =
+  "packages/local-runtime/src/resident-loop-factory-composition.ts";
+const residentFactoryWakePath =
+  "packages/local-runtime/src/wake-supervisor-runtime.ts";
+const residentFactoryWakeModule = "./wake-supervisor-runtime.js";
+
+function residentFactoryIssuerAnalysis(
+  sources: readonly ResidentFactoryIssuerSource[]
+): ResidentFactoryIssuerAnalysis {
+  const registrarImporters = new Set<string>();
+  const registrarCallers = new Set<string>();
+  const violations = new Set<string>();
+  const registrarDeclarations: ts.FunctionDeclaration[] = [];
+  const exactImports: Array<{
+    readonly label: string;
+    readonly element: ts.ImportSpecifier;
+  }> = [];
+  const registrarCalls: Array<{
+    readonly label: string;
+    readonly call: ts.CallExpression;
+  }> = [];
+
+  for (const source of sources) {
+    for (const statement of source.sourceFile.statements) {
+      if (
+        source.label === residentFactoryWakePath &&
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === residentFactoryIssuerRegistrar
+      ) {
+        registrarDeclarations.push(statement);
+      }
+      if (
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isWakeRuntimeModule(statement.moduleSpecifier.text)
+      ) {
+        const clause = statement.importClause;
+        const bindings = clause?.namedBindings;
+        const named = bindings !== undefined && ts.isNamedImports(bindings)
+          ? bindings.elements.filter((element) =>
+              (element.propertyName?.text ?? element.name.text) ===
+                residentFactoryIssuerRegistrar
+            )
+          : [];
+        if (
+          named.length > 0 ||
+          clause?.name !== undefined ||
+          (bindings !== undefined && ts.isNamespaceImport(bindings))
+        ) {
+          registrarImporters.add(source.label);
+        }
+        if (
+          clause?.name !== undefined ||
+          (bindings !== undefined && ts.isNamespaceImport(bindings))
+        ) {
+          violations.add(`${source.label}:alternate-import-carrier`);
+        }
+        for (const element of named) {
+          if (
+            source.label !== residentFactoryCompositionPath ||
+            statement.moduleSpecifier.text !== residentFactoryWakeModule ||
+            clause === undefined ||
+            clause.isTypeOnly ||
+            clause.name !== undefined ||
+            bindings === undefined ||
+            !ts.isNamedImports(bindings) ||
+            statement.attributes !== undefined ||
+            element.isTypeOnly ||
+            element.propertyName !== undefined ||
+            element.name.text !== residentFactoryIssuerRegistrar
+          ) {
+            violations.add(`${source.label}:noncanonical-registrar-import`);
+          } else {
+            exactImports.push({ label: source.label, element });
+          }
+        }
+      }
+      if (
+        ts.isExportDeclaration(statement) &&
+        statement.moduleSpecifier !== undefined &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isWakeRuntimeModule(statement.moduleSpecifier.text)
+      ) {
+        const exportsRegistrar =
+          statement.exportClause === undefined ||
+          ts.isNamespaceExport(statement.exportClause) ||
+          (
+            ts.isNamedExports(statement.exportClause) &&
+            statement.exportClause.elements.some((element) =>
+              (element.propertyName?.text ?? element.name.text) ===
+                residentFactoryIssuerRegistrar
+            )
+          );
+        if (exportsRegistrar) {
+          violations.add(`${source.label}:registrar-reexport`);
+        }
+      }
+    }
+
+    visit(source.sourceFile);
+
+    function visit(node: ts.Node): void {
+      if (
+        ts.isCallExpression(node) &&
+        (
+          (
+            node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+            node.arguments.length === 1 &&
+            ts.isStringLiteral(node.arguments[0]!) &&
+            isWakeRuntimeModule(node.arguments[0]!.text)
+          ) ||
+          (
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === "require" &&
+            node.arguments.length === 1 &&
+            ts.isStringLiteral(node.arguments[0]!) &&
+            isWakeRuntimeModule(node.arguments[0]!.text)
+          )
+        )
+      ) {
+        violations.add(`${source.label}:dynamic-registrar-loader`);
+      }
+      if (
+        ts.isCallExpression(node) &&
+        (
+          (
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === residentFactoryIssuerRegistrar
+          ) ||
+          (
+            ts.isPropertyAccessExpression(node.expression) &&
+            node.expression.name.text === residentFactoryIssuerRegistrar
+          )
+        )
+      ) {
+        registrarCallers.add(source.label);
+        registrarCalls.push({ label: source.label, call: node });
+      }
+      ts.forEachChild(node, visit);
+    }
+  }
+
+  if (
+    registrarDeclarations.length !== 1 ||
+    !hasExactRegistrarSignature(registrarDeclarations[0])
+  ) {
+    violations.add(`${residentFactoryWakePath}:issuer-registrar-signature`);
+  }
+  if (
+    exactImports.length !== 1 ||
+    exactImports[0]?.label !== residentFactoryCompositionPath ||
+    registrarImporters.size !== 1 ||
+    !registrarImporters.has(residentFactoryCompositionPath)
+  ) {
+    violations.add(
+      `${residentFactoryCompositionPath}:sole-direct-registrar-import`
+    );
+  }
+  if (
+    registrarCalls.length !== 1 ||
+    registrarCalls[0]?.label !== residentFactoryCompositionPath ||
+    registrarCallers.size !== 1 ||
+    !registrarCallers.has(residentFactoryCompositionPath)
+  ) {
+    violations.add(
+      `${residentFactoryCompositionPath}:sole-direct-registrar-call`
+    );
+  }
+
+  const composition = sources.find(
+    (source) => source.label === residentFactoryCompositionPath
+  )?.sourceFile;
+  if (
+    composition === undefined ||
+    !hasExactIssuerThread(composition, registrarCalls[0]?.call)
+  ) {
+    violations.add(
+      `${residentFactoryCompositionPath}:exact-construction-issuer-thread`
+    );
+  }
+
+  return {
+    registrarDeclarationCount: registrarDeclarations.length,
+    registrarImporters: [...registrarImporters].sort(),
+    registrarCallers: [...registrarCallers].sort(),
+    violations: [...violations].sort()
+  };
+
+  function isWakeRuntimeModule(moduleName: string): boolean {
+    return moduleName === residentFactoryWakeModule ||
+      moduleName.endsWith("/wake-supervisor-runtime.js");
+  }
+
+  function hasExactRegistrarSignature(
+    declaration: ts.FunctionDeclaration | undefined
+  ): boolean {
+    if (
+      declaration === undefined ||
+      declaration.asteriskToken !== undefined ||
+      declaration.body === undefined ||
+      declaration.parameters.length !== 3
+    ) {
+      return false;
+    }
+    const modifiers = declaration.modifiers ?? [];
+    if (
+      !modifiers.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.ExportKeyword
+      ) ||
+      modifiers.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.DefaultKeyword
+      )
+    ) {
+      return false;
+    }
+    return declaration.parameters.every((parameter, index) =>
+      ts.isIdentifier(parameter.name) &&
+      parameter.name.text ===
+        ["issuerIdentity", "wakeRuntime", "readback"][index] &&
+      parameter.dotDotDotToken === undefined &&
+      parameter.questionToken === undefined &&
+      parameter.initializer === undefined
+    );
+  }
+
+  function hasExactIssuerThread(
+    sourceFile: ts.SourceFile,
+    registrarCall: ts.CallExpression | undefined
+  ): boolean {
+    const factory = sourceFile.statements.find(
+      (statement): statement is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === "createResidentLoopFactoryComposition"
+    );
+    if (
+      factory?.body === undefined ||
+      factory.parameters.length !== 1 ||
+      registrarCall === undefined ||
+      !ts.isIdentifier(registrarCall.expression) ||
+      registrarCall.expression.text !== residentFactoryIssuerRegistrar ||
+      registrarCall.questionDotToken !== undefined ||
+      registrarCall.arguments.length !== 3 ||
+      registrarCall.arguments.some(ts.isSpreadElement) ||
+      !registrarCall.arguments.every(ts.isIdentifier) ||
+      registrarCall.arguments.map((argument) =>
+        ts.isIdentifier(argument) ? argument.text : ""
+      ).join(",") !==
+        "input,wakeRuntime,readback" ||
+      !isInsideExactBind(registrarCall, factory)
+    ) {
+      return false;
+    }
+
+    const declarations = factory.body.statements.flatMap((statement) =>
+      ts.isVariableStatement(statement)
+        ? [...statement.declarationList.declarations]
+        : []
+    );
+    const inputDeclarations = declarations.filter((declaration) =>
+      ts.isIdentifier(declaration.name) &&
+      declaration.name.text === "input" &&
+      declaration.initializer !== undefined &&
+      ts.isCallExpression(declaration.initializer) &&
+      ts.isIdentifier(declaration.initializer.expression) &&
+      declaration.initializer.expression.text === "normalizeCompositionInput" &&
+      declaration.initializer.arguments.length === 1 &&
+      ts.isIdentifier(declaration.initializer.arguments[0]!) &&
+      ts.isIdentifier(factory.parameters[0]!.name) &&
+      declaration.initializer.arguments[0]!.text ===
+        factory.parameters[0]!.name.text
+    );
+    const wakeDeclarations = declarations.filter((declaration) =>
+      ts.isIdentifier(declaration.name) &&
+      declaration.name.text === "wakeRuntime" &&
+      declaration.initializer !== undefined &&
+      ts.isCallExpression(declaration.initializer) &&
+      ts.isIdentifier(declaration.initializer.expression) &&
+      declaration.initializer.expression.text === "createWakeSupervisorRuntime" &&
+      declaration.initializer.questionDotToken === undefined &&
+      declaration.initializer.arguments.length === 1 &&
+      ts.isIdentifier(declaration.initializer.arguments[0]!) &&
+      declaration.initializer.arguments[0]!.text === "input"
+    );
+    return inputDeclarations.length === 1 && wakeDeclarations.length === 1;
+  }
+
+  function isInsideExactBind(
+    call: ts.CallExpression,
+    factory: ts.FunctionDeclaration
+  ): boolean {
+    for (
+      let current: ts.Node | undefined = call.parent;
+      current !== undefined && current !== factory;
+      current = current.parent
+    ) {
+      if (
+        (
+          ts.isArrowFunction(current) ||
+          ts.isFunctionExpression(current)
+        ) &&
+        ts.isVariableDeclaration(current.parent) &&
+        ts.isIdentifier(current.parent.name) &&
+        current.parent.name.text === "bind" &&
+        current.parent.initializer === current
+      ) {
+        return true;
+      }
+      if (ts.isFunctionLike(current) && current !== call.parent) {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
 describe("wake supervisor runtime import boundary", () => {
   it("permits zero production importers before R0 factory integration", () => {
     const source = readFileSync(new URL("../src/wake-supervisor-runtime.ts", import.meta.url), "utf8");
@@ -2523,6 +2852,235 @@ describe("wake supervisor runtime import boundary", () => {
     const source = 'export { createWakeSupervisorRuntime } from "./wake-supervisor-runtime.js";\nconst load = () => import("./wake-supervisor-runtime.js");';
     expect(source).toMatch(/export\s*\{/);
     expect(source).toMatch(/import\(/);
+  });
+
+  it("seals the exact construction issuer to one composition importer and caller token", () => {
+    const exactWake = `
+      export function registerResidentLoopFactoryAuthorityReadback(
+        issuerIdentity: object,
+        wakeRuntime: object,
+        readback: object
+      ): void {
+        void issuerIdentity;
+        void wakeRuntime;
+        void readback;
+      }
+    `;
+    const exactComposition = `
+      import {
+        registerResidentLoopFactoryAuthorityReadback
+      } from "./wake-supervisor-runtime.js";
+      export function createResidentLoopFactoryComposition(rawInput: unknown) {
+        const input = normalizeCompositionInput(rawInput);
+        const wakeRuntime = createWakeSupervisorRuntime(input);
+        const bind = async () => {
+          const readback = Object.freeze({});
+          registerResidentLoopFactoryAuthorityReadback(
+            input,
+            wakeRuntime,
+            readback
+          );
+          return readback;
+        };
+        return { bind };
+      }
+    `;
+    const analyzeControl = (
+      compositionSource: string,
+      extraSources: readonly {
+        readonly label: string;
+        readonly source: string;
+      }[] = []
+    ) => residentFactoryIssuerAnalysis([
+      {
+        label: residentFactoryWakePath,
+        sourceFile: ts.createSourceFile(
+          residentFactoryWakePath,
+          exactWake,
+          ts.ScriptTarget.Latest,
+          true,
+          ts.ScriptKind.TS
+        )
+      },
+      {
+        label: residentFactoryCompositionPath,
+        sourceFile: ts.createSourceFile(
+          residentFactoryCompositionPath,
+          compositionSource,
+          ts.ScriptTarget.Latest,
+          true,
+          ts.ScriptKind.TS
+        )
+      },
+      ...extraSources.map(({ label, source }) => ({
+        label,
+        sourceFile: ts.createSourceFile(
+          label,
+          source,
+          ts.ScriptTarget.Latest,
+          true,
+          ts.ScriptKind.TS
+        )
+      }))
+    ]);
+
+    expect(analyzeControl(exactComposition).violations).toEqual([]);
+    for (const [name, source, extras] of [
+      [
+        "barrel import",
+        exactComposition.replace(
+          '"./wake-supervisor-runtime.js"',
+          '"./index.js"'
+        ),
+        [{
+          label: "packages/local-runtime/src/index.ts",
+          source: `export {
+            registerResidentLoopFactoryAuthorityReadback
+          } from "./wake-supervisor-runtime.js";`
+        }]
+      ],
+      [
+        "namespace import",
+        exactComposition
+          .replace(
+            /import\s*\{[\s\S]*?\}\s*from\s*"\.\/wake-supervisor-runtime\.js";/,
+            'import * as wake from "./wake-supervisor-runtime.js";'
+          )
+          .replace(
+            /registerResidentLoopFactoryAuthorityReadback\(/,
+            "wake.registerResidentLoopFactoryAuthorityReadback("
+          )
+      ],
+      [
+        "dynamic loader",
+        exactComposition
+          .replace(
+            /import\s*\{[\s\S]*?\}\s*from\s*"\.\/wake-supervisor-runtime\.js";/,
+            ""
+          )
+          .replace(
+            /registerResidentLoopFactoryAuthorityReadback\(/,
+            '(await import("./wake-supervisor-runtime.js")).registerResidentLoopFactoryAuthorityReadback('
+          )
+      ],
+      [
+        "aliased import",
+        exactComposition
+          .replace(
+            "registerResidentLoopFactoryAuthorityReadback\n      }",
+            "registerResidentLoopFactoryAuthorityReadback as registerAuthority\n      }"
+          )
+          .replace(
+            "\n          registerResidentLoopFactoryAuthorityReadback(\n",
+            "\n          registerAuthority(\n"
+          )
+      ],
+      [
+        "alternate source",
+        exactComposition.replace(
+          '"./wake-supervisor-runtime.js"',
+          '"./alternate-wake-supervisor-runtime.js"'
+        )
+      ],
+      [
+        "alternate caller",
+        `${exactComposition}
+         function alternateCaller(
+           input: object,
+           wakeRuntime: object,
+           readback: object
+         ) {
+           registerResidentLoopFactoryAuthorityReadback(
+             input,
+             wakeRuntime,
+             readback
+           );
+         }`
+      ],
+      [
+        "optional call",
+        exactComposition.replace(
+          "\n          registerResidentLoopFactoryAuthorityReadback(\n",
+          "\n          registerResidentLoopFactoryAuthorityReadback?.(\n"
+        )
+      ],
+      [
+        "spread call",
+        exactComposition.replace(
+          "input,\n            wakeRuntime,\n            readback",
+          "...[input, wakeRuntime, readback]"
+        )
+      ],
+      [
+        "reordered arguments",
+        exactComposition.replace(
+          "input,\n            wakeRuntime,\n            readback",
+          "wakeRuntime,\n            input,\n            readback"
+        )
+      ],
+      [
+        "omitted issuer",
+        exactComposition.replace(
+          "input,\n            wakeRuntime,\n            readback",
+          "wakeRuntime,\n            readback"
+        )
+      ],
+      [
+        "copied issuer",
+        exactComposition.replace(
+          "input,\n            wakeRuntime,\n            readback",
+          "{ ...input },\n            wakeRuntime,\n            readback"
+        )
+      ],
+      [
+        "substitute issuer",
+        exactComposition
+          .replace(
+            "const wakeRuntime = createWakeSupervisorRuntime(input);",
+            "const callerInput = { ...input };\n        const wakeRuntime = createWakeSupervisorRuntime(input);"
+          )
+          .replace(
+            "input,\n            wakeRuntime,\n            readback",
+            "callerInput,\n            wakeRuntime,\n            readback"
+          )
+      ],
+      [
+        "copied W construction input",
+        exactComposition.replace(
+          "createWakeSupervisorRuntime(input)",
+          "createWakeSupervisorRuntime({ ...input })"
+        )
+      ]
+    ] as const) {
+      expect.soft(
+        analyzeControl(source, extras ?? []).violations,
+        name
+      ).not.toEqual([]);
+    }
+
+    const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
+    const productionFiles = productionTypeScriptFiles(packagesRoot);
+    const productionAnalysis = residentFactoryIssuerAnalysis(
+      productionFiles.map((file) => {
+        const label = sourceLabel(packagesRoot, file);
+        return {
+          label,
+          sourceFile: ts.createSourceFile(
+            label,
+            readFileSync(file, "utf8"),
+            ts.ScriptTarget.Latest,
+            true,
+            ts.ScriptKind.TS
+          )
+        };
+      })
+    );
+    expect(productionAnalysis).toEqual({
+      registrarDeclarationCount: 1,
+      registrarImporters: [residentFactoryCompositionPath],
+      registrarCallers: [residentFactoryCompositionPath],
+      violations: []
+    });
   });
 
   it("allows only the dispatcher default and named gateway constructor import chain", () => {

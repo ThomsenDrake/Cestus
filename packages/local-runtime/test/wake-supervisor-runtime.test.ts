@@ -20,7 +20,8 @@ import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable
 import { createResidentLoopFactoryComposition } from "../src/resident-loop-factory-composition.js";
 import {
   bindResidentLoopCapabilitiesForFactory,
-  createWakeSupervisorRuntime
+  createWakeSupervisorRuntime,
+  registerResidentLoopFactoryAuthorityReadback
 } from "../src/wake-supervisor-runtime.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
@@ -320,6 +321,160 @@ describe("wake supervisor runtime", () => {
     expect(await local.handle.ledger.readAll(), mutation).toEqual(beforeLocal);
     if (foreign !== undefined) {
       expect(await foreign.handle.ledger.readAll(), mutation).toEqual(beforeForeign);
+    }
+  });
+
+  it("requires the exact private composition issuer before inspecting or consuming a factory readback", async () => {
+    type DirectRegistrar = (...input: readonly unknown[]) => void;
+    type ResidentFixture = Awaited<ReturnType<typeof residentFixture>>;
+    const directRegistrar =
+      registerResidentLoopFactoryAuthorityReadback as unknown as DirectRegistrar;
+    const hostileOutcomes: Array<{
+      readonly kind: string;
+      readonly outcome: "accepted" | "rejected";
+    }> = [];
+    let proposedReadbackReads = 0;
+    let hostileLedgerReads: {
+      readonly all: number;
+      readonly streams: readonly string[];
+    } | undefined;
+    let eventsBefore: readonly KnowledgeEvent[] | undefined;
+    let observedHandle: LocalRuntimeHandle | undefined;
+    let completed: ResidentFixture | undefined;
+    let legitimateFailure: unknown;
+
+    try {
+      completed = await residentFixture(
+        "exact-private-composition-issuer",
+        async ({
+          composition,
+          compositionInput,
+          handle,
+          ledgerProbe
+        }) => {
+          observedHandle = handle;
+          eventsBefore = await handle.ledger.readAll();
+          const forgedProvider = Object.freeze({
+            schemaVersion: "forged-provider-readback.v1"
+          });
+          const forgedAuthorityBinding = Object.freeze({
+            schemaVersion: "forged-handoff-binding.v1"
+          });
+          const forgedHandoff = Object.freeze({
+            schemaVersion: "forged-handoff-readback.v1",
+            authorityBinding: forgedAuthorityBinding
+          });
+          const guardedReadback = Object.freeze(Object.defineProperties({}, {
+            provider: {
+              enumerable: true,
+              get() {
+                proposedReadbackReads += 1;
+                return forgedProvider;
+              }
+            },
+            handoff: {
+              enumerable: true,
+              get() {
+                proposedReadbackReads += 1;
+                return forgedHandoff;
+              }
+            }
+          }));
+          const copiedOuter = Object.freeze({ ...compositionInput });
+          const callerOwnedOuter = Object.freeze({
+            runtimeHandle: compositionInput.runtimeHandle,
+            actor: Object.freeze({ ...compositionInput.actor }),
+            supervisorEpoch: compositionInput.supervisorEpoch,
+            policy: Object.freeze({ ...compositionInput.policy }),
+            now: compositionInput.now,
+            createSafeId: compositionInput.createSafeId
+          });
+          const issuerAttacks = [
+            {
+              kind: "arbitrary-forged-issuer",
+              input: Object.freeze({ issuer: "forged" })
+            },
+            {
+              kind: "copied-outer-issuer",
+              input: copiedOuter
+            },
+            {
+              kind: "caller-owned-outer-issuer",
+              input: callerOwnedOuter
+            },
+            {
+              kind: "original-caller-held-outer-issuer",
+              input: compositionInput
+            }
+          ] as const;
+
+          ledgerProbe.reset();
+          for (const attack of issuerAttacks) {
+            hostileOutcomes.push({
+              kind: attack.kind,
+              outcome: captureRegistrarOutcome(() => {
+                Reflect.apply(directRegistrar, undefined, [
+                  attack.input,
+                  composition.wakeRuntime,
+                  guardedReadback
+                ]);
+              })
+            });
+          }
+          hostileOutcomes.push({
+            kind: "missing-explicit-issuer",
+            outcome: captureRegistrarOutcome(() => {
+              Reflect.apply(directRegistrar, undefined, [
+                composition.wakeRuntime,
+                guardedReadback
+              ]);
+            })
+          });
+          hostileLedgerReads = Object.freeze({
+            all: ledgerProbe.allReads,
+            streams: Object.freeze([...ledgerProbe.streamReads])
+          });
+        }
+      );
+    } catch (error) {
+      legitimateFailure = error;
+    }
+
+    expect.soft(hostileOutcomes).toEqual([
+      { kind: "arbitrary-forged-issuer", outcome: "rejected" },
+      { kind: "copied-outer-issuer", outcome: "rejected" },
+      { kind: "caller-owned-outer-issuer", outcome: "rejected" },
+      { kind: "original-caller-held-outer-issuer", outcome: "rejected" },
+      { kind: "missing-explicit-issuer", outcome: "rejected" }
+    ]);
+    expect.soft(proposedReadbackReads).toBe(0);
+    expect.soft(hostileLedgerReads).toEqual({ all: 0, streams: [] });
+    expect.soft(legitimateFailure).toBeUndefined();
+    expect.soft(completed?.binding).toBeDefined();
+
+    if (
+      completed !== undefined &&
+      observedHandle !== undefined &&
+      eventsBefore !== undefined
+    ) {
+      const eventsAfter = await observedHandle.ledger.readAll();
+      expect(eventsAfter).toEqual(eventsBefore);
+      expect(residentEffectEventIds(eventsAfter)).toEqual(
+        residentEffectEventIds(eventsBefore)
+      );
+      await expect(completed.composition.bind(completed.factoryBindInput))
+        .rejects.toThrow(/authority|binding|unavailable/i);
+      const issued = await bindResidentLoopCapabilitiesForFactory(
+        completed.composition.wakeRuntime,
+        completed.binding,
+        completed.domainExecution
+      );
+      expect(issued.currentnessToken).toBeDefined();
+      await expect(bindResidentLoopCapabilitiesForFactory(
+        completed.composition.wakeRuntime,
+        completed.binding,
+        completed.domainExecution
+      )).rejects.toThrow(/unconsumed|authority|bound/i);
     }
   });
 
@@ -802,7 +957,32 @@ describe("wake supervisor runtime", () => {
   );
 });
 
-async function residentFixture(suffix: string) {
+async function residentFixture(
+  suffix: string,
+  beforeBind?: (input: {
+    readonly composition: ReturnType<typeof createResidentLoopFactoryComposition>;
+    readonly compositionInput: Readonly<{
+      readonly runtimeHandle: LocalRuntimeHandle;
+      readonly actor: Readonly<{
+        readonly id: string;
+        readonly kind: "agent";
+        readonly label: string;
+      }>;
+      readonly supervisorEpoch: string;
+      readonly policy: Readonly<{
+        readonly policyVersion: string;
+        readonly policyDigest: `sha256:${string}`;
+        readonly lockStateDigest: `sha256:${string}`;
+      }>;
+      readonly now: () => string;
+      readonly createSafeId: (
+        kind: "lease" | "diagnostic" | "reconciliation"
+      ) => string;
+    }>;
+    readonly handle: LocalRuntimeHandle;
+    readonly ledgerProbe: ReturnType<typeof instrumentResidentLedger>;
+  }) => void | Promise<void>
+) {
   const root = mkdtempSync(join(tmpdir(), "cestus-wake-resident-"));
   directories.push(root);
   const workspaceId = `ws_wake_resident_${suffix}`;
@@ -962,15 +1142,20 @@ async function residentFixture(suffix: string) {
     policyDigest: `sha256:${"a".repeat(64)}` as const,
     lockStateDigest: `sha256:${"b".repeat(64)}` as const
   });
-  const composition = createResidentLoopFactoryComposition(Object.freeze({
+  const compositionInput = Object.freeze({
     runtimeHandle: handle,
-    actor: { id: "agent_wake_resident", kind: "agent", label: "Wake resident authority" },
+    actor: Object.freeze({
+      id: "agent_wake_resident",
+      kind: "agent" as const,
+      label: "Wake resident authority"
+    }),
     supervisorEpoch: `epoch_wake_resident_${suffix}`,
     policy,
     now: () => "2026-07-16T00:00:00.000Z",
     createSafeId: (kind: "lease" | "diagnostic" | "reconciliation") =>
       `${kind}_wake_resident_${suffix}`
-  }));
+  });
+  const composition = createResidentLoopFactoryComposition(compositionInput);
   await composition.start();
   const operation = issueMountedArtifactAuthorityOperationForFactory(composition.wakeRuntime);
   const providerAuthority = issueMountedProviderAuthority(Object.freeze({ operation }));
@@ -981,10 +1166,17 @@ async function residentFixture(suffix: string) {
     runType,
     retryGeneration: 0
   });
-  const binding = await composition.bind(Object.freeze({
+  const factoryBindInput = Object.freeze({
     providerAuthority,
     handoffAuthorityWitness: handoff.binding.authorityWitness
-  }));
+  });
+  await beforeBind?.({
+    composition,
+    compositionInput,
+    handle,
+    ledgerProbe
+  });
+  const binding = await composition.bind(factoryBindInput);
   const domainExecution = await dispatcherDefault.createPackageOwnedResidentDomainExecutionCapability({
     kind: "accepted-graph-review",
     workspaceId,
@@ -1015,6 +1207,7 @@ async function residentFixture(suffix: string) {
   return Object.freeze({
     handle,
     composition,
+    factoryBindInput,
     binding,
     domainExecution,
     domainPreviewPort,
@@ -1025,6 +1218,17 @@ async function residentFixture(suffix: string) {
     claim,
     ledgerProbe
   });
+}
+
+function captureRegistrarOutcome(
+  invoke: () => void
+): "accepted" | "rejected" {
+  try {
+    invoke();
+    return "accepted";
+  } catch {
+    return "rejected";
+  }
 }
 
 async function unstartedResidentFixture(suffix: string) {
