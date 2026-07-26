@@ -37059,3 +37059,101 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1080 — Exact Task14 type-valid complete-evaluator loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T05:15:45Z
+- Exact corrected one-test candidate
+  `7c94b80cd720051fbca37d2e317e2aa875f1b78b`, tree
+  `df56fa462f382d1924bad4936464ff0166c34df9`, has sole parent exact
+  incident-recovery authority merge
+  `45cb7f199e5f421f2ebc8288803cf7b3ee873974`
+  and exact subject
+  `test(local-runtime): close literal evaluator semantics`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **436 insertions / 37 deletions** to exact blob
+  `280508424ccb35f4b36124cb66393f8d29c07360`. The global loader remains
+  frozen at `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 sources remain
+  frozen at `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; every other path is
+  unchanged.
+- Exact rejected candidate `e47edf1e`, accidental preserved fixture commit
+  `989531c5`, recovery authority merge `45cb7f19`, and all earlier Task14
+  candidate/review/authority history remain ancestors. No reset, revert,
+  rebase, amend, squash, discard, or reconstructed history occurred.
+- The correction closes all five committed-byte typing defects; standalone
+  final-byte and post-commit `npm run typecheck` pass. Eight independent
+  evaluator controls reproduce E-1079's failures before the helper change
+  and pass afterward: null `.apply`, recursive destructured defaults,
+  returned-literal `.call/.apply/.bind`, constructor/tag return chains, and
+  shadowed-`undefined` provenance. Exact runtime deltas remain
+  `[1,1,1,1,1,1,1,0]`.
+- The bounded evaluator now resolves global undefined by TypeScript symbol
+  provenance, handles absent/null/global-undefined `.apply` argument lists,
+  recursively maps exact object/array binding patterns and defaults, and
+  follows exact returned literal values through call/apply/bind,
+  constructor, and tag chains. Literal-only bounds, sparse arrays, bound
+  arguments, double-traversal prevention, generator parameter-default/body
+  timing, all deferred positives, every cumulative E-1065 through E-1079
+  control, and the realistic registrar positive remain.
+- Exact post-commit focused signature is
+  **34 = 32 passed + 2 causal failures**; loaders are
+  **7 = 5 passed + 2 causal failures**; the Task136 card is
+  **321 = 311 passed + 10 failures**, with exact authorized titles.
+  Adapters pass **83/83**, cross-boundary passes **443/443**, relevant
+  mounted/portable/ontology boundaries pass **44/44**, and isolated
+  prerequisites pass **18/18**.
+- Factory readiness, mission **20/20**, and markers
+  **29 / 20 / 29 / 15** pass. Serialized and default full executions each
+  produce the permitted contention-free
+  **3,310 = 3,250 passed + 55 failed + 5 pending** with identical occurrence
+  multisets and no timeout. Calibrated comparison passes
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- A real config-isolated temporary clone at exact candidate/tree, with
+  `GIT_DIR` and `GIT_WORK_TREE` unset and repository-level `core.worktree`
+  absent, passes V4 **20/20**, connectivity, and clean state. Repository
+  mode emits exact markers, exits one, and truthfully stops only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`;
+  no prefix or closure marker is emitted. Both real worktrees remain clean
+  and no `core.worktree` key exists.
+- Exact candidate/tree/parent/subject, one-test scope, blobs/freezes,
+  incident/rejected ancestry, real non-symlinked Vitest **4.1.9** and
+  TypeScript **5.9.3**, dependencies, connectivity, diff, Git config, and
+  final clean state pass.
+- Admit only exact `7c94b80c` as Task14 type-valid complete-evaluator loader
+  test-only `candidate -> reviewing`. Assign completely fresh independent
+  read-only reviewer
+  `/root/task136_e1080_task14_complete_evaluator_red_review`, who has never
+  authored, reviewed, verified, or analyzed any changed test byte.
+- The reviewer must inspect the complete cumulative local/global loader
+  against E-1065 through E-1079, prove all type/runtime controls and the
+  realistic positive execute, and independently attack symbol-provenance
+  undefined handling, absent/null/sparse apply arguments, nested object/
+  array/rest/destructured defaults, bound/call/apply argument ordering,
+  returned-literal chains, constructor/tag results, optional/wrapped
+  invocation, generator timing, async timing, double traversal, and exact
+  literal-only termination. It must search for false accepts and false
+  rejects beyond named examples with executable TypeScript/runtime proof.
+- The reviewer must independently reproduce exact identity/scope/blob/
+  freezes/incident ancestry, standalone typecheck, focused/loader/card
+  titles, adapters **83/83**, cross **443/443**, relevant **44/44**,
+  prerequisites **18/18**, factory, mission, V4, markers, truthful first
+  stop, serialized/default occurrence sets, calibrated differential,
+  dependencies, connectivity, config isolation, diff, and clean state.
+  Any Git-mutating fixture verification must use a real isolated clone/
+  worktree with repository-level Git environment and config disabled.
+- The correction author, all rejected authors/reviewers, E-1064 source
+  implementer, earlier Task14/Task136 participants, incident reviewer, and
+  coordinator are ineligible to approve changed bytes. The reviewer may
+  not edit, commit, merge, authorize source correction or Task15,
+  substitute a SHA, or make product/record-29/release/prefix/Wave claims.
+  Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
