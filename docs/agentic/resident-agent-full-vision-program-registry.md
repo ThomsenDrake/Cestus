@@ -40754,6 +40754,80 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1128 — Expression-complete Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-26T22:26:13Z
+- Exact forward test-only descendant
+  `86b699cd331377d28ade0b8b2f7c91c3e740e5f3`, tree
+  `d55d20ff219d4d936a10e541d46c471ce4a52289`, has sole parent exact E-1127
+  authority merge `ea00466f6b3e8fbc858bbe0055985fb640f5fe9e` and exact subject
+  `test(local-runtime): resolve registrar expression aliases`. Rejected
+  `db03309f`, `619fd752`, and `f607eb3c` remain immutable ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+246 / -5** from rejected blob
+  `8d3996fcac46dd4a2c8efac6cf24255232b13f64` to exact blob
+  `55224998806f8470aeea2e44bed07830168922b0`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- The exact analyzer now resolves exported object- and array-destructured
+  aliases through their local carrier symbols and selected initializer
+  values. It resolves a bound-callable registrar, both result branches of a
+  conditional expression, and only the value-producing operand of a comma
+  expression. All five causal mutation controls reject with
+  `registrar-reexport`.
+- Narrow unrelated positives remain accepted when a carrier's unselected
+  object property or array element mentions the registrar, a comma
+  expression discards it, or the exported callable/conditional result is
+  unrelated. Direct local re-exports, imported aliases, and the exact
+  canonical positive also retain their prior results. The implementation
+  uses TypeScript AST/checker symbols, not spelling or source-text scanning.
+- Exact production focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; the unchanged runtime RED remains
+  pre-store and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed**. The complete
+  failure set is only the two issuer REDs plus seven preserved
+  Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20**; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, closure, repository-success, or release-success
+  marker.
+- Exact one-test scope, source/runtime/other-test freezes, rejected-candidate
+  and authority ancestry, real dependencies, diff hygiene, and clean state
+  pass. No source, claim, design, plan, contract, mission, dependency, route,
+  provider, credential, release, or unrelated byte changed.
+- Admit only exact `86b699cd` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a different completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `55224998`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce direct and symbol-carried object/array
+  destructuring, bound-callable, conditional, and comma-expression
+  mutations; prove the unrelated positives are precise; and reproduce causal
+  runtime/static failures, focused/card/cross signatures, assurance,
+  repository-first-stop, exact scope/freezes/ancestry/dependencies/diff/
+  integrity/clean state. It must prove the static gate supplements rather
+  than substitutes for runtime exact identity. The E-1126 and E-1124
+  reviewers, candidate author, correction-scope analyst, every prior Task14
+  test/source author/reviewer/verifier/analyst, amendment reviewers, and
+  coordinator are ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  Task15 authority, Task136 product candidacy, repository closure, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
+
 ## RV-1-E-1126 — Corrected Task14 issuer RED admitted to fresh review
 
 - Recorded at: 2026-07-26T20:47:20Z
