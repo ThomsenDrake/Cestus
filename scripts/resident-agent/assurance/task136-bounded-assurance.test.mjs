@@ -29,6 +29,10 @@ const v2ContractSha256 = "c23a390cc3e4a3395c018a8532e0fa84b23a880782805f7cbcc463
 const v3ContractSha256 = "8934dbaf8246d295eba5ce825169ac08bb98f0e1b6b75a977657000cb46a1bbb";
 const v4ContractSha256 = "3adbf85ccc071667df73809f44b0e1451b66fdd81dfc6021afafcc4feec20930";
 const v4AssuranceFingerprint = "da850dfd3068efda96b96e9a274777e3b97e2922017c16be8ea703b09e7cd1ec";
+const task136FactoryCompositionPath =
+  "packages/local-runtime/src/resident-loop-factory-composition.ts";
+const task136ThirtyThreePathSha256 =
+  "4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e";
 const historicalTask137ASha256 = "ac3ac479d5b1e41db4ae15cea88b746f86bbc31f6af3ea74a6120834dc2c2198";
 const historicalTask129MfaSha256 = "23cb98725d67ada15c0e2913816f82407c171912564423e669cf73995aaead76";
 const historicalTask135bSha256 = "73d8e28bdc56dbecf924a45a14c4caf8bb0864c89a4db98e1114f62f83d53409";
@@ -1360,6 +1364,51 @@ test("rejects unsafe frozen command grammar before executing commands", () => {
 
 test("rejects finite Task136 graph, compatibility, baseline, raw-pin, and record-29 migration mutations", () => {
   const contract = loadV4Contract();
+  const task136FcCore = contract.releaseGraph.cards.find(
+    (card) => card.id === "Task136-FC-Core"
+  );
+  const task136 = contract.releaseGraph.cards.find((card) => card.id === "Task136");
+  assert.deepEqual(task136FcCore.transferToIds, ["Task136"]);
+  assert.deepEqual(task136FcCore.ownedPaths, [
+    { disposition: "transferred", path: task136FactoryCompositionPath },
+    {
+      disposition: "owned",
+      path: "packages/local-runtime/test/resident-loop-factory-composition.test.ts"
+    },
+    {
+      disposition: "owned",
+      path: "packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts"
+    },
+    {
+      disposition: "owned",
+      path: "docs/agentic/claims/task-136-factory-authority-composition.md"
+    }
+  ]);
+  assert.deepEqual(task136.prerequisiteIds.slice(0, 3), [
+    "T120-R",
+    "Task136-FC-Core",
+    "Task136-FC-Ports"
+  ]);
+  assert.equal(task136.ownedPaths.length, 33);
+  assert.equal(task136.ownedPaths[22].path, task136FactoryCompositionPath);
+  assert.equal(
+    createHash("sha256")
+      .update(`${task136.ownedPaths.map(({ path }) => path).join("\n")}\n`)
+      .digest("hex"),
+    task136ThirtyThreePathSha256
+  );
+  assert.deepEqual(
+    contract.releaseCompatibility.historicalRecords
+      .find((record) => record.cardId === "Task136-FC-Core"),
+    {
+      cardId: "Task136-FC-Core",
+      canonicalJsonSha256:
+        "ff24eb56771db9a1a7ea015783a9b83c17f246d5e0215364b7fecb547c92c0c1",
+      pathDispositions: [
+        { path: task136FactoryCompositionPath, recordDisposition: "owned" }
+      ]
+    }
+  );
   const fingerprint = createHash("sha256").update(JSON.stringify({
     releaseGraph: {
       version: contract.releaseGraph.version,
