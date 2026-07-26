@@ -38565,3 +38565,93 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1099 — Task14 construction checkpoint bound; downstream executable RED authorized
+
+- Recorded at: 2026-07-26T10:52:16Z
+- Exact E-1098 two-source checkpoint
+  `c5a09953a968febf78a44b5c96206e4cb80f14ca`, tree
+  `58122aff7f217d11dab9967d971a573cf88b0129`, has sole parent E-1098
+  authority merge `0ed5e33c158198d82fdb80b02952acda071bc9b5`,
+  exact subject `fix(local-runtime): bind mounted resident construction`, and
+  changes only the two authorized sources by
+  **13 insertions / 26 deletions**.
+- Exact checkpoint source blobs are wake runtime
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` and mounted store
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`. It corrects the source
+  high-water/durable-row distinction and fixed mounted-store construction
+  boundary. Focused passes **34/34**, loaders **7/7**, and Task136 card is
+  **321 = 314 passed + 7 preserved Task15-through-16 RED failures**.
+  Adapters **83/83**, released boundaries **443/443**, relevant boundaries
+  **44/44**, prerequisites **18/18**, typecheck, factory, mission **20/20**,
+  V4 **20/20**, markers **29 / 20 / 29 / 15**, truthful repository first
+  stop, exact scope/freezes/ancestry/dependencies/diff/integrity/config/clean
+  state pass.
+- This exact source checkpoint is not a Task14 source candidate, approval, or
+  integration. Bind it only as the frozen product baseline for the next
+  causal test stage. Preserve every earlier source/test candidate, rejection,
+  review, incident, recovery, authority, design, plan, RED, GREEN, fixture,
+  assurance, and release commit in ancestry.
+- Authorize the E-1058 downstream executable real-mounted test stage in
+  exactly:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, starting
+  blob `7a6e94cd1fbcd8bcc2433662b133addc7be7cfdb`, and
+  `packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts`, starting
+  blob `9836c9ae07c4b891bf588a31b38975ae977e540f`.
+  Freeze both checkpoint sources, both import-policy tests
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, and every other path.
+- Extend the real exact construction test so copied, swapped, pre-Core,
+  foreign, replayed, and second-binding identities each fail at their named
+  identity boundary with exact zero unauthorized append and zero effect.
+  Do not use structural wrappers, filtered ledgers, fixture-only authority,
+  source-text assertions, or a later high-water failure as a substitute.
+- Add executable currentness tables using the exact authenticated mounted
+  store and same exact ledger/Core/P/H/package-owned dispatcher identities.
+  Make competing release, terminal, new generation, run, causation, owner,
+  target suffix, foreign suffix, and the one approved causal advance real
+  durable transitions. Assert exact `current`, `recordable-stale`, or
+  `unavailable`, old-token consumption, same fresh mounted identity, exact
+  new token/capability identity where applicable, and zero unauthorized
+  append/effect.
+- Add executable canonical-prefix tables using real durable sequences.
+  Cover exact states 0 through 4 and suffix-only completion; changed S,
+  R-resumable, release, semantic key, causation, order, result, deadline,
+  next action, duplicate, skipped, missing, extra target suffix, and
+  independent foreign-stream controls. Every invalid target prefix must fail
+  with exact no append, no release, and no effect. Recovery may never create
+  state 1 from an absent checkpoint or trust caller instructions.
+- Add executable reclaim tables using real released prefixes and exact gateway
+  readbacks. Approval-required requires one later independent matching
+  unexpired decision. Effect-outcome-unknown requires the exact reread-only
+  nonexecutable claim, no receipt or terminal, complete binding and budget,
+  preserved burned request, and zero effect. Ordinary categories forbid
+  gateway IDs; canceled or otherwise ineligible work appends no new claim.
+- Every case must be independently causal. Preserve exact mounted identities,
+  source/global currentness, chronology, category-specific shapes,
+  at-most-once semantics, existing valid assertions, the approved import
+  policies, and all released controls. Do not add a public API, wrapper,
+  report store, fallback write, route, provider, credential, or activation.
+- The test author must first execute the exact source checkpoint, establish a
+  new exact focused/card pass-fail signature from the complete tables, and
+  prove every new failure is product-causal with no fixture, collection, API,
+  type, import, analyzer, or unrelated failure. Do not assume an earlier
+  signature. Run focused, loader, exact card, adapters, released and relevant
+  boundaries, prerequisites, typecheck, factory, mission **20/20**, V4
+  **20/20**, markers, truthful repository first stop, scope, freezes,
+  ancestry, dependencies, calibrated serialized/default timeout variance,
+  differential, integrity, diff, config, and clean state.
+- Commit one exact two-test candidate and admit only its exact SHA to a
+  completely fresh independent read-only reviewer. No earlier Task14
+  test/source author, reviewer, verifier, analyst, or coordinator may approve
+  changed bytes. Changed bytes invalidate review. No source may change until
+  this exact downstream RED is independently approved, recorded, integrated,
+  and followed by a separate explicit source-correction authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is downstream test-only RED authority, not RED approval
+  or integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
