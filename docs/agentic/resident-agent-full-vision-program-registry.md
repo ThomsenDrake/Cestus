@@ -40445,3 +40445,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1122 — Exact Task14 three-source GREEN rejected; correction scope analysis required
+
+- Recorded at: 2026-07-26T19:25:03Z
+- Completely fresh independent read-only source reviewer
+  `/root/task136_e1121_task14_source_review` returns **REJECTED** for exact
+  candidate `f607eb3c0a8f9525a03882cd0e42e9174a4a4a58`, tree
+  `1536c913749a68fd9c8a21b4ca255417216a694d`, sole parent
+  `c685cc1ff95e0620f0700a9777952ddcd955d9eb`, and no other candidate.
+  Review remained read-only beneath exact clean E-1121 envelope
+  `51cc33394fd0b024d282d0eb12ac64f6a1a06916`; no byte or ref changed.
+- The approved design requires a private non-barrel seam at the actual
+  composition issuance point and explicitly forbids first-seen acceptance.
+  The candidate instead exports
+  `registerResidentLoopFactoryAuthorityReadback` from the wake runtime. After
+  Core start it accepts the first arbitrary frozen outer/provider/handoff/
+  authority-binding objects and stores them as authoritative before the
+  legitimate composition call. It requires no exact issuer capability and
+  has no candidate-added importer/caller gate.
+- The reviewer independently executes a minimal candidate-bound
+  counterexample. A real factory-issued wake runtime starts; a direct
+  importer registers an arbitrary frozen forged binding before actual
+  composition issuance; the registrar accepts it; and the legitimate second
+  registration is rejected because the one-shot slot is burned. Exact
+  result is:
+  `{"startOutcome":"accepted","forgedFirstRegistrationAccepted":true,"secondRegistrationRejected":true}`.
+- This is the forbidden first-registration/first-seen substitute and violates
+  the exact package-owned identity invariant independently of every later
+  structural, currentness, prefix, recovery, or store-I/O check. Reject exact
+  `f607eb3c`; it is not approved, integrated, Task15 authority, a Task136
+  product candidate, strict record 29, repository closure, or release.
+- The reviewer independently verifies exact candidate/tree/parent,
+  three-source scope and blobs, E-1121 envelope parents, ancestry, real
+  dependencies, diff hygiene, connectivity, and final clean state. Wake
+  behavior passes **72/72**, mounted-store behavior **17/17**, four of five
+  import-policy cases pass individually, mission passes **20/20**, factory
+  readiness passes, and markers remain exact **29 / 20 / 29 / 15**. These
+  functional gates do not override the exact-identity defect.
+- Current `/tmp` write quota returns environment error `-122`; `/dev/shm`
+  isolation closes ordinary and mission fixtures. Under current resource
+  pressure the fifth heavy import-policy case, V4 process, and typecheck
+  process terminated without verdict. The reviewer correctly stopped
+  redundant expensive reproduction after the decisive candidate-bound
+  rejection. Author and coordinator evidence already remains historical,
+  not approval evidence.
+- Preserve exact rejected candidate `f607eb3c`, its three source blobs,
+  author verification, review envelope, E-1121 admission, corrected RED,
+  every earlier Task14 candidate/review/rejection/authority, the 33-path
+  amendment, and all prior design, plan, assurance, product, and release
+  history as immutable ancestors.
+- No product or test edit is authorized by this event. Assign a separate
+  fresh read-only correction-scope analyst to determine the smallest
+  design-consistent forward TDD correction, including whether an additional
+  causal runtime or importer/caller RED is required and the exact minimum
+  Task136-owned file scope. The analyst may not edit, approve, integrate,
+  authorize Task15, or broaden the approved identity design. Record the
+  exact correction scope append-only before any byte changes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is candidate-bound Task14 rejection and read-only
+  correction analysis authority, not a correction authorization, source or
+  test candidacy, Task14 approval/integration, Task15 authority, Task136
+  product candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
