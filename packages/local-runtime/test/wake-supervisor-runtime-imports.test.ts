@@ -716,35 +716,17 @@ function mountedBinderOwnershipAnalysis(
       | ts.FunctionExpression;
     type InvocationArgument = ts.Expression | null | undefined;
     interface ImmediateCallResult {
-      readonly returnedFunction?: LiteralFunction;
+      readonly returnedFunction: LiteralFunction | undefined;
     }
     function visitImmediateLiteralExecution(node: ts.Node): boolean {
       if (ts.isCallExpression(node)) {
         return executeImmediateLiteralCall(node) !== undefined;
       }
       if (ts.isNewExpression(node)) {
-        const invoked = literalFunctionValue(node.expression);
-        if (
-          invoked === undefined ||
-          !ts.isFunctionExpression(invoked) ||
-          !isConstructableLiteralFunction(invoked)
-        ) {
-          return false;
-        }
-        const arguments_ = node.arguments ?? [];
-        visitInvocationArguments(arguments_);
-        visitLiteralInvocation(invoked, arguments_);
-        return true;
+        return executeImmediateLiteralConstruction(node) !== undefined;
       }
       if (ts.isTaggedTemplateExpression(node)) {
-        const invoked = literalFunctionValue(node.tag);
-        if (invoked === undefined) return false;
-        const substitutions = ts.isTemplateExpression(node.template)
-          ? node.template.templateSpans.map((span) => span.expression)
-          : [];
-        visitInvocationArguments(substitutions);
-        visitLiteralInvocation(invoked, [null, ...substitutions]);
-        return true;
+        return executeImmediateLiteralTag(node) !== undefined;
       }
       return false;
     }
@@ -778,7 +760,7 @@ function mountedBinderOwnershipAnalysis(
         if (priorInvocation === undefined) return undefined;
         visitInvocationArguments(call.arguments);
         if (priorInvocation.returnedFunction === undefined) {
-          return {};
+          return { returnedFunction: undefined };
         }
         visitLiteralInvocation(
           priorInvocation.returnedFunction,
@@ -790,6 +772,23 @@ function mountedBinderOwnershipAnalysis(
           )
         };
       }
+      if (ts.isNewExpression(expression)) {
+        const priorInvocation =
+          executeImmediateLiteralConstruction(expression);
+        if (priorInvocation === undefined) return undefined;
+        return executeReturnedLiteralCall(
+          priorInvocation,
+          call.arguments
+        );
+      }
+      if (ts.isTaggedTemplateExpression(expression)) {
+        const priorInvocation = executeImmediateLiteralTag(expression);
+        if (priorInvocation === undefined) return undefined;
+        return executeReturnedLiteralCall(
+          priorInvocation,
+          call.arguments
+        );
+      }
       if (
         ts.isPropertyAccessExpression(expression) &&
         (
@@ -797,7 +796,8 @@ function mountedBinderOwnershipAnalysis(
           expression.name.text === "apply"
         )
       ) {
-        const invoked = literalFunctionValue(expression.expression);
+        const invoked =
+          immediateLiteralFunctionValue(expression.expression);
         if (invoked === undefined) return undefined;
         const invocationArguments =
           expression.name.text === "call"
@@ -812,6 +812,56 @@ function mountedBinderOwnershipAnalysis(
       }
       return undefined;
     }
+    function executeImmediateLiteralConstruction(
+      construction: ts.NewExpression
+    ): ImmediateCallResult | undefined {
+      const invoked = literalFunctionValue(construction.expression);
+      if (
+        invoked === undefined ||
+        !ts.isFunctionExpression(invoked) ||
+        !isConstructableLiteralFunction(invoked)
+      ) {
+        return undefined;
+      }
+      const arguments_ = construction.arguments ?? [];
+      visitInvocationArguments(arguments_);
+      visitLiteralInvocation(invoked, arguments_);
+      return {
+        returnedFunction: exactReturnedLiteralFunction(invoked)
+      };
+    }
+    function executeImmediateLiteralTag(
+      tagged: ts.TaggedTemplateExpression
+    ): ImmediateCallResult | undefined {
+      const invoked = literalFunctionValue(tagged.tag);
+      if (invoked === undefined) return undefined;
+      const substitutions = ts.isTemplateExpression(tagged.template)
+        ? tagged.template.templateSpans.map((span) => span.expression)
+        : [];
+      visitInvocationArguments(substitutions);
+      visitLiteralInvocation(invoked, [null, ...substitutions]);
+      return {
+        returnedFunction: exactReturnedLiteralFunction(invoked)
+      };
+    }
+    function executeReturnedLiteralCall(
+      priorInvocation: ImmediateCallResult,
+      arguments_: readonly ts.Expression[]
+    ): ImmediateCallResult {
+      visitInvocationArguments(arguments_);
+      if (priorInvocation.returnedFunction === undefined) {
+        return { returnedFunction: undefined };
+      }
+      visitLiteralInvocation(
+        priorInvocation.returnedFunction,
+        arguments_
+      );
+      return {
+        returnedFunction: exactReturnedLiteralFunction(
+          priorInvocation.returnedFunction
+        )
+      };
+    }
     function exactLiteralBind(call: ts.CallExpression): {
       readonly boundArguments: readonly ts.Expression[];
       readonly functionValue: LiteralFunction;
@@ -823,7 +873,8 @@ function mountedBinderOwnershipAnalysis(
       ) {
         return undefined;
       }
-      const functionValue = literalFunctionValue(expression.expression);
+      const functionValue =
+        immediateLiteralFunctionValue(expression.expression);
       return functionValue === undefined
         ? undefined
         : {
@@ -842,6 +893,9 @@ function mountedBinderOwnershipAnalysis(
         return [];
       }
       const array = unwrapLiteralExpression(applyArguments);
+      if (array.kind === ts.SyntaxKind.NullKeyword) {
+        return [];
+      }
       if (
         !ts.isArrayLiteralExpression(array) ||
         array.elements.some(ts.isSpreadElement)
@@ -859,20 +913,158 @@ function mountedBinderOwnershipAnalysis(
         visitRegistrarStateReads(argument, true);
       }
     }
+    function immediateLiteralFunctionValue(
+      expression: ts.Expression
+    ): LiteralFunction | undefined {
+      const literal = literalFunctionValue(expression);
+      if (literal !== undefined) return literal;
+      const unwrapped = unwrapLiteralExpression(expression);
+      if (ts.isCallExpression(unwrapped)) {
+        return executeImmediateLiteralCall(unwrapped)?.returnedFunction;
+      }
+      if (ts.isNewExpression(unwrapped)) {
+        return executeImmediateLiteralConstruction(unwrapped)
+          ?.returnedFunction;
+      }
+      return ts.isTaggedTemplateExpression(unwrapped)
+        ? executeImmediateLiteralTag(unwrapped)?.returnedFunction
+        : undefined;
+    }
     function visitLiteralInvocation(
       invoked: LiteralFunction,
       arguments_: readonly InvocationArgument[]
     ): void {
       invoked.parameters.forEach((parameter, index) => {
-        if (
-          parameter.initializer !== undefined &&
-          callArgumentUsesDefault(arguments_[index])
-        ) {
-          visitRegistrarStateReads(parameter.initializer, true);
-        }
+        visitBindingDefaults(
+          parameter.name,
+          parameter.initializer,
+          arguments_[index]
+        );
       });
       if (invoked.asteriskToken !== undefined) return;
       visitRegistrarStateReads(invoked.body, true);
+    }
+    function visitBindingDefaults(
+      name: ts.BindingName,
+      initializer: ts.Expression | undefined,
+      argument: InvocationArgument
+    ): void {
+      let value = argument;
+      if (
+        initializer !== undefined &&
+        callArgumentUsesDefault(argument)
+      ) {
+        visitRegistrarStateReads(initializer, true);
+        value = initializer;
+      }
+      if (ts.isIdentifier(name) || value === null || value === undefined) {
+        return;
+      }
+      const literal = unwrapLiteralExpression(value);
+      if (
+        ts.isObjectBindingPattern(name) &&
+        ts.isObjectLiteralExpression(literal)
+      ) {
+        for (const element of name.elements) {
+          if (element.dotDotDotToken !== undefined) continue;
+          const propertyName = bindingElementPropertyName(element);
+          if (propertyName === undefined) continue;
+          const property = exactObjectLiteralProperty(
+            literal,
+            propertyName
+          );
+          if (!property.known) continue;
+          visitBindingDefaults(
+            element.name,
+            element.initializer,
+            property.value
+          );
+        }
+        return;
+      }
+      if (
+        ts.isArrayBindingPattern(name) &&
+        ts.isArrayLiteralExpression(literal) &&
+        !literal.elements.some(ts.isSpreadElement)
+      ) {
+        name.elements.forEach((element, index) => {
+          if (
+            ts.isOmittedExpression(element) ||
+            element.dotDotDotToken !== undefined
+          ) {
+            return;
+          }
+          const arrayElement = literal.elements[index];
+          visitBindingDefaults(
+            element.name,
+            element.initializer,
+            arrayElement === undefined ||
+              ts.isOmittedExpression(arrayElement)
+              ? undefined
+              : arrayElement
+          );
+        });
+      }
+    }
+    function bindingElementPropertyName(
+      element: ts.BindingElement
+    ): string | undefined {
+      if (element.propertyName !== undefined) {
+        return literalPropertyName(element.propertyName);
+      }
+      return ts.isIdentifier(element.name)
+        ? element.name.text
+        : undefined;
+    }
+    function literalPropertyName(
+      name: ts.PropertyName
+    ): string | undefined {
+      if (
+        ts.isIdentifier(name) ||
+        ts.isStringLiteral(name) ||
+        ts.isNumericLiteral(name) ||
+        ts.isNoSubstitutionTemplateLiteral(name)
+      ) {
+        return name.text;
+      }
+      if (!ts.isComputedPropertyName(name)) return undefined;
+      const expression = unwrapLiteralExpression(name.expression);
+      return (
+        ts.isStringLiteral(expression) ||
+        ts.isNumericLiteral(expression) ||
+        ts.isNoSubstitutionTemplateLiteral(expression)
+      )
+        ? expression.text
+        : undefined;
+    }
+    function exactObjectLiteralProperty(
+      object: ts.ObjectLiteralExpression,
+      name: string
+    ): {
+      readonly known: boolean;
+      readonly value: InvocationArgument;
+    } {
+      let value: InvocationArgument = undefined;
+      for (const property of object.properties) {
+        if (ts.isSpreadAssignment(property)) {
+          return { known: false, value: undefined };
+        }
+        const propertyName = literalPropertyName(property.name);
+        if (propertyName === undefined) {
+          return { known: false, value: undefined };
+        }
+        if (propertyName !== name) continue;
+        if (ts.isPropertyAssignment(property)) {
+          value = property.initializer;
+        } else if (ts.isShorthandPropertyAssignment(property)) {
+          value = property.name;
+        } else if (ts.isMethodDeclaration(property)) {
+          value = null;
+        } else {
+          return { known: false, value: undefined };
+        }
+      }
+      return { known: true, value };
     }
     function exactReturnedLiteralFunction(
       invoked: LiteralFunction
@@ -891,14 +1083,16 @@ function mountedBinderOwnershipAnalysis(
       const statements = invoked.body.statements.filter(
         (statement) => !ts.isEmptyStatement(statement)
       );
+      const statement = statements[0];
       if (
         statements.length !== 1 ||
-        !ts.isReturnStatement(statements[0]) ||
-        statements[0].expression === undefined
+        statement === undefined ||
+        !ts.isReturnStatement(statement) ||
+        statement.expression === undefined
       ) {
         return undefined;
       }
-      return literalFunctionValue(statements[0].expression);
+      return literalFunctionValue(statement.expression);
     }
     function literalFunctionValue(
       expression: ts.Expression
@@ -940,12 +1134,22 @@ function mountedBinderOwnershipAnalysis(
       if (argument === undefined) return true;
       const expression = unwrapLiteralExpression(argument);
       return (
-        (
-          ts.isIdentifier(expression) &&
-          expression.text === "undefined"
-        ) ||
+        isGlobalUndefinedReference(expression) ||
         ts.isVoidExpression(expression)
       );
+    }
+    function isGlobalUndefinedReference(
+      expression: ts.Expression
+    ): boolean {
+      if (!ts.isIdentifier(expression)) return false;
+      const symbol = checker.getSymbolAtLocation(expression);
+      return symbol !== undefined &&
+        symbol.getName() === "undefined" &&
+        (symbol.declarations?.length ?? 0) === 0 &&
+        (
+          checker.getTypeAtLocation(expression).flags &
+          ts.TypeFlags.Undefined
+        ) !== 0;
     }
     if (
       exactStateReads.length !== 1 ||
@@ -1271,6 +1475,93 @@ function immediateLiteralInvocationRuntimeProbe(): {
       (diagnostic) => diagnostic.code
     ),
     stateReadCount: context.stateReadCount
+  };
+}
+
+function literalEvaluatorRuntimeProbe(): {
+  readonly diagnosticCodes: readonly number[];
+  readonly stateReadCounts: readonly number[] | undefined;
+} {
+  const result = ts.transpileModule(`
+    let stateReadCount = 0;
+    const stateReadCounts: number[] = [];
+    const read = () => {
+      stateReadCount += 1;
+      return {};
+    };
+    const record = (run: () => void) => {
+      const before = stateReadCount;
+      run();
+      stateReadCounts.push(stateReadCount - before);
+    };
+    record(() => {
+      (function (value = read()) {
+        void value;
+      }).apply(undefined, null);
+    });
+    record(() => {
+      (({
+        nested: [value = read()] = []
+      } = {
+        nested: []
+      }) => {
+        void value;
+      })({
+        nested: []
+      });
+    });
+    record(() => {
+      (() => function () {
+        read();
+      })().call(undefined);
+    });
+    record(() => {
+      (() => function () {
+        read();
+      })().apply(undefined, []);
+    });
+    record(() => {
+      (() => function () {
+        read();
+      })().bind(undefined)();
+    });
+    record(() => {
+      new (function () {
+        return function () {
+          read();
+        };
+      })()();
+    });
+    record(() => {
+      (function () {
+        return function () {
+          read();
+        };
+      })\`tag\`();
+    });
+    record(() => {
+      const undefined = {};
+      ((value = read()) => value)(undefined);
+    });
+    (globalThis as {
+      stateReadCounts?: readonly number[];
+    }).stateReadCounts = stateReadCounts;
+  `, {
+    compilerOptions: {
+      module: ts.ModuleKind.None,
+      target: ts.ScriptTarget.ES2022
+    },
+    reportDiagnostics: true
+  });
+  const context: {
+    stateReadCounts?: readonly number[];
+  } = {};
+  runInNewContext(result.outputText, context);
+  return {
+    diagnosticCodes: (result.diagnostics ?? []).map(
+      (diagnostic) => diagnostic.code
+    ),
+    stateReadCounts: context.stateReadCounts
   };
 }
 
@@ -1646,6 +1937,10 @@ describe("wake supervisor runtime import boundary", () => {
       diagnosticCodes: [],
       stateReadCount: 7
     });
+    expect(literalEvaluatorRuntimeProbe()).toEqual({
+      diagnosticCodes: [],
+      stateReadCounts: [1, 1, 1, 1, 1, 1, 1, 0]
+    });
     for (const [name, outerSyntax] of [
       ["deferred nested function and arrow bodies and defaults", `
         function deferredFunction(
@@ -1730,6 +2025,19 @@ describe("wake supervisor runtime import boundary", () => {
           )(), "deferred-generator")]() {}
         };
         void deferredGenerator;
+      `],
+      ["locally shadowed undefined argument", `
+        const shadowedUndefined = {
+          [(
+            ((undefined) => {
+              ((value = residentWakeRuntimeStates.get(wakeRuntime)) => value)(
+                undefined
+              );
+            })({}),
+            "shadowed-undefined"
+          )]() {}
+        };
+        void shadowedUndefined;
       `]
     ] as const) {
       expect.soft(
@@ -1926,6 +2234,97 @@ describe("wake supervisor runtime import boundary", () => {
             residentWakeRuntimeStates.get(wakeRuntime),
             "returned-invocation"
           ))()())]() {}
+        };
+        void objectValue;
+      `)],
+      ["literal function apply null argument-list default state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (function invoked(
+              value = residentWakeRuntimeStates.get(wakeRuntime)
+            ) {
+              void value;
+            }).apply(undefined, null),
+            "apply-null"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["recursive destructured parameter default state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (({
+              nested: [
+                value = residentWakeRuntimeStates.get(wakeRuntime)
+              ] = []
+            } = {
+              nested: []
+            }) => {
+              void value;
+            })({
+              nested: []
+            }),
+            "destructured-default"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["returned literal function call invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (() => function returned() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            })().call(undefined),
+            "returned-call"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["returned literal function apply invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (() => function returned() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            })().apply(undefined, []),
+            "returned-apply"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["returned literal function bound invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (() => function returned() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            })().bind(undefined)(),
+            "returned-bind"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["constructor-returned literal direct invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            new (function constructed() {
+              return function returned() {
+                residentWakeRuntimeStates.get(wakeRuntime);
+              };
+            })()(),
+            "constructor-returned"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["tag-returned literal direct invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (function tagged() {
+              return function returned() {
+                residentWakeRuntimeStates.get(wakeRuntime);
+              };
+            })\`tag\`(),
+            "tag-returned"
+          )]() {}
         };
         void objectValue;
       `)],
