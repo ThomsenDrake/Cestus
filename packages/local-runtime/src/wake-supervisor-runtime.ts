@@ -10,8 +10,6 @@ import {
   type WorkspaceAdmissionSnapshot,
   type WorkspaceAvailabilityAuthority
 } from "../../agent/src/wake-supervisor.js";
-import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
-import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
 import { registerMountedArtifactAuthorityIssuerForWakeRuntime } from "./mounted-artifact-authority-operation.js";
 import {
@@ -156,10 +154,7 @@ export async function bindResidentLoopCapabilitiesForFactory(
   const issued = await bindMountedResidentLoopAuthorityForFactory(
     state.store,
     binding,
-    domainExecution,
-    (input) =>
-      dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input),
-    createResidentLoopToolGateway
+    domainExecution
   );
   const { recoverSuspensionPrefix, suspendAndRelease } = issued.mountedAuthority;
   const mountedSuspensionContract = Object.freeze([
