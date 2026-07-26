@@ -8,6 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 import { afterEach, describe, expect, it } from "vitest";
 import ts from "typescript";
 
@@ -629,11 +630,15 @@ function mountedBinderOwnershipAnalysis(
     const exactStateReads: ts.CallExpression[] = [];
     const stateDeclarations: ts.VariableDeclaration[] = [];
     visitRegistrarStateReads(registrarBody);
-    function visitRegistrarStateReads(node: ts.Node): void {
+    function visitRegistrarStateReads(
+      node: ts.Node,
+      outerEvaluated = false
+    ): void {
       if (
         node !== registrarBody &&
         ts.isFunctionLike(node)
       ) {
+        visitOuterEvaluatedFunctionLikeSyntax(node);
         return;
       }
       if (
@@ -661,7 +666,92 @@ function mountedBinderOwnershipAnalysis(
       ) {
         stateDeclarations.push(node);
       }
-      ts.forEachChild(node, visitRegistrarStateReads);
+      if (outerEvaluated && ts.isCallExpression(node)) {
+        const invoked = directlyInvokedFunction(node);
+        if (invoked !== undefined) {
+          for (const argument of node.arguments) {
+            visitRegistrarStateReads(argument, true);
+          }
+          invoked.parameters.forEach((parameter, index) => {
+            if (
+              parameter.initializer !== undefined &&
+              callArgumentUsesDefault(node.arguments[index])
+            ) {
+              visitRegistrarStateReads(parameter.initializer, true);
+            }
+          });
+          visitRegistrarStateReads(invoked.body, true);
+          return;
+        }
+      }
+      ts.forEachChild(node, (child) =>
+        visitRegistrarStateReads(child, outerEvaluated)
+      );
+    }
+    function visitOuterEvaluatedFunctionLikeSyntax(
+      node: ts.SignatureDeclaration
+    ): void {
+      if (
+        (
+          ts.isMethodDeclaration(node) ||
+          ts.isGetAccessorDeclaration(node) ||
+          ts.isSetAccessorDeclaration(node)
+        ) &&
+        node.name !== undefined &&
+        ts.isComputedPropertyName(node.name)
+      ) {
+        visitRegistrarStateReads(node.name.expression, true);
+      }
+      if (
+        !(
+          ts.isMethodDeclaration(node) ||
+          ts.isGetAccessorDeclaration(node) ||
+          ts.isSetAccessorDeclaration(node) ||
+          ts.isConstructorDeclaration(node)
+        )
+      ) {
+        return;
+      }
+      visitDecorators(node);
+      for (const parameter of node.parameters) {
+        visitDecorators(parameter);
+      }
+    }
+    function visitDecorators(node: ts.Node): void {
+      if (!ts.canHaveDecorators(node)) return;
+      for (const decorator of ts.getDecorators(node) ?? []) {
+        visitRegistrarStateReads(decorator.expression, true);
+      }
+    }
+    function directlyInvokedFunction(
+      call: ts.CallExpression
+    ): ts.ArrowFunction | ts.FunctionExpression | undefined {
+      if (call.questionDotToken !== undefined) return undefined;
+      let expression: ts.Expression = call.expression;
+      while (
+        ts.isParenthesizedExpression(expression) ||
+        ts.isAsExpression(expression) ||
+        ts.isTypeAssertionExpression(expression) ||
+        ts.isNonNullExpression(expression) ||
+        ts.isSatisfiesExpression(expression) ||
+        ts.isPartiallyEmittedExpression(expression)
+      ) {
+        expression = expression.expression;
+      }
+      return ts.isArrowFunction(expression) ||
+        ts.isFunctionExpression(expression)
+        ? expression
+        : undefined;
+    }
+    function callArgumentUsesDefault(
+      argument: ts.Expression | undefined
+    ): boolean {
+      return argument === undefined ||
+        (
+          ts.isIdentifier(argument) &&
+          argument.text === "undefined"
+        ) ||
+        ts.isVoidExpression(argument);
     }
     if (
       exactStateReads.length !== 1 ||
@@ -823,6 +913,106 @@ function mountedBinderControlAnalysis(
     sourceFile,
     label: mountedBinderWakePath
   }]);
+}
+
+function outerEvaluatedRuntimeProbe(): {
+  readonly diagnosticCodes: readonly number[];
+  readonly stateReadCount: number | undefined;
+} {
+  const result = ts.transpileModule(`
+    let stateReadCount = 0;
+    const wakeRuntime = {};
+    const residentWakeRuntimeStates = {
+      get(value: object) {
+        stateReadCount += 1;
+        return value;
+      }
+    };
+    const decorate = (..._arguments: unknown[]) => undefined;
+    const objectValue = {
+      [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {},
+      get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+        return 1;
+      },
+      set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+        value: number
+      ) {
+        void value;
+      },
+      [((() => (
+        residentWakeRuntimeStates.get(wakeRuntime),
+        "invoked-object-method"
+      ))())]() {},
+      [((() => residentWakeRuntimeStates.get(wakeRuntime)),
+        "deferred-arrow-body")]() {},
+      [(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+        "deferred-arrow-default")]() {}
+    };
+    class Example {
+      [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {}
+      get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+        return 1;
+      }
+      set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+        value: number
+      ) {
+        void value;
+      }
+      @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+      decoratedMethod(
+        @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+        value: unknown
+      ) {
+        void value;
+      }
+      @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+      get decoratedGetter() {
+        return 1;
+      }
+      @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+      set decoratedSetter(
+        @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+        value: number
+      ) {
+        void value;
+      }
+      constructor(
+        @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+        value: unknown
+      ) {
+        void value;
+      }
+      @((() => {
+        residentWakeRuntimeStates.get(wakeRuntime);
+        return decorate;
+      })())
+      invokedDecorator() {}
+      @((() => residentWakeRuntimeStates.get(wakeRuntime)), decorate)
+      deferredDecoratorBody() {}
+      @(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+        decorate)
+      deferredDecoratorDefault() {}
+    }
+    (globalThis as { stateReadCount?: number }).stateReadCount =
+      stateReadCount;
+    void objectValue;
+    void Example;
+  `, {
+    compilerOptions: {
+      experimentalDecorators: true,
+      module: ts.ModuleKind.None,
+      target: ts.ScriptTarget.ES2022
+    },
+    reportDiagnostics: true
+  });
+  const context: { stateReadCount?: number } = {};
+  runInNewContext(result.outputText, context);
+  return {
+    diagnosticCodes: (result.diagnostics ?? []).map(
+      (diagnostic) => diagnostic.code
+    ),
+    stateReadCount: context.stateReadCount
+  };
 }
 
 describe("wake supervisor runtime import boundary", () => {
@@ -1146,6 +1336,28 @@ describe("wake supervisor runtime import boundary", () => {
       }],
       violations: []
     };
+    const exactRegistrarWith = (outerSyntax: string) => `
+      const residentWakeRuntimeStates =
+        new WeakMap<object, { store: unknown }>();
+      const decorate = (..._arguments: unknown[]) => undefined;
+      import {
+        bindMountedResidentLoopAuthorityForFactory
+      } from "./mounted-wake-lifecycle-store.js";
+      export function bindResidentLoopCapabilitiesForFactory(
+        wakeRuntime: object,
+        binding: unknown,
+        domainExecution: unknown
+      ) {
+        ${outerSyntax}
+        const state = residentWakeRuntimeStates.get(wakeRuntime);
+        if (state === undefined) throw new Error("missing state");
+        return bindMountedResidentLoopAuthorityForFactory(
+          state.store,
+          binding,
+          domainExecution
+        );
+      }
+    `;
     expect(mountedBinderControlAnalysis(`
       const residentWakeRuntimeStates =
         new WeakMap<object, { store: unknown }>();
@@ -1166,7 +1378,198 @@ describe("wake supervisor runtime import boundary", () => {
         );
       }
     `)).toEqual(exactBinderOwnership);
+    expect(outerEvaluatedRuntimeProbe()).toEqual({
+      diagnosticCodes: [],
+      stateReadCount: 14
+    });
+    for (const [name, outerSyntax] of [
+      ["deferred nested function and arrow bodies and defaults", `
+        function deferredFunction(
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ) {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return value;
+        }
+        const deferredArrow = (
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ) => {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return value;
+        };
+        void deferredFunction;
+        void deferredArrow;
+      `],
+      ["deferred functions inside computed method names", `
+        const deferredNames = {
+          [((() => residentWakeRuntimeStates.get(wakeRuntime)),
+            "deferred-arrow-body")]() {},
+          [(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+            "deferred-arrow-default")]() {},
+          [((function deferred(
+            value = residentWakeRuntimeStates.get(wakeRuntime)
+          ) {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return value;
+          }), "deferred-function")]() {}
+        };
+        void deferredNames;
+      `],
+      ["deferred functions inside decorator expressions", `
+        class DeferredDecorators {
+          @((() => residentWakeRuntimeStates.get(wakeRuntime)), decorate)
+          method(
+            @((function deferred(
+              value = residentWakeRuntimeStates.get(wakeRuntime)
+            ) {
+              residentWakeRuntimeStates.get(wakeRuntime);
+              return value;
+            }), decorate)
+            input: unknown
+          ) {
+            void input;
+          }
+          @(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+            decorate)
+          get accessor() {
+            return 1;
+          }
+        }
+        void DeferredDecorators;
+      `]
+    ] as const) {
+      expect.soft(
+        mountedBinderControlAnalysis(
+          exactRegistrarWith(outerSyntax)
+        ),
+        name
+      ).toEqual(exactBinderOwnership);
+    }
     for (const [name, text] of [
+      ["object-literal computed method state read", exactRegistrarWith(`
+        const objectValue = {
+          [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {}
+        };
+        void objectValue;
+      `)],
+      ["class computed method state read", exactRegistrarWith(`
+        class ComputedMethod {
+          [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {}
+        }
+        void ComputedMethod;
+      `)],
+      ["object-literal computed getter state read", exactRegistrarWith(`
+        const objectValue = {
+          get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+            return 1;
+          }
+        };
+        void objectValue;
+      `)],
+      ["object-literal computed setter state read", exactRegistrarWith(`
+        const objectValue = {
+          set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+            value: number
+          ) {
+            void value;
+          }
+        };
+        void objectValue;
+      `)],
+      ["class computed getter state read", exactRegistrarWith(`
+        class ComputedGetter {
+          get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+            return 1;
+          }
+        }
+        void ComputedGetter;
+      `)],
+      ["class computed setter state read", exactRegistrarWith(`
+        class ComputedSetter {
+          set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+            value: number
+          ) {
+            void value;
+          }
+        }
+        void ComputedSetter;
+      `)],
+      ["method decorator state read", exactRegistrarWith(`
+        class DecoratedMethod {
+          @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+          method() {}
+        }
+        void DecoratedMethod;
+      `)],
+      ["getter decorator state read", exactRegistrarWith(`
+        class DecoratedGetter {
+          @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+          get value() {
+            return 1;
+          }
+        }
+        void DecoratedGetter;
+      `)],
+      ["setter decorator state read", exactRegistrarWith(`
+        class DecoratedSetter {
+          @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+          set value(input: number) {
+            void input;
+          }
+        }
+        void DecoratedSetter;
+      `)],
+      ["method parameter decorator state read", exactRegistrarWith(`
+        class DecoratedMethodParameter {
+          method(
+            @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+            input: unknown
+          ) {
+            void input;
+          }
+        }
+        void DecoratedMethodParameter;
+      `)],
+      ["setter parameter decorator state read", exactRegistrarWith(`
+        class DecoratedSetterParameter {
+          set value(
+            @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+            input: number
+          ) {
+            void input;
+          }
+        }
+        void DecoratedSetterParameter;
+      `)],
+      ["constructor parameter decorator state read", exactRegistrarWith(`
+        class DecoratedConstructorParameter {
+          constructor(
+            @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+            input: unknown
+          ) {
+            void input;
+          }
+        }
+        void DecoratedConstructorParameter;
+      `)],
+      ["invoked arrow in computed method name state read", exactRegistrarWith(`
+        const objectValue = {
+          [((() => (
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "method"
+          ))())]() {}
+        };
+        void objectValue;
+      `)],
+      ["invoked function in decorator state read", exactRegistrarWith(`
+        class InvokedDecorator {
+          @((function createDecorator() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return decorate;
+          })())
+          method() {}
+        }
+        void InvokedDecorator;
+      `)],
       ["prior wrong wake-runtime argument", `
         const residentWakeRuntimeStates =
           new WeakMap<object, { store: unknown }>();
