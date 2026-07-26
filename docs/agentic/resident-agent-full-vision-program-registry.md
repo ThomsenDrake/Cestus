@@ -40225,3 +40225,65 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance-only transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1119 — Exact Task14 G-actor RED descendant integrated
+
+- Recorded at: 2026-07-26T18:31:54Z
+- Exact independently approved corrected test-only RED
+  `e684225129a2d2fb64090f380b804272f4da2b36`, tree
+  `20b94c8ff3c37866d3a94dd83a8a61bd066d6002`, is integrated by exact
+  history-preserving no-ff merge
+  `1565730f0f99d6a9bade9bd496d651b7e4bc4afe`, tree
+  `189c8991c987c4de07998323e8e08014fa3b4023`. Its first parent is exact
+  E-1118 approval commit
+  `49da32129c51021bc473c5f4e50144e9d80e2d96`; its second parent is the exact
+  reviewed candidate.
+- Integrated wake-test blob is exact
+  `736a2b7648778d7180bc8fb85b10c9b27c1fe713`. Mounted test remains exact
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`; local/global import policies
+  remain exact `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`. Composition, wake-runtime,
+  and mounted-store sources remain frozen at exact
+  `8e69a7ac55f16a9d3e1c2646c985ffc6539fe064` /
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`.
+- Fresh integration-tree 120-second serialized focused execution is exact
+  **94 = 53 passed + 41 source-causal Task14 failures**, with wake
+  **31 passed + 41 failed**, mounted **17/17**, import policy **5/5**, and
+  exact partition **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**. Exact Task136 card
+  is **381 = 333 passed + 48 failed**: 41 Task14 failures plus seven
+  preserved Task15-through-16 REDs.
+- Fresh exact 37-file cross-boundary execution is
+  **1,040 = 992 passed + 48 failed** with the same complete failure set.
+  Loaders pass **7/7**, adapters **83/83**, released controls **443/443**,
+  relevant mounted/portable/ontology boundaries **44/44**, isolated
+  prerequisites **18/18**, and FC-Core controls **2/2**.
+- Standalone typecheck, factory readiness, mission **20/20**, hardened V4
+  **20/20**, and exact contract markers
+  **29 / 20 / 29 / 15** pass. One initial unisolated parallel mission run
+  encountered only temporary-fixture write-quota errors; the exact suite
+  passed **20/20** under the already prescribed `/dev/shm` isolation. No
+  product, authority, or repository byte changed.
+- Clean normalized repository mode exits `1` after all four markers and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no prefix, closure, record-29, repository, or release success.
+- Exact merge parents, candidate tree/parent/subject/single-test scope,
+  corrected and rejected test ancestry, source/test/import freezes, real
+  Vitest and TypeScript dependencies, diff hygiene, full and connectivity
+  integrity, and final clean state pass. Both fsck modes report no missing or
+  corrupt object; ordinary unreachable objects remain informational.
+- Advance only exact `e6842251` corrected Task14 test-only RED
+  `approved -> integrated`. This event intentionally contains no resumed
+  Task14 source authority, source candidacy, Task15 authority, or product
+  transition. A separate append-only authority event and exact Task136
+  history-preserving merge are mandatory before the preserved three-source
+  Task14 working diff may proceed.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED integration, not resumed source
+  authority, Task14 source candidacy, Task15 authority, Task136 product
+  candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
