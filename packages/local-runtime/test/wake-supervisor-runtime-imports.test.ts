@@ -8,6 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 import { afterEach, describe, expect, it } from "vitest";
 import ts from "typescript";
 
@@ -25,7 +26,7 @@ const permittedResidentImports = Object.freeze({
       "./adapters/legacy-staging.js"
     ]
   },
-  wakeRuntime: {
+  mountedStore: {
     dispatcherDefault: "../../agent/src/domain-execution-dispatcher.js",
     gatewayNamedConstructor: "../../agent/src/resident-loop-tool-gateway.js"
   },
@@ -250,6 +251,2255 @@ function sourceLabel(packagesRoot: string, path: string): string {
   return `packages/${relative(packagesRoot, path).replaceAll("\\", "/")}`;
 }
 
+interface FixedConstructorUseAnalysis {
+  readonly dispatcherRuntimeReferenceCount: number;
+  readonly dispatcherBinderCallCount: number;
+  readonly gatewayRuntimeReferenceCount: number;
+  readonly gatewayConstructorCallCount: number;
+}
+
+function fixedConstructorUseAnalysis(
+  sourceFile: ts.SourceFile,
+  dispatcherLocal: string | null,
+  gatewayLocal: string | null
+): FixedConstructorUseAnalysis {
+  let dispatcherRuntimeReferenceCount = 0;
+  let dispatcherBinderCallCount = 0;
+  let gatewayRuntimeReferenceCount = 0;
+  let gatewayConstructorCallCount = 0;
+  visit(sourceFile);
+  return {
+    dispatcherRuntimeReferenceCount,
+    dispatcherBinderCallCount,
+    gatewayRuntimeReferenceCount,
+    gatewayConstructorCallCount
+  };
+
+  function visit(node: ts.Node): void {
+    if (
+      ts.isIdentifier(node) &&
+      !(
+        ts.isImportClause(node.parent) ||
+        ts.isImportSpecifier(node.parent)
+      )
+    ) {
+      if (dispatcherLocal !== null && node.text === dispatcherLocal) {
+        dispatcherRuntimeReferenceCount += 1;
+        if (
+          ts.isPropertyAccessExpression(node.parent) &&
+          node.parent.expression === node &&
+          node.parent.questionDotToken === undefined &&
+          node.parent.name.text ===
+            "bindPackageOwnedResidentDomainExecutionPort" &&
+          ts.isCallExpression(node.parent.parent) &&
+          node.parent.parent.expression === node.parent &&
+          node.parent.parent.questionDotToken === undefined &&
+          node.parent.parent.arguments.length === 1 &&
+          !node.parent.parent.arguments.some(ts.isSpreadElement) &&
+          isInsideMountedStoreBinder(node.parent.parent)
+        ) {
+          dispatcherBinderCallCount += 1;
+        }
+      }
+      if (gatewayLocal !== null && node.text === gatewayLocal) {
+        gatewayRuntimeReferenceCount += 1;
+        if (
+          ts.isCallExpression(node.parent) &&
+          node.parent.expression === node &&
+          node.parent.questionDotToken === undefined &&
+          node.parent.arguments.length === 1 &&
+          !ts.isSpreadElement(node.parent.arguments[0]!) &&
+          isInsideMountedStoreBinder(node.parent)
+        ) {
+          gatewayConstructorCallCount += 1;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  function isInsideMountedStoreBinder(node: ts.Node): boolean {
+    for (
+      let current: ts.Node | undefined = node.parent;
+      current !== undefined;
+      current = current.parent
+    ) {
+      if (ts.isFunctionLike(current)) {
+        return ts.isFunctionDeclaration(current) &&
+          current.name?.text ===
+            "bindMountedResidentLoopAuthorityForFactory";
+      }
+    }
+    return false;
+  }
+}
+
+interface MountedBinderSource {
+  readonly sourceFile: ts.SourceFile;
+  readonly label: string;
+}
+
+interface MountedBinderCall {
+  readonly file: string;
+  readonly argumentCount: number;
+}
+
+interface MountedBinderOwnershipAnalysis {
+  readonly binderImporters: readonly string[];
+  readonly binderCalls: readonly MountedBinderCall[];
+  readonly violations: readonly string[];
+}
+
+const mountedBinderName =
+  "bindMountedResidentLoopAuthorityForFactory";
+const mountedBinderModule =
+  "./mounted-wake-lifecycle-store.js";
+const mountedBinderWakePath =
+  "packages/local-runtime/src/wake-supervisor-runtime.ts";
+const mountedBinderRegistrarName =
+  "bindResidentLoopCapabilitiesForFactory";
+const mountedBinderRegistrarParameters = [
+  "wakeRuntime",
+  "binding",
+  "domainExecution"
+] as const;
+
+function mountedBinderOwnershipAnalysis(
+  program: ts.Program,
+  sources: readonly MountedBinderSource[]
+): MountedBinderOwnershipAnalysis {
+  const checker = program.getTypeChecker();
+  const binderImporters = new Set<string>();
+  const binderCalls: MountedBinderCall[] = [];
+  const violations = new Set<string>();
+  const exactImports: Array<{
+    readonly source: MountedBinderSource;
+    readonly element: ts.ImportSpecifier;
+    readonly symbol: ts.Symbol | undefined;
+  }> = [];
+
+  for (const source of sources) {
+    for (const statement of source.sourceFile.statements) {
+      if (
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isMountedBinderModule(statement.moduleSpecifier.text)
+      ) {
+        const clause = statement.importClause;
+        const bindings = clause?.namedBindings;
+        const binderElements = bindings !== undefined &&
+          ts.isNamedImports(bindings)
+          ? bindings.elements.filter((element) =>
+              (element.propertyName?.text ?? element.name.text) ===
+                mountedBinderName
+            )
+          : [];
+        const alternateCarrier =
+          clause?.name !== undefined ||
+          (bindings !== undefined && ts.isNamespaceImport(bindings));
+        if (binderElements.length > 0 || alternateCarrier) {
+          binderImporters.add(source.label);
+        }
+        if (alternateCarrier) {
+          reject(source.label);
+        }
+        for (const element of binderElements) {
+          const exact =
+            source.label === mountedBinderWakePath &&
+            statement.moduleSpecifier.text === mountedBinderModule &&
+            clause !== undefined &&
+            clause.isTypeOnly === false &&
+            clause.name === undefined &&
+            bindings !== undefined &&
+            ts.isNamedImports(bindings) &&
+            statement.attributes === undefined &&
+            element.isTypeOnly === false &&
+            element.propertyName === undefined &&
+            element.name.text === mountedBinderName;
+          if (!exact) {
+            reject(source.label);
+            continue;
+          }
+          exactImports.push({
+            source,
+            element,
+            symbol: checker.getSymbolAtLocation(element.name)
+          });
+        }
+      } else if (
+        ts.isImportEqualsDeclaration(statement) &&
+        ts.isExternalModuleReference(statement.moduleReference) &&
+        statement.moduleReference.expression !== undefined &&
+        ts.isStringLiteral(statement.moduleReference.expression) &&
+        isMountedBinderModule(statement.moduleReference.expression.text)
+      ) {
+        binderImporters.add(source.label);
+        reject(source.label);
+      } else if (
+        ts.isExportDeclaration(statement) &&
+        statement.moduleSpecifier !== undefined &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        isMountedBinderModule(statement.moduleSpecifier.text)
+      ) {
+        binderImporters.add(source.label);
+        reject(source.label);
+      }
+    }
+
+    visitDynamicImports(source.sourceFile, source.label);
+  }
+
+  if (exactImports.length !== 1) {
+    reject(mountedBinderWakePath);
+  } else {
+    const exactImport = exactImports[0]!;
+    const { symbol } = exactImport;
+    if (
+      symbol === undefined ||
+      symbol.declarations?.length !== 1 ||
+      symbol.declarations[0] !== exactImport.element
+    ) {
+      reject(exactImport.source.label);
+    } else {
+      const references: Array<{
+        readonly source: MountedBinderSource;
+        readonly identifier: ts.Identifier;
+      }> = [];
+      for (const source of sources) {
+        visitReferences(source);
+      }
+      const calls = references.filter(({ source, identifier }) =>
+        source.label === mountedBinderWakePath &&
+        ts.isCallExpression(identifier.parent) &&
+        identifier.parent.expression === identifier &&
+        identifier.parent.questionDotToken === undefined &&
+        identifier.parent.arguments.length === 3 &&
+        !identifier.parent.arguments.some(ts.isSpreadElement) &&
+        hasExactMountedBinderArguments(identifier.parent, source.sourceFile)
+      );
+      if (references.length !== 1 || calls.length !== 1) {
+        reject(exactImport.source.label);
+      } else {
+        const call = calls[0]!.identifier.parent as ts.CallExpression;
+        binderCalls.push({
+          file: calls[0]!.source.label,
+          argumentCount: call.arguments.length
+        });
+      }
+
+      function visitReferences(source: MountedBinderSource): void {
+        visit(source.sourceFile);
+
+        function visit(node: ts.Node): void {
+          if (
+            ts.isIdentifier(node) &&
+            node !== exactImport.element.name &&
+            checker.getSymbolAtLocation(node) === symbol
+          ) {
+            references.push({ source, identifier: node });
+          }
+          if (
+            ts.isCallExpression(node) &&
+            isMountedBinderLikeCall(node) &&
+            !(
+              ts.isIdentifier(node.expression) &&
+              checker.getSymbolAtLocation(node.expression) === symbol
+            )
+          ) {
+            reject(source.label);
+          }
+          ts.forEachChild(node, visit);
+        }
+      }
+    }
+  }
+
+  function exactWakeRegistrarForCall(
+    call: ts.CallExpression,
+    sourceFile: ts.SourceFile
+  ): ts.FunctionDeclaration | undefined {
+    for (
+      let current: ts.Node | undefined = call.parent;
+      current !== undefined;
+      current = current.parent
+    ) {
+      if (!ts.isFunctionLike(current)) continue;
+      if (
+        !ts.isFunctionDeclaration(current) ||
+        current.parent !== sourceFile ||
+        current.name?.text !== mountedBinderRegistrarName ||
+        current.body === undefined ||
+        current.asteriskToken !== undefined
+      ) {
+        return undefined;
+      }
+      const modifiers = current.modifiers ?? [];
+      if (
+        !modifiers.some((modifier) =>
+          modifier.kind === ts.SyntaxKind.ExportKeyword
+        ) ||
+        modifiers.some((modifier) =>
+          modifier.kind === ts.SyntaxKind.DefaultKeyword
+        )
+      ) {
+        return undefined;
+      }
+      return current.parameters.length ===
+        mountedBinderRegistrarParameters.length &&
+        current.parameters.every((parameter, index) =>
+          ts.isIdentifier(parameter.name) &&
+          parameter.name.text === mountedBinderRegistrarParameters[index] &&
+          parameter.dotDotDotToken === undefined &&
+          parameter.questionToken === undefined &&
+          parameter.initializer === undefined
+        )
+        ? current
+        : undefined;
+    }
+    return undefined;
+  }
+
+  function hasExactMountedBinderArguments(
+    call: ts.CallExpression,
+    sourceFile: ts.SourceFile
+  ): boolean {
+    const registrar = exactWakeRegistrarForCall(call, sourceFile);
+    if (registrar === undefined || registrar.body === undefined) return false;
+    const [wakeParameter, bindingParameter, domainExecutionParameter] =
+      registrar.parameters;
+    if (
+      wakeParameter === undefined ||
+      bindingParameter === undefined ||
+      domainExecutionParameter === undefined ||
+      !ts.isIdentifier(wakeParameter.name) ||
+      !ts.isIdentifier(bindingParameter.name) ||
+      !ts.isIdentifier(domainExecutionParameter.name)
+    ) {
+      return false;
+    }
+    const wakeSymbol = checker.getSymbolAtLocation(wakeParameter.name);
+    const bindingSymbol = checker.getSymbolAtLocation(bindingParameter.name);
+    const domainExecutionSymbol =
+      checker.getSymbolAtLocation(domainExecutionParameter.name);
+    if (
+      wakeSymbol === undefined ||
+      bindingSymbol === undefined ||
+      domainExecutionSymbol === undefined
+    ) {
+      return false;
+    }
+
+    const mapDeclarations = sourceFile.statements.flatMap((statement) => {
+      if (
+        !ts.isVariableStatement(statement) ||
+        statement.modifiers?.some((modifier) =>
+          modifier.kind === ts.SyntaxKind.ExportKeyword ||
+          modifier.kind === ts.SyntaxKind.DefaultKeyword
+        ) === true ||
+        (statement.declarationList.flags & ts.NodeFlags.Const) === 0 ||
+        statement.declarationList.declarations.length !== 1
+      ) {
+        return [];
+      }
+      const declaration = statement.declarationList.declarations[0]!;
+      return ts.isIdentifier(declaration.name) &&
+        declaration.name.text === "residentWakeRuntimeStates" &&
+        declaration.initializer !== undefined &&
+        ts.isNewExpression(declaration.initializer) &&
+        ts.isIdentifier(declaration.initializer.expression) &&
+        declaration.initializer.expression.text === "WeakMap" &&
+        (declaration.initializer.arguments?.length ?? 0) === 0
+        ? [declaration]
+        : [];
+    });
+    if (mapDeclarations.length !== 1) return false;
+    const mapDeclaration = mapDeclarations[0]!;
+    if (!ts.isIdentifier(mapDeclaration.name)) return false;
+    const mapSymbol = checker.getSymbolAtLocation(mapDeclaration.name);
+    if (
+      mapSymbol === undefined ||
+      mapSymbol.declarations?.length !== 1 ||
+      mapSymbol.declarations[0] !== mapDeclaration
+    ) {
+      return false;
+    }
+
+    const registrarBody = registrar.body;
+    const privateMapSymbol = mapSymbol;
+    const registrarWakeSymbol = wakeSymbol;
+    const exactStateReads: ts.CallExpression[] = [];
+    const stateDeclarations: ts.VariableDeclaration[] = [];
+    type LiteralFunction =
+      | ts.ArrowFunction
+      | ts.FunctionExpression;
+    type InvocationArgument = ts.Expression | null | undefined;
+    interface ImmediateCallResult {
+      readonly returnedFunction: LiteralFunction | undefined;
+      readonly returnedUndefined?: boolean;
+    }
+    const activeImmediateLiteralExecutions = new Set<ts.Node>();
+    const activeLiteralFunctions =
+      new Map<ts.Symbol, LiteralFunction>();
+    const activeLiteralThisValues: InvocationArgument[] = [];
+    const exactMethodValues = new Set<ts.Expression>();
+    visitRegistrarStateReads(registrarBody, true);
+    function visitRegistrarStateReads(
+      node: ts.Node,
+      outerEvaluated = false
+    ): void {
+      if (
+        node !== registrarBody &&
+        ts.isFunctionLike(node)
+      ) {
+        visitOuterEvaluatedFunctionLikeSyntax(node);
+        return;
+      }
+      if (
+        ts.isCallExpression(node) &&
+        isExactPrivateStateRead(
+          node,
+          privateMapSymbol,
+          registrarWakeSymbol
+        )
+      ) {
+        exactStateReads.push(node);
+      }
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isVariableDeclarationList(node.parent) &&
+        (node.parent.flags & ts.NodeFlags.Const) !== 0 &&
+        node.parent.declarations.length === 1 &&
+        ts.isIdentifier(node.name) &&
+        node.initializer !== undefined &&
+        isExactPrivateStateRead(
+          node.initializer,
+          privateMapSymbol,
+          registrarWakeSymbol
+        )
+      ) {
+        stateDeclarations.push(node);
+      }
+      if (
+        outerEvaluated &&
+        visitExactBoundThisPropertyRead(node)
+      ) {
+        return;
+      }
+      if (
+        outerEvaluated &&
+        visitImmediateLiteralExecution(node)
+      ) {
+        return;
+      }
+      ts.forEachChild(node, (child) =>
+        visitRegistrarStateReads(child, outerEvaluated)
+      );
+    }
+    function visitOuterEvaluatedFunctionLikeSyntax(
+      node: ts.SignatureDeclaration
+    ): void {
+      if (
+        (
+          ts.isMethodDeclaration(node) ||
+          ts.isGetAccessorDeclaration(node) ||
+          ts.isSetAccessorDeclaration(node)
+        ) &&
+        node.name !== undefined &&
+        ts.isComputedPropertyName(node.name)
+      ) {
+        visitRegistrarStateReads(node.name.expression, true);
+      }
+      if (
+        !(
+          ts.isMethodDeclaration(node) ||
+          ts.isGetAccessorDeclaration(node) ||
+          ts.isSetAccessorDeclaration(node) ||
+          ts.isConstructorDeclaration(node)
+        )
+      ) {
+        return;
+      }
+      visitDecorators(node);
+      for (const parameter of node.parameters) {
+        visitDecorators(parameter);
+      }
+    }
+    function visitDecorators(node: ts.Node): void {
+      if (!ts.canHaveDecorators(node)) return;
+      for (const decorator of ts.getDecorators(node) ?? []) {
+        visitRegistrarStateReads(decorator.expression, true);
+      }
+    }
+    function executeImmediateLiteralOnce(
+      node: ts.Node,
+      execute: () => ImmediateCallResult | undefined
+    ): ImmediateCallResult | undefined {
+      if (activeImmediateLiteralExecutions.has(node)) return undefined;
+      activeImmediateLiteralExecutions.add(node);
+      try {
+        return execute();
+      } finally {
+        activeImmediateLiteralExecutions.delete(node);
+      }
+    }
+    function visitImmediateLiteralExecution(node: ts.Node): boolean {
+      if (ts.isCallExpression(node)) {
+        return executeImmediateLiteralCall(node) !== undefined;
+      }
+      if (ts.isNewExpression(node)) {
+        return executeImmediateLiteralConstruction(node) !== undefined;
+      }
+      if (ts.isTaggedTemplateExpression(node)) {
+        return executeImmediateLiteralTag(node) !== undefined;
+      }
+      return false;
+    }
+    function executeImmediateLiteralCall(
+      call: ts.CallExpression
+    ): ImmediateCallResult | undefined {
+      return executeImmediateLiteralOnce(
+        call,
+        () => executeImmediateLiteralCallUnguarded(call)
+      );
+    }
+    function executeImmediateLiteralCallUnguarded(
+      call: ts.CallExpression
+    ): ImmediateCallResult | undefined {
+      const expression = unwrapLiteralExpression(call.expression);
+      const directlyInvoked = literalFunctionValue(expression);
+      if (directlyInvoked !== undefined) {
+        visitInvocationArguments(call.arguments);
+        const invocationArguments =
+          exactInvocationArguments(call.arguments);
+        if (invocationArguments === undefined) return undefined;
+        visitLiteralInvocation(directlyInvoked, invocationArguments);
+        return {
+          returnedFunction: exactReturnedLiteralFunction(directlyInvoked),
+          returnedUndefined: exactLiteralReturnsUndefined(directlyInvoked)
+        };
+      }
+      if (ts.isIdentifier(expression)) {
+        const symbol = checker.getSymbolAtLocation(expression);
+        const local = symbol === undefined
+          ? undefined
+          : activeLiteralFunctions.get(symbol);
+        if (local === undefined) return undefined;
+        visitInvocationArguments(call.arguments);
+        const invocationArguments =
+          exactInvocationArguments(call.arguments);
+        if (invocationArguments === undefined) return undefined;
+        visitLiteralInvocation(local, invocationArguments);
+        return {
+          returnedFunction: exactReturnedLiteralFunction(local),
+          returnedUndefined: exactLiteralReturnsUndefined(local)
+        };
+      }
+      if (ts.isCallExpression(expression)) {
+        const bound = exactLiteralBind(expression);
+        if (bound !== undefined) {
+          visitInvocationArguments(bound.evaluationArguments);
+          visitInvocationArguments(call.arguments);
+          const invocationArguments =
+            exactInvocationArguments(call.arguments);
+          if (invocationArguments === undefined) return undefined;
+          visitLiteralInvocation(bound.functionValue, [
+            ...bound.boundArguments,
+            ...invocationArguments
+          ], bound.boundThis);
+          return {
+            returnedFunction:
+              exactReturnedLiteralFunction(bound.functionValue),
+            returnedUndefined:
+              exactLiteralReturnsUndefined(bound.functionValue)
+          };
+        }
+        const priorInvocation = executeImmediateLiteralCall(expression);
+        if (priorInvocation === undefined) return undefined;
+        if (
+          call.questionDotToken !== undefined &&
+          priorInvocation.returnedUndefined === true
+        ) {
+          return {
+            returnedFunction: undefined,
+            returnedUndefined: true
+          };
+        }
+        visitInvocationArguments(call.arguments);
+        const invocationArguments =
+          exactInvocationArguments(call.arguments);
+        if (invocationArguments === undefined) return undefined;
+        if (priorInvocation.returnedFunction === undefined) {
+          return { returnedFunction: undefined };
+        }
+        visitLiteralInvocation(
+          priorInvocation.returnedFunction,
+          invocationArguments
+        );
+        return {
+          returnedFunction: exactReturnedLiteralFunction(
+            priorInvocation.returnedFunction
+          ),
+          returnedUndefined: exactLiteralReturnsUndefined(
+            priorInvocation.returnedFunction
+          )
+        };
+      }
+      if (ts.isNewExpression(expression)) {
+        const priorInvocation =
+          executeImmediateLiteralConstruction(expression);
+        if (priorInvocation === undefined) return undefined;
+        return executeReturnedLiteralCall(
+          priorInvocation,
+          call.arguments
+        );
+      }
+      if (ts.isTaggedTemplateExpression(expression)) {
+        const priorInvocation = executeImmediateLiteralTag(expression);
+        if (priorInvocation === undefined) return undefined;
+        return executeReturnedLiteralCall(
+          priorInvocation,
+          call.arguments
+        );
+      }
+      if (
+        ts.isPropertyAccessExpression(expression) &&
+        expression.name.text === "next"
+      ) {
+        const receiver = unwrapLiteralExpression(expression.expression);
+        if (
+          !ts.isCallExpression(receiver) ||
+          call.arguments.length !== 0
+        ) {
+          return undefined;
+        }
+        const generator = literalFunctionValue(receiver.expression);
+        if (generator?.asteriskToken === undefined) return undefined;
+        visitInvocationArguments(receiver.arguments);
+        const invocationArguments =
+          exactInvocationArguments(receiver.arguments);
+        if (invocationArguments === undefined) return undefined;
+        visitLiteralInvocation(
+          generator,
+          invocationArguments,
+          undefined,
+          true
+        );
+        return { returnedFunction: undefined };
+      }
+      if (
+        ts.isPropertyAccessExpression(expression) &&
+        (
+          expression.name.text === "call" ||
+          expression.name.text === "apply"
+        )
+      ) {
+        const receiver = unwrapLiteralExpression(expression.expression);
+        const receiverCall = ts.isCallExpression(receiver)
+          ? receiver
+          : undefined;
+        const bound = receiverCall !== undefined
+          ? exactLiteralBind(receiverCall)
+          : undefined;
+        const invoked = bound?.functionValue ??
+          immediateLiteralFunctionValue(receiver);
+        if (invoked === undefined) return undefined;
+        const invocationArguments =
+          expression.name.text === "call"
+            ? exactInvocationArguments(call.arguments.slice(1))
+            : exactApplyArguments(call.arguments);
+        if (invocationArguments === undefined) return undefined;
+        if (bound !== undefined && receiverCall !== undefined) {
+          visitInvocationArguments(bound.evaluationArguments);
+        }
+        visitInvocationArguments(call.arguments);
+        visitLiteralInvocation(invoked, [
+          ...(bound?.boundArguments ?? []),
+          ...invocationArguments
+        ], bound?.boundThis ?? call.arguments[0]);
+        return {
+          returnedFunction: exactReturnedLiteralFunction(invoked),
+          returnedUndefined: exactLiteralReturnsUndefined(invoked)
+        };
+      }
+      return undefined;
+    }
+    function executeImmediateLiteralConstruction(
+      construction: ts.NewExpression
+    ): ImmediateCallResult | undefined {
+      return executeImmediateLiteralOnce(
+        construction,
+        () => executeImmediateLiteralConstructionUnguarded(construction)
+      );
+    }
+    function executeImmediateLiteralConstructionUnguarded(
+      construction: ts.NewExpression
+    ): ImmediateCallResult | undefined {
+      const invoked = literalOrCallReturnedFunctionValue(
+        construction.expression
+      );
+      if (
+        invoked === undefined ||
+        !ts.isFunctionExpression(invoked) ||
+        !isConstructableLiteralFunction(invoked)
+      ) {
+        return undefined;
+      }
+      const arguments_ = construction.arguments ?? [];
+      visitInvocationArguments(arguments_);
+      const invocationArguments = exactInvocationArguments(arguments_);
+      if (invocationArguments === undefined) return undefined;
+      visitLiteralInvocation(invoked, invocationArguments);
+      return {
+        returnedFunction: exactReturnedLiteralFunction(invoked),
+        returnedUndefined: exactLiteralReturnsUndefined(invoked)
+      };
+    }
+    function executeImmediateLiteralTag(
+      tagged: ts.TaggedTemplateExpression
+    ): ImmediateCallResult | undefined {
+      return executeImmediateLiteralOnce(
+        tagged,
+        () => executeImmediateLiteralTagUnguarded(tagged)
+      );
+    }
+    function executeImmediateLiteralTagUnguarded(
+      tagged: ts.TaggedTemplateExpression
+    ): ImmediateCallResult | undefined {
+      const invoked = literalOrCallReturnedFunctionValue(tagged.tag);
+      if (invoked === undefined) return undefined;
+      const substitutions = ts.isTemplateExpression(tagged.template)
+        ? tagged.template.templateSpans.map((span) => span.expression)
+        : [];
+      visitInvocationArguments(substitutions);
+      visitLiteralInvocation(invoked, [null, ...substitutions]);
+      return {
+        returnedFunction: exactReturnedLiteralFunction(invoked),
+        returnedUndefined: exactLiteralReturnsUndefined(invoked)
+      };
+    }
+    function executeReturnedLiteralCall(
+      priorInvocation: ImmediateCallResult,
+      arguments_: readonly ts.Expression[]
+    ): ImmediateCallResult {
+      visitInvocationArguments(arguments_);
+      if (priorInvocation.returnedFunction === undefined) {
+        return { returnedFunction: undefined };
+      }
+      visitLiteralInvocation(
+        priorInvocation.returnedFunction,
+        arguments_
+      );
+      return {
+        returnedFunction: exactReturnedLiteralFunction(
+          priorInvocation.returnedFunction
+        ),
+        returnedUndefined: exactLiteralReturnsUndefined(
+          priorInvocation.returnedFunction
+        )
+      };
+    }
+    function exactLiteralBind(call: ts.CallExpression): {
+      readonly boundArguments: readonly InvocationArgument[];
+      readonly boundThis: InvocationArgument;
+      readonly evaluationArguments: readonly ts.Expression[];
+      readonly functionValue: LiteralFunction;
+    } | undefined {
+      const expression = unwrapLiteralExpression(call.expression);
+      if (
+        !ts.isPropertyAccessExpression(expression) ||
+        expression.name.text !== "bind"
+      ) {
+        return undefined;
+      }
+      const receiver = unwrapLiteralExpression(expression.expression);
+      const prior = ts.isCallExpression(receiver)
+        ? exactLiteralBind(receiver)
+        : undefined;
+      const functionValue = prior?.functionValue ??
+        immediateLiteralFunctionValue(receiver);
+      if (functionValue === undefined) return undefined;
+      const boundArguments =
+        exactInvocationArguments(call.arguments.slice(1));
+      if (boundArguments === undefined) return undefined;
+      return {
+        boundArguments: [
+          ...(prior?.boundArguments ?? []),
+          ...boundArguments
+        ],
+        boundThis: prior?.boundThis ?? call.arguments[0],
+        evaluationArguments: [
+          ...(prior?.evaluationArguments ?? []),
+          ...call.arguments
+        ],
+        functionValue
+      };
+    }
+    function exactApplyArguments(
+      callArguments: readonly ts.Expression[]
+    ): readonly InvocationArgument[] | undefined {
+      const applyArguments = callArguments[1];
+      if (
+        applyArguments === undefined ||
+        callArgumentUsesDefault(applyArguments)
+      ) {
+        return [];
+      }
+      const array = unwrapLiteralExpression(applyArguments);
+      if (array.kind === ts.SyntaxKind.NullKeyword) {
+        return [];
+      }
+      if (
+        ts.isArrayLiteralExpression(array)
+      ) {
+        return exactArrayLiteralValues(array);
+      }
+      if (!ts.isObjectLiteralExpression(array)) return undefined;
+      const lengthProperty = exactObjectLiteralProperty(array, "length");
+      if (
+        !lengthProperty.known ||
+        !lengthProperty.own ||
+        lengthProperty.value === null ||
+        lengthProperty.value === undefined
+      ) {
+        return undefined;
+      }
+      const lengthValue = exactNonNegativeInteger(lengthProperty.value);
+      if (lengthValue === undefined || lengthValue > 32) return undefined;
+      const values: InvocationArgument[] = [];
+      for (let index = 0; index < lengthValue; index += 1) {
+        const property = exactObjectLiteralProperty(array, String(index));
+        if (!property.known) return undefined;
+        values.push(property.value);
+      }
+      return values;
+    }
+    function exactInvocationArguments(
+      arguments_: readonly ts.Expression[]
+    ): readonly InvocationArgument[] | undefined {
+      const values: InvocationArgument[] = [];
+      for (const argument of arguments_) {
+        if (!ts.isSpreadElement(argument)) {
+          values.push(argument);
+          continue;
+        }
+        const spread = unwrapLiteralExpression(argument.expression);
+        if (!ts.isArrayLiteralExpression(spread)) return undefined;
+        const spreadValues = exactArrayLiteralValues(spread);
+        if (spreadValues === undefined) return undefined;
+        values.push(...spreadValues);
+      }
+      return values;
+    }
+    function exactArrayLiteralValues(
+      array: ts.ArrayLiteralExpression
+    ): readonly InvocationArgument[] | undefined {
+      const values: InvocationArgument[] = [];
+      for (const element of array.elements) {
+        if (ts.isOmittedExpression(element)) {
+          values.push(undefined);
+          continue;
+        }
+        if (!ts.isSpreadElement(element)) {
+          values.push(element);
+          continue;
+        }
+        const spread = unwrapLiteralExpression(element.expression);
+        if (!ts.isArrayLiteralExpression(spread)) return undefined;
+        const nested = exactArrayLiteralValues(spread);
+        if (nested === undefined) return undefined;
+        values.push(...nested);
+      }
+      return values;
+    }
+    function visitInvocationArguments(
+      arguments_: readonly ts.Expression[]
+    ): void {
+      for (const argument of arguments_) {
+        visitRegistrarStateReads(argument, true);
+      }
+    }
+    function immediateLiteralFunctionValue(
+      expression: ts.Expression
+    ): LiteralFunction | undefined {
+      const literal = literalFunctionValue(expression);
+      if (literal !== undefined) return literal;
+      const unwrapped = unwrapLiteralExpression(expression);
+      if (ts.isCallExpression(unwrapped)) {
+        return executeImmediateLiteralCall(unwrapped)?.returnedFunction;
+      }
+      if (ts.isNewExpression(unwrapped)) {
+        return executeImmediateLiteralConstruction(unwrapped)
+          ?.returnedFunction;
+      }
+      return ts.isTaggedTemplateExpression(unwrapped)
+        ? executeImmediateLiteralTag(unwrapped)?.returnedFunction
+        : undefined;
+    }
+    function literalOrCallReturnedFunctionValue(
+      expression: ts.Expression
+    ): LiteralFunction | undefined {
+      return immediateLiteralFunctionValue(expression);
+    }
+    function visitLiteralInvocation(
+      invoked: LiteralFunction,
+      arguments_: readonly InvocationArgument[],
+      thisValue?: InvocationArgument,
+      advanceGenerator = false
+    ): void {
+      invoked.parameters.forEach((parameter, index) => {
+        if (parameter.dotDotDotToken !== undefined) {
+          visitCollectedRestBinding(
+            parameter.name,
+            arguments_.slice(index)
+          );
+          return;
+        }
+        visitBindingDefaults(
+          parameter.name,
+          parameter.initializer,
+          arguments_[index]
+        );
+      });
+      if (
+        invoked.asteriskToken !== undefined &&
+        !advanceGenerator
+      ) {
+        return;
+      }
+      activeLiteralThisValues.push(thisValue);
+      try {
+        if (!ts.isBlock(invoked.body)) {
+          visitRegistrarStateReads(invoked.body, true);
+          return;
+        }
+        visitReachableLiteralStatements(
+          invoked.body.statements,
+          advanceGenerator
+        );
+      } finally {
+        activeLiteralThisValues.pop();
+      }
+    }
+    function visitReachableLiteralStatements(
+      statements: readonly ts.Statement[],
+      stopAtYield: boolean
+    ): void {
+      const localSymbols: ts.Symbol[] = [];
+      try {
+        for (const statement of statements) {
+          if (ts.isEmptyStatement(statement)) continue;
+          if (ts.isReturnStatement(statement)) {
+            if (statement.expression !== undefined) {
+              visitRegistrarStateReads(statement.expression, true);
+            }
+            return;
+          }
+          if (ts.isIfStatement(statement)) {
+            visitRegistrarStateReads(statement.expression, true);
+            const condition =
+              exactConstantBoolean(statement.expression);
+            if (condition === false) {
+              if (statement.elseStatement !== undefined) {
+                visitReachableLiteralStatement(
+                  statement.elseStatement,
+                  stopAtYield
+                );
+              }
+              continue;
+            }
+            if (condition === true) {
+              visitReachableLiteralStatement(
+                statement.thenStatement,
+                stopAtYield
+              );
+              continue;
+            }
+            visitRegistrarStateReads(statement.thenStatement, true);
+            if (statement.elseStatement !== undefined) {
+              visitRegistrarStateReads(statement.elseStatement, true);
+            }
+            continue;
+          }
+          if (
+            ts.isVariableStatement(statement) &&
+            (statement.declarationList.flags & ts.NodeFlags.Const) !== 0
+          ) {
+            for (const declaration of
+              statement.declarationList.declarations) {
+              if (declaration.initializer === undefined) continue;
+              visitRegistrarStateReads(
+                declaration.initializer,
+                true
+              );
+              if (!ts.isIdentifier(declaration.name)) continue;
+              const literal =
+                literalFunctionValue(declaration.initializer);
+              const symbol =
+                checker.getSymbolAtLocation(declaration.name);
+              if (literal === undefined || symbol === undefined) continue;
+              activeLiteralFunctions.set(symbol, literal);
+              localSymbols.push(symbol);
+            }
+            continue;
+          }
+          if (
+            stopAtYield &&
+            ts.isExpressionStatement(statement) &&
+            ts.isYieldExpression(
+              unwrapLiteralExpression(statement.expression)
+            )
+          ) {
+            const yielded =
+              unwrapLiteralExpression(statement.expression) as
+                ts.YieldExpression;
+            if (yielded.expression !== undefined) {
+              visitRegistrarStateReads(yielded.expression, true);
+            }
+            return;
+          }
+          visitRegistrarStateReads(statement, true);
+        }
+      } finally {
+        for (const symbol of localSymbols) {
+          activeLiteralFunctions.delete(symbol);
+        }
+      }
+    }
+    function visitReachableLiteralStatement(
+      statement: ts.Statement,
+      stopAtYield: boolean
+    ): void {
+      if (ts.isBlock(statement)) {
+        visitReachableLiteralStatements(
+          statement.statements,
+          stopAtYield
+        );
+        return;
+      }
+      visitReachableLiteralStatements([statement], stopAtYield);
+    }
+    function visitCollectedRestBinding(
+      name: ts.BindingName,
+      values: readonly InvocationArgument[]
+    ): void {
+      if (ts.isIdentifier(name)) return;
+      if (ts.isArrayBindingPattern(name)) {
+        visitArrayBindingDefaults(name, values);
+      }
+    }
+    function visitBindingDefaults(
+      name: ts.BindingName,
+      initializer: ts.Expression | undefined,
+      argument: InvocationArgument
+    ): void {
+      let value = argument;
+      if (
+        initializer !== undefined &&
+        callArgumentUsesDefault(argument)
+      ) {
+        visitRegistrarStateReads(initializer, true);
+        value = initializer;
+      }
+      if (ts.isIdentifier(name) || value === null || value === undefined) {
+        return;
+      }
+      const literal = unwrapLiteralExpression(value);
+      if (
+        ts.isObjectBindingPattern(name) &&
+        (
+          ts.isObjectLiteralExpression(literal) ||
+          exactMethodValues.has(literal)
+        )
+      ) {
+        const excludedNames = new Set<string>();
+        for (const element of name.elements) {
+          if (element.dotDotDotToken !== undefined) {
+            if (ts.isObjectLiteralExpression(literal)) {
+              visitObjectRestCopy(literal, excludedNames);
+            }
+            continue;
+          }
+          if (
+            element.propertyName !== undefined &&
+            ts.isComputedPropertyName(element.propertyName)
+          ) {
+            visitRegistrarStateReads(
+              element.propertyName.expression,
+              true
+            );
+          }
+          const propertyName = bindingElementPropertyName(element);
+          if (propertyName === undefined) continue;
+          excludedNames.add(propertyName);
+          const property = ts.isObjectLiteralExpression(literal)
+            ? exactObjectLiteralProperty(literal, propertyName)
+            : { known: true, own: false, value: undefined };
+          if (!property.known) continue;
+          visitBindingDefaults(
+            element.name,
+            element.initializer,
+            property.value
+          );
+        }
+        return;
+      }
+      if (
+        ts.isArrayBindingPattern(name) &&
+        ts.isArrayLiteralExpression(literal) &&
+        !literal.elements.some(ts.isSpreadElement)
+      ) {
+        visitArrayBindingDefaults(
+          name,
+          literal.elements.map((element) =>
+            ts.isOmittedExpression(element) ? undefined : element
+          )
+        );
+      }
+    }
+    function visitArrayBindingDefaults(
+      pattern: ts.ArrayBindingPattern,
+      values: readonly InvocationArgument[]
+    ): void {
+      pattern.elements.forEach((element, index) => {
+        if (ts.isOmittedExpression(element)) return;
+        if (element.dotDotDotToken !== undefined) {
+          if (ts.isArrayBindingPattern(element.name)) {
+            visitArrayBindingDefaults(
+              element.name,
+              values.slice(index)
+            );
+          }
+          return;
+        }
+        visitBindingDefaults(
+          element.name,
+          element.initializer,
+          values[index]
+        );
+      });
+    }
+    function exactGetterValue(
+      getter: ts.GetAccessorDeclaration
+    ): {
+      readonly known: boolean;
+      readonly value: InvocationArgument;
+    } {
+      if (getter.body === undefined) {
+        return { known: false, value: undefined };
+      }
+      const statements = getter.body.statements.filter(
+        (statement) => !ts.isEmptyStatement(statement)
+      );
+      const terminal = statements.at(-1);
+      const returned =
+        terminal !== undefined && ts.isReturnStatement(terminal)
+          ? terminal
+          : undefined;
+      const effects =
+        returned === undefined ? statements : statements.slice(0, -1);
+      const locals = new Map<string, InvocationArgument>();
+      for (const effect of effects) {
+        if (ts.isIfStatement(effect)) {
+          visitRegistrarStateReads(effect.expression, true);
+          const condition = exactConstantBoolean(effect.expression);
+          if (condition === false) {
+            if (effect.elseStatement !== undefined) {
+              visitRegistrarStateReads(effect.elseStatement, true);
+            }
+            continue;
+          }
+          if (condition === true) {
+            visitRegistrarStateReads(effect.thenStatement, true);
+            continue;
+          }
+        }
+        if (ts.isExpressionStatement(effect)) {
+          visitRegistrarStateReads(effect.expression, true);
+          continue;
+        }
+        if (
+          ts.isVariableStatement(effect) &&
+          (effect.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+          effect.declarationList.declarations.every(
+            (declaration) =>
+              ts.isIdentifier(declaration.name) &&
+              declaration.initializer !== undefined
+          )
+        ) {
+          for (const declaration of effect.declarationList.declarations) {
+            if (
+              !ts.isIdentifier(declaration.name) ||
+              declaration.initializer === undefined
+            ) {
+              return { known: false, value: undefined };
+            }
+            visitRegistrarStateReads(declaration.initializer, true);
+            locals.set(
+              declaration.name.text,
+              resolveGetterLocalValue(
+                declaration.initializer,
+                locals
+              )
+            );
+          }
+          continue;
+        }
+        visitRegistrarStateReads(effect, true);
+        return { known: false, value: undefined };
+      }
+      if (returned?.expression !== undefined) {
+        visitRegistrarStateReads(returned.expression, true);
+      }
+      return {
+        known: true,
+        value: returned?.expression === undefined
+          ? undefined
+          : resolveGetterLocalValue(returned.expression, locals)
+      };
+    }
+    function resolveGetterLocalValue(
+      expression: ts.Expression,
+      locals: ReadonlyMap<string, InvocationArgument>
+    ): InvocationArgument {
+      let value: InvocationArgument = expression;
+      const resolving = new Set<string>();
+      while (value !== null && value !== undefined) {
+        const unwrapped = unwrapLiteralExpression(value);
+        if (
+          !ts.isIdentifier(unwrapped) ||
+          !locals.has(unwrapped.text) ||
+          resolving.has(unwrapped.text)
+        ) {
+          return unwrapped;
+        }
+        resolving.add(unwrapped.text);
+        value = locals.get(unwrapped.text);
+      }
+      return value;
+    }
+    function bindingElementPropertyName(
+      element: ts.BindingElement
+    ): string | undefined {
+      if (element.propertyName !== undefined) {
+        return literalPropertyName(element.propertyName);
+      }
+      return ts.isIdentifier(element.name)
+        ? element.name.text
+        : undefined;
+    }
+    function literalPropertyName(
+      name: ts.PropertyName
+    ): string | undefined {
+      if (
+        ts.isIdentifier(name) ||
+        ts.isStringLiteral(name) ||
+        ts.isNumericLiteral(name) ||
+        ts.isNoSubstitutionTemplateLiteral(name)
+      ) {
+        return name.text;
+      }
+      if (!ts.isComputedPropertyName(name)) return undefined;
+      return exactConstantPropertyName(name.expression);
+    }
+    function exactConstantPropertyName(
+      value: ts.Expression
+    ): string | undefined {
+      const expression = unwrapLiteralExpression(value);
+      if (
+        ts.isStringLiteral(expression) ||
+        ts.isNumericLiteral(expression) ||
+        ts.isNoSubstitutionTemplateLiteral(expression)
+      ) {
+        return expression.text;
+      }
+      if (
+        ts.isBinaryExpression(expression) &&
+        expression.operatorToken.kind === ts.SyntaxKind.CommaToken
+      ) {
+        return isExactConstantOperand(expression.left)
+          ? exactConstantPropertyName(expression.right)
+          : undefined;
+      }
+      if (ts.isCommaListExpression(expression)) {
+        const operands = expression.elements;
+        const final = operands.at(-1);
+        return (
+          final !== undefined &&
+          operands.slice(0, -1).every(isExactConstantOperand)
+        )
+          ? exactConstantPropertyName(final)
+          : undefined;
+      }
+      if (ts.isPrefixUnaryExpression(expression)) {
+        const operand = exactPrimitiveConstant(expression.operand);
+        if (typeof operand !== "number") return undefined;
+        switch (expression.operator) {
+          case ts.SyntaxKind.MinusToken:
+            return String(-operand);
+          case ts.SyntaxKind.PlusToken:
+            return String(+operand);
+          case ts.SyntaxKind.TildeToken:
+            return String(~operand);
+          case ts.SyntaxKind.ExclamationToken:
+            return String(!operand);
+          default:
+            return undefined;
+        }
+      }
+      if (ts.isTemplateExpression(expression)) {
+        let result = expression.head.text;
+        for (const span of expression.templateSpans) {
+          const primitive = exactPrimitiveConstant(span.expression);
+          if (primitive === undefined) return undefined;
+          result += String(primitive);
+          result += span.literal.text;
+        }
+        return result;
+      }
+      return undefined;
+    }
+    function exactPrimitiveConstant(
+      value: ts.Expression
+    ): string | number | boolean | null | undefined {
+      const expression = unwrapLiteralExpression(value);
+      if (
+        ts.isStringLiteral(expression) ||
+        ts.isNoSubstitutionTemplateLiteral(expression)
+      ) {
+        return expression.text;
+      }
+      if (ts.isNumericLiteral(expression)) {
+        return Number(expression.text);
+      }
+      if (expression.kind === ts.SyntaxKind.TrueKeyword) return true;
+      if (expression.kind === ts.SyntaxKind.FalseKeyword) return false;
+      if (expression.kind === ts.SyntaxKind.NullKeyword) return null;
+      return undefined;
+    }
+    function exactConstantBoolean(
+      value: ts.Expression
+    ): boolean | undefined {
+      const primitive = exactPrimitiveConstant(value);
+      return typeof primitive === "boolean" ? primitive : undefined;
+    }
+    function exactNonNegativeInteger(
+      value: ts.Expression
+    ): number | undefined {
+      const primitive = exactPrimitiveConstant(value);
+      return typeof primitive === "number" &&
+        Number.isSafeInteger(primitive) &&
+        primitive >= 0
+        ? primitive
+        : undefined;
+    }
+    function isExactConstantOperand(value: ts.Expression): boolean {
+      const expression = unwrapLiteralExpression(value);
+      return (
+        ts.isStringLiteral(expression) ||
+        ts.isNumericLiteral(expression) ||
+        ts.isNoSubstitutionTemplateLiteral(expression) ||
+        expression.kind === ts.SyntaxKind.TrueKeyword ||
+        expression.kind === ts.SyntaxKind.FalseKeyword ||
+        expression.kind === ts.SyntaxKind.NullKeyword ||
+        (
+          ts.isBinaryExpression(expression) &&
+          expression.operatorToken.kind === ts.SyntaxKind.CommaToken &&
+          isExactConstantOperand(expression.left) &&
+          isExactConstantOperand(expression.right)
+        ) ||
+        (
+          ts.isCommaListExpression(expression) &&
+          expression.elements.every(isExactConstantOperand)
+        )
+      );
+    }
+    function exactObjectLiteralProperty(
+      object: ts.ObjectLiteralExpression,
+      name: string
+    ): {
+      readonly known: boolean;
+      readonly own: boolean;
+      readonly value: InvocationArgument;
+    } {
+      let selected: ts.ObjectLiteralElementLike | undefined;
+      let selectedGetter: ts.GetAccessorDeclaration | undefined;
+      let selectedSpreadValue: InvocationArgument;
+      let hasSelectedSpreadValue = false;
+      let prototype: ts.ObjectLiteralExpression | undefined;
+      for (const property of object.properties) {
+        if (ts.isSpreadAssignment(property)) {
+          const spread = unwrapLiteralExpression(property.expression);
+          if (!ts.isObjectLiteralExpression(spread)) {
+            return { known: false, own: false, value: undefined };
+          }
+          const spreadProperty =
+            exactObjectLiteralProperty(spread, name);
+          if (!spreadProperty.known) return spreadProperty;
+          if (spreadProperty.own) {
+            selected = undefined;
+            selectedGetter = undefined;
+            selectedSpreadValue = spreadProperty.value;
+            hasSelectedSpreadValue = true;
+          }
+          continue;
+        }
+        const propertyName = literalPropertyName(property.name);
+        if (propertyName === undefined) {
+          return { known: false, own: false, value: undefined };
+        }
+        if (
+          propertyName === "__proto__" &&
+          ts.isPropertyAssignment(property) &&
+          !ts.isComputedPropertyName(property.name)
+        ) {
+          const prototypeValue =
+            unwrapLiteralExpression(property.initializer);
+          if (ts.isObjectLiteralExpression(prototypeValue)) {
+            prototype = prototypeValue;
+          }
+          continue;
+        }
+        if (propertyName !== name) continue;
+        hasSelectedSpreadValue = false;
+        if (ts.isGetAccessorDeclaration(property)) {
+          selectedGetter = property;
+          selected = property;
+          continue;
+        }
+        if (ts.isSetAccessorDeclaration(property)) {
+          selected = property;
+          continue;
+        }
+        selectedGetter = undefined;
+        selected = property;
+      }
+      if (selected === undefined) {
+        if (hasSelectedSpreadValue) {
+          return {
+            known: true,
+            own: true,
+            value: selectedSpreadValue
+          };
+        }
+        if (prototype !== undefined) {
+          const inherited =
+            exactObjectLiteralProperty(prototype, name);
+          return {
+            known: inherited.known,
+            own: false,
+            value: inherited.value
+          };
+        }
+        return { known: true, own: false, value: undefined };
+      }
+      if (ts.isPropertyAssignment(selected)) {
+        return {
+          known: true,
+          own: true,
+          value: selected.initializer
+        };
+      }
+      if (ts.isShorthandPropertyAssignment(selected)) {
+        return { known: true, own: true, value: selected.name };
+      }
+      if (ts.isMethodDeclaration(selected)) {
+        if (!ts.isIdentifier(selected.name)) {
+          return { known: false, own: false, value: undefined };
+        }
+        exactMethodValues.add(selected.name);
+        return { known: true, own: true, value: selected.name };
+      }
+      if (selectedGetter !== undefined) {
+        return {
+          ...exactGetterValue(selectedGetter),
+          own: true
+        };
+      }
+      if (ts.isSetAccessorDeclaration(selected)) {
+        return { known: true, own: true, value: undefined };
+      }
+      return { known: false, own: false, value: undefined };
+    }
+    function visitObjectRestCopy(
+      object: ts.ObjectLiteralExpression,
+      excludedNames: ReadonlySet<string>
+    ): void {
+      const names = new Set<string>();
+      for (const property of object.properties) {
+        if (ts.isSpreadAssignment(property)) continue;
+        const name = literalPropertyName(property.name);
+        if (name === undefined || name === "__proto__") continue;
+        names.add(name);
+      }
+      for (const name of names) {
+        if (excludedNames.has(name)) continue;
+        exactObjectLiteralProperty(object, name);
+      }
+    }
+    function visitExactBoundThisPropertyRead(
+      node: ts.Node
+    ): boolean {
+      if (
+        !ts.isPropertyAccessExpression(node) ||
+        node.questionDotToken !== undefined ||
+        node.expression.kind !== ts.SyntaxKind.ThisKeyword
+      ) {
+        return false;
+      }
+      const thisValue = activeLiteralThisValues.at(-1);
+      if (thisValue === null || thisValue === undefined) return false;
+      const literal = unwrapLiteralExpression(thisValue);
+      if (!ts.isObjectLiteralExpression(literal)) return false;
+      exactObjectLiteralProperty(literal, node.name.text);
+      return true;
+    }
+    function exactReturnedLiteralFunction(
+      invoked: LiteralFunction
+    ): LiteralFunction | undefined {
+      if (
+        invoked.asteriskToken !== undefined ||
+        invoked.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword
+        ) === true
+      ) {
+        return undefined;
+      }
+      if (!ts.isBlock(invoked.body)) {
+        return literalFunctionValue(invoked.body);
+      }
+      const statements = invoked.body.statements.filter(
+        (statement) => !ts.isEmptyStatement(statement)
+      );
+      const statement = statements[0];
+      if (
+        statements.length !== 1 ||
+        statement === undefined ||
+        !ts.isReturnStatement(statement) ||
+        statement.expression === undefined
+      ) {
+        return undefined;
+      }
+      return literalFunctionValue(statement.expression);
+    }
+    function exactLiteralReturnsUndefined(
+      invoked: LiteralFunction
+    ): boolean {
+      if (
+        invoked.asteriskToken !== undefined ||
+        invoked.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword
+        ) === true
+      ) {
+        return false;
+      }
+      if (!ts.isBlock(invoked.body)) {
+        return callArgumentUsesDefault(invoked.body);
+      }
+      const statements = invoked.body.statements.filter(
+        (statement) => !ts.isEmptyStatement(statement)
+      );
+      const terminal = statements.at(-1);
+      if (terminal === undefined) return true;
+      return ts.isReturnStatement(terminal) &&
+        (
+          terminal.expression === undefined ||
+          callArgumentUsesDefault(terminal.expression)
+        );
+    }
+    function literalFunctionValue(
+      expression: ts.Expression
+    ): LiteralFunction | undefined {
+      const unwrapped = unwrapLiteralExpression(expression);
+      return ts.isArrowFunction(unwrapped) ||
+        ts.isFunctionExpression(unwrapped)
+        ? unwrapped
+        : undefined;
+    }
+    function isConstructableLiteralFunction(
+      expression: ts.FunctionExpression
+    ): boolean {
+      return expression.asteriskToken === undefined &&
+        expression.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword
+        ) !== true;
+    }
+    function unwrapLiteralExpression(
+      value: ts.Expression
+    ): ts.Expression {
+      let expression = value;
+      while (
+        ts.isParenthesizedExpression(expression) ||
+        ts.isAsExpression(expression) ||
+        ts.isTypeAssertionExpression(expression) ||
+        ts.isNonNullExpression(expression) ||
+        ts.isSatisfiesExpression(expression) ||
+        ts.isPartiallyEmittedExpression(expression)
+      ) {
+        expression = expression.expression;
+      }
+      return expression;
+    }
+    function callArgumentUsesDefault(
+      argument: InvocationArgument
+    ): boolean {
+      if (argument === null) return false;
+      if (argument === undefined) return true;
+      const expression = unwrapLiteralExpression(argument);
+      return (
+        isGlobalUndefinedReference(expression) ||
+        ts.isVoidExpression(expression)
+      );
+    }
+    function isGlobalUndefinedReference(
+      expression: ts.Expression
+    ): boolean {
+      if (!ts.isIdentifier(expression)) return false;
+      const symbol = checker.getSymbolAtLocation(expression);
+      return symbol !== undefined &&
+        symbol.getName() === "undefined" &&
+        (symbol.declarations?.length ?? 0) === 0 &&
+        (
+          checker.getTypeAtLocation(expression).flags &
+          ts.TypeFlags.Undefined
+        ) !== 0;
+    }
+    function hasExactPrivateMapProvenance(): boolean {
+      let exact = true;
+      visit(registrarBody);
+      return exact;
+
+      function visit(node: ts.Node): void {
+        if (!exact) return;
+        if (
+          ts.isIdentifier(node) &&
+          checker.getSymbolAtLocation(node) === privateMapSymbol
+        ) {
+          const property = ts.isPropertyAccessExpression(node.parent) &&
+            node.parent.expression === node
+            ? node.parent
+            : undefined;
+          const invocation = property !== undefined &&
+            property.name.text === "get" &&
+            ts.isCallExpression(property.parent) &&
+            property.parent.expression === property
+            ? property.parent
+            : undefined;
+          if (
+            invocation === undefined ||
+            !isExactPrivateStateRead(
+              invocation,
+              privateMapSymbol,
+              registrarWakeSymbol
+            )
+          ) {
+            exact = false;
+            return;
+          }
+        }
+        ts.forEachChild(node, visit);
+      }
+    }
+    if (
+      exactStateReads.length !== 1 ||
+      stateDeclarations.length !== 1 ||
+      !hasExactPrivateMapProvenance()
+    ) {
+      return false;
+    }
+    const stateDeclaration = stateDeclarations[0]!;
+    if (
+      stateDeclaration.initializer !== exactStateReads[0] ||
+      stateDeclaration.getStart(sourceFile) >= call.getStart(sourceFile) ||
+      !ts.isIdentifier(stateDeclaration.name)
+    ) {
+      return false;
+    }
+    const stateSymbol = checker.getSymbolAtLocation(stateDeclaration.name);
+    if (
+      stateSymbol === undefined ||
+      stateSymbol.declarations?.length !== 1 ||
+      stateSymbol.declarations[0] !== stateDeclaration
+    ) {
+      return false;
+    }
+
+    const [storeArgument, bindingArgument, domainExecutionArgument] =
+      call.arguments;
+    return storeArgument !== undefined &&
+      ts.isPropertyAccessExpression(storeArgument) &&
+      storeArgument.questionDotToken === undefined &&
+      storeArgument.name.text === "store" &&
+      ts.isIdentifier(storeArgument.expression) &&
+      checker.getSymbolAtLocation(storeArgument.expression) === stateSymbol &&
+      bindingArgument !== undefined &&
+      ts.isIdentifier(bindingArgument) &&
+      checker.getSymbolAtLocation(bindingArgument) === bindingSymbol &&
+      domainExecutionArgument !== undefined &&
+      ts.isIdentifier(domainExecutionArgument) &&
+      checker.getSymbolAtLocation(domainExecutionArgument) ===
+        domainExecutionSymbol;
+  }
+
+  function isExactPrivateStateRead(
+    initializer: ts.Expression,
+    mapSymbol: ts.Symbol,
+    wakeSymbol: ts.Symbol
+  ): boolean {
+    if (
+      !ts.isCallExpression(initializer) ||
+      initializer.questionDotToken !== undefined ||
+      initializer.arguments.length !== 1 ||
+      ts.isSpreadElement(initializer.arguments[0]!) ||
+      !ts.isPropertyAccessExpression(initializer.expression) ||
+      initializer.expression.questionDotToken !== undefined ||
+      initializer.expression.name.text !== "get" ||
+      !ts.isIdentifier(initializer.expression.expression) ||
+      checker.getSymbolAtLocation(initializer.expression.expression) !==
+        mapSymbol
+    ) {
+      return false;
+    }
+    const runtimeArgument = initializer.arguments[0]!;
+    return ts.isIdentifier(runtimeArgument) &&
+      checker.getSymbolAtLocation(runtimeArgument) === wakeSymbol;
+  }
+
+  return {
+    binderImporters: [...binderImporters].sort(),
+    binderCalls: binderCalls.sort((left, right) =>
+      left.file.localeCompare(right.file)
+    ),
+    violations: [...violations].sort()
+  };
+
+  function reject(label: string): void {
+    violations.add(`${label}: alternate mounted binder ownership`);
+  }
+
+  function visitDynamicImports(
+    sourceFile: ts.SourceFile,
+    label: string
+  ): void {
+    visit(sourceFile);
+
+    function visit(node: ts.Node): void {
+      if (
+        ts.isCallExpression(node) &&
+        node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+        node.arguments.length > 0 &&
+        ts.isStringLiteral(node.arguments[0]!) &&
+        isMountedBinderModule(node.arguments[0]!.text)
+      ) {
+        binderImporters.add(label);
+        reject(label);
+      }
+      ts.forEachChild(node, visit);
+    }
+  }
+}
+
+function isMountedBinderModule(specifier: string): boolean {
+  return specifier === mountedBinderModule ||
+    specifier.endsWith("/mounted-wake-lifecycle-store.js");
+}
+
+function isMountedBinderLikeCall(node: ts.CallExpression): boolean {
+  if (ts.isIdentifier(node.expression)) {
+    return node.expression.text === mountedBinderName;
+  }
+  if (ts.isPropertyAccessExpression(node.expression)) {
+    return node.expression.name.text === mountedBinderName;
+  }
+  return ts.isElementAccessExpression(node.expression) &&
+    node.expression.argumentExpression !== undefined &&
+    ts.isStringLiteral(node.expression.argumentExpression) &&
+    node.expression.argumentExpression.text === mountedBinderName;
+}
+
+function mountedBinderControlAnalysis(
+  text: string
+): MountedBinderOwnershipAnalysis {
+  const fileName = `/${mountedBinderWakePath}`;
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    noResolve: true,
+    skipLibCheck: true,
+    target: ts.ScriptTarget.ES2022
+  };
+  const host = ts.createCompilerHost(options);
+  const getSourceFile = host.getSourceFile.bind(host);
+  const fileExists = host.fileExists.bind(host);
+  const readFile = host.readFile.bind(host);
+  host.fileExists = (path) => path === fileName || fileExists(path);
+  host.readFile = (path) => path === fileName ? text : readFile(path);
+  host.getSourceFile = (
+    path,
+    languageVersion,
+    onError,
+    shouldCreateNewSourceFile
+  ) => path === fileName
+    ? ts.createSourceFile(
+        path,
+        text,
+        languageVersion,
+        true,
+        ts.ScriptKind.TS
+      )
+    : getSourceFile(
+        path,
+        languageVersion,
+        onError,
+        shouldCreateNewSourceFile
+      );
+  const program = ts.createProgram([fileName], options, host);
+  const sourceFile = program.getSourceFile(fileName);
+  if (sourceFile === undefined) {
+    throw new Error("mounted binder control source missing");
+  }
+  return mountedBinderOwnershipAnalysis(program, [{
+    sourceFile,
+    label: mountedBinderWakePath
+  }]);
+}
+
+function outerEvaluatedRuntimeProbe(): {
+  readonly diagnosticCodes: readonly number[];
+  readonly stateReadCount: number | undefined;
+} {
+  const result = ts.transpileModule(`
+    let stateReadCount = 0;
+    const wakeRuntime = {};
+    const residentWakeRuntimeStates = {
+      get(value: object) {
+        stateReadCount += 1;
+        return value;
+      }
+    };
+    const decorate = (..._arguments: unknown[]) => undefined;
+    const objectValue = {
+      [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {},
+      get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+        return 1;
+      },
+      set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+        value: number
+      ) {
+        void value;
+      },
+      [((() => (
+        residentWakeRuntimeStates.get(wakeRuntime),
+        "invoked-object-method"
+      ))())]() {},
+      [((() => residentWakeRuntimeStates.get(wakeRuntime)),
+        "deferred-arrow-body")]() {},
+      [(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+        "deferred-arrow-default")]() {}
+    };
+    class Example {
+      [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {}
+      get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+        return 1;
+      }
+      set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+        value: number
+      ) {
+        void value;
+      }
+      @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+      decoratedMethod(
+        @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+        value: unknown
+      ) {
+        void value;
+      }
+      @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+      get decoratedGetter() {
+        return 1;
+      }
+      @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+      set decoratedSetter(
+        @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+        value: number
+      ) {
+        void value;
+      }
+      constructor(
+        @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+        value: unknown
+      ) {
+        void value;
+      }
+      @((() => {
+        residentWakeRuntimeStates.get(wakeRuntime);
+        return decorate;
+      })())
+      invokedDecorator() {}
+      @((() => residentWakeRuntimeStates.get(wakeRuntime)), decorate)
+      deferredDecoratorBody() {}
+      @(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+        decorate)
+      deferredDecoratorDefault() {}
+    }
+    (globalThis as { stateReadCount?: number }).stateReadCount =
+      stateReadCount;
+    void objectValue;
+    void Example;
+  `, {
+    compilerOptions: {
+      experimentalDecorators: true,
+      module: ts.ModuleKind.None,
+      target: ts.ScriptTarget.ES2022
+    },
+    reportDiagnostics: true
+  });
+  const context: { stateReadCount?: number } = {};
+  runInNewContext(result.outputText, context);
+  return {
+    diagnosticCodes: (result.diagnostics ?? []).map(
+      (diagnostic) => diagnostic.code
+    ),
+    stateReadCount: context.stateReadCount
+  };
+}
+
+function immediateLiteralInvocationRuntimeProbe(): {
+  readonly deferredControlCount: number | undefined;
+  readonly diagnosticCodes: readonly number[];
+  readonly stateReadCount: number | undefined;
+} {
+  const result = ts.transpileModule(`
+    let deferredControlCount = 0;
+    let stateReadCount = 0;
+    const read = () => {
+      stateReadCount += 1;
+    };
+    (() => read())?.();
+    (function () { read(); }).call(undefined);
+    (function () { read(); }).apply(undefined, []);
+    (function () { read(); }).bind(undefined)();
+    new (function () { read(); })();
+    (function () { read(); })\`tag\`;
+    (() => () => read())()();
+    const outerEvaluated = {
+      [(
+        deferredControlCount += 1,
+        (function () { read(); }).bind(undefined),
+        "uninvoked-bind"
+      )]: true,
+      [(
+        deferredControlCount += 1,
+        function () { read(); },
+        "uninvoked-function"
+      )]: true,
+      [(
+        deferredControlCount += 1,
+        (function* () { read(); })(),
+        "uniterated-generator"
+      )]: true
+    };
+    (globalThis as {
+      deferredControlCount?: number;
+      stateReadCount?: number;
+    }).deferredControlCount = deferredControlCount;
+    (globalThis as {
+      deferredControlCount?: number;
+      stateReadCount?: number;
+    }).stateReadCount = stateReadCount;
+    void outerEvaluated;
+  `, {
+    compilerOptions: {
+      module: ts.ModuleKind.None,
+      target: ts.ScriptTarget.ES2022
+    },
+    reportDiagnostics: true
+  });
+  const context: {
+    deferredControlCount?: number;
+    stateReadCount?: number;
+  } = {};
+  runInNewContext(result.outputText, context);
+  return {
+    deferredControlCount: context.deferredControlCount,
+    diagnosticCodes: (result.diagnostics ?? []).map(
+      (diagnostic) => diagnostic.code
+    ),
+    stateReadCount: context.stateReadCount
+  };
+}
+
+function literalEvaluatorRuntimeProbe(): {
+  readonly diagnosticCodes: readonly number[];
+  readonly stateReadCounts: readonly number[] | undefined;
+} {
+  const result = ts.transpileModule(`
+    let stateReadCount = 0;
+    const stateReadCounts: number[] = [];
+    const read = () => {
+      stateReadCount += 1;
+      return {};
+    };
+    const record = (run: () => void) => {
+      const before = stateReadCount;
+      run();
+      stateReadCounts.push(stateReadCount - before);
+    };
+    record(() => {
+      (function (value = read()) {
+        void value;
+      }).apply(undefined, null);
+    });
+    record(() => {
+      (({
+        nested: [value = read()] = []
+      } = {
+        nested: []
+      }) => {
+        void value;
+      })({
+        nested: []
+      });
+    });
+    record(() => {
+      (() => function () {
+        read();
+      })().call(undefined);
+    });
+    record(() => {
+      (() => function () {
+        read();
+      })().apply(undefined, []);
+    });
+    record(() => {
+      (() => function () {
+        read();
+      })().bind(undefined)();
+    });
+    record(() => {
+      new (function () {
+        return function () {
+          read();
+        };
+      })()();
+    });
+    record(() => {
+      (function () {
+        return function () {
+          read();
+        };
+      })\`tag\`();
+    });
+    record(() => {
+      const undefined = {};
+      ((value = read()) => value)(undefined);
+    });
+    (globalThis as {
+      stateReadCounts?: readonly number[];
+    }).stateReadCounts = stateReadCounts;
+  `, {
+    compilerOptions: {
+      module: ts.ModuleKind.None,
+      target: ts.ScriptTarget.ES2022
+    },
+    reportDiagnostics: true
+  });
+  const context: {
+    stateReadCounts?: readonly number[];
+  } = {};
+  runInNewContext(result.outputText, context);
+  return {
+    diagnosticCodes: (result.diagnostics ?? []).map(
+      (diagnostic) => diagnostic.code
+    ),
+    stateReadCounts: context.stateReadCounts
+  };
+}
+
+function adversarialLiteralEvaluatorRuntimeProbe(): {
+  readonly diagnosticCodes: readonly number[];
+  readonly stateReadCounts: readonly number[] | undefined;
+} {
+  const result = ts.transpileModule(`
+    let stateReadCount = 0;
+    const stateReadCounts: number[] = [];
+    const read = () => {
+      stateReadCount += 1;
+      return "value";
+    };
+    const record = (run: () => void) => {
+      const before = stateReadCount;
+      run();
+      stateReadCounts.push(stateReadCount - before);
+    };
+    record(() => {
+      (([
+        ...[value = read()]
+      ]) => {
+        void value;
+      })([]);
+    });
+    record(() => {
+      (({ value }: { value: unknown }) => {
+        void value;
+      })({
+        get value() {
+          read();
+          return 1;
+        }
+      });
+    });
+    record(() => {
+      (({
+        [(() => {
+          read();
+          return "value";
+        })()]: value
+      }) => {
+        void value;
+      })({ value: 1 });
+    });
+    record(() => {
+      new ((() => function Returned() {
+        read();
+      })())();
+    });
+    record(() => {
+      ((() => function ReturnedTag() {
+        read();
+        return "tagged";
+      })())\`tag\`;
+    });
+    (globalThis as {
+      stateReadCounts?: readonly number[];
+    }).stateReadCounts = stateReadCounts;
+  `, {
+    compilerOptions: {
+      module: ts.ModuleKind.None,
+      target: ts.ScriptTarget.ES2022
+    },
+    reportDiagnostics: true
+  });
+  const context: {
+    stateReadCounts?: readonly number[];
+  } = {};
+  runInNewContext(result.outputText, context);
+  return {
+    diagnosticCodes: (result.diagnostics ?? []).map(
+      (diagnostic) => diagnostic.code
+    ),
+    stateReadCounts: context.stateReadCounts
+  };
+}
+
+function nineGapLiteralEvaluatorRuntimeProbe(): readonly {
+  readonly diagnosticCodes: readonly number[];
+  readonly name: string;
+  readonly stateReadCount: number | undefined;
+}[] {
+  const cases = [
+    {
+      name: "constructor-returned literal reused as constructor",
+      source: `
+        new (new (function Maker() {
+          return function Returned() { read(); };
+        })())();
+      `
+    },
+    {
+      name: "tag-returned literal reused as tag",
+      source: `
+        ((function makeTag() {
+          return function returnedTag() {
+            read();
+            return "done";
+          };
+        })\`inner\`)\`outer\`;
+      `
+    },
+    {
+      name: "selected getter read in const initializer",
+      source: `
+        (({ value }) => void value)({
+          get value() {
+            const current = read();
+            return current;
+          }
+        });
+      `
+    },
+    {
+      name: "duplicate getters use runtime last definition",
+      source: `
+        (({ value }) => void value)({
+          get value() { return 0; },
+          get value() { read(); return 1; }
+        });
+      `
+    },
+    {
+      name: "computed sequence key selects absent property",
+      source: `
+        (({ [(0, "missing")]: value = read() }) => void value)({});
+      `
+    },
+    {
+      name: "setter-only read supplies undefined",
+      source: `
+        (({ value = read() }) => void value)({
+          set value(input) { void input; }
+        });
+      `
+    },
+    {
+      name: "function rest destructuring collects suffix array",
+      source: `
+        ((...[value = read()]) => void value)();
+      `
+    },
+    {
+      name: "literal bind result invoked through call",
+      source: `
+        (function invoked() { read(); })
+          .bind(undefined).call(undefined);
+      `
+    },
+    {
+      name: "returned literal bind result invoked through apply",
+      source: `
+        (() => function returned() { read(); })()
+          .bind(undefined).apply(undefined, []);
+      `
+    }
+  ] as const;
+  return cases.map(({ name, source }) => {
+    const result = ts.transpileModule(`
+      let stateReadCount = 0;
+      const read = () => {
+        stateReadCount += 1;
+        return {};
+      };
+      ${source}
+      (globalThis as {
+        stateReadCount?: number;
+      }).stateReadCount = stateReadCount;
+    `, {
+      compilerOptions: {
+        module: ts.ModuleKind.None,
+        target: ts.ScriptTarget.ES2022
+      },
+      reportDiagnostics: true
+    });
+    const context: { stateReadCount?: number } = {};
+    runInNewContext(result.outputText, context);
+    return {
+      diagnosticCodes: (result.diagnostics ?? []).map(
+        (diagnostic) => diagnostic.code
+      ),
+      name,
+      stateReadCount: context.stateReadCount
+    };
+  });
+}
+
 describe("wake supervisor runtime import boundary", () => {
   it("permits zero production importers before R0 factory integration", () => {
     const source = readFileSync(new URL("../src/wake-supervisor-runtime.ts", import.meta.url), "utf8");
@@ -300,10 +2550,24 @@ describe("wake supervisor runtime import boundary", () => {
       "residentExecutionPort"
     ] as const;
 
-    expect(source).toContain(`from "${permittedResidentImports.wakeRuntime.dispatcherDefault}"`);
-    expect(source).toContain(`from "${permittedResidentImports.wakeRuntime.gatewayNamedConstructor}"`);
-    expect(source).toMatch(/import\s+\w+\s+from\s+"..\/..\/agent\/src\/domain-execution-dispatcher\.js"/);
-    expect(source).toMatch(/import\s*\{[^}]*createResidentLoopToolGateway[^}]*\}\s*from\s+"..\/..\/agent\/src\/resident-loop-tool-gateway\.js"/s);
+    expect.soft(source).not.toContain(
+      `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
+    );
+    expect.soft(source).not.toContain(
+      `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
+    );
+    expect.soft(mountedStoreSource).toContain(
+      `from "${permittedResidentImports.mountedStore.dispatcherDefault}"`
+    );
+    expect.soft(mountedStoreSource).toContain(
+      `from "${permittedResidentImports.mountedStore.gatewayNamedConstructor}"`
+    );
+    expect.soft(mountedStoreSource).toMatch(
+      /import\s+\w+\s+from\s+"..\/..\/agent\/src\/domain-execution-dispatcher\.js"/
+    );
+    expect.soft(mountedStoreSource).toMatch(
+      /import\s*\{[^}]*createResidentLoopToolGateway[^}]*\}\s*from\s+"..\/..\/agent\/src\/resident-loop-tool-gateway\.js"/s
+    );
     const wakeFile = ts.createSourceFile(
       "wake-supervisor-runtime.ts",
       source,
@@ -383,11 +2647,12 @@ describe("wake supervisor runtime import boundary", () => {
       );
     })).toEqual([true, true, true, true, true, true, true, true, true, false]);
 
-    const dispatcherImports = wakeFile.statements.flatMap((statement) => {
+    const dispatcherImports = mountedStoreFile.statements.flatMap((statement) => {
       if (
         !ts.isImportDeclaration(statement) ||
         !ts.isStringLiteral(statement.moduleSpecifier) ||
-        statement.moduleSpecifier.text !== permittedResidentImports.wakeRuntime.dispatcherDefault
+        statement.moduleSpecifier.text !==
+          permittedResidentImports.mountedStore.dispatcherDefault
       ) {
         return [];
       }
@@ -396,11 +2661,12 @@ describe("wake supervisor runtime import boundary", () => {
         hasNamedBindings: statement.importClause?.namedBindings !== undefined
       }];
     });
-    const gatewayImports = wakeFile.statements.flatMap((statement) => {
+    const gatewayImports = mountedStoreFile.statements.flatMap((statement) => {
       if (
         !ts.isImportDeclaration(statement) ||
         !ts.isStringLiteral(statement.moduleSpecifier) ||
-        statement.moduleSpecifier.text !== permittedResidentImports.wakeRuntime.gatewayNamedConstructor
+        statement.moduleSpecifier.text !==
+          permittedResidentImports.mountedStore.gatewayNamedConstructor
       ) {
         return [];
       }
@@ -416,66 +2682,2344 @@ describe("wake supervisor runtime import boundary", () => {
         hasNamespaceBinding: bindings !== undefined && ts.isNamespaceImport(bindings)
       }];
     });
-
-    const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
-    const binderImporters: string[] = [];
-    const binderCalls: Array<{ file: string; argumentCount: number }> = [];
-    for (const file of productionTypeScriptFiles(packagesRoot)) {
-      const productionFile = ts.createSourceFile(
-        file,
-        readFileSync(file, "utf8"),
+    const fixedConstructorUse = fixedConstructorUseAnalysis(
+      mountedStoreFile,
+      dispatcherImports[0]?.defaultName ?? null,
+      gatewayImports[0]?.named[0]?.local ?? null
+    );
+    const exactFixedConstruction = {
+      dispatcherRuntimeReferenceCount: 1,
+      dispatcherBinderCallCount: 1,
+      gatewayRuntimeReferenceCount: 1,
+      gatewayConstructorCallCount: 1
+    };
+    const fixedConstructionControl = (text: string) => {
+      const control = ts.createSourceFile(
+        "mounted-wake-lifecycle-store-control.ts",
+        text,
         ts.ScriptTarget.Latest,
         true,
         ts.ScriptKind.TS
       );
-      const localBinderNames = new Set<string>();
-      const binderNamespaces = new Set<string>();
-      for (const statement of productionFile.statements) {
-        if (
-          !ts.isImportDeclaration(statement) ||
-          !ts.isStringLiteral(statement.moduleSpecifier) ||
-          !statement.moduleSpecifier.text.endsWith("mounted-wake-lifecycle-store.js")
-        ) {
-          continue;
-        }
-        const bindings = statement.importClause?.namedBindings;
-        if (bindings !== undefined && ts.isNamedImports(bindings)) {
-          for (const element of bindings.elements) {
-            if (
-              (element.propertyName?.text ?? element.name.text) ===
-              "bindMountedResidentLoopAuthorityForFactory"
-            ) {
-              localBinderNames.add(element.name.text);
-            }
-          }
-        } else if (bindings !== undefined && ts.isNamespaceImport(bindings)) {
-          binderNamespaces.add(bindings.name.text);
-        }
+      return fixedConstructorUseAnalysis(
+        control,
+        "dispatcherDefault",
+        "createResidentLoopToolGateway"
+      );
+    };
+    expect(fixedConstructionControl(`
+      import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+      import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+      function bindMountedResidentLoopAuthorityForFactory() {
+        dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+        createResidentLoopToolGateway(input);
       }
-      if (localBinderNames.size > 0 || binderNamespaces.size > 0) {
-        binderImporters.push(sourceLabel(packagesRoot, file));
-      }
-      const visit = (node: ts.Node): void => {
-        if (ts.isCallExpression(node)) {
-          const direct =
-            ts.isIdentifier(node.expression) &&
-            localBinderNames.has(node.expression.text);
-          const namespaced =
-            ts.isPropertyAccessExpression(node.expression) &&
-            ts.isIdentifier(node.expression.expression) &&
-            binderNamespaces.has(node.expression.expression.text) &&
-            node.expression.name.text === "bindMountedResidentLoopAuthorityForFactory";
-          if (direct || namespaced) {
-            binderCalls.push({
-              file: sourceLabel(packagesRoot, file),
-              argumentCount: node.arguments.length
-            });
-          }
+    `)).toEqual(exactFixedConstruction);
+    for (const [name, text] of [
+      ["dispatcher alias", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        const bind = dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort;
+        function bindMountedResidentLoopAuthorityForFactory() {
+          bind(input);
+          createResidentLoopToolGateway(input);
         }
-        ts.forEachChild(node, visit);
-      };
-      visit(productionFile);
+      `],
+      ["gateway wrapper", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        const create = (input: unknown) => createResidentLoopToolGateway(input);
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          create(input);
+        }
+      `],
+      ["dispatcher zero-argument call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort();
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher two-argument call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(
+            firstBinding,
+            secondBinding
+          );
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher spread-argument call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(
+            ...bindings
+          );
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher optional-property call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault?.bindPackageOwnedResidentDomainExecutionPort(input);
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["dispatcher optional call", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort?.(input);
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["constructor carrier", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        const constructors = { dispatcherDefault, createResidentLoopToolGateway };
+        function bindMountedResidentLoopAuthorityForFactory() {
+          constructors.dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          constructors.createResidentLoopToolGateway(input);
+        }
+      `],
+      ["duplicate constructors", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function bindMountedResidentLoopAuthorityForFactory() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          createResidentLoopToolGateway(input);
+          createResidentLoopToolGateway(input);
+        }
+      `],
+      ["out-of-binder calls", `
+        import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+        import { createResidentLoopToolGateway } from "../../agent/src/resident-loop-tool-gateway.js";
+        function alternateConstruction() {
+          dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(input);
+          createResidentLoopToolGateway(input);
+        }
+      `]
+    ] as const) {
+      expect.soft(
+        fixedConstructionControl(text),
+        name
+      ).not.toEqual(exactFixedConstruction);
     }
+
+    const exactBinderOwnership = {
+      binderImporters: [mountedBinderWakePath],
+      binderCalls: [{
+        file: mountedBinderWakePath,
+        argumentCount: 3
+      }],
+      violations: []
+    };
+    const exactRegistrarWith = (outerSyntax: string) => `
+      const residentWakeRuntimeStates =
+        new WeakMap<object, { store: unknown }>();
+      const decorate = (..._arguments: unknown[]) => undefined;
+      import {
+        bindMountedResidentLoopAuthorityForFactory
+      } from "./mounted-wake-lifecycle-store.js";
+      export function bindResidentLoopCapabilitiesForFactory(
+        wakeRuntime: object,
+        binding: unknown,
+        domainExecution: unknown
+      ) {
+        ${outerSyntax}
+        const state = residentWakeRuntimeStates.get(wakeRuntime);
+        if (state === undefined) throw new Error("missing state");
+        return bindMountedResidentLoopAuthorityForFactory(
+          state.store,
+          binding,
+          domainExecution
+        );
+      }
+    `;
+    const e1087CausalRedControls = [
+      {
+        id: "FA1",
+        name: "computed unary missing key",
+        outerSyntax: `
+          (({
+            [-1]: value = residentWakeRuntimeStates.get(wakeRuntime)
+          }) => void value)({});
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA2",
+        name: "computed template-expression missing key",
+        outerSyntax: `
+          (({
+            [\`mis\${"sing"}\`]: value =
+              residentWakeRuntimeStates.get(wakeRuntime)
+          }) => void value)({});
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA3",
+        name: "empty spread call activates parameter default",
+        outerSyntax: `
+          ((value = residentWakeRuntimeStates.get(wakeRuntime)) =>
+            void value)(
+            ...[]
+          );
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA4",
+        name: "local literal function invocation",
+        outerSyntax: `
+          (() => {
+            const hidden = () =>
+              residentWakeRuntimeStates.get(wakeRuntime);
+            hidden();
+          })();
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA5",
+        name: "literal generator advanced once",
+        outerSyntax: `
+          (function* hidden() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          })().next();
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA6",
+        name: "array-like apply indexed getter",
+        outerSyntax: `
+          (function invoked(_value) {}).apply(undefined, {
+            length: 1,
+            get 0() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+              return 1;
+            }
+          });
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA7",
+        name: "bound this getter read",
+        outerSyntax: `
+          (function invoked() {
+            void this.value;
+          }).bind({
+            get value() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+              return 1;
+            }
+          }).call(undefined);
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA8",
+        name: "missing default over harmless object spread",
+        outerSyntax: `
+          (({
+            missing = residentWakeRuntimeStates.get(wakeRuntime)
+          }) => void missing)({ ...{} });
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA9",
+        name: "getter then setter descriptor merging",
+        outerSyntax: `
+          (({ value }) => void value)({
+            get value() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+              return 1;
+            },
+            set value(input) {
+              void input;
+            }
+          });
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA10",
+        name: "object rest copies getter property",
+        outerSyntax: `
+          (({ ...rest }) => void rest)({
+            get value() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+              return 1;
+            }
+          });
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA11",
+        name: "method-valued nested destructuring default",
+        outerSyntax: `
+          (({
+            method: {
+              missing = residentWakeRuntimeStates.get(wakeRuntime)
+            }
+          }) => void missing)({
+            method() {}
+          });
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA12",
+        name: "double-bound literal function invocation",
+        outerSyntax: `
+          (function hidden() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          }).bind(undefined).bind(undefined)();
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FA13",
+        name: "prototype getter selected by destructuring",
+        outerSyntax: `
+          (({ value }) => void value)({
+            __proto__: {
+              get value() {
+                residentWakeRuntimeStates.get(wakeRuntime);
+                return 1;
+              }
+            }
+          });
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      },
+      {
+        id: "FR1",
+        name: "getter constant-false branch remains unreachable",
+        outerSyntax: `
+          (({ value }) => void value)({
+            get value() {
+              if (false) {
+                residentWakeRuntimeStates.get(wakeRuntime);
+              }
+              return 1;
+            }
+          });
+        `,
+        expectedStateReadCount: 0,
+        expectedOwnership: "accepted"
+      },
+      {
+        id: "FR2",
+        name: "read after unconditional return remains unreachable",
+        outerSyntax: `
+          (() => {
+            return 1;
+            residentWakeRuntimeStates.get(wakeRuntime);
+          })();
+        `,
+        expectedStateReadCount: 0,
+        expectedOwnership: "accepted"
+      },
+      {
+        id: "FR3",
+        name: "positional spread supplies deferred default",
+        outerSyntax: `
+          ((first, second =
+            residentWakeRuntimeStates.get(wakeRuntime)) => {
+            void first;
+            void second;
+          })(...["first", "second"]);
+        `,
+        expectedStateReadCount: 0,
+        expectedOwnership: "accepted"
+      },
+      {
+        id: "FR4",
+        name: "optional call short-circuits argument read",
+        outerSyntax: `
+          ((() => undefined)())?.(
+            residentWakeRuntimeStates.get(wakeRuntime)
+          );
+        `,
+        expectedStateReadCount: 0,
+        expectedOwnership: "accepted"
+      },
+      {
+        id: "P1",
+        name: "private runtime-state map mutation",
+        outerSyntax: `
+          residentWakeRuntimeStates.set(
+            wakeRuntime,
+            { store: "foreign" }
+          );
+        `,
+        expectedStateReadCount: 1,
+        expectedOwnership: "rejected"
+      }
+    ] as const;
+    for (const control of e1087CausalRedControls) {
+      const runtimeResult = ts.transpileModule(`
+        let stateReadCount = 0;
+        let observedStore: unknown;
+        const wakeRuntime = {};
+        const runtimeStates =
+          new WeakMap<object, { store: unknown }>();
+        runtimeStates.set(wakeRuntime, { store: "canonical" });
+        const residentWakeRuntimeStates = {
+          get(value: object) {
+            stateReadCount += 1;
+            return runtimeStates.get(value);
+          },
+          set(value: object, state: { store: unknown }) {
+            runtimeStates.set(value, state);
+          }
+        };
+        ${control.outerSyntax}
+        ${control.id === "P1"
+          ? `observedStore =
+              residentWakeRuntimeStates.get(wakeRuntime)?.store;`
+          : ""}
+        (globalThis as {
+          observedStore?: unknown;
+          stateReadCount?: number;
+        }).observedStore = observedStore;
+        (globalThis as {
+          observedStore?: unknown;
+          stateReadCount?: number;
+        }).stateReadCount = stateReadCount;
+      `, {
+        compilerOptions: {
+          module: ts.ModuleKind.None,
+          target: ts.ScriptTarget.ES2022
+        },
+        reportDiagnostics: true
+      });
+      const runtimeContext: {
+        observedStore?: unknown;
+        stateReadCount?: number;
+      } = {};
+      runInNewContext(runtimeResult.outputText, runtimeContext);
+      expect.soft(
+        {
+          diagnosticCodes: (runtimeResult.diagnostics ?? []).map(
+            (diagnostic) => diagnostic.code
+          ),
+          stateReadCount: runtimeContext.stateReadCount
+        },
+        `${control.id} ${control.name} runtime`
+      ).toEqual({
+        diagnosticCodes: [],
+        stateReadCount: control.expectedStateReadCount
+      });
+      if (control.id === "P1") {
+        expect.soft(
+          runtimeContext.observedStore,
+          "P1 canonical read observes the foreign replacement"
+        ).toBe("foreign");
+      }
+
+      const analysis = mountedBinderControlAnalysis(
+        exactRegistrarWith(control.outerSyntax)
+      );
+      if (control.expectedOwnership === "rejected") {
+        expect.soft(
+          analysis,
+          `${control.id} ${control.name} must reject alternate ownership`
+        ).not.toEqual(exactBinderOwnership);
+      } else {
+        expect.soft(
+          analysis,
+          `${control.id} ${control.name} must preserve exact ownership`
+        ).toEqual(exactBinderOwnership);
+      }
+    }
+    {
+      const outerSyntax = `
+        (({ value }) => void value)({
+          ...{ value: 1 },
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 2;
+          }
+        });
+      `;
+      const runtimeResult = ts.transpileModule(`
+        let stateReadCount = 0;
+        const wakeRuntime = {};
+        const runtimeStates =
+          new WeakMap<object, { store: unknown }>();
+        runtimeStates.set(wakeRuntime, { store: "canonical" });
+        const residentWakeRuntimeStates = {
+          get(value: object) {
+            stateReadCount += 1;
+            return runtimeStates.get(value);
+          }
+        };
+        ${outerSyntax}
+        (globalThis as {
+          stateReadCount?: number;
+        }).stateReadCount = stateReadCount;
+      `, {
+        compilerOptions: {
+          module: ts.ModuleKind.None,
+          target: ts.ScriptTarget.ES2022
+        },
+        reportDiagnostics: true
+      });
+      const runtimeContext: {
+        stateReadCount?: number;
+      } = {};
+      runInNewContext(runtimeResult.outputText, runtimeContext);
+      expect.soft(
+        (runtimeResult.diagnostics ?? []).map(
+          (diagnostic) => diagnostic.code
+        ),
+        "spread-then-later-getter diagnostics"
+      ).toEqual([]);
+      expect.soft(
+        runtimeContext.stateReadCount,
+        "spread-then-later-getter runtime private-state read count"
+      ).toBe(1);
+      expect.soft(
+        mountedBinderControlAnalysis(
+          exactRegistrarWith(outerSyntax)
+        ),
+        "spread-then-later-getter override must reject exact ownership"
+      ).not.toEqual(exactBinderOwnership);
+    }
+    {
+      const outerSyntax = `
+        (({ value }) => void value)({
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 2;
+          },
+          ...{ value: 1 }
+        });
+      `;
+      const runtimeResult = ts.transpileModule(`
+        let stateReadCount = 0;
+        const wakeRuntime = {};
+        const runtimeStates =
+          new WeakMap<object, { store: unknown }>();
+        runtimeStates.set(wakeRuntime, { store: "canonical" });
+        const residentWakeRuntimeStates = {
+          get(value: object) {
+            stateReadCount += 1;
+            return runtimeStates.get(value);
+          }
+        };
+        ${outerSyntax}
+        (globalThis as {
+          stateReadCount?: number;
+        }).stateReadCount = stateReadCount;
+      `, {
+        compilerOptions: {
+          module: ts.ModuleKind.None,
+          target: ts.ScriptTarget.ES2022
+        },
+        reportDiagnostics: true
+      });
+      const runtimeContext: {
+        stateReadCount?: number;
+      } = {};
+      runInNewContext(runtimeResult.outputText, runtimeContext);
+      expect.soft(
+        (runtimeResult.diagnostics ?? []).map(
+          (diagnostic) => diagnostic.code
+        ),
+        "later-spread-overrides-earlier-getter diagnostics"
+      ).toEqual([]);
+      expect.soft(
+        runtimeContext.stateReadCount,
+        "later-spread-overrides-earlier-getter runtime private-state read count"
+      ).toBe(0);
+      expect.soft(
+        mountedBinderControlAnalysis(
+          exactRegistrarWith(outerSyntax)
+        ),
+        "later-spread-overrides-earlier-getter preserves exact ownership"
+      ).toEqual(exactBinderOwnership);
+    }
+    expect(mountedBinderControlAnalysis(`
+      const residentWakeRuntimeStates =
+        new WeakMap<object, { store: unknown }>();
+      import {
+        bindMountedResidentLoopAuthorityForFactory
+      } from "./mounted-wake-lifecycle-store.js";
+      export async function bindResidentLoopCapabilitiesForFactory(
+        wakeRuntime: object,
+        binding: unknown,
+        domainExecution: unknown
+      ) {
+        const state = residentWakeRuntimeStates.get(wakeRuntime);
+        if (state === undefined) throw new Error("missing state");
+        return bindMountedResidentLoopAuthorityForFactory(
+          state.store,
+          binding,
+          domainExecution
+        );
+      }
+    `)).toEqual(exactBinderOwnership);
+    expect(outerEvaluatedRuntimeProbe()).toEqual({
+      diagnosticCodes: [],
+      stateReadCount: 14
+    });
+    expect(immediateLiteralInvocationRuntimeProbe()).toEqual({
+      deferredControlCount: 3,
+      diagnosticCodes: [],
+      stateReadCount: 7
+    });
+    expect(literalEvaluatorRuntimeProbe()).toEqual({
+      diagnosticCodes: [],
+      stateReadCounts: [1, 1, 1, 1, 1, 1, 1, 0]
+    });
+    expect(adversarialLiteralEvaluatorRuntimeProbe()).toEqual({
+      diagnosticCodes: [],
+      stateReadCounts: [1, 1, 1, 1, 1]
+    });
+    expect(nineGapLiteralEvaluatorRuntimeProbe()).toEqual([
+      {
+        diagnosticCodes: [],
+        name: "constructor-returned literal reused as constructor",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "tag-returned literal reused as tag",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "selected getter read in const initializer",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "duplicate getters use runtime last definition",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "computed sequence key selects absent property",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "setter-only read supplies undefined",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "function rest destructuring collects suffix array",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "literal bind result invoked through call",
+        stateReadCount: 1
+      },
+      {
+        diagnosticCodes: [],
+        name: "returned literal bind result invoked through apply",
+        stateReadCount: 1
+      }
+    ]);
+    for (const [name, outerSyntax] of [
+      ["nested array-rest binding default state read", `
+        (([
+          ...[value = residentWakeRuntimeStates.get(wakeRuntime)]
+        ]) => {
+          void value;
+        })([]);
+      `],
+      ["destructured literal getter state read", `
+        (({ value }: { value: unknown }) => {
+          void value;
+        })({
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 1;
+          }
+        });
+      `],
+      ["computed binding-property state read", `
+        (({
+          [(() => {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "value";
+          })()]: value
+        }) => {
+          void value;
+        })({ value: 1 });
+      `],
+      ["returned literal used as constructor state read", `
+        new ((() => function Returned() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        })())();
+      `],
+      ["returned literal used as tag state read", `
+        ((() => function ReturnedTag() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return "tagged";
+        })())\`tag\`;
+      `],
+      ["constructor-returned literal reused as constructor state read", `
+        new (new (function Maker() {
+          return function Returned() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          };
+        })())();
+      `],
+      ["tag-returned literal reused as tag state read", `
+        ((function makeTag() {
+          return function returnedTag() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "done";
+          };
+        })\`inner\`)\`outer\`;
+      `],
+      ["selected getter const-initializer state read", `
+        (({ value }: { value: unknown }) => void value)({
+          get value() {
+            const current =
+              residentWakeRuntimeStates.get(wakeRuntime);
+            return current;
+          }
+        });
+      `],
+      ["last duplicate getter state read", `
+        (({ value }: { value: unknown }) => void value)({
+          get value() { return 0; },
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 1;
+          }
+        });
+      `],
+      ["computed sequence-key absent default state read", `
+        (({
+          [(0, "missing")]:
+            value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({});
+      `],
+      ["setter-only selected default state read", `
+        (({
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({
+          set value(input: unknown) { void input; }
+        });
+      `],
+      ["function rest destructuring default state read", `
+        ((...[
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ]) => void value)();
+      `],
+      ["literal bind result call state read", `
+        (function invoked() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        }).bind(undefined).call(undefined);
+      `],
+      ["returned literal bind result apply state read", `
+        (() => function returned() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        })().bind(undefined).apply(undefined, []);
+      `],
+      ["computed sequence-key operand state read", `
+        (({
+          [(
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "value"
+          )]: value
+        }) => void value)({ value: 1 });
+      `]
+    ] as const) {
+      expect.soft(
+        mountedBinderControlAnalysis(
+          exactRegistrarWith(outerSyntax)
+        ),
+        name
+      ).not.toEqual(exactBinderOwnership);
+    }
+    for (const [name, outerSyntax] of [
+      ["supplied nested array-rest value keeps default deferred", `
+        (([
+          ...[value = residentWakeRuntimeStates.get(wakeRuntime)]
+        ]) => {
+          void value;
+        })(["supplied"]);
+      `],
+      ["unselected literal getter body remains deferred", `
+        (({ selected }: { selected: unknown }) => {
+          void selected;
+        })({
+          get deferred() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 1;
+          },
+          selected: 1
+        });
+      `],
+      ["unselected getter const initializer remains deferred", `
+        (({ selected }: { selected: unknown }) => {
+          void selected;
+        })({
+          get deferred() {
+            const current =
+              residentWakeRuntimeStates.get(wakeRuntime);
+            return current;
+          },
+          selected: 1
+        });
+      `],
+      ["literal setter body remains deferred", `
+        (({ value }) => {
+          void value;
+        })({
+          set value(input: unknown) {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            void input;
+          }
+        });
+      `],
+      ["duplicate last getter wins without reading the first", `
+        (({ value }: { value: unknown }) => void value)({
+          get value() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return 0;
+          },
+          get value() { return 1; }
+        });
+      `],
+      ["selected getter const return keeps default deferred", `
+        (({
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({
+          get value() {
+            const current = 1;
+            return current;
+          }
+        });
+      `],
+      ["computed binding-property closure remains deferred", `
+        (({
+          [(
+            () => residentWakeRuntimeStates.get(wakeRuntime),
+            "value"
+          )]: value
+        }) => {
+          void value;
+        })({ value: 1 });
+      `],
+      ["computed sequence key supplied value keeps default deferred", `
+        (({
+          [(0, "value")]:
+            value = residentWakeRuntimeStates.get(wakeRuntime)
+        }) => void value)({ value: 1 });
+      `],
+      ["supplied function rest-array value keeps default deferred", `
+        ((...[
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ]) => void value)("supplied");
+      `],
+      ["nested constructor and tag chains terminate at runtime values", `
+        const createDeferredConstructor = () => function Deferred() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        };
+        const createDeferredTag = () => function deferredTag() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return "tagged";
+        };
+        new (new (function Maker() {
+          return function Returned() {
+            return createDeferredConstructor();
+          };
+        })())();
+        ((function makeTag() {
+          return function returnedTag() {
+            return createDeferredTag();
+          };
+        })\`inner\`)\`outer\`;
+      `],
+      ["bound call arguments retain bound-before-call order", `
+        (function invoked(
+          first: unknown,
+          second = residentWakeRuntimeStates.get(wakeRuntime)
+        ) {
+          void first;
+          void second;
+        }).bind(undefined, "bound").call(undefined, "supplied");
+      `],
+      ["returned bound apply arguments retain bound-before-call order", `
+        (() => function returned(
+          first: unknown,
+          second = residentWakeRuntimeStates.get(wakeRuntime)
+        ) {
+          void first;
+          void second;
+        })().bind(undefined, "bound").apply(undefined, ["supplied"]);
+      `],
+      ["named runtime constructor and tag remain literal-bounded", `
+        const createDeferredConstructor = () => function Deferred() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+        };
+        const createDeferredTag = () => function deferredTag() {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return "tagged";
+        };
+        new (createDeferredConstructor())();
+        createDeferredTag()\`tag\`;
+      `],
+      ["deferred nested function and arrow bodies and defaults", `
+        function deferredFunction(
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ) {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return value;
+        }
+        const deferredArrow = (
+          value = residentWakeRuntimeStates.get(wakeRuntime)
+        ) => {
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return value;
+        };
+        void deferredFunction;
+        void deferredArrow;
+      `],
+      ["deferred functions inside computed method names", `
+        const deferredNames = {
+          [((() => residentWakeRuntimeStates.get(wakeRuntime)),
+            "deferred-arrow-body")]() {},
+          [(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+            "deferred-arrow-default")]() {},
+          [((function deferred(
+            value = residentWakeRuntimeStates.get(wakeRuntime)
+          ) {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return value;
+          }), "deferred-function")]() {}
+        };
+        void deferredNames;
+      `],
+      ["deferred functions inside decorator expressions", `
+        class DeferredDecorators {
+          @((() => residentWakeRuntimeStates.get(wakeRuntime)), decorate)
+          method(
+            @((function deferred(
+              value = residentWakeRuntimeStates.get(wakeRuntime)
+            ) {
+              residentWakeRuntimeStates.get(wakeRuntime);
+              return value;
+            }), decorate)
+            input: unknown
+          ) {
+            void input;
+          }
+          @(((value = residentWakeRuntimeStates.get(wakeRuntime)) => value),
+            decorate)
+          get accessor() {
+            return 1;
+          }
+        }
+        void DeferredDecorators;
+      `],
+      ["uninvoked literal-function bind result", `
+        const deferredBind = {
+          [((
+            function deferred() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            }
+          ).bind(undefined), "deferred-bind")]() {}
+        };
+        void deferredBind;
+      `],
+      ["constructed but uninvoked ordinary function literal", `
+        const deferredFunction = {
+          [(
+            function deferred() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            },
+            "deferred-function"
+          )]() {}
+        };
+        void deferredFunction;
+      `],
+      ["invoked generator without iteration", `
+        const deferredGenerator = {
+          [((
+            function* deferred() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            }
+          )(), "deferred-generator")]() {}
+        };
+        void deferredGenerator;
+      `],
+      ["locally shadowed undefined argument", `
+        const shadowedUndefined = {
+          [(
+            ((undefined) => {
+              ((value = residentWakeRuntimeStates.get(wakeRuntime)) => value)(
+                undefined
+              );
+            })({}),
+            "shadowed-undefined"
+          )]() {}
+        };
+        void shadowedUndefined;
+      `]
+    ] as const) {
+      expect.soft(
+        mountedBinderControlAnalysis(
+          exactRegistrarWith(outerSyntax)
+        ),
+        name
+      ).toEqual(exactBinderOwnership);
+    }
+    for (const [name, text] of [
+      ["object-literal computed method state read", exactRegistrarWith(`
+        const objectValue = {
+          [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {}
+        };
+        void objectValue;
+      `)],
+      ["class computed method state read", exactRegistrarWith(`
+        class ComputedMethod {
+          [(residentWakeRuntimeStates.get(wakeRuntime), "method")]() {}
+        }
+        void ComputedMethod;
+      `)],
+      ["object-literal computed getter state read", exactRegistrarWith(`
+        const objectValue = {
+          get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+            return 1;
+          }
+        };
+        void objectValue;
+      `)],
+      ["object-literal computed setter state read", exactRegistrarWith(`
+        const objectValue = {
+          set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+            value: number
+          ) {
+            void value;
+          }
+        };
+        void objectValue;
+      `)],
+      ["class computed getter state read", exactRegistrarWith(`
+        class ComputedGetter {
+          get [(residentWakeRuntimeStates.get(wakeRuntime), "getter")]() {
+            return 1;
+          }
+        }
+        void ComputedGetter;
+      `)],
+      ["class computed setter state read", exactRegistrarWith(`
+        class ComputedSetter {
+          set [(residentWakeRuntimeStates.get(wakeRuntime), "setter")](
+            value: number
+          ) {
+            void value;
+          }
+        }
+        void ComputedSetter;
+      `)],
+      ["method decorator state read", exactRegistrarWith(`
+        class DecoratedMethod {
+          @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+          method() {}
+        }
+        void DecoratedMethod;
+      `)],
+      ["getter decorator state read", exactRegistrarWith(`
+        class DecoratedGetter {
+          @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+          get value() {
+            return 1;
+          }
+        }
+        void DecoratedGetter;
+      `)],
+      ["setter decorator state read", exactRegistrarWith(`
+        class DecoratedSetter {
+          @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+          set value(input: number) {
+            void input;
+          }
+        }
+        void DecoratedSetter;
+      `)],
+      ["method parameter decorator state read", exactRegistrarWith(`
+        class DecoratedMethodParameter {
+          method(
+            @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+            input: unknown
+          ) {
+            void input;
+          }
+        }
+        void DecoratedMethodParameter;
+      `)],
+      ["setter parameter decorator state read", exactRegistrarWith(`
+        class DecoratedSetterParameter {
+          set value(
+            @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+            input: number
+          ) {
+            void input;
+          }
+        }
+        void DecoratedSetterParameter;
+      `)],
+      ["constructor parameter decorator state read", exactRegistrarWith(`
+        class DecoratedConstructorParameter {
+          constructor(
+            @((residentWakeRuntimeStates.get(wakeRuntime), decorate))
+            input: unknown
+          ) {
+            void input;
+          }
+        }
+        void DecoratedConstructorParameter;
+      `)],
+      ["invoked arrow in computed method name state read", exactRegistrarWith(`
+        const objectValue = {
+          [((() => (
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "method"
+          ))())]() {}
+        };
+        void objectValue;
+      `)],
+      ["invoked function in decorator state read", exactRegistrarWith(`
+        class InvokedDecorator {
+          @((function createDecorator() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return decorate;
+          })())
+          method() {}
+        }
+        void InvokedDecorator;
+      `)],
+      ["optional invoked arrow in computed name state read", exactRegistrarWith(`
+        const objectValue = {
+          [((() => (
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "optional-invocation"
+          ))?.())!]() {}
+        };
+        void objectValue;
+      `)],
+      ["literal function call invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "call-invocation";
+          }).call(undefined))]() {}
+        };
+        void objectValue;
+      `)],
+      ["literal function apply invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "apply-invocation";
+          }).apply(undefined, []))]() {}
+        };
+        void objectValue;
+      `)],
+      ["immediately invoked literal function bind result state read", exactRegistrarWith(`
+        const objectValue = {
+          [((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return "bind-invocation";
+          }).bind(undefined)())]() {}
+        };
+        void objectValue;
+      `)],
+      ["constructed literal function state read", exactRegistrarWith(`
+        class ConstructedDecorator {
+          @((new (function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          })(), decorate))
+          method() {}
+        }
+        void ConstructedDecorator;
+      `)],
+      ["literal function tag invocation state read", exactRegistrarWith(`
+        class TaggedDecorator {
+          @((function invoked() {
+            residentWakeRuntimeStates.get(wakeRuntime);
+            return decorate;
+          })\`tag\`)
+          method() {}
+        }
+        void TaggedDecorator;
+      `)],
+      ["immediately returned literal function invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [((() => () => (
+            residentWakeRuntimeStates.get(wakeRuntime),
+            "returned-invocation"
+          ))()())]() {}
+        };
+        void objectValue;
+      `)],
+      ["literal function apply null argument-list default state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (function invoked(
+              value = residentWakeRuntimeStates.get(wakeRuntime)
+            ) {
+              void value;
+            }).apply(undefined, null),
+            "apply-null"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["recursive destructured parameter default state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (({
+              nested: [
+                value = residentWakeRuntimeStates.get(wakeRuntime)
+              ] = []
+            } = {
+              nested: []
+            }) => {
+              void value;
+            })({
+              nested: []
+            }),
+            "destructured-default"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["returned literal function call invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (() => function returned() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            })().call(undefined),
+            "returned-call"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["returned literal function apply invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (() => function returned() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            })().apply(undefined, []),
+            "returned-apply"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["returned literal function bound invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (() => function returned() {
+              residentWakeRuntimeStates.get(wakeRuntime);
+            })().bind(undefined)(),
+            "returned-bind"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["constructor-returned literal direct invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            new (function constructed() {
+              return function returned() {
+                residentWakeRuntimeStates.get(wakeRuntime);
+              };
+            })()(),
+            "constructor-returned"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["tag-returned literal direct invocation state read", exactRegistrarWith(`
+        const objectValue = {
+          [(
+            (function tagged() {
+              return function returned() {
+                residentWakeRuntimeStates.get(wakeRuntime);
+              };
+            })\`tag\`(),
+            "tag-returned"
+          )]() {}
+        };
+        void objectValue;
+      `)],
+      ["prior wrong wake-runtime argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            wakeRuntime,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["alternate private-state map", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        const alternateStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = alternateStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["state getter call", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        const readState = (wakeRuntime: object) =>
+          residentWakeRuntimeStates.get(wakeRuntime);
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = readState(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["alternate runtime state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const alternateRuntime = {};
+          const state = residentWakeRuntimeStates.get(alternateRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["state identity alias", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const alias = state;
+          return bindMountedResidentLoopAuthorityForFactory(
+            alias.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["destructured state store", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const { store } = residentWakeRuntimeStates.get(wakeRuntime)!;
+          return bindMountedResidentLoopAuthorityForFactory(
+            store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["shadowed state symbol", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            const state = { store: "foreign" };
+            return bindMountedResidentLoopAuthorityForFactory(
+              state.store,
+              binding,
+              domainExecution
+            );
+          }
+        }
+      `],
+      ["optional private-map property read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates?.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["optional private-map getter call", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get?.(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["property-chain private map", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        const maps = { residentWakeRuntimeStates };
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = maps.residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["element-chain private map", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        const maps = { residentWakeRuntimeStates };
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = maps["residentWakeRuntimeStates"].get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["call-chain private map", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        const getStates = () => residentWakeRuntimeStates;
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = getStates().get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["duplicate exact state reads", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const firstState = residentWakeRuntimeStates.get(wakeRuntime);
+          const secondState = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            firstState.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["nested-block duplicate exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            const duplicateState =
+              residentWakeRuntimeStates.get(wakeRuntime);
+            void duplicateState;
+          }
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra bare exact state read before binder call", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra bare exact state read after binder call", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const result = bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+          residentWakeRuntimeStates.get(wakeRuntime);
+          return result;
+        }
+      `],
+      ["extra let exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          let duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+          void duplicateState;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra var exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          var duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+          void duplicateState;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["extra multi-declaration exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const duplicateMarker = true,
+            duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+          void duplicateMarker;
+          void duplicateState;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["nested-block bare exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            residentWakeRuntimeStates.get(wakeRuntime);
+          }
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["nested-block multi-declaration exact state read", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            var duplicateMarker = true,
+              duplicateState = residentWakeRuntimeStates.get(wakeRuntime);
+            void duplicateMarker;
+            void duplicateState;
+          }
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["state read after binder call", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const result = bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          );
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return result;
+        }
+      `],
+      ["foreign store argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const foreignState = { store: state.store };
+          return bindMountedResidentLoopAuthorityForFactory(
+            foreignState.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["optional state store argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state?.store,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["element state store argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state["store"],
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["property-chain state store argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: { value: unknown } }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store.value,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["object store argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            { store: state.store },
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["literal store argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            "store",
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["call-result store argument", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        const readStore = () => "store";
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            readStore(),
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["reordered registrar arguments", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            domainExecution,
+            binding
+          );
+        }
+      `],
+      ["binding identity alias", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const bindingAlias = binding;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            bindingAlias,
+            domainExecution
+          );
+        }
+      `],
+      ["domain-execution identity alias", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const domainAlias = domainExecution;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainAlias
+          );
+        }
+      `],
+      ["shadowed binding parameter", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            const binding = "foreign";
+            return bindMountedResidentLoopAuthorityForFactory(
+              state.store,
+              binding,
+              domainExecution
+            );
+          }
+        }
+      `],
+      ["shadowed domain-execution parameter", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          {
+            const domainExecution = "foreign";
+            return bindMountedResidentLoopAuthorityForFactory(
+              state.store,
+              binding,
+              domainExecution
+            );
+          }
+        }
+      `],
+      ["property-derived binding", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown; binding: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            state.binding,
+            domainExecution
+          );
+        }
+      `],
+      ["property-derived domain execution", `
+        const residentWakeRuntimeStates = new WeakMap<
+          object,
+          { store: unknown; domainExecution: unknown }
+        >();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            state.domainExecution
+          );
+        }
+      `],
+      ["shape-equivalent distinct values", `
+        const residentWakeRuntimeStates =
+          new WeakMap<object, { store: unknown }>();
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: object,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const state = residentWakeRuntimeStates.get(wakeRuntime);
+          const alternateBinding: typeof binding = binding;
+          const alternateDomainExecution: typeof domainExecution =
+            domainExecution;
+          return bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            alternateBinding,
+            alternateDomainExecution
+          );
+        }
+      `],
+      ["top-level call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(
+          wakeRuntime,
+          binding,
+          domainExecution
+        );
+      `],
+      ["wrong top-level helper", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function alternateConstruction(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          return bindMountedResidentLoopAuthorityForFactory(
+            wakeRuntime,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["nested function inside registrar", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          function construct() {
+            return bindMountedResidentLoopAuthorityForFactory(
+              wakeRuntime,
+              binding,
+              domainExecution
+            );
+          }
+          return construct();
+        }
+      `],
+      ["nested arrow inside registrar", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          const construct = () =>
+            bindMountedResidentLoopAuthorityForFactory(
+              wakeRuntime,
+              binding,
+              domainExecution
+            );
+          return construct();
+        }
+      `],
+      ["identically named non-top-level declaration", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        export function outer() {
+          function bindResidentLoopCapabilitiesForFactory(
+            wakeRuntime: unknown,
+            binding: unknown,
+            domainExecution: unknown
+          ) {
+            return bindMountedResidentLoopAuthorityForFactory(
+              wakeRuntime,
+              binding,
+              domainExecution
+            );
+          }
+          return bindResidentLoopCapabilitiesForFactory;
+        }
+      `],
+      ["same-name wrapper route", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invokeMountedBinder(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          return bindMountedResidentLoopAuthorityForFactory(
+            wakeRuntime,
+            binding,
+            domainExecution
+          );
+        }
+        export function bindResidentLoopCapabilitiesForFactory(
+          wakeRuntime: unknown,
+          binding: unknown,
+          domainExecution: unknown
+        ) {
+          return invokeMountedBinder(
+            wakeRuntime,
+            binding,
+            domainExecution
+          );
+        }
+      `],
+      ["unused import with shadowed parameter call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invoke(
+          bindMountedResidentLoopAuthorityForFactory: (...args: unknown[]) => unknown
+        ) {
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+        }
+      `],
+      ["unused import with shadowed local call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invoke() {
+          const bindMountedResidentLoopAuthorityForFactory = alternateBinder;
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+        }
+      `],
+      ["unused import with shadowed function call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        function invoke() {
+          function bindMountedResidentLoopAuthorityForFactory() {}
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+        }
+      `],
+      ["aliased named import", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory as bindMounted
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMounted(store, binding, execution);
+      `],
+      ["namespace import", `
+        import * as mounted from "./mounted-wake-lifecycle-store.js";
+        mounted.bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["default import", `
+        import bindMountedResidentLoopAuthorityForFactory
+          from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+      `],
+      ["import-equals carrier", `
+        import mounted = require("./mounted-wake-lifecycle-store.js");
+        mounted.bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["dynamic import carrier", `
+        void import("./mounted-wake-lifecycle-store.js").then((mounted) =>
+          mounted.bindMountedResidentLoopAuthorityForFactory(
+            store,
+            binding,
+            execution
+          )
+        );
+      `],
+      ["duplicate imports", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+      `],
+      ["duplicate declarations", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        declare function bindMountedResidentLoopAuthorityForFactory(
+          store: unknown,
+          binding: unknown,
+          execution: unknown
+        ): unknown;
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+      `],
+      ["zero-argument call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory();
+      `],
+      ["two-argument call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding);
+      `],
+      ["four-argument call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution,
+          alternate
+        );
+      `],
+      ["spread call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(...argumentsTuple);
+      `],
+      ["optional call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory?.(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["property carrier", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        const mounted = { bindMountedResidentLoopAuthorityForFactory };
+        mounted.bindMountedResidentLoopAuthorityForFactory(
+          store,
+          binding,
+          execution
+        );
+      `],
+      ["different lexical symbol call", `
+        import {
+          bindMountedResidentLoopAuthorityForFactory
+        } from "./mounted-wake-lifecycle-store.js";
+        bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+        function invoke(
+          bindMountedResidentLoopAuthorityForFactory: (...args: unknown[]) => unknown
+        ) {
+          bindMountedResidentLoopAuthorityForFactory(store, binding, execution);
+        }
+      `]
+    ] as const) {
+      expect.soft(
+        mountedBinderControlAnalysis(text).violations,
+        name
+      ).not.toEqual([]);
+    }
+
+    const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
+    const productionFiles = productionTypeScriptFiles(packagesRoot);
+    const productionProgram = ts.createProgram(productionFiles, {
+      module: ts.ModuleKind.ESNext,
+      noResolve: true,
+      skipLibCheck: true,
+      target: ts.ScriptTarget.ES2022
+    });
+    const binderOwnership = mountedBinderOwnershipAnalysis(
+      productionProgram,
+      productionFiles.flatMap((file) => {
+        const sourceFile = productionProgram.getSourceFile(file);
+        return sourceFile === undefined
+          ? []
+          : [{
+              sourceFile,
+              label: sourceLabel(packagesRoot, file)
+            }];
+      })
+    );
 
     const productAnalysis = {
       declarationCount: declarations.length,
@@ -484,13 +5028,31 @@ describe("wake supervisor runtime import boundary", () => {
       ),
       binderParameterCount: declarations[0]?.parameters.length ?? 0,
       callbackOrWrapperParameterIndexes: constructorParameterIndexes,
-      binderImporters,
-      binderCalls,
+      binderImporters: binderOwnership.binderImporters,
+      binderCalls: binderOwnership.binderCalls,
+      binderOwnershipViolations: binderOwnership.violations,
+      wakeFixedConstructorImports: wakeFile.statements.flatMap((statement) =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        ([
+          permittedResidentImports.mountedStore.dispatcherDefault,
+          permittedResidentImports.mountedStore.gatewayNamedConstructor
+        ] as readonly string[]).includes(statement.moduleSpecifier.text)
+          ? [statement.moduleSpecifier.text]
+          : []
+      ),
       dispatcherImports,
-      gatewayImports
+      gatewayImports,
+      fixedConstructorUse
     };
-    for (const pattern of forbiddenLoaderForms) expect(source).not.toMatch(pattern);
-    for (const transfer of forbiddenTransfers) expect(source).not.toContain(transfer);
+    for (const productSource of [source, mountedStoreSource]) {
+      for (const pattern of forbiddenLoaderForms) {
+        expect(productSource).not.toMatch(pattern);
+      }
+      for (const transfer of forbiddenTransfers) {
+        expect(productSource).not.toContain(transfer);
+      }
+    }
     expect(agentBarrel).not.toMatch(/ResidentDomainExecution|ResidentLoopToolGateway|PackageOwnedResident|BoundedAgentLoop/);
     expect(productAnalysis).toEqual({
       declarationCount: 1,
@@ -502,6 +5064,8 @@ describe("wake supervisor runtime import boundary", () => {
         file: "packages/local-runtime/src/wake-supervisor-runtime.ts",
         argumentCount: 3
       }],
+      binderOwnershipViolations: [],
+      wakeFixedConstructorImports: [],
       dispatcherImports: [{
         defaultName: "dispatcherDefault",
         hasNamedBindings: false
@@ -513,7 +5077,8 @@ describe("wake supervisor runtime import boundary", () => {
           local: "createResidentLoopToolGateway"
         }],
         hasNamespaceBinding: false
-      }]
+      }],
+      fixedConstructorUse: exactFixedConstruction
     });
   });
 });
