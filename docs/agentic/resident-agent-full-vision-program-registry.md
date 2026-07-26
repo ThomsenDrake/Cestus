@@ -38412,3 +38412,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1096 — Exact Task14 wake ownership oracle correction approved
+
+- Recorded at: 2026-07-26T10:30:15Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1095_wake_oracle_review` returns **APPROVED** with no
+  findings for exact candidate
+  `01262163b6ebd1c54eb9a914e9d7d94f15d3fcb7`, tree
+  `a02ad4ea6806e7c996d25282cdb4774ddb218d14`, changed blob
+  `7a6e94cd1fbcd8bcc2433662b133addc7be7cfdb`, and no other bytes. Review
+  occurred beneath clean E-1095 review-authority merge
+  `887ec04f4561ae6183fd5789cc323376cccf0911`; no byte changed.
+- The reviewer independently verifies sole parent
+  `ca2f9846ae7e77d26d2ab0a48399afc05738e176`, exact subject, one-test
+  **0 insertion / 2 deletion** scope, and exact parent/final blobs. Only the
+  two contradictory wake raw-source import expectations are removed.
+- The public registrar lookup, real mounted fixture, source ordinal **6**,
+  durable count **7**, issued capability keys and freezing, zero-ledger-change
+  assertion, and every other functional control remain intact. Dedicated
+  local/global loader policies remain exact `04f8ba16` / `9dbd3692` and
+  comprehensively require mounted-store ownership while forbidding wake
+  ownership.
+- Focused is exact **34 = 32 passed + 2 causal failures**; loaders are
+  **7 = 5 passed + 2 causal failures**; card is
+  **321 = 311 passed + 10 authorized failures**. Adapters pass **83/83**,
+  released cross-boundary controls **443/443**, relevant boundaries **44/44**,
+  isolated prerequisites **18/18**, standalone typecheck, factory readiness,
+  and mission **20/20** pass.
+- Hardened exact-candidate V4 passes **20/20** and markers remain exact
+  **29 / 20 / 29 / 15**. Repository mode exits one solely at the truthful
+  legacy-staging source mismatch and emits no prefix, closure, record-29,
+  repository, or release success marker. Exact freezes, ancestry,
+  dependencies, diff, both integrity modes, isolated config, and clean state
+  pass.
+- Serialized full is exact
+  **3,310 = 3,250 passed + 55 failed + 5 pending**; default full is
+  **3,310 = 3,247 passed + 58 failed + 5 pending**, with zero timeout
+  signatures and only the three prerequisite identities. Fresh immutable
+  baseline comparison is exact
+  `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Advance only exact `01262163` oracle correction
+  `reviewing -> approved`. Authorize its history-preserving no-ff merge into
+  this program branch, fresh integration-tree gates, and a separate
+  append-only integrated event. This event contains no source-correction or
+  Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test-oracle approval, not integration, source
+  correction, Task14 approval, Task15 authority, product candidacy, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system, pull-request,
+  and unrelated actions remain unauthorized.
