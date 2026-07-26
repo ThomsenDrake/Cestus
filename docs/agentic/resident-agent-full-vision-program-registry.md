@@ -38347,3 +38347,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1095 — Exact Task14 wake ownership oracle correction admitted to review
+
+- Recorded at: 2026-07-26T10:10:08Z
+- Exact one-test candidate
+  `01262163b6ebd1c54eb9a914e9d7d94f15d3fcb7`, tree
+  `a02ad4ea6806e7c996d25282cdb4774ddb218d14`, has sole parent exact E-1094
+  authority merge `ca2f9846ae7e77d26d2ab0a48399afc05738e176`
+  and exact subject `test(local-runtime): remove stale wake import oracle`.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` by
+  **0 insertions / 2 deletions**, from exact blob
+  `8269ba2abea46e3b16cb7491cf613e7768969111` to exact blob
+  `7a6e94cd1fbcd8bcc2433662b133addc7be7cfdb`. The diff removes only the two
+  stale raw-source expectations requiring dispatcher and gateway imports in
+  wake runtime and adds no replacement source-text ownership oracle.
+- The public registrar lookup, real portable workspace/SQLite/started-Core/
+  provider/H/package-owned dispatcher fixture, exact source ordinal **6**,
+  durable row count **7**, unwrapped authority, zero-append/effect controls,
+  and causal `stale or foreign` construction failure remain byte-identical.
+  Exact comprehensive local and repository-wide import policies remain
+  frozen at `04f8ba1648957bb8789c827629aa10af5b4fc2ff` and
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`.
+- Both Task14 sources remain exact
+  `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; mounted test remains exact
+  `9836c9ae07c4b891bf588a31b38975ae977e540f`; every other path is unchanged.
+- Exact post-commit signatures remain focused
+  **34 = 32 passed + 2 causal failures**, loaders
+  **7 = 5 passed + 2 causal failures**, and Task136 card
+  **321 = 311 passed + 10 authorized failures** with the exact title
+  occurrences. Adapters pass **83/83**, released cross-boundary controls
+  **443/443**, relevant boundaries **44/44**, isolated prerequisites
+  **18/18**, standalone typecheck, factory readiness, and mission **20/20**
+  pass.
+- V4 passes **20/20** and markers remain exact **29 / 20 / 29 / 15**.
+  Repository mode exits one solely at the truthful legacy-staging source
+  mismatch and emits no prefix, closure, record-29, repository, or release
+  success marker. Exact scope, freezes, ancestry, real dependencies, diff,
+  full/connectivity integrity, isolated config, and candidate/program clean
+  states pass.
+- Admit only exact `01262163` as one-test oracle correction
+  `candidate -> reviewing`. Assign a completely fresh independent read-only
+  reviewer who has never authored, reviewed, verified, or analyzed the
+  corrected candidate bytes.
+- The reviewer must inspect the exact two-line deletion against E-1094 and
+  independently prove that dedicated local/repository loader policies retain
+  complete ownership coverage while the functional real-mounted construction
+  oracle remains intact. It must reproduce exact identity, scope, blobs,
+  freezes, signatures, boundaries, typecheck, factory, mission, V4, markers,
+  truthful repository first stop, ancestry, dependencies, diff, integrity,
+  config, and clean state.
+- The candidate author, E-1093 source implementer, all prior test/source
+  authors, reviewers, verifiers, and analysts, and the coordinator are
+  ineligible to approve. The reviewer may not edit, commit, merge, authorize
+  source correction or Task15, substitute a SHA, or make prefix, record-29,
+  release, or Wave claims. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
