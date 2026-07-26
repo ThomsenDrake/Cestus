@@ -693,6 +693,34 @@ describe("wake supervisor runtime", () => {
         { unknownOutcomeMutation: mutation }
       );
       const before = await released.handle.ledger.readAll();
+      if (mutation === "binding") {
+        const instruction =
+          released.checkpoint.payload.residentLoopSuspension!;
+        const claims = before.filter(
+          (
+            event
+          ): event is KnowledgeEventOf<"agent.resident-domain.execution-claimed.v1"> =>
+            event.type === "agent.resident-domain.execution-claimed.v1"
+        );
+        expect(claims).toHaveLength(1);
+        const claim = claims[0]!;
+        expect(claim.id).toBe(instruction.executionClaimEventId);
+        expect(claim.payload.logicalLocator).toEqual(
+          instruction.logicalLocator
+        );
+        expect(claim.payload.executionCapabilityHash).toBe(
+          instruction.executionCapabilityHash
+        );
+        expect(claim.payload.authorization).toEqual({
+          authorizationKind: "human-approval",
+          decisionEventId: instruction.decisionEventId,
+          approvedBy: instruction.approvedBy,
+          approvedPreviewHash: instruction.approvedPreviewHash
+        });
+        expect(claim.payload.requestEventId).not.toBe(
+          instruction.requestEventId
+        );
+      }
       const effectsBefore = residentEffectEventIds(before);
       released.ledgerProbe.reset();
 
@@ -1008,6 +1036,7 @@ async function residentSuspensionMaterial(
     | "effect-outcome-unknown" = "context-stale",
   options: {
     readonly mutateRequestBudget?: boolean;
+    readonly mutateExecutionClaimBinding?: boolean;
   } = {}
 ) {
   const suffix = mounted.taskId.slice("task_wake_resident_".length);
@@ -1145,6 +1174,10 @@ async function residentSuspensionMaterial(
       const humanDecisionEventId = decisionEventId;
       const humanApprovedBy = approvedBy;
       const humanApprovedPreviewHash = approvedPreviewHash;
+      const executionClaimRequestEventId =
+        options.mutateExecutionClaimBinding === true
+          ? `evt_wake_resident_binding_request_${suffix}`
+          : durableRequest.id;
       const approval = await mounted.handle.ledger.append({
         type: "agent.resident-domain.human-approved.v1",
         version: 1,
@@ -1188,7 +1221,7 @@ async function residentSuspensionMaterial(
           executionCapabilityHash,
           causationId: approval.id,
           correlationId: durableRequest.payload.correlationId,
-          requestEventId: durableRequest.id,
+          requestEventId: executionClaimRequestEventId,
           authorization: {
             authorizationKind: "human-approval",
             decisionEventId: humanDecisionEventId,
@@ -1627,7 +1660,7 @@ function mutateResidentUnknownOutcomeMaterial(
 async function appendResidentUnknownOutcomeSuffix(
   mounted: Awaited<ReturnType<typeof issuedResidentFixture>>,
   material: Awaited<ReturnType<typeof residentSuspensionMaterial>>,
-  mutation: "binding" | "receipt" | "terminal"
+  mutation: "receipt" | "terminal"
 ) {
   const instruction = material.checkpoint.residentLoopSuspension;
   const events = await mounted.handle.ledger.readAll();
@@ -1643,35 +1676,6 @@ async function appendResidentUnknownOutcomeSuffix(
   );
   if (request === undefined || claim === undefined) {
     throw new Error("unknown-outcome suffix requires its exact request and claim");
-  }
-  if (mutation === "binding") {
-    return await mounted.handle.ledger.append({
-      type: "agent.resident-domain.execution-claimed.v1",
-      version: 1,
-      streamId: request.streamId,
-      context: {
-        actor: {
-          id: "agent_wake_resident",
-          kind: "agent",
-          label: "Wake resident authority"
-        },
-        occurredAt: "2026-07-16T00:00:00.000Z",
-        causationId: request.id,
-        correlationId: request.payload.correlationId,
-        coreVersion: "0.1.0",
-        packVersions: { core: "0.1.0", agent: "0.1.0" }
-      },
-      payload: {
-        schemaVersion: "resident-domain-execution-claimed.v1",
-        logicalLocator: request.payload.logicalLocator,
-        executionCapabilityHash: request.payload.executionCapabilityHash,
-        causationId: request.id,
-        correlationId: request.payload.correlationId,
-        requestEventId: request.id,
-        authorization: claim.payload.authorization,
-        claimedAt: "2026-07-16T00:00:00.000Z"
-      }
-    });
   }
   const receipt = await mounted.handle.ledger.append({
     type: "agent.resident-domain.outcome-observed.v1",
@@ -1771,7 +1775,9 @@ async function seededResidentPrefix(
     mounted,
     suspensionCategory,
     {
-      mutateRequestBudget: options.unknownOutcomeMutation === "budget"
+      mutateRequestBudget: options.unknownOutcomeMutation === "budget",
+      mutateExecutionClaimBinding:
+        options.unknownOutcomeMutation === "binding"
     }
   );
   const material = mutateResidentUnknownOutcomeMaterial(
@@ -1779,7 +1785,6 @@ async function seededResidentPrefix(
     options.unknownOutcomeMutation
   );
   if (
-    options.unknownOutcomeMutation === "binding" ||
     options.unknownOutcomeMutation === "receipt" ||
     options.unknownOutcomeMutation === "terminal"
   ) {
