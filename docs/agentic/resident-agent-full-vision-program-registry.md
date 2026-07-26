@@ -40039,3 +40039,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   assurance transition, publication, Wave 3 start, or product release.
   `neo`, push, provider, credential, external-system, pull-request, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1116 — Exact corrected Task14 recovery RED rejected; actor-label correction authorized
+
+- Recorded at: 2026-07-26T17:32:49Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1115_red_review` returns `REJECTED` for exact candidate
+  `e81676c912afbf9ca7bb8f6e827ab718e599ab00`, tree
+  `c6e2adc9617312860aefcecb4253b7949ee3a108`, sole parent
+  `ad75be51e499071bcce13b0c1e7fbda9f5eb5d7c`, and exact corrected wake-test
+  blob `52dad6d80670f53bc6a8314315f21456cb258673`. Review remained read-only
+  beneath E-1115 admission merge
+  `184bb074d06885b302de9b158b43d4bb7db8bcd3`; no byte changed.
+- Frozen G defines and emits exact package-owned event actor
+  `{ id: "agent_default", kind: "agent", label: "Cestus Agent" }` through
+  its private canonical event-context builder. The candidate instead seeds
+  and asserts request and execution-claim actor label `Resident agent`.
+  Frozen recovery checks ID and kind, so the wrong-label structural copy
+  still reaches the missing domain-stream-reread failure. Matching causality
+  and counts therefore do not satisfy E-1114's exact G-produced actor-byte
+  requirement.
+- The reviewer otherwise independently approves the causal two-checkpoint
+  stable-key/canonical-byte conflict, the independent human actor, all
+  retained fixture and mutation controls, and the intended exact
+  zero-versus-one domain-stream-read failure. It reproduces corrected
+  two-row **one passed + one failed**, focused
+  **94 = 53 passed + 41 failed**, partition
+  **3 / 2 / 7 / 1 / 11 / 8 / 8 / 1**, Task136 card
+  **381 = 333 passed + 48 failed**, and exact 37-file
+  **1,040 = 992 passed + 48 failed**.
+- Independent loaders **7/7**, adapters **83/83**, released controls
+  **443/443**, relevant boundaries **44/44**, prerequisites **18/18**,
+  FC-Core **2/2**, typecheck, factory, mission **20/20**, V4 **20/20**,
+  markers **29 / 20 / 29 / 15**, truthful legacy-staging repository first
+  stop, scope, freezes, ancestry, dependencies, diff, connectivity, timeout
+  variance, and clean state all pass. Those gates do not override the exact
+  actor-byte defect.
+- Preserve exact rejected candidate `e81676c9`, its test blob, review,
+  admission, E-1114 authority, and all earlier Task14 history in ancestry.
+  It is not approved, integrated, resumed source authority, a Task14 source
+  candidate, or product evidence.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`: change only
+  the manually seeded request and execution-claim actor labels and their
+  explicit positive assertions from `Resident agent` to exact canonical
+  `Cestus Agent`. Preserve their exact `agent_default` IDs and `agent` kinds,
+  the independent human actor, the causal semantic-key correction, every
+  other test byte and control, and all frozen product/authority/dependency
+  bytes.
+- Reproduce the exact causal two-row, focused, partition, card,
+  cross-boundary, loader/control, typecheck/factory/mission/V4/marker,
+  repository-first-stop, scope/freeze/ancestry/dependency/diff/integrity/
+  clean gates. Admit one exact clean descendant to a different completely
+  fresh independent reviewer. The E-1115 reviewer and every prior author,
+  reviewer, verifier, or analyst of changed bytes are ineligible to approve
+  the descendant. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact candidate rejection and narrow test correction
+  authority, not corrected RED approval/integration, resumed source
+  authority, source candidacy, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance transition, publication,
+  Wave 3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
