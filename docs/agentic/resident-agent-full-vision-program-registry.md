@@ -38753,3 +38753,103 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1101 — Exact Task14 downstream RED rejected; causal-table correction authorized
+
+- Recorded at: 2026-07-26T12:02:25Z
+- Completely fresh independent read-only reviewer
+  `/root/task136_e1100_downstream_red_review` returns **NEEDS CHANGES** for
+  exact candidate `a2a16e9162330edbe3546afa90d2c00c0925f021`, tree
+  `b35b7c3addaf771bdf5fddb35d2414abd252d74c`, changed wake/mounted test
+  blobs `83964ba1cecd3e5beed8a3743cd287d949af0eae` /
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, and no other candidate.
+  Review remained read-only beneath exact clean E-1100 authority merge
+  `d4ac75d68511b317a4a2611159a995564783466f`.
+- The mandated-timeout focused result reproduces exact
+  **80 = 59 passed + 21 source-causal failures**; loaders **7/7**, card
+  **367 = 339 passed + 28 expected failures**, adapters **83/83**, released
+  cross-boundary **443/443**, relevant boundaries **44/44**, prerequisites
+  **18/18**, typecheck, factory, mission **20/20**, and hardened V4
+  **20/20** pass. Exact identity, scope, blobs, freezes, ancestry,
+  dependencies, diff, integrity, and clean state pass. These receipts do not
+  cure the finite coverage defects below.
+- Hostile-prefix rows are not independently causal. Every row starts from a
+  complete valid state-4 prefix and then appends another S, R, release,
+  checkpoint, or terminal. Generic duplicate/extra-suffix rejection can
+  satisfy changed S/R/release, semantic-key, causation, order, result,
+  deadline, next-action, skipped, and missing cases without validating the
+  named bytes. Missing/skipped rows never construct an actual gapped prefix.
+- The named foreign-stream control creates target and foreign fixtures in
+  separate portable workspaces and separate SQLite ledgers. No foreign-stream
+  suffix is present in the target authenticated ledger, so the test cannot
+  prove W ignores it while preserving the exact target readback.
+- The named pre-Core construction row substitutes a different unstarted
+  runtime while retaining the already mounted local binding/capability. It
+  can reject as an ordinary foreign/swapped runtime; its own ledger is not
+  retained or checked. It does not prove same-runtime pre-Core rejection or
+  exact zero append there.
+- Recovery states 1 through 3 assert only schema version and appended event
+  type names. They do not bind returned checkpoint/S/R/release IDs, stream and
+  causation identities, complete payloads, budgets, or exact readbacks. Only
+  state 4 receives exact equality checking.
+- Reclaim coverage is incomplete. Approval-required covers zero and one valid
+  decision but omits stale/expired, self, wrong request/preview, duplicate,
+  and multiple decisions. Unknown-outcome calls G directly and partially
+  matches its readback before W; it does not prove W independently validates
+  exact locator, capability hash, human approval tuple, complete
+  binding/budget, and receipt/terminal absence or rejects their independent
+  mutations.
+- Reject exact `a2a16e91`. It is not approved, integrated, a Task14 source or
+  product candidate, record 29, or a release. Preserve it, its checkpoint
+  parent, every exact blob and receipt, and all prior history as immutable
+  ancestors.
+- Authorize the smallest forward correction in exactly the same two tests,
+  starting from rejected blobs `83964ba1cecd3e5beed8a3743cd287d949af0eae`
+  and `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`. Freeze checkpoint sources
+  `2acb1d5d1891e5d5df823386c7765cdd50865136` /
+  `7d2d4b14a856708bc0c0c5bb767ae073e03859e1`, import policies
+  `04f8ba1648957bb8789c827629aa10af5b4fc2ff` /
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`, and every other path.
+- Construct every hostile target prefix at its actual state with the named
+  event replaced, omitted, reordered, or gapped before recovery. Preserve
+  valid internal event-schema invariants while mutating the exact semantic
+  bytes under test. Each row must fail or pass only because W validates that
+  named target prefix, not because a complete state-4 prefix has an extra
+  event.
+- Place the foreign suffix in the same exact authenticated ledger under an
+  independent foreign task/attempt/run/semantic-key stream. Prove the target
+  state and readback remain exact and no target suffix is poisoned or
+  duplicated.
+- Exercise pre-Core using the same exact issued wake runtime/workspace/ledger
+  identity before Core start/binding, retain that ledger, and assert exact
+  zero append/effect. Do not substitute a runtime, binding, capability,
+  wrapper, or foreign workspace.
+- For states 1 through 3 assert exact returned readback and complete
+  checkpoint/S/R/release IDs, stream, causation, payload, category, deadline,
+  next action, binding, budget, and append delta. Preserve exact state-4
+  idempotence and at-most-once assertions.
+- Add approval-required stale/expired, self-authored, wrong request, wrong
+  preview, duplicate, and multiple-decision controls. For unknown outcome,
+  instrument the exact package-owned G reread boundary without substituting
+  identity; prove W independently obtains and validates the exact readback,
+  complete locator/capability/approval/binding/budget, burned request, and
+  receipt/terminal absence. Mutate each independently and require exact
+  no-token/no-claim/no-effect outcomes.
+- Retain every valid E-1099 construction/currentness/prefix/reclaim/budget/
+  no-append/no-release/no-effect/chronology/foreign/at-most-once control.
+  Establish a new exact signature from execution, with no fixture, schema,
+  collection, API, type, import, analyzer, or unrelated failure.
+- Reproduce every E-1100 targeted, boundary, assurance, repository-first-stop,
+  scope, freeze, ancestry, dependency, serialized/default timeout,
+  parent-differential, immutable-comparator, integrity, diff, config, and
+  clean-state gate. Commit one exact corrected two-test candidate and admit
+  only it to a completely fresh independent read-only reviewer who has never
+  authored, reviewed, verified, or analyzed the changed blobs.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact rejection and two-test forward-correction
+  authority, not RED approval or integration, source correction, Task14
+  approval, Task15 authority, product candidacy, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
