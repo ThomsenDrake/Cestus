@@ -36656,3 +36656,96 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, assurance-only transition, publication, Wave 3 start,
   or product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1076 — Exact Task14 outer-evaluated-syntax loader RED admitted to fresh review
+
+- Recorded at: 2026-07-26T03:11:54Z
+- Exact corrected one-test candidate
+  `8a2c761744b4afc3e98dc3cfb654664b4e223197`, tree
+  `153e7e4c3b6cfcb6fea2195a444ec93ecdf69797`, has sole parent E-1075
+  authority merge `b7f542efeb9b3ba35fedf9bdb43a0b2f25e9b93a`
+  and exact subject
+  `test(local-runtime): census outer-evaluated method syntax`. Rejected
+  candidates `ff0d2b2c`, `60dcd687`, `77b6c5a4`, `877ede2d`, and
+  `a6068aae` remain ancestors.
+- It changes exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` by
+  **405 insertions / 2 deletions** to exact blob
+  `59c29fee4de6c11f700b25781839ac56979cea54`. The global loader remains
+  frozen at `9dbd369294ea25940f0be4fdc0daddbfca22350d`; Task14 sources remain
+  frozen at `2d5b12e4e3826f5210792d8eac8fa1545f721185` and
+  `4fe14efe89b4fcc1be456310a28ca23d1b449bfa`; every other path is
+  unchanged.
+- Before excluding a nested method, getter, setter, or constructor body, the
+  corrected traversal visits its computed name, member decorators, and
+  parameter decorators with outer-evaluated semantics. It detects direct
+  parenthesized arrow/function IIFEs in those expressions, visits their
+  supplied arguments, applicable default-parameter initializers, and body,
+  and retains symbol-exact state-read census. Uninvoked nested bodies and
+  defaults remain excluded.
+- Fourteen independently executing negatives first reproduced false accepts
+  and then pass: object/class computed method, getter, and setter names;
+  method/getter/setter decorators; method/setter/constructor parameter
+  decorators; directly invoked arrow in a computed name; and directly
+  invoked function in a decorator. Three independently executing admitted
+  controls preserve deferred nested bodies/defaults, including inside
+  computed names and decorators. The realistic registrar positive and every
+  E-1065 through E-1075 control remain admitted or rejected as authorized.
+- A TypeScript **5.9.3** transpile/runtime probe reports zero diagnostics and
+  exact outer-evaluated state-read count **14**. Exact post-commit focused
+  signature is **34 = 32 passed + 2 causal failures**; combined loaders are
+  **7 = 5 passed + 2 causal failures**; the Task136 card is
+  **321 = 311 passed + 10 failures**, with the identical three Task14 and
+  seven later-task RED identities.
+- Adapter controls pass **83/83**, cross-boundary passes **443/443**, and
+  relevant mounted/portable/ontology boundaries pass **44/44**. Typecheck,
+  factory, mission **20/20**, V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, and truthful repository legacy-staging first stop
+  pass with no prefix or closure marker.
+- Serialized full execution is
+  **3,310 = 3,250 passed + 55 failed + 5 pending**, with exact E-1074
+  reviewed failure occurrences and no timeout. Default full execution is
+  **3,310 = 3,247 passed + 58 failed + 5 pending** with the exact calibrated
+  contention set. Isolated prerequisites pass **18/18** and comparison
+  passes `removed=8 mapped=14 addedPassed=63 retainedLaterRed=10`.
+- Exact candidate/tree/parent/subject, one-test scope, global/source/
+  other-path freezes, rejected ancestry, dependencies, real non-symlinked
+  Vitest **4.1.9** and TypeScript **5.9.3**, connectivity, diff, and final
+  clean state pass.
+- Admit only exact `8a2c7617` as Task14 outer-evaluated-syntax loader
+  test-only `candidate -> reviewing`. Assign completely fresh independent
+  read-only reviewer `/root/task136_e1076_task14_outer_syntax_red_review`,
+  who has never authored, reviewed, verified, or analyzed any changed test
+  byte.
+- The reviewer must inspect the complete cumulative local/global loader
+  against E-1065 through E-1075 and independently attack outer-versus-
+  deferred execution across computed method/accessor names, member and
+  parameter decorators, nested functions/arrows, IIFE parameters/defaults/
+  arguments/bodies, parentheses and TypeScript expression wrappers, blocks,
+  and nested class/function boundaries. It must search beyond the named
+  controls for false accepts or false rejects in direct, optional,
+  constructor, tag, property-mediated, or other syntactically immediate
+  invocation forms, while distinguishing genuinely deferred execution.
+  Every negative, admitted deferred control, runtime probe, and realistic
+  production positive must actually execute.
+- The reviewer must independently reproduce exact candidate/tree/parent/
+  subject/scope/blob/freezes/ancestry, focused/loader/card causal identities,
+  adapter **83/83**, cross **443/443**, relevant **44/44**, typecheck,
+  factory, mission, V4, markers, truthful repository first stop,
+  serialized/default occurrence sets, isolated prerequisite suite,
+  calibrated differential, dependencies, connectivity, diff, and clean
+  state.
+- The correction author, all rejected authors/reviewers, E-1064 source
+  implementer, earlier Task14/Task136 participants, and coordinator are
+  ineligible to approve changed bytes. The reviewer may not edit, commit,
+  merge, authorize source correction or Task15, substitute a SHA, or make
+  product/record-29/release/prefix/Wave claims. Changed bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is exact one-test review admission, not approval,
+  integration, source correction, Task14 approval, Task15 authority,
+  Task136 product candidacy, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
