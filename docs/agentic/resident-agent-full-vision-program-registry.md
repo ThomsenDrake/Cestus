@@ -41538,3 +41538,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1136 — Awaited-result-complete Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-26T23:57:49Z
+- Exact forward test-only descendant
+  `e34a03ad24bf7be7221b6e8d19b72c971aa045bf`, tree
+  `08fd00e8f2d033ee56ea3cc77d47c0373951520c`, has sole parent exact E-1135
+  authority merge `d53095edcceba7aca0f2db40dd6710bf9ff0c76d` and exact subject
+  `test(local-runtime): resolve awaited registrar results`. Rejected
+  candidates `1d688e5a`, `5c5f4f47`, `e12008b8`, `86b699cd`, `db03309f`,
+  `619fd752`, and `f607eb3c` remain immutable ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+76 / -23** from rejected blob
+  `1586160373beac6d155cd725f24d8d06362ff2d8` to exact blob
+  `66b02f510ac1e988d3ef8a4f50f7d00acdfcb11a`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Await remains an explicit registrar-result traversal, so direct and
+  short-circuit `await registrar` controls continue to reject. The shared
+  syntactic unwrap no longer strips arbitrary awaits; false/null-result
+  thenables now keep `||` and `??` paths conservative, and an awaited
+  object whose selected property changes to undefined now activates the
+  registrar destructuring-default guard.
+- The analyzer does not infer any arbitrary promise or thenable result from
+  its pre-await object shape. It uses no execution, source-text scan, or
+  spelling heuristic. Unrelated awaited results and statically unreachable
+  awaited operands retain their authorized results.
+- A finite recursive AST literal evaluator now computes unary plus, unary
+  minus, and bitwise-complement results for number and bigint literals only
+  where the operator is defined. The nested zero-producing bitwise and
+  negative nonzero bigint positives now discard their unreachable registrar
+  operands; indeterminate prefix values remain conservative.
+- Exported declarations and callable expressions, dot/bracket bound
+  callables, destructured and local-carrier aliases, explicit defaults,
+  conditional/comma/short-circuit results, local/imported re-exports, and all
+  unrelated positives retain their prior exact results.
+- Exact production focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; the unchanged runtime RED remains
+  pre-store and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed**. The complete
+  failure set is only the two issuer REDs plus seven preserved
+  Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20**; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, closure, repository-success, or release-success
+  marker.
+- Exact one-test scope, source/runtime/other-test freezes, rejected-candidate
+  and authority ancestry, real dependencies, diff hygiene, and clean state
+  pass. No source, claim, design, plan, contract, mission, dependency, route,
+  provider, credential, release, or unrelated byte changed.
+- Admit only exact `e34a03ad` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a sixth completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `66b02f51`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce arbitrary awaited-result paths,
+  explicit awaited registrar traversal, destructuring-default behavior, and
+  recursive number/bigint prefix reachability; probe the finite E-1135
+  awaited-result and numeric-literal surface for any further candidate-bound
+  gap; and reproduce causal runtime/static failures, focused/card/cross
+  signatures, assurance, repository-first-stop, exact scope/freezes/
+  ancestry/dependencies/diff/integrity/clean state. It must prove the static
+  gate supplements rather than substitutes for runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  Task15 authority, Task136 product candidacy, repository closure, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
