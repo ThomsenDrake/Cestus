@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AssertionService } from "../../ontology/src/assertion-service.js";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
 import { hashAgentToolPreview } from "../../agent/src/tool-gateway.js";
@@ -269,7 +270,6 @@ describe("wake supervisor runtime", () => {
   it.each([
     "copied-runtime",
     "swapped-runtime",
-    "pre-core-runtime",
     "copied-core-binding",
     "copied-provider-binding",
     "copied-handoff-binding",
@@ -288,9 +288,7 @@ describe("wake supervisor runtime", () => {
       ? Object.freeze({ ...local.composition.wakeRuntime })
       : mutation === "swapped-runtime"
         ? foreign!.composition.wakeRuntime
-        : mutation === "pre-core-runtime"
-          ? (await unstartedResidentFixture(`identity-${mutation}`)).composition.wakeRuntime
-          : local.composition.wakeRuntime;
+        : local.composition.wakeRuntime;
     const binding = mutation === "copied-core-binding"
       ? Object.freeze({ ...local.binding })
       : mutation === "copied-provider-binding"
@@ -325,6 +323,24 @@ describe("wake supervisor runtime", () => {
     }
   });
 
+  it("rejects the exact issued wake runtime before Core start without touching its ledger", async () => {
+    const preCore = await unstartedResidentFixture("identity-pre-core-runtime");
+    const before = await preCore.handle.ledger.readAll();
+    const effectsBefore = residentEffectEventIds(before);
+
+    await expect(
+      bindResidentLoopCapabilitiesForFactory(
+        preCore.composition.wakeRuntime,
+        undefined,
+        undefined
+      )
+    ).rejects.toThrow(/Core authority/i);
+
+    const after = await preCore.handle.ledger.readAll();
+    expect(after).toEqual(before);
+    expect(residentEffectEventIds(after)).toEqual(effectsBefore);
+  });
+
   it("rejects state zero without creating a caller-invented checkpoint", async () => {
     const empty = await issuedResidentFixture("state-0");
     const emptyBefore = await empty.handle.ledger.readAll();
@@ -344,16 +360,56 @@ describe("wake supervisor runtime", () => {
       const beforeRecovery = await partial.handle.ledger.readAll();
       const recovered = await partial.capabilities.mountedAuthority
         .recoverSuspensionPrefix(partial.locator);
-      expect(recovered).toMatchObject({
-        schemaVersion: "resident-loop-released-checkpoint-readback.v1"
-      });
       const afterRecovery = await partial.handle.ledger.readAll();
-      expect(afterRecovery.slice(beforeRecovery.length).map((event) => event.type))
+      const appended = afterRecovery.slice(beforeRecovery.length);
+      expect(appended.map((event) => event.type))
         .toEqual(residentPrefixTypes.slice(state));
-      if (state === 4) {
-        expect(recovered).toEqual(partial.readback);
-        expect(afterRecovery).toEqual(beforeRecovery);
-      }
+      const checkpoint = partial.checkpoint;
+      const suspension = partial.suspension ?? residentEventOf(
+        appended,
+        "agent.resident-loop.suspended.v2"
+      );
+      const result = partial.result ?? residentEventOf(
+        appended,
+        "agent.resident-loop.result.recorded.v2"
+      );
+      const release = partial.release ?? residentEventOf(
+        appended,
+        "agent.task.orchestration.released"
+      );
+      expect(recovered).toEqual({
+        schemaVersion: "resident-loop-released-checkpoint-readback.v1",
+        checkpointEventId: checkpoint.id,
+        suspensionEventId: suspension.id,
+        resultEventId: result.id,
+        releaseEventId: release.id
+      });
+      expect(checkpoint.payload).toEqual(partial.material.checkpoint);
+      expect(suspension.streamId).toBe(partial.material.observation.streamId);
+      expect(suspension.context).toEqual(residentPrefixContext(
+        partial,
+        checkpoint.id
+      ));
+      expect(suspension.payload).toEqual(residentSuspensionPayload(
+        partial.material,
+        checkpoint.id
+      ));
+      expect(result.streamId).toBe(partial.material.observation.streamId);
+      expect(result.context).toEqual(residentPrefixContext(
+        partial,
+        suspension.id
+      ));
+      expect(result.payload).toEqual(residentResultPayload(
+        partial.material,
+        suspension.id
+      ));
+      expect(release.streamId).toBe(checkpoint.streamId);
+      expect(release.context).toEqual(residentPrefixContext(partial, result.id));
+      expect(release.payload).toEqual(residentReleasePayload(
+        partial,
+        checkpoint.id
+      ));
+      if (state === 4) expect(afterRecovery).toEqual(beforeRecovery);
     }
   );
 
@@ -458,8 +514,13 @@ describe("wake supervisor runtime", () => {
     "missing",
     "extra-target-suffix"
   ] as const)("rejects the hostile target prefix mutation %s without append or effect", async (mutation) => {
-    const hostile = await seededResidentPrefix(`hostile-${mutation}`, 4);
-    await appendHostileResidentPrefixMutation(hostile, mutation);
+    const hostile = await seededHostileResidentPrefix(
+      `hostile-${mutation}`,
+      mutation
+    );
+    expect(hostile.constructedTypes, mutation).toEqual(
+      hostile.expectedConstructedTypes
+    );
     const before = await hostile.handle.ledger.readAll();
     const effectsBefore = residentEffectEventIds(before);
 
@@ -474,15 +535,29 @@ describe("wake supervisor runtime", () => {
 
   it("ignores an independent foreign-stream suffix while preserving exact target readback", async () => {
     const target = await seededResidentPrefix("foreign-control-target", 4);
-    const foreign = await seededResidentPrefix("foreign-control-other", 4);
-    const beforeTarget = await target.handle.ledger.readAll();
-    const beforeForeign = await foreign.handle.ledger.readAll();
+    const foreign = await appendResidentForeignStreamSuffix(target);
+    const before = await target.handle.ledger.readAll();
+    const targetStreamBefore = await target.handle.ledger.readStream(
+      target.checkpoint.streamId
+    );
+    const residentStreamBefore = await target.handle.ledger.readStream(
+      target.material.observation.streamId
+    );
+    expect(await target.handle.ledger.readStream(foreign.streamId)).toEqual([
+      foreign
+    ]);
 
     await expect(
       target.capabilities.mountedAuthority.recoverSuspensionPrefix(target.locator)
     ).resolves.toEqual(target.readback);
-    expect(await target.handle.ledger.readAll()).toEqual(beforeTarget);
-    expect(await foreign.handle.ledger.readAll()).toEqual(beforeForeign);
+    expect(await target.handle.ledger.readAll()).toEqual(before);
+    expect(await target.handle.ledger.readStream(target.checkpoint.streamId))
+      .toEqual(targetStreamBefore);
+    expect(await target.handle.ledger.readStream(target.material.observation.streamId))
+      .toEqual(residentStreamBefore);
+    expect(await target.handle.ledger.readStream(foreign.streamId)).toEqual([
+      foreign
+    ]);
   });
 
   it.each([
@@ -524,6 +599,38 @@ describe("wake supervisor runtime", () => {
     expect(await released.handle.ledger.readAll()).toEqual(before);
   });
 
+  it.each([
+    "stale",
+    "expired",
+    "self-authored",
+    "wrong-request",
+    "wrong-preview",
+    "duplicate",
+    "multiple"
+  ] as const)(
+    "does not reclaim approval-required work with %s decision authority",
+    async (mutation) => {
+      const released = await seededResidentPrefix(
+        `reclaim-approval-${mutation}`,
+        4,
+        "approval-required"
+      );
+      await appendResidentApprovalDecision(released, mutation);
+      const before = await released.handle.ledger.readAll();
+      const effectsBefore = residentEffectEventIds(before);
+
+      await expect(
+        released.capabilities.mountedAuthority.reclaimAndReverify(
+          released.locator
+        ),
+        mutation
+      ).resolves.toBeUndefined();
+      const after = await released.handle.ledger.readAll();
+      expect(after, mutation).toEqual(before);
+      expect(residentEffectEventIds(after), mutation).toEqual(effectsBefore);
+    }
+  );
+
   it("reclaims approval-required work only after the independent matching decision", async () => {
     const released = await seededResidentPrefix(
       "reclaim-approval-approved",
@@ -549,33 +656,60 @@ describe("wake supervisor runtime", () => {
     const instruction = released.checkpoint.payload.residentLoopSuspension!;
     const before = await released.handle.ledger.readAll();
     const requestBefore = before.find((event) => event.id === instruction.requestEventId);
-    const claimedBefore = residentRecord(
-      await callResidentGateway(
-        released.capabilities.gateway,
-        "rereadAndIssueFromLedger",
-        instruction.logicalLocator
-      ),
-      "unknown-effect exact claimed reread"
+    const domainStreamId = residentDomainStreamId(
+      instruction.logicalLocator as Readonly<Record<string, unknown>>
     );
-    expect(claimedBefore).toMatchObject({
-      stage: "claimed",
-      category: "effect-outcome-unknown",
-      requestEventId: instruction.requestEventId,
-      executionClaimEventId: instruction.executionClaimEventId
-    });
-    expect(claimedBefore).not.toHaveProperty("outcomeReceiptEventId");
-    expect(claimedBefore).not.toHaveProperty("resultEventId");
+    released.ledgerProbe.reset();
 
     const token = await released.capabilities.mountedAuthority.reclaimAndReverify(
       released.locator
     );
     expect(token).toMatchObject({ schemaVersion: "resident-loop-currentness-token.v1" });
+    expect(released.ledgerProbe.streamReads.filter(
+      (streamId) => streamId === domainStreamId
+    )).toEqual([domainStreamId]);
     const after = await released.handle.ledger.readAll();
     expect(after.find((event) => event.id === instruction.requestEventId)).toEqual(requestBefore);
     expect(after.slice(before.length).map((event) => event.type))
       .toEqual(["agent.task.orchestration.claimed"]);
     expect(residentEffectEventIds(after)).toEqual(residentEffectEventIds(before));
   });
+
+  it.each([
+    "locator",
+    "capability",
+    "approval",
+    "binding",
+    "budget",
+    "receipt",
+    "terminal"
+  ] as const)(
+    "does not reclaim unknown outcome with an independently mutated %s",
+    async (mutation) => {
+      const released = await seededResidentPrefix(
+        `reclaim-effect-unknown-${mutation}`,
+        4,
+        "effect-outcome-unknown",
+        { unknownOutcomeMutation: mutation }
+      );
+      const before = await released.handle.ledger.readAll();
+      const effectsBefore = residentEffectEventIds(before);
+      released.ledgerProbe.reset();
+
+      await expect(
+        released.capabilities.mountedAuthority.reclaimAndReverify(
+          released.locator
+        ),
+        mutation
+      ).resolves.toBeUndefined();
+      const after = await released.handle.ledger.readAll();
+      expect(after, mutation).toEqual(before);
+      expect(residentEffectEventIds(after), mutation).toEqual(effectsBefore);
+      expect(released.ledgerProbe.streamReads.filter(
+        (streamId) => streamId === released.material.observation.streamId
+      ).length, mutation).toBeGreaterThanOrEqual(2);
+    }
+  );
 
   it.each(["canceled", "terminal"] as const)(
     "does not reclaim %s resident work and appends no claim",
@@ -617,6 +751,7 @@ async function residentFixture(suffix: string) {
   });
   handles.push(handle);
   await handle.residentIdentity.ready();
+  const ledgerProbe = instrumentResidentLedger(handle.ledger);
 
   const taskId = `task_wake_resident_${suffix}`;
   const attemptId = `attempt_${"a".repeat(64)}`;
@@ -811,7 +946,8 @@ async function residentFixture(suffix: string) {
     attemptId,
     runId,
     runType,
-    claim
+    claim,
+    ledgerProbe
   });
 }
 
@@ -830,7 +966,7 @@ async function unstartedResidentFixture(suffix: string) {
     createSafeId: (kind: "lease" | "diagnostic" | "reconciliation") =>
       `${kind}_unstarted_${suffix}`
   }));
-  return Object.freeze({ composition });
+  return Object.freeze({ handle, composition });
 }
 
 const residentPrefixTypes = Object.freeze([
@@ -869,7 +1005,10 @@ async function residentSuspensionMaterial(
     | "authority-stale"
     | "context-stale"
     | "provider-unavailable"
-    | "effect-outcome-unknown" = "context-stale"
+    | "effect-outcome-unknown" = "context-stale",
+  options: {
+    readonly mutateRequestBudget?: boolean;
+  } = {}
 ) {
   const suffix = mounted.taskId.slice("task_wake_resident_".length);
   const correlationId = `corr_${mounted.taskId}`;
@@ -989,7 +1128,8 @@ async function residentSuspensionMaterial(
     const durableRequest = await appendResidentRequestedStage(
       mounted,
       plan,
-      logicalLocator
+      logicalLocator,
+      options.mutateRequestBudget === true
     );
     requestEventId = durableRequest.id;
     if (suspensionCategory === "effect-outcome-unknown") {
@@ -1299,6 +1439,312 @@ function residentFixtureSuspensionCheckpoint(
   };
 }
 
+function residentSuspensionPayload(
+  material: Awaited<ReturnType<typeof residentSuspensionMaterial>>,
+  checkpointEventId: string
+) {
+  return {
+    ...material.common,
+    schemaVersion: "resident-loop-suspension.v2" as const,
+    budget: residentBudget(
+      {
+        contextBytes: 1,
+        ...(material.claimedToolStep === undefined ? {} : { toolSteps: 1 }),
+        observationRecords: 1,
+        approvalSuspensionMs: 1
+      },
+      { approvalSuspensionMs: 1 }
+    ),
+    causationId: checkpointEventId,
+    planId: material.plan.payload.planId,
+    planRevision: material.plan.payload.planRevision,
+    planReadback: material.planReadback,
+    finalObservationReadback: {
+      observationEventId: material.observation.id,
+      workspaceId: material.common.workspaceId,
+      residentAgentId: material.common.residentAgentId,
+      taskId: material.common.taskId,
+      attemptId: material.common.attemptId,
+      runId: material.common.runId,
+      planId: material.plan.payload.planId,
+      planRevision: material.plan.payload.planRevision
+    },
+    suspensionCategory:
+      material.checkpoint.residentLoopSuspension.suspensionCategory,
+    checkpoint: {
+      ...residentFixtureSuspensionCheckpoint(
+        material.checkpoint.residentLoopSuspension,
+        checkpointEventId
+      )
+    }
+  };
+}
+
+function residentResultPayload(
+  material: Awaited<ReturnType<typeof residentSuspensionMaterial>>,
+  suspensionEventId: string
+) {
+  return {
+    ...material.common,
+    schemaVersion: "resident-loop-result.v2" as const,
+    budget: residentBudget(
+      {
+        contextBytes: 1,
+        ...(material.claimedToolStep === undefined ? {} : { toolSteps: 1 }),
+        observationRecords: 1,
+        approvalSuspensionMs: 1,
+        activeExecutionMs: 1
+      },
+      { activeExecutionMs: 1 }
+    ),
+    causationId: suspensionEventId,
+    planId: material.plan.payload.planId,
+    planRevision: material.plan.payload.planRevision,
+    planReadback: material.planReadback,
+    finalObservationReadback: {
+      observationEventId: material.observation.id,
+      workspaceId: material.common.workspaceId,
+      residentAgentId: material.common.residentAgentId,
+      taskId: material.common.taskId,
+      attemptId: material.common.attemptId,
+      runId: material.common.runId,
+      planId: material.plan.payload.planId,
+      planRevision: material.plan.payload.planRevision
+    },
+    outcome: "resumable" as const,
+    category: material.checkpoint.residentLoopSuspension.suspensionCategory,
+    resultHash: material.checkpoint.residentLoopSuspension.resultSemanticKey,
+    resumeAnchor: {
+      checkpointEventId: suspensionEventId,
+      nextSafeAction:
+        material.checkpoint.residentLoopSuspension.nextSafeAction,
+      resumptionDeadlineAt:
+        material.checkpoint.residentLoopSuspension.resumptionDeadlineAt
+    }
+  };
+}
+
+function residentReleasePayload(
+  mounted: Pick<
+    Awaited<ReturnType<typeof issuedResidentFixture>>,
+    "taskId" | "runType" | "attemptId" | "claim"
+  > & {
+    readonly material: Awaited<ReturnType<typeof residentSuspensionMaterial>>;
+  },
+  checkpointEventId: string
+) {
+  return {
+    taskId: mounted.taskId,
+    runType: mounted.runType,
+    attemptId: mounted.attemptId,
+    retryGeneration: 0,
+    leaseClaimGeneration: mounted.claim.payload.leaseClaimGeneration,
+    releasedBy: "agent_wake_resident",
+    releasedAt: "2026-07-16T00:00:00.000Z",
+    releaseReason: "resident-loop-suspended" as const,
+    claimEventId: mounted.claim.id,
+    checkpointEventId,
+    safeNextActions: [...mounted.material.checkpoint.safeNextActions]
+  };
+}
+
+function residentPrefixContext(
+  mounted: { readonly taskId: string },
+  causationId: string
+) {
+  return {
+    actor: {
+      id: "agent_wake_resident",
+      kind: "agent" as const,
+      label: "Wake resident authority"
+    },
+    occurredAt: "2026-07-16T00:00:00.000Z",
+    causationId,
+    correlationId: `corr_${mounted.taskId}`,
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  };
+}
+
+type ResidentSuspensionMaterial =
+  Awaited<ReturnType<typeof residentSuspensionMaterial>>;
+
+function mutateResidentUnknownOutcomeMaterial(
+  material: ResidentSuspensionMaterial,
+  mutation:
+    | "locator"
+    | "capability"
+    | "approval"
+    | "binding"
+    | "budget"
+    | "receipt"
+    | "terminal"
+    | undefined
+) {
+  if (
+    mutation === undefined ||
+    mutation === "budget" ||
+    mutation === "receipt" ||
+    mutation === "terminal"
+  ) {
+    return material;
+  }
+  const instruction = material.checkpoint.residentLoopSuspension;
+  const logicalLocator = instruction.logicalLocator;
+  if (logicalLocator === undefined) {
+    throw new Error("unknown-outcome mutation requires its exact locator");
+  }
+  const changedLocator = mutation === "locator"
+    ? {
+        ...logicalLocator,
+        toolRequestId: `toolreq_${"e".repeat(64)}`
+      }
+    : mutation === "capability"
+      ? {
+          ...logicalLocator,
+          executionCapabilityHash: residentHash("e")
+        }
+      : logicalLocator;
+  const changedInstruction = {
+    ...instruction,
+    logicalLocator: changedLocator,
+    ...(mutation === "capability"
+      ? { executionCapabilityHash: residentHash("e") }
+      : {}),
+    ...(mutation === "approval"
+      ? { approvedPreviewHash: residentHash("e") }
+      : {})
+  };
+  return Object.freeze({
+    ...material,
+    checkpoint: Object.freeze({
+      ...material.checkpoint,
+      residentLoopSuspension: Object.freeze(changedInstruction)
+    })
+  }) as ResidentSuspensionMaterial;
+}
+
+async function appendResidentUnknownOutcomeSuffix(
+  mounted: Awaited<ReturnType<typeof issuedResidentFixture>>,
+  material: Awaited<ReturnType<typeof residentSuspensionMaterial>>,
+  mutation: "binding" | "receipt" | "terminal"
+) {
+  const instruction = material.checkpoint.residentLoopSuspension;
+  const events = await mounted.handle.ledger.readAll();
+  const request = events.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.requested.v1"> =>
+      event.id === instruction.requestEventId &&
+      event.type === "agent.resident-domain.requested.v1"
+  );
+  const claim = events.find(
+    (event): event is KnowledgeEventOf<"agent.resident-domain.execution-claimed.v1"> =>
+      event.id === instruction.executionClaimEventId &&
+      event.type === "agent.resident-domain.execution-claimed.v1"
+  );
+  if (request === undefined || claim === undefined) {
+    throw new Error("unknown-outcome suffix requires its exact request and claim");
+  }
+  if (mutation === "binding") {
+    return await mounted.handle.ledger.append({
+      type: "agent.resident-domain.execution-claimed.v1",
+      version: 1,
+      streamId: request.streamId,
+      context: {
+        actor: {
+          id: "agent_wake_resident",
+          kind: "agent",
+          label: "Wake resident authority"
+        },
+        occurredAt: "2026-07-16T00:00:00.000Z",
+        causationId: request.id,
+        correlationId: request.payload.correlationId,
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        schemaVersion: "resident-domain-execution-claimed.v1",
+        logicalLocator: request.payload.logicalLocator,
+        executionCapabilityHash: request.payload.executionCapabilityHash,
+        causationId: request.id,
+        correlationId: request.payload.correlationId,
+        requestEventId: request.id,
+        authorization: claim.payload.authorization,
+        claimedAt: "2026-07-16T00:00:00.000Z"
+      }
+    });
+  }
+  const receipt = await mounted.handle.ledger.append({
+    type: "agent.resident-domain.outcome-observed.v1",
+    version: 1,
+    streamId: request.streamId,
+    context: {
+      actor: {
+        id: "agent_wake_resident",
+        kind: "agent",
+        label: "Wake resident authority"
+      },
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      causationId: claim.id,
+      correlationId: request.payload.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      schemaVersion: "resident-domain-outcome-observed.v1",
+      logicalLocator: request.payload.logicalLocator,
+      executionCapabilityHash: request.payload.executionCapabilityHash,
+      causationId: claim.id,
+      correlationId: request.payload.correlationId,
+      requestEventId: request.id,
+      executionClaimEventId: claim.id,
+      authorization: claim.payload.authorization,
+      catalogOrdinal: 0,
+      implementationRevision: "unknown-outcome-mutation.v1",
+      evidenceMode: "new-ledger-events",
+      residentInvocationInputHash: residentHash("1"),
+      outcomeDisposition: "completed",
+      preInvocationLedgerFingerprint: residentHash("2"),
+      postInvocationLedgerFingerprint: residentHash("3"),
+      domainEventIds: [],
+      artifactHashes: [],
+      readModelChanges: [],
+      resultSummary: "A durable receipt makes unknown outcome ineligible.",
+      envelopeHash: residentHash("4")
+    }
+  }) as KnowledgeEventOf<"agent.resident-domain.outcome-observed.v1">;
+  if (mutation === "receipt") return receipt;
+  return await mounted.handle.ledger.append({
+    type: "agent.resident-domain.completed.v1",
+    version: 1,
+    streamId: request.streamId,
+    context: {
+      actor: {
+        id: "agent_wake_resident",
+        kind: "agent",
+        label: "Wake resident authority"
+      },
+      occurredAt: "2026-07-16T00:00:00.000Z",
+      causationId: receipt.id,
+      correlationId: request.payload.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      schemaVersion: "resident-domain-completed.v1",
+      logicalLocator: request.payload.logicalLocator,
+      executionCapabilityHash: request.payload.executionCapabilityHash,
+      causationId: receipt.id,
+      correlationId: request.payload.correlationId,
+      requestEventId: request.id,
+      executionClaimEventId: claim.id,
+      outcomeReceiptEventId: receipt.id,
+      authorization: claim.payload.authorization,
+      resultHash: residentHash("5"),
+      resultArtifactHashes: []
+    }
+  });
+}
+
 async function seededResidentPrefix(
   suffix: string,
   state: 1 | 2 | 3 | 4,
@@ -1308,10 +1754,41 @@ async function seededResidentPrefix(
     | "authority-stale"
     | "context-stale"
     | "provider-unavailable"
-    | "effect-outcome-unknown" = "context-stale"
+    | "effect-outcome-unknown" = "context-stale",
+  options: {
+    readonly unknownOutcomeMutation?:
+      | "locator"
+      | "capability"
+      | "approval"
+      | "binding"
+      | "budget"
+      | "receipt"
+      | "terminal";
+  } = {}
 ) {
   const mounted = await issuedResidentFixture(suffix);
-  const material = await residentSuspensionMaterial(mounted, suspensionCategory);
+  const baseMaterial = await residentSuspensionMaterial(
+    mounted,
+    suspensionCategory,
+    {
+      mutateRequestBudget: options.unknownOutcomeMutation === "budget"
+    }
+  );
+  const material = mutateResidentUnknownOutcomeMaterial(
+    baseMaterial,
+    options.unknownOutcomeMutation
+  );
+  if (
+    options.unknownOutcomeMutation === "binding" ||
+    options.unknownOutcomeMutation === "receipt" ||
+    options.unknownOutcomeMutation === "terminal"
+  ) {
+    await appendResidentUnknownOutcomeSuffix(
+      mounted,
+      material,
+      options.unknownOutcomeMutation
+    );
+  }
   const before = await mounted.handle.ledger.readAll();
   const checkpoint = await mounted.handle.ledger.append({
     type: "agent.task.orchestration.checkpointed",
@@ -1331,79 +1808,14 @@ async function seededResidentPrefix(
   let result: KnowledgeEventOf<"agent.resident-loop.result.recorded.v2"> | undefined;
   let release: KnowledgeEventOf<"agent.task.orchestration.released"> | undefined;
   if (state >= 2) {
-    suspension = await mounted.capabilities.planObservation.appendSuspension({
-      ...material.common,
-      schemaVersion: "resident-loop-suspension.v2",
-      budget: residentBudget(
-        {
-          contextBytes: 1,
-          ...(material.claimedToolStep === undefined ? {} : { toolSteps: 1 }),
-          observationRecords: 1,
-          approvalSuspensionMs: 1
-        },
-        { approvalSuspensionMs: 1 }
-      ),
-      causationId: checkpoint.id,
-      planId: material.plan.payload.planId,
-      planRevision: material.plan.payload.planRevision,
-      planReadback: material.planReadback,
-      finalObservationReadback: {
-        observationEventId: material.observation.id,
-        workspaceId: material.common.workspaceId,
-        residentAgentId: material.common.residentAgentId,
-        taskId: material.common.taskId,
-        attemptId: material.common.attemptId,
-        runId: material.common.runId,
-        planId: material.plan.payload.planId,
-        planRevision: material.plan.payload.planRevision
-      },
-      suspensionCategory: material.checkpoint.residentLoopSuspension.suspensionCategory,
-      checkpoint: {
-        ...residentFixtureSuspensionCheckpoint(
-          material.checkpoint.residentLoopSuspension,
-          checkpoint.id
-        )
-      }
-    });
+    suspension = await mounted.capabilities.planObservation.appendSuspension(
+      residentSuspensionPayload(material, checkpoint.id)
+    );
   }
   if (state >= 3 && suspension !== undefined) {
-    result = await mounted.capabilities.planObservation.appendResult({
-      ...material.common,
-      schemaVersion: "resident-loop-result.v2",
-      budget: residentBudget(
-        {
-          contextBytes: 1,
-          ...(material.claimedToolStep === undefined ? {} : { toolSteps: 1 }),
-          observationRecords: 1,
-          approvalSuspensionMs: 1,
-          activeExecutionMs: 1
-        },
-        { activeExecutionMs: 1 }
-      ),
-      causationId: suspension.id,
-      planId: material.plan.payload.planId,
-      planRevision: material.plan.payload.planRevision,
-      planReadback: material.planReadback,
-      finalObservationReadback: {
-        observationEventId: material.observation.id,
-        workspaceId: material.common.workspaceId,
-        residentAgentId: material.common.residentAgentId,
-        taskId: material.common.taskId,
-        attemptId: material.common.attemptId,
-        runId: material.common.runId,
-        planId: material.plan.payload.planId,
-        planRevision: material.plan.payload.planRevision
-      },
-      outcome: "resumable",
-      category: material.checkpoint.residentLoopSuspension.suspensionCategory,
-      resultHash: material.checkpoint.residentLoopSuspension.resultSemanticKey,
-      resumeAnchor: {
-        checkpointEventId: suspension.id,
-        nextSafeAction: material.checkpoint.residentLoopSuspension.nextSafeAction,
-        resumptionDeadlineAt:
-          material.checkpoint.residentLoopSuspension.resumptionDeadlineAt
-      }
-    });
+    result = await mounted.capabilities.planObservation.appendResult(
+      residentResultPayload(material, suspension.id)
+    );
   }
   if (state >= 4 && result !== undefined) {
     release = await mounted.handle.ledger.append({
@@ -1418,19 +1830,10 @@ async function seededResidentPrefix(
         coreVersion: "0.1.0",
         packVersions: { core: "0.1.0", agent: "0.1.0" }
       },
-      payload: {
-        taskId: mounted.taskId,
-        runType: mounted.runType,
-        attemptId: mounted.attemptId,
-        retryGeneration: 0,
-        leaseClaimGeneration: mounted.claim.payload.leaseClaimGeneration,
-        releasedBy: "agent_wake_resident",
-        releasedAt: "2026-07-16T00:00:00.000Z",
-        releaseReason: "resident-loop-suspended",
-        claimEventId: mounted.claim.id,
-        checkpointEventId: checkpoint.id,
-        safeNextActions: [...material.checkpoint.safeNextActions]
-      }
+      payload: residentReleasePayload(
+        { ...mounted, material },
+        checkpoint.id
+      )
     }) as KnowledgeEventOf<"agent.task.orchestration.released">;
   }
   const after = await mounted.handle.ledger.readAll();
@@ -1445,6 +1848,7 @@ async function seededResidentPrefix(
     : undefined;
   return Object.freeze({
     ...mounted,
+    material,
     locator: material.locator,
     readback,
     checkpoint,
@@ -1578,183 +1982,298 @@ async function appendResidentCurrentnessMutation(
   });
 }
 
-async function appendHostileResidentPrefixMutation(
-  mounted: Awaited<ReturnType<typeof seededResidentPrefix>>,
-  mutation:
-    | "changed-s"
-    | "changed-r"
-    | "changed-release"
-    | "semantic-key"
-    | "causation"
-    | "order"
-    | "result"
-    | "deadline"
-    | "next-action"
-    | "duplicate"
-    | "skipped"
-    | "missing"
-    | "extra-target-suffix"
+type HostileResidentPrefixMutation =
+  | "changed-s"
+  | "changed-r"
+  | "changed-release"
+  | "semantic-key"
+  | "causation"
+  | "order"
+  | "result"
+  | "deadline"
+  | "next-action"
+  | "duplicate"
+  | "skipped"
+  | "missing"
+  | "extra-target-suffix";
+
+async function seededHostileResidentPrefix(
+  suffix: string,
+  mutation: HostileResidentPrefixMutation
 ) {
-  const checkpoint = mounted.checkpoint;
-  const suspension = mounted.suspension!;
-  const result = mounted.result!;
-  const release = mounted.release!;
-  if (
-    mutation === "changed-s" ||
-    mutation === "causation" ||
-    mutation === "order" ||
-    mutation === "duplicate"
-  ) {
-    await mounted.handle.ledger.append({
-      type: suspension.type,
-      version: suspension.version,
-      streamId: suspension.streamId,
-      context: {
-        ...suspension.context,
-        causationId: mutation === "causation"
-          ? mounted.claim.id
-          : mutation === "order"
-            ? result.id
-            : suspension.context.causationId
-      },
-      payload: mutation === "changed-s"
-        ? {
-            ...suspension.payload,
-            checkpoint: {
-              ...suspension.payload.checkpoint,
-              resumptionDeadlineAt: "2026-07-16T02:00:00.000Z"
-            }
-          }
-        : {
-            ...suspension.payload,
-            causationId: mutation === "causation"
-              ? mounted.claim.id
-              : mutation === "order"
-                ? result.id
-                : suspension.payload.causationId,
-            checkpoint: mutation === "causation" || mutation === "order"
-              ? {
-                  ...suspension.payload.checkpoint,
-                  orchestrationCheckpointEventId: mutation === "causation"
-                    ? mounted.claim.id
-                    : result.id
-                }
-              : suspension.payload.checkpoint
-          }
-    });
-    return;
-  }
-  if (mutation === "changed-r" || mutation === "result") {
-    await mounted.handle.ledger.append({
-      type: result.type,
-      version: result.version,
-      streamId: result.streamId,
-      context: result.context,
-      payload: mutation === "changed-r"
-        ? { ...result.payload, resultHash: residentHash("c") }
-        : {
-            ...result.payload,
-            resumeAnchor: {
-              ...result.payload.resumeAnchor!,
-              nextSafeAction: "a changed target-prefix action"
-            }
-          }
-    });
-    return;
-  }
-  if (mutation === "changed-release") {
-    await mounted.handle.ledger.append({
-      type: release.type,
-      version: release.version,
-      streamId: release.streamId,
-      context: { ...release.context, causationId: mounted.claim.id },
-      payload: release.payload
-    });
-    return;
-  }
-  if (
-    mutation === "semantic-key" ||
-    mutation === "deadline" ||
-    mutation === "next-action"
-  ) {
-    const instruction = checkpoint.payload.residentLoopSuspension!;
-    await mounted.handle.ledger.append({
-      type: checkpoint.type,
-      version: checkpoint.version,
-      streamId: checkpoint.streamId,
-      context: checkpoint.context,
-      payload: {
-        ...checkpoint.payload,
-        residentLoopSuspension: {
-          ...instruction,
-          ...(mutation === "semantic-key"
-            ? { suspensionSemanticKey: residentHash("d") }
-            : {}),
-          ...(mutation === "deadline"
-            ? { resumptionDeadlineAt: "2026-07-16T02:00:00.000Z" }
-            : {}),
-          ...(mutation === "next-action"
-            ? { nextSafeAction: "a changed checkpoint action" }
-            : {})
-        }
-      }
-    });
-    return;
-  }
-  if (mutation === "skipped") {
-    await mounted.handle.ledger.append({
-      type: "agent.task.orchestration.released",
+  if (mutation === "extra-target-suffix") {
+    const mounted = await seededResidentPrefix(suffix, 4);
+    const terminal = await mounted.handle.ledger.append({
+      type: "agent.task.orchestration.failed",
       version: 1,
-      streamId: checkpoint.streamId,
-      context: { ...release.context, causationId: mounted.claim.id },
-      payload: {
-        ...release.payload,
-        releaseReason: "worker-shutdown",
-        checkpointEventId: undefined,
-        safeNextActions: ["inspect the prematurely skipped target suffix"]
-      }
-    });
-    return;
-  }
-  if (mutation === "missing") {
-    await mounted.handle.ledger.append({
-      type: "agent.task.orchestration.checkpointed",
-      version: 1,
-      streamId: checkpoint.streamId,
-      context: checkpoint.context,
+      streamId: mounted.checkpoint.streamId,
+      context: residentPrefixContext(mounted, mounted.release!.id),
       payload: {
         taskId: mounted.taskId,
         runType: mounted.runType,
         attemptId: mounted.attemptId,
         retryGeneration: 0,
-        leaseClaimGeneration: mounted.claim.payload.leaseClaimGeneration,
-        checkpointKind: "context-ready",
-        checkpointedAt: checkpoint.payload.checkpointedAt,
+        failedAt: "2026-07-16T00:00:00.000Z",
+        category: "model-output-invalid",
+        message: "An extra target-stream suffix follows the released resident prefix.",
+        retryable: false,
+        allowedActions: ["inspect exact durable target suffix"],
         runId: mounted.runId,
-        resumeIdempotencyKey: checkpoint.payload.resumeIdempotencyKey,
-        contextBindings: [],
-        safeNextActions: ["inspect the target checkpoint missing its resident instruction"]
+        relatedEventIds: [mounted.release!.id]
       }
     });
-    return;
+    return Object.freeze({
+      ...mounted,
+      constructedTypes: Object.freeze([
+        ...mounted.appendedTypes,
+        terminal.type
+      ]),
+      expectedConstructedTypes: Object.freeze([
+        ...residentPrefixTypes,
+        "agent.task.orchestration.failed"
+      ])
+    });
   }
-  await mounted.handle.ledger.append({
-    type: "agent.task.orchestration.failed",
+
+  const mounted = await issuedResidentFixture(suffix);
+  const material = await residentSuspensionMaterial(mounted);
+  const instruction = material.checkpoint.residentLoopSuspension;
+  const checkpointPayload = mutation === "semantic-key"
+    ? {
+        ...material.checkpoint,
+        residentLoopSuspension: {
+          ...instruction,
+          suspensionSemanticKey: residentHash("d")
+        }
+      }
+    : material.checkpoint;
+  const checkpointCausationId = mutation === "causation"
+    ? mounted.claim.context.causationId
+    : mounted.claim.id;
+  if (checkpointCausationId === undefined) {
+    throw new Error("hostile causation row requires its durable claim cause");
+  }
+  const checkpoint = await mounted.handle.ledger.append({
+    type: "agent.task.orchestration.checkpointed",
     version: 1,
-    streamId: checkpoint.streamId,
-    context: { ...release.context, causationId: release.id },
+    streamId: `agent_task_orchestration_${mounted.taskId}_${mounted.runType}`,
+    context: residentPrefixContext(mounted, checkpointCausationId),
+    payload: checkpointPayload
+  }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
+  const constructed: KnowledgeEvent[] = [checkpoint];
+
+  const appendSuspension = async (
+    kind: "canonical" | "changed-s" | "deadline" | "next-action"
+  ) => {
+    const canonical = residentSuspensionPayload(material, checkpoint.id);
+    const causationId = checkpoint.id;
+    const payload = {
+      ...canonical,
+      causationId,
+      ...(kind === "changed-s"
+        ? {
+            workflowDescriptor: {
+              ...canonical.workflowDescriptor,
+              workflowDescriptorHash: residentHash("e")
+            }
+          }
+        : {}),
+      ...(kind === "deadline"
+        ? {
+            checkpoint: {
+              ...canonical.checkpoint,
+              resumptionDeadlineAt: "2026-07-16T02:00:00.000Z"
+            }
+          }
+        : {}),
+      ...(kind === "next-action"
+        ? {
+            checkpoint: {
+              ...canonical.checkpoint,
+              nextSafeAction: "a changed target-prefix action"
+            }
+          }
+        : {})
+    } as KnowledgeEventOf<"agent.resident-loop.suspended.v2">["payload"];
+    const event = await mounted.handle.ledger.append({
+      type: "agent.resident-loop.suspended.v2",
+      version: 1,
+      streamId: material.observation.streamId,
+      context: residentPrefixContext(mounted, causationId),
+      payload
+    }) as KnowledgeEventOf<"agent.resident-loop.suspended.v2">;
+    constructed.push(event);
+    return event;
+  };
+
+  const appendResult = async (
+    suspensionEventId: string,
+    kind: "canonical" | "changed-r" | "result" | "order"
+  ) => {
+    const canonical = residentResultPayload(material, suspensionEventId);
+    const event = await mounted.handle.ledger.append({
+      type: "agent.resident-loop.result.recorded.v2",
+      version: 1,
+      streamId: material.observation.streamId,
+      context: residentPrefixContext(mounted, suspensionEventId),
+      payload: {
+        ...canonical,
+        ...(kind === "changed-r" ? { resultHash: residentHash("e") } : {}),
+        ...(kind === "result"
+          ? {
+              resumeAnchor: {
+                ...canonical.resumeAnchor,
+                nextSafeAction: "a changed target-prefix action"
+              }
+            }
+          : {})
+      }
+    }) as KnowledgeEventOf<"agent.resident-loop.result.recorded.v2">;
+    constructed.push(event);
+    return event;
+  };
+
+  const appendRelease = async (
+    resultEventId: string,
+    kind: "canonical" | "changed-release"
+  ) => {
+    const event = await mounted.handle.ledger.append({
+      type: "agent.task.orchestration.released",
+      version: 1,
+      streamId: checkpoint.streamId,
+      context: residentPrefixContext(mounted, resultEventId),
+      payload: {
+        ...residentReleasePayload({ ...mounted, material }, checkpoint.id),
+        ...(kind === "changed-release"
+          ? { safeNextActions: ["a changed release action"] }
+          : {})
+      }
+    }) as KnowledgeEventOf<"agent.task.orchestration.released">;
+    constructed.push(event);
+    return event;
+  };
+
+  if (
+    mutation === "changed-s" ||
+    mutation === "deadline" ||
+    mutation === "next-action"
+  ) {
+    await appendSuspension(mutation);
+  } else if (mutation === "duplicate") {
+    await appendSuspension("canonical");
+    await appendSuspension("canonical");
+  } else if (
+    mutation === "changed-r" ||
+    mutation === "result" ||
+    mutation === "changed-release"
+  ) {
+    const suspension = await appendSuspension("canonical");
+    const result = await appendResult(
+      suspension.id,
+      mutation === "changed-release" ? "canonical" : mutation
+    );
+    if (mutation === "changed-release") {
+      await appendRelease(result.id, "changed-release");
+    }
+  } else if (mutation === "order") {
+    await appendResult(
+      `evt_wake_resident_order_gap_${suffix}`,
+      "order"
+    );
+  } else if (mutation === "skipped") {
+    await appendRelease(
+      `evt_wake_resident_skipped_result_${suffix}`,
+      "canonical"
+    );
+  } else if (mutation === "missing") {
+    const suspension = await appendSuspension("canonical");
+    await appendRelease(suspension.id, "canonical");
+  }
+
+  const expectedConstructedTypes = Object.freeze(
+    mutation === "semantic-key" || mutation === "causation"
+      ? ["agent.task.orchestration.checkpointed"]
+      : mutation === "changed-s" ||
+          mutation === "deadline" ||
+          mutation === "next-action"
+        ? [
+            "agent.task.orchestration.checkpointed",
+            "agent.resident-loop.suspended.v2"
+          ]
+        : mutation === "duplicate"
+          ? [
+              "agent.task.orchestration.checkpointed",
+              "agent.resident-loop.suspended.v2",
+              "agent.resident-loop.suspended.v2"
+            ]
+          : mutation === "changed-r" || mutation === "result"
+            ? [
+                "agent.task.orchestration.checkpointed",
+                "agent.resident-loop.suspended.v2",
+                "agent.resident-loop.result.recorded.v2"
+              ]
+            : mutation === "changed-release"
+              ? [...residentPrefixTypes]
+              : mutation === "order"
+                ? [
+                    "agent.task.orchestration.checkpointed",
+                    "agent.resident-loop.result.recorded.v2"
+                  ]
+                : mutation === "skipped"
+                  ? [
+                      "agent.task.orchestration.checkpointed",
+                      "agent.task.orchestration.released"
+                    ]
+                  : [
+                      "agent.task.orchestration.checkpointed",
+                      "agent.resident-loop.suspended.v2",
+                      "agent.task.orchestration.released"
+                    ]
+  );
+  return Object.freeze({
+    ...mounted,
+    material,
+    locator: material.locator,
+    checkpoint,
+    constructedTypes: Object.freeze(
+      constructed.map((event) => event.type)
+    ),
+    expectedConstructedTypes
+  });
+}
+
+async function appendResidentForeignStreamSuffix(
+  mounted: Awaited<ReturnType<typeof seededResidentPrefix>>
+) {
+  const identity = (await mounted.handle.ledger.readAll()).find(
+    (event) => event.type === "agent.identity.initialized"
+  );
+  if (identity === undefined) {
+    throw new Error("foreign-stream control requires the authenticated identity");
+  }
+  const taskId = `task_foreign_stream_${mounted.taskId}`;
+  const attemptId = `attempt_${"f".repeat(64)}`;
+  const runId = `run_foreign_stream_${mounted.taskId}`;
+  return await mounted.handle.ledger.append({
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId: `agent_task_orchestration_${taskId}_${mounted.runType}`,
+    context: {
+      ...residentPrefixContext({ taskId }, identity.id),
+      correlationId: `corr_${taskId}`
+    },
     payload: {
-      taskId: mounted.taskId,
+      taskId,
       runType: mounted.runType,
-      attemptId: mounted.attemptId,
+      attemptId,
       retryGeneration: 0,
-      failedAt: release.context.occurredAt,
-      category: "model-output-invalid",
-      message: "An extra target-stream suffix follows the released resident prefix.",
-      retryable: false,
-      allowedActions: ["inspect exact durable target suffix"],
-      runId: mounted.runId,
-      relatedEventIds: [release.id]
+      leaseClaimGeneration: 1,
+      checkpointKind: "context-ready",
+      checkpointedAt: "2026-07-16T00:00:00.000Z",
+      runId,
+      resumeIdempotencyKey: `foreign-suspension-${taskId}`,
+      contextBindings: [],
+      safeNextActions: ["inspect independent foreign stream"]
     }
   });
 }
@@ -1762,7 +2281,8 @@ async function appendHostileResidentPrefixMutation(
 async function appendResidentRequestedStage(
   mounted: Awaited<ReturnType<typeof issuedResidentFixture>>,
   plan: KnowledgeEventOf<"agent.resident-plan.recorded.v2">,
-  logicalLocator: Readonly<Record<string, unknown>>
+  logicalLocator: Readonly<Record<string, unknown>>,
+  mutateBudget = false
 ) {
   const prepare = Reflect.get(
     mounted.domainPreviewPort,
@@ -1827,13 +2347,24 @@ async function appendResidentRequestedStage(
       inputArtifactHashes: [...(currentPreview.inputArtifactHashes as readonly `sha256:${string}`[])],
       policy: plan.payload.policy,
       authority: plan.payload.authority,
-      budget: plan.payload.budget
+      budget: mutateBudget
+        ? residentBudget({ contextBytes: 2 }, { contextBytes: 1 })
+        : plan.payload.budget
     }
   }) as KnowledgeEventOf<"agent.resident-domain.requested.v1">;
 }
 
 async function appendResidentApprovalDecision(
-  mounted: Awaited<ReturnType<typeof seededResidentPrefix>>
+  mounted: Awaited<ReturnType<typeof seededResidentPrefix>>,
+  mutation:
+    | "valid"
+    | "stale"
+    | "expired"
+    | "self-authored"
+    | "wrong-request"
+    | "wrong-preview"
+    | "duplicate"
+    | "multiple" = "valid"
 ) {
   const instruction = mounted.checkpoint.payload.residentLoopSuspension!;
   const request = (await mounted.handle.ledger.readAll()).find(
@@ -1844,31 +2375,62 @@ async function appendResidentApprovalDecision(
   if (request === undefined || request.payload.authorizationKind !== "human-approval") {
     throw new Error("approval reclaim fixture requires one exact human request");
   }
-  await mounted.handle.ledger.append({
-    type: "agent.resident-domain.human-approved.v1",
-    version: 1,
-    streamId: request.streamId,
-    context: {
-      actor: { id: "actor_wake_resident_reviewer", kind: "human", label: "Wake resident reviewer" },
-      occurredAt: "2026-07-16T00:30:00.000Z",
-      causationId: request.id,
-      correlationId: request.payload.correlationId,
-      coreVersion: "0.1.0",
-      packVersions: { core: "0.1.0", agent: "0.1.0" }
-    },
-    payload: {
-      schemaVersion: "resident-domain-human-approved.v1",
-      logicalLocator: request.payload.logicalLocator,
-      executionCapabilityHash: request.payload.executionCapabilityHash,
-      causationId: request.id,
-      correlationId: request.payload.correlationId,
-      authorizationKind: "human-approval",
-      requestEventId: request.id,
-      decisionEventId: `evt_wake_resident_reclaim_decision_${mounted.taskId}`,
-      approvedBy: "actor_wake_resident_reviewer",
-      approvedPreviewHash: request.payload.previewHash
-    }
-  });
+  const append = async (ordinal: number) => {
+    const selfAuthored = mutation === "self-authored";
+    const actorId = selfAuthored
+      ? "agent_wake_resident"
+      : ordinal === 1
+        ? "actor_wake_resident_reviewer"
+        : "actor_wake_resident_second_reviewer";
+    const requestEventId = mutation === "wrong-request"
+      ? `evt_wake_resident_wrong_request_${mounted.taskId}`
+      : request.id;
+    const decisionEventId = mutation === "duplicate" || ordinal === 1
+      ? `evt_wake_resident_reclaim_decision_${mounted.taskId}`
+      : `evt_wake_resident_reclaim_second_decision_${mounted.taskId}`;
+    return await mounted.handle.ledger.append({
+      type: "agent.resident-domain.human-approved.v1",
+      version: 1,
+      streamId: request.streamId,
+      context: {
+        actor: {
+          id: actorId,
+          kind: "human",
+          label: selfAuthored
+            ? "Resident request author"
+            : "Wake resident reviewer"
+        },
+        occurredAt: mutation === "stale"
+          ? "2026-07-15T23:59:59.000Z"
+          : mutation === "expired"
+            ? "2026-07-16T02:00:00.000Z"
+            : "2026-07-16T00:30:00.000Z",
+        causationId: request.id,
+        correlationId: request.payload.correlationId,
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        schemaVersion: "resident-domain-human-approved.v1",
+        logicalLocator: request.payload.logicalLocator,
+        executionCapabilityHash: request.payload.executionCapabilityHash,
+        causationId: request.id,
+        correlationId: request.payload.correlationId,
+        authorizationKind: "human-approval",
+        requestEventId,
+        decisionEventId,
+        approvedBy: actorId,
+        approvedPreviewHash: mutation === "wrong-preview"
+          ? residentHash("e")
+          : request.payload.previewHash
+      }
+    });
+  };
+  const decisions = [await append(1)];
+  if (mutation === "duplicate" || mutation === "multiple") {
+    decisions.push(await append(2));
+  }
+  return Object.freeze(decisions);
 }
 
 async function appendResidentIneligibleTransition(
@@ -1931,6 +2493,50 @@ function residentEffectEventIds(events: readonly KnowledgeEvent[]): readonly str
     .map((event) => event.id);
 }
 
+function residentEventOf<T extends KnowledgeEvent["type"]>(
+  events: readonly KnowledgeEvent[],
+  type: T
+): KnowledgeEventOf<T> {
+  const event = events.find(
+    (candidate): candidate is KnowledgeEventOf<T> => candidate.type === type
+  );
+  if (event === undefined) {
+    throw new Error(`resident fixture requires ${type}`);
+  }
+  return event;
+}
+
+function instrumentResidentLedger(ledger: EventLedger) {
+  const readStream = ledger.readStream.bind(ledger);
+  const readAll = ledger.readAll.bind(ledger);
+  const streamReads: string[] = [];
+  let allReads = 0;
+  Object.defineProperty(ledger, "readStream", {
+    configurable: true,
+    value: async (streamId: string) => {
+      streamReads.push(streamId);
+      return await readStream(streamId);
+    }
+  });
+  Object.defineProperty(ledger, "readAll", {
+    configurable: true,
+    value: async () => {
+      allReads += 1;
+      return await readAll();
+    }
+  });
+  return Object.freeze({
+    streamReads,
+    get allReads() {
+      return allReads;
+    },
+    reset() {
+      streamReads.splice(0);
+      allReads = 0;
+    }
+  });
+}
+
 function residentCanonicalJson(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((item) => residentCanonicalJson(item)).join(",")}]`;
@@ -1942,6 +2548,14 @@ function residentCanonicalJson(value: unknown): string {
     ).join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+function residentDomainStreamId(
+  logicalLocator: Readonly<Record<string, unknown>>
+): string {
+  return `agent_resident_domain_${createHash("sha256")
+    .update(residentCanonicalJson(logicalLocator))
+    .digest("hex")}`;
 }
 
 function residentHash(character: string): `sha256:${string}` {
