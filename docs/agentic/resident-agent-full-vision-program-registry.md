@@ -44500,3 +44500,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1172 — Aliased-void-completion-complete Task14 RED admitted to review
+
+- Recorded at: 2026-07-27T08:22:57Z
+- Exact forward test-only descendant
+  `41502fa449f029af8ed9fd12df92e858f85fab8e`, tree
+  `93faf68a453f4656fcad74c3a1e0edff8ff6d9bd`, has sole parent exact E-1171
+  authority merge `16d4569d8de54d7928e342b714786148c023a82b` and exact subject
+  `test(local-runtime): follow aliased void completion`. Rejected candidate
+  `4d5b9c38` and every earlier Task14 candidate remain immutable ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+266 / -2** from rejected blob
+  `0e36998150f44785edc18c840f24b2324827bd51` to exact blob
+  `2bfc4b368fddbd309af0f0ab08df51327e410be6`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Selected-expression completion now follows only use-closed immutable local
+  const initializer chains with exact-use and cycle guards. Once a reached
+  value is a void expression, completion follows its operand before any
+  undefined/default classification can make later binding work reachable.
+- Object property assignments and array elements share that guarded
+  completion proof. Shorthand object properties resolve the checker’s
+  shorthand value symbol and use the same local-const helper, without
+  confusing the property symbol for the selected value symbol.
+- Abstract controls cover direct, one-hop, and two-hop completing void
+  selections; one-hop object, shorthand-object, and array selections with a
+  locally throwing void operand; and a two-hop throwing alias chain.
+  Throwing aliases stop all later binding work while completing aliases
+  activate a returning default and retain the registrar violation.
+- Mutable, exported, separately used, and opaque void aliases remain
+  conservative under explicit controls. Every E-1170 mutable/undefined/
+  exported/use-closure control, E-1168 array-rest object/final-descriptor
+  case, E-1166 ordered binding case, and earlier rest/spread/prototype/
+  carrier/declaration/global/awaited/unreachable/value-flow control remains
+  exact. Fixtures remain abstract, local, provider-free, and credential-free.
+- Exact focused execution is
+  **96 = 94 passed + two causal issuer RED failures**. Exact Task136 card is
+  **383 = 374 passed + nine failed**, and exact 37-file cross-boundary
+  execution is **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The failure set remains only the two Task14 issuer REDs plus the seven
+  preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** under `TMPDIR=/dev/shm`; the mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`
+  and contract markers remain **29 / 20 / 29 / 15**. Clean repository mode
+  stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, repository-closure, or release-success marker.
+- Exact one-test scope, E-1171 authority and rejected-candidate ancestry,
+  TypeScript 5.9.3 and Vitest 4.1.9 dependencies, source/runtime/other-test
+  freezes, diff hygiene, strict Git integrity, and clean state pass. Exact
+  frozen source blobs remain composition `b9a679c0`, wake `2fee564d`, and
+  mounted lifecycle store `c1a7d473`.
+- Admit only exact `41502fa4` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a twenty-fourth completely fresh
+  independent read-only reviewer who has never authored, reviewed, verified,
+  or analyzed corrected blob `2bfc4b36`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently probe throwing and completing void operands
+  through direct, one-hop, multi-hop, object-property, shorthand, array, and
+  nested selected-value surfaces. It must verify exact-use/cycle guards and
+  conservative mutable/exported/separate-use/opaque behavior, then
+  reconstruct every cumulative array-rest object, final-descriptor, ordered
+  binding, rest/spread/prototype, callable/conditional/comma/export alias,
+  carrier, declaration/global/awaited/unreachable, and value-flow surface.
+  Reproduce causal runtime/static failures, focused/card/cross signatures,
+  assurance, repository first-stop, and exact identity/scope/freezes/
+  ancestry/dependencies/diff/integrity/clean state. Static analysis must
+  supplement, not substitute for runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  GREEN authority, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
