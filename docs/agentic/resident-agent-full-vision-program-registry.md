@@ -42045,3 +42045,93 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1142 — Unreachable-pattern-complete Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-27T01:06:45Z
+- Exact forward test-only descendant
+  `bf77cead74a66f8a06a935f6117d6e12f2b03258`, tree
+  `69be24f26616ef73e76ce0ed9f6654262fe05a6b`, has sole parent exact E-1141
+  authority merge `db9563063648075a10171db0142ad40f7ffae5c7` and exact subject
+  `test(local-runtime): reject unreachable binding defaults`. Rejected
+  candidates `e2ecc837`, `b1bb17b8`, `e34a03ad`, `1d688e5a`, `5c5f4f47`,
+  `e12008b8`, `86b699cd`, `db03309f`, `619fd752`, and `f607eb3c` remain
+  immutable ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+186 / -1** from rejected blob
+  `abc5223bab42b1ae4eb9bae34d72b5b407dd0726` to exact blob
+  `bbd42f494fe1ac2d4785e7794cfaac754e8eb9c7`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Before correction, ten abstract controls for undefined/null nested
+  object/array initialization and plainly non-iterable array carriers each
+  falsely report `registrar-reexport`. After correction, all ten remain
+  accepted because pattern initialization throws before any element or inner
+  default. Usable empty object/array outer defaults still reject because
+  their reachable inner defaults expose the registrar.
+- Binding selection now has three explicit finite non-expression states:
+  indeterminate projection, known missing selection, and unreachable pattern
+  initialization. Object binding initialization is unreachable only for
+  statically nullish values. Array binding initialization also rejects
+  statically non-iterable numeric, bigint, boolean, function/class/regular-
+  expression, and plain object-literal values. Local constant aliases are
+  followed. Computed/spread object literals and unsupported values remain
+  indeterminate.
+- The prior selection rules remain exact: a valid pattern with a known
+  missing element may apply its explicit element default; an indeterminate
+  selection independently explores possible defined-carrier and explicit
+  outer-default paths. Exact object/array literal property/index projection,
+  arbitrary awaited-result conservatism, direct awaited registrar traversal,
+  recursive numeric prefix reachability, exported callable/value aliases,
+  destructured aliases/defaults, and local/imported re-exports are retained.
+- Exact production focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; the unchanged runtime RED remains
+  pre-store and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed** under the
+  120-second import-policy timeout envelope. The complete failure set is
+  only the two issuer REDs plus seven preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** with fixture-heavy commands isolated under
+  `TMPDIR=/dev/shm`; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, closure, repository-success, or release-success
+  marker.
+- Exact one-test scope, source/runtime/other-test freezes, rejected-candidate
+  and authority ancestry, real dependencies, diff hygiene, and clean state
+  pass. No source, claim, design, plan, contract, mission, dependency, route,
+  provider, credential, release, or unrelated byte changed.
+- Admit only exact `bf77cead` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a ninth completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `bbd42f49`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce unreachable undefined/null object and
+  array bindings, plainly non-iterable array values and aliases, usable empty
+  object/array default parity, known missing element defaults, both
+  indeterminate selection branches, arbitrary awaited-result controls,
+  direct awaited registrar traversal, recursive number/bigint prefixes,
+  callable/result aliases, and destructured carrier/default flow. Probe the
+  finite E-1141 unreachable-pattern surface for any further candidate-bound
+  gap and reproduce causal runtime/static failures, focused/card/cross
+  signatures, assurance, repository-first-stop, exact scope/freezes/
+  ancestry/dependencies/diff/integrity/clean state. It must prove the static
+  gate supplements rather than substitutes for runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  Task15 authority, Task136 product candidacy, repository closure, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
