@@ -20,6 +20,7 @@ import {
   stableIngestionError,
   type IngestionRuntimeError
 } from "./runtime-types.js";
+import { ingestionMediaTypeForPath } from "./media-type.js";
 
 const archiveLimits = {
   maxEntries: 10000,
@@ -123,7 +124,7 @@ export function materializeApprovedOccurrences(
       occurrenceId: occurrence.occurrenceId,
       content: currentItem.content,
       sourcePath: currentItem.materializedSourcePath,
-      mediaType: mediaTypeFor(currentItem.mediaTypePath)
+      mediaType: ingestionMediaTypeForPath(currentItem.mediaTypePath)
     });
   }
 
@@ -511,28 +512,6 @@ function isArchiveOccurrence(
 
 function sha256(content: Buffer): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(content).digest("hex")}`;
-}
-
-function mediaTypeFor(sourcePath: string): string {
-  const lowerPath = sourcePath.toLowerCase();
-
-  if (lowerPath.endsWith(".txt")) {
-    return "text/plain";
-  }
-  if (lowerPath.endsWith(".html") || lowerPath.endsWith(".htm")) {
-    return "text/html";
-  }
-  if (lowerPath.endsWith(".json")) {
-    return "application/json";
-  }
-  if (lowerPath.endsWith(".csv")) {
-    return "text/csv";
-  }
-  if (lowerPath.endsWith(".pdf")) {
-    return "application/pdf";
-  }
-
-  return "application/octet-stream";
 }
 
 function asContentHash(contentHash: string): `sha256:${string}` {

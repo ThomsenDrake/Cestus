@@ -327,3 +327,33 @@ test-first subprocess-authority pass:
 
 No live SSD inspection, preview workspace creation, provider transfer, or
 human-gate transition is part of this remediation task.
+
+## Task 5 Raw-Import Media-Type Reconciliation
+
+The first approved Gate 1 execution reached the existing portable runtime but
+could not persist `staging-preview-required`: 86 imported evidence media types
+did not match their approved candidate material because the inspector and
+materializer used divergent extension classifiers.
+
+1. add an actual portable-runtime test with JSON, Markdown, and PDF selected
+   candidates that first completes raw import and then reconciles the same
+   effects after an injected checkpoint failure without duplicate events or
+   blobs;
+2. prove RED at the exact report/candidate or canonical evidence boundary
+   before editing production code;
+3. add one ingestion-local media-type classifier for the union of existing
+   JSON, Markdown, YAML, CSV, text, HTML, PDF, and octet-stream behavior;
+4. replace the preview, legacy inspector, and source materializer classifiers
+   with the shared contract without weakening canonical event comparison;
+5. add focused classifier tests and prove candidate media types equal imported
+   evidence media types through the real portable workflow;
+6. update the durable claim and ignored SDD evidence;
+7. run the focused preview/media suite, the retry boundary, all ingestion
+   tests, ontology/bootstrap plus specialist tests, typecheck, UI build,
+   factory readiness, and `git diff --check`;
+8. commit atomically for the coordinator's fresh review.
+
+The repair does not access the live source or preview workspaces. Since it
+changes code identity and PDF candidate material, live execution must preserve
+the failed workspace, repeat Gate 1, and obtain a fresh exact approval rather
+than reusing the superseded candidate-set hash.

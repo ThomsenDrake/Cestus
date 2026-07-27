@@ -2943,49 +2943,77 @@ function portableCrashWorkflowFixture(
     | "after-report"
     | "after-raw-approval"
     | "after-staging-approval"
-    | "all-inspect-checkpoints"
+    | "all-inspect-checkpoints",
+  options: {
+    readonly multipleCandidates?: boolean;
+  } = {}
 ) {
   const root = mkdtempSync(join(tmpdir(), "central-fl-portable-crash-"));
   temporaryRoots.push(root);
   const sourceRoot = join(root, "selected-source");
   const workspaceRoot = join(root, "portable-workspace");
   mkdirSync(join(sourceRoot, "ontology"), { recursive: true });
-  const sourcePath = "ontology/claims.json";
-  const sourceBytes = Buffer.from(JSON.stringify({
-    legacyCestusType: "claims",
-    claims: [{
-      id: "legacy_claim_preview_crash",
-      predicate: "agency.name",
-      object: "Example Agency"
-    }]
-  }, null, 2), "utf8");
-  const absoluteSourcePath = join(sourceRoot, sourcePath);
-  writeFileSync(absoluteSourcePath, sourceBytes);
-  const metadata = statSync(absoluteSourcePath, { bigint: true });
-  const contentHash = `sha256:${createHash("sha256").update(sourceBytes).digest("hex")}` as const;
-  const occurrenceId = stableLocalFilesystemOccurrenceId({
-    kind: "file",
-    sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
-    scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
-    sourcePath,
-    contentHash
+  const sourceFiles = [
+    {
+      sourcePath: "ontology/claims.json",
+      mediaType: "application/json",
+      sourceBytes: Buffer.from(JSON.stringify({
+        legacyCestusType: "claims",
+        claims: [{
+          id: "legacy_claim_preview_crash",
+          predicate: "agency.name",
+          object: "Example Agency"
+        }]
+      }, null, 2), "utf8")
+    },
+    ...(options.multipleCandidates === true
+      ? [{
+          sourcePath: "ontology/field-notes.md",
+          mediaType: "text/markdown",
+          sourceBytes: Buffer.from("# Central Florida field notes\n", "utf8")
+        }, {
+          sourcePath: "ontology/source-record.pdf",
+          mediaType: "application/pdf",
+          sourceBytes: Buffer.from("%PDF-1.7\npreview fixture\n%%EOF\n", "utf8")
+        }]
+      : [])
+  ];
+  const candidates = sourceFiles.map(({ sourcePath, sourceBytes, mediaType }) => {
+    const absolutePath = join(sourceRoot, sourcePath);
+    writeFileSync(absolutePath, sourceBytes);
+    const metadata = statSync(absolutePath, { bigint: true });
+    const contentHash =
+      `sha256:${createHash("sha256").update(sourceBytes).digest("hex")}` as const;
+    return {
+      occurrenceId: stableLocalFilesystemOccurrenceId({
+        kind: "file",
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+        sourcePath,
+        contentHash
+      }),
+      sourcePath,
+      contentHash,
+      mediaType,
+      sizeBytes: sourceBytes.byteLength,
+      deviceId: metadata.dev.toString(),
+      inode: metadata.ino.toString(),
+      scanStatus: "new" as const,
+      preservationStatus: "current" as const,
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId
+    };
   });
-  const candidate = {
-    occurrenceId,
-    sourcePath,
-    contentHash,
-    mediaType: "application/json",
-    sizeBytes: sourceBytes.byteLength,
-    deviceId: metadata.dev.toString(),
-    inode: metadata.ino.toString(),
-    scanStatus: "new" as const,
-    preservationStatus: "current" as const,
-    sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
-    scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId
-  };
+  const sourcePath = sourceFiles[0]!.sourcePath;
+  const sourceBytes = sourceFiles[0]!.sourceBytes;
+  const absoluteSourcePath = join(sourceRoot, sourcePath);
+  const totalBytes = sourceFiles.reduce(
+    (total, file) => total + file.sourceBytes.byteLength,
+    0
+  );
   const canonicalCandidateMaterial = stableJson({
     version: 1,
-    candidates: [candidate],
+    candidates,
     exclusions: []
   });
   const destinationAuthority = {
@@ -3014,15 +3042,15 @@ function portableCrashWorkflowFixture(
       mountOptions: ["gid=1000", "nodev", "noexec", "nosuid", "ro", "uid=1000"],
       mountDeviceId: "source-dev",
       rootDeviceId: "source-dev",
-      fileCount: 1,
-      totalBytes: sourceBytes.byteLength
+      fileCount: candidates.length,
+      totalBytes
     },
     destinationIdentity: destinationAuthority,
     code: {
       baseSha: CENTRAL_FL_ICE_PREVIEW.codeBaseSha,
       codeSha: "0123456789abcdef0123456789abcdef01234567"
     },
-    candidates: [candidate],
+    candidates,
     exclusions: [],
     canonicalCandidateMaterial,
     candidateSetHash: sha256(canonicalCandidateMaterial)
@@ -3469,8 +3497,52 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
     expect(checkpoint.state.eventIds).toContain(staleDiagnostic!.id);
   });
 
-  it("reconciles raw approval/import effects after checkpoint failure without duplicate events or blobs", async () => {
-    const fixture = portableCrashWorkflowFixture("staging-preview-required");
+  it("checkpoints the actual multi-candidate portable raw-import event sequence", async () => {
+    const fixture = portableCrashWorkflowFixture("handoff-required", {
+      multipleCandidates: true
+    });
+    const inspected = await fixture.createWorkflow().inspect();
+
+    const checkpoint = await fixture.createWorkflow().rawImport({
+      approvedBy: "actor_human_preview"
+    });
+    const phaseEventTypes = (await fixture.ledgerEvents())
+      .filter((event) => !inspected.state.eventIds.includes(event.id))
+      .map((event) => event.type);
+
+    expect(checkpoint.phase).toBe("staging-preview-required");
+    expect(checkpoint.state.counts).toMatchObject({
+      evidenceCreated: 3,
+      occurrencesLinked: 3
+    });
+    const evidenceMediaTypes = (await fixture.ledgerEvents())
+      .filter((event) => event.type === "evidence.ingested")
+      .map((event) => event.payload.mediaType)
+      .sort();
+    expect(evidenceMediaTypes).toEqual([
+      "application/json",
+      "application/pdf",
+      "text/markdown"
+    ]);
+    expect(phaseEventTypes).toEqual([
+      "ingestion.import.approved",
+      "evidence.ingested",
+      "ingestion.evidence.linked",
+      "evidence.ingested",
+      "ingestion.evidence.linked",
+      "evidence.ingested",
+      "ingestion.evidence.linked",
+      "ingestion.import.completed",
+      "ingestion.parse.job.created",
+      "ingestion.parse.job.created",
+      "ingestion.parse.job.created"
+    ]);
+  });
+
+  it("reconciles multi-candidate raw approval/import effects after checkpoint failure without duplicate events or blobs", async () => {
+    const fixture = portableCrashWorkflowFixture("staging-preview-required", {
+      multipleCandidates: true
+    });
     await fixture.createWorkflow().inspect();
     await expect(fixture.createWorkflow().rawImport({
       approvedBy: "actor_human_preview"
@@ -3483,6 +3555,10 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
     });
 
     expect(checkpoint.phase).toBe("staging-preview-required");
+    expect(checkpoint.state.counts).toMatchObject({
+      evidenceCreated: 3,
+      occurrencesLinked: 3
+    });
     expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
     expect(countRegularFiles(join(fixture.workspaceRoot, "blobs"))).toBe(blobCount);
   });

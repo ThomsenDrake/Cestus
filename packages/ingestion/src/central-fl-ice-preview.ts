@@ -47,6 +47,7 @@ import {
   stableJson,
   type LegacyMigrationReport
 } from "./legacy-report.js";
+import { ingestionMediaTypeForPath } from "./media-type.js";
 
 /**
  * Fixed authority for the development-only Central Florida ICE preview.
@@ -606,7 +607,7 @@ function hashInventoriedFiles(
       }),
       sourcePath: file.sourcePath,
       contentHash,
-      mediaType: mediaTypeForPath(file.sourcePath),
+      mediaType: ingestionMediaTypeForPath(file.sourcePath),
       sizeBytes: file.metadata.sizeBytes,
       deviceId: file.metadata.deviceId,
       inode: file.metadata.inode,
@@ -1023,28 +1024,6 @@ function preservationStatusForPath(sourcePath: string): PreviewPreservationStatu
   }
 
   return "current";
-}
-
-function mediaTypeForPath(path: string): string {
-  const lower = path.toLowerCase();
-
-  if (lower.endsWith(".json")) {
-    return "application/json";
-  }
-  if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
-    return "text/markdown";
-  }
-  if (lower.endsWith(".yaml") || lower.endsWith(".yml")) {
-    return "application/yaml";
-  }
-  if (lower.endsWith(".csv")) {
-    return "text/csv";
-  }
-  if (lower.endsWith(".txt")) {
-    return "text/plain";
-  }
-
-  return "application/octet-stream";
 }
 
 function sortStrings(values: readonly string[]): string[] {

@@ -13,6 +13,7 @@ import {
 } from "./local-filesystem.js";
 import type { LegacyDetection, LegacyDetectorInput, LegacyFileRef } from "./legacy-types.js";
 import type { LegacyDetectorRegistry } from "./legacy-plugins.js";
+import { ingestionMediaTypeForPath } from "./media-type.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 
@@ -105,7 +106,7 @@ export class LegacyCestusInspector {
       sourcePath: occurrence.sourcePath,
       contentHash: occurrence.contentHash,
       sizeBytes: occurrence.sizeBytes,
-      mediaType: mediaTypeForPath(mediaPath),
+      mediaType: ingestionMediaTypeForPath(mediaPath),
       sourceCollectionId: occurrence.sourceCollectionId,
       scanBatchId: occurrence.scanBatchId,
       status: occurrence.status,
@@ -138,7 +139,7 @@ export class LegacyCestusInspector {
       sourcePath,
       sizeBytes: occurrence.sizeBytes,
       contentHash: occurrence.contentHash,
-      mediaType: mediaTypeForPath(sourcePath),
+      mediaType: ingestionMediaTypeForPath(sourcePath),
       previewText: Buffer.from(previewBytes).toString("utf8"),
       previewBytes,
       sourceCollectionId: occurrence.sourceCollectionId,
@@ -164,26 +165,4 @@ function readPreviewBytes(path: string): Uint8Array {
   } finally {
     closeSync(fd);
   }
-}
-
-function mediaTypeForPath(path: string): string {
-  const lower = path.toLowerCase();
-
-  if (lower.endsWith(".json")) {
-    return "application/json";
-  }
-  if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
-    return "text/markdown";
-  }
-  if (lower.endsWith(".yaml") || lower.endsWith(".yml")) {
-    return "application/yaml";
-  }
-  if (lower.endsWith(".csv")) {
-    return "text/csv";
-  }
-  if (lower.endsWith(".txt")) {
-    return "text/plain";
-  }
-
-  return "application/octet-stream";
 }
