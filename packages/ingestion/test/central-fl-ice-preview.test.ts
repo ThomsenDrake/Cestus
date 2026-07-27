@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -47,7 +48,8 @@ import {
   buildLegacyMigrationReport,
   reportArtifactJson,
   sha256,
-  stableJson
+  stableJson,
+  type LegacyMigrationReport
 } from "../src/legacy-report.js";
 import { buildIngestionProjection } from "../src/projection.js";
 import {
@@ -1033,6 +1035,9 @@ function workflowFixture(input?: {
     exitCode: 0,
     result: "passed" as const
   }];
+  let executionSha = inspection.code.codeSha;
+  let executionDirty = false;
+  let executionDriftDuringValidation: "dirty" | "head" | undefined;
   let destinationAuthorityRecheck = inspection.destinationIdentity;
   let destinationDriftAfterFullScan:
     | CentralFloridaIceCandidateInspection["destinationIdentity"]
@@ -1771,7 +1776,13 @@ function workflowFixture(input?: {
     };
   };
   const workflow = createCentralFloridaIcePreviewWorkflow({
-    codeSha: () => inspection.code.codeSha,
+    codeSha: () => {
+      calls.push("codeSha");
+      if (executionDirty) {
+        throw new Error("preview Git execution identity is dirty");
+      }
+      return executionSha;
+    },
     now: () => fixedTime,
     initialInspection: () => {
       calls.push("initialInspection");
@@ -1796,7 +1807,15 @@ function workflowFixture(input?: {
     legacyRuntimeFactory: () => runtime,
     readWorkspaceSnapshot,
     checkpointStore,
-    runEngineeringValidations: () => validationReceipts,
+    runEngineeringValidations: () => {
+      if (executionDriftDuringValidation === "dirty") {
+        executionDirty = true;
+      } else if (executionDriftDuringValidation === "head") {
+        executionSha = "fedcba9876543210fedcba9876543210fedcba98";
+      }
+      executionDriftDuringValidation = undefined;
+      return validationReceipts;
+    },
     revalidateDestinationAuthority: () => destinationAuthorityRecheck
   });
 
@@ -1815,6 +1834,16 @@ function workflowFixture(input?: {
     contentHash,
     inventoryHash,
     occurrenceId,
+    derivativeRoot: join(root, "derivatives"),
+    setExecutionDirty() {
+      executionDirty = true;
+    },
+    setExecutionSha(value: string) {
+      executionSha = value;
+    },
+    driftExecutionDuringValidation(value: "dirty" | "head") {
+      executionDriftDuringValidation = value;
+    },
     setResumedInspection(value: CentralFloridaIceCandidateInspection) {
       resumedInspection = value;
       driftedInspection = value;
@@ -1849,6 +1878,19 @@ function workflowFixture(input?: {
 }
 
 describe("Central Florida ICE supervised preview workflow", () => {
+  it("rejects a dirty Git execution identity before inspection can create or write", async () => {
+    const fixture = workflowFixture();
+    fixture.setExecutionDirty();
+
+    await expect(fixture.workflow.inspect()).rejects.toThrow(
+      "preview Git execution identity is dirty"
+    );
+
+    expect(fixture.createWorkspace).not.toHaveBeenCalled();
+    expect(await fixture.ledger.readAll()).toEqual([]);
+    expect(fixture.checkpointStore.records).toEqual([]);
+  });
+
   it("does not expose a raw-import transition before a persisted inspection gate", async () => {
     const fixture = workflowFixture();
 
@@ -1942,6 +1984,40 @@ describe("Central Florida ICE supervised preview workflow", () => {
       approvedBy: "actor_human_preview"
     })).rejects.toThrow("source candidate material or code identity changed");
     expect(fixture.calls).not.toContain("runtime.approveRawImport");
+  });
+
+  it("rejects a dirty Git execution identity between supervised phases", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    const eventsBefore = await fixture.ledger.readAll();
+    const artifactsBefore = regularFileMaterials(fixture.derivativeRoot);
+    const checkpointsBefore = structuredClone(fixture.checkpointStore.records);
+    fixture.setExecutionDirty();
+
+    await expect(fixture.workflow.rawImport({
+      approvedBy: "actor_human_preview"
+    })).rejects.toThrow("preview Git execution identity is dirty");
+
+    expect(await fixture.ledger.readAll()).toEqual(eventsBefore);
+    expect(regularFileMaterials(fixture.derivativeRoot)).toEqual(artifactsBefore);
+    expect(fixture.checkpointStore.records).toEqual(checkpointsBefore);
+  });
+
+  it("rejects a clean changed HEAD between supervised phases", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    const eventsBefore = await fixture.ledger.readAll();
+    const artifactsBefore = regularFileMaterials(fixture.derivativeRoot);
+    const checkpointsBefore = structuredClone(fixture.checkpointStore.records);
+    fixture.setExecutionSha("fedcba9876543210fedcba9876543210fedcba98");
+
+    await expect(fixture.workflow.rawImport({
+      approvedBy: "actor_human_preview"
+    })).rejects.toThrow("source candidate material or code identity changed");
+
+    expect(await fixture.ledger.readAll()).toEqual(eventsBefore);
+    expect(regularFileMaterials(fixture.derivativeRoot)).toEqual(artifactsBefore);
+    expect(fixture.checkpointStore.records).toEqual(checkpointsBefore);
   });
 
   it("revalidates destination separation before every post-gate workspace command", async () => {
@@ -2314,6 +2390,30 @@ describe("Central Florida ICE supervised preview workflow", () => {
     expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("manifest-required");
     expect(fixture.checkpointStore.records.at(-1)?.state.finalManifestArtifactHash)
       .toBeUndefined();
+  });
+
+  it("rechecks clean exact execution identity after manifest validations before writes", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.workflow.stagingPreview();
+    await fixture.workflow.stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: [...(preview.state.stagingCandidateIds ?? [])]
+    });
+    await fixture.workflow.handoff();
+    await fixture.workflow.verifyReplay();
+    const artifactsBefore = regularFileMaterials(fixture.derivativeRoot);
+    const checkpointsBefore = structuredClone(fixture.checkpointStore.records);
+    fixture.driftExecutionDuringValidation("dirty");
+
+    await expect(fixture.workflow.manifest()).rejects.toThrow(
+      "preview Git execution identity is dirty"
+    );
+
+    expect(regularFileMaterials(fixture.derivativeRoot)).toEqual(artifactsBefore);
+    expect(fixture.checkpointStore.records).toEqual(checkpointsBefore);
+    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("manifest-required");
   });
 
   it("does not create, mutate, or checkpoint an existing foreign destination without preview state", async () => {
@@ -2977,6 +3077,92 @@ function portableCrashWorkflowFixture(
         database.close();
       }
     },
+    async replaceReportEventAndArtifactCoherently() {
+      const mounted = await portableResolver.resolve({ workspaceRoot });
+      if (!mounted.ok) throw new Error("portable crash fixture did not mount");
+      let originalReport: LegacyMigrationReport | undefined;
+      try {
+        const runtime = createLegacyImportRuntime({
+          mountedWorkspace: mounted.workspace,
+          actor: {
+            id: "actor_central_fl_ice_preview",
+            kind: "agent",
+            label: "Central Florida ICE preview"
+          }
+        });
+        const readback = await runtime.report({
+          sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+        });
+        if (!readback.ok) {
+          throw new Error("portable crash fixture could not read its report");
+        }
+        originalReport = readback.report;
+        const foreignReport = buildLegacyMigrationReport({
+          sourceCollectionId: originalReport.sourceCollectionId,
+          scanBatchId: originalReport.scanBatchId,
+          files: originalReport.files.map((file) => ({
+            ...file,
+            mediaType: "text/plain"
+          })),
+          detections: originalReport.detections,
+          proposedAssertionCandidates: originalReport.proposedAssertionCandidates,
+          quarantineEntries: originalReport.quarantineEntries
+        });
+        const stored = await mounted.workspace.derivativeStore.put(
+          Buffer.from(reportArtifactJson(foreignReport), "utf8")
+        );
+        if (stored.contentHash !== foreignReport.reportHash) {
+          throw new Error("portable crash fixture foreign report hash mismatch");
+        }
+        const database = new DatabaseSync(join(workspaceRoot, "ledger", "ontology.sqlite"));
+        try {
+          const row = database.prepare(
+            "SELECT global_sequence, context_json FROM ontology_events "
+              + "WHERE type = 'legacy.import.report.generated' LIMIT 1"
+          ).get() as { global_sequence: number; context_json: string } | undefined;
+          if (row === undefined) {
+            throw new Error("portable crash fixture report event is missing");
+          }
+          const context = JSON.parse(row.context_json) as Record<string, unknown>;
+          context.correlationId = `corr_${foreignReport.legacyReportId}`;
+          database.prepare(
+            "UPDATE ontology_events "
+              + "SET stream_id = ?, context_json = ?, payload_json = ? "
+              + "WHERE global_sequence = ?"
+          ).run(
+            `legacy_report_${foreignReport.sourceCollectionId}`
+              + `_${foreignReport.scanBatchId}_${foreignReport.legacyReportId}`,
+            JSON.stringify(context),
+            JSON.stringify({
+              legacyReportId: foreignReport.legacyReportId,
+              sourceCollectionId: foreignReport.sourceCollectionId,
+              scanBatchId: foreignReport.scanBatchId,
+              reportHash: foreignReport.reportHash,
+              candidateSetHash: foreignReport.candidateSetHash,
+              generatedAt: foreignReport.generatedAt,
+              generator: foreignReport.generator,
+              totals: foreignReport.totals
+            }),
+            row.global_sequence
+          );
+        } finally {
+          database.close();
+        }
+      } finally {
+        (mounted.workspace as MountedWorkspace & { close?: () => void }).close?.();
+      }
+      if (originalReport === undefined) {
+        throw new Error("portable crash fixture original report is missing");
+      }
+      const digest = originalReport.reportHash.replace("sha256:", "");
+      rmSync(join(
+        workspaceRoot,
+        "derivatives",
+        "sha256",
+        digest.slice(0, 2),
+        digest
+      ));
+    },
     mutateSelectedSourceBytes() {
       const changed = Buffer.from(sourceBytes);
       changed[0] = changed[0] === 0x7b ? 0x5b : 0x7b;
@@ -3103,6 +3289,28 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
 
     expect(fixture.checkpointStore.readAll()).toEqual([]);
     expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+  });
+
+  it("rejects a coordinated foreign report event and artifact without any recovery write", async () => {
+    const fixture = portableCrashWorkflowFixture("all-inspect-checkpoints");
+    await expect(fixture.createWorkflow().inspect()).rejects.toThrow(
+      "injected all inspect checkpoint writes"
+    );
+    await fixture.replaceReportEventAndArtifactCoherently();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(
+      join(fixture.workspaceRoot, "derivatives")
+    );
+    fixture.disableFailures();
+
+    await expect(fixture.createWorkflow().inspect()).rejects.toThrow(
+      "independently derived report"
+    );
+
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+    expect(fixture.checkpointStore.readAll()).toEqual([]);
   });
 
   for (const mutation of [
@@ -3249,4 +3457,33 @@ function countRegularFiles(root: string): number {
     const path = join(root, entry.name);
     return total + (entry.isDirectory() ? countRegularFiles(path) : entry.isFile() ? 1 : 0);
   }, 0);
+}
+
+function regularFileMaterials(root: string): readonly string[] {
+  if (!existsSync(root)) {
+    return [];
+  }
+  const materials: string[] = [];
+  const visit = (current: string, prefix: string): void => {
+    const entries = readdirSync(current, { withFileTypes: true })
+      .sort((left, right) =>
+        left.name < right.name ? -1 : left.name > right.name ? 1 : 0
+      );
+    for (const entry of entries) {
+      const relativePath = prefix.length === 0
+        ? entry.name
+        : `${prefix}/${entry.name}`;
+      const absolutePath = join(current, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolutePath, relativePath);
+      } else if (entry.isFile()) {
+        const contentHash = createHash("sha256")
+          .update(readFileSync(absolutePath))
+          .digest("hex");
+        materials.push(`${relativePath}\u0000${contentHash}`);
+      }
+    }
+  };
+  visit(root, "");
+  return materials;
 }

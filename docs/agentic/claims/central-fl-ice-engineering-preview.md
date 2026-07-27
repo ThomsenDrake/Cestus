@@ -413,3 +413,90 @@ weakening approval authority.
 
 This remains `implementing` pending the required fresh reviews. No live source
 inspection or destination workspace creation has occurred.
+
+## Task 3 Fourth Review Rejection and Remediation
+
+The fourth dual-review round rejected remediation commit
+`6911a67736c16b34ed43e7e896defdba54d85893` on two authority defects.
+No-checkpoint recovery used recovered report material as its own expectation,
+so a coordinated foreign report event and derivative could pass initial
+recognition and reach writes. Execution identity proved only `HEAD`, so dirty
+tracked or untracked state was not rejected independently of source
+inspection, and test seams could bypass SHA checks between phases.
+
+RED evidence was established before implementation:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file failed; 5 tests failed and 129 passed
+```
+
+The five failures covered dirty identity before inspection, dirty identity
+between phases, a clean changed `HEAD`, dirty identity after manifest
+validations, and a coordinated foreign report event plus matching canonical
+derivative that reached an `inspection-blocked` write.
+
+Current GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file passed; 134 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/local-filesystem.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/import-service.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology/test/assertion-service.test.ts
+7 files passed; 208 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+9 files passed; 234 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+29 files passed; 332 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology/test \
+  packages/ontology-bootstrap/test \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+28 files passed; 456 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run ui:build
+passed; 165 modules transformed (existing chunk-size advisory only)
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+The new read-only derivation accepts no mounted or persistent workspace
+capability. It uses exact selected-file reads and an ephemeral ledger, then the
+existing deterministic report builder. Recovery compares its full canonical
+artifact bytes and event envelope before enabling checkpoint persistence.
+Clean Git identity now includes staged, unstaged, and all untracked state plus
+a stable verified `HEAD`, using only fixed repository-local `git` invocations
+whose output is never included in errors. Every command and existing pre-write
+authority check binds that clean current SHA to durable checkpoint state.
+
+This remains `implementing` pending the required fresh reviews. No live source
+inspection or destination workspace creation has occurred.
