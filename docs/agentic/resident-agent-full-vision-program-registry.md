@@ -42453,3 +42453,64 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1147 — Task14 immutable-use RED rejected on non-target destructuring
+
+- Recorded at: 2026-07-27T02:17:39Z
+- The eleventh fresh independent read-only review rejects exact test-only
+  candidate `091dc890daea30e342022bc615ccb78357a0f413`, tree
+  `150e3542fb5037b65b9b48c6295b79b947cdedb6`, sole parent
+  `da5099a44e56a9b07f97d3640fb59197a3881397`, corrected test blob
+  `2388ecb3245e11b5a832fc363df3527480568fd4`, and exact review envelope
+  `d5ba56bcbec7d892564d4aa6df58e90393c50c15`.
+- The reviewer proves one finite candidate-bound local AST symbol-resolution
+  failure. A class has a named static getter whose evaluation installs its
+  iterator. An earlier object destructure selects that getter; a later array
+  destructure then yields `undefined` and evaluates the registrar default.
+  The exact oracle returns no violation while runtime confirms getter
+  evaluation, constructor iterability, and exact default selection.
+- Root cause is confined to the unit-test oracle. The declaration-use proof
+  allows every object or array binding-pattern initializer as an immutable
+  carrier use rather than allowing only the exact array-carrier occurrence
+  currently being analyzed. The named getter body need not itself make the
+  class iterable until that separate object-destructuring use invokes it.
+  Product source and the two causal Task14 RED failures remain unchanged.
+- Reject exact `091dc890` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `2388ecb3`. First add the abstract local
+  static-getter/object-destructure/array-carrier control and reproduce its
+  false-negative oracle result while retaining the exact causal product RED.
+- Then thread the exact array-carrier initializer node through the
+  definitely-non-iterable declaration and alias proof. A binding-pattern
+  initializer is an allowed use only when it is that exact node and its
+  declaration name is the array binding pattern currently being analyzed.
+  Immutable unexported constant alias initializers may recursively reach
+  that node; any other object/array destructure, occurrence, alias cycle, or
+  unsupported use must leave declaration iterability indeterminate.
+- Retain every E-1146 own/static/inherited/escape/alias/parity control and
+  every earlier unreachable, indeterminate, awaited, destructured, callable,
+  global-numeric, shadowed-name, conditional, comma, and re-export rule.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A twelfth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe the exact carrier
+  occurrence across alias chains and separate destructuring uses. Changed
+  bytes invalidate review. The reviewer may not edit, commit, merge,
+  authorize source work, or make prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
