@@ -1993,3 +1993,146 @@ executability approval plus history-preserving integration, a separate
 append-only event may authorize the already approved 42-failure Task14 GREEN
 in exactly the composition source, wake-supervisor source, and mounted-store
 source.
+
+## RV-1-E-1181 Current Private Lexical-Capability Amendment
+
+This true-EOF section supersedes only Task14's public readback-registrar
+mechanism above. Every 33-path ownership rule, prerequisite, compatibility
+entry, raw release pin, historical candidate/review/integration fact, and
+record-29 gate remains unchanged.
+
+### Feasibility boundary
+
+An exported wake constructor plus an exported later registrar cannot prove a
+composition-only caller. A direct caller controls and retains every constructor
+argument and receives the exact runtime. If legitimate composition can derive a
+registrar issuer from those public inputs or outputs, the direct caller can
+derive or retain the same value. A deterministic public registrar therefore
+cannot accept the composition trace and reject the equivalent direct trace
+without a private lexical capability or a forbidden contextual heuristic.
+
+Normalization, cloning, or branding inside the public constructor does not
+repair this boundary. A hidden value cannot be supplied later by composition;
+an exposed value is equally available to the direct caller. Static import
+policy may prove repository ownership but cannot substitute for runtime
+unforgeability.
+
+### Approved module topology
+
+`packages/local-runtime/src/wake-supervisor-runtime.ts` owns both wake-runtime
+state and the complete legitimate composition issuance flow.
+
+- Exported `createWakeSupervisorRuntime(input)` remains the generic public wake
+  constructor. It returns a runtime whose private state has no factory
+  registrar capability and can never acquire a factory readback.
+- Nonexported `issueResidentLoopFactoryWakeRuntime` creates the exact wake
+  runtime plus a one-shot `registerReadback(readback)` closure. Its private
+  issuance pair is returned only to
+  `createResidentLoopFactoryCompositionForFacade` in the same
+  `wake-supervisor-runtime.ts` lexical module.
+- The registrar closure captures its exact wake-runtime state lexically. It
+  checks accepted-start readiness and unused state before inspecting the
+  proposed readback, freezes no caller object, and stores only the exact
+  completed outer/provider/handoff/authority-binding allocations.
+- The closure is never exported, re-exported, returned from the public
+  composition object, installed on a public object, passed to caller code, or
+  represented by a caller-visible brand or structural field.
+- Exported `bindResidentLoopCapabilitiesForFactory` remains the downstream
+  consumer. It rejects a generic runtime before reading the proposed binding
+  or authenticated ledger because that runtime has no registered factory
+  binding.
+- Exported `registerResidentLoopFactoryAuthorityReadback` is removed.
+
+`packages/local-runtime/src/resident-loop-factory-composition.ts` becomes only
+the compatibility facade for the existing safe composition API. To preserve
+the frozen released FC-Core import-policy contract, it uses exactly six static,
+named, unaliased, causally used imports: the wake result type; handoff types;
+mounted-provider types; one distinctly named safe composition-builder value
+from the wake module; wake runtime/input types in a separate type import; and
+the local runtime-handle type.
+
+The frozen released FC-Core import-policy test remains exact blob
+`ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
+
+The facade locally declares the existing composition input, bind-input,
+readback, and composition interfaces. Its only value implementation is the
+existing exported `createResidentLoopFactoryComposition(rawInput)` wrapper,
+which immediately calls the safe wake-module builder and returns its safe
+composition object. It uses no export-list syntax and contains no issuer,
+registrar, wake construction, bind implementation, mutable state, provider
+operation, route, activation, or fallback.
+
+`createResidentLoopFactoryCompositionForFacade` is callable behavior, not an
+authority capability. It accepts only the same untrusted `rawInput`, consumes
+the private issuance pair inside the wake module, performs the complete
+co-located composition flow, and never accepts or returns the private
+registrar. Static policy permits exactly the one facade import and wrapper
+call; it forbids every alternate production importer, alias, re-export, or
+caller.
+
+The safe public composition behavior is unchanged: normalize one caller input;
+create and start one exact wake runtime; authenticate provider and handoff
+authority; construct one completed frozen readback; register it through the
+nonescaping lexical closure; return it; and allow one later exact downstream
+binding. Repeated bind, copied outer/nested allocations, generic runtimes,
+wrong runtimes, stale authority, and substitutions reject before mounted-store
+effects.
+
+### Test and static-policy contract
+
+The corrected runtime oracle must prove:
+
+1. the wake module has no exported
+   `registerResidentLoopFactoryAuthorityReadback`;
+2. a directly created generic runtime reaches accepted start but
+   `bindResidentLoopCapabilitiesForFactory` rejects an accessor-backed
+   proposed readback with zero accessor and authenticated-ledger reads;
+3. legitimate composition creates, registers, returns, and consumes its exact
+   one-shot binding; and
+4. copied, wrong-runtime, repeated, stale, and other existing hostile controls
+   retain their fail-closed outcomes.
+
+The corrected TypeScript AST/symbol-resolution oracle must prove:
+
+- the old registrar has zero declarations in the exported module surface,
+  zero imports, and zero callers;
+- the factory-only issuance function and registrar closure are nonexported,
+  remain in `wake-supervisor-runtime.ts`, and cannot escape through the
+  already committed direct, aliased, destructured, callable, conditional,
+  logical, await, spread, default, and comma-expression cases;
+- the safe builder has exactly one production importer and one wrapper call in
+  the narrow compatibility facade, while the existing public composition
+  function and interfaces remain local facade declarations;
+- the facade has exactly six static named unaliased imports, one wrapper value
+  implementation, no export-list syntax, and no cycle; and
+- no barrel, namespace, dynamic-loader, alternate-source, optional-call,
+  spread-call, copied-construction, or alternate-caller path gains the private
+  capability.
+
+No new unrelated alias fixture is added. The mounted lifecycle store and its
+test remain byte-frozen unless a separately approved causal RED proves a
+change necessary.
+
+### Scope and gates
+
+The test-first correction changes only the existing runtime and import-policy
+tests. It preserves 96 focused tests and must begin as
+**96 = 94 passed + two Task14 failures**. The exact Task136 card is
+**383 = 374 passed + nine failed** and the exact 37-file cross-boundary result
+is **1,042 = 1,033 passed + nine failed**; the other seven failures are the
+preserved Task15-through-16 REDs.
+
+After independent RED approval, append-only recording, and history-preserving
+integration, a separate GREEN may change only
+`packages/local-runtime/src/wake-supervisor-runtime.ts` and
+`packages/local-runtime/src/resident-loop-factory-composition.ts`. GREEN is
+exact **96/96**, card **383 = 376 passed + seven failed**, and cross-boundary
+**1,042 = 1,035 passed + seven failed**.
+
+The amendment adds no path and retains the exact 33-path ceiling. It adds no
+provider, route, activation behavior, default runtime, fallback write,
+structural/first-seen/timing/allocation-order heuristic, call-stack or
+source-text inspection, hidden global mutable authority, process-local
+rendezvous, dependency, credential, network call, or external effect.
+Task14 and Task136 remain `implementing`; the strict product frontier remains
+28 of 29 until every later committed gate exists.
