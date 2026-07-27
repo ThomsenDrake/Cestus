@@ -42598,3 +42598,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1149 — Task14 exact-carrier RED rejected on transparent-wrapper identity
+
+- Recorded at: 2026-07-27T02:34:14Z
+- The twelfth fresh independent read-only review rejects exact test-only
+  candidate `c50be277a31cc48cef1855ceb0885ae58436371a`, tree
+  `c9746458bfb8faf3dfb1b17a7ae28b176b5ae335`, sole parent
+  `ed8e421a00994a22a3a82e26ae32dbd0b510f315`, corrected test blob
+  `fce45409df6421b81fb83ff7da930a931055ee37`, and exact review envelope
+  `21073d4a0846e25acfc285755955c2bef9dc9d25`.
+- The reviewer proves a finite candidate-bound local AST symbol-resolution
+  false positive. A plain non-iterable class declaration in a transparent
+  parenthesized array-carrier expression, directly or through one immutable
+  constant alias, reports `registrar-reexport`; runtime instead throws before
+  binding and never selects the registrar default. The equivalent unwrapped
+  control remains correct.
+- Root cause is confined to the unit-test oracle. Selection unwraps the
+  initializer and stores the inner identifier as the exact carrier node.
+  The use proof later climbs the same transparent wrappers and compares the
+  outer wrapper node to that inner node, so identity can never match.
+  Product source and both causal Task14 RED failures remain unchanged.
+- Reject exact `c50be277` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `fce45409`. First add abstract direct and
+  immutable-alias parenthesized carrier controls and reproduce both false
+  positives while retaining the exact causal product RED.
+- Then retain the original outer initializer node as the exact carrier
+  identity before unwrapping it for value resolution. The use proof must
+  climb only the approved transparent parenthesized, `as`, type-assertion,
+  non-null, and `satisfies` wrappers and match that exact outer node. Direct,
+  aliased, and transparently wrapped parity must be identical; no additional
+  use may become allowed.
+- Retain every E-1148 separate-destructure/getter, declaration,
+  iterator/escape/alias/parity, global-numeric/shadowed, awaited,
+  unreachable, indeterminate, callable, conditional, comma, and re-export
+  control.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A thirteenth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe exact carrier-node
+  identity across every approved transparent wrapper and alias path. Changed
+  bytes invalidate review. The reviewer may not edit, commit, merge,
+  authorize source work, or make prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
