@@ -4189,3 +4189,318 @@ Mission source fingerprint sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c5720
 Task136 and Task14 remain `implementing`, strict frontier 28 of 29. This
 amendment is not product source authority, a Task136 product candidate, strict
 record 29, repository closure, publication, Wave 3 start, or product release.
+
+## RV-1-E-1181 Private Lexical-Capability Amendment Execution
+
+This true-EOF execution section supersedes only Task14's exported registrar
+steps. It keeps the existing 33-path Task136 ceiling, 17-file card, 37-file
+cross-boundary array, Tasks15-through-21 order, and all historical evidence.
+
+### File responsibilities
+
+- `packages/local-runtime/test/wake-supervisor-runtime.test.ts` proves the
+  runtime boundary: no exported registrar, generic runtime ineligibility with
+  zero proposed-readback and ledger observation, and legitimate composition
+  success.
+- `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` proves
+  the lexical/static boundary without expanding the existing abstract alias
+  corpus.
+- `packages/local-runtime/src/wake-supervisor-runtime.ts` owns generic wake
+  construction, private factory issuance and registration, the safe public
+  composition implementation and types, and the preserved downstream binder.
+- `packages/local-runtime/src/resident-loop-factory-composition.ts` is the
+  narrow compatibility facade for the existing safe public composition API.
+- `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` and its test
+  remain byte-frozen.
+
+### Task 14A: Commit and integrate the exact two-test RED
+
+**Files:**
+
+- Modify:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
+- Modify:
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+
+**Interfaces:**
+
+- Consumes: E-1180 integrated direct-constructor RED and E-1181 approved
+  lexical-capability design.
+- Produces: one immutable two-test RED proving the required public API removal,
+  generic-runtime ineligibility, legitimate composition control, and
+  nonescaping local capability.
+
+- [ ] **Step 1: Correct the existing runtime issuer oracle**
+
+Remove the named registrar import and inspect the wake module namespace only
+to prove the old public property is absent:
+
+```ts
+import * as wakeRuntimeApi from "../src/wake-supervisor-runtime.js";
+
+expect(
+  Reflect.get(
+    wakeRuntimeApi,
+    "registerResidentLoopFactoryAuthorityReadback"
+  )
+).toBeUndefined();
+```
+
+Create and start a real generic runtime through
+`createWakeSupervisorRuntime`. Reset its authenticated-ledger probe, present
+the existing frozen accessor-backed abstract readback directly to
+`bindResidentLoopCapabilitiesForFactory`, and require rejection before either
+getter or any ledger read:
+
+```ts
+await expect(
+  bindResidentLoopCapabilitiesForFactory(
+    directConstructor.runtime,
+    directConstructorReadback,
+    Object.freeze({})
+  )
+).rejects.toThrow(/authority|binding|unavailable/i);
+expect(proposedReadbackReads).toBe(0);
+expect(directConstructorLedgerReads).toEqual({ all: 0, streams: [] });
+```
+
+Retain the real legitimate composition fixture and its exact downstream
+binding success. Retain copied, original-caller, arbitrary, missing, wrong
+runtime, repeated, stale, no-effect, and one-shot controls without adding a
+new test case.
+
+- [ ] **Step 2: Correct the existing AST/symbol-resolution oracle**
+
+Replace only the obsolete allowed topology of one exported registrar, one
+composition import, and one composition call. Require instead:
+
+```text
+old exported registrar declarations/importers/callers = 0/0/0
+private factory issuance declarations = 1 in wake-supervisor-runtime.ts
+private registrar closure escapes = 0
+compatibility facade implementation statements = 0
+compatibility facade safe value exports = createResidentLoopFactoryComposition
+compatibility facade safe type exports =
+  ResidentLoopFactoryCompositionInput
+  ResidentLoopFactoryAuthorityBindInput
+  ResidentLoopFactoryAuthorityReadback
+  ResidentLoopFactoryComposition
+```
+
+Exercise the already committed local direct/alias/destructuring/callable/
+conditional/logical/await/spread/default/comma corpus against the private
+binding. Do not add another alias fixture. Require a violation for export,
+re-export, returned closure, exported-object property, callback argument,
+namespace/barrel/dynamic access, alternate module/caller, copied
+construction, optional call, or spread call.
+
+- [ ] **Step 3: Reproduce the exact RED and supporting gates**
+
+Run:
+
+```bash
+TMPDIR=/dev/shm npm test -- \
+  packages/local-runtime/test/wake-supervisor-runtime.test.ts \
+  packages/local-runtime/test/mounted-wake-lifecycle-store.test.ts \
+  packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts \
+  --maxWorkers=1 --testTimeout=120000
+npm run typecheck
+npm run factory:check
+TMPDIR=/dev/shm node --test \
+  scripts/check-software-factory-mission-state.test.mjs
+node scripts/check-software-factory-mission-state.mjs
+TMPDIR=/dev/shm node --test \
+  scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs
+TMPDIR=/dev/shm node \
+  scripts/resident-agent/assurance/task136-bounded-assurance.mjs \
+  --mode contract
+```
+
+Expected: focused **96 = 94 passed + two Task14 failures**, standalone
+typecheck and readiness pass, mission and V4 each pass **20/20**, and exact
+contract markers remain **29 / 20 / 29 / 15**.
+
+Run the exact existing 17-file `TASK136_TESTS` array with
+`TMPDIR=/dev/shm`, `--maxWorkers=1`, and `--testTimeout=120000`.
+Expected: **383 = 374 passed + nine failed**.
+
+Run the exact existing 37-file `TASK136_CROSS_TESTS` array with the same
+environment. Expected: **1,042 = 1,033 passed + nine failed**.
+Exactly two failures are Task14 and seven are the preserved
+Task15-through-16 REDs.
+
+Run repository mode and require status one, all four contract markers, first
+stop exactly:
+
+```text
+blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts
+```
+
+Require no repository-prefix, release-closure, record-29, repository, or
+product-release success marker. Verify two-test scope, every product/test
+freeze, ancestry, TypeScript 5.9.3, Vitest 4.1.9, `git diff --check`,
+`git fsck --full --no-reflogs`, and clean state.
+
+- [ ] **Step 4: Commit, review, approve, and integrate the RED**
+
+Commit only the two tests:
+
+```bash
+git add \
+  packages/local-runtime/test/wake-supervisor-runtime.test.ts \
+  packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts
+git commit -m "test(local-runtime): require lexical factory issuer"
+```
+
+Append one candidate-bound review admission. Assign a completely fresh
+independent read-only reviewer who has never authored, reviewed, verified, or
+analyzed either changed blob. The reviewer must inspect and execute the full
+cumulative runtime and AST oracle plus every gate in Step 3. Changed bytes
+invalidate review.
+
+After an exact **APPROVED** verdict, append approval, merge the exact candidate
+into the program branch with approval as first parent and candidate as second
+parent, rerun Step 3 at the integration tree, append integration, and
+forward-merge that authority into Task136. Do not edit source before this
+sequence completes.
+
+### Task 14B: Implement and integrate the two-source GREEN
+
+**Files:**
+
+- Modify:
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`
+- Modify:
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`
+- Freeze:
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
+
+**Interfaces:**
+
+- Consumes: the independently approved and integrated Task14A RED.
+- Produces: a generic wake runtime with no factory entitlement, one
+  nonescaping factory-only lexical registrar, the unchanged safe public
+  composition API, and the preserved exact downstream binder.
+
+- [ ] **Step 1: Issue generic and factory runtimes through distinct private paths**
+
+Inside `wake-supervisor-runtime.ts`, keep the public generic entrypoint:
+
+```ts
+export function createWakeSupervisorRuntime(
+  rawInput: WakeSupervisorRuntimeInput
+): WakeSupervisorRuntime;
+```
+
+Factor the existing construction so a nonexported factory-only function can
+return an internal pair:
+
+```ts
+interface PrivateResidentLoopFactoryWakeIssuance {
+  readonly wakeRuntime: WakeSupervisorRuntime;
+  readonly registerReadback: (readback: object) => void;
+}
+
+function issueResidentLoopFactoryWakeRuntime(
+  input: WakeSupervisorRuntimeInput
+): PrivateResidentLoopFactoryWakeIssuance;
+```
+
+The generic public constructor returns only `wakeRuntime`. It neither creates
+nor stores a retrievable registrar. The private factory issuance is called
+only by the co-located composition implementation.
+
+- [ ] **Step 2: Implement the private one-shot registrar**
+
+The closure captures the exact issued runtime state. Before any
+`Reflect.get(readback, ...)` or store operation it requires accepted-start
+readiness, unused registration state, and no prior binding. It then validates
+one frozen outer readback with frozen exact provider, handoff, and
+authority-binding allocations and stores those identities for the preserved
+downstream binder.
+
+Remove every export, declaration, import, call, or alias of
+`registerResidentLoopFactoryAuthorityReadback`. Do not replace it with a
+symbol, token, callback exposed to another module, first-use rule, ambient
+flag, or other heuristic.
+
+- [ ] **Step 3: Co-locate composition and reduce the facade**
+
+Move the existing composition interfaces, normalization, start/bind/stop
+flow, provider and handoff authentication, currentness checks, and completed
+readback construction into `wake-supervisor-runtime.ts`.
+
+Call private `registerReadback(readback)` immediately after constructing the
+exact completed frozen readback and before returning it. Do not return or
+otherwise expose `registerReadback`.
+
+Reduce `resident-loop-factory-composition.ts` to the explicit safe facade:
+
+```ts
+export {
+  createResidentLoopFactoryComposition,
+  type ResidentLoopFactoryAuthorityBindInput,
+  type ResidentLoopFactoryAuthorityReadback,
+  type ResidentLoopFactoryComposition,
+  type ResidentLoopFactoryCompositionInput
+} from "./wake-supervisor-runtime.js";
+```
+
+No other value, type, state, constructor, registrar, provider operation,
+fallback, route, or activation belongs in the facade.
+
+- [ ] **Step 4: Run GREEN and all exact gates**
+
+Run the Task14A Step 3 commands and exact arrays.
+
+Expected:
+
+```text
+focused 96/96
+Task136 card 383 = 376 passed + 7 preserved failures
+37-file cross-boundary 1,042 = 1,035 passed + 7 preserved failures
+mission 20/20
+V4 20/20
+contract markers 29 / 20 / 29 / 15
+repository first stop legacy-staging blob mismatch
+```
+
+Require exact two-source scope; frozen mounted source/test, approved runtime
+and AST tests, every other product/test/claim/contract/mission byte; no new
+path or dependency; typecheck, readiness, ancestry, diff, integrity, and clean
+state.
+
+- [ ] **Step 5: Commit, review, approve, and integrate the GREEN**
+
+Commit only the two sources:
+
+```bash
+git add \
+  packages/local-runtime/src/wake-supervisor-runtime.ts \
+  packages/local-runtime/src/resident-loop-factory-composition.ts
+git commit -m "feat(local-runtime): seal lexical factory issuer"
+```
+
+Append one exact source-candidate review admission. Assign a completely fresh
+independent read-only source reviewer ineligible under every prior Task14
+author/reviewer/verifier exclusion. The reviewer must prove the lexical
+capability never escapes, generic runtimes can never acquire factory binding,
+the safe facade preserves compatibility, mounted behavior is frozen, and all
+Task14A Step 3 gates reproduce.
+
+Only after exact approval may the coordinator append approval, merge the
+candidate history-preservingly into the program branch, rerun fresh
+integration-tree gates, append Task14 integration, and forward-merge authority
+into Task136.
+
+### Task 14C: Resume the committed sequence
+
+After Task14 source approval and integration, append a separate Task15
+authorization and continue Tasks15-through-21 exactly as already committed.
+Before any Wave 3 dispatch, run `npm run verify`, classify and assign every
+remaining failure to its committed owner, and record only the required
+lifecycle transitions.
+
+Do not claim Task136 product candidacy, strict record 29, repository closure,
+publication, Wave 3 start, or product release before their exact committed
+gates pass. Remain local-only and preserve all history.
