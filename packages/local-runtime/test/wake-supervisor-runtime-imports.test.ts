@@ -2961,6 +2961,7 @@ function residentFactoryIssuerAnalysis(
     }
     if (initializer === undefined) return unreachableBindingInitializer;
     let value = unwrapRegistrarExpression(initializer);
+    const carrierInitializer = value;
     const carrierPath = new Set(resolving);
     while (ts.isIdentifier(value)) {
       const symbol = checker.getSymbolAtLocation(value);
@@ -2978,7 +2979,8 @@ function residentFactoryIssuerAnalysis(
       bindingPatternInitializerIsUnreachable(
         element.parent,
         value,
-        new Set(carrierPath)
+        new Set(carrierPath),
+        carrierInitializer
       )
     ) {
       return unreachableBindingInitializer;
@@ -3027,7 +3029,8 @@ function residentFactoryIssuerAnalysis(
   function bindingPatternInitializerIsUnreachable(
     pattern: ts.ArrayBindingPattern | ts.ObjectBindingPattern,
     initializer: ts.Expression,
-    resolving: Set<ts.Symbol>
+    resolving: Set<ts.Symbol>,
+    carrierInitializer: ts.Expression
   ): boolean {
     if (
       initializer.kind === ts.SyntaxKind.NullKeyword ||
@@ -3036,12 +3039,17 @@ function residentFactoryIssuerAnalysis(
       return true;
     }
     return ts.isArrayBindingPattern(pattern) &&
-      expressionIsDefinitelyNonIterable(initializer, resolving);
+      expressionIsDefinitelyNonIterable(
+        initializer,
+        resolving,
+        carrierInitializer
+      );
   }
 
   function expressionIsDefinitelyNonIterable(
     expression: ts.Expression,
-    resolving: Set<ts.Symbol>
+    resolving: Set<ts.Symbol>,
+    carrierInitializer: ts.Expression
   ): boolean {
     const value = unwrapRegistrarExpression(expression);
     if (
@@ -3053,13 +3061,20 @@ function residentFactoryIssuerAnalysis(
     if (ts.isIdentifier(value)) {
       if (
         unshadowedGlobalNumericConstant(value) !== undefined ||
-        declarationIdentifierIsDefinitelyNonIterable(value)
+        declarationIdentifierIsDefinitelyNonIterable(
+          value,
+          carrierInitializer
+        )
       ) {
         return true;
       }
       const initializer = localConstInitializer(value, resolving);
       return initializer !== undefined &&
-        expressionIsDefinitelyNonIterable(initializer, resolving);
+        expressionIsDefinitelyNonIterable(
+          initializer,
+          resolving,
+          carrierInitializer
+        );
     }
     if (
       value.kind === ts.SyntaxKind.TrueKeyword ||
@@ -3084,7 +3099,8 @@ function residentFactoryIssuerAnalysis(
   }
 
   function declarationIdentifierIsDefinitelyNonIterable(
-    identifier: ts.Identifier
+    identifier: ts.Identifier,
+    carrierInitializer: ts.Expression
   ): boolean {
     const symbol = checker.getSymbolAtLocation(identifier);
     if (symbol === undefined) return false;
@@ -3114,7 +3130,11 @@ function residentFactoryIssuerAnalysis(
     ) {
       return false;
     }
-    return symbolHasOnlyImmutableCarrierUses(symbol, new Set());
+    return symbolHasOnlyImmutableCarrierUses(
+      symbol,
+      new Set(),
+      carrierInitializer
+    );
   }
 
   function classDeclarationMayDefineIterator(
@@ -3174,7 +3194,8 @@ function residentFactoryIssuerAnalysis(
 
   function symbolHasOnlyImmutableCarrierUses(
     symbol: ts.Symbol,
-    resolving: Set<ts.Symbol>
+    resolving: Set<ts.Symbol>,
+    carrierInitializer: ts.Expression
   ): boolean {
     if (resolving.has(symbol)) return false;
     const nextResolving = new Set(resolving);
@@ -3191,7 +3212,12 @@ function residentFactoryIssuerAnalysis(
       if (
         ts.isIdentifier(node) &&
         checker.getSymbolAtLocation(node) === symbol &&
-        !identifierIsImmutableCarrierUse(node, symbol, nextResolving)
+        !identifierIsImmutableCarrierUse(
+          node,
+          symbol,
+          nextResolving,
+          carrierInitializer
+        )
       ) {
         valid = false;
         return;
@@ -3203,7 +3229,8 @@ function residentFactoryIssuerAnalysis(
   function identifierIsImmutableCarrierUse(
     identifier: ts.Identifier,
     symbol: ts.Symbol,
-    resolving: Set<ts.Symbol>
+    resolving: Set<ts.Symbol>,
+    carrierInitializer: ts.Expression
   ): boolean {
     if (
       (symbol.declarations ?? []).some(
@@ -3234,8 +3261,8 @@ function residentFactoryIssuerAnalysis(
       return false;
     }
     if (
-      ts.isArrayBindingPattern(parent.name) ||
-      ts.isObjectBindingPattern(parent.name)
+      expression === carrierInitializer &&
+      ts.isArrayBindingPattern(parent.name)
     ) {
       return true;
     }
@@ -3254,7 +3281,11 @@ function residentFactoryIssuerAnalysis(
     }
     const alias = checker.getSymbolAtLocation(parent.name);
     return alias !== undefined &&
-      symbolHasOnlyImmutableCarrierUses(alias, resolving);
+      symbolHasOnlyImmutableCarrierUses(
+        alias,
+        resolving,
+        carrierInitializer
+      );
   }
 
   function bindingPropertyName(
@@ -4369,6 +4400,24 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          ] = returnedCarrier;`
+      ],
+      [
+        "separate object destructure can activate a class iterator",
+        `${exactComposition}
+         class IterableCarrier {
+           static get initialize() {
+             this[Symbol.iterator] = function* () {
+               yield undefined;
+             };
+             return undefined;
+           }
+         }
+         const { initialize } = IterableCarrier;
+         void initialize;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = IterableCarrier;`
       ],
       [
         "exported comma-expression alias binding",
