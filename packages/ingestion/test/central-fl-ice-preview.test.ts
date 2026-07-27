@@ -248,6 +248,8 @@ describe("Central Florida ICE preview preflight", () => {
         "token-analysis.md": "This report studies the word token.",
         "auth-history.md": "This report describes authorization policy history.",
         "secret-history.md": "This report describes secret classifications without containing secrets.",
+        "cache-analysis.md": "This report describes cache evidence without containing cache output.",
+        "cargo-analysis.md": "This report describes cargo movements, not a dependency cache.",
         "current.txt": "current"
       })
     });
@@ -262,6 +264,8 @@ describe("Central Florida ICE preview preflight", () => {
       ".gitignore",
       ".gitmodules",
       "auth-history.md",
+      "cache-analysis.md",
+      "cargo-analysis.md",
       "current.txt",
       "secret-history.md",
       "token-analysis.md"
@@ -454,6 +458,37 @@ describe("Central Florida ICE preview preflight", () => {
   });
 
   it.each([
+    ".pytest_cache/README.md",
+    ".mypy_cache/cache.json",
+    ".ruff_cache/cache",
+    ".tox/py/bin/python",
+    ".nox/session/bin/python",
+    ".ipynb_checkpoints/notebook-checkpoint.ipynb",
+    ".gradle/caches/modules.bin",
+    ".cargo/config.toml",
+    ".cargo/registry/index/cache",
+    ".cargo/target/debug/build.out",
+    "target/debug/build.out",
+    ".npm/cache/index",
+    ".yarn/cache/package.tgz",
+    ".pnpm-store/v3/files/hash"
+  ])("never opens or hashes a forbidden cache/dependency/build tree: %s", (forbiddenPath) => {
+    const harness = makeHarness({
+      files: {
+        [forbiddenPath]: "do-not-read",
+        "safe-a.txt": "a",
+        "safe-b.txt": "b"
+      }
+    });
+
+    expect(() => run(harness)).toThrowError(
+      expect.objectContaining({ code: "FORBIDDEN_MATERIAL" })
+    );
+    expect(harness.reads).toEqual([]);
+    expect(harness.writes).toEqual([]);
+  });
+
+  it.each([
     "../escape.txt",
     "decomposed-e\u0301.txt",
     "slash/name.txt",
@@ -541,14 +576,154 @@ describe("Central Florida ICE preview preflight", () => {
       }
     };
 
-    const result = inspectCentralFloridaIceCandidates(
+    expect(() => inspectCentralFloridaIceCandidates(
       { filesystem: harness.filesystem, mounts: harness.mounts },
       inputWithIgnoredPolicy
-    );
+    )).toThrowError(expect.objectContaining({ code: "CODE_SHA_INVALID" }));
+    expect(harness.reads).toEqual([]);
+  });
 
-    expect(result.sourceIdentity.rootRealpath).toBe(CENTRAL_FL_ICE_PREVIEW.sourceRoot);
-    expect(result.destinationIdentity.destinationPath).toBe(CENTRAL_FL_ICE_PREVIEW.destinationRoot);
-    expect(result.sourceIdentity.fileCount).toBe(CENTRAL_FL_ICE_PREVIEW.expectedFileCount);
+  it("rejects accessor-backed code SHA input without invoking the accessor", () => {
+    const harness = makeHarness();
+    let getterReads = 0;
+    const input = {};
+    Object.defineProperty(input, "codeSha", {
+      enumerable: true,
+      get() {
+        getterReads += 1;
+        return getterReads === 1
+          ? "0123456789abcdef0123456789abcdef01234567"
+          : "not-a-git-sha";
+      }
+    });
+
+    expect(() => inspectCentralFloridaIceCandidates(
+      { filesystem: harness.filesystem, mounts: harness.mounts },
+      input as { codeSha: string }
+    )).toThrowError(expect.objectContaining({ code: "CODE_SHA_INVALID" }));
+    expect(getterReads).toBe(0);
+    expect(harness.reads).toEqual([]);
+  });
+
+  it.each([
+    {
+      name: "custom prototype",
+      input: Object.assign(Object.create({ inherited: true }) as object, {
+        codeSha: "0123456789abcdef0123456789abcdef01234567"
+      })
+    },
+    {
+      name: "extra own field",
+      input: {
+        codeSha: "0123456789abcdef0123456789abcdef01234567",
+        sourceRoot: "/unapproved/source"
+      }
+    }
+  ])("rejects non-plain or over-specified code provenance input: $name", ({ input }) => {
+    const harness = makeHarness();
+
+    expect(() => inspectCentralFloridaIceCandidates(
+      { filesystem: harness.filesystem, mounts: harness.mounts },
+      input as { codeSha: string }
+    )).toThrowError(expect.objectContaining({ code: "CODE_SHA_INVALID" }));
+    expect(harness.reads).toEqual([]);
+  });
+
+  it("rejects identity drift when a mount port mutates and reuses its initial record", () => {
+    const harness = makeHarness();
+    const originalInspect = harness.mounts.inspect;
+    const sharedMount = {
+      target: sourceMount,
+      source: CENTRAL_FL_ICE_PREVIEW.sourceDevice,
+      fileSystem: "apfs",
+      options: ["ro", "nosuid", "nodev", "noexec", "uid=1000", "gid=1000"],
+      deviceId: sourceDeviceId
+    };
+    let sourceInspections = 0;
+    harness.mounts.inspect = (path) => {
+      if (!path.startsWith(sourceRoot)) {
+        return originalInspect(path);
+      }
+      sourceInspections += 1;
+      if (sourceInspections > 1) {
+        sharedMount.target = "/mutated-source-mount";
+      }
+      return sharedMount;
+    };
+
+    expect(() => run(harness)).toThrowError(
+      expect.objectContaining({ code: "SOURCE_MOUNT_CROSSING" })
+    );
+    expect(harness.reads).toEqual([]);
+  });
+
+  it("keeps initial mount provenance isolated from a port-owned options alias", () => {
+    const harness = makeHarness();
+    const originalInspect = harness.mounts.inspect;
+    const sharedOptions = ["ro", "nosuid", "nodev", "noexec", "uid=1000", "gid=1000"];
+    const initialMount = {
+      target: sourceMount,
+      source: CENTRAL_FL_ICE_PREVIEW.sourceDevice,
+      fileSystem: "apfs",
+      options: sharedOptions,
+      deviceId: sourceDeviceId
+    };
+    let sourceInspections = 0;
+    harness.mounts.inspect = (path) => {
+      if (!path.startsWith(sourceRoot)) {
+        return originalInspect(path);
+      }
+      sourceInspections += 1;
+      if (sourceInspections === 1) {
+        return initialMount;
+      }
+      if (sourceInspections === 2) {
+        sharedOptions.push("port-owned-alias-mutation");
+      }
+      return {
+        target: sourceMount,
+        source: CENTRAL_FL_ICE_PREVIEW.sourceDevice,
+        fileSystem: "apfs",
+        options: ["ro", "nosuid", "nodev", "noexec", "uid=1000", "gid=1000"],
+        deviceId: sourceDeviceId
+      };
+    };
+
+    const result = run(harness);
+
+    expect(result.sourceIdentity.mountOptions).toEqual([
+      "gid=1000",
+      "nodev",
+      "noexec",
+      "nosuid",
+      "ro",
+      "uid=1000"
+    ]);
+    expect(result.sourceIdentity.mountOptions).not.toContain("port-owned-alias-mutation");
+  });
+
+  it("rejects file identity drift when lstat mutates and reuses its inventory record", () => {
+    const harness = makeHarness();
+    const originalLstat = harness.filesystem.lstat;
+    const targetPath = `${sourceRoot}/archive/copy.txt`;
+    const sharedMetadata = { ...originalLstat(targetPath) };
+    let targetInspections = 0;
+    harness.filesystem.lstat = (path) => {
+      if (path !== targetPath) {
+        return originalLstat(path);
+      }
+      targetInspections += 1;
+      if (targetInspections > 1) {
+        sharedMetadata.inode = "mutated-reused-inode";
+      }
+      return sharedMetadata;
+    };
+
+    expect(() => run(harness)).toThrowError(
+      expect.objectContaining({ code: "SOURCE_CHANGED_DURING_HASH" })
+    );
+    expect(harness.reads).toEqual([]);
+    expect(harness.writes).toEqual([]);
   });
 
   it("deep-freezes mount-option provenance included in the inspection result", () => {

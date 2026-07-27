@@ -63,10 +63,10 @@ GREEN:
 
 ```text
 TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts
-1 file passed; 49 tests passed
+1 file passed; 69 tests passed
 
 TMPDIR=/dev/shm npm test -- packages/ingestion/test
-29 files passed; 242 tests passed
+29 files passed; 262 tests passed
 
 TMPDIR=/dev/shm npm run typecheck
 passed
@@ -81,6 +81,8 @@ passed
 The preflight binds the fixed source, mount, device, options, file count, destination, mission identities, base SHA, and exact execution SHA. It rejects unsafe mount/destination identity, forbidden metadata classes, ZIP containers, path ambiguity, symlinks, special files, nested mount crossings, count mismatch, and source mutation before any caller can persist the result. Stable candidate material preserves distinct duplicate occurrences plus explicit current, archived, and superseded status. Safe `.gitignore`, `.gitmodules`, and topical token/auth analysis filenames remain eligible; actual credential-like material is rejected without being opened or hashed.
 
 Fresh review round 1 required four corrections. The immutable production entry point no longer accepts a policy override; full required read-only mount posture is rechecked per traversed path and before/after every content read; common credential dotfiles, credential directories, key containers, provider-token names, and backup forms are rejected using metadata only while topical prose remains eligible; and mount-option provenance arrays are deeply frozen. Each correction received a focused failing test before implementation. The same fresh reviewer independently reran the focused suite (49/49) and approved the scoped round-2 re-review with all four findings resolved.
+
+A second independent review of commit `429277af` found three additional adversarial boundary defects: common cache/dependency/build trees were under-classified, `codeSha` could be read twice through an accessor, and a reused mutable mount record could alias the initial authority. Test-first remediation added 13 focused failures, then added two more focused failures for nested `.cargo` and mutable `lstat` aliases after proactive boundary review. The implementation now rejects the approved cache/dependency/build tree classes using metadata only; snapshots `codeSha` once from an exact plain own-data input; snapshots every mount record, option array, and path-metadata record as deep frozen plain data; and compares separately normalized later mount records to both fixed policy and the immutable initial snapshot.
 
 ## Owned Files
 
