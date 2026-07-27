@@ -3259,18 +3259,13 @@ function residentFactoryIssuerAnalysis(
     ) {
       expression = expression.parent;
     }
+    if (expression === carrierInitializer) return true;
     const parent = expression.parent;
     if (
       !ts.isVariableDeclaration(parent) ||
       parent.initializer !== expression
     ) {
       return false;
-    }
-    if (
-      expression === carrierInitializer &&
-      ts.isArrayBindingPattern(parent.name)
-    ) {
-      return true;
     }
     if (
       !ts.isIdentifier(parent.name) ||
@@ -4596,6 +4591,27 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          ] = (NonIterableCarrier);`
+      ],
+      [
+        "nested parenthesized class carrier does not evaluate inner default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [(NonIterableCarrier)];`
+      ],
+      [
+        "nested deeply wrapped class alias does not evaluate inner default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         const carrierAlias = (
+           NonIterableCarrier as typeof NonIterableCarrier
+         )! satisfies typeof NonIterableCarrier;
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [((carrierAlias as typeof carrierAlias)!)];`
       ],
       [
         "parenthesized class alias does not evaluate nested default",
