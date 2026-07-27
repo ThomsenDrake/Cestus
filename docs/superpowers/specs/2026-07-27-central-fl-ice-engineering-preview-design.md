@@ -370,3 +370,38 @@ A production-subprocess regression supplies a clean alternate repository
 through hostile `GIT_DIR`, `GIT_WORK_TREE`, global configuration, tracing, and
 `PATH`. The alternate SHA is never accepted, the trace is never created, and
 the workflow produces no destination, event, or checkpoint effect.
+
+## Gate 1 Runtime Amendment: Exact Media-Type Authority
+
+The first approved raw-import execution exposed a classifier conflict before
+the workflow could persist its next checkpoint. The Gate 1 inspector classified
+Markdown as `text/markdown` and PDF as `application/octet-stream`; the source
+materializer classified Markdown as `application/octet-stream` and PDF as
+`application/pdf`. The strict canonical ledger comparison correctly rejected
+the resulting 86 media-type substitutions. It must not be weakened.
+
+The preview, legacy inspector, and source materializer now use one
+ingestion-local path classifier. It preserves the union of their previously
+recognized extensions:
+
+- JSON: `application/json`
+- Markdown: `text/markdown`
+- YAML: `application/yaml`
+- CSV: `text/csv`
+- plain text: `text/plain`
+- HTML: `text/html`
+- PDF: `application/pdf`
+- every other extension: `application/octet-stream`
+
+The approved candidate media type is therefore identical in the inspection
+report, imported evidence event, migration report, and retry reconciliation.
+The canonical committed-event comparator remains full-material and
+canonical-set based; the actual runtime continues to append approval, all
+evidence/link effects, completion, then local parse jobs.
+
+Because this repair changes both the clean execution SHA and the PDF candidate
+media types, the previous Gate 1 checkpoint and candidate-set hash cannot
+authorize a resumed import. The coordinator must preserve the failed workspace,
+run a fresh deterministic inspection under the repaired SHA, and present the
+new exact candidate set for human raw-import approval. No prior approval is
+silently carried forward.

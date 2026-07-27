@@ -590,3 +590,106 @@ is untouched, and the workflow creates no workspace, event, or checkpoint.
 This remains `implementing` pending the required fresh reviews. No live source
 inspection, destination workspace creation, provider transfer, or approval
 transition has occurred.
+
+## Gate 1 Raw-Import Media-Type Reconciliation
+
+The approved Gate 1 runtime reached the existing portable import service, but
+strict authoritative readback rejected the effects before a
+`staging-preview-required` checkpoint could be persisted. Coordinator-side
+read-only comparison found 86 exact media-type substitutions and no
+content-hash or size substitutions:
+
+- 79 approved Markdown candidates were materialized as
+  `application/octet-stream`;
+- 7 approved octet-stream PDF candidates were materialized as
+  `application/pdf`.
+
+The implementation agent did not access the live source, canonical preview
+workspace, or preserved failed workspace. The repair was reproduced entirely
+with temporary portable workspaces.
+
+RED evidence was established before production edits:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t 'multi-candidate'
+1 file failed; 2 tests failed and 134 skipped.
+Both actual portable-runtime flows stopped at
+`legacy migration report does not bind the exact preflight candidate bytes`.
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/media-type.test.ts
+1 suite failed before collection because the shared classifier module did not
+exist.
+```
+
+Current GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/media-type.test.ts
+2 files passed; 147 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/media-type.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/local-filesystem.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/import-service.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology/test/assertion-service.test.ts
+8 files passed; 221 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/media-type.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+10 files passed; 247 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+30 files passed; 345 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology/test \
+  packages/ontology-bootstrap/test \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+28 files passed; 456 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run ui:build
+passed; 165 modules transformed (existing externalization and chunk-size
+advisories only)
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+One ingestion-local classifier now supplies the preview preflight, legacy
+inspector/detector inputs, and source materializer. It preserves the union of
+existing JSON, Markdown, YAML, CSV, text, HTML, PDF, and octet-stream mappings.
+The portable regression imports JSON, Markdown, and PDF candidates with exact
+candidate/evidence media equality, observes the existing approval →
+evidence/link groups → completion → parse-job runtime order, and proves retry
+after checkpoint failure appends no duplicate events or blobs.
+
+Canonical event comparison remains strict and canonical-set based. This repair
+changes the clean code SHA and changes PDF candidate media material, so the
+previous Gate 1 candidate-set hash and approval are superseded. Live execution
+must preserve the failed workspace, repeat inspection, and stop at a fresh
+human raw-import gate. The mission remains `implementing` pending fresh dual
+review of this repair.
