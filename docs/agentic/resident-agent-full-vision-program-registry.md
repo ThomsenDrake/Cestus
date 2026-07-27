@@ -43345,3 +43345,84 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1159 — Task14 evaluation-complete RED rejected on object initialization
+
+- Recorded at: 2026-07-27T04:33:04Z
+- The seventeenth fresh independent read-only review rejects exact test-only
+  candidate `df1847e3430e8a498a14ef15d523a37cd2299f57`, tree
+  `8f4f0e9d5a47ec02fe17eccc3596529e413ca502`, sole parent
+  `6ba773fe746c9a1970873e9e6e34297655ed94d5`, corrected test blob
+  `10c7e89be99615aa0cffe2304d1ed0c50b87666d`, and exact review envelope
+  `719a4a532638bda5c1f2818b472ff7cbd5df8833`.
+- Identity, scope, envelope parents, physical registry EOF, source/runtime
+  freezes, dependency versions, clean state, diff hygiene, and full Git
+  integrity pass. Exact focused execution remains **96 = 94 passed + two
+  causal issuer RED failures**, Task136 card remains **383 = 374 passed +
+  nine failed**, and the 37-file cross-boundary execution remains
+  **1,042 = 1,033 passed + nine failed**.
+- Typecheck and factory readiness pass. Mission and V4 assurance each pass
+  **20/20**; contract markers remain **29 / 20 / 29 / 15**. Repository mode
+  stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, repository-closure, or release-success marker.
+- The reviewer proves one finite candidate-bound local AST symbol-resolution
+  false positive. A local one-throw call nested in an object literal prevents
+  the complete outer initializer from finishing, but the oracle selects a
+  sibling registrar property and reports `registrar-reexport` even though
+  runtime performs no outer binding.
+- The defect reproduces with the throwing property before and after the
+  selected property, a throwing object-spread operand, an object wrapped in
+  an exact array element, and an object wrapped in a direct call argument.
+  An effectful-but-returning control completes and binds normally.
+- Root cause is confined to the unit-test oracle. The E-1158 completion
+  walker recurses through exact array literals and direct calls but does not
+  traverse the definitely evaluated subexpressions of an object literal
+  before selecting one property. Product source and both causal Task14 RED
+  failures remain unchanged.
+- Reject exact `df1847e3` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `10c7e89b`. First add an abstract object-literal
+  one-throw control and reproduce the false positive while retaining both
+  causal product REDs.
+- Then extend the existing finite evaluation-completion proof across object
+  literals before any selected property is returned. Traverse definitely
+  evaluated computed property names, property initializers, and spread
+  operands in runtime order; recurse through nested object/array/call
+  expressions and propagate only the established unreachable-binding
+  sentinel. A shorthand default may be classified only when its shorthand
+  value is locally proven `undefined`. Do not execute method or accessor
+  bodies, and do not classify an opaque or merely effectful expression as
+  unreachable.
+- Add abstract parity for a throwing property before and after the selected
+  registrar, a throwing spread operand, a computed name, nested object in an
+  array element and call argument, and effectful-but-returning properties.
+  Retain every E-1158 direct/alias/wrapper/argument/async/generator/
+  conditional control and every earlier exact-spread, exact-carrier,
+  declaration/global/awaited/unreachable/value-flow surface.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- An eighteenth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe object-literal
+  evaluation completion before binding, including property order, computed
+  names, spreads, shorthand defaults, nested arrays/objects/call arguments,
+  and conservative method/accessor/opaque handling. Changed bytes invalidate
+  review. The reviewer may not edit, commit, merge, authorize source work, or
+  make prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
