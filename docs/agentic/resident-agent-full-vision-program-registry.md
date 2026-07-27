@@ -43697,3 +43697,99 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1163 — Task14 final-property RED rejected on rest and spread completion
+
+- Recorded at: 2026-07-27T05:48:54Z
+- The nineteenth fresh independent read-only review rejects exact test-only
+  candidate `3bb095746409f13875b1b99411cfb5237e0e7b3e`, tree
+  `b4022f5800ddbc4b7984bc7532df777675125549`, sole parent
+  `62f9829dc3cc7c0418b46d255635d3b7d6e74957`, corrected test blob
+  `a4701297571400053b95e7b0037be12ee8820d61`, and exact review envelope
+  `390ccac845da105a41182164c53fac11385673f6`.
+- Exact identity, scope, envelope parents, source/runtime freezes, ancestry,
+  dependency versions, clean state, diff hygiene, Git integrity, typecheck,
+  factory readiness, mission **20/20**, V4 **20/20**, and contract markers
+  **29 / 20 / 29 / 15** pass. Repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+- Focused execution remains **96 = 94 passed + two causal issuer RED
+  failures** and Task136 card remains **383 = 374 passed + nine failed**.
+  The prior exact 37-file admission signature remains
+  **1,042 = 1,033 passed + nine failed**; the reviewer stops redundant
+  cross-boundary repetition after binding the decisive defects.
+- The reviewer proves three finite candidate-bound local AST
+  symbol-resolution defects. First, object and array rest bindings are
+  projected as an ordinary selected property or element, so the oracle
+  reports the registrar while runtime binds a fresh rest container.
+- Second, exact object-spread completion inspects only evaluation of the
+  spread operand. Runtime `CopyDataProperties` invokes enumerable getters;
+  an exact local getter whose body unconditionally throws prevents the later
+  direct registrar property and all outer binding, but the oracle reports a
+  re-export.
+- Third, object destructuring performs ordinary property `Get`, including an
+  exact literal prototype. An exact `__proto__` object carrying the registrar
+  supplies that inherited value at runtime, while own-definition-only
+  projection reports no violation.
+- Root cause remains confined to the unit-test oracle. E-1162 final
+  own-property order is correct for its admitted corpus but does not model
+  rest-container identity, exact spread-copy getter execution, or exact
+  literal prototype fallback. Product source and both causal Task14 RED
+  failures remain unchanged.
+- Reject exact `3bb09574` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `a4701297`. First add abstract object-rest,
+  array-rest, exact-spread throwing-getter, and literal-prototype controls
+  and reproduce the three mismatch classes while retaining both causal
+  product REDs.
+- Then model rest bindings as fresh containers rather than the registrar
+  identity. Identifier rest targets cannot resolve directly to the registrar;
+  a nested array rest pattern may project only the exact remaining finite
+  slots from an exact array literal. Opaque and unsupported rest contents
+  remain conservative.
+- Extend whole-object completion for exact object spreads through approved
+  wrappers and use-closed immutable local object aliases. During exact spread
+  copying, classify only an enumerable getter whose body is exactly one
+  unconditional throw statement, including recursively exact nested spreads,
+  as preventing completion. Do not execute ordinary method/setter bodies or
+  classify opaque accessors.
+- Extend final selected-value projection to exact literal `__proto__`
+  fallback only when no own selected value remains. Resolve exact local
+  object-literal prototypes through approved wrappers and use-closed
+  immutable aliases; later own direct or spread values shadow the prototype.
+  Null, opaque, mutable, exported, cyclic, accessor, and unsupported
+  prototype values remain conservative. Object spread must not copy a
+  prototype.
+- Add parity for identifier and nested array rest, getter throw before a
+  later direct registrar and inside an aliased/nested exact spread, nonthrowing
+  getters, method/setter nonexecution, exact prototype supply, own-property
+  shadowing, nested exact prototypes, null/opaque prototypes, and
+  prototype-not-copied-by-spread.
+- Retain every earlier duplicate/final-value, exact/opaque object spread,
+  carrier-closure, shorthand/default, object-completion, direct-call,
+  exact-array-spread, exact-carrier, declaration/global/awaited/unreachable/
+  value-flow control.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A twentieth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe rest-container
+  identity, exact spread-copy completion, prototype fallback and shadowing,
+  plus every cumulative binding/value-flow surface. Changed bytes invalidate
+  review. The reviewer may not edit, commit, merge, authorize source work, or
+  make prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
