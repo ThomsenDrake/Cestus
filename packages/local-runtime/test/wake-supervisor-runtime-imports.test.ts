@@ -2582,9 +2582,13 @@ function residentFactoryIssuerAnalysis(
   const indeterminateBindingInitializer = Symbol(
     "indeterminateBindingInitializer"
   );
+  const unreachableBindingInitializer = Symbol(
+    "unreachableBindingInitializer"
+  );
   type BindingInitializer =
     | ts.Expression
     | typeof indeterminateBindingInitializer
+    | typeof unreachableBindingInitializer
     | undefined;
   const registrarImportSymbols = new Set<ts.Symbol>();
   const registrarDeclarations: ts.FunctionDeclaration[] = [];
@@ -2868,6 +2872,7 @@ function residentFactoryIssuerAnalysis(
     if (ts.isIdentifier(name)) {
       return initializer !== undefined &&
         initializer !== indeterminateBindingInitializer &&
+        initializer !== unreachableBindingInitializer &&
         expressionResolvesToRegistrar(initializer, resolving);
     }
     return name.elements.some((element) =>
@@ -2893,6 +2898,7 @@ function residentFactoryIssuerAnalysis(
       containingInitializer,
       resolving
     );
+    if (selected === unreachableBindingInitializer) return false;
     if (selected === indeterminateBindingInitializer) {
       return bindingNameResolvesToRegistrar(
         element.name,
@@ -2947,10 +2953,13 @@ function residentFactoryIssuerAnalysis(
     initializer: BindingInitializer,
     resolving: Set<ts.Symbol>
   ): BindingInitializer {
+    if (initializer === unreachableBindingInitializer) {
+      return unreachableBindingInitializer;
+    }
     if (initializer === indeterminateBindingInitializer) {
       return indeterminateBindingInitializer;
     }
-    if (initializer === undefined) return undefined;
+    if (initializer === undefined) return unreachableBindingInitializer;
     let value = unwrapRegistrarExpression(initializer);
     const carrierPath = new Set(resolving);
     while (ts.isIdentifier(value)) {
@@ -2964,6 +2973,15 @@ function residentFactoryIssuerAnalysis(
       );
       if (declaration?.initializer === undefined) break;
       value = unwrapRegistrarExpression(declaration.initializer);
+    }
+    if (
+      bindingPatternInitializerIsUnreachable(
+        element.parent,
+        value,
+        new Set(carrierPath)
+      )
+    ) {
+      return unreachableBindingInitializer;
     }
     if (
       ts.isObjectBindingPattern(element.parent) &&
@@ -3004,6 +3022,59 @@ function residentFactoryIssuerAnalysis(
     return expressionIsDefinitelyUndefined(value, new Set(resolving))
       ? undefined
       : indeterminateBindingInitializer;
+  }
+
+  function bindingPatternInitializerIsUnreachable(
+    pattern: ts.ArrayBindingPattern | ts.ObjectBindingPattern,
+    initializer: ts.Expression,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (
+      initializer.kind === ts.SyntaxKind.NullKeyword ||
+      expressionIsDefinitelyUndefined(initializer, new Set(resolving))
+    ) {
+      return true;
+    }
+    return ts.isArrayBindingPattern(pattern) &&
+      expressionIsDefinitelyNonIterable(initializer, resolving);
+  }
+
+  function expressionIsDefinitelyNonIterable(
+    expression: ts.Expression,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    const value = unwrapRegistrarExpression(expression);
+    if (
+      value.kind === ts.SyntaxKind.NullKeyword ||
+      expressionIsDefinitelyUndefined(value, new Set(resolving))
+    ) {
+      return true;
+    }
+    if (ts.isIdentifier(value)) {
+      const initializer = localConstInitializer(value, resolving);
+      return initializer !== undefined &&
+        expressionIsDefinitelyNonIterable(initializer, resolving);
+    }
+    if (
+      value.kind === ts.SyntaxKind.TrueKeyword ||
+      value.kind === ts.SyntaxKind.FalseKeyword ||
+      staticNumericResult(value) !== undefined
+    ) {
+      return true;
+    }
+    if (ts.isObjectLiteralExpression(value)) {
+      return value.properties.every((property) =>
+        !ts.isSpreadAssignment(property) &&
+        (
+          !("name" in property) ||
+          !ts.isComputedPropertyName(property.name)
+        )
+      );
+    }
+    return ts.isArrowFunction(value) ||
+      ts.isFunctionExpression(value) ||
+      ts.isClassExpression(value) ||
+      ts.isRegularExpressionLiteral(value);
   }
 
   function bindingPropertyName(
@@ -3942,6 +4013,26 @@ describe("wake supervisor runtime import boundary", () => {
          ]] = [[undefined]];`
       ],
       [
+        "exported usable empty object outer default",
+        `${exactComposition}
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           } = {}
+         } = {};`
+      ],
+      [
+        "exported usable empty array outer default",
+        `${exactComposition}
+         export const {
+           a: [
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           ] = []
+         } = {};`
+      ],
+      [
         "exported comma-expression alias binding",
         `${exactComposition}
          export const exposedRegistrar = (
@@ -3991,6 +4082,100 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          ]] = [undefined];`
+      ],
+      [
+        "undefined object outer default does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           } = undefined
+         } = {};`
+      ],
+      [
+        "null object outer default does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           } = null
+         } = {};`
+      ],
+      [
+        "undefined array outer default does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: [
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           ] = undefined
+         } = {};`
+      ],
+      [
+        "null array outer default does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: [
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           ] = null
+         } = {};`
+      ],
+      [
+        "direct null object pattern does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         } = null;`
+      ],
+      [
+        "direct null array pattern does not evaluate nested default",
+        `${exactComposition}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = null;`
+      ],
+      [
+        "numeric array carrier does not evaluate nested default",
+        `${exactComposition}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = 1;`
+      ],
+      [
+        "plain-object array carrier does not evaluate nested default",
+        `${exactComposition}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = {};`
+      ],
+      [
+        "numeric array outer default does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: [
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           ] = 1
+         } = {};`
+      ],
+      [
+        "plain-object array outer default does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: [
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           ] = {}
+         } = {};`
       ]
     ] as const) {
       expect.soft(analyzeControl(source).violations, name).toEqual([]);
