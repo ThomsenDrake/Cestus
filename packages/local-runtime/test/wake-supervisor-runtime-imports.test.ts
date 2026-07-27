@@ -3018,9 +3018,11 @@ function residentFactoryIssuerAnalysis(
         value,
         new Set(resolving)
       );
-      return slots === undefined
-        ? indeterminateBindingInitializer
-        : slots[index];
+      if (slots === unreachableBindingInitializer) {
+        return unreachableBindingInitializer;
+      }
+      if (slots === undefined) return indeterminateBindingInitializer;
+      return slots[index];
     }
     return expressionIsDefinitelyUndefined(value, new Set(resolving))
       ? undefined
@@ -3030,7 +3032,10 @@ function residentFactoryIssuerAnalysis(
   function exactArrayLiteralBindingSlots(
     array: ts.ArrayLiteralExpression,
     resolving: Set<ts.Symbol>
-  ): readonly (ts.Expression | undefined)[] | undefined {
+  ):
+    | readonly (ts.Expression | undefined)[]
+    | typeof unreachableBindingInitializer
+    | undefined {
     const slots: (ts.Expression | undefined)[] = [];
     for (const element of array.elements) {
       if (ts.isOmittedExpression(element)) {
@@ -3038,6 +3043,14 @@ function residentFactoryIssuerAnalysis(
         continue;
       }
       if (!ts.isSpreadElement(element)) {
+        if (
+          expressionEvaluationIsUnreachable(
+            element,
+            new Set(resolving)
+          )
+        ) {
+          return unreachableBindingInitializer;
+        }
         slots.push(element);
         continue;
       }
@@ -3052,10 +3065,133 @@ function residentFactoryIssuerAnalysis(
         spreadArray,
         spreadResolving
       );
+      if (spreadSlots === unreachableBindingInitializer) {
+        return unreachableBindingInitializer;
+      }
       if (spreadSlots === undefined) return undefined;
       slots.push(...spreadSlots);
     }
     return slots;
+  }
+
+  function expressionEvaluationIsUnreachable(
+    expression: ts.Expression,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    const value = unwrapRegistrarExpression(expression);
+    if (ts.isArrayLiteralExpression(value)) {
+      return exactArrayLiteralBindingSlots(value, resolving) ===
+        unreachableBindingInitializer;
+    }
+    if (
+      !ts.isCallExpression(value) ||
+      value.questionDotToken !== undefined ||
+      value.arguments.some(ts.isSpreadElement)
+    ) {
+      return false;
+    }
+    if (
+      value.arguments.some((argument) =>
+        expressionEvaluationIsUnreachable(
+          argument,
+          new Set(resolving)
+        )
+      )
+    ) {
+      return true;
+    }
+    return callableExpressionAlwaysThrows(
+      value.expression,
+      resolving,
+      value.expression
+    );
+  }
+
+  function callableExpressionAlwaysThrows(
+    expression: ts.LeftHandSideExpression,
+    resolving: Set<ts.Symbol>,
+    exactUse: ts.Expression
+  ): boolean {
+    const value = unwrapRegistrarExpression(expression);
+    if (
+      ts.isArrowFunction(value) ||
+      ts.isFunctionExpression(value)
+    ) {
+      return functionBodyAlwaysThrows(value);
+    }
+    if (!ts.isIdentifier(value)) return false;
+    const symbol = checker.getSymbolAtLocation(value);
+    if (
+      symbol === undefined ||
+      resolving.has(symbol) ||
+      !symbolHasOnlyImmutableCarrierUses(
+        symbol,
+        new Set(resolving),
+        exactUse
+      )
+    ) {
+      return false;
+    }
+    const declaration = (symbol.declarations ?? []).find(
+      (candidate): candidate is
+        | ts.FunctionDeclaration
+        | ts.VariableDeclaration =>
+        (
+          ts.isFunctionDeclaration(candidate) &&
+          candidate.body !== undefined
+        ) ||
+        (
+          ts.isVariableDeclaration(candidate) &&
+          candidate.initializer !== undefined &&
+          (candidate.parent.flags & ts.NodeFlags.Const) !== 0 &&
+          (
+            !ts.isVariableStatement(candidate.parent.parent) ||
+            candidate.parent.parent.modifiers?.some((modifier) =>
+              modifier.kind === ts.SyntaxKind.ExportKeyword ||
+              modifier.kind === ts.SyntaxKind.DefaultKeyword
+            ) !== true
+          )
+        )
+    );
+    if (declaration === undefined) return false;
+    if (ts.isFunctionDeclaration(declaration)) {
+      return functionBodyAlwaysThrows(declaration);
+    }
+    const initializer = unwrapRegistrarExpression(
+      declaration.initializer!
+    );
+    if (
+      ts.isArrowFunction(initializer) ||
+      ts.isFunctionExpression(initializer)
+    ) {
+      return functionBodyAlwaysThrows(initializer);
+    }
+    if (!ts.isLeftHandSideExpression(initializer)) return false;
+    const nextResolving = new Set(resolving);
+    nextResolving.add(symbol);
+    return callableExpressionAlwaysThrows(
+      initializer,
+      nextResolving,
+      declaration.initializer!
+    );
+  }
+
+  function functionBodyAlwaysThrows(
+    declaration:
+      | ts.FunctionDeclaration
+      | ts.FunctionExpression
+      | ts.ArrowFunction
+  ): boolean {
+    const body = declaration.body;
+    return declaration.asteriskToken === undefined &&
+      !declaration.modifiers?.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.AsyncKeyword
+      ) &&
+      body !== undefined &&
+      ts.isBlock(body) &&
+      body.statements.length === 1 &&
+      body.statements[0] !== undefined &&
+      ts.isThrowStatement(body.statements[0]);
   }
 
   function exactSpreadArrayLiteral(
@@ -4392,6 +4528,19 @@ describe("wake supervisor runtime import boundary", () => {
          ]] = [...opaqueValues];`
       ],
       [
+        "returning spread element still permits registrar binding",
+        `${exactComposition}
+         function completeBeforeBinding(): number {
+           return 0;
+         }
+         export const [, exposedRegistrar] = [
+           ...[
+             completeBeforeBinding(),
+             registerResidentLoopFactoryAuthorityReadback
+           ]
+         ];`
+      ],
+      [
         "exported usable empty object outer default",
         `${exactComposition}
          export const {
@@ -4801,6 +4950,46 @@ describe("wake supervisor runtime import boundary", () => {
              registerResidentLoopFactoryAuthorityReadback
          ]] = [
            ...(spreadAlias satisfies readonly unknown[])
+         ];`
+      ],
+      [
+        "throwing spread element prevents later registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const [, exposedRegistrar] = [
+           ...[
+             stopBeforeBinding(),
+             registerResidentLoopFactoryAuthorityReadback
+           ]
+         ];`
+      ],
+      [
+        "later throwing spread element prevents earlier registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const [exposedRegistrar] = [
+           ...[
+             registerResidentLoopFactoryAuthorityReadback,
+             stopBeforeBinding()
+           ]
+         ];`
+      ],
+      [
+        "aliased throwing spread element prevents registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         const stopAlias = stopBeforeBinding;
+         export const [, exposedRegistrar] = [
+           ...[
+             (stopAlias satisfies typeof stopBeforeBinding)(),
+             registerResidentLoopFactoryAuthorityReadback
+           ]
          ];`
       ],
       [
