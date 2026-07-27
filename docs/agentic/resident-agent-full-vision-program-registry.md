@@ -41781,3 +41781,89 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1139 — Nested-default Task14 issuer RED rejected; selection-state oracle correction authorized
+
+- Recorded at: 2026-07-27T00:36:09Z
+- Seventh completely fresh independent read-only reviewer
+  `/root/task136_e1138_nested_default_red_review` returns **REJECTED** for
+  exact candidate `b1bb17b8abd69196dca254be8b1787cfb424d20d`, tree
+  `a5891d30bac6e1a65cf7f4681683a22de4450dd8`, sole parent
+  `ee50cffc61f5a033eb94efed7dba5d423ae0295a`, and no substitute candidate.
+  Review remained read-only beneath exact clean E-1138 admission merge
+  `3645185858ae9bd92a29e670fcec7e45bd1bfd34`; no byte or ref changed.
+- The reviewer proves the one-condition correction conflates an opaque
+  awaited projection with a statically absent or definitely undefined direct
+  outer value. It traverses an inner object or array default even when the
+  outer nested binding has no default and JavaScript throws before evaluating
+  that inner default.
+- Abstract direct object and array literals with missing outer elements
+  therefore report `registrar-reexport` although no registrar value is
+  exported. Direct explicit-undefined outer values have the same throwing
+  behavior. The candidate's existing direct parity controls contain a valid
+  nested carrier whose leaf is undefined, so they do not cover this
+  distinction. This is a local AST symbol-resolution oracle defect, not a
+  product defect.
+- Reject exact `b1bb17b8`; it is not approved, integrated, source authority,
+  Task14 approval/integration, Task15 authority, a Task136 product
+  candidate, strict record 29, repository closure, or release. Preserve
+  rejected candidates `b1bb17b8`, `e34a03ad`, `1d688e5a`, `5c5f4f47`,
+  `e12008b8`, `86b699cd`, `db03309f`, `619fd752`, and `f607eb3c`, their
+  exact blobs and reviews, and every earlier design, plan, RED, GREEN,
+  rejection, authority, assurance, product, and release commit in ancestry.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `cbc9cdfc933d50e929e0fd138979a597c99c76b3`. Add abstract local accepted
+  controls for missing and explicit-undefined direct outer object/array
+  values, retain the valid nested-leaf parity controls, and add an opaque
+  awaited nested carrier with an explicit outer default to prove both
+  possible selection paths remain conservative.
+- Represent a selected binding initializer with an explicit finite
+  distinction between statically known absent/undefined and indeterminate
+  projection. A known absent or definitely undefined outer value may inspect
+  only its explicit outer default; without one, a nested binding throws and
+  its inner defaults are unreachable. An indeterminate projection must
+  consider both a possibly defined nested carrier and, when present, the
+  explicit outer-default path. Preserve exact known object/array property and
+  index selection.
+- Preserve exact AST/checker-symbol analysis, conservative arbitrary-awaited
+  results, explicit awaited registrar traversal, recursive number/bigint
+  prefix reachability, exported declarations and callable expressions,
+  dot/bracket bound callables, destructured and local-carrier aliases,
+  conditional/comma/short-circuit results, local/imported re-exports, and all
+  unrelated positives. Do not execute analyzed fixtures, scan source text,
+  rely on spelling, broaden production importer/caller allowances, or
+  substitute the static oracle for runtime exact identity.
+- Freeze runtime test
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`, rejected sources at composition
+  `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`, wake runtime
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, mounted-store test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, global import policy, FC-Core
+  controls, and every other source/test/claim/design/plan/contract/mission/
+  dependency/route/provider/credential/release/unrelated byte.
+- Preserve focused **96 = 94 passed + two causal issuer failures**, card
+  **383 = 374 passed + nine failed**, cross-boundary
+  **1,042 = 1,033 passed + nine failed**, typecheck, factory, mission
+  **20/20**, V4 **20/20**, markers **29 / 20 / 29 / 15**, and the exact
+  legacy-staging repository first stop. Reproduce exact one-test scope,
+  freezes, ancestry, dependencies, diff/integrity, timeout envelope, and
+  final clean state.
+- Commit one exact one-test descendant and admit it to an eighth completely
+  fresh independent read-only reviewer. Every earlier Task14 reviewer,
+  candidate author, correction-scope analyst, test/source author/reviewer/
+  verifier/analyst, amendment reviewer, and coordinator is ineligible to
+  approve. Changed bytes invalidate review. No product source may change
+  until exact corrected RED approval, append-only recording,
+  history-preserving integration, and a separate two-source GREEN
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact RED rejection and one-test oracle-correction
+  authority, not a corrected candidate, source correction, Task14
+  approval/integration, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
