@@ -25,6 +25,7 @@ import {
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
   createLegacyImportRuntime,
+  deriveLegacyMigrationReportReadOnly,
   type LegacyImportRuntime,
   type LegacyReportData,
   type LegacyStagingPreviewData
@@ -41,6 +42,7 @@ import { stableLegacyAssertionId } from "./legacy-staging.js";
 import {
   legacyReportStreamId,
   readCanonicalStagedLegacyReport,
+  reportArtifactJson,
   sha256,
   stableJson,
   type LegacyMigrationReport
@@ -1235,10 +1237,35 @@ export function createCentralFloridaIcePreviewWorkflow(
   const now = overrides.now ?? (() => new Date().toISOString());
   const filesystem = createNodePreviewFilesystemPort();
   const mounts = createFindmntPreviewMountInspectionPort();
-  const initialInspection = overrides.initialInspection ?? (() =>
-    inspectCentralFloridaIceCandidates({ filesystem, mounts }, { codeSha: codeSha() }));
-  const resumeInspection = overrides.resumeInspection ?? (() =>
-    revalidateCentralFloridaIceCandidates({ filesystem, mounts }, { codeSha: codeSha() }));
+  const readExecutionSha = (): string => {
+    const current = codeSha();
+    validateCodeSha(current);
+    return current;
+  };
+  const initialInspection = (): CentralFloridaIceCandidateInspection => {
+    const current = readExecutionSha();
+    const inspection = overrides.initialInspection?.()
+      ?? inspectCentralFloridaIceCandidates(
+        { filesystem, mounts },
+        { codeSha: current }
+      );
+    if (inspection.code.codeSha !== current) {
+      throw new Error("source candidate material or code identity changed");
+    }
+    return inspection;
+  };
+  const resumeInspection = (): CentralFloridaIceCandidateInspection => {
+    const current = readExecutionSha();
+    const inspection = overrides.resumeInspection?.()
+      ?? revalidateCentralFloridaIceCandidates(
+        { filesystem, mounts },
+        { codeSha: current }
+      );
+    if (inspection.code.codeSha !== current) {
+      throw new Error("source candidate material or code identity changed");
+    }
+    return inspection;
+  };
   const createWorkspace = overrides.createWorkspace ?? (() => {
     createPortableWorkspace({
       rootDir: CENTRAL_FL_ICE_PREVIEW.destinationRoot,
@@ -1309,7 +1336,35 @@ export function createCentralFloridaIcePreviewWorkflow(
         const before = await readWorkspaceSnapshot(workspace);
         if (recoveringWithoutCheckpoint) {
           const recoveredReport = await readRecoverableInspectionReport(workspace, before);
-          assertRecoverableInspectionLedger(before, inspection, recoveredReport);
+          const independentlyDerivedReport = await deriveLegacyMigrationReportReadOnly({
+            actor: CENTRAL_FL_ICE_PREVIEW_AGENT,
+            sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+            scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+            sourceRoot: inspection.sourceIdentity.rootRealpath,
+            selectedFiles: inspection.candidates.map((candidate) => ({
+              occurrenceId: candidate.occurrenceId,
+              sourcePath: candidate.sourcePath,
+              contentHash: candidate.contentHash,
+              sizeBytes: candidate.sizeBytes,
+              deviceId: candidate.deviceId,
+              inode: candidate.inode
+            }))
+          });
+          assertInspectionsMatch(inspection, resumeInspection());
+          if (
+            reportArtifactJson(recoveredReport)
+            !== reportArtifactJson(independentlyDerivedReport)
+          ) {
+            throw new Error(
+              "recovered report does not match the independently derived report"
+            );
+          }
+          assertRecoverableInspectionLedger(
+            before,
+            inspection,
+            independentlyDerivedReport
+          );
+          assertInspectionsMatch(inspection, resumeInspection());
           mayPersistCheckpoint = true;
         }
         const inspected = await runtime.inspect({
@@ -1480,6 +1535,7 @@ export function createCentralFloridaIcePreviewWorkflow(
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
       const runtime = legacyRuntimeFactory(workspace);
       const before = await readWorkspaceSnapshot(workspace);
+      assertInspectionMatchesCheckpoint(resumeInspection(), latest);
       const approval = requireLegacySuccess(await runtime.approveRawImport({
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
@@ -2100,13 +2156,38 @@ function exactFindmntFilesystem(value: unknown): {
 }
 
 function readCurrentGitSha(): string {
-  const output = execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd: resolve(import.meta.dirname, "../../.."),
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"]
-  }).trim();
-  validateCodeSha(output);
-  return output;
+  const repositoryRoot = resolve(import.meta.dirname, "../../..");
+  const firstHead = readFixedGitOutput(repositoryRoot, "head").trim();
+  validateCodeSha(firstHead);
+  const status = readFixedGitOutput(repositoryRoot, "status");
+  if (status.length !== 0) {
+    throw new Error("preview Git execution identity is dirty");
+  }
+  const secondHead = readFixedGitOutput(repositoryRoot, "head").trim();
+  validateCodeSha(secondHead);
+  if (firstHead !== secondHead) {
+    throw new Error("preview Git HEAD changed while execution identity was verified");
+  }
+  return firstHead;
+}
+
+function readFixedGitOutput(
+  repositoryRoot: string,
+  command: "head" | "status"
+): string {
+  const argv = command === "head"
+    ? ["rev-parse", "--verify", "HEAD"] as const
+    : ["status", "--porcelain=v1", "--untracked-files=all"] as const;
+  try {
+    return execFileSync("git", [...argv], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    throw new Error("preview Git execution identity could not be verified");
+  }
 }
 
 export function createFileCentralFloridaIcePreviewCheckpointStore(

@@ -267,3 +267,35 @@ test-first reconciliation pass:
 
 No live SSD inspection, preview workspace creation, provider transfer, or
 human-gate transition is part of this remediation task.
+
+## Task 3 Fourth Review Remediation
+
+The fourth review of remediation commit
+`6911a67736c16b34ed43e7e896defdba54d85893` requires a bounded,
+test-first authority pass:
+
+1. construct a real portable no-checkpoint workspace whose report event and
+   canonical derivative are coherently replaced, and prove recovery rejects it
+   without any artifact, ledger-event, or checkpoint write;
+2. add a persistence-free report derivation contract over the existing legacy
+   inspector, detector/parser, exact selected-file reader, and deterministic
+   report builder, using only an ephemeral in-memory ledger;
+3. compare recovered canonical report bytes and full event material to the
+   independently derived current-source report before recovery can become
+   checkpoint-persistent;
+4. replace `rev-parse HEAD`-only execution identity with a fixed-cwd,
+   fixed-argument, no-shell clean Git check covering staged, unstaged, and all
+   untracked material plus a stable verified `HEAD`;
+5. prove dirty identity before start, dirty identity between phases, a clean
+   changed `HEAD`, and dirty identity after manifest validations all suppress
+   the next artifact, ledger, or checkpoint write;
+6. retain exact source/destination revalidation adjacency and exact stored-SHA
+   equality at every command and pre-write authority boundary;
+7. rerun the focused preview suite, seven-file retry boundary, nine-file
+   preview boundary, all ingestion tests, ontology/bootstrap plus specialist
+   boundary, typecheck, UI build, factory readiness, and `git diff --check`;
+8. update durable claim evidence and SDD scratch state, audit owned-file scope,
+   and commit atomically for another fresh dual review.
+
+No live SSD inspection, preview workspace creation, provider transfer, or
+human-gate transition is part of this remediation task.

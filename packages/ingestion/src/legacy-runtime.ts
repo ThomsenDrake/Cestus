@@ -188,6 +188,48 @@ export interface LegacyImportRuntime {
   stageApproved(input: LegacyRuntimeStageApprovedInput): Promise<LegacyImportRuntimeResult<LegacyStageResultData>>;
 }
 
+export interface DeriveLegacyMigrationReportReadOnlyInput {
+  readonly actor: ActorRef;
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly sourceRoot: string;
+  readonly selectedFiles: readonly LocalFilesystemSelectedFile[];
+}
+
+/**
+ * Independently derives deterministic report truth from an exact selected
+ * source set without accepting a mounted workspace or persistent store.
+ *
+ * Scanner events exist only in the ephemeral in-memory ledger. Source bytes
+ * are read through the selected-file inspector contract, which opens them
+ * read-only and rechecks device, inode, size, and content hash.
+ */
+export async function deriveLegacyMigrationReportReadOnly(
+  input: DeriveLegacyMigrationReportReadOnlyInput
+): Promise<LegacyMigrationReport> {
+  const actor = actorRefSchema.parse(input.actor);
+  const selectedFiles = normalizeLocalFilesystemSelectedFiles(input.selectedFiles);
+  const inspected = await inspectAndParseLegacyRoot({
+    ledger: new InMemoryEventLedger(),
+    actor,
+    sourceCollectionId: input.sourceCollectionId,
+    scanBatchId: input.scanBatchId,
+    sourceRoot: resolve(input.sourceRoot),
+    selectedFiles
+  });
+  if (!inspected.ok) {
+    throw new Error("legacy report could not be independently derived from exact source bytes");
+  }
+  return buildLegacyMigrationReport({
+    sourceCollectionId: inspected.reportInput.sourceCollectionId,
+    scanBatchId: inspected.reportInput.scanBatchId,
+    files: inspected.reportInput.files,
+    detections: inspected.reportInput.detections,
+    proposedAssertionCandidates: inspected.proposedAssertionCandidates,
+    quarantineEntries: inspected.quarantineEntries
+  });
+}
+
 export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput): LegacyImportRuntime {
   const actor = actorRefSchema.parse(input.actor);
 

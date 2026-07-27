@@ -304,3 +304,37 @@ Only nondeterministic event timestamps are excluded from equality. Report
 deterministic authority remain part of the comparison. These are
 preview-specific reconciliation checks over the existing ledger and runtime;
 they do not introduce a second ledger, storage layer, or ontology truth.
+
+## Fourth Review Amendment: Independent Source Truth and Clean Execution Identity
+
+The fourth Task 3 review rejected recovery that treated a recovered report as
+its own expected material and execution identity that proved only `HEAD`.
+Recovery and every supervised command now enforce two additional authorities:
+
+- A recovered report event and derivative are untrusted until the complete
+  deterministic report is independently derived from the current exact
+  selected source bytes. The derivation reuses the existing legacy inspector,
+  conservative detector/parser, and report builder with an ephemeral in-memory
+  ledger. It receives no mounted workspace, blob store, derivative store, or
+  checkpoint capability, and selected-file reads retain the existing
+  read-only, no-follow, device/inode/size/hash checks.
+- Recovery compares the full canonical report artifact bytes and the full
+  expected report event envelope to that independent derivation. A coordinated
+  foreign report event plus matching foreign derivative fails closed before
+  recovery may persist any artifact, ledger event, or checkpoint.
+- Execution identity is a clean Git checkout at one exact commit, not merely a
+  syntactically valid `HEAD`. Production reads use only fixed `git` executable
+  arguments and the fixed repository root: verified `HEAD`, porcelain status
+  including all untracked files, then verified `HEAD` again. Tracked staged or
+  unstaged changes, untracked files, command failure, or a changing `HEAD`
+  fail closed without exposing status output.
+- The clean current execution SHA must equal the SHA embedded in the current
+  inspection and every durable checkpoint. This is checked at command entry,
+  during the existing source/destination authority callbacks, after long
+  operations, immediately before artifact or ledger effects where the
+  underlying runtime offers a callback, before every checkpoint append, and
+  after final engineering validation before manifest persistence.
+
+These checks preserve the immediate source/destination revalidation around
+writes. They do not add a shell, accept caller-supplied commands, inspect
+authentication material, or change the approved live-data gates.
