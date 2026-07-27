@@ -42514,3 +42514,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1148 — Exact-carrier-complete Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-27T02:27:34Z
+- Exact forward test-only descendant
+  `c50be277a31cc48cef1855ceb0885ae58436371a`, tree
+  `c9746458bfb8faf3dfb1b17a7ae28b176b5ae335`, has sole parent exact E-1147
+  authority merge `ed8e421a00994a22a3a82e26ae32dbd0b510f315` and exact subject
+  `test(local-runtime): bind immutable proof to exact carrier`. Rejected
+  candidate `091dc890` and every earlier Task14 candidate remain immutable
+  ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+63 / -14** from rejected blob
+  `2388ecb3245e11b5a832fc363df3527480568fd4` to exact blob
+  `fce45409df6421b81fb83ff7da930a931055ee37`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Before correction, the E-1147 class-getter control returns no violation:
+  an earlier object destructure activates the named static getter and
+  installs constructor iterability before the later array binding. After
+  correction it rejects because the earlier object destructure is a
+  separate use, while runtime exact registrar-default selection is retained.
+- The selected array binding's original unwrapped carrier initializer is now
+  threaded through non-iterability, declaration, symbol-use, and recursive
+  constant-alias analysis. Only that exact expression node in that exact
+  array binding is an allowed carrier use. Unexported immutable aliases may
+  recursively lead to it; every other object/array binding, occurrence,
+  mutable/exported alias, escape, unsupported use, or cycle remains
+  indeterminate.
+- Every E-1146 declaration, own/static/inherited iterator, alias/use escape,
+  instance-vs-constructor, implemented-interface, harmless-static-member,
+  global-numeric, prefix, shadowed-name, and earlier cumulative reachability
+  control remains exact.
+- Exact focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; unchanged runtime RED remains pre-store
+  and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The failure set is only the two Task14 issuer REDs plus the seven preserved
+  Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** with fixture-heavy commands isolated under
+  `TMPDIR=/dev/shm`; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, repository-closure, or release-success marker.
+- Exact one-test scope, source/runtime/other-test freezes, authority and
+  rejected-candidate ancestry, TypeScript 5.9.3 and Vitest 4.1.9
+  dependencies, diff hygiene, integrity, and clean state pass. Exact frozen
+  source blobs remain composition `b9a679c0`, wake `2fee564d`, and mounted
+  lifecycle store `c1a7d473`. No source, claim, design, plan, contract,
+  mission, dependency, route, provider, credential, release, or unrelated
+  byte changed.
+- Admit only exact `c50be277` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a twelfth completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `fce45409`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce the exact final array-carrier node
+  across direct and constant-alias paths, separate object/array destructures,
+  getter activation, and every retained declaration/global/awaited/
+  unreachable/value-flow surface. Probe for a further finite candidate-bound
+  gap and reproduce causal runtime/static failures, focused/card/cross
+  signatures, assurance, repository-first-stop, exact scope/freezes/
+  ancestry/dependencies/diff/integrity/clean state. Static analysis must
+  supplement, not substitute for runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  GREEN authority, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
