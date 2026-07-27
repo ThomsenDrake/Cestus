@@ -2025,9 +2025,11 @@ state and the complete legitimate composition issuance flow.
 - Exported `createWakeSupervisorRuntime(input)` remains the generic public wake
   constructor. It returns a runtime whose private state has no factory
   registrar capability and can never acquire a factory readback.
-- A nonexported factory-only issuance function creates the exact wake runtime
-  plus a one-shot `registerReadback(readback)` closure. Both are consumed only
-  by `createResidentLoopFactoryComposition` in the same module.
+- Nonexported `issueResidentLoopFactoryWakeRuntime` creates the exact wake
+  runtime plus a one-shot `registerReadback(readback)` closure. Its private
+  issuance pair is returned only to
+  `createResidentLoopFactoryCompositionForFacade` in the same
+  `wake-supervisor-runtime.ts` lexical module.
 - The registrar closure captures its exact wake-runtime state lexically. It
   checks accepted-start readiness and unused state before inspecting the
   proposed readback, freezes no caller object, and stores only the exact
@@ -2049,6 +2051,9 @@ mounted-provider types; one distinctly named safe composition-builder value
 from the wake module; wake runtime/input types in a separate type import; and
 the local runtime-handle type.
 
+The frozen released FC-Core import-policy test remains exact blob
+`ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
+
 The facade locally declares the existing composition input, bind-input,
 readback, and composition interfaces. Its only value implementation is the
 existing exported `createResidentLoopFactoryComposition(rawInput)` wrapper,
@@ -2057,12 +2062,13 @@ composition object. It uses no export-list syntax and contains no issuer,
 registrar, wake construction, bind implementation, mutable state, provider
 operation, route, activation, or fallback.
 
-The distinctly named safe wake-module builder is callable behavior, not an
-authority capability. It accepts only the same untrusted `rawInput`, performs
-the complete co-located composition flow, and never accepts or returns the
-private registrar. Static policy permits exactly the one facade import and
-wrapper call; it forbids every alternate production importer, alias, re-export,
-or caller.
+`createResidentLoopFactoryCompositionForFacade` is callable behavior, not an
+authority capability. It accepts only the same untrusted `rawInput`, consumes
+the private issuance pair inside the wake module, performs the complete
+co-located composition flow, and never accepts or returns the private
+registrar. Static policy permits exactly the one facade import and wrapper
+call; it forbids every alternate production importer, alias, re-export, or
+caller.
 
 The safe public composition behavior is unchanged: normalize one caller input;
 create and start one exact wake runtime; authenticate provider and handoff
