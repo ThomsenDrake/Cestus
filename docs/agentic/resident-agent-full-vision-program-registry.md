@@ -45256,3 +45256,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, strict record 29, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1183 — Task14 lexical amendment pin and consumer correction authorized
+
+- Recorded at: 2026-07-27T13:17:32Z
+- Completely fresh independent read-only reviewer
+  `/root/task14_e1182_corrected_design_review` rejects exact corrected
+  two-document candidate
+  `a1d292a90a7e76bf98283f02b4786caff0d6186c`, tree
+  `e497f97fa4144056bdedb6446b65fa737adf87b1`, sole parent exact E-1182
+  authority merge `0a8d55a9abce4073d8244bdca3f66c00a8b249b6`.
+  The candidate remains immutable and is not approved or integrated.
+- Exact candidate scope is the Task136 design and plan only,
+  **+87 / -28**. Exact identity, ancestry, 33-path authority, focused
+  **96 = 95 + 1**, card **383 = 375 + 8**, cross-boundary
+  **1,042 = 1,034 + 8**, standalone typecheck, factory readiness, mission
+  and V4 **20/20**, markers **29 / 20 / 29 / 15**, repository first stop,
+  dependencies, diff, integrity, and clean state pass independent review.
+- E-1182 contains one incorrect frozen-test transcription:
+  `ad06c10b0c52af4435cd9cb0bde818a9b33aebd5` does not exist. The exact
+  committed frozen
+  `packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts`
+  blob is
+  `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
+  This event corrects the pin forward; E-1182 remains immutable historical
+  evidence of the rejected candidate.
+- The candidate also ambiguously names the private issuance consumer. Correct
+  the design and plan to state exactly: nonexported
+  `issueResidentLoopFactoryWakeRuntime` returns its private issuance pair only
+  to `createResidentLoopFactoryCompositionForFacade` in the same
+  `wake-supervisor-runtime.ts` lexical module. That safe builder consumes the
+  registrar internally and neither accepts nor returns it.
+- `resident-loop-factory-composition.ts` locally exports only the existing
+  public `createResidentLoopFactoryComposition` wrapper and composition
+  interfaces/types. Its wrapper calls the distinctly named safe builder. The
+  two names are not aliases and no private capability crosses the module
+  boundary.
+- Reject exact `a1d292a9` as `reviewing -> implementing`. Authorize only the
+  smallest forward design/plan correction that records the exact frozen blob
+  and removes the consumer-name ambiguity. No package, test, claim, contract,
+  mission, assurance, dependency, configuration, route, or unrelated path may
+  change.
+- Commit the forward two-document correction and obtain another completely
+  fresh independent read-only review. Test edits remain unauthorized until
+  exact corrected amendment approval, append-only recording,
+  history-preserving integration, and a separate exact starting-blob
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is documentation rejection and exact forward-correction
+  authority only, not a corrected candidate, test RED authority, source
+  GREEN, Task14 completion, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
