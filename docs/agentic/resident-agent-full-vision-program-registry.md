@@ -45049,3 +45049,64 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1180 — Direct-constructor issuer runtime RED integrated
+
+- Recorded at: 2026-07-27T10:01:36Z
+- Exact independently approved test-only RED
+  `a2022ae2993ece07babd483f02d9e0f8dc39a04e`, tree
+  `94b86317cdc38a803838f034bba1e302b9e22a52`, is integrated by exact
+  history-preserving no-ff merge
+  `2c3debf7aa4b9198de68100fbe9d0e920d25cd74`, tree
+  `5a985c3864041eefe2f354d3e8650ef347a658db`. Its first parent is exact
+  E-1179 approval commit
+  `c6475c9c7c963210b8cd19e3c0ed88f9ffb80890`; its second parent is the
+  exact reviewed candidate.
+- Integrated runtime-test blob is exact
+  `8eb53787c4a539718f4ea74c8b1fab32639635be`. Oracle remains exact
+  `2bfc4b368fddbd309af0f0ab08df51327e410be6`; mounted test remains
+  exact `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`.
+- The merge's first-parent delta also materializes two rejected-source
+  lineage paths absent from the coordinator tree. Composition
+  `ecb114bb1cc3c054c0d60400b7e3cc746823736b` and wake runtime
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6` are byte-identical in the
+  candidate and candidate parent, so neither is candidate or new product
+  work. Mounted lifecycle store remains exact
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`.
+- Fresh integration-tree focused execution is exact
+  **96 = 95 passed + one causal direct-constructor Task14 RED failure**.
+  Exact Task136 card is
+  **383 = 375 passed + eight failed**, and exact 37-file cross-boundary
+  execution is **1,042 = 1,034 passed + eight failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The complete failure set is the new Task14 runtime RED plus seven preserved
+  Task15-through-16 REDs; no failure identity changed.
+- Fresh standalone typecheck, factory readiness, mission **20/20**, V4
+  **20/20**, and exact contract markers **29 / 20 / 29 / 15** pass. Mission
+  fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`.
+- Clean integration-tree repository mode exits one after all four markers
+  and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no prefix, closure, record-29, repository, or release marker.
+- Exact merge parents, candidate tree/parent/subject/one-test **+77 / -7**
+  scope, test/source freezes, source-rejection and authority ancestry,
+  TypeScript 5.9.3 and Vitest 4.1.9 dependencies, diff hygiene, strict Git
+  integrity, and final clean state pass.
+- Advance only exact `a2022ae2` corrected Task14 runtime RED
+  `approved -> integrated`. A separate exact Task136 history-preserving
+  authority merge is mandatory before any next authority.
+- Because E-1177 identified that the committed two-module public API may not
+  express a composition-only issuer boundary without a forbidden heuristic,
+  the next bounded action after that forward merge is a read-only coordinator
+  scope/design checkpoint. No source may change until an append-only event
+  separately authorizes an exact forward correction.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected runtime RED integration, not source
+  correction, Task14 completion, Task15 authority, Task136 product
+  candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated actions
+  remain unauthorized.
