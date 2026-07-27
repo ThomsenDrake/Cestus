@@ -41621,3 +41621,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1137 — Awaited-result-complete Task14 issuer RED rejected; nested-default oracle correction authorized
+
+- Recorded at: 2026-07-27T00:07:32Z
+- Sixth completely fresh independent read-only reviewer
+  `/root/task136_e1136_awaited_result_red_review` returns **REJECTED** for
+  exact candidate `e34a03ad24bf7be7221b6e8d19b72c971aa045bf`, tree
+  `08fd00e8f2d033ee56ea3cc77d47c0373951520c`, sole parent
+  `d53095edcceba7aca0f2db40dd6710bf9ff0c76d`, and no substitute candidate.
+  Review remained read-only beneath exact clean E-1136 admission merge
+  `a4583c4c4ac9a0141a81a7a016528ae8485af6d0`; no byte or ref changed.
+- The reviewer proves the candidate misses nested destructuring defaults
+  when the outer carrier is an arbitrary awaited result. An opaque awaited
+  initializer produces no statically selected outer value; if that outer
+  binding element has no initializer, the resolver returns before traversing
+  defaults nested within its object or array binding pattern.
+- Abstract local nested-object and nested-array awaited-result controls each
+  expose the exact registrar through an inner default while the candidate
+  reports no violation. The equivalent direct nested-literal control
+  correctly rejects, isolating the defect to awaited-result projection.
+  Runtime identity independently confirms both awaited controls expose the
+  registrar. This is a local AST symbol-resolution oracle defect, not a
+  product defect.
+- Reject exact `e34a03ad`; it is not approved, integrated, source authority,
+  Task14 approval/integration, Task15 authority, a Task136 product
+  candidate, strict record 29, repository closure, or release. Preserve
+  rejected candidates `e34a03ad`, `1d688e5a`, `5c5f4f47`, `e12008b8`,
+  `86b699cd`, `db03309f`, `619fd752`, and `f607eb3c`, their exact blobs and
+  reviews, and every earlier design, plan, RED, GREEN, rejection, authority,
+  assurance, product, and release commit in ancestry.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `66b02f510ac1e988d3ef8a4f50f7d00acdfcb11a`. Add abstract local awaited
+  nested-object and nested-array destructuring-default controls plus direct
+  nested-literal parity. When an element's selected value is absent or
+  definitely undefined, continue through a nested binding pattern even when
+  that outer element has no explicit default; retain identifier behavior and
+  use an explicit element default when one exists.
+- Preserve exact AST/checker-symbol analysis, conservative arbitrary-awaited
+  results, explicit awaited registrar traversal, recursive number/bigint
+  prefix reachability, exported declarations and callable expressions,
+  dot/bracket bound callables, destructured and local-carrier aliases,
+  conditional/comma/short-circuit results, local/imported re-exports, and all
+  unrelated positives. Do not execute analyzed fixtures, scan source text,
+  rely on spelling, broaden production importer/caller allowances, or
+  substitute the static oracle for runtime exact identity.
+- Freeze runtime test
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`, rejected sources at composition
+  `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`, wake runtime
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, mounted-store test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, global import policy, FC-Core
+  controls, and every other source/test/claim/design/plan/contract/mission/
+  dependency/route/provider/credential/release/unrelated byte.
+- Preserve focused **96 = 94 passed + two causal issuer failures**, card
+  **383 = 374 passed + nine failed**, cross-boundary
+  **1,042 = 1,033 passed + nine failed**, typecheck, factory, mission
+  **20/20**, V4 **20/20**, markers **29 / 20 / 29 / 15**, and the exact
+  legacy-staging repository first stop. Reproduce exact one-test scope,
+  freezes, ancestry, dependencies, diff/integrity, timeout envelope, and
+  final clean state.
+- Commit one exact one-test descendant and admit it to a seventh completely
+  fresh independent read-only reviewer. Every earlier Task14 reviewer,
+  candidate author, correction-scope analyst, test/source author/reviewer/
+  verifier/analyst, amendment reviewer, and coordinator is ineligible to
+  approve. Changed bytes invalidate review. No product source may change
+  until exact corrected RED approval, append-only recording,
+  history-preserving integration, and a separate two-source GREEN
+  authorization.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact RED rejection and one-test oracle-correction
+  authority, not a corrected candidate, source correction, Task14
+  approval/integration, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
