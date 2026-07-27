@@ -44416,3 +44416,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1171 — Task14 selected-undefined RED rejected on aliased void completion
+
+- Recorded at: 2026-07-27T08:07:58Z
+- The twenty-third fresh independent read-only review rejects exact
+  test-only candidate `4d5b9c388b4308fa05112bbf1c3c7e3705c50715`,
+  tree `3b9f04d2e2274e27e2f5c50cea7293c9d4f518ed`, sole parent
+  `29432f6ca8072f7ccd491c97d8f34b67c173a4b2`, corrected test blob
+  `0e36998150f44785edc18c840f24b2324827bd51`, and exact two-parent review
+  envelope `2fb91b307a6adc565daf2448a3b235ab81d9de69`.
+- Exact candidate/envelope identity, tree and parent order, one-file
+  **+146 / -2** scope, oracle blob, frozen source/runtime/other-test blobs,
+  ancestry, TypeScript 5.9.3 and Vitest 4.1.9 dependencies, strict Git
+  integrity, and clean state pass independent reproduction.
+- Exact focused execution independently remains
+  **96 = 94 passed + two causal issuer RED failures**. Typecheck and factory
+  readiness pass. The reviewer stops mission/V4/card/cross repetition under
+  the decisive-defect allowance; exact admission evidence remains bound by
+  E-1170 and is not independently re-attested here.
+- The reviewer proves a candidate-bound local AST symbol-resolution false
+  positive. A use-closed local const is initialized by a void expression
+  whose operand unconditionally throws, then selected through a later exact
+  object binding before a registrar candidate. Runtime stops during the
+  const initializer before the binding, but candidate analysis reports a
+  registrar re-export.
+- The same false positive reproduces through an array selection and a
+  two-hop immutable const alias. The equivalent direct inline void selection
+  correctly reports no violation, isolating the defect to alias traversal.
+  Fixtures and probes remain abstract, local, provider-free, and
+  credential-free.
+- `expressionIsDefinitelyUseClosedUndefined` follows the immutable alias
+  chain but treats any reached void expression as undefined without checking
+  operand completion. Earlier object/array completion sees only the selected
+  alias identifier and does not follow its use-closed initializer, so the
+  operand's noncompletion is lost before default selection.
+- This directly contradicts E-1170's requirement that a throwing void
+  operand prevent the default and all later binding work. The mutable-value
+  correction itself remains effective, product source is unchanged, and
+  both causal Task14 RED failures remain unchanged.
+- Reject exact `4d5b9c38` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `0e369981`. First add abstract object and array
+  selected-value controls for one-hop and multi-hop use-closed local const
+  aliases initialized by a void expression with a locally throwing operand,
+  and reproduce the false positive while retaining both causal product REDs.
+- Extend selected-expression completion only through use-closed immutable
+  local const initializer chains, with exact-use and cycle guards identical
+  to the cumulative carrier proof. A reached void expression must follow its
+  operand completion before it may participate in default activation.
+  Mutable, exported, separately used, cyclic, shadowed, or opaque aliases
+  remain conservative.
+- Add parity for a completing void operand through the same immutable alias
+  depths, for direct inline throwing/completing void selections, and for
+  throwing versus returning defaults before and after registrar candidates.
+  Preserve the E-1170 mutable, exported, separately used, and use-closed
+  undefined controls.
+- Retain every E-1168 array-rest object/final-descriptor case and every
+  earlier ordered binding, rest, spread, prototype, carrier, declaration/
+  global/awaited/unreachable/value-flow control. The correction must change
+  only the one test file and preserve every product/runtime/other-test byte
+  and the exact focused/card/cross signatures.
+- Before admission independently reproduce exact scope, freezes, E-1171
+  authority and rejected-candidate ancestry, dependencies, typecheck,
+  factory readiness, mission and V4 **20/20**, contract markers, repository
+  first-stop, focused/card/cross signatures, diff hygiene, strict Git
+  integrity, and clean state.
+- A twenty-fourth completely fresh independent read-only reviewer,
+  ineligible under every prior author/reviewer/verifier/coordinator
+  exclusion, must inspect the full cumulative RED and independently probe
+  exact void-operand completion through selected-value aliases plus all
+  cumulative binding/value-flow surfaces. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize source work, or make
+  prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
