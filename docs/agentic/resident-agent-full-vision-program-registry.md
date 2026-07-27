@@ -45546,3 +45546,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1188 — Task14 lexical-capability two-test RED rejected
+
+- Recorded at: 2026-07-27T14:40:57Z
+- Completely fresh independent read-only reviewer
+  `/root/task14_e1187_red_review` returns **REJECTED** for exact candidate
+  `f8fd53d3b55bc1fb7e98b5f24a9bc8e639f5f3fd`, tree
+  `50bd9f8e23cdc3cb98663f1e21a70078ac5f0a30`, sole parent
+  `26826dc59c6b894c2586ab43423529da5d2f7463`, inside exact review envelope
+  `f91fccaa481c12248a915b198f4080d351e96dc5`. The envelope has the candidate
+  as first parent and E-1187 admission commit
+  `52761ff5071820342a5b02702d9c7d4093d7af3b` as second parent.
+- Candidate identity, exact two-test **+941 / -216** scope, candidate blobs
+  `cc9c3129f8d36b1edde263d7cafdbd3b219f3538` and
+  `de989fa1b5e6cdb948f262c59549ad858583214b`, all freezes, ancestry,
+  TypeScript 5.9.3, Vitest 4.1.9, dependencies, diff hygiene, Git integrity,
+  registry EOF, and clean state pass fresh independent review.
+- The runtime oracle passes substantive review. The blocking defect is
+  confined to the local TypeScript AST/symbol-resolution oracle: it follows
+  registrar aliases and direct issuer topology but does not census a named or
+  aliased export of the private issuer symbol, and it does not follow callable
+  use of the whole issuance carrier. Those abstract local cases can expose the
+  private issuer or registrar pair without producing the required violation.
+- Fresh independent execution otherwise reproduces exact focused
+  **96 = 94 passed + two Task14 failures**, Task136 card
+  **383 = 374 passed + nine failed**, and cross-boundary
+  **1,042 = 1,033 passed + nine failed**. The other seven failures remain only
+  the preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  pass **20/20**; markers remain **29 / 20 / 29 / 15**. Repository mode exits
+  one and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  with no success, closure, record-29, repository, or release marker.
+  The inherited missing `typescript.js.map` warning and pre-existing dangling
+  Git objects are nonblocking.
+- Reject exact candidate `reviewing -> implementing`. It remains immutable
+  and is not approved or integrated. Authorize only the smallest forward
+  test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`, from
+  exact rejected blob `de989fa1b5e6cdb948f262c59549ad858583214b`, to census
+  issuer-symbol export/alias flow and whole-carrier callable flow through the
+  already approved abstract local corpus. Add no unrelated alias case.
+- Freeze runtime test
+  `cc9c3129f8d36b1edde263d7cafdbd3b219f3538`, mounted test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, released FC-Core import-policy
+  test `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`, every other test, and all
+  product source. Product blobs remain wake
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`, composition
+  `ecb114bb1cc3c054c0d60400b7e3cc746823736b`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`.
+- The corrected candidate must preserve exact focused
+  **96 = 94 passed + two Task14 failures**, card
+  **383 = 374 passed + nine failed**, and cross-boundary
+  **1,042 = 1,033 passed + nine failed**, plus every E-1187 gate. Commit it
+  separately and admit its exact identity and blob to another completely fresh
+  independent read-only reviewer. Changed or additional bytes invalidate
+  review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This event
+  is candidate-bound rejection and one-file forward RED authority only, not a
+  correction, approval, integration, source GREEN, Task14 completion, Task15
+  authority, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, and unrelated actions remain unauthorized.
