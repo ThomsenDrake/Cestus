@@ -41867,3 +41867,89 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1140 — Selection-state-complete Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-27T00:46:11Z
+- Exact forward test-only descendant
+  `e2ecc83773d1d93c54af9b831a5bf2c53083f149`, tree
+  `d1dfda1bdbcad7d0c8b33ae66141f0a50f892e88`, has sole parent exact E-1139
+  authority merge `20909f159d5230e93341a57c3a7cc95f3ebc7867` and exact subject
+  `test(local-runtime): distinguish binding selection states`. Rejected
+  candidates `b1bb17b8`, `e34a03ad`, `1d688e5a`, `5c5f4f47`, `e12008b8`,
+  `86b699cd`, `db03309f`, `619fd752`, and `f607eb3c` remain immutable
+  ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+113 / -6** from rejected blob
+  `cbc9cdfc933d50e929e0fd138979a597c99c76b3` to exact blob
+  `abc5223bab42b1ae4eb9bae34d72b5b407dd0726`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Before correction, four direct missing/explicit-undefined outer
+  object/array controls falsely report `registrar-reexport`, while an opaque
+  awaited nested carrier with an explicit outer default misses a reachable
+  inner-default registrar path. After correction, all five have their exact
+  required results. Direct valid nested-leaf parity remains rejected.
+- Binding selection now has a finite explicit indeterminate state distinct
+  from known absent or definitely undefined. Known absent/undefined values
+  inspect only an explicit outer default; without one, unreachable inner
+  defaults are not traversed. An indeterminate selection independently
+  explores a possibly defined nested carrier and any explicit outer-default
+  path. Exact object/array literal property/index projection is retained.
+- Arbitrary awaited values remain conservative; direct awaited registrar
+  traversal, recursive number/bigint prefix reachability, exported
+  declarations and callable expressions, dot/bracket bound callables,
+  destructured and local-carrier aliases, conditional/comma/short-circuit
+  results, local/imported re-exports, and unrelated positives retain their
+  prior exact results. The analyzer uses only TypeScript AST/checker symbols
+  and does not execute analyzed fixtures or inspect source text.
+- Exact production focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; the unchanged runtime RED remains
+  pre-store and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed** under the
+  120-second import-policy timeout envelope. The complete failure set is
+  only the two issuer REDs plus seven preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** with fixture-heavy commands isolated under
+  `TMPDIR=/dev/shm`; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, closure, repository-success, or release-success
+  marker.
+- Exact one-test scope, source/runtime/other-test freezes, rejected-candidate
+  and authority ancestry, real dependencies, diff hygiene, and clean state
+  pass. No source, claim, design, plan, contract, mission, dependency, route,
+  provider, credential, release, or unrelated byte changed.
+- Admit only exact `e2ecc837` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign an eighth completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `abc5223b`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce known absent/undefined throwing outer
+  bindings, valid nested-leaf defaults, both indeterminate nested-carrier and
+  explicit outer-default paths, arbitrary awaited-result controls, explicit
+  awaited registrar traversal, recursive number/bigint prefix reachability,
+  callable/result aliases, and destructured carrier/default flow. Probe the
+  finite E-1139 selection-state surface for any further candidate-bound gap
+  and reproduce causal runtime/static failures, focused/card/cross
+  signatures, assurance, repository-first-stop, exact scope/freezes/
+  ancestry/dependencies/diff/integrity/clean state. It must prove the static
+  gate supplements rather than substitutes for runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  Task15 authority, Task136 product candidacy, repository closure, strict
+  record 29, assurance-only transition, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
