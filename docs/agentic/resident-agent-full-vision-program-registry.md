@@ -44919,3 +44919,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1178 — Direct-constructor issuer runtime RED admitted to review
+
+- Recorded at: 2026-07-27T09:36:34Z
+- Exact forward test-only descendant
+  `a2022ae2993ece07babd483f02d9e0f8dc39a04e`, tree
+  `94b86317cdc38a803838f034bba1e302b9e22a52`, has sole parent exact E-1177
+  authority merge `5e7dc4c5d33ac1854958354e3e59a273a5ca4141` and exact subject
+  `test(local-runtime): reject direct issuer construction`.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
+  **+77 / -7** from exact blob
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` to
+  `8eb53787c4a539718f4ea74c8b1fab32639635be`. Oracle and mounted tests
+  remain exact `2bfc4b36` / `a3a5a28d`; every other test byte is frozen.
+- The existing real mounted exact-private-issuer test now also creates a
+  distinct direct wake runtime from an exact caller-retained input, starts
+  it to accepted, resets an instrumented authenticated ledger, and invokes
+  the exported registrar with a frozen accessor-backed abstract readback.
+- The new row requires
+  `direct-constructor-retained-issuer -> rejected`, zero proposed-readback
+  getter reads, and zero ledger reads. Candidate product accepts that row and
+  performs exactly two getter reads while ledger reads remain zero. All
+  earlier composition/copy/missing/legitimate one-shot rows retain their
+  exact outcomes.
+- A small fixture refactor exposes the exact input already used by the basic
+  real-runtime fixture; it does not change runtime setup, mounted data,
+  product behavior, or another test. Fixtures remain abstract, local,
+  provider-free, and credential-free.
+- Exact focused execution is
+  **96 = 95 passed + one causal direct-constructor Task14 RED failure**.
+  Exact Task136 card is
+  **383 = 375 passed + eight failed**, and exact 37-file cross-boundary is
+  **1,042 = 1,034 passed + eight failed** under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second import-policy timeout. The complete failure set
+  is the new Task14 runtime RED plus seven preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20**; exact markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release marker.
+- Product sources remain exact rejected-candidate blobs composition
+  `ecb114bb`, wake `50d226e3`, and mounted `c1a7d473`. Exact one-test scope,
+  E-1177 authority and source-rejection ancestry, dependencies, diff hygiene,
+  strict Git integrity, and clean state pass.
+- Admit only exact `a2022ae2` corrected Task14 runtime RED
+  `candidate -> reviewing`. Assign a completely fresh independent read-only
+  test reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `8eb53787`.
+- The reviewer must inspect and execute the cumulative issuer test and
+  independently prove the direct constructor uses its exact retained input,
+  reaches accepted state, invokes the actual exported registrar, observes
+  exactly the candidate acceptance/two-read defect, performs zero ledger
+  reads, and preserves the legitimate composition path and every prior
+  hostile control. It must reproduce exact identity/scope/freezes/ancestry/
+  dependencies/focused/card/cross/typecheck/factory/mission/V4/markers/
+  repository-first-stop/diff/integrity/clean evidence.
+- Every prior author/reviewer/verifier/analyst and the coordinator is
+  ineligible to approve. Changed bytes invalidate review. The reviewer may
+  not edit, commit, merge, authorize source work or Task15, or make prefix,
+  record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected runtime RED review admission, not approval,
+  integration, source correction, Task14 completion, Task15 authority,
+  Task136 product candidacy, repository closure, strict record 29,
+  assurance-only transition, publication, Wave 3 start, or product release.
+  `neo`, push, provider, credential, external-system, pull-request, and
+  unrelated actions remain unauthorized.
