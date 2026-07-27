@@ -3051,6 +3051,16 @@ function residentFactoryIssuerAnalysis(
       return true;
     }
     if (ts.isIdentifier(value)) {
+      if (
+        unshadowedGlobalNumericConstant(value) !== undefined ||
+        (checker.getSymbolAtLocation(value)?.declarations ?? []).some(
+          (declaration) =>
+            ts.isFunctionDeclaration(declaration) ||
+            ts.isClassDeclaration(declaration)
+        )
+      ) {
+        return true;
+      }
       const initializer = localConstInitializer(value, resolving);
       return initializer !== undefined &&
         expressionIsDefinitelyNonIterable(initializer, resolving);
@@ -3347,6 +3357,9 @@ function residentFactoryIssuerAnalysis(
     expression: ts.Expression
   ): number | bigint | undefined {
     const value = unwrapRegistrarExpression(expression);
+    if (ts.isIdentifier(value)) {
+      return unshadowedGlobalNumericConstant(value);
+    }
     if (ts.isNumericLiteral(value)) return Number(value.text);
     if (ts.isBigIntLiteral(value)) {
       return BigInt(value.text.slice(0, -1));
@@ -3363,6 +3376,16 @@ function residentFactoryIssuerAnalysis(
     if (value.operator === ts.SyntaxKind.TildeToken) {
       return typeof operand === "bigint" ? ~operand : ~operand;
     }
+    return undefined;
+  }
+
+  function unshadowedGlobalNumericConstant(
+    identifier: ts.Identifier
+  ): number | undefined {
+    const symbol = checker.getSymbolAtLocation(identifier);
+    if ((symbol?.declarations ?? []).length > 0) return undefined;
+    if (identifier.text === "Infinity") return Infinity;
+    if (identifier.text === "NaN") return NaN;
     return undefined;
   }
 
@@ -4033,6 +4056,24 @@ describe("wake supervisor runtime import boundary", () => {
          } = {};`
       ],
       [
+        "shadowed Infinity carrier remains indeterminate",
+        `${exactComposition}
+         declare const Infinity: unknown;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = Infinity;`
+      ],
+      [
+        "shadowed NaN carrier remains indeterminate",
+        `${exactComposition}
+         declare const NaN: unknown;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NaN;`
+      ],
+      [
         "exported comma-expression alias binding",
         `${exactComposition}
          export const exposedRegistrar = (
@@ -4156,6 +4197,94 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          ]] = {};`
+      ],
+      [
+        "function declaration array carrier does not evaluate nested default",
+        `${exactComposition}
+         function nonIterableCarrier() {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = nonIterableCarrier;`
+      ],
+      [
+        "function declaration alias does not evaluate nested default",
+        `${exactComposition}
+         function nonIterableCarrier() {}
+         const carrierAlias = nonIterableCarrier;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = carrierAlias;`
+      ],
+      [
+        "class declaration array carrier does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NonIterableCarrier;`
+      ],
+      [
+        "class declaration alias does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         const carrierAlias = NonIterableCarrier;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = carrierAlias;`
+      ],
+      [
+        "Infinity array carrier does not evaluate nested default",
+        `${exactComposition}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = Infinity;`
+      ],
+      [
+        "Infinity alias does not evaluate nested default",
+        `${exactComposition}
+         const carrierAlias = Infinity;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = carrierAlias;`
+      ],
+      [
+        "NaN array carrier does not evaluate nested default",
+        `${exactComposition}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NaN;`
+      ],
+      [
+        "NaN alias does not evaluate nested default",
+        `${exactComposition}
+         const carrierAlias = NaN;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = carrierAlias;`
+      ],
+      [
+        "prefixed Infinity carrier does not evaluate nested default",
+        `${exactComposition}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = +Infinity;`
+      ],
+      [
+        "prefixed NaN carrier does not evaluate nested default",
+        `${exactComposition}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = +NaN;`
       ],
       [
         "numeric array outer default does not evaluate nested default",
