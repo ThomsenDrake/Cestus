@@ -338,3 +338,35 @@ Recovery and every supervised command now enforce two additional authorities:
 These checks preserve the immediate source/destination revalidation around
 writes. They do not add a shell, accept caller-supplied commands, inspect
 authentication material, or change the approved live-data gates.
+
+## Fifth Review Amendment: Trusted Git Subprocess Boundary
+
+The fifth Task 3 review identified that fixed Git arguments and a fixed working
+directory were insufficient while the production subprocess still inherited
+caller-controlled process state. In particular, `GIT_DIR`, `GIT_WORK_TREE`,
+configuration, object-store, tracing, and `PATH` variables could redirect or
+instrument the execution-identity check.
+
+Production execution identity therefore uses a closed subprocess contract:
+
+- the executable is the trusted absolute path `/usr/bin/git`;
+- each invocation has a fixed command-specific argument vector, fixed canonical
+  repository working directory, no shell, ignored stdin and stderr, and
+  captured stdout;
+- the child environment is constructed from scratch and contains only
+  deterministic locale settings, `GIT_OPTIONAL_LOCKS=0`,
+  `GIT_CONFIG_NOSYSTEM=1`, and `GIT_CONFIG_GLOBAL=/dev/null`;
+- no caller `PATH`, Git repository/worktree/common-directory/object/alternate
+  variables, configuration, tracing, hooks, or other process environment is
+  inherited;
+- before reading status or `HEAD`, Git must report that the fixed working
+  directory is inside a worktree and its canonical top level must equal the
+  intended preview worktree root exactly;
+- command failure, non-worktree execution, root mismatch, dirty state, or an
+  unstable `HEAD` fails closed with generic errors that contain no command
+  output or inherited environment material.
+
+A production-subprocess regression supplies a clean alternate repository
+through hostile `GIT_DIR`, `GIT_WORK_TREE`, global configuration, tracing, and
+`PATH`. The alternate SHA is never accepted, the trace is never created, and
+the workflow produces no destination, event, or checkpoint effect.

@@ -299,3 +299,31 @@ test-first authority pass:
 
 No live SSD inspection, preview workspace creation, provider transfer, or
 human-gate transition is part of this remediation task.
+
+## Task 3 Fifth Review Remediation
+
+The fifth review of remediation commit
+`ae50d3c8328f604f5dd6d682683670c36b6b0382` requires one bounded,
+test-first subprocess-authority pass:
+
+1. construct a clean alternate repository and expose it through hostile
+   `GIT_DIR`, `GIT_WORK_TREE`, global configuration, tracing, and `PATH`;
+2. exercise the production execution-identity subprocess and prove the
+   alternate SHA is never accepted, no trace is created, no sensitive
+   subprocess material reaches the error, and no preview write occurs;
+3. invoke only the trusted absolute `/usr/bin/git` executable with fixed
+   arguments, fixed working directory, no shell, ignored stdin/stderr, and a
+   minimal environment created from scratch;
+4. disable system and global Git configuration, set deterministic locale and
+   `GIT_OPTIONAL_LOCKS=0`, and inherit no caller process state;
+5. verify `--is-inside-work-tree` and require the canonical
+   `--show-toplevel` path to equal the intended preview worktree root before
+   reading status and a stable `HEAD`;
+6. rerun the focused preview suite, seven-file retry boundary, nine-file
+   preview boundary, all ingestion tests, ontology/bootstrap plus specialist
+   boundary, typecheck, UI build, factory readiness, and `git diff --check`;
+7. update durable claim evidence and SDD scratch state, audit owned-file scope,
+   and commit atomically for another fresh dual review.
+
+No live SSD inspection, preview workspace creation, provider transfer, or
+human-gate transition is part of this remediation task.

@@ -2156,7 +2156,21 @@ function exactFindmntFilesystem(value: unknown): {
 }
 
 function readCurrentGitSha(): string {
-  const repositoryRoot = resolve(import.meta.dirname, "../../..");
+  const repositoryRoot = realpathSync.native(resolve(import.meta.dirname, "../../.."));
+  const insideWorkTree = readFixedGitOutput(repositoryRoot, "inside-work-tree").trim();
+  if (insideWorkTree !== "true") {
+    throw new Error("preview Git execution identity could not be verified");
+  }
+  const reportedRoot = readFixedGitOutput(repositoryRoot, "top-level").trim();
+  let canonicalReportedRoot: string;
+  try {
+    canonicalReportedRoot = realpathSync.native(reportedRoot);
+  } catch {
+    throw new Error("preview Git execution identity could not be verified");
+  }
+  if (canonicalReportedRoot !== repositoryRoot) {
+    throw new Error("preview Git execution identity could not be verified");
+  }
   const firstHead = readFixedGitOutput(repositoryRoot, "head").trim();
   validateCodeSha(firstHead);
   const status = readFixedGitOutput(repositoryRoot, "status");
@@ -2173,16 +2187,25 @@ function readCurrentGitSha(): string {
 
 function readFixedGitOutput(
   repositoryRoot: string,
-  command: "head" | "status"
+  command: "inside-work-tree" | "top-level" | "head" | "status"
 ): string {
-  const argv = command === "head"
-    ? ["rev-parse", "--verify", "HEAD"] as const
-    : ["status", "--porcelain=v1", "--untracked-files=all"] as const;
+  const argv = {
+    "inside-work-tree": ["rev-parse", "--is-inside-work-tree"],
+    "top-level": ["rev-parse", "--show-toplevel"],
+    head: ["rev-parse", "--verify", "HEAD"],
+    status: ["status", "--porcelain=v1", "--untracked-files=all"]
+  }[command];
   try {
-    return execFileSync("git", [...argv], {
+    return execFileSync("/usr/bin/git", argv, {
       cwd: repositoryRoot,
       encoding: "utf8",
-      env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+      env: {
+        LANG: "C",
+        LC_ALL: "C",
+        GIT_OPTIONAL_LOCKS: "0",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: "/dev/null"
+      },
       stdio: ["ignore", "pipe", "ignore"]
     });
   } catch {

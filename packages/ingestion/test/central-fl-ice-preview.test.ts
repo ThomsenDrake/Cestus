@@ -1,5 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -924,6 +926,8 @@ function workflowFixture(input?: {
     | "completion-foreign-context";
   stagingApprovalActorMismatch?: boolean;
   existingDestinationWithoutCheckpoint?: boolean;
+  productionGitIdentity?: boolean;
+  inspectionCodeSha?: string;
 }) {
   const root = mkdtempSync(join(tmpdir(), "central-fl-preview-workflow-"));
   temporaryRoots.push(root);
@@ -990,7 +994,8 @@ function workflowFixture(input?: {
     },
     code: {
       baseSha: CENTRAL_FL_ICE_PREVIEW.codeBaseSha,
-      codeSha: "0123456789abcdef0123456789abcdef01234567"
+      codeSha: input?.inspectionCodeSha
+        ?? "0123456789abcdef0123456789abcdef01234567"
     },
     candidates: [candidate],
     exclusions: [],
@@ -1776,13 +1781,17 @@ function workflowFixture(input?: {
     };
   };
   const workflow = createCentralFloridaIcePreviewWorkflow({
-    codeSha: () => {
-      calls.push("codeSha");
-      if (executionDirty) {
-        throw new Error("preview Git execution identity is dirty");
-      }
-      return executionSha;
-    },
+    ...(input?.productionGitIdentity === true
+      ? {}
+      : {
+          codeSha: () => {
+            calls.push("codeSha");
+            if (executionDirty) {
+              throw new Error("preview Git execution identity is dirty");
+            }
+            return executionSha;
+          }
+        }),
     now: () => fixedTime,
     initialInspection: () => {
       calls.push("initialInspection");
@@ -1878,6 +1887,108 @@ function workflowFixture(input?: {
 }
 
 describe("Central Florida ICE supervised preview workflow", () => {
+  it("does not accept a hostile alternate Git repository through inherited process state", async () => {
+    const hostileRoot = mkdtempSync(join(tmpdir(), "central-fl-hostile-git-"));
+    temporaryRoots.push(hostileRoot);
+    const trustedTestEnv = {
+      PATH: "/usr/bin:/bin",
+      LANG: "C",
+      LC_ALL: "C",
+      HOME: hostileRoot,
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_OPTIONAL_LOCKS: "0"
+    };
+    execFileSync("/usr/bin/git", ["init", "--quiet"], {
+      cwd: hostileRoot,
+      env: trustedTestEnv,
+      stdio: "ignore"
+    });
+    writeFileSync(join(hostileRoot, "foreign.txt"), "foreign repository\n", "utf8");
+    const hostileBin = join(hostileRoot, "bin");
+    mkdirSync(hostileBin);
+    writeFileSync(
+      join(hostileBin, "git"),
+      "#!/bin/sh\nexec /usr/bin/git \"$@\"\n",
+      "utf8"
+    );
+    chmodSync(join(hostileBin, "git"), 0o755);
+    const hostileConfig = join(hostileRoot, "hostile.gitconfig");
+    writeFileSync(hostileConfig, "[user]\nname = Hostile Config\n", "utf8");
+    execFileSync("/usr/bin/git", [
+      "add",
+      "foreign.txt",
+      "bin/git",
+      "hostile.gitconfig"
+    ], {
+      cwd: hostileRoot,
+      env: trustedTestEnv,
+      stdio: "ignore"
+    });
+    execFileSync("/usr/bin/git", [
+      "-c",
+      "user.name=Foreign Test",
+      "-c",
+      "user.email=foreign@example.invalid",
+      "commit",
+      "--quiet",
+      "-m",
+      "foreign"
+    ], {
+      cwd: hostileRoot,
+      env: trustedTestEnv,
+      stdio: "ignore"
+    });
+    const hostileSha = execFileSync("/usr/bin/git", ["rev-parse", "--verify", "HEAD"], {
+      cwd: hostileRoot,
+      encoding: "utf8",
+      env: trustedTestEnv,
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+    const tracePath = join(hostileRoot, ".git", "hostile-git-trace.log");
+    const fixture = workflowFixture({
+      productionGitIdentity: true,
+      inspectionCodeSha: hostileSha
+    });
+    const hostileKeys = [
+      "GIT_DIR",
+      "GIT_WORK_TREE",
+      "GIT_CONFIG_GLOBAL",
+      "GIT_TRACE",
+      "PATH"
+    ] as const;
+    const savedEnvironment = new Map(
+      hostileKeys.map((key) => [key, process.env[key]])
+    );
+    let caught: unknown;
+    try {
+      process.env.GIT_DIR = join(hostileRoot, ".git");
+      process.env.GIT_WORK_TREE = hostileRoot;
+      process.env.GIT_CONFIG_GLOBAL = hostileConfig;
+      process.env.GIT_TRACE = tracePath;
+      process.env.PATH = `${hostileBin}:${process.env.PATH ?? ""}`;
+      await fixture.workflow.inspect();
+    } catch (error) {
+      caught = error;
+    } finally {
+      for (const [key, value] of savedEnvironment) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).not.toContain(hostileSha);
+    expect((caught as Error).message).not.toContain(hostileRoot);
+    expect(fixture.createWorkspace).not.toHaveBeenCalled();
+    expect(await fixture.ledger.readAll()).toEqual([]);
+    expect(fixture.checkpointStore.records).toEqual([]);
+    expect(existsSync(tracePath)).toBe(false);
+  });
+
   it("rejects a dirty Git execution identity before inspection can create or write", async () => {
     const fixture = workflowFixture();
     fixture.setExecutionDirty();
