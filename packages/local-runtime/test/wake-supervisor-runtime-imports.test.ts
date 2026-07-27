@@ -3014,23 +3014,90 @@ function residentFactoryIssuerAnalysis(
       ts.isArrayLiteralExpression(value)
     ) {
       const index = element.parent.elements.indexOf(element);
-      if (
-        value.elements
-          .slice(0, index + 1)
-          .some(ts.isSpreadElement)
-      ) {
-        return indeterminateBindingInitializer;
-      }
-      const selected = value.elements[index];
-      return selected !== undefined &&
-          !ts.isOmittedExpression(selected) &&
-          !ts.isSpreadElement(selected)
-        ? selected
-        : undefined;
+      const slots = exactArrayLiteralBindingSlots(
+        value,
+        new Set(resolving)
+      );
+      return slots === undefined
+        ? indeterminateBindingInitializer
+        : slots[index];
     }
     return expressionIsDefinitelyUndefined(value, new Set(resolving))
       ? undefined
       : indeterminateBindingInitializer;
+  }
+
+  function exactArrayLiteralBindingSlots(
+    array: ts.ArrayLiteralExpression,
+    resolving: Set<ts.Symbol>
+  ): readonly (ts.Expression | undefined)[] | undefined {
+    const slots: (ts.Expression | undefined)[] = [];
+    for (const element of array.elements) {
+      if (ts.isOmittedExpression(element)) {
+        slots.push(undefined);
+        continue;
+      }
+      if (!ts.isSpreadElement(element)) {
+        slots.push(element);
+        continue;
+      }
+      const spreadResolving = new Set(resolving);
+      const spreadArray = exactSpreadArrayLiteral(
+        element.expression,
+        spreadResolving,
+        element.expression
+      );
+      if (spreadArray === undefined) return undefined;
+      const spreadSlots = exactArrayLiteralBindingSlots(
+        spreadArray,
+        spreadResolving
+      );
+      if (spreadSlots === undefined) return undefined;
+      slots.push(...spreadSlots);
+    }
+    return slots;
+  }
+
+  function exactSpreadArrayLiteral(
+    expression: ts.Expression,
+    resolving: Set<ts.Symbol>,
+    exactUse: ts.Expression
+  ): ts.ArrayLiteralExpression | undefined {
+    const value = unwrapRegistrarExpression(expression);
+    if (ts.isArrayLiteralExpression(value)) return value;
+    if (!ts.isIdentifier(value)) return undefined;
+    const symbol = checker.getSymbolAtLocation(value);
+    if (
+      symbol === undefined ||
+      resolving.has(symbol) ||
+      !symbolHasOnlyImmutableCarrierUses(
+        symbol,
+        new Set(resolving),
+        exactUse
+      )
+    ) {
+      return undefined;
+    }
+    const declaration = (symbol.declarations ?? []).find(
+      (candidate): candidate is ts.VariableDeclaration =>
+        ts.isVariableDeclaration(candidate) &&
+        candidate.initializer !== undefined &&
+        (candidate.parent.flags & ts.NodeFlags.Const) !== 0 &&
+        (
+          !ts.isVariableStatement(candidate.parent.parent) ||
+          candidate.parent.parent.modifiers?.some((modifier) =>
+            modifier.kind === ts.SyntaxKind.ExportKeyword ||
+            modifier.kind === ts.SyntaxKind.DefaultKeyword
+          ) !== true
+        )
+    );
+    if (declaration?.initializer === undefined) return undefined;
+    resolving.add(symbol);
+    return exactSpreadArrayLiteral(
+      declaration.initializer,
+      resolving,
+      declaration.initializer
+    );
   }
 
   function bindingPatternInitializerIsUnreachable(
@@ -4265,6 +4332,66 @@ describe("wake supervisor runtime import boundary", () => {
          ]] = [...[[undefined]]];`
       ],
       [
+        "exported registrar through exact selected spread",
+        `${exactComposition}
+         export const [[exposedRegistrar]] = [
+           ...[[registerResidentLoopFactoryAuthorityReadback]]
+         ];`
+      ],
+      [
+        "exported registrar after exact empty spread",
+        `${exactComposition}
+         export const [exposedRegistrar] = [
+           ...[],
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "exported registrar after exact multiple-value spread",
+        `${exactComposition}
+         export const [, exposedRegistrar] = [
+           ...[
+             Object.freeze({}),
+             registerResidentLoopFactoryAuthorityReadback
+           ]
+         ];`
+      ],
+      [
+        "exported registrar through wrapped immutable spread alias",
+        `${exactComposition}
+         const spreadAlias = [[
+           registerResidentLoopFactoryAuthorityReadback
+         ]] as const;
+         export const [[exposedRegistrar]] = [
+           ...(spreadAlias satisfies readonly unknown[])
+         ];`
+      ],
+      [
+        "exported registrar through recursively exact spread",
+        `${exactComposition}
+         export const [[exposedRegistrar]] = [
+           ...[
+             ...[[registerResidentLoopFactoryAuthorityReadback]]
+           ]
+         ];`
+      ],
+      [
+        "exported registrar after spread hole",
+        `${exactComposition}
+         export const [, exposedRegistrar] = [
+           ...[, registerResidentLoopFactoryAuthorityReadback]
+         ];`
+      ],
+      [
+        "opaque selected spread remains conservative for default",
+        `${exactComposition}
+         declare const opaqueValues: unknown[];
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [...opaqueValues];`
+      ],
+      [
         "exported usable empty object outer default",
         `${exactComposition}
          export const {
@@ -4650,6 +4777,30 @@ describe("wake supervisor runtime import boundary", () => {
          ]] = [
            NonIterableCarrier,
            ...[[undefined]]
+         ];`
+      ],
+      [
+        "empty spread preserves later nested class carrier",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [
+           ...[],
+           NonIterableCarrier
+         ];`
+      ],
+      [
+        "wrapped immutable spread alias preserves nested class carrier",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         const spreadAlias = [NonIterableCarrier] as const;
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [
+           ...(spreadAlias satisfies readonly unknown[])
          ];`
       ],
       [
