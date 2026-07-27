@@ -44154,3 +44154,97 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1168 — Rest-object-and-final-descriptor-complete Task14 RED admitted to review
+
+- Recorded at: 2026-07-27T07:19:11Z
+- Exact forward test-only descendant
+  `eb18070e824daceb818f311c9b36c014b60cad9d`, tree
+  `d04bb2cd035de2e22b562bbc1fb27d50ec94640c`, has sole parent exact E-1167
+  authority merge `fdd3d51edb3c983b6a7b4cb2acb99fa45402685c` and exact subject
+  `test(local-runtime): model rest object and copy descriptors`. Rejected
+  candidate `5f3a4322` and every earlier Task14 candidate remain immutable
+  ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+369 / -11** from rejected blob
+  `2d5849120fc73f1920aca66e59ed0741f5507c58` to exact blob
+  `094a280ff1cdc2615357f0298575871ea3b60099`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Exact finite array-rest slots now feed either a nested array or object
+  binding pattern. Object projection resolves canonical numeric own-property
+  names, holes and missing slots, ordered defaults, and recursive
+  noncompletion. Direct and use-closed immutable aliases share the same
+  outcome. Identifier and object-rest targets remain fresh containers;
+  unsupported or opaque names remain conservative.
+- Array-rest `length` is represented as an exact defined numeric value, so
+  its direct default cannot activate or project the registrar. A nested
+  array pattern over length is definitely noniterable, while a nested object
+  pattern retains conservative property/default analysis.
+- Exact spread-copy completion now reconstructs final own property
+  descriptors in definition order. Direct data, method, shorthand, getter,
+  and setter definitions replace or combine descriptors according to their
+  final shape; recursively exact spreads copy their completed values as data.
+  Only a final enumerable getter whose body is exactly one unconditional
+  throw prevents copying.
+- Opaque spreads and unknown computed names clear prior descriptor certainty;
+  later exact definitions may reestablish a final descriptor. Source-object
+  evaluation remains separate, so a throwing getter invoked by an inner
+  spread still prevents construction while an earlier direct getter
+  overwritten before an outer copy does not.
+- Abstract controls cover direct and aliased array-rest object numeric
+  projection, missing slots and holes/defaults, length defaults and nested
+  patterns, defaults before and after registrar candidates, object-rest
+  freshness, noncanonical and computed-opaque names, direct/aliased/nested
+  overwritten getters, returning getter replacement, final throwing getter
+  overrides, and opaque descriptor sources.
+- Every E-1166 ordered-completion control and all earlier rest freshness,
+  prototype, final-property, exact-spread, carrier, declaration/global/
+  awaited/unreachable/value-flow controls remain exact. Fixtures remain
+  abstract, local, provider-free, and credential-free.
+- Exact focused execution is
+  **96 = 94 passed + two causal issuer RED failures**. Exact Task136 card is
+  **383 = 374 passed + nine failed**, and exact 37-file cross-boundary
+  execution is **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The failure set remains only the two Task14 issuer REDs plus the seven
+  preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** under `TMPDIR=/dev/shm`; contract markers remain
+  **29 / 20 / 29 / 15**. Clean repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, repository-closure, or release-success marker.
+- Exact one-test scope, E-1167 authority and rejected-candidate ancestry,
+  TypeScript 5.9.3 and Vitest 4.1.9 dependencies, source/runtime/other-test
+  freezes, diff hygiene, strict Git integrity, and clean state pass. Exact
+  frozen source blobs remain composition `b9a679c0`, wake `2fee564d`, and
+  mounted lifecycle store `c1a7d473`.
+- Admit only exact `eb18070e` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a twenty-second completely fresh
+  independent read-only reviewer who has never authored, reviewed, verified,
+  or analyzed corrected blob `094a280f`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce array-rest object projection across
+  numeric keys, holes, defaults, length, nested patterns, aliases, fresh
+  rest containers, and opaque names. It must independently reconstruct
+  direct/aliased/nested final descriptors, getter/setter/data replacement,
+  source-evaluation versus copy timing, and opaque overrides, plus every
+  cumulative binding/value-flow surface. Reproduce causal runtime/static
+  failures, focused/card/cross signatures, assurance, repository-first-stop,
+  exact scope/freezes/ancestry/dependencies/diff/integrity/clean state.
+  Static analysis must supplement, not substitute for runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  GREEN authority, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
