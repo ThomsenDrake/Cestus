@@ -44844,3 +44844,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
+
+## RV-1-E-1177 — Task14 construction-issuer GREEN rejected on direct constructor
+
+- Recorded at: 2026-07-27T09:23:23Z
+- The completely fresh independent read-only source review rejects exact
+  candidate `ae7e28676a9a307d0253f59b08fe1922bc2a6a9b`, tree
+  `a5f2424cc3756699b539256156cb461151927510`, sole parent
+  `67af02d1c446d9cfc0b48bae14890b2ae389d35f`, exact changed blobs
+  composition `ecb114bb1cc3c054c0d60400b7e3cc746823736b` and wake
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`, and exact two-parent review
+  envelope `04581bdeed031e67e946f3e98a1f03651941a0e5`.
+- Exact candidate/envelope identity and parent order, two-file
+  **+18 / -13** scope, mounted/source/test freezes, ancestry, TypeScript
+  5.9.3 and Vitest 4.1.9 dependencies, diff hygiene, strict Git integrity,
+  and clean state pass independent reproduction.
+- Frozen focused execution independently passes **96/96**. Standalone
+  typecheck, factory readiness, mission **20/20**, V4 **20/20**, and exact
+  markers **29 / 20 / 29 / 15** pass. The reviewer stops redundant
+  card/cross repetition after the decisive source defect.
+- The reviewer proves one candidate-bound direct-constructor defect using a
+  real local mounted runtime and abstract accessor-backed readback. A caller
+  invokes exported `createWakeSupervisorRuntime`, retains the exact raw input,
+  advances the runtime to accepted, then supplies that same input to exported
+  `registerResidentLoopFactoryAuthorityReadback`. Candidate W accepts the
+  registration and reads the proposed readback twice.
+- Root cause is exact: candidate W stores
+  `factoryIssuerIdentity: rawInput`. The exported constructor therefore gives
+  a direct caller the same identity later required by the exported registrar.
+  Exact equality cannot distinguish the composition-owned normalized input
+  from a caller-retained direct-constructor input.
+- This violates E-1175/E-1176 pre-read rejection of caller-held issuer
+  identities. The composition path and static construction oracle are GREEN,
+  but the frozen runtime test covers only the outer caller of composition and
+  omits direct use of the exported wake constructor.
+- Reject exact `ae7e2867` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No source integration, Task14
+  completion, Task15 authority, product candidacy, or release action is
+  authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` from exact
+  blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`. First add one abstract real-
+  runtime control that calls the exported wake constructor directly, retains
+  its exact input, starts the runtime, and presents an accessor-backed frozen
+  readback to the exported registrar. Require rejection with zero proposed-
+  readback reads and zero ledger/store observation.
+- Retain the exact composition legitimate path and all arbitrary, copied,
+  caller-owned, original outer, missing/shifted, wrong-runtime, repeated,
+  no-effect, and mounted-authority controls. Freeze oracle
+  `2bfc4b368fddbd309af0f0ab08df51327e410be6`, mounted test `a3a5a28d`,
+  every product source, and every other path.
+- Before admission reproduce the new causal runtime RED, static oracle GREEN,
+  exact focused/card/cross failure accounting, typecheck, factory, mission
+  and V4 **20/20**, markers, repository first-stop, scope/freezes/ancestry/
+  dependencies/diff/integrity, and clean state.
+- A completely fresh independent read-only test reviewer, ineligible under
+  every prior author/reviewer/verifier/coordinator exclusion, must inspect
+  and execute the corrected cumulative runtime RED. Changed bytes invalidate
+  review. Only after exact test approval, append-only recording, and
+  history-preserving integration may a separate source GREEN address the
+  nonexportable composition-only issuance boundary.
+- Any future source design must preserve exact identity and reject before
+  observation. Structural, first-seen, timing, allocation-order, call-stack,
+  source-text, hidden-global, process-local rendezvous, or other heuristic
+  acceptance remains forbidden. If the committed two-module public API
+  cannot express that boundary without one of those mechanisms, stop at a
+  coordinator scope/design checkpoint rather than weakening the invariant.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is source rejection and bounded forward test-correction
+  authority only, not corrected RED admission, source correction, Task14
+  completion, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
