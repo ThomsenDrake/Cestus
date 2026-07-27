@@ -44697,3 +44697,77 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
+
+## RV-1-E-1175 — Task14 exact private construction-issuer GREEN authorized
+
+- Recorded at: 2026-07-27T08:58:04Z
+- E-1174 integrated exact independently approved corrected Task14 RED
+  `41502fa449f029af8ed9fd12df92e858f85fab8e` by program commit
+  `b62d7b8d26acf3bc09b812a54cd786c3ccd457ff`. Exact history-preserving
+  Task136 authority merge
+  `a1c191b917623871fdf5cb6e38eca4b11bc7a0ed` has exact parents E-1172
+  review envelope `bc24a2bf33dcf992b47882549ada8449b868f5c5` and that integrated
+  program authority. The complete current Task14 causal RED is approved,
+  recorded, and integrated.
+- Authorize the smallest remaining Task14 GREEN correction within exactly
+  these three committed-plan paths:
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`,
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, starting
+  from exact blobs `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`,
+  `2fee564d7bb9d984fef0fce6173e0a918f236274`, and
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`.
+- Change only the causally required subset. The mounted lifecycle store must
+  remain byte-exact unless a new focused failing reproduction proves it is
+  necessary; no behavior-neutral churn is authorized. Freeze approved oracle
+  blob `2bfc4b368fddbd309af0f0ab08df51327e410be6`, runtime test
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`, mounted test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, and every other path.
+- Apply the approved Task136 design and amended Task14 plan exactly. The
+  composition must pass its exact private normalized construction input
+  directly to `createWakeSupervisorRuntime`, retain no caller substitute,
+  and use that same exact identity as the first argument of the one-shot
+  `registerResidentLoopFactoryAuthorityReadback` call at the completed frozen
+  readback's actual allocation/issuance point.
+- W must retain that exact construction input only in its private
+  wake-runtime state, require the explicit three-argument registrar signature
+  `(issuerIdentity, wakeRuntime, readback)`, and compare exact issuer identity
+  before inspecting the proposed readback or performing store I/O. Reject a
+  copied outer input, caller-held raw input, arbitrary substitute, wrong wake
+  runtime, missing/shifted issuer, repeated registration, or structural
+  equivalent.
+- Preserve the already implemented one-shot mounted binding, exact issued
+  wake-runtime and Core/P/H/dispatcher identities, authenticated ledger/store,
+  currentness token state machine, five-state prefix recovery, reclaim,
+  no-fallback-write, no-effect, and at-most-once behavior. No structural,
+  first-seen, timing, allocation-order, call-stack, source-text, global, or
+  other heuristic acceptance is permitted.
+- Starting focused is exact
+  **96 = 94 passed + two causal Task14 failures**. GREEN must produce
+  **96/96** focused, Task136 card
+  **383 = 376 passed + seven preserved Task15-through-16 failures**, and
+  37-file cross-boundary
+  **1,042 = 1,035 passed + seven preserved failures** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  No test, fixture, unrelated product, timeout, or analyzer failure is
+  permitted.
+- Reproduce standalone typecheck, factory readiness, mission **20/20**, V4
+  **20/20**, markers **29 / 20 / 29 / 15**, truthful repository
+  legacy-staging first stop with no success marker, exact source/test scope
+  and freezes, ancestry, dependencies, diff hygiene, strict Git integrity,
+  and clean state.
+- Commit one coherent source candidate with subject
+  `feat(local-runtime): seal factory issuer identity`. Admit only its exact
+  SHA to a completely fresh independent source reviewer. The implementer,
+  every test author/reviewer/verifier/analyst, every earlier Task14 source
+  author/reviewer, and the coordinator are ineligible to approve changed
+  source bytes. Changed bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact Task14 GREEN authority, not a source candidate
+  or approval, Task14 integration, Task15 authority, Task136 product
+  candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
