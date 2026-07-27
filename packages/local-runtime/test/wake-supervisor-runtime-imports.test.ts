@@ -3053,11 +3053,7 @@ function residentFactoryIssuerAnalysis(
     if (ts.isIdentifier(value)) {
       if (
         unshadowedGlobalNumericConstant(value) !== undefined ||
-        (checker.getSymbolAtLocation(value)?.declarations ?? []).some(
-          (declaration) =>
-            ts.isFunctionDeclaration(declaration) ||
-            ts.isClassDeclaration(declaration)
-        )
+        declarationIdentifierIsDefinitelyNonIterable(value)
       ) {
         return true;
       }
@@ -3085,6 +3081,180 @@ function residentFactoryIssuerAnalysis(
       ts.isFunctionExpression(value) ||
       ts.isClassExpression(value) ||
       ts.isRegularExpressionLiteral(value);
+  }
+
+  function declarationIdentifierIsDefinitelyNonIterable(
+    identifier: ts.Identifier
+  ): boolean {
+    const symbol = checker.getSymbolAtLocation(identifier);
+    if (symbol === undefined) return false;
+    const declaration = (symbol.declarations ?? []).find(
+      (candidate): candidate is
+        | ts.FunctionDeclaration
+        | ts.ClassDeclaration =>
+        ts.isFunctionDeclaration(candidate) ||
+        ts.isClassDeclaration(candidate)
+    );
+    if (
+      declaration === undefined ||
+      declaration.modifiers?.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.ExportKeyword ||
+        modifier.kind === ts.SyntaxKind.DefaultKeyword ||
+        modifier.kind === ts.SyntaxKind.Decorator
+      ) ||
+      (
+        ts.isClassDeclaration(declaration) &&
+        (
+          declaration.heritageClauses?.some(
+            (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+          ) === true ||
+          classDeclarationMayDefineIterator(declaration)
+        )
+      )
+    ) {
+      return false;
+    }
+    return symbolHasOnlyImmutableCarrierUses(symbol, new Set());
+  }
+
+  function classDeclarationMayDefineIterator(
+    declaration: ts.ClassDeclaration
+  ): boolean {
+    return declaration.members.some((member) => {
+      if (ts.isClassStaticBlockDeclaration(member)) {
+        return nodeMentionsSymbolIterator(member);
+      }
+      const isStatic =
+        (ts.getCombinedModifierFlags(member) & ts.ModifierFlags.Static) !== 0;
+      if (!isStatic) return false;
+      if (
+        member.name !== undefined &&
+        ts.isComputedPropertyName(member.name)
+      ) {
+        return true;
+      }
+      return ts.isPropertyDeclaration(member) &&
+        member.initializer !== undefined &&
+        nodeMentionsSymbolIterator(member.initializer);
+    });
+  }
+
+  function nodeMentionsSymbolIterator(node: ts.Node): boolean {
+    let mentionsIterator = false;
+    inspect(node);
+    return mentionsIterator;
+
+    function inspect(current: ts.Node): void {
+      if (mentionsIterator) return;
+      if (
+        (
+          ts.isPropertyAccessExpression(current) &&
+          ts.isIdentifier(current.expression) &&
+          current.expression.text === "Symbol" &&
+          current.name.text === "iterator"
+        ) ||
+        (
+          ts.isElementAccessExpression(current) &&
+          ts.isIdentifier(current.expression) &&
+          current.expression.text === "Symbol" &&
+          current.argumentExpression !== undefined &&
+          (
+            ts.isStringLiteral(current.argumentExpression) ||
+            ts.isNoSubstitutionTemplateLiteral(current.argumentExpression)
+          ) &&
+          current.argumentExpression.text === "iterator"
+        )
+      ) {
+        mentionsIterator = true;
+        return;
+      }
+      ts.forEachChild(current, inspect);
+    }
+  }
+
+  function symbolHasOnlyImmutableCarrierUses(
+    symbol: ts.Symbol,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (resolving.has(symbol)) return false;
+    const nextResolving = new Set(resolving);
+    nextResolving.add(symbol);
+    let valid = true;
+    for (const source of checkedSources) {
+      inspect(source.sourceFile);
+      if (!valid) return false;
+    }
+    return true;
+
+    function inspect(node: ts.Node): void {
+      if (!valid) return;
+      if (
+        ts.isIdentifier(node) &&
+        checker.getSymbolAtLocation(node) === symbol &&
+        !identifierIsImmutableCarrierUse(node, symbol, nextResolving)
+      ) {
+        valid = false;
+        return;
+      }
+      ts.forEachChild(node, inspect);
+    }
+  }
+
+  function identifierIsImmutableCarrierUse(
+    identifier: ts.Identifier,
+    symbol: ts.Symbol,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (
+      (symbol.declarations ?? []).some(
+        (declaration) =>
+          (declaration as ts.NamedDeclaration).name === identifier
+      )
+    ) {
+      return true;
+    }
+    let expression: ts.Expression = identifier;
+    while (
+      (
+        ts.isParenthesizedExpression(expression.parent) ||
+        ts.isAsExpression(expression.parent) ||
+        ts.isTypeAssertionExpression(expression.parent) ||
+        ts.isNonNullExpression(expression.parent) ||
+        ts.isSatisfiesExpression(expression.parent)
+      ) &&
+      expression.parent.expression === expression
+    ) {
+      expression = expression.parent;
+    }
+    const parent = expression.parent;
+    if (
+      !ts.isVariableDeclaration(parent) ||
+      parent.initializer !== expression
+    ) {
+      return false;
+    }
+    if (
+      ts.isArrayBindingPattern(parent.name) ||
+      ts.isObjectBindingPattern(parent.name)
+    ) {
+      return true;
+    }
+    if (
+      !ts.isIdentifier(parent.name) ||
+      (parent.parent.flags & ts.NodeFlags.Const) === 0 ||
+      (
+        ts.isVariableStatement(parent.parent.parent) &&
+        parent.parent.parent.modifiers?.some((modifier) =>
+          modifier.kind === ts.SyntaxKind.ExportKeyword ||
+          modifier.kind === ts.SyntaxKind.DefaultKeyword
+        )
+      )
+    ) {
+      return false;
+    }
+    const alias = checker.getSymbolAtLocation(parent.name);
+    return alias !== undefined &&
+      symbolHasOnlyImmutableCarrierUses(alias, resolving);
   }
 
   function bindingPropertyName(
@@ -4074,6 +4244,133 @@ describe("wake supervisor runtime import boundary", () => {
          ] = NaN;`
       ],
       [
+        "iterable function declaration evaluates array default",
+        `${exactComposition}
+         function iterableCarrier() {}
+         iterableCarrier[Symbol.iterator] = function* () {
+           yield undefined;
+         };
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = iterableCarrier;`
+      ],
+      [
+        "static-iterator class declaration evaluates array default",
+        `${exactComposition}
+         class IterableCarrier {
+           static *[Symbol.iterator]() {
+             yield undefined;
+           }
+         }
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = IterableCarrier;`
+      ],
+      [
+        "static-iterator class alias evaluates array default",
+        `${exactComposition}
+         class IterableCarrier {
+           static *[Symbol.iterator]() {
+             yield undefined;
+           }
+         }
+         const carrierAlias = IterableCarrier;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = carrierAlias;`
+      ],
+      [
+        "static-block iterator class evaluates array default",
+        `${exactComposition}
+         class IterableCarrier {
+           static {
+             this[Symbol.iterator] = function* () {
+               yield undefined;
+             };
+           }
+         }
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = IterableCarrier;`
+      ],
+      [
+        "static-field iterator class evaluates array default",
+        `${exactComposition}
+         class IterableCarrier {
+           static installed = (
+             this[Symbol.iterator] = function* () {
+               yield undefined;
+             }
+           );
+         }
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = IterableCarrier;`
+      ],
+      [
+        "inherited static iterator evaluates array default",
+        `${exactComposition}
+         class IterableBase {
+           static *[Symbol.iterator]() {
+             yield undefined;
+           }
+         }
+         class IterableCarrier extends IterableBase {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = IterableCarrier;`
+      ],
+      [
+        "call-escaped declaration carrier remains indeterminate",
+        `${exactComposition}
+         declare function inspectCarrier(value: unknown): void;
+         function escapedCarrier() {}
+         inspectCarrier(escapedCarrier);
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = escapedCarrier;`
+      ],
+      [
+        "mutable declaration alias remains indeterminate",
+        `${exactComposition}
+         function mutableCarrier() {}
+         let carrierAlias = mutableCarrier;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = carrierAlias;`
+      ],
+      [
+        "exported declaration alias remains indeterminate",
+        `${exactComposition}
+         function exportedCarrier() {}
+         export const carrierAlias = exportedCarrier;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = carrierAlias;`
+      ],
+      [
+        "returned declaration carrier remains indeterminate",
+        `${exactComposition}
+         function returnedCarrier() {}
+         function exposeCarrier() {
+           return returnedCarrier;
+         }
+         void exposeCarrier;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = returnedCarrier;`
+      ],
+      [
         "exported comma-expression alias binding",
         `${exactComposition}
          export const exposedRegistrar = (
@@ -4235,6 +4532,40 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          ] = carrierAlias;`
+      ],
+      [
+        "instance-iterator class does not make constructor iterable",
+        `${exactComposition}
+         class NonIterableCarrier {
+           *[Symbol.iterator]() {
+             yield undefined;
+           }
+         }
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NonIterableCarrier;`
+      ],
+      [
+        "harmless static class member does not make constructor iterable",
+        `${exactComposition}
+         class NonIterableCarrier {
+           static label = "local";
+         }
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NonIterableCarrier;`
+      ],
+      [
+        "implemented interface does not make class constructor iterable",
+        `${exactComposition}
+         interface LocalMarker {}
+         class NonIterableCarrier implements LocalMarker {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NonIterableCarrier;`
       ],
       [
         "Infinity array carrier does not evaluate nested default",
