@@ -42742,3 +42742,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1151 — Task14 transparent-wrapper RED rejected on nested-carrier occurrence
+
+- Recorded at: 2026-07-27T02:54:06Z
+- The thirteenth fresh independent read-only review rejects exact test-only
+  candidate `8bba40162d1d9a650b4fe6a6132c3e8d91b96a07`, tree
+  `05fba5c908dc3efb7d33eeac827693de02941a39`, sole parent
+  `14c1fbb3bc3aa73dfbfa8f3b1b2fe025076c1fc4`, corrected test blob
+  `2c71bcda36140ab5405fad75cb9a824633be9063`, and exact review envelope
+  `c6455e144f24c33f2737608aff9fea6912d657af`.
+- The reviewer proves one finite candidate-bound local AST symbol-resolution
+  false positive. A nested array binding selects a transparently wrapped
+  non-iterable class carrier, directly or through a deeply wrapped immutable
+  alias. The oracle reports `registrar-reexport`; runtime instead throws
+  before the inner binding and records zero registrar-default selections.
+  Equivalent top-level wrapped carriers remain correctly accepted, and a
+  genuine separate value use remains correctly rejected.
+- Root cause is confined to the unit-test oracle. After nested literal
+  selection, exact carrier identity is the selected expression whose parent
+  is the outer array literal. The use proof nevertheless requires every
+  accepted occurrence to be a variable-declaration initializer, so the exact
+  nested carrier occurrence cannot match and is treated as a separate use.
+  Product source and both causal Task14 RED failures remain unchanged.
+- Reject exact `8bba4016` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `2c71bcda`. First add abstract direct and deeply
+  wrapped immutable-alias nested-carrier controls and reproduce both false
+  positives while retaining the exact causal product RED.
+- Then accept `expression === carrierInitializer` as the exact carrier
+  occurrence before imposing variable-declaration and immutable-alias
+  constraints. Retain recursive rejection of every additional value use,
+  alias cycle, mutation, escape, and unsupported occurrence. Top-level,
+  nested, direct, aliased, and transparently wrapped parity must remain
+  runtime-exact.
+- Retain every E-1150 wrapper/type-query/separate-use control and every
+  earlier separate-destructure/getter, declaration, iterator/escape/alias,
+  global-numeric/shadowed, awaited, unreachable, indeterminate, callable,
+  conditional, comma, and re-export control.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A fourteenth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe exact carrier-node
+  identity through nested array selection, immutable alias chains, and every
+  approved transparent wrapper. Changed bytes invalidate review. The
+  reviewer may not edit, commit, merge, authorize source work, or make
+  prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
