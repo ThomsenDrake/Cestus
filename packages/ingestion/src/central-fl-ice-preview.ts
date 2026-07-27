@@ -35,6 +35,7 @@ import { buildIngestionProjection } from "./projection.js";
 import { buildLegacyImportProjection } from "./legacy-projection.js";
 import { stableLegacyAssertionId } from "./legacy-staging.js";
 import {
+  legacyReportStreamId,
   sha256,
   stableJson,
   type LegacyMigrationReport
@@ -332,6 +333,25 @@ function inspectCentralFloridaIceCandidateMaterial(
     canonicalCandidateMaterial,
     candidateSetHash: sha256(canonicalCandidateMaterial)
   });
+}
+
+function inspectPreviewDestinationOnly(
+  dependencies: CentralFloridaIcePreviewDependencies,
+  inspection: CentralFloridaIceCandidateInspection
+): PreviewDestinationIdentity {
+  const sourceMount: PreviewMountRecord = {
+    target: inspection.sourceIdentity.mountTarget,
+    source: inspection.sourceIdentity.mountSource,
+    fileSystem: inspection.sourceIdentity.fileSystem,
+    options: inspection.sourceIdentity.mountOptions,
+    deviceId: inspection.sourceIdentity.mountDeviceId
+  };
+  return Object.freeze(inspectDestinationAuthority(
+    dependencies,
+    CENTRAL_FL_ICE_PREVIEW,
+    sourceMount,
+    "empty-destination"
+  ));
 }
 
 function inspectSourceAuthority(
@@ -1167,6 +1187,9 @@ export interface CentralFloridaIcePreviewWorkflowDependencies {
   readonly resumeInspection?: (() => CentralFloridaIceCandidateInspection) | undefined;
   readonly createWorkspace?: (() => void) | undefined;
   readonly destinationExists?: (() => boolean) | undefined;
+  readonly revalidateDestinationAuthority?: ((
+    inspection: CentralFloridaIceCandidateInspection
+  ) => PreviewDestinationIdentity) | undefined;
   readonly mountResolver?: IngestionWorkspaceMountResolver | undefined;
   readonly legacyRuntimeFactory?: ((
     workspace: MountedWorkspace,
@@ -1222,6 +1245,11 @@ export function createCentralFloridaIcePreviewWorkflow(
   });
   const destinationExists = overrides.destinationExists
     ?? (() => existsSync(CENTRAL_FL_ICE_PREVIEW.destinationRoot));
+  const revalidateDestinationAuthority = overrides.revalidateDestinationAuthority
+    ?? ((inspection) => inspectPreviewDestinationOnly(
+      { filesystem, mounts },
+      inspection
+    ));
   const mountResolver = overrides.mountResolver ?? createPortableIngestionMountResolver();
   const legacyRuntimeFactory = overrides.legacyRuntimeFactory ?? ((workspace, actorOverride) =>
     createLegacyImportRuntime({
@@ -1256,6 +1284,15 @@ export function createCentralFloridaIcePreviewWorkflow(
         recoveringWithoutCheckpoint ? resumeInspection() : initialInspection()
       );
       if (!recoveringWithoutCheckpoint) {
+        const immediateDestination = revalidateDestinationAuthority(inspection);
+        if (
+          stableJson(stableDestinationAuthority(immediateDestination))
+          !== stableJson(stableDestinationAuthority(inspection.destinationIdentity))
+        ) {
+          throw new Error(
+            "destination authority changed immediately before workspace creation"
+          );
+        }
         createWorkspace();
         mayPersistCheckpoint = true;
       }
@@ -1471,7 +1508,8 @@ export function createCentralFloridaIcePreviewWorkflow(
       const authoritative = assertAuthoritativeRawImportLedger(
         after,
         latest,
-        approvedBy
+        approvedBy,
+        inspection.candidates
       );
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
 
@@ -2929,36 +2967,21 @@ function assertRecoverableInspectionLedger(
 ): void {
   const sourceEvents = snapshot.events.filter((event) =>
     event.type === "ingestion.source.registered"
-    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
   );
   const scanStarts = snapshot.events.filter((event) =>
     event.type === "ingestion.scan.started"
-    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
   );
   const scanCompletions = snapshot.events.filter((event) =>
     event.type === "ingestion.scan.completed"
-    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
   );
   const reports = snapshot.events.filter((event) =>
     event.type === "legacy.import.report.generated"
-    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
   );
   const occurrences = snapshot.events.filter((event) =>
     event.type === "ingestion.occurrence.observed"
-    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
   );
-  const allowed = new Set([
-    "ingestion.source.registered",
-    "ingestion.scan.started",
-    "ingestion.occurrence.observed",
-    "ingestion.scan.completed",
-    "legacy.import.report.generated",
-    "diagnostic.recorded"
-  ]);
   if (
-    snapshot.events.length === 0
-    || snapshot.events.some((event) => !allowed.has(event.type))
+    snapshot.events.length !== inspection.candidates.length + 4
     || sourceEvents.length !== 1
     || scanStarts.length !== 1
     || scanCompletions.length !== 1
@@ -2970,13 +2993,18 @@ function assertRecoverableInspectionLedger(
   const source = sourceEvents[0]!;
   const start = scanStarts[0]!;
   const completion = scanCompletions[0]!;
+  const report = reports[0]!;
   if (
     source.type !== "ingestion.source.registered"
     || start.type !== "ingestion.scan.started"
     || completion.type !== "ingestion.scan.completed"
+    || report.type !== "legacy.import.report.generated"
     || stableJson(source.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
     || stableJson(start.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
     || stableJson(completion.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || stableJson(report.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || source.streamId !== `ingestion_source_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+    || source.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
     || source.payload.mode !== "read-only"
     || stableJson(source.payload.adapter) !== stableJson({
       name: "local-filesystem",
@@ -2984,10 +3012,17 @@ function assertRecoverableInspectionLedger(
     })
     || source.payload.rootUri !== pathToFileURL(inspection.sourceIdentity.rootRealpath).href
     || source.payload.workspaceUri !== `cestus-workspace://${CENTRAL_FL_ICE_PREVIEW.workspaceId}`
+    || start.streamId !== `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`
+    || start.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
     || start.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
     || start.payload.hashPolicy !== "sha256-dry-run"
+    || completion.streamId !== `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`
+    || completion.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
     || completion.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
     || completion.payload.inventoryHash !== expectedScannerInventoryHash(inspection)
+    || report.streamId !== legacyReportStreamId(report.payload)
+    || report.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    || report.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
   ) {
     throw new Error("existing destination inspection authority conflicts with the preview");
   }
@@ -3173,7 +3208,8 @@ function assertEvidenceBindings(
 function assertAuthoritativeRawImportLedger(
   snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
   checkpoint: CentralFloridaIcePreviewCheckpoint,
-  approvedBy: string
+  approvedBy: string,
+  candidates: readonly PreviewRawImportCandidate[]
 ): {
   readonly approvalEventId: string;
   readonly eventIds: readonly string[];
@@ -3184,28 +3220,31 @@ function assertAuthoritativeRawImportLedger(
     readonly skipped: number;
   };
 } {
-  const approvals = snapshot.events.filter((event) =>
+  const priorIds = new Set(checkpoint.state.eventIds);
+  const phaseEvents = snapshot.events.filter((event) => !priorIds.has(event.id));
+  const approvals = phaseEvents.filter((event) =>
     event.type === "ingestion.import.approved"
-    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
-    && event.payload.importBatchId === CENTRAL_FL_ICE_PREVIEW.importBatchId
   );
   if (approvals.length !== 1) {
-    throw new Error("authoritative raw approval ledger readback is not unique");
+    throw new Error(
+      "authoritative raw approval ledger readback is not unique; exact Gate 1 candidate set required"
+    );
   }
   const approval = approvals[0]!;
   if (
     approval.type !== "ingestion.import.approved"
     || stableJson(approval.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || approval.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    || approval.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
+    || approval.payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
     || approval.payload.approvedBy !== approvedBy
   ) {
-    throw new Error("authoritative raw approval does not match preview agent and human approval");
+    throw new Error(
+      "authoritative raw approval does not match preview agent and human approval or exact Gate 1 candidate set"
+    );
   }
-  const completions = snapshot.events.filter((event) =>
+  const completions = phaseEvents.filter((event) =>
     event.type === "ingestion.import.completed"
-    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
-    && event.payload.importBatchId === CENTRAL_FL_ICE_PREVIEW.importBatchId
   );
   if (completions.length !== 1) {
     throw new Error("authoritative raw import completion ledger readback is not unique");
@@ -3213,51 +3252,96 @@ function assertAuthoritativeRawImportLedger(
   const completion = completions[0]!;
   if (
     completion.type !== "ingestion.import.completed"
+    || completion.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    || completion.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
+    || completion.payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
     || completion.context.causationId !== approval.id
   ) {
     throw new Error("authoritative raw import completion lacks approval causation");
   }
-  const links = snapshot.events.filter((event) =>
-    event.type === "ingestion.evidence.linked"
-    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    && event.payload.importBatchId === CENTRAL_FL_ICE_PREVIEW.importBatchId
-  );
-  if (
-    links.length === 0
-    || links.some((event) =>
-      event.type !== "ingestion.evidence.linked"
-      || event.context.causationId !== approval.id
-    )
-  ) {
-    throw new Error("authoritative evidence links lack raw approval causation");
+  const links = phaseEvents.filter((event) => event.type === "ingestion.evidence.linked");
+  const evidenceEvents = phaseEvents.filter((event) => event.type === "evidence.ingested");
+  const parseEvents = phaseEvents.filter((event) => event.type === "ingestion.parse.job.created");
+  const groups = new Map<`sha256:${string}`, {
+    readonly occurrenceIds: string[];
+    readonly mediaType: string;
+    readonly sizeBytes: number;
+  }>();
+  for (const candidate of candidates) {
+    const existing = groups.get(candidate.contentHash);
+    if (existing === undefined) {
+      groups.set(candidate.contentHash, {
+        occurrenceIds: [candidate.occurrenceId],
+        mediaType: candidate.mediaType,
+        sizeBytes: candidate.sizeBytes
+      });
+    } else {
+      existing.occurrenceIds.push(candidate.occurrenceId);
+    }
   }
-  const linkedEvidenceIds = new Set(links.flatMap((event) =>
-    event.type === "ingestion.evidence.linked" ? [event.payload.evidenceId] : []
-  ));
-  const evidenceEvents = snapshot.events.filter((event) =>
-    event.type === "evidence.ingested" && linkedEvidenceIds.has(event.payload.evidenceId)
-  );
+  const expectedTotals = {
+    evidenceCreated: groups.size,
+    occurrencesLinked: candidates.length,
+    duplicatesReused: candidates.length - groups.size,
+    skipped: 0
+  };
+  const exactPhaseEventCount = 2 + (groups.size * 3);
   if (
-    evidenceEvents.length !== linkedEvidenceIds.size
-    || evidenceEvents.some((event) =>
-      event.type !== "evidence.ingested"
-      || stableJson(event.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
-    )
+    phaseEvents.length !== exactPhaseEventCount
+    || links.length !== groups.size
+    || evidenceEvents.length !== groups.size
+    || parseEvents.length !== groups.size
+    || stableJson(completion.payload.totals) !== stableJson(expectedTotals)
   ) {
-    throw new Error("authoritative evidence ingestion lacks exact preview-agent provenance");
+    throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
   }
-  const priorIds = new Set(checkpoint.state.eventIds);
-  const phaseEvents = snapshot.events.filter((event) => !priorIds.has(event.id));
-  const allowed = new Set([
-    "ingestion.import.approved",
-    "evidence.ingested",
-    "ingestion.evidence.linked",
-    "ingestion.import.completed",
-    "ingestion.parse.job.created",
-    "diagnostic.recorded"
-  ]);
-  if (phaseEvents.some((event) => !allowed.has(event.type))) {
-    throw new Error("raw import reconciliation found conflicting preexisting effects");
+  for (const [contentHash, group] of groups) {
+    const matchingLinks = links.filter((event) =>
+      event.type === "ingestion.evidence.linked"
+      && event.payload.contentHash === contentHash
+    );
+    const link = matchingLinks[0];
+    if (
+      matchingLinks.length !== 1
+      || link?.type !== "ingestion.evidence.linked"
+      || link.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+      || link.payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
+      || link.context.causationId !== approval.id
+      || stableJson([...link.payload.occurrenceIds].sort(compareCodeUnits))
+        !== stableJson([...group.occurrenceIds].sort(compareCodeUnits))
+    ) {
+      throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
+    }
+    const matchingEvidence = evidenceEvents.filter((event) =>
+      event.type === "evidence.ingested"
+      && event.payload.evidenceId === link.payload.evidenceId
+      && event.payload.contentHash === contentHash
+    );
+    if (
+      matchingEvidence.length !== 1
+      || matchingEvidence[0]?.type !== "evidence.ingested"
+      || matchingEvidence[0].payload.mediaType !== group.mediaType
+      || matchingEvidence[0].payload.sizeBytes !== group.sizeBytes
+      || stableJson(matchingEvidence[0].context.actor)
+        !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    ) {
+      throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
+    }
+    const expectedParseJobId = `parse_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`;
+    const matchingParses = parseEvents.filter((event) =>
+      event.type === "ingestion.parse.job.created"
+      && event.payload.evidenceId === link.payload.evidenceId
+      && event.payload.parseJobId === expectedParseJobId
+    );
+    if (
+      matchingParses.length !== 1
+      || matchingParses[0]?.type !== "ingestion.parse.job.created"
+      || matchingParses[0].payload.sourceCollectionId
+        !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+      || matchingParses[0].payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
+    ) {
+      throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
+    }
   }
   return {
     approvalEventId: approval.id,
@@ -3331,9 +3415,10 @@ function assertAuthoritativeStagingLedger(
   readonly proposalEventIds: readonly string[];
   readonly proposalIds: readonly string[];
 } {
-  const approvals = snapshot.events.filter((event) =>
+  const priorIds = new Set(checkpoint.state.eventIds);
+  const phaseEvents = snapshot.events.filter((event) => !priorIds.has(event.id));
+  const approvals = phaseEvents.filter((event) =>
     event.type === "legacy.ontology.staging.approved"
-    && event.payload.stagingBatchId === CENTRAL_FL_ICE_PREVIEW.stagingBatchId
   );
   if (approvals.length !== 1) {
     throw new Error("authoritative staging approval ledger readback is not unique");
@@ -3358,21 +3443,23 @@ function assertAuthoritativeStagingLedger(
     candidate.candidateId,
     candidate
   ]));
-  const proposals = snapshot.events.filter((event) => {
-    if (event.type !== "assertion.proposed") {
-      return false;
-    }
-    return selectedCandidateIds.some((candidateId) =>
-      event.payload.assertionId === stableLegacyAssertionId({
-        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
-        scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
-        stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
-        candidateSetHash: preview.candidateSetHash
-      }, candidateId)
-    );
-  });
-  if (proposals.length !== selectedCandidateIds.length) {
-    throw new Error("authoritative staged proposal count does not match approved candidates");
+  const expectedAssertionIds = selectedCandidateIds.map((candidateId) =>
+    stableLegacyAssertionId({
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+      stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+      candidateSetHash: preview.candidateSetHash
+    }, candidateId)
+  ).sort(compareCodeUnits);
+  const proposals = phaseEvents.filter((event) => event.type === "assertion.proposed");
+  const actualAssertionIds = proposals.map((event) => event.payload.assertionId)
+    .sort(compareCodeUnits);
+  if (
+    phaseEvents.length !== 1 + selectedCandidateIds.length
+    || proposals.length !== selectedCandidateIds.length
+    || stableJson(actualAssertionIds) !== stableJson(expectedAssertionIds)
+  ) {
+    throw new Error("staging ledger does not match exact approved Gate 2 subset");
   }
   for (const candidateId of selectedCandidateIds) {
     const candidate = candidateById.get(candidateId);
@@ -3409,15 +3496,6 @@ function assertAuthoritativeStagingLedger(
     ) {
       throw new Error("authoritative proposal payload does not match approved candidate material");
     }
-  }
-  const priorIds = new Set(checkpoint.state.eventIds);
-  const phaseEvents = snapshot.events.filter((event) => !priorIds.has(event.id));
-  if (phaseEvents.some((event) =>
-    event.type !== "legacy.ontology.staging.approved"
-    && event.type !== "assertion.proposed"
-    && event.type !== "diagnostic.recorded"
-  )) {
-    throw new Error("staging reconciliation found conflicting preexisting effects");
   }
   return {
     approvalEventId: approval.id,

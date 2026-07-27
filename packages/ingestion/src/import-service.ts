@@ -95,6 +95,10 @@ export class IngestionImportService {
         || existingApproval.payload.scanBatchId !== input.scanBatchId
         || existingApproval.payload.sourceCollectionId !== input.sourceCollectionId
         || existingApproval.payload.approvedBy !== input.approvedBy
+        || (
+          input.approvedAt !== undefined
+          && existingApproval.payload.approvedAt !== input.approvedAt
+        )
         || JSON.stringify(existingApproval.context.actor)
           !== JSON.stringify(this.dependencies.actor)
       ) {
