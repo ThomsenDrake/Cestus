@@ -46,6 +46,7 @@ export interface WakeSupervisorRuntime {
 
 interface ResidentWakeRuntimeState {
   readonly store: ReturnType<typeof createMountedWakeLifecycleStore>;
+  readonly factoryIssuerIdentity: object;
   coreReady: boolean;
   residentBound: boolean;
   factoryBinding?: {
@@ -142,6 +143,7 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
   const issuedRuntime = Object.freeze(runtime);
   residentWakeRuntimeStates.set(issuedRuntime, {
     store,
+    factoryIssuerIdentity: rawInput,
     coreReady: false,
     residentBound: false
   });
@@ -149,20 +151,26 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
 }
 
 export function registerResidentLoopFactoryAuthorityReadback(
+  issuerIdentity: object,
   wakeRuntime: WakeSupervisorRuntime,
   readback: object
 ): void {
   const state = residentWakeRuntimeStates.get(wakeRuntime);
+  if (
+    state === undefined ||
+    state.factoryIssuerIdentity !== issuerIdentity ||
+    !state.coreReady ||
+    state.residentBound ||
+    state.factoryBinding !== undefined
+  ) {
+    throw new Error("wake runtime factory authority registration is unavailable");
+  }
   const provider = Reflect.get(readback, "provider");
   const handoff = Reflect.get(readback, "handoff");
   const authorityBinding = handoff === null || typeof handoff !== "object"
     ? undefined
     : Reflect.get(handoff, "authorityBinding");
   if (
-    state === undefined ||
-    !state.coreReady ||
-    state.residentBound ||
-    state.factoryBinding !== undefined ||
     !Object.isFrozen(readback) ||
     provider === null ||
     typeof provider !== "object" ||
