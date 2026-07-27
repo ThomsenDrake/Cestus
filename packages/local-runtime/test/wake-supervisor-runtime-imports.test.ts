@@ -2986,6 +2986,14 @@ function residentFactoryIssuerAnalysis(
       return unreachableBindingInitializer;
     }
     if (
+      expressionEvaluationIsUnreachable(
+        value,
+        new Set(carrierPath)
+      )
+    ) {
+      return unreachableBindingInitializer;
+    }
+    if (
       ts.isObjectBindingPattern(element.parent) &&
       ts.isObjectLiteralExpression(value)
     ) {
@@ -3083,6 +3091,9 @@ function residentFactoryIssuerAnalysis(
       return exactArrayLiteralBindingSlots(value, resolving) ===
         unreachableBindingInitializer;
     }
+    if (ts.isObjectLiteralExpression(value)) {
+      return objectLiteralEvaluationIsUnreachable(value, resolving);
+    }
     if (
       !ts.isCallExpression(value) ||
       value.questionDotToken !== undefined ||
@@ -3104,6 +3115,141 @@ function residentFactoryIssuerAnalysis(
       value.expression,
       resolving,
       value.expression
+    );
+  }
+
+  function objectLiteralEvaluationIsUnreachable(
+    object: ts.ObjectLiteralExpression,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    for (const property of object.properties) {
+      if (
+        !ts.isSpreadAssignment(property) &&
+        ts.isComputedPropertyName(property.name) &&
+        expressionEvaluationIsUnreachable(
+          property.name.expression,
+          new Set(resolving)
+        )
+      ) {
+        return true;
+      }
+      if (
+        ts.isPropertyAssignment(property) &&
+        expressionEvaluationIsUnreachable(
+          property.initializer,
+          new Set(resolving)
+        )
+      ) {
+        return true;
+      }
+      if (
+        ts.isSpreadAssignment(property) &&
+        expressionEvaluationIsUnreachable(
+          property.expression,
+          new Set(resolving)
+        )
+      ) {
+        return true;
+      }
+      if (
+        ts.isShorthandPropertyAssignment(property) &&
+        property.objectAssignmentInitializer !== undefined &&
+        shorthandAssignmentValueIsDefinitelyUndefined(
+          property,
+          new Set(resolving)
+        ) &&
+        expressionEvaluationIsUnreachable(
+          property.objectAssignmentInitializer,
+          new Set(resolving)
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function shorthandAssignmentValueIsDefinitelyUndefined(
+    property: ts.ShorthandPropertyAssignment,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    const symbol = checker.getShorthandAssignmentValueSymbol(property);
+    if (symbol === undefined || resolving.has(symbol)) return false;
+    const declaration = (symbol.declarations ?? []).find(
+      (candidate): candidate is ts.VariableDeclaration =>
+        ts.isVariableDeclaration(candidate) &&
+        candidate.initializer !== undefined &&
+        (candidate.parent.flags & ts.NodeFlags.Const) !== 0 &&
+        (
+          !ts.isVariableStatement(candidate.parent.parent) ||
+          candidate.parent.parent.modifiers?.some((modifier) =>
+            modifier.kind === ts.SyntaxKind.ExportKeyword ||
+            modifier.kind === ts.SyntaxKind.DefaultKeyword
+          ) !== true
+        )
+    );
+    if (
+      declaration?.initializer === undefined ||
+      !symbolHasOnlyImmutableCarrierUses(
+        symbol,
+        new Set(resolving),
+        property.name
+      )
+    ) {
+      return false;
+    }
+    resolving.add(symbol);
+    return expressionIsDefinitelyUseClosedUndefined(
+      declaration.initializer,
+      resolving,
+      declaration.initializer
+    );
+  }
+
+  function expressionIsDefinitelyUseClosedUndefined(
+    expression: ts.Expression,
+    resolving: Set<ts.Symbol>,
+    exactUse: ts.Expression
+  ): boolean {
+    const value = unwrapRegistrarExpression(expression);
+    if (ts.isVoidExpression(value)) return true;
+    if (!ts.isIdentifier(value)) return false;
+    const symbol = checker.getSymbolAtLocation(value);
+    if (
+      value.text === "undefined" &&
+      (symbol === undefined || (symbol.declarations ?? []).length === 0)
+    ) {
+      return true;
+    }
+    if (symbol === undefined || resolving.has(symbol)) return false;
+    const declaration = (symbol.declarations ?? []).find(
+      (candidate): candidate is ts.VariableDeclaration =>
+        ts.isVariableDeclaration(candidate) &&
+        candidate.initializer !== undefined &&
+        (candidate.parent.flags & ts.NodeFlags.Const) !== 0 &&
+        (
+          !ts.isVariableStatement(candidate.parent.parent) ||
+          candidate.parent.parent.modifiers?.some((modifier) =>
+            modifier.kind === ts.SyntaxKind.ExportKeyword ||
+            modifier.kind === ts.SyntaxKind.DefaultKeyword
+          ) !== true
+        )
+    );
+    if (
+      declaration?.initializer === undefined ||
+      !symbolHasOnlyImmutableCarrierUses(
+        symbol,
+        new Set(resolving),
+        exactUse
+      )
+    ) {
+      return false;
+    }
+    resolving.add(symbol);
+    return expressionIsDefinitelyUseClosedUndefined(
+      declaration.initializer,
+      resolving,
+      declaration.initializer
     );
   }
 
@@ -4541,6 +4687,88 @@ describe("wake supervisor runtime import boundary", () => {
          ];`
       ],
       [
+        "returning object property still permits registrar binding",
+        `${exactComposition}
+         function completeBeforeBinding(): number {
+           return 0;
+         }
+         export const { exposedRegistrar } = {
+           completed: completeBeforeBinding(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "object method body is not evaluated during binding",
+        `${exactComposition}
+         function stopWhenCalled(): never {
+           throw new Error("not-called");
+         }
+         export const { exposedRegistrar } = {
+           blocked() {
+             stopWhenCalled();
+           },
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "object accessor body is not evaluated during binding",
+        `${exactComposition}
+         function stopWhenRead(): never {
+           throw new Error("not-read");
+         }
+         export const { exposedRegistrar } = {
+           get blocked() {
+             return stopWhenRead();
+           },
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "unused shorthand default still permits registrar binding",
+        `${exactComposition}
+         function stopOnlyIfMissing(): never {
+           throw new Error("not-missing");
+         }
+         const completed = Object.freeze({});
+         export const { exposedRegistrar } = {
+           completed = stopOnlyIfMissing(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "mutable shorthand value keeps default conservative",
+        `${exactComposition}
+         function stopOnlyIfMissing(): never {
+           throw new Error("not-missing");
+         }
+         let completed: object | undefined = undefined;
+         completed = Object.freeze({});
+         export const { exposedRegistrar } = {
+           completed = stopOnlyIfMissing(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "mutable shorthand source keeps alias default conservative",
+        `${exactComposition}
+         function stopOnlyIfMissing(): never {
+           throw new Error("not-missing");
+         }
+         let source: object | undefined = undefined;
+         source = Object.freeze({});
+         const completed = source;
+         export const { exposedRegistrar } = {
+           completed = stopOnlyIfMissing(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
         "exported usable empty object outer default",
         `${exactComposition}
          export const {
@@ -4950,6 +5178,110 @@ describe("wake supervisor runtime import boundary", () => {
              registerResidentLoopFactoryAuthorityReadback
          ]] = [
            ...(spreadAlias satisfies readonly unknown[])
+         ];`
+      ],
+      [
+        "throwing object property prevents registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const { exposedRegistrar } = {
+           blocked: stopBeforeBinding(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "later throwing object property prevents registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const { exposedRegistrar } = {
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback,
+           blocked: stopBeforeBinding()
+         };`
+      ],
+      [
+        "throwing object spread prevents registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const { exposedRegistrar } = {
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback,
+           ...stopBeforeBinding()
+         };`
+      ],
+      [
+        "throwing computed name prevents registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const { exposedRegistrar } = {
+           [stopBeforeBinding()]: Object.freeze({}),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "throwing defined shorthand default prevents registrar binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         const blocked = undefined;
+         export const { exposedRegistrar } = {
+           blocked = stopBeforeBinding(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "aliased undefined shorthand default prevents binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         const missing = undefined;
+         const blocked = missing;
+         export const { exposedRegistrar } = {
+           blocked = stopBeforeBinding(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "throwing nested object prevents array binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const [, exposedRegistrar] = [
+           {
+             blocked: stopBeforeBinding()
+           },
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "throwing object argument prevents array binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         function consume(value: object): object {
+           return value;
+         }
+         export const [, exposedRegistrar] = [
+           consume({
+             blocked: stopBeforeBinding()
+           }),
+           registerResidentLoopFactoryAuthorityReadback
          ];`
       ],
       [
