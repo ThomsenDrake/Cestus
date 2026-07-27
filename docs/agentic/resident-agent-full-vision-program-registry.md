@@ -43258,3 +43258,90 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1158 — Evaluation-complete Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-27T04:08:29Z
+- Exact forward test-only descendant
+  `df1847e3430e8a498a14ef15d523a37cd2299f57`, tree
+  `8f4f0e9d5a47ec02fe17eccc3596529e413ca502`, has sole parent exact E-1157
+  authority merge `6ba773fe746c9a1970873e9e6e34297655ed94d5` and exact subject
+  `test(local-runtime): prove spread evaluation completion`. Rejected
+  candidate `7ac1dd34` and every earlier Task14 candidate remain immutable
+  ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+193 / -4** from rejected blob
+  `44a32434ca095d8fbf2c2c6327137521e49bea35` to exact blob
+  `10c7e89be99615aa0cffe2304d1ed0c50b87666d`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Before correction, an exact nested spread evaluates a local
+  unconditional-throw call and the oracle projects a later registrar even
+  though array construction never completes and no outer binding occurs.
+  After correction exact literal reconstruction returns the established
+  unreachable-binding sentinel before inspecting a projected binding value.
+- The finite completion proof is limited to non-optional direct calls to a
+  local callable whose body is exactly one unconditional throw, approved
+  transparent wrappers, and checker-resolved use-closed immutable local
+  aliases. Async, generator, optional, spread-argument, opaque, mutable,
+  cyclic, multi-statement, conditional, and merely effectful calls remain
+  conservative. Throwing call arguments and recursively exact nested array
+  literals propagate noncompletion before binding.
+- Abstract controls cover a provably throwing element before and after the
+  would-be selected registrar, an approved callable alias, and an
+  effectful-but-returning local call. Every E-1156 zero/one/many,
+  wrapper/alias/nested/hole/opaque control, E-1154 before/at/after spread
+  control, E-1152 exact-carrier control, and earlier declaration/global/
+  awaited/unreachable/value-flow surface remains exact.
+- Exact focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; unchanged runtime RED remains
+  pre-store and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The failure set is only the two Task14 issuer REDs plus the seven preserved
+  Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** with fixture-heavy commands isolated under
+  `TMPDIR=/dev/shm`; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, repository-closure, or release-success marker.
+- Exact one-test scope, source/runtime/other-test freezes, E-1157 authority
+  and rejected-candidate ancestry, TypeScript 5.9.3 and Vitest 4.1.9
+  dependencies, diff hygiene, integrity, and clean state pass. Exact frozen
+  source blobs remain composition `b9a679c0`, wake `2fee564d`, and mounted
+  lifecycle store `c1a7d473`. No source, claim, design, plan, contract,
+  mission, dependency, route, provider, credential, release, or unrelated
+  byte changed.
+- Admit only exact `df1847e3` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a seventeenth completely fresh
+  independent read-only reviewer who has never authored, reviewed, verified,
+  or analyzed corrected blob `10c7e89b`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce exact literal evaluation completion
+  before binding across nested spreads and element order. It must probe
+  direct and aliased calls, wrappers, throwing arguments, effectful returning
+  calls, async and generator callables, multi-statement and conditional
+  throws, and every cumulative declaration/global/awaited/unreachable/
+  value-flow surface. Reproduce causal runtime/static failures,
+  focused/card/cross signatures, assurance, repository-first-stop, exact
+  scope/freezes/ancestry/dependencies/diff/integrity/clean state. Static
+  analysis must supplement, not substitute for runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  GREEN authority, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
