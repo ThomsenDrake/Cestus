@@ -44585,3 +44585,115 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1173 — Exact aliased-void-complete Task14 RED approved
+
+- Recorded at: 2026-07-27T08:46:57Z
+- Completely fresh independent read-only reviewer
+  `/root/task14_reviewer_24` returns **APPROVED** with no findings for exact
+  corrected test-only candidate
+  `41502fa449f029af8ed9fd12df92e858f85fab8e`, tree
+  `93faf68a453f4656fcad74c3a1e0edff8ff6d9bd`, sole parent
+  `16d4569d8de54d7928e342b714786148c023a82b`, and exact oracle blob
+  `2bfc4b368fddbd309af0f0ab08df51327e410be6`. Review remained read-only
+  beneath exact clean E-1172 envelope
+  `bc24a2bf33dcf992b47882549ada8449b868f5c5`; no byte or ref changed.
+- The reviewer read the complete cumulative AST/symbol-resolution oracle and
+  independently exercised ten valid throwing surfaces spanning direct,
+  one-hop, multi-hop, object property, shorthand, array, nested, spread, and
+  default selections. Completing controls and exact-use/cycle guards pass;
+  mutable, exported, separately used, shadowed, and opaque cases retain
+  conservative behavior.
+- No valid local AST symbol-resolution counterexample remains. One apparent
+  duplicate-function case requires invalid duplicate implementations and is
+  rejected by TypeScript and native module parsing; it is outside the
+  approved abstract valid-program fixture surface.
+- The reviewer independently reproduces exact focused
+  **96 = 94 passed + two causal issuer RED failures**, Task136 card
+  **383 = 374 passed + nine failed**, and 37-file cross-boundary
+  **1,042 = 1,033 passed + nine failed** under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second import-policy timeout. The failure set is only
+  the two Task14 issuer REDs plus seven preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20**; exact markers remain **29 / 20 / 29 / 15**.
+  Repository mode exits one and stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  without any prefix, closure, record-29, repository, or release marker.
+- Exact candidate/envelope identities, parent order, one-file
+  **+266 / -2** scope, source/runtime/other-test freezes, rejected-candidate
+  and authority ancestry, TypeScript 5.9.3 and Vitest 4.1.9 dependencies,
+  diff hygiene, object integrity, and clean state pass independent
+  reproduction.
+- Advance only exact `41502fa4` corrected Task14 test-only RED
+  `reviewing -> approved`. Authorize its history-preserving no-ff merge into
+  this program branch, fresh integration-tree focused/card/cross-boundary/
+  typecheck/factory/mission/V4/marker/repository-first-stop/scope/freeze/
+  ancestry/dependency/diff/integrity/clean gates, and a separate append-only
+  integrated event. This event contains no Task14 source-correction,
+  GREEN, Task15, or product authority.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact corrected RED approval, not integration,
+  source correction, Task14 approval/integration, GREEN authority, Task15
+  authority, Task136 product candidacy, repository closure, strict record
+  29, assurance-only transition, publication, Wave 3 start, or product
+  release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1174 — Exact aliased-void-complete Task14 RED integrated
+
+- Recorded at: 2026-07-27T08:55:51Z
+- Exact independently approved corrected test-only RED
+  `41502fa449f029af8ed9fd12df92e858f85fab8e`, tree
+  `93faf68a453f4656fcad74c3a1e0edff8ff6d9bd`, is integrated by exact
+  history-preserving no-ff merge
+  `9287f19886f7bd3c93994f29c8c89708b9881e11`, tree
+  `d5620a8f5105845eca0fa8e28473329703141d6d`. Its first parent is exact
+  E-1173 approval commit
+  `7df38e47a50a058a44e1e16a0cb2776a0caade93`; its second parent is the
+  exact reviewed candidate.
+- Integrated oracle blob is exact
+  `2bfc4b368fddbd309af0f0ab08df51327e410be6`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; mounted test remains exact
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`.
+- The merge's first-parent delta also materializes four already committed
+  Task136 lineage paths absent from the coordinator tree. Each is
+  byte-identical in candidate and candidate parent, so none is candidate or
+  new product work. Exact frozen blobs remain composition `b9a679c0`, wake
+  `2fee564d`, mounted lifecycle store `c1a7d473`, and runtime test
+  `b53c4caf`.
+- Fresh integration-tree focused execution is exact
+  **96 = 94 passed + two causal Task14 issuer RED failures**. Exact Task136
+  card is **383 = 374 passed + nine failed**, and exact 37-file
+  cross-boundary execution is **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  No failure identity changed.
+- Fresh standalone typecheck, factory readiness, mission **20/20**, V4
+  **20/20**, and exact contract markers **29 / 20 / 29 / 15** pass. Mission
+  fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`.
+- Clean integration-tree repository mode exits one after all four markers
+  and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no prefix, closure, record-29, repository, or release marker.
+- Exact merge parents, candidate tree/parent/subject/one-test
+  **+266 / -2** scope, corrected and rejected oracle ancestry,
+  source/runtime/other-test freezes, TypeScript 5.9.3 and Vitest 4.1.9
+  dependencies, diff hygiene, strict Git integrity, and final clean state
+  pass.
+- Advance only exact `41502fa4` corrected Task14 test-only RED
+  `approved -> integrated`. This event intentionally contains no Task14
+  product correction, Task14 approval, GREEN authority, Task15 authority, or
+  product transition. A separate exact Task136 history-preserving authority
+  merge and append-only GREEN event are mandatory before any product source
+  may change.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED integration, not source correction,
+  Task14 approval, GREEN authority, Task15 authority, Task136 product
+  candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
