@@ -42291,3 +42291,70 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1145 — Task14 declaration-carrier RED rejected on local iterability
+
+- Recorded at: 2026-07-27T01:49:30Z
+- The tenth fresh independent read-only review rejects exact test-only
+  candidate `dca967ddf5deb601934f3b1417926a6042388385`, tree
+  `ad3ae576ee5c41ff609ea27e51d39b2e31a34eb6`, sole parent
+  `32e6c172975b4394ef76497335ebe4c61cbbe7d8`, corrected test blob
+  `a3ecb5b10bb3cdb6db192991c20b96ee8c7f07cc`, and exact review envelope
+  `e8d6f67a7e54081eb42e0e20345809ab25d1f193`.
+- The reviewer independently proves three finite candidate-bound local AST
+  symbol-resolution failures. A function declaration given a local
+  `Symbol.iterator`, a class declaration with a static iterator, and that
+  class through a local constant alias all return no violation even though
+  iteration selects `undefined` and evaluates the registrar element default.
+  Runtime independently confirms the default is selected in all three.
+- Root cause is confined to the unit-test oracle. The E-1144 shortcut treats
+  every checker-resolved function/class declaration identifier as
+  definitely non-iterable without inspecting declaration-defined
+  iterability or iterator-affecting uses through its local alias chain.
+  Product source, runtime exact-identity evidence, and both causal Task14
+  production RED failures remain unchanged.
+- Reject exact `dca967dd` as `reviewing -> implementing`. It is not approved
+  and must remain an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `a3ecb5b1`. First add abstract local controls for
+  the direct iterable function declaration, direct static-iterator class
+  declaration, and static-iterator class through one local constant alias,
+  and reproduce the three false-negative oracle results while retaining the
+  exact causal product RED.
+- Then replace unconditional declaration classification with a finite
+  conservative proof. A local function/class declaration may be considered
+  definitely non-iterable only when the declaration has no static iterator
+  and every resolved local use across its constant-alias chain is limited to
+  the declaration name, immutable alias initialization, and the exact
+  destructuring-carrier position being analyzed. Property/element access,
+  assignment, call/argument escape, mutable alias, export/return escape,
+  declaration-defined static iterator, or any unsupported use must leave the
+  carrier indeterminate. Cycles must fail closed.
+- Retain the E-1144 plain declaration, alias, unshadowed global numeric,
+  supported prefix, and shadowed-name controls, plus every earlier
+  unreachable/indeterminate/awaited/destructured/callable/value-flow rule.
+  Calls, generator results, imports, unsupported expressions, and
+  computed/spread object values remain indeterminate.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- An eleventh completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe the corrected
+  local declaration-use and alias surface. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize source work, or make
+  prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
