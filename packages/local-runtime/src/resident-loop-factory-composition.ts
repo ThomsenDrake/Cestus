@@ -13,6 +13,7 @@ import {
 } from "./mounted-provider-authority.js";
 import {
   createWakeSupervisorRuntime,
+  registerResidentLoopFactoryAuthorityReadback,
   type WakeSupervisorRuntime,
   type WakeSupervisorRuntimeInput
 } from "./wake-supervisor-runtime.js";
@@ -122,7 +123,7 @@ export function createResidentLoopFactoryComposition(rawInput: unknown): Residen
     if (!sameFactoryState(before, after) || !sameProviderReadback(providerBefore, providerAfter)) throw unavailable();
     assertExactAuthorityAgreement(after, providerAfter, handoff);
 
-    return Object.freeze({
+    const readback = Object.freeze({
       provider: freezeProviderReadback(providerAfter),
       handoff: Object.freeze({
         taskId: handoff.taskLifecycle.taskId,
@@ -133,6 +134,8 @@ export function createResidentLoopFactoryComposition(rawInput: unknown): Residen
         authorityBinding: Object.freeze({ ...handoff.binding })
       })
     });
+    registerResidentLoopFactoryAuthorityReadback(wakeRuntime, readback);
+    return readback;
   };
 
   return Object.freeze({

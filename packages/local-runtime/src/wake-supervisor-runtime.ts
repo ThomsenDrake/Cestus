@@ -48,6 +48,12 @@ interface ResidentWakeRuntimeState {
   readonly store: ReturnType<typeof createMountedWakeLifecycleStore>;
   coreReady: boolean;
   residentBound: boolean;
+  factoryBinding?: {
+    readonly readback: object;
+    readonly provider: object;
+    readonly handoff: object;
+    readonly authorityBinding: object;
+  };
 }
 
 const residentWakeRuntimeStates = new WeakMap<WakeSupervisorRuntime, ResidentWakeRuntimeState>();
@@ -142,6 +148,42 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
   return issuedRuntime;
 }
 
+export function registerResidentLoopFactoryAuthorityReadback(
+  wakeRuntime: WakeSupervisorRuntime,
+  readback: object
+): void {
+  const state = residentWakeRuntimeStates.get(wakeRuntime);
+  const provider = Reflect.get(readback, "provider");
+  const handoff = Reflect.get(readback, "handoff");
+  const authorityBinding = handoff === null || typeof handoff !== "object"
+    ? undefined
+    : Reflect.get(handoff, "authorityBinding");
+  if (
+    state === undefined ||
+    !state.coreReady ||
+    state.residentBound ||
+    state.factoryBinding !== undefined ||
+    !Object.isFrozen(readback) ||
+    provider === null ||
+    typeof provider !== "object" ||
+    !Object.isFrozen(provider) ||
+    handoff === null ||
+    typeof handoff !== "object" ||
+    !Object.isFrozen(handoff) ||
+    authorityBinding === null ||
+    typeof authorityBinding !== "object" ||
+    !Object.isFrozen(authorityBinding)
+  ) {
+    throw new Error("wake runtime factory authority registration is unavailable");
+  }
+  state.factoryBinding = Object.freeze({
+    readback,
+    provider,
+    handoff,
+    authorityBinding
+  });
+}
+
 export async function bindResidentLoopCapabilitiesForFactory(
   wakeRuntime: WakeSupervisorRuntime,
   binding: unknown,
@@ -150,6 +192,26 @@ export async function bindResidentLoopCapabilitiesForFactory(
   const state = residentWakeRuntimeStates.get(wakeRuntime);
   if (state === undefined || !state.coreReady || state.residentBound) {
     throw new Error("wake runtime resident capability binding requires exact unconsumed Core authority");
+  }
+  const registered = state.factoryBinding;
+  if (registered === undefined || binding !== registered.readback) {
+    throw new Error("wake runtime resident capability binding requires exact issued factory authority");
+  }
+  const provider = binding === null || typeof binding !== "object"
+    ? undefined
+    : Reflect.get(binding, "provider");
+  const handoff = binding === null || typeof binding !== "object"
+    ? undefined
+    : Reflect.get(binding, "handoff");
+  const authorityBinding = handoff === null || typeof handoff !== "object"
+    ? undefined
+    : Reflect.get(handoff, "authorityBinding");
+  if (
+    provider !== registered.provider ||
+    handoff !== registered.handoff ||
+    authorityBinding !== registered.authorityBinding
+  ) {
+    throw new Error("wake runtime resident capability binding requires exact issued factory authority");
   }
   const issued = await bindMountedResidentLoopAuthorityForFactory(
     state.store,
