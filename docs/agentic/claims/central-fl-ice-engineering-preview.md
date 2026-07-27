@@ -326,3 +326,90 @@ directly.
 
 This remains `implementing` pending the required fresh reviews. No live source
 inspection or destination workspace creation has occurred.
+
+## Task 3 Third Review Rejection and Remediation
+
+The third dual-review round rejected remediation commit
+`7a5f820f68907ee88d0c09384b9bf334c683e819` because phase counts and selected
+identifiers did not prove the full committed event material. Gate 1 could admit
+same-count foreign approval, evidence, link, parse, or completion effects;
+Gate 2 could admit wrong approval batch/stream/version or proposal stream
+material; no-checkpoint recovery did not compare all deterministic inspection
+fields; and stale-source retry did not reconcile the exact safe diagnostic.
+
+RED evidence was established before implementation:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file failed; 12 tests failed and 116 passed
+```
+
+The twelve failures covered five Gate 1 same-count substitutions, two Gate 2
+same-count substitutions that were not already rejected, four portable
+no-checkpoint inspection replacements, and an exact-byte stale-source retry.
+Additional assertions cover already-rejected wrong Gate 2 batch/stream
+material and arbitrary diagnostic substitution.
+
+Current GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file passed; 129 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/local-filesystem.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/import-service.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology/test/assertion-service.test.ts
+7 files passed; 203 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+9 files passed; 229 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+29 files passed; 327 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology/test \
+  packages/ontology-bootstrap/test \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+28 files passed; 456 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run ui:build
+passed; 165 modules transformed (existing chunk-size advisory only)
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+The shared canonical comparator now binds type/version, stream/sequence,
+actor/causation/correlation, core and pack versions, and full deterministic
+payload material. The no-checkpoint path also validates the canonical report
+artifact before it may persist any checkpoint. Only exact source-change
+diagnostics emitted by the import contract are accepted, their event IDs remain
+in phase provenance, and restored approved bytes can resume import without
+weakening approval authority.
+
+This remains `implementing` pending the required fresh reviews. No live source
+inspection or destination workspace creation has occurred.

@@ -237,3 +237,33 @@ test-first pass:
 
 No live SSD inspection, preview workspace creation, provider transfer, or
 human-gate transition is part of this remediation task.
+
+## Task 3 Third Review Remediation
+
+The third review of remediation commit
+`7a5f820f68907ee88d0c09384b9bf334c683e819` requires one final bounded,
+test-first reconciliation pass:
+
+1. add same-count adversarial Gate 1 tests for foreign approval/evidence/link/
+   parse/completion material, including provider-lane and context substitution;
+2. add same-count adversarial Gate 2 tests for wrong approval
+   batch/stream/version and foreign proposal streams;
+3. use a real portable workspace to corrupt one deterministic field in each
+   no-checkpoint inspection phase and prove recovery rejects the destination
+   without adding a checkpoint or any ledger event;
+4. reconcile source-change diagnostics only when their complete safe retry
+   envelope matches the import contract, carry their IDs into durable phase
+   provenance, reject arbitrary diagnostics, and prove exact-byte restoration
+   permits a resumable retry;
+5. implement one shared canonical committed-event comparator and
+   phase-specific expected-event builders over existing runtime, ledger,
+   report, and identifier contracts;
+6. rerun the focused preview suite, the seven-file retry boundary, the
+   nine-file preview boundary, all ingestion tests, the ontology/bootstrap plus
+   specialist boundary, typecheck, UI build, factory readiness, and
+   `git diff --check`;
+7. update the claim with exact RED/GREEN evidence, audit owned-file scope and
+   readability, and commit atomically for fresh dual review.
+
+No live SSD inspection, preview workspace creation, provider transfer, or
+human-gate transition is part of this remediation task.

@@ -270,3 +270,37 @@ underlying append-only ledger or runtime contracts:
 These checks remain preview-specific reconciliation and exact-retry seams.
 They do not permit accepted ontology mutation, production activation, external
 provider transfer, or writes to the source SSD.
+
+## Third Review Amendment: Canonical Committed Event Material
+
+The third Task 3 review rejected count- and identifier-based reconciliation
+because a same-count foreign or malformed effect could still satisfy a phase
+boundary. The preview now treats the complete deterministic committed event
+envelope as authority:
+
+- Gate 1 compares the exact approval, evidence, link, local-parse, and
+  completion events for the approved raw candidate set. The comparison includes
+  event type and version, stream and stream sequence, actor, causation,
+  correlation, core and pack versions, and complete deterministic payload
+  material. It rejects same-count substitutions such as a provider parse lane,
+  foreign actor or stream, or changed evidence source.
+- Gate 2 applies the same rule to the exact staging approval and evidence-bound
+  proposal set. A wrong approval batch, stream, or version and a proposal on a
+  foreign assertion stream are conflicts even when counts and candidate IDs
+  remain unchanged.
+- No-checkpoint recovery reads and validates the canonical staged report
+  artifact, then recognizes the entire ordered source-registration, scan,
+  occurrence, completion, and report sequence by full canonical material. It
+  cannot persist an `inspection-blocked` checkpoint for an unrecognized
+  destination.
+- A source changed since approval may append only the exact safe
+  `INGESTION_SOURCE_CHANGED_SINCE_APPROVAL` diagnostic envelope emitted by the
+  approved import contract. That diagnostic becomes durable phase provenance,
+  arbitrary diagnostics are rejected, and retry succeeds only after the exact
+  approved bytes are restored.
+
+Only nondeterministic event timestamps are excluded from equality. Report
+`generatedAt`, hashes, totals, identifiers, source bindings, and all other
+deterministic authority remain part of the comparison. These are
+preview-specific reconciliation checks over the existing ledger and runtime;
+they do not introduce a second ledger, storage layer, or ontology truth.
