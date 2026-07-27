@@ -43518,3 +43518,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1161 — Task14 object-complete RED rejected on final property value
+
+- Recorded at: 2026-07-27T05:17:13Z
+- The eighteenth fresh independent read-only review rejects exact test-only
+  candidate `1e2e49283a933ecac5aaa98abb14774051991679`, tree
+  `c4c2d0581e10b9e627f2e66a384d09492064c82d`, sole parent
+  `088b69aa7dec5b604da1f870cee65095c6ab1c9b`, corrected test blob
+  `995015ef09f993de6c22b21b89659e1ed5c57e21`, and exact review envelope
+  `6dcbc8e74bbf8c89f6cedd30e3fed6792882e14c`.
+- Exact identity, scope, envelope parents, physical registry EOF,
+  source/runtime freezes, ancestry, dependency versions, clean state, diff
+  hygiene, and Git integrity pass. Focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**, Task136 card remains
+  **383 = 374 passed + nine failed**, and the 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed**.
+- The reviewer proves finite candidate-bound local AST symbol-resolution
+  false positives and false negatives. Object binding selection returns the
+  first matching direct property and ignores exact object spreads, while
+  runtime reads the final own-property value after the complete initializer
+  finishes.
+- A first registrar property followed by a duplicate unrelated value is a
+  false positive; the inverse duplicate order is a false negative. A later
+  exact spread overriding a registrar is a false positive, and a registrar
+  supplied only by an exact spread is a false negative.
+- The reviewer also proves a false positive when a mutable object alias is
+  initialized with a registrar property, overwritten, and then destructured.
+  The current carrier-alias loop follows any variable initializer without
+  proving immutable use closure.
+- Root cause is confined to the unit-test oracle. E-1160 correctly proves
+  whole-initializer completion but does not reconstruct the final selected
+  property value. Product source and both causal Task14 RED failures remain
+  unchanged.
+- Reject exact `1e2e4928` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `995015ef`. First add abstract duplicate,
+  exact-spread override/supply, and mutable-alias controls and reproduce both
+  mismatch directions while retaining both causal product REDs.
+- Then constrain binding-carrier alias traversal to checker-resolved,
+  use-closed, unexported immutable local constants through approved
+  transparent wrappers. Mutable, exported, cyclic, separate-use, and
+  unsupported carriers remain indeterminate.
+- Reconstruct the final selected object property in runtime order. Later
+  direct static properties replace earlier values; exact local object
+  literals may be projected recursively through approved wrappers and
+  use-closed immutable local aliases; an exact spread missing the selected
+  property leaves the earlier value unchanged. Opaque, mutable, exported,
+  cyclic, computed-unknown, accessor, and unsupported overrides make the
+  current selected value indeterminate, but a later exact direct property
+  may replace that uncertainty.
+- Preserve the E-1160 whole-initializer noncompletion proof before property
+  projection. Add parity for both duplicate orders, exact direct and aliased
+  spread supply/override/missing-property cases, later direct recovery after
+  an opaque spread, opaque later spread conservatism, static computed names,
+  and mutable/exported/separate-use alias fallback.
+- Retain every earlier shorthand/default, property-order/computed/spread/
+  nested-container, method/accessor, direct-call, exact-array-spread,
+  exact-carrier, declaration/global/awaited/unreachable/value-flow control.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A nineteenth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe runtime final
+  property projection across duplicates, exact and opaque spreads, static
+  and unknown computed names, immutable/mutable/exported/cyclic/separate-use
+  aliases, and later exact overrides. Changed bytes invalidate review. The
+  reviewer may not edit, commit, merge, authorize source work, or make
+  prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
