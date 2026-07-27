@@ -1,8 +1,20 @@
 import { createHash } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  readdirSync
+} from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { ZipArchiveAdapter, type ZipArchiveChild } from "./archive-adapter.js";
-import { stableLocalFilesystemOccurrenceId } from "./local-filesystem.js";
+import {
+  normalizeLocalFilesystemSelectedFiles,
+  stableLocalFilesystemOccurrenceId,
+  type LocalFilesystemSelectedFile
+} from "./local-filesystem.js";
 import type { IngestionOccurrenceSummary } from "./projection.js";
 import {
   stableIngestionError,
@@ -29,6 +41,7 @@ export interface MaterializeApprovedOccurrencesInput {
   readonly importBatchId: string;
   readonly occurrences: readonly IngestionOccurrenceSummary[];
   readonly approvedSkippedArchivePaths?: readonly string[];
+  readonly selectedFiles?: readonly LocalFilesystemSelectedFile[];
 }
 
 export type MaterializeApprovedOccurrencesResult =
@@ -79,7 +92,9 @@ export function materializeApprovedOccurrences(
     input.sourceCollectionId,
     input.scanBatchId,
     approved.archiveContainerHashes,
-    input.approvedSkippedArchivePaths ?? []
+    input.approvedSkippedArchivePaths ?? [],
+    input.selectedFiles,
+    approved.items
   );
 
   if (!current.ok) {
@@ -203,7 +218,9 @@ function currentInventoryFor(
   sourceCollectionId: string,
   scanBatchId: string,
   approvedArchiveContainerHashes: ReadonlyMap<string, `sha256:${string}`>,
-  approvedSkippedArchivePaths: readonly string[]
+  approvedSkippedArchivePaths: readonly string[],
+  selectedFiles: readonly LocalFilesystemSelectedFile[] | undefined,
+  approvedItems: ReadonlyMap<string, InventoryItem>
 ): InventoryResult {
   const archiveAdapter = new ZipArchiveAdapter();
   const items = new Map<string, InventoryItem>();
@@ -212,7 +229,9 @@ function currentInventoryFor(
   let files: ScannedFile[];
 
   try {
-    files = collectFiles(sourceRoot).sort((left, right) => compareCodeUnits(left.relativePath, right.relativePath));
+    files = selectedFiles === undefined
+      ? collectFiles(sourceRoot).sort((left, right) => compareCodeUnits(left.relativePath, right.relativePath))
+      : validateSelectedMaterializationFiles(sourceRoot, selectedFiles, approvedItems);
   } catch {
     return sourceChangedError();
   }
@@ -220,7 +239,9 @@ function currentInventoryFor(
   for (const file of files) {
     let content: Buffer;
     try {
-      content = readFileSync(file.absolutePath);
+      content = file.selected === undefined
+        ? readFileSync(file.absolutePath)
+        : readExactSelectedFile(file.selected, file.absolutePath);
     } catch {
       return sourceChangedError();
     }
@@ -349,6 +370,81 @@ function compareInventories(
 interface ScannedFile {
   readonly relativePath: string;
   readonly absolutePath: string;
+  readonly selected?: LocalFilesystemSelectedFile;
+}
+
+function validateSelectedMaterializationFiles(
+  sourceRoot: string,
+  selectedFiles: readonly LocalFilesystemSelectedFile[],
+  approvedItems: ReadonlyMap<string, InventoryItem>
+): ScannedFile[] {
+  const selectedSnapshot = normalizeLocalFilesystemSelectedFiles(selectedFiles);
+  if (selectedSnapshot.length !== approvedItems.size) {
+    throw new Error("Selected import files do not match the approved occurrence set.");
+  }
+  const paths = new Set<string>();
+  const normalized: ScannedFile[] = [];
+  for (const selected of selectedSnapshot) {
+    const absolutePath = resolve(sourceRoot, selected.sourcePath);
+    const relativePath = relative(sourceRoot, absolutePath);
+    const approved = approvedItems.get(regularInventoryKey(selected.sourcePath));
+    if (
+      selected.sourcePath.length === 0
+      || selected.sourcePath !== selected.sourcePath.normalize("NFC")
+      || selected.sourcePath.includes("\\")
+      || selected.sourcePath.includes("\0")
+      || relativePath !== selected.sourcePath.split("/").join(sep)
+      || isZipPath(selected.sourcePath)
+      || paths.has(selected.sourcePath)
+      || approved?.kind !== "regular"
+      || approved.occurrenceId !== selected.occurrenceId
+      || approved.contentHash !== selected.contentHash
+      || approved.sizeBytes !== selected.sizeBytes
+    ) {
+      throw new Error("Selected import file is invalid or does not match approved occurrence.");
+    }
+    paths.add(selected.sourcePath);
+    normalized.push({
+      relativePath: selected.sourcePath,
+      absolutePath,
+      selected
+    });
+  }
+  return normalized.sort((left, right) => compareCodeUnits(left.relativePath, right.relativePath));
+}
+
+function readExactSelectedFile(
+  selected: LocalFilesystemSelectedFile,
+  absolutePath: string
+): Buffer {
+  let descriptor: number | undefined;
+  try {
+    descriptor = openSync(absolutePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const before = fstatSync(descriptor, { bigint: true });
+    if (
+      !before.isFile()
+      || before.dev.toString() !== selected.deviceId
+      || before.ino.toString() !== selected.inode
+      || Number(before.size) !== selected.sizeBytes
+    ) {
+      throw new Error("Selected import source identity changed before read.");
+    }
+    const content = readFileSync(descriptor);
+    const after = fstatSync(descriptor, { bigint: true });
+    if (
+      after.dev !== before.dev
+      || after.ino !== before.ino
+      || after.size !== before.size
+      || sha256(content) !== selected.contentHash
+    ) {
+      throw new Error("Selected import source changed during read.");
+    }
+    return content;
+  } finally {
+    if (descriptor !== undefined) {
+      closeSync(descriptor);
+    }
+  }
 }
 
 function collectFiles(rootDir: string, currentDir = rootDir): ScannedFile[] {
