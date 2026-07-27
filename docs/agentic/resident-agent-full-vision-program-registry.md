@@ -42135,3 +42135,70 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, assurance-only transition, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1143 — Task14 unreachable-pattern RED rejected on declaration and global-numeric carriers
+
+- Recorded at: 2026-07-27T01:18:52Z
+- The ninth fresh independent read-only review rejects exact test-only
+  candidate `bf77cead74a66f8a06a935f6117d6e12f2b03258`, tree
+  `69be24f26616ef73e76ce0ed9f6654262fe05a6b`, sole parent
+  `db9563063648075a10171db0142ad40f7ffae5c7`, corrected test blob
+  `bbd42f494fe1ac2d4785e7794cfaac754e8eb9c7`, and exact review envelope
+  `6976a32d34e7dd878627136a50e4259fbd40473e`.
+- The reviewer independently probed 29 finite local AST symbol-resolution
+  cases. Twenty-five match JavaScript binding reachability, but four
+  candidate-bound cases do not: array patterns initialized from a local
+  function declaration, a local class declaration, direct unshadowed
+  `Infinity`, or direct unshadowed `NaN` falsely traverse an unreachable
+  element default and report `registrar-reexport`.
+- The defect is confined to the unit-test oracle. Its definitely-non-
+  iterable check follows local constant initializers and recognizes direct
+  function/class expressions and numeric literals, but does not resolve
+  checker symbols for local function/class declarations or recognize the
+  two unshadowed global numeric constants. Runtime identity, product source,
+  the Task14 design/plan, and the two causal production RED failures are
+  unchanged.
+- Reject exact `bf77cead` as `reviewing -> implementing`. It is not approved
+  and must remain an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `bbd42f49`. First add abstract local controls for
+  direct function/class declaration carriers, their local constant aliases,
+  direct unshadowed `Infinity`/`NaN`, and their local constant aliases, and
+  reproduce the false-positive oracle result while retaining the exact
+  causal product RED.
+- Then resolve identifier symbols in the definitely-non-iterable helper:
+  local function/class declarations are non-iterable values, and only
+  unshadowed global `Infinity`/`NaN` are numeric constants. Reuse that
+  numeric recognition in static numeric evaluation so aliases and supported
+  prefixes retain finite reachability. Shadowed identifiers, calls,
+  generators/results, imports, unsupported expressions, and computed or
+  spread object values must remain indeterminate.
+- Retain every E-1142 control and rule, including unreachable nullish
+  object/array initialization, other plainly non-iterable array carriers,
+  usable empty object/array parity, known missing selections, both
+  indeterminate branches, awaited-result conservatism, direct awaited
+  registrar traversal, recursive numeric prefixes, exported callable/value
+  aliases, destructured aliases/defaults, and local/imported re-exports.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A tenth completely fresh independent read-only reviewer, ineligible under
+  all prior author/reviewer/verifier/coordinator exclusions, must inspect
+  the full cumulative RED and independently probe the corrected declaration
+  and global-numeric surface. Changed bytes invalidate review. The reviewer
+  may not edit, commit, merge, authorize source work, or make prefix,
+  record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
