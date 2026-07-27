@@ -43793,3 +43793,99 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1164 — Rest-spread-prototype-complete Task14 RED admitted to review
+
+- Recorded at: 2026-07-27T06:03:18Z
+- Exact forward test-only descendant
+  `f940c07f5ea07f7bac340c25e11b87ec4e58d1e7`, tree
+  `1f7ce81afa3461a2d9292d1e45a3c0a291440b42`, has sole parent exact E-1163
+  authority merge `5f06358007c7030f5b76991166e4344b6e1f23b8` and exact subject
+  `test(local-runtime): model rest spread and prototype binding`. Rejected
+  candidate `3bb09574` and every earlier Task14 candidate remain immutable
+  ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+396 / -4** from rejected blob
+  `a4701297571400053b95e7b0037be12ee8820d61` to exact blob
+  `b4303da7f388af9b194e8decae286fbf11f04f02`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Rest binding analysis now treats identifier rest targets as fresh
+  containers rather than the registrar identity. A nested array rest pattern
+  may inspect only the exact remaining finite slots from an exact direct or
+  use-closed immutable aliased array literal; opaque and unsupported rest
+  contents remain conservative.
+- Whole-object completion now models exact `CopyDataProperties` getter
+  execution for direct, aliased, and recursively nested exact object
+  spreads. Only an enumerable getter body consisting of exactly one
+  unconditional throw is classified as noncompletion; returning getters and
+  ordinary method/setter bodies are not executed by the proof.
+- Final selected-value projection now models exact literal prototype
+  fallback when no own selected value remains. Exact direct, aliased, and
+  nested object-literal prototypes may supply the registrar; own properties
+  shadow them. Null, primitive, opaque, mutable, exported, cyclic, accessor,
+  and unsupported prototypes remain conservative, and object spread
+  explicitly projects only own values rather than copying a prototype.
+- Abstract controls cover object and array rest container identity, nested
+  and aliased nested array rest, direct/selected/aliased/nested throwing
+  copied getters, returning getters, nonexecuted method/setter bodies, exact
+  direct/aliased/nested prototypes, own and opaque-prototype shadowing,
+  opaque prototype fallback, and prototype-not-copied-by-spread.
+- Every earlier duplicate/final-value, exact/opaque object spread,
+  carrier-closure, shorthand/default, object-completion, direct-call,
+  exact-array-spread, exact-carrier, declaration/global/awaited/unreachable/
+  value-flow control remains exact.
+- Exact focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; unchanged runtime RED remains
+  pre-store and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The failure set is only the two Task14 issuer REDs plus the seven preserved
+  Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** with fixture-heavy commands isolated under
+  `TMPDIR=/dev/shm`; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, repository-closure, or release-success marker.
+- Exact one-test scope, source/runtime/other-test freezes, E-1163 authority
+  and rejected-candidate ancestry, TypeScript 5.9.3 and Vitest 4.1.9
+  dependencies, diff hygiene, integrity, and clean state pass. Exact frozen
+  source blobs remain composition `b9a679c0`, wake `2fee564d`, and mounted
+  lifecycle store `c1a7d473`. No source, claim, design, plan, contract,
+  mission, dependency, route, provider, credential, release, or unrelated
+  byte changed.
+- Admit only exact `f940c07f` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a twentieth completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `b4303da7`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce rest-container identity including
+  nested finite rest patterns, exact spread-copy completion across direct/
+  aliased/nested getters and conservative callable bodies, and prototype
+  fallback/shadowing/non-copying across direct and aliased exact values. It
+  must probe getter return paths, rest holes/defaults, prototype accessors,
+  computed `__proto__`, ordinary-property overrides, and every cumulative
+  declaration/global/awaited/unreachable/value-flow surface. Reproduce
+  causal runtime/static failures, focused/card/cross signatures, assurance,
+  repository-first-stop, exact scope/freezes/ancestry/dependencies/diff/
+  integrity/clean state. Static analysis must supplement, not substitute for
+  runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  GREEN authority, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
