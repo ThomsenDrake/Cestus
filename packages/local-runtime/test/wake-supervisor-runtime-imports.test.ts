@@ -2590,6 +2590,10 @@ function residentFactoryIssuerAnalysis(
     | typeof indeterminateBindingInitializer
     | typeof unreachableBindingInitializer
     | undefined;
+  type BindingPatternOutcome = {
+    readonly resolvesToRegistrar: boolean;
+    readonly unreachable: boolean;
+  };
   const registrarImportSymbols = new Set<ts.Symbol>();
   const registrarDeclarations: ts.FunctionDeclaration[] = [];
   const exactImports: Array<{
@@ -2875,6 +2879,15 @@ function residentFactoryIssuerAnalysis(
         initializer !== unreachableBindingInitializer &&
         expressionResolvesToRegistrar(initializer, resolving);
     }
+    if (
+      bindingPatternEvaluationIsUnreachable(
+        name,
+        initializer,
+        new Set(resolving)
+      )
+    ) {
+      return false;
+    }
     return name.elements.some((element) =>
       ts.isBindingElement(element) &&
       bindingElementResolvesToRegistrar(
@@ -2974,11 +2987,12 @@ function residentFactoryIssuerAnalysis(
       return false;
     }
     const index = element.parent.elements.indexOf(element);
-    return arrayBindingPatternResolvesFromSlots(
+    const outcome = arrayBindingPatternOutcomeFromSlots(
       element.name,
       slots.slice(index),
       resolving
     );
+    return !outcome.unreachable && outcome.resolvesToRegistrar;
   }
 
   function exactArrayBindingSlotsFromInitializer(
@@ -3014,27 +3028,155 @@ function residentFactoryIssuerAnalysis(
       : undefined;
   }
 
-  function arrayBindingPatternResolvesFromSlots(
+  function arrayBindingPatternOutcomeFromSlots(
     pattern: ts.ArrayBindingPattern,
     slots: readonly (ts.Expression | undefined)[],
     resolving: Set<ts.Symbol>
-  ): boolean {
-    return pattern.elements.some((element, index) => {
-      if (!ts.isBindingElement(element)) return false;
+  ): BindingPatternOutcome {
+    let resolvesToRegistrar = false;
+    for (const [index, element] of pattern.elements.entries()) {
+      if (!ts.isBindingElement(element)) continue;
       if (element.dotDotDotToken !== undefined) {
-        return ts.isArrayBindingPattern(element.name) &&
-          arrayBindingPatternResolvesFromSlots(
-            element.name,
-            slots.slice(index),
-            new Set(resolving)
-          );
+        if (!ts.isArrayBindingPattern(element.name)) continue;
+        const nested = arrayBindingPatternOutcomeFromSlots(
+          element.name,
+          slots.slice(index),
+          new Set(resolving)
+        );
+        if (nested.unreachable) {
+          return {
+            resolvesToRegistrar: false,
+            unreachable: true
+          };
+        }
+        resolvesToRegistrar ||= nested.resolvesToRegistrar;
+        continue;
       }
-      return bindingElementResolvesFromSelected(
+      const selected = slots[index];
+      if (
+        bindingElementEvaluationIsUnreachable(
+          element,
+          selected,
+          new Set(resolving)
+        )
+      ) {
+        return {
+          resolvesToRegistrar: false,
+          unreachable: true
+        };
+      }
+      resolvesToRegistrar ||= bindingElementResolvesFromSelected(
         element,
-        slots[index],
+        selected,
         new Set(resolving)
       );
-    });
+    }
+    return {
+      resolvesToRegistrar,
+      unreachable: false
+    };
+  }
+
+  function bindingPatternEvaluationIsUnreachable(
+    pattern: ts.ArrayBindingPattern | ts.ObjectBindingPattern,
+    initializer: BindingInitializer,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (initializer === unreachableBindingInitializer) return true;
+    if (
+      initializer === undefined ||
+      initializer === indeterminateBindingInitializer
+    ) {
+      return initializer === undefined;
+    }
+    const carrierInitializer = initializer;
+    let value = unwrapRegistrarExpression(initializer);
+    const carrierPath = new Set(resolving);
+    let carrierUse = carrierInitializer;
+    while (ts.isIdentifier(value)) {
+      const aliasInitializer = useClosedLocalConstInitializer(
+        value,
+        carrierPath,
+        carrierUse
+      );
+      if (aliasInitializer === undefined) break;
+      carrierUse = aliasInitializer;
+      value = unwrapRegistrarExpression(aliasInitializer);
+    }
+    if (
+      bindingPatternInitializerIsUnreachable(
+        pattern,
+        value,
+        new Set(carrierPath),
+        carrierInitializer
+      ) ||
+      expressionEvaluationIsUnreachable(
+        value,
+        new Set(carrierPath)
+      )
+    ) {
+      return true;
+    }
+    if (ts.isArrayBindingPattern(pattern)) {
+      const slots = exactArrayBindingSlotsFromInitializer(
+        initializer,
+        new Set(resolving)
+      );
+      if (slots === unreachableBindingInitializer) return true;
+      return slots !== undefined &&
+        arrayBindingPatternOutcomeFromSlots(
+          pattern,
+          slots,
+          new Set(resolving)
+        ).unreachable;
+    }
+    for (const element of pattern.elements) {
+      if (element.dotDotDotToken !== undefined) continue;
+      const selected = selectedBindingInitializer(
+        element,
+        initializer,
+        new Set(resolving)
+      );
+      if (
+        bindingElementEvaluationIsUnreachable(
+          element,
+          selected,
+          new Set(resolving)
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function bindingElementEvaluationIsUnreachable(
+    element: ts.BindingElement,
+    selected: BindingInitializer,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (selected === unreachableBindingInitializer) return true;
+    if (selected === indeterminateBindingInitializer) return false;
+    const usesDefault = selected === undefined ||
+      expressionIsDefinitelyUndefined(selected, new Set(resolving));
+    let effectiveInitializer = selected;
+    if (usesDefault && element.initializer !== undefined) {
+      if (
+        expressionEvaluationIsUnreachable(
+          element.initializer,
+          new Set(resolving)
+        )
+      ) {
+        return true;
+      }
+      effectiveInitializer = element.initializer;
+    }
+    return !ts.isIdentifier(element.name) &&
+      bindingPatternEvaluationIsUnreachable(
+        element.name,
+        effectiveInitializer,
+        new Set(resolving)
+      );
   }
 
   function bindingPatternInitializer(
@@ -5411,6 +5553,49 @@ describe("wake supervisor runtime import boundary", () => {
          ] = returnedCarrier;`
       ],
       [
+        "returning nested-rest default permits later binding",
+        `${exactComposition}
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         export const [...[
+           blocked = returnDefault(),
+           exposedRegistrar
+         ]] = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "conditional nested-rest default remains conservative",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         declare const chooseThrow: boolean;
+         export const [...[
+           blocked = chooseThrow
+             ? stopBeforeBinding()
+             : Object.freeze({}),
+           exposedRegistrar
+         ]] = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "opaque nested-rest default remains conservative",
+        `${exactComposition}
+         declare function loadDefault(): object;
+         export const [...[
+           blocked = loadDefault(),
+           exposedRegistrar
+         ]] = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
         "separate object destructure can activate a class iterator",
         `${exactComposition}
          class IterableCarrier {
@@ -5702,6 +5887,140 @@ describe("wake supervisor runtime import boundary", () => {
         "array rest binds a fresh container",
         `${exactComposition}
          export const [...exposedRegistrar] = [
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "throwing nested-rest default prevents later binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const [...[
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         ]] = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "throwing nested-rest default from alias prevents binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         const values = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ] as const;
+         export const [...[
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         ]] = values;`
+      ],
+      [
+        "later throwing nested-rest default prevents earlier binding",
+        `${exactComposition}
+         function stopAfterBinding(): never {
+           throw new Error("after-binding");
+         }
+         export const [...[
+           exposedRegistrar,
+           blocked = stopAfterBinding()
+         ]] = [
+           registerResidentLoopFactoryAuthorityReadback,
+           undefined
+         ];`
+      ],
+      [
+        "throwing direct-array default prevents later binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const [
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         ] = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "throwing direct-array default from alias prevents binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         const values = [
+           undefined,
+           registerResidentLoopFactoryAuthorityReadback
+         ] as const;
+         export const [
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         ] = values;`
+      ],
+      [
+        "throwing direct-object default prevents later binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const {
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         } = {
+           blocked: undefined,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "throwing direct-object default from alias prevents binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         const values = {
+           blocked: undefined,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         } as const;
+         export const {
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         } = values;`
+      ],
+      [
+        "later throwing direct-object default prevents earlier binding",
+        `${exactComposition}
+         function stopAfterBinding(): never {
+           throw new Error("after-binding");
+         }
+         export const {
+           exposedRegistrar,
+           blocked = stopAfterBinding()
+         } = {
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback,
+           blocked: undefined
+         };`
+      ],
+      [
+        "throwing nested-object default prevents later binding",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const [
+           {
+             blocked = stopBeforeBinding()
+           },
+           exposedRegistrar
+         ] = [
+           { blocked: undefined },
            registerResidentLoopFactoryAuthorityReadback
          ];`
       ],
