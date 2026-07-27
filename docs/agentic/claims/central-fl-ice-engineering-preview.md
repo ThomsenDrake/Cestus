@@ -500,3 +500,93 @@ authority check binds that clean current SHA to durable checkpoint state.
 
 This remains `implementing` pending the required fresh reviews. No live source
 inspection or destination workspace creation has occurred.
+
+## Task 3 Fifth Review Rejection and Remediation
+
+The fifth review rejected remediation commit
+`ae50d3c8328f604f5dd6d682683670c36b6b0382` because the production Git
+subprocess inherited caller-controlled process state. A clean alternate
+repository supplied through Git repository/worktree variables could replace
+the intended execution identity, while inherited configuration, tracing, and
+`PATH` remained outside the fixed-command authority boundary.
+
+RED evidence was established before implementation:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file failed; 1 test failed and 134 passed
+```
+
+The production-subprocess regression supplied hostile `GIT_DIR`,
+`GIT_WORK_TREE`, global configuration, tracing, and a `PATH` wrapper for a
+separate clean repository. The pre-remediation workflow accepted that
+repository's SHA and completed, so the expected fail-closed error was absent.
+
+Current GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file passed; 135 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/local-filesystem.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/import-service.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology/test/assertion-service.test.ts
+7 files passed; 209 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+9 files passed; 235 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+29 files passed; 333 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology/test \
+  packages/ontology-bootstrap/test \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+28 files passed; 456 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run ui:build
+passed; 165 modules transformed (existing chunk-size advisory only)
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+Production now invokes only `/usr/bin/git` with fixed arguments, fixed
+canonical repository working directory, no shell, and an exact minimal
+environment built without caller process state. System and global
+configuration are disabled, locale and optional-lock behavior are fixed, and
+repository/worktree/object/alternate/configuration/tracing/`PATH` variables
+are not inherited. Before status and stable-`HEAD` checks, Git must confirm an
+inside-worktree context whose canonical top-level path equals the intended
+preview worktree root exactly. Failures remain generic and contain no command
+output.
+
+The hostile alternate repository is no longer accepted, its trace destination
+is untouched, and the workflow creates no workspace, event, or checkpoint.
+This remains `implementing` pending the required fresh reviews. No live source
+inspection, destination workspace creation, provider transfer, or approval
+transition has occurred.
