@@ -45310,3 +45310,55 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, strict record 29, publication, Wave 3 start, or
   product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1184 — Task14 private lexical-capability amendment approved
+
+- Recorded at: 2026-07-27T13:36:53Z
+- Completely fresh independent read-only reviewer
+  `/root/task14_e1183_pinned_design_review` returns **APPROVED** with no
+  findings for exact corrected design/plan candidate
+  `4a03aafd7de245793f677afa25d8ac13b2211e50`, tree
+  `48cc746871f878acb66d1749b6fe692cf05cf744`, sole parent exact E-1183
+  authority merge `6048f10b455a0b569bb13fceee14c07a80ee0f02`.
+- Exact forward scope is the Task136 design and plan only,
+  **+24 / -11**. The rejected `5275a582` and `a1d292a9` candidates and both
+  forward correction authorities remain immutable ancestors.
+- The reviewer independently approves the exact E-1181 Option 1 boundary,
+  E-1182 six-import wrapper/type facade, and E-1183 frozen FC-Core pin and
+  private consumer correction. Exact frozen import-policy test blob is
+  `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
+- Nonexported `issueResidentLoopFactoryWakeRuntime` returns its private pair
+  only to safe
+  `createResidentLoopFactoryCompositionForFacade` in the same wake module.
+  The safe builder consumes the registrar internally and accepts or returns no
+  private capability. The exact facade locally exports only the existing
+  public wrapper and interfaces/types through six static named unaliased
+  causally used imports. No cycle or export-list syntax is required.
+- Generic `createWakeSupervisorRuntime` remains permanently ineligible for
+  factory binding, the old registrar export is removed, and
+  `bindResidentLoopCapabilitiesForFactory` remains. The design adds no path,
+  product behavior, heuristic, provider, route, activation, dependency,
+  fallback, credential, network, or external effect.
+- Fresh focused execution is exact
+  **96 = 95 passed + one current Task14 RED failure**. Exact card is
+  **383 = 375 passed + eight failed**, and exact cross-boundary execution is
+  **1,042 = 1,034 passed + eight failed**. The remaining seven failures are
+  preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  pass **20/20**; markers remain **29 / 20 / 29 / 15**. Repository mode exits
+  one and stops first only at the exact legacy-staging blob mismatch with no
+  closure or release marker. Exact 33-path authority, TypeScript 5.9.3,
+  Vitest 4.1.9, scope, freezes, ancestry, dependencies, diff, integrity,
+  unique registry EOF, and clean state pass.
+- Advance exact `4a03aafd` design/plan amendment
+  `reviewing -> approved`. Authorize its exact history-preserving no-ff merge
+  into this program branch, fresh integration-tree gates, and a separate
+  append-only integrated event. Do not authorize or edit tests or source in
+  this event.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is design/plan amendment approval, not integration, test
+  RED authority, source GREEN, Task14 completion, Task15 authority, Task136
+  product candidacy, repository closure, strict record 29, publication,
+  Wave 3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
