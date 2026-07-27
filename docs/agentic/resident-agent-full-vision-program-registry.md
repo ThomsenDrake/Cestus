@@ -45362,3 +45362,53 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidacy, repository closure, strict record 29, publication,
   Wave 3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1185 — Task14 private lexical-capability amendment integrated
+
+- Recorded at: 2026-07-27T13:44:41Z
+- Exact independently approved corrected design/plan candidate
+  `4a03aafd7de245793f677afa25d8ac13b2211e50`, tree
+  `48cc746871f878acb66d1749b6fe692cf05cf744`, is integrated by exact
+  history-preserving no-ff merge
+  `f96832e4e1ae21ab1990f388420f5e24b7cc5a5d`, tree
+  `14a7a5a60f135a69439ddbce0c9d59ec6cf07429`. Its first parent is exact
+  E-1184 approval commit
+  `a9688a1b4897499dcf71c0affbdc890dfd03e8d3`; its second parent is the
+  exact reviewed candidate.
+- Integrated amendment changes only the Task136 design and plan. It preserves
+  rejected documentation candidates `5275a582` and `a1d292a9`, all forward
+  authorities, every product/test/claim/contract/mission/assurance byte,
+  exact 33-path authority, dependencies, and all historical release evidence.
+- Current approved Task14 design is exact: private factory issuance and
+  registration are co-located in the wake module; generic runtimes are
+  permanently ineligible; the old registrar export is removed; the
+  downstream binder remains; and the composition module is the exact
+  six-import safe wrapper/type facade.
+- Frozen FC-Core import-policy test is exact
+  `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`. The private issuance pair is
+  consumed only by the safe `ForFacade` builder in the same wake module and
+  never crosses the facade.
+- Fresh integration-tree focused execution is exact
+  **96 = 95 passed + one current Task14 RED failure**. Exact Task136 card is
+  **383 = 375 passed + eight failed**, and exact 37-file cross-boundary is
+  **1,042 = 1,034 passed + eight failed** under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second timeout. No failure identity changed.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  pass **20/20**; exact markers remain **29 / 20 / 29 / 15**. Repository mode
+  exits one and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  with no prefix, closure, record-29, repository, or release marker.
+- Exact merge parent order, approved candidate tree/parent/scope, frozen
+  blobs, 33-path authority, TypeScript 5.9.3, Vitest 4.1.9, ancestry,
+  dependencies, diff hygiene, strict Git integrity, and clean state pass.
+- Advance exact Task14 lexical design/plan amendment
+  `approved -> integrated`. This event intentionally contains no test or
+  source implementation authority. A separate append-only event and exact
+  Task136 authority merge are mandatory before either test may change.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is design/plan amendment integration, not test RED
+  authority, source GREEN, Task14 completion, Task15 authority, Task136
+  product candidacy, repository closure, strict record 29, publication,
+  Wave 3 start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
