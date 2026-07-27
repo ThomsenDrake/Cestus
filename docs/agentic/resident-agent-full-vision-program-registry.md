@@ -43192,3 +43192,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1157 — Task14 exact-spread RED rejected on pre-binding noncompletion
+
+- Recorded at: 2026-07-27T03:56:33Z
+- The sixteenth fresh independent read-only review rejects exact test-only
+  candidate `7ac1dd34395ee908bd9249c79ff058d818768fc6`, tree
+  `dff6f7fdda1c3eb52bd6a3039e970cae56943ee3`, sole parent
+  `21b1d94733d5353fbe95de865736b30862b663a8`, corrected test blob
+  `44a32434ca095d8fbf2c2c6327137521e49bea35`, and exact review envelope
+  `dbcf45e32e2e741faa51d9027a4f63323810a4c7`.
+- The reviewer proves one finite candidate-bound local AST symbol-resolution
+  false positive. An exact spread source evaluates a local function call
+  whose body unconditionally throws before a later registrar element can be
+  spread or any outer binding can occur. The oracle projects the later
+  registrar and reports `registrar-reexport`; runtime throws before binding
+  and exports nothing.
+- Root cause is confined to the unit-test oracle. Exact literal expansion
+  preserves runtime positions but assumes every array element finishes
+  evaluation. Array construction, spread evaluation, and the complete outer
+  initializer must finish before destructuring binds any export. Product
+  source and both causal Task14 RED failures remain unchanged.
+- Reject exact `7ac1dd34` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `44a32434`. First add an abstract local
+  unconditional-throw-before-registrar spread control and reproduce the
+  false positive while retaining both causal product REDs.
+- Then return the existing unreachable-binding sentinel when evaluation of
+  any exact literal element is locally proven not to complete before
+  binding. The finite proof may recognize only a direct non-optional call to
+  a checker-resolved local function whose body is exactly one unconditional
+  throw statement, plus approved transparent wrappers and use-closed
+  immutable aliases. Do not classify an opaque or merely effectful call as
+  unreachable.
+- Thread the unreachable sentinel through recursive exact literal spreads
+  and the outer selection before inspecting any binding default. Add parity
+  for a provably throwing element before and after the would-be selected
+  registrar and for an effectful-but-returning local call that still permits
+  registrar binding.
+- Retain every E-1156 zero/one/many/wrapper/alias/nested/hole/opaque control,
+  E-1154 before/at/after spread controls, E-1152 exact-carrier controls, and
+  every earlier declaration/global/awaited/unreachable/value-flow surface.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A seventeenth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe exact literal
+  evaluation completion before binding across nested spreads and element
+  order. Changed bytes invalidate review. The reviewer may not edit, commit,
+  merge, authorize source work, or make prefix, record-29, release, or Wave
+  claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
