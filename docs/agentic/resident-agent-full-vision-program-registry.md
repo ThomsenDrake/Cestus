@@ -44248,3 +44248,85 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1169 — Task14 rest-object RED rejected on mutable undefined proof
+
+- Recorded at: 2026-07-27T07:32:46Z
+- The twenty-second fresh independent read-only review rejects exact
+  test-only candidate `eb18070e824daceb818f311c9b36c014b60cad9d`, tree
+  `d04bb2cd035de2e22b562bbc1fb27d50ec94640c`, sole parent
+  `fdd3d51edb3c983b6a7b4cb2acb99fa45402685c`, corrected test blob
+  `094a280ff1cdc2615357f0298575871ea3b60099`, and exact two-parent review
+  envelope `5a3ae58aa7451178e6181999ad1e763486e03795`.
+- Exact identity, envelope tree and parent order, one-file scope, clean
+  state, strict Git integrity, focused
+  **96 = 94 passed + two causal issuer RED failures**, typecheck, factory
+  readiness, mission **20/20**, V4 **20/20**, contract markers
+  **29 / 20 / 29 / 15**, TypeScript/Vitest dependencies, and the candidate
+  oracle blob pass independent reproduction.
+- The exact admission card/cross signatures remain
+  **383 = 374 passed + nine failed** and
+  **1,042 = 1,033 passed + nine failed**. Admission also binds the exact
+  repository first-stop, source/runtime/other-test freezes, ancestry, and
+  diff evidence; the reviewer stops redundant broad repetition after the
+  decisive defect and does not independently attest those repeated gates.
+- The reviewer proves one candidate-bound local AST symbol-resolution false
+  negative. A mutable local selected value is initialized to `undefined`,
+  reassigned to a defined non-registrar value, and then supplied to an exact
+  object binding with a locally throwing default before a later registrar.
+  Runtime skips the default and exports the registrar, but candidate
+  analysis reports no violation.
+- Both `bindingElementResolvesFromSelected` and
+  `bindingElementEvaluationIsUnreachable` call
+  `expressionIsDefinitelyUndefined`. That helper follows any variable
+  declaration initialized to `undefined` without requiring `const`,
+  use-closure, or exact use-site proof. The cumulative use-closed undefined
+  classifier exists but is not used by either selected-value decision.
+- Root cause remains confined to the unit-test oracle. E-1168 array-rest
+  object projection and final copy-descriptor reconstruction pass their
+  admitted corpus, but E-1166 default noncompletion relies on an overbroad
+  selected-value predicate. Product source and both causal Task14 RED
+  failures remain unchanged.
+- Reject exact `eb18070e` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `094a280f`. First add abstract direct object and
+  array selected-value mutation controls and reproduce the false negative
+  while retaining both causal product REDs.
+- Replace selected-value default activation in both resolution and
+  noncompletion paths with the cumulative use-closed undefined proof,
+  binding its exact use to the selected expression. Direct unshadowed
+  `undefined`/`void` and use-closed immutable local const alias chains may
+  activate a default. Mutable, exported, separately used, cyclic, or opaque
+  selections remain conservative and may not prove noncompletion.
+- Add parity for mutable values reassigned from undefined to defined before
+  object and array destructuring, mutable values that remain undefined,
+  direct undefined/void selections, use-closed const undefined alias chains,
+  exported/separately used selections, and throwing versus returning
+  defaults before and after registrar candidates.
+- Retain every E-1168 array-rest object/final-descriptor case and every
+  earlier ordered binding, rest, spread, prototype, carrier, declaration/
+  global/awaited/unreachable/value-flow control. The correction must change
+  only the one test file and preserve every product/runtime/other-test byte
+  and the exact focused/card/cross signatures.
+- Before admission independently reproduce exact scope, freezes, E-1169
+  authority and rejected-candidate ancestry, dependencies, typecheck,
+  factory readiness, mission and V4 **20/20**, contract markers, repository
+  first-stop, focused/card/cross signatures, diff hygiene, strict Git
+  integrity, and clean state.
+- A twenty-third completely fresh independent read-only reviewer, ineligible
+  under every prior author/reviewer/verifier/coordinator exclusion, must
+  inspect the full cumulative RED and independently probe exact selected-
+  value mutation/use-closure plus all cumulative binding/value-flow surfaces.
+  Changed bytes invalidate review. The reviewer may not edit, commit, merge,
+  authorize source work, or make prefix, record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
