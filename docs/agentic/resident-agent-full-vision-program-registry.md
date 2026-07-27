@@ -45199,3 +45199,60 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   authority, repository closure, strict record 29, publication, Wave 3 start,
   or product release. `neo`, push, provider, credential, external-system,
   pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1182 — Task14 lexical amendment rejected; facade correction authorized
+
+- Recorded at: 2026-07-27T13:03:18Z
+- Completely fresh independent read-only reviewer
+  `/root/task14_e1181_design_plan_review` rejects exact two-document
+  candidate `5275a58268f735538c953ee69aedd01ce8e9f090`, tree
+  `3991538ad8df0fbea004d65531add1d9d7f03828`, sole parent exact E-1181
+  authority merge `fdd6ce73bc415612e67ac08a368ac7ab16889105`.
+  The candidate remains immutable and is not approved or integrated.
+- Exact candidate scope is the Task136 design and plan only,
+  **+433 / -0**. E-1181 is its unique registry authority; exact ancestry,
+  Task136 **33 = 15 sources + 17 tests + one claim**, path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, repository first stop, dependencies, diff,
+  integrity, and clean state pass independent review.
+- The candidate-bound defect is exact. Its specified zero-import export-list
+  facade conflicts with frozen released FC-Core import-policy test
+  `packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts`
+  at exact blob `ad06c10b0c52af4435cd9cb0bde818a9b33aebd5`.
+  That test requires exactly six static named unaliased imports, including
+  wake, mounted-provider, runtime-factory, and specialist-handoff sources,
+  and forbids `export { ... }` syntax. The specified facade would therefore
+  add an unauthorized mandatory cross-card failure.
+- Reject exact `5275a582` as `reviewing -> implementing`. Authorize only the
+  smallest forward correction in the same two design/plan documents. No
+  package, test, claim, contract, mission, assurance, dependency,
+  configuration, route, or unrelated path may change.
+- Replace only the incompatible facade topology with an exact six-import,
+  static, named, unaliased wrapper/type facade. All six imports must be
+  causally used by the existing safe public composition interfaces or the one
+  wrapper. The facade declares the existing composition interfaces/types and
+  one local exported `createResidentLoopFactoryComposition(rawInput)` wrapper.
+- The wrapper calls one distinctly named exported safe composition builder in
+  `wake-supervisor-runtime.ts`. That builder owns the complete co-located
+  composition behavior and may encapsulate the private factory issuance and
+  registrar, but it neither accepts nor returns the private capability. The
+  facade receives no registrar, token, callback, brand, state, or mounted
+  authority.
+- Update the new AST oracle contract from zero facade implementation
+  statements to this exact one-wrapper topology. Preserve the frozen FC-Core
+  test unchanged, preserve all E-1181 runtime and lexical capability
+  invariants, and add no unrelated alias case or product behavior.
+- Commit the forward two-document correction, obtain a completely fresh
+  independent read-only review of its exact bytes, and only then integrate
+  the amendment history-preservingly. Test edits remain unauthorized until
+  that integration completes and a separate append-only event binds their
+  exact starting blobs.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is documentation rejection and forward-correction
+  authority only, not a corrected candidate, test RED authority, source
+  GREEN, Task14 completion, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, publication, Wave 3 start, or
+  product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
