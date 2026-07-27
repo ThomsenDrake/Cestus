@@ -21,6 +21,108 @@ afterEach(() => {
 const actor = { id: "actor_legacy_cli", kind: "human" as const, label: "Legacy CLI" };
 
 describe("LegacyImportRuntime review workflow", () => {
+  it("reconciles an exact completed inspect retry without duplicate scan or report events", async () => {
+    const workspace = createFakeMountedWorkspace("Legacy retry workspace");
+    const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+    const command = {
+      sourceCollectionId: "src_old_cestus",
+      label: "Old Cestus",
+      sourceRoot,
+      scanBatchId: "scan_old_cestus_001"
+    };
+    const first = await runtime.inspect(command);
+    expect(first.ok).toBe(true);
+    const eventIds = (await workspace.ledger.readAll()).map((event) => event.id);
+
+    const retried = await runtime.inspect(command);
+
+    expect(retried.ok).toBe(true);
+    expect((await workspace.ledger.readAll()).map((event) => event.id)).toEqual(eventIds);
+  });
+
+  it("reconciles exact raw approval and import retries without duplicate events", async () => {
+    const workspace = createFakeMountedWorkspace("Legacy retry workspace");
+    const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+    const inspected = await runtime.inspect({
+      sourceCollectionId: "src_old_cestus",
+      label: "Old Cestus",
+      sourceRoot,
+      scanBatchId: "scan_old_cestus_001"
+    });
+    expect(inspected.ok).toBe(true);
+    const approvalCommand = {
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      importBatchId: "imp_old_cestus_001",
+      approvedBy: "actor_investigator"
+    };
+    expect((await runtime.approveRawImport(approvalCommand)).ok).toBe(true);
+    const approvalEventIds = (await workspace.ledger.readAll()).map((event) => event.id);
+    expect((await runtime.approveRawImport(approvalCommand)).ok).toBe(true);
+    expect((await workspace.ledger.readAll()).map((event) => event.id)).toEqual(approvalEventIds);
+
+    expect((await runtime.importApproved(approvalCommand)).ok).toBe(true);
+    const importEventIds = (await workspace.ledger.readAll()).map((event) => event.id);
+    expect((await runtime.importApproved(approvalCommand)).ok).toBe(true);
+    expect((await workspace.ledger.readAll()).map((event) => event.id)).toEqual(importEventIds);
+  });
+
+  it("reconciles exact staging approval and proposal retries with human context and no duplicates", async () => {
+    const { workspace, inspected } = await preparedImportedRuntime();
+    const humanRuntime = createLegacyImportRuntime({
+      mountedWorkspace: workspace,
+      actor: { id: "actor_investigator", kind: "human", label: "Investigator" }
+    });
+    const preview = await humanRuntime.stagingPreview({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    const approvalCommand = {
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001",
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: preview.candidates.map((candidate) => candidate.candidateId)
+    };
+    expect((await humanRuntime.approveStaging(approvalCommand)).ok).toBe(true);
+    const approvalEventIds = (await workspace.ledger.readAll()).map((event) => event.id);
+    expect((await humanRuntime.approveStaging(approvalCommand)).ok).toBe(true);
+    expect((await workspace.ledger.readAll()).map((event) => event.id)).toEqual(approvalEventIds);
+
+    const stageCommand = {
+      sourceCollectionId: approvalCommand.sourceCollectionId,
+      scanBatchId: approvalCommand.scanBatchId,
+      legacyReportId: approvalCommand.legacyReportId,
+      stagingBatchId: approvalCommand.stagingBatchId
+    };
+    expect((await humanRuntime.stageApproved(stageCommand)).ok).toBe(true);
+    const stagedEvents = await workspace.ledger.readAll();
+    const stagedEventIds = stagedEvents.map((event) => event.id);
+    const approval = stagedEvents.find((event) =>
+      event.type === "legacy.ontology.staging.approved"
+    );
+    const proposal = stagedEvents.find((event) => event.type === "assertion.proposed");
+    const evidence = stagedEvents.find((event) =>
+      event.type === "evidence.ingested"
+      && event.payload.evidenceId === (
+        proposal?.type === "assertion.proposed"
+          ? proposal.payload.evidenceId
+          : undefined
+      )
+    );
+    expect(approval?.context.actor).toMatchObject({
+      id: "actor_investigator",
+      kind: "human"
+    });
+    expect(proposal?.context.causationId).toBe(evidence?.id);
+
+    expect((await humanRuntime.stageApproved(stageCommand)).ok).toBe(true);
+    expect((await workspace.ledger.readAll()).map((event) => event.id)).toEqual(stagedEventIds);
+  });
+
   it("inspects, stores a report, and creates no evidence or accepted graph state", async () => {
     const workspace = createFakeMountedWorkspace("Legacy CLI workspace");
     const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });

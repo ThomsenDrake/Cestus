@@ -96,7 +96,13 @@ A second independent review of commit `429277af` found three additional adversar
 - `packages/ingestion/src/legacy-runtime.ts` (exact selected-file safety seam)
 - `packages/ingestion/src/runtime.ts` (exact selected-file safety seam)
 - `packages/ingestion/src/source-materializer.ts` (exact selected-file safety seam)
+- `packages/ingestion/src/import-service.ts` (exact retry seam)
+- `packages/ingestion/src/legacy-report.ts` (exact retry seam)
+- `packages/ingestion/src/legacy-staging.ts` (exact retry seam and stable proposal identity)
+- `packages/ontology/src/assertion-service.ts` (proposal-only exact retry seam)
 - `packages/ingestion/test/central-fl-ice-preview.test.ts`
+- `packages/ingestion/test/legacy-runtime.test.ts` (portable crash/retry verification)
+- `packages/ingestion/test/local-filesystem.test.ts` (partial scan retry verification)
 - `packages/agent/test/evidence-triage-workflow.test.ts` (verifier-only fixture edit)
 
 ## Task 3 Candidate Verification
@@ -147,3 +153,91 @@ The 136-file preflight selection is threaded through the scanner, detector, pars
 The event boundary is an explicit allowlist. It permits only the existing evidence-first legacy/import/proposal event families needed by this preview and rejects accepted graph mutation, PRR/request sends, legal escalation, publication, provider approval, tool completion, and destructive effects. Repository-approved provider byte-transfer and mounted prompt authority are not exposed on the current `neo` runtime boundary, so handoff records the required safe resumable blocker and persists only deterministic local gaps, next actions, uncertainty, dependencies, risk notes, and unsent task/PRR drafts. No provider acceptance is fabricated.
 
 Task 3 is a verified implementer candidate pending the mission-required dual fresh review. The preview mission remains `implementing`; no live source inspection or destination workspace creation has occurred.
+
+## Task 3 Review Rejection and Remediation Candidate
+
+The first dual-review round rejected commit
+`c1c28954253ddb416beed7dcb4b4d3c594834156`. The remediation is deliberately
+limited to preview composition and exact retry behavior in existing services;
+it does not add a second ledger, storage, ontology, provider, or runtime
+implementation.
+
+RED evidence:
+
+```text
+Focused remediation additions: 8 failed, 87 passed.
+Later receipt/no-checkpoint fixture boundary: 19 failed, 85 passed; all 19
+shared one test-fixture initialization defect, corrected before rerun.
+Typecheck boundary: 3 errors (scanner hash argument, checkpoint fixture schema,
+portable close typing), all corrected before rerun.
+```
+
+Current GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file passed; 104 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/local-filesystem.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/import-service.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology/test/assertion-service.test.ts
+7 files passed; 177 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+9 files passed; 204 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+29 files passed; 301 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology/test \
+  packages/ontology-bootstrap/test \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+28 files passed; 456 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run ui:build
+passed; 165 modules transformed (existing chunk-size advisory only)
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+The remediation rechecks authority immediately before creation; reconciles
+exact scan/report/approval/import/staging/proposal effects after real portable
+runtime crashes; uses ledger readback for approval, proposal, event, inventory,
+and count authority; rejects read-side ledger deltas; binds Gate 2 to the full
+stored artifact; hardens checkpoint phase/provenance validation; and only
+recovers a no-checkpoint destination whose workspace identity and complete
+inspection ledger match exactly.
+
+The final manifest records exact scanner inventory, human approval IDs and
+actors, selected staging IDs, CLI argument receipts, and hard-coded validation
+receipts. Provider unavailability is resumable only through a fresh approved
+provider mission and exposes no fake next command. The ontology service edit is
+strictly exact-match proposal retry idempotence; evidence-event causation and
+proposal-only semantics are unchanged.
+
+This remains an implementer remediation candidate pending both required fresh
+reviews. No live source inspection or destination workspace creation has
+occurred.

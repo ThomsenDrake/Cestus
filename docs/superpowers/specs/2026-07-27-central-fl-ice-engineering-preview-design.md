@@ -199,3 +199,36 @@ Baseline note: exact `origin/neo` currently has seven failing evidence-triage wo
 - no SSD write;
 - no Wave 0–5 registry lifecycle change;
 - no merge into `neo`, PR creation, or release claim.
+
+## Candidate Review Amendment: Crash Reconciliation and Durable Authority
+
+The first Task 3 candidate review rejected the workflow at its crash, retry,
+approval-readback, and final-manifest boundaries. The corrected design keeps the
+existing runtime, ledger, blob/derivative stores, ontology service, and portable
+workspace as the only implementations of those concerns and adds the following
+preview-specific composition invariants:
+
+- immediately repeat the complete preflight before the first workspace create;
+- treat scan, report, import approval/import, staging approval, and proposal
+  streams as exact-match idempotent effects, rejecting any conflicting prefix;
+- derive the inspection inventory hash, both approval event IDs, approver
+  identities, proposal IDs, event IDs, and counts from authoritative ledger
+  readback rather than runtime return DTOs;
+- require nominal report, quarantine, and staging-preview reads to produce zero
+  ledger delta;
+- persist the complete Gate 2 preview artifact and compare its canonical bytes
+  by checkpoint hash against the freshly rederived preview before approval;
+- enforce adjacent checkpoint phases, immutable authority fields, and monotonic
+  event, artifact, command, and approval provenance;
+- recover an existing no-checkpoint destination only after the portable
+  workspace identity and its complete preview-specific inspection ledger match
+  the exact current preflight; otherwise create nothing and write nothing;
+- record exact workflow CLI argument receipts and hard-coded engineering
+  validation receipts in the final manifest, including the scanner inventory
+  hash and both human-gate authorities;
+- represent unavailable provider transfer as resumable only in a fresh approved
+  provider mission, never as a runnable command inside this preview.
+
+`AssertionService.propose` gains only exact-match retry idempotence. It still
+emits `assertion.proposed`, preserves evidence-ingestion causation, and does not
+change assertion acceptance, accepted graph state, or ontology truth.

@@ -10,9 +10,14 @@ import {
 } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { z } from "zod";
-import { actorRefSchema, type AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
+import {
+  actorRefSchema,
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent
+} from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import { ArchiveExpansionError, ZipArchiveAdapter } from "./archive-adapter.js";
+import { stableJson } from "./legacy-report.js";
 import type { OccurrenceStatus } from "./types.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
@@ -274,8 +279,7 @@ export class LocalFilesystemScanner {
       bytes: observedByteTotal,
       estimatedNewBlobBytes: uniqueByteTotal
     };
-
-    await this.dependencies.ledger.append({
+    const expectedEvents: AppendableKnowledgeEvent[] = [{
       type: "ingestion.scan.started",
       version: 1,
       streamId,
@@ -286,10 +290,10 @@ export class LocalFilesystemScanner {
         hashPolicy: "sha256-dry-run",
         startedAt: new Date().toISOString()
       }
-    });
+    }];
 
     for (const occurrence of occurrences) {
-      await this.dependencies.ledger.append({
+      expectedEvents.push({
         type: "ingestion.occurrence.observed",
         version: 1,
         streamId,
@@ -303,7 +307,7 @@ export class LocalFilesystemScanner {
     }
 
     for (const diagnostic of diagnostics) {
-      await this.dependencies.ledger.append({
+      expectedEvents.push({
         type: "diagnostic.recorded",
         version: 1,
         streamId,
@@ -318,7 +322,7 @@ export class LocalFilesystemScanner {
       });
     }
 
-    await this.dependencies.ledger.append({
+    expectedEvents.push({
       type: "ingestion.scan.completed",
       version: 1,
       streamId,
@@ -331,6 +335,13 @@ export class LocalFilesystemScanner {
         totals
       }
     });
+    const existingEvents = await this.dependencies.ledger.readStream(streamId);
+    assertExistingScanPrefixMatches(existingEvents, expectedEvents, input.scanBatchId);
+    for (let index = existingEvents.length; index < expectedEvents.length; index += 1) {
+      await this.dependencies.ledger.append(expectedEvents[index]!, {
+        expectedNextSequence: index + 1
+      });
+    }
 
     return {
       scanBatchId: input.scanBatchId,
@@ -387,6 +398,42 @@ export class LocalFilesystemScanner {
   private archiveLimits(): { maxEntries: number; maxExpandedBytes: number } {
     return this.dependencies.archiveLimits ?? defaultArchiveLimits;
   }
+}
+
+function assertExistingScanPrefixMatches(
+  existing: readonly KnowledgeEvent[],
+  expected: readonly AppendableKnowledgeEvent[],
+  scanBatchId: string
+): void {
+  if (
+    existing.length > expected.length
+    || existing.some((event, index) =>
+      stableJson(scanRetryMaterial(event))
+        !== stableJson(scanRetryMaterial(expected[index]!))
+    )
+  ) {
+    throw new Error(`Existing scan ${scanBatchId} conflicts with exact retry material.`);
+  }
+}
+
+function scanRetryMaterial(
+  event: KnowledgeEvent | AppendableKnowledgeEvent
+): unknown {
+  const {
+    occurredAt: _occurredAt,
+    ...context
+  } = event.context;
+  const payload = { ...event.payload } as Record<string, unknown>;
+  delete payload.startedAt;
+  delete payload.observedAt;
+  delete payload.completedAt;
+  return {
+    type: event.type,
+    version: event.version,
+    streamId: event.streamId,
+    context,
+    payload
+  };
 }
 
 function isZipPath(relativePath: string): boolean {

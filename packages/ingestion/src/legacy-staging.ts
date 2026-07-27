@@ -64,11 +64,37 @@ export class LegacyOntologyStagingService {
   }
 
   async approveStaging(input: ApproveLegacyStagingInput): Promise<KnowledgeEventOf<"legacy.ontology.staging.approved">> {
+    const streamId = stagingStreamId(input);
+    const existingEvents = await this.ledger.readStream(streamId);
+    const existingApproval = existingEvents.find(
+      (event): event is KnowledgeEventOf<"legacy.ontology.staging.approved"> =>
+        event.type === "legacy.ontology.staging.approved"
+    );
+    if (existingApproval !== undefined) {
+      if (
+        existingApproval.payload.sourceCollectionId !== input.sourceCollectionId
+        || existingApproval.payload.scanBatchId !== input.scanBatchId
+        || existingApproval.payload.stagingBatchId !== input.stagingBatchId
+        || existingApproval.payload.legacyReportId !== input.legacyReportId
+        || existingApproval.payload.reportHash !== input.reportHash
+        || existingApproval.payload.candidateSetHash !== input.candidateSetHash
+        || existingApproval.payload.approvedBy !== input.approvedBy
+        || stableJson([...existingApproval.payload.approvedAssertionCandidateIds].sort(compareCodeUnits))
+          !== stableJson([...input.approvedAssertionCandidateIds].sort(compareCodeUnits))
+        || stableJson(existingApproval.context.actor) !== stableJson(this.actor)
+      ) {
+        throw new Error(`Staging approval ${input.stagingBatchId} conflicts with exact retry material`);
+      }
+      return existingApproval;
+    }
+    if (existingEvents.length > 0) {
+      throw new Error(`Staging approval ${input.stagingBatchId} conflicts with existing stream state`);
+    }
     const approvedAt = new Date().toISOString();
     const event: AppendableKnowledgeEvent<"legacy.ontology.staging.approved"> = {
       type: "legacy.ontology.staging.approved",
       version: 1,
-      streamId: stagingStreamId(input),
+      streamId,
       context: {
         actor: this.actor,
         occurredAt: approvedAt,
@@ -117,7 +143,7 @@ export class LegacyOntologyStagingService {
     for (const candidate of approvedCandidates) {
       proposed.push(
         await this.assertions.propose({
-          assertionId: legacyAssertionId(input, candidate.candidateId),
+          assertionId: stableLegacyAssertionId(input, candidate.candidateId),
           evidenceId: candidate.evidenceId,
           ...(candidate.subjectRef === undefined ? {} : { subjectRef: candidate.subjectRef }),
           predicate: candidate.predicate,
@@ -155,13 +181,13 @@ export class LegacyOntologyStagingService {
 
       if (ingested === undefined) {
         throw new Error(
-          `Cannot propose assertion ${legacyAssertionId(input, candidate.candidateId)} without evidence ${candidate.evidenceId}`
+          `Cannot propose assertion ${stableLegacyAssertionId(input, candidate.candidateId)} without evidence ${candidate.evidenceId}`
         );
       }
 
       if (ingested.payload.contentHash !== candidate.evidenceContentHash) {
         throw new Error(
-          `Cannot propose assertion ${legacyAssertionId(input, candidate.candidateId)}: evidence content hash mismatch for ${candidate.evidenceId}`
+          `Cannot propose assertion ${stableLegacyAssertionId(input, candidate.candidateId)}: evidence content hash mismatch for ${candidate.evidenceId}`
         );
       }
     }
@@ -219,7 +245,7 @@ function compareCandidateForHash(
   ]);
 }
 
-function legacyAssertionId(
+export function stableLegacyAssertionId(
   input: Pick<
     StageApprovedLegacyAssertionsInput,
     "sourceCollectionId" | "scanBatchId" | "stagingBatchId" | "candidateSetHash"
