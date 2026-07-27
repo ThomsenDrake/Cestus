@@ -2042,11 +2042,27 @@ state and the complete legitimate composition issuance flow.
 - Exported `registerResidentLoopFactoryAuthorityReadback` is removed.
 
 `packages/local-runtime/src/resident-loop-factory-composition.ts` becomes only
-the compatibility facade for the existing safe composition API. It re-exports
-`createResidentLoopFactoryComposition` and the existing composition input,
-bind-input, readback, and composition types from the wake module. It contains
-no issuer, registrar, wake construction, bind implementation, mutable state,
-provider access, route, activation, or fallback.
+the compatibility facade for the existing safe composition API. To preserve
+the frozen released FC-Core import-policy contract, it uses exactly six static,
+named, unaliased, causally used imports: the wake result type; handoff types;
+mounted-provider types; one distinctly named safe composition-builder value
+from the wake module; wake runtime/input types in a separate type import; and
+the local runtime-handle type.
+
+The facade locally declares the existing composition input, bind-input,
+readback, and composition interfaces. Its only value implementation is the
+existing exported `createResidentLoopFactoryComposition(rawInput)` wrapper,
+which immediately calls the safe wake-module builder and returns its safe
+composition object. It uses no export-list syntax and contains no issuer,
+registrar, wake construction, bind implementation, mutable state, provider
+operation, route, activation, or fallback.
+
+The distinctly named safe wake-module builder is callable behavior, not an
+authority capability. It accepts only the same untrusted `rawInput`, performs
+the complete co-located composition flow, and never accepts or returns the
+private registrar. Static policy permits exactly the one facade import and
+wrapper call; it forbids every alternate production importer, alias, re-export,
+or caller.
 
 The safe public composition behavior is unchanged: normalize one caller input;
 create and start one exact wake runtime; authenticate provider and handoff
@@ -2078,8 +2094,11 @@ The corrected TypeScript AST/symbol-resolution oracle must prove:
   remain in `wake-supervisor-runtime.ts`, and cannot escape through the
   already committed direct, aliased, destructured, callable, conditional,
   logical, await, spread, default, and comma-expression cases;
-- only the safe composition function and types cross the narrow compatibility
-  facade; and
+- the safe builder has exactly one production importer and one wrapper call in
+  the narrow compatibility facade, while the existing public composition
+  function and interfaces remain local facade declarations;
+- the facade has exactly six static named unaliased imports, one wrapper value
+  implementation, no export-list syntax, and no cycle; and
 - no barrel, namespace, dynamic-loader, alternate-source, optional-call,
   spread-call, copied-construction, or alternate-caller path gains the private
   capability.
