@@ -2959,7 +2959,11 @@ function residentFactoryIssuerAnalysis(
         );
     }
     const usesDefault = selected === undefined ||
-      expressionIsDefinitelyUndefined(selected, new Set(resolving));
+      expressionIsDefinitelyUseClosedUndefined(
+        selected,
+        new Set(resolving),
+        selected
+      );
     if (
       selected !== undefined &&
       !usesDefault &&
@@ -3235,7 +3239,11 @@ function residentFactoryIssuerAnalysis(
     if (selected === unreachableBindingInitializer) return true;
     if (selected === indeterminateBindingInitializer) return false;
     const usesDefault = selected === undefined ||
-      expressionIsDefinitelyUndefined(selected, new Set(resolving));
+      expressionIsDefinitelyUseClosedUndefined(
+        selected,
+        new Set(resolving),
+        selected
+      );
     let effectiveInitializer = selected;
     if (usesDefault && element.initializer !== undefined) {
       if (
@@ -3575,6 +3583,12 @@ function residentFactoryIssuerAnalysis(
     resolving: Set<ts.Symbol>
   ): boolean {
     const value = unwrapRegistrarExpression(expression);
+    if (ts.isVoidExpression(value)) {
+      return expressionEvaluationIsUnreachable(
+        value.expression,
+        resolving
+      );
+    }
     if (ts.isArrayLiteralExpression(value)) {
       return exactArrayLiteralBindingSlots(value, resolving) ===
         unreachableBindingInitializer;
@@ -5747,6 +5761,88 @@ describe("wake supervisor runtime import boundary", () => {
          ];`
       ],
       [
+        "mutable object selection remains conservative after reassignment",
+        `${exactComposition}
+         function stopOnlyIfUndefined(): never {
+           throw new Error("not-called");
+         }
+         let selected: object | undefined = undefined;
+         selected = Object.freeze({});
+         export const {
+           blocked = stopOnlyIfUndefined(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "mutable array selection remains conservative after reassignment",
+        `${exactComposition}
+         function stopOnlyIfUndefined(): never {
+           throw new Error("not-called");
+         }
+         let selected: object | undefined = undefined;
+         selected = Object.freeze({});
+         export const [
+           blocked = stopOnlyIfUndefined(),
+           exposedRegistrar
+         ] = [
+           selected,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "mutable undefined selection cannot prove noncompletion",
+        `${exactComposition}
+         function stopIfUndefined(): never {
+           throw new Error("conservative");
+         }
+         let selected: object | undefined = undefined;
+         export const {
+           blocked = stopIfUndefined(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "separately used undefined selection remains conservative",
+        `${exactComposition}
+         function stopIfUndefined(): never {
+           throw new Error("conservative");
+         }
+         const selected = undefined;
+         void selected;
+         export const {
+           blocked = stopIfUndefined(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "exported undefined selection remains conservative",
+        `${exactComposition}
+         function stopIfUndefined(): never {
+           throw new Error("conservative");
+         }
+         export const selected = undefined;
+         export const {
+           blocked = stopIfUndefined(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
         "array-rest object pattern projects numeric property",
         `${exactComposition}
          export const [...{
@@ -6317,6 +6413,54 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar
          } = {
            blocked: undefined,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "direct void array selection proves noncompletion",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         export const [
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         ] = [
+           void 0,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "throwing void operand prevents binding before default",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("before-default");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         export const [
+           blocked = returnDefault(),
+           exposedRegistrar
+         ] = [
+           void stopDuringSelection(),
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "use-closed undefined alias chain proves noncompletion",
+        `${exactComposition}
+         function stopBeforeBinding(): never {
+           throw new Error("before-binding");
+         }
+         const missing = undefined;
+         const selected = missing;
+         export const {
+           blocked = stopBeforeBinding(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
            exposedRegistrar:
              registerResidentLoopFactoryAuthorityReadback
          };`
