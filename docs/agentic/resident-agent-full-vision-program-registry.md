@@ -44771,3 +44771,76 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
+
+## RV-1-E-1176 — Exact Task14 private construction-issuer GREEN admitted
+
+- Recorded at: 2026-07-27T09:07:01Z
+- Exact forward source candidate
+  `ae7e28676a9a307d0253f59b08fe1922bc2a6a9b`, tree
+  `a5f2424cc3756699b539256156cb461151927510`, has sole parent exact E-1175
+  authority merge `67af02d1c446d9cfc0b48bae14890b2ae389d35f` and exact subject
+  `feat(local-runtime): seal factory issuer identity`.
+- The candidate changes only
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`
+  **+6 / -9** from `b9a679c0ab2cba1f8f278dc977539e7d83d199d6`
+  to exact blob `ecb114bb1cc3c054c0d60400b7e3cc746823736b`
+  and `packages/local-runtime/src/wake-supervisor-runtime.ts`
+  **+12 / -4** from `2fee564d7bb9d984fef0fce6173e0a918f236274`
+  to exact blob `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`.
+  Mounted lifecycle store remains exact
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`.
+- Composition now passes its private normalized construction input directly
+  into `createWakeSupervisorRuntime` and supplies that same identity as the
+  explicit first argument to the one-shot readback registrar at the
+  completed frozen readback allocation point.
+- W retains the construction input only in its private WeakMap runtime state.
+  The registrar requires `(issuerIdentity, wakeRuntime, readback)` and checks
+  exact issuer identity, exact runtime state, readiness, one-shot status, and
+  prior binding before any `Reflect.get` on the proposed readback. Missing,
+  shifted, arbitrary, caller-held, copied, structurally equal, wrong-runtime,
+  and repeated invocations fail without readback or ledger observation.
+- No mounted-store code changes. Existing mounted identity, currentness,
+  prefix recovery, reclaim, no-fallback-write, no-effect, and at-most-once
+  behavior remains byte-exact.
+- Exact focused GREEN is **96/96**. Exact Task136 card is
+  **383 = 376 passed + seven preserved Task15-through-16 failures**, and
+  exact 37-file cross-boundary execution is
+  **1,042 = 1,035 passed + seven preserved failures** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  Both former Task14 issuer failures are GREEN and no failure identity was
+  added.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20**; exact markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no prefix, closure, record-29, repository, or release marker.
+- Approved oracle, runtime, and mounted tests remain exact
+  `2bfc4b36` / `b53c4caf` / `a3a5a28d`. Exact two-source scope, E-1175
+  authority and integrated-RED ancestry, TypeScript 5.9.3 and Vitest 4.1.9
+  dependencies, diff hygiene, strict Git integrity, and clean state pass.
+- Admit only exact `ae7e2867` Task14 source candidate
+  `candidate -> reviewing`. Assign a completely fresh independent read-only
+  source reviewer who has never authored, reviewed, verified, or analyzed
+  changed blobs `ecb114bb` / `50d226e3`.
+- The reviewer must inspect the complete source diff and independently prove
+  exact construction-issuer identity from composition allocation through W
+  registration; pre-read rejection of missing/shifted/copied/caller/
+  arbitrary/wrong-runtime/repeated issuers; exact one-shot legitimate
+  registration; frozen mounted behavior; absence of structural, first-seen,
+  timing, allocation-order, call-stack, source-text, global, or other
+  heuristic acceptance; and all focused/card/cross/assurance/repository/
+  scope/freeze/ancestry/dependency/diff/integrity/clean gates.
+- The implementer, every Task14 test author/reviewer/verifier/analyst, every
+  earlier source author/reviewer, and the coordinator are ineligible to
+  approve. Changed bytes invalidate review. The reviewer may not edit,
+  commit, merge, authorize Task14 integration or Task15, or make prefix,
+  record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development remain
+  explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact Task14 source review admission, not source
+  approval or integration, Task14 completion, Task15 authority, Task136
+  product candidacy, repository closure, strict record 29, assurance-only
+  transition, publication, Wave 3 start, or product release. `neo`, push,
+  provider, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
