@@ -208,3 +208,32 @@ The validation runner is fixed in code: it executes only the source-mandated
 typecheck, nine-file cross-boundary suite, factory readiness check, and
 `git diff --check`, from the repository root with `TMPDIR=/dev/shm`, `shell:
 false`, and ignored subprocess output. Callers cannot supply commands.
+
+## Task 3 Second Review Remediation
+
+The second review of remediation commit
+`dcf6a1a3cffdd2feb71dde3849119cebc5aeebf4` requires one additional bounded,
+test-first pass:
+
+1. add adversarial tests proving Gate 1 rejects an extra approval, evidence,
+   evidence-link, parse job, occurrence binding, or inconsistent completion
+   totals outside the exact approved raw candidate set;
+2. add an adversarial test proving Gate 2 rejects an otherwise valid proposal
+   outside the exact approved subset;
+3. use a real portable workspace to prove no-checkpoint recovery rejects both
+   an extra allowed-type foreign inspection event and a missing expected
+   inspection event without adopting IDs or writing a checkpoint;
+4. place a destination-only authority recheck immediately before the first
+   workspace create and prove destination drift after the final source scan
+   produces no workspace or checkpoint;
+5. make a caller-supplied import `approvedAt` part of exact retry equality while
+   preserving idempotent retry when the caller omits it;
+6. rerun the focused workflow/import tests, the seven-file retry boundary, the
+   nine-file preview boundary, all ingestion tests, the ontology/bootstrap plus
+   specialist boundary, typecheck, UI build, factory readiness, and
+   `git diff --check`;
+7. update the claim with exact RED/GREEN evidence, audit owned-file scope, and
+   commit the remediation atomically for a fresh dual review.
+
+No live SSD inspection, preview workspace creation, provider transfer, or
+human-gate transition is part of this remediation task.

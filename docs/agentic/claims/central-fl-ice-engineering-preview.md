@@ -241,3 +241,88 @@ proposal-only semantics are unchanged.
 This remains an implementer remediation candidate pending both required fresh
 reviews. No live source inspection or destination workspace creation has
 occurred.
+
+## Task 3 Second Review Rejection and Remediation
+
+The second dual-review round rejected remediation commit
+`dcf6a1a3cffdd2feb71dde3849119cebc5aeebf4` on five bounded reconciliation
+defects: Gate 1 did not prove the exact raw phase effect set, Gate 2 could ignore
+an extra proposal outside the approved subset, no-checkpoint recovery could
+adopt foreign allowed-type inspection events, the pre-create check was not an
+immediate destination-only check, and explicit `approvedAt` retry material was
+not compared.
+
+RED evidence was established before implementation:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/import-service.test.ts
+2 files failed; 10 tests failed and 111 passed
+```
+
+The ten failures covered destination drift between the final source scan and
+workspace creation; six Gate 1 effect-set mutations; an extra Gate 2 proposal;
+a foreign allowed-type event in an actual portable no-checkpoint workspace; and
+an explicit import approval timestamp mismatch. A complementary portable
+corruption test now proves a missing expected inspection event also fails
+closed.
+
+Current GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/local-filesystem.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/import-service.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology/test/assertion-service.test.ts
+7 files passed; 188 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+9 files passed; 214 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+29 files passed; 312 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology/test \
+  packages/ontology-bootstrap/test \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+28 files passed; 456 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run ui:build
+passed; 165 modules transformed (existing chunk-size advisory only)
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+The full inspection ledger count now includes every workspace event and rejects
+both missing and extra expected-type events before runtime or checkpoint
+writes. Gate 1 and Gate 2 compare canonical exact phase sets rather than
+allowlisted subsets or ledger order. A destination-only authority port runs
+immediately before first creation with no intervening source inventory work,
+and `IngestionImportService` compares caller-supplied approval timestamps
+directly.
+
+This remains `implementing` pending the required fresh reviews. No live source
+inspection or destination workspace creation has occurred.

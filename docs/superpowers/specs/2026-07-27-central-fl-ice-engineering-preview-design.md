@@ -232,3 +232,41 @@ preview-specific composition invariants:
 `AssertionService.propose` gains only exact-match retry idempotence. It still
 emits `assertion.proposed`, preserves evidence-ingestion causation, and does not
 change assertion acceptance, accepted graph state, or ontology truth.
+
+## Second Review Amendment: Exact Phase Effect Sets
+
+The second Task 3 review rejected the first remediation candidate because
+phase reconciliation still admitted allowed-type effects outside the two
+human-approved sets, no-checkpoint recovery could adopt foreign allowed-type
+inspection events, the final pre-create check repeated the full source scan
+instead of placing a destination-only authority check directly beside the
+write, and an explicit import approval timestamp was not part of exact retry
+material.
+
+The preview therefore adds these composition invariants without changing the
+underlying append-only ledger or runtime contracts:
+
+- no-checkpoint recovery requires the entire workspace ledger to contain
+  exactly one preview source registration, scan start, scan completion, and
+  report plus exactly one occurrence for each preflight candidate; both a
+  missing expected event and any extra event, including an otherwise allowed
+  event type, fail closed before runtime or checkpoint writes;
+- Gate 1 requires the entire post-checkpoint phase to equal one approval, one
+  evidence/link/parse group per unique approved content hash, and one
+  completion whose canonical totals and occurrence IDs match the exact raw
+  candidate set;
+- Gate 2 requires the entire post-checkpoint phase to equal one staging
+  approval plus exactly one evidence-bound `assertion.proposed` event for each
+  approved candidate ID, with no extra proposal outside the approved subset;
+- phase identity comparisons use canonical sorted identifiers rather than
+  ledger order;
+- the first workspace create is immediately preceded by a destination-only
+  mount/device/read-write/separation recheck, with no source enumeration or
+  hashing between that recheck and creation;
+- an explicitly supplied `approvedAt` value is part of import approval retry
+  equality; callers that omit it retain the existing idempotent readback
+  behavior.
+
+These checks remain preview-specific reconciliation and exact-retry seams.
+They do not permit accepted ontology mutation, production activation, external
+provider transfer, or writes to the source SSD.
