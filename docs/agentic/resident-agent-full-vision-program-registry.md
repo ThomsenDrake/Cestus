@@ -43034,3 +43034,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1155 — Task14 spread-aware RED rejected on direct spread value flow
+
+- Recorded at: 2026-07-27T03:31:59Z
+- The fifteenth fresh independent read-only review rejects exact test-only
+  candidate `1937c319c701ca001a1ebde7e405a9ae16950241`, tree
+  `6dec97e14b72e0f93582a32720586fdfa5471984`, sole parent
+  `02d83a0775216bb8794eeee97d17cdc034169bbe`, corrected test blob
+  `c27c00999a1a4d0e64d382d1a66dbb35a09d74d2`, and exact review envelope
+  `a96e27e1aee48d975d7d9787e32eaa5ddcc1afb6`.
+- Identity, scope, envelope-parent, physical registry EOF, source/runtime
+  freezes, dependency versions, clean state, diff hygiene, and full Git
+  integrity pass. The reviewer proves one finite candidate-bound local AST
+  symbol-resolution false negative.
+- An exact one-element local array spread supplies a nested array whose
+  selected value is the registrar. Runtime binds and exports that exact
+  registrar. The oracle converts the spread to an indeterminate initializer;
+  because the nested identifier has no explicit default, it never inspects
+  the exact value emitted by the spread and reports no violation.
+- Root cause is confined to the unit-test oracle. The E-1154 correction
+  conservatively discards every spread projection even when the spread's
+  exact local array-literal values are statically available. Product source
+  and both causal Task14 RED failures remain unchanged.
+- Reject exact `1937c319` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `c27c0099`. First add an abstract exact
+  one-element nested-array spread control and reproduce direct registrar
+  propagation while retaining both causal product REDs.
+- Then project array literal positions through a finite exact spread prefix
+  only when each spread resolves through approved transparent wrappers and
+  immutable local constant aliases to an exact array literal. Recursively
+  expand exact nested literal spreads, preserve omitted elements as
+  `undefined` slots, and select the exact runtime-position node. Any opaque,
+  cyclic, mutable, exported, effectful, non-array, or unsupported spread
+  remains indeterminate; later raw nodes may not be blessed as exact across
+  it.
+- Add abstract parity for exact zero-, one-, and multiple-value literal
+  spreads, a transparent immutable alias, a recursively exact literal
+  spread, and an opaque-spread conservative control. Retain E-1154's
+  before/at/after spread controls and every E-1152 exact-carrier control.
+- Retain every earlier wrapper/type-query/separate-use,
+  separate-destructure/getter, declaration, iterator/escape/alias,
+  global-numeric/shadowed, awaited, unreachable, indeterminate, callable,
+  conditional, comma, and re-export control.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A sixteenth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe finite exact spread
+  value flow before exact-carrier proof, including zero/one/many positions,
+  wrappers, immutable aliases, nested exact spreads, holes, and opaque
+  fallbacks. Changed bytes invalidate review. The reviewer may not edit,
+  commit, merge, authorize source work, or make prefix, record-29, release,
+  or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
