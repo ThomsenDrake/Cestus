@@ -2960,8 +2960,8 @@ function residentFactoryIssuerAnalysis(
       return indeterminateBindingInitializer;
     }
     if (initializer === undefined) return unreachableBindingInitializer;
+    const carrierInitializer = initializer;
     let value = unwrapRegistrarExpression(initializer);
-    const carrierInitializer = value;
     const carrierPath = new Set(resolving);
     while (ts.isIdentifier(value)) {
       const symbol = checker.getSymbolAtLocation(value);
@@ -3237,6 +3237,12 @@ function residentFactoryIssuerAnalysis(
         (declaration) =>
           (declaration as ts.NamedDeclaration).name === identifier
       )
+    ) {
+      return true;
+    }
+    if (
+      ts.isPartOfTypeNode(identifier) ||
+      ts.isTypeQueryNode(identifier.parent)
     ) {
       return true;
     }
@@ -4581,6 +4587,61 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          ] = carrierAlias;`
+      ],
+      [
+        "parenthesized class carrier does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = (NonIterableCarrier);`
+      ],
+      [
+        "parenthesized class alias does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         const carrierAlias = NonIterableCarrier;
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = (carrierAlias);`
+      ],
+      [
+        "as-wrapped class carrier does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NonIterableCarrier as typeof NonIterableCarrier;`
+      ],
+      [
+        "asserted class carrier does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = <typeof NonIterableCarrier>NonIterableCarrier;`
+      ],
+      [
+        "non-null class carrier does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NonIterableCarrier!;`
+      ],
+      [
+        "satisfies-wrapped class carrier does not evaluate nested default",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ] = NonIterableCarrier satisfies typeof NonIterableCarrier;`
       ],
       [
         "instance-iterator class does not make constructor iterable",
