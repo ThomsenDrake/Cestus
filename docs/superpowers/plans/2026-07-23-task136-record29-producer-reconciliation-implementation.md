@@ -4205,6 +4205,10 @@ cross-boundary array, Tasks15-through-21 order, and all historical evidence.
 - `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` proves
   the lexical/static boundary without expanding the existing abstract alias
   corpus.
+- Frozen
+  `packages/local-runtime/test/resident-loop-factory-composition-imports.test.ts`
+  remains exact blob
+  `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
 - `packages/local-runtime/src/wake-supervisor-runtime.ts` owns generic wake
   construction, private factory issuance and registration, the safe public
   composition implementation, and the preserved downstream binder.
@@ -4412,8 +4416,11 @@ function issueResidentLoopFactoryWakeRuntime(
 ```
 
 The generic public constructor returns only `wakeRuntime`. It neither creates
-nor stores a retrievable registrar. The private factory issuance is called
-only by the co-located composition implementation.
+nor stores a retrievable registrar.
+`issueResidentLoopFactoryWakeRuntime` returns its private pair only to
+`createResidentLoopFactoryCompositionForFacade` in the same
+`wake-supervisor-runtime.ts` lexical module. That safe builder consumes
+`registerReadback` internally and neither accepts nor returns it.
 
 - [ ] **Step 2: Implement the private one-shot registrar**
 
