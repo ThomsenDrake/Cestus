@@ -2509,16 +2509,41 @@ interface ResidentFactoryIssuerAnalysis {
   readonly registrarDeclarationCount: number;
   readonly registrarImporters: readonly string[];
   readonly registrarCallers: readonly string[];
+  readonly privateFactoryIssuanceDeclarationCount: number;
+  readonly privateRegistrarClosureEscapes: number;
+  readonly safeBuilderImporters: readonly string[];
+  readonly safeBuilderCallers: readonly string[];
+  readonly facadeImportDeclarationCount: number;
+  readonly facadeValueImplementationCount: number;
+  readonly facadeValueExports: readonly string[];
+  readonly facadeTypeDeclarations: readonly string[];
   readonly violations: readonly string[];
 }
 
 const residentFactoryIssuerRegistrar =
   "registerResidentLoopFactoryAuthorityReadback";
+const residentFactoryPrivateIssuance =
+  "issueResidentLoopFactoryWakeRuntime";
+const residentFactoryPrivateRegistrar = "registerReadback";
+const residentFactorySafeBuilder =
+  "createResidentLoopFactoryCompositionForFacade";
+const residentFactorySafeFacadeExport =
+  "createResidentLoopFactoryComposition";
+const residentFactorySafeFacadeTypes = Object.freeze([
+  "ResidentLoopFactoryCompositionInput",
+  "ResidentLoopFactoryAuthorityBindInput",
+  "ResidentLoopFactoryAuthorityReadback",
+  "ResidentLoopFactoryComposition"
+] as const);
 const residentFactoryCompositionPath =
   "packages/local-runtime/src/resident-loop-factory-composition.ts";
 const residentFactoryWakePath =
   "packages/local-runtime/src/wake-supervisor-runtime.ts";
 const residentFactoryWakeModule = "./wake-supervisor-runtime.js";
+
+interface ResidentFactoryIssuerAnalysisOptions {
+  readonly mode?: "topology" | "private-escape-corpus";
+}
 
 function residentFactoryIssuerProgram(
   sources: readonly ResidentFactoryIssuerSource[]
@@ -2558,8 +2583,10 @@ function residentFactoryIssuerProgram(
 }
 
 function residentFactoryIssuerAnalysis(
-  sources: readonly ResidentFactoryIssuerSource[]
+  sources: readonly ResidentFactoryIssuerSource[],
+  options: ResidentFactoryIssuerAnalysisOptions = {}
 ): ResidentFactoryIssuerAnalysis {
+  const mode = options.mode ?? "topology";
   const program = residentFactoryIssuerProgram(sources);
   const checker = program.getTypeChecker();
   const checkedSources = sources.map((source) => {
@@ -2574,6 +2601,8 @@ function residentFactoryIssuerAnalysis(
   });
   const registrarImporters = new Set<string>();
   const registrarCallers = new Set<string>();
+  const safeBuilderImporters = new Set<string>();
+  const safeBuilderCallers = new Set<string>();
   const violations = new Set<string>();
   const staticTruthy = 1;
   const staticFalsy = 2;
@@ -2607,7 +2636,11 @@ function residentFactoryIssuerAnalysis(
     readonly hasUnknownProperties: boolean;
   };
   const registrarImportSymbols = new Set<ts.Symbol>();
+  const safeBuilderImportSymbols = new Set<ts.Symbol>();
   const registrarDeclarations: ts.FunctionDeclaration[] = [];
+  const privateIssuanceDeclarations: ts.FunctionDeclaration[] = [];
+  const safeBuilderDeclarations: ts.FunctionDeclaration[] = [];
+  const privateRegistrarDeclarations: ts.VariableDeclaration[] = [];
   const exactImports: Array<{
     readonly label: string;
     readonly element: ts.ImportSpecifier;
@@ -2616,6 +2649,11 @@ function residentFactoryIssuerAnalysis(
     readonly label: string;
     readonly call: ts.CallExpression;
   }> = [];
+  const safeBuilderCalls: Array<{
+    readonly label: string;
+    readonly call: ts.CallExpression;
+  }> = [];
+  let privateRegistrarClosureEscapes = 0;
 
   for (const source of checkedSources) {
     for (const statement of source.sourceFile.statements) {
@@ -2625,6 +2663,20 @@ function residentFactoryIssuerAnalysis(
         statement.name?.text === residentFactoryIssuerRegistrar
       ) {
         registrarDeclarations.push(statement);
+      }
+      if (
+        source.label === residentFactoryWakePath &&
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === residentFactoryPrivateIssuance
+      ) {
+        privateIssuanceDeclarations.push(statement);
+      }
+      if (
+        source.label === residentFactoryWakePath &&
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === residentFactorySafeBuilder
+      ) {
+        safeBuilderDeclarations.push(statement);
       }
       if (
         ts.isImportDeclaration(statement) &&
@@ -2639,12 +2691,26 @@ function residentFactoryIssuerAnalysis(
                 residentFactoryIssuerRegistrar
             )
           : [];
+        const safeBuilderNamed =
+          bindings !== undefined && ts.isNamedImports(bindings)
+            ? bindings.elements.filter((element) =>
+                (element.propertyName?.text ?? element.name.text) ===
+                  residentFactorySafeBuilder
+              )
+            : [];
         if (
           named.length > 0 ||
           clause?.name !== undefined ||
           (bindings !== undefined && ts.isNamespaceImport(bindings))
         ) {
           registrarImporters.add(source.label);
+        }
+        if (
+          safeBuilderNamed.length > 0 ||
+          clause?.name !== undefined ||
+          (bindings !== undefined && ts.isNamespaceImport(bindings))
+        ) {
+          safeBuilderImporters.add(source.label);
         }
         if (
           clause?.name !== undefined ||
@@ -2657,6 +2723,13 @@ function residentFactoryIssuerAnalysis(
           if (symbol !== undefined) {
             registrarImportSymbols.add(symbol);
           }
+          violations.add(`${source.label}:legacy-registrar-import`);
+        }
+        for (const element of safeBuilderNamed) {
+          const symbol = checker.getSymbolAtLocation(element.name);
+          if (symbol !== undefined) {
+            safeBuilderImportSymbols.add(symbol);
+          }
           if (
             source.label !== residentFactoryCompositionPath ||
             statement.moduleSpecifier.text !== residentFactoryWakeModule ||
@@ -2668,9 +2741,9 @@ function residentFactoryIssuerAnalysis(
             statement.attributes !== undefined ||
             element.isTypeOnly ||
             element.propertyName !== undefined ||
-            element.name.text !== residentFactoryIssuerRegistrar
+            element.name.text !== residentFactorySafeBuilder
           ) {
-            violations.add(`${source.label}:noncanonical-registrar-import`);
+            violations.add(`${source.label}:noncanonical-safe-builder-import`);
           } else {
             exactImports.push({ label: source.label, element });
           }
@@ -2695,12 +2768,36 @@ function residentFactoryIssuerAnalysis(
         if (exportsRegistrar) {
           violations.add(`${source.label}:registrar-reexport`);
         }
+        const exportsSafeBuilder =
+          statement.exportClause === undefined ||
+          ts.isNamespaceExport(statement.exportClause) ||
+          (
+            ts.isNamedExports(statement.exportClause) &&
+            statement.exportClause.elements.some((element) =>
+              (element.propertyName?.text ?? element.name.text) ===
+                residentFactorySafeBuilder
+            )
+          );
+        if (exportsSafeBuilder) {
+          violations.add(`${source.label}:safe-builder-reexport`);
+        }
       }
     }
 
     visit(source.sourceFile);
 
     function visit(node: ts.Node): void {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === residentFactoryPrivateRegistrar
+      ) {
+        const symbol = checker.getSymbolAtLocation(node.name);
+        if (symbol !== undefined) {
+          registrarImportSymbols.add(symbol);
+        }
+        privateRegistrarDeclarations.push(node);
+      }
       if (
         ts.isCallExpression(node) &&
         (
@@ -2737,55 +2834,137 @@ function residentFactoryIssuerAnalysis(
         registrarCallers.add(source.label);
         registrarCalls.push({ label: source.label, call: node });
       }
+      if (
+        ts.isCallExpression(node) &&
+        (
+          (
+            ts.isIdentifier(node.expression) &&
+            (
+              node.expression.text === residentFactorySafeBuilder ||
+              safeBuilderImportSymbols.has(
+                checker.getSymbolAtLocation(node.expression) as ts.Symbol
+              )
+            )
+          ) ||
+          (
+            ts.isPropertyAccessExpression(node.expression) &&
+            node.expression.name.text === residentFactorySafeBuilder
+          )
+        )
+      ) {
+        safeBuilderCallers.add(source.label);
+        safeBuilderCalls.push({ label: source.label, call: node });
+      }
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === residentFactoryPrivateIssuance
+      ) {
+        let owner: ts.FunctionDeclaration | undefined;
+        for (
+          let current: ts.Node | undefined = node.parent;
+          current !== undefined;
+          current = current.parent
+        ) {
+          if (ts.isFunctionDeclaration(current)) {
+            owner = current;
+            break;
+          }
+        }
+        if (owner?.name?.text !== residentFactorySafeBuilder) {
+          violations.add(
+            `${source.label}:alternate-private-issuance-caller`
+          );
+        }
+      }
       ts.forEachChild(node, visit);
     }
   }
 
   rejectRegistrarExports();
 
-  if (
-    registrarDeclarations.length !== 1 ||
-    !hasExactRegistrarSignature(registrarDeclarations[0])
-  ) {
-    violations.add(`${residentFactoryWakePath}:issuer-registrar-signature`);
+  if (mode === "private-escape-corpus") {
+    return {
+      registrarDeclarationCount: registrarDeclarations.length,
+      registrarImporters: [...registrarImporters].sort(),
+      registrarCallers: [...registrarCallers].sort(),
+      privateFactoryIssuanceDeclarationCount:
+        privateIssuanceDeclarations.length,
+      privateRegistrarClosureEscapes: countPrivateRegistrarEscapeViolations(),
+      safeBuilderImporters: [...safeBuilderImporters].sort(),
+      safeBuilderCallers: [...safeBuilderCallers].sort(),
+      facadeImportDeclarationCount: 0,
+      facadeValueImplementationCount: 0,
+      facadeValueExports: [],
+      facadeTypeDeclarations: [],
+      violations: [...violations].sort()
+    };
   }
+
+  if (
+    registrarDeclarations.length !== 0 ||
+    registrarImporters.size !== 0 ||
+    registrarCallers.size !== 0
+  ) {
+    violations.add(`${residentFactoryWakePath}:legacy-registrar-absent`);
+  }
+  if (
+    privateIssuanceDeclarations.length !== 1 ||
+    !hasExactPrivateIssuanceTopology(
+      privateIssuanceDeclarations[0],
+      safeBuilderDeclarations[0]
+    )
+  ) {
+    violations.add(`${residentFactoryWakePath}:private-factory-issuance`);
+  }
+  if (
+    privateRegistrarDeclarations.length !== 1 ||
+    countPrivateRegistrarEscapeViolations() !== 0
+  ) {
+    violations.add(`${residentFactoryWakePath}:private-registrar-escape`);
+  }
+  privateRegistrarClosureEscapes =
+    countPrivateRegistrarEscapeViolations();
   if (
     exactImports.length !== 1 ||
     exactImports[0]?.label !== residentFactoryCompositionPath ||
-    registrarImporters.size !== 1 ||
-    !registrarImporters.has(residentFactoryCompositionPath)
+    safeBuilderImporters.size !== 1 ||
+    !safeBuilderImporters.has(residentFactoryCompositionPath)
   ) {
     violations.add(
-      `${residentFactoryCompositionPath}:sole-direct-registrar-import`
+      `${residentFactoryCompositionPath}:sole-direct-safe-builder-import`
     );
   }
   if (
-    registrarCalls.length !== 1 ||
-    registrarCalls[0]?.label !== residentFactoryCompositionPath ||
-    registrarCallers.size !== 1 ||
-    !registrarCallers.has(residentFactoryCompositionPath)
+    safeBuilderCalls.length !== 1 ||
+    safeBuilderCalls[0]?.label !== residentFactoryCompositionPath ||
+    safeBuilderCallers.size !== 1 ||
+    !safeBuilderCallers.has(residentFactoryCompositionPath) ||
+    !hasExactSafeBuilderCall(safeBuilderCalls[0]?.call)
   ) {
     violations.add(
-      `${residentFactoryCompositionPath}:sole-direct-registrar-call`
+      `${residentFactoryCompositionPath}:sole-direct-safe-builder-call`
     );
   }
 
   const composition = checkedSources.find(
     (source) => source.label === residentFactoryCompositionPath
   )?.sourceFile;
-  if (
-    composition === undefined ||
-    !hasExactIssuerThread(composition, registrarCalls[0]?.call)
-  ) {
-    violations.add(
-      `${residentFactoryCompositionPath}:exact-construction-issuer-thread`
-    );
-  }
+  const facade = analyzeCompatibilityFacade(composition);
 
   return {
     registrarDeclarationCount: registrarDeclarations.length,
     registrarImporters: [...registrarImporters].sort(),
     registrarCallers: [...registrarCallers].sort(),
+    privateFactoryIssuanceDeclarationCount:
+      privateIssuanceDeclarations.length,
+    privateRegistrarClosureEscapes,
+    safeBuilderImporters: [...safeBuilderImporters].sort(),
+    safeBuilderCallers: [...safeBuilderCallers].sort(),
+    facadeImportDeclarationCount: facade.importDeclarationCount,
+    facadeValueImplementationCount: facade.valueImplementationCount,
+    facadeValueExports: facade.valueExports,
+    facadeTypeDeclarations: facade.typeDeclarations,
     violations: [...violations].sort()
   };
 
@@ -2808,7 +2987,7 @@ function residentFactoryIssuerAnalysis(
               symbolResolvesToRegistrar(target, new Set());
           })
         ) {
-          violations.add(`${source.label}:registrar-reexport`);
+          recordRegistrarEscape(source.label);
         }
         if (
           ts.isVariableStatement(statement) &&
@@ -2821,7 +3000,7 @@ function residentFactoryIssuerAnalysis(
             )
           )
         ) {
-          violations.add(`${source.label}:registrar-reexport`);
+          recordRegistrarEscape(source.label);
         }
         if (
           ts.isFunctionDeclaration(statement) &&
@@ -2829,16 +3008,32 @@ function residentFactoryIssuerAnalysis(
           statement.body !== undefined &&
           functionBodyReturnsRegistrar(statement.body, new Set())
         ) {
-          violations.add(`${source.label}:registrar-reexport`);
+          recordRegistrarEscape(source.label);
         }
         if (
           ts.isExportAssignment(statement) &&
           expressionResolvesToRegistrar(statement.expression, new Set())
         ) {
-          violations.add(`${source.label}:registrar-reexport`);
+          recordRegistrarEscape(source.label);
         }
       }
     }
+  }
+
+  function recordRegistrarEscape(label: string): void {
+    violations.add(
+      `${label}:${
+        mode === "private-escape-corpus"
+          ? "private-registrar-escape"
+          : "registrar-reexport"
+      }`
+    );
+  }
+
+  function countPrivateRegistrarEscapeViolations(): number {
+    return [...violations].filter((violation) =>
+      violation.endsWith(":private-registrar-escape")
+    ).length;
   }
 
   function hasExportModifier(node: ts.HasModifiers): boolean {
@@ -4745,97 +4940,477 @@ function residentFactoryIssuerAnalysis(
     return current;
   }
 
-  function hasExactRegistrarSignature(
-    declaration: ts.FunctionDeclaration | undefined
+  function hasExactPrivateIssuanceTopology(
+    declaration: ts.FunctionDeclaration | undefined,
+    safeBuilder: ts.FunctionDeclaration | undefined
   ): boolean {
+    const issuanceParameter = declaration?.parameters[0];
     if (
       declaration === undefined ||
       declaration.asteriskToken !== undefined ||
       declaration.body === undefined ||
-      declaration.parameters.length !== 3
+      declaration.parameters.length !== 1 ||
+      issuanceParameter === undefined ||
+      !ts.isIdentifier(issuanceParameter.name) ||
+      issuanceParameter.dotDotDotToken !== undefined ||
+      issuanceParameter.questionToken !== undefined ||
+      issuanceParameter.initializer !== undefined ||
+      hasExportModifier(declaration)
     ) {
       return false;
     }
-    const modifiers = declaration.modifiers ?? [];
+    const issuanceBody = declaration.body;
+    const issuanceParameterName = issuanceParameter.name.text;
+
+    const privateDeclarations: ts.VariableDeclaration[] = [];
+    visitPrivateDeclarations(issuanceBody);
     if (
-      !modifiers.some((modifier) =>
-        modifier.kind === ts.SyntaxKind.ExportKeyword
-      ) ||
-      modifiers.some((modifier) =>
-        modifier.kind === ts.SyntaxKind.DefaultKeyword
+      privateDeclarations.length !== 1 ||
+      privateDeclarations[0] !== privateRegistrarDeclarations[0]
+    ) {
+      return false;
+    }
+    const wakeRuntimeDeclarations: ts.VariableDeclaration[] = [];
+    visitWakeRuntimeDeclarations(issuanceBody);
+    if (wakeRuntimeDeclarations.length !== 1) {
+      return false;
+    }
+    const wakeRuntimeDeclaration = wakeRuntimeDeclarations[0]!;
+    if (
+      wakeRuntimeDeclaration.initializer === undefined ||
+      !ts.isCallExpression(wakeRuntimeDeclaration.initializer) ||
+      wakeRuntimeDeclaration.initializer.questionDotToken !== undefined ||
+      !ts.isIdentifier(wakeRuntimeDeclaration.initializer.expression) ||
+      wakeRuntimeDeclaration.initializer.expression.text !==
+        "createWakeSupervisorRuntime" ||
+      wakeRuntimeDeclaration.initializer.arguments.length !== 1 ||
+      wakeRuntimeDeclaration.initializer.arguments.some(ts.isSpreadElement) ||
+      !ts.isIdentifier(wakeRuntimeDeclaration.initializer.arguments[0]!) ||
+      wakeRuntimeDeclaration.initializer.arguments[0]!.text !==
+        issuanceParameterName
+    ) {
+      return false;
+    }
+    const privateDeclaration = privateDeclarations[0]!;
+    const privateInitializer = privateDeclaration.initializer;
+    if (
+      privateInitializer === undefined ||
+      (privateDeclaration.parent.flags & ts.NodeFlags.Const) === 0 ||
+      !(
+        ts.isArrowFunction(privateInitializer) ||
+        ts.isFunctionExpression(privateInitializer)
       )
     ) {
       return false;
     }
-    return declaration.parameters.every((parameter, index) =>
-      ts.isIdentifier(parameter.name) &&
-      parameter.name.text ===
-        ["issuerIdentity", "wakeRuntime", "readback"][index] &&
-      parameter.dotDotDotToken === undefined &&
-      parameter.questionToken === undefined &&
-      parameter.initializer === undefined
-    );
-  }
-
-  function hasExactIssuerThread(
-    sourceFile: ts.SourceFile,
-    registrarCall: ts.CallExpression | undefined
-  ): boolean {
-    const factory = sourceFile.statements.find(
-      (statement): statement is ts.FunctionDeclaration =>
-        ts.isFunctionDeclaration(statement) &&
-        statement.name?.text === "createResidentLoopFactoryComposition"
-    );
+    const privateParameter = privateInitializer.parameters[0];
     if (
-      factory?.body === undefined ||
-      factory.parameters.length !== 1 ||
-      registrarCall === undefined ||
-      !ts.isIdentifier(registrarCall.expression) ||
-      registrarCall.expression.text !== residentFactoryIssuerRegistrar ||
-      registrarCall.questionDotToken !== undefined ||
-      registrarCall.arguments.length !== 3 ||
-      registrarCall.arguments.some(ts.isSpreadElement) ||
-      !registrarCall.arguments.every(ts.isIdentifier) ||
-      registrarCall.arguments.map((argument) =>
-        ts.isIdentifier(argument) ? argument.text : ""
-      ).join(",") !==
-        "input,wakeRuntime,readback" ||
-      !isInsideExactBind(registrarCall, factory)
+      privateInitializer.parameters.length !== 1 ||
+      privateParameter === undefined ||
+      !ts.isIdentifier(privateParameter.name) ||
+      privateParameter.name.text !== "readback"
     ) {
       return false;
     }
 
-    const declarations = factory.body.statements.flatMap((statement) =>
-      ts.isVariableStatement(statement)
-        ? [...statement.declarationList.declarations]
+    const privateSymbol = checker.getSymbolAtLocation(privateDeclaration.name);
+    if (privateSymbol === undefined) {
+      return false;
+    }
+    const returnStatements: ts.ReturnStatement[] = [];
+    visitReturns(issuanceBody);
+    const privatePairReturn = returnStatements.find((statement) =>
+      statement.expression !== undefined &&
+      exactPrivatePairObject(statement.expression) !== undefined
+    );
+    if (
+      privatePairReturn === undefined ||
+      returnStatements.filter((statement) =>
+        statement.expression !== undefined &&
+        nodeContainsSymbol(statement.expression, privateSymbol)
+      ).length !== 1
+    ) {
+      return false;
+    }
+
+    const privateReferences: ts.Identifier[] = [];
+    visitPrivateReferences(issuanceBody);
+    const permittedReturn = exactPrivatePairObject(
+      privatePairReturn.expression!
+    )!;
+    const permittedReferences = privateReferences.filter((identifier) =>
+      isPrivatePairPropertyReference(identifier, permittedReturn)
+    );
+    const escapedReferences =
+      privateReferences.length - permittedReferences.length;
+    if (escapedReferences !== 0) {
+      privateRegistrarClosureEscapes += escapedReferences;
+      recordRegistrarEscape(residentFactoryWakePath);
+      return false;
+    }
+
+    const safeBuilderParameter = safeBuilder?.parameters[0];
+    if (
+      safeBuilder === undefined ||
+      safeBuilder.body === undefined ||
+      safeBuilder.parameters.length !== 1 ||
+      safeBuilderParameter === undefined ||
+      !ts.isIdentifier(safeBuilderParameter.name) ||
+      !hasExportModifier(safeBuilder) ||
+      safeBuilder.modifiers?.some((modifier) =>
+        modifier.kind === ts.SyntaxKind.DefaultKeyword
+      ) === true
+    ) {
+      return false;
+    }
+    const issueCalls: ts.CallExpression[] = [];
+    const privateConsumerCalls: ts.CallExpression[] = [];
+    const privateConsumerReferences: ts.Expression[] = [];
+    visitSafeBuilder(safeBuilder.body);
+    const exactSafeConsumption = issueCalls.length === 1 &&
+      issueCalls[0]?.questionDotToken === undefined &&
+      issueCalls[0]?.arguments.length === 1 &&
+      issueCalls[0]?.arguments.some(ts.isSpreadElement) === false &&
+      privateConsumerCalls.length === 1 &&
+      privateConsumerCalls[0]?.questionDotToken === undefined &&
+      privateConsumerCalls[0]?.arguments.length === 1 &&
+      privateConsumerCalls[0]?.arguments.some(ts.isSpreadElement) === false &&
+      ts.isIdentifier(privateConsumerCalls[0]?.arguments[0]!) &&
+      privateConsumerCalls[0]?.arguments[0].text === "readback" &&
+      privateConsumerReferences.length === 1 &&
+      privateConsumerReferences[0] === privateConsumerCalls[0]?.expression &&
+      isInsideExactBind(privateConsumerCalls[0], safeBuilder);
+    return exactSafeConsumption;
+
+    function visitPrivateDeclarations(node: ts.Node): void {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === residentFactoryPrivateRegistrar
+      ) {
+        privateDeclarations.push(node);
+      }
+      ts.forEachChild(node, visitPrivateDeclarations);
+    }
+
+    function visitWakeRuntimeDeclarations(node: ts.Node): void {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === "wakeRuntime"
+      ) {
+        wakeRuntimeDeclarations.push(node);
+      }
+      ts.forEachChild(node, visitWakeRuntimeDeclarations);
+    }
+
+    function visitReturns(node: ts.Node): void {
+      if (node !== issuanceBody && ts.isFunctionLike(node)) return;
+      if (ts.isReturnStatement(node)) returnStatements.push(node);
+      ts.forEachChild(node, visitReturns);
+    }
+
+    function visitPrivateReferences(node: ts.Node): void {
+      if (
+        ts.isIdentifier(node) &&
+        valueSymbolAtIdentifier(node) === privateSymbol &&
+        node !== privateDeclaration.name
+      ) {
+        privateReferences.push(node);
+      }
+      ts.forEachChild(node, visitPrivateReferences);
+    }
+
+    function visitSafeBuilder(node: ts.Node): void {
+      if (
+        (
+          ts.isPropertyAccessExpression(node) &&
+          node.name.text === residentFactoryPrivateRegistrar
+        ) ||
+        (
+          ts.isIdentifier(node) &&
+          node.text === residentFactoryPrivateRegistrar &&
+          !(
+            ts.isPropertyAccessExpression(node.parent) &&
+            node.parent.name === node
+          )
+        )
+      ) {
+        privateConsumerReferences.push(node);
+      }
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === residentFactoryPrivateIssuance
+      ) {
+        issueCalls.push(node);
+      }
+      if (
+        ts.isCallExpression(node) &&
+        (
+          (
+            ts.isPropertyAccessExpression(node.expression) &&
+            node.expression.name.text === residentFactoryPrivateRegistrar
+          ) ||
+          (
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === residentFactoryPrivateRegistrar
+          )
+        )
+      ) {
+        privateConsumerCalls.push(node);
+      }
+      ts.forEachChild(node, visitSafeBuilder);
+    }
+  }
+
+  function exactPrivatePairObject(
+    expression: ts.Expression
+  ): ts.ObjectLiteralExpression | undefined {
+    const value = unwrapRegistrarExpression(expression);
+    if (ts.isObjectLiteralExpression(value)) {
+      const names = value.properties.map((property) =>
+        ts.isShorthandPropertyAssignment(property)
+          ? property.name.text
+          : ts.isPropertyAssignment(property)
+            ? bindingPropertyName(property.name)
+            : undefined
+      );
+      return names.length === 2 &&
+        names.includes("wakeRuntime") &&
+        names.includes(residentFactoryPrivateRegistrar)
+        ? value
+        : undefined;
+    }
+    if (
+      ts.isCallExpression(value) &&
+      value.questionDotToken === undefined &&
+      value.arguments.length === 1 &&
+      !value.arguments.some(ts.isSpreadElement) &&
+      ts.isPropertyAccessExpression(value.expression) &&
+      ts.isIdentifier(value.expression.expression) &&
+      value.expression.expression.text === "Object" &&
+      value.expression.name.text === "freeze"
+    ) {
+      return exactPrivatePairObject(value.arguments[0]!);
+    }
+    return undefined;
+  }
+
+  function isPrivatePairPropertyReference(
+    identifier: ts.Identifier,
+    object: ts.ObjectLiteralExpression
+  ): boolean {
+    for (
+      let current: ts.Node | undefined = identifier;
+      current !== undefined && current !== object;
+      current = current.parent
+    ) {
+      if (
+        ts.isShorthandPropertyAssignment(current) ||
+        (
+          ts.isPropertyAssignment(current) &&
+          current.initializer === identifier &&
+          bindingPropertyName(current.name) ===
+            residentFactoryPrivateRegistrar
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function nodeContainsSymbol(node: ts.Node, symbol: ts.Symbol): boolean {
+    let contains = false;
+    visit(node);
+    return contains;
+
+    function visit(current: ts.Node): void {
+      if (contains) return;
+      if (
+        ts.isIdentifier(current) &&
+        valueSymbolAtIdentifier(current) === symbol
+      ) {
+        contains = true;
+        return;
+      }
+      ts.forEachChild(current, visit);
+    }
+  }
+
+  function valueSymbolAtIdentifier(
+    identifier: ts.Identifier
+  ): ts.Symbol | undefined {
+    return ts.isShorthandPropertyAssignment(identifier.parent) &&
+      identifier.parent.name === identifier
+      ? checker.getShorthandAssignmentValueSymbol(identifier.parent)
+      : checker.getSymbolAtLocation(identifier);
+  }
+
+  function hasExactSafeBuilderCall(
+    call: ts.CallExpression | undefined
+  ): boolean {
+    if (
+      call === undefined ||
+      !ts.isIdentifier(call.expression) ||
+      call.expression.text !== residentFactorySafeBuilder ||
+      call.questionDotToken !== undefined ||
+      call.arguments.length !== 1 ||
+      call.arguments.some(ts.isSpreadElement) ||
+      !ts.isIdentifier(call.arguments[0]!)
+    ) {
+      return false;
+    }
+    for (
+      let current: ts.Node | undefined = call.parent;
+      current !== undefined;
+      current = current.parent
+    ) {
+      if (!ts.isFunctionDeclaration(current)) continue;
+      const parameter = current.parameters[0];
+      const statement = current.body?.statements[0];
+      return current.name?.text === residentFactorySafeFacadeExport &&
+        current.parameters.length === 1 &&
+        parameter !== undefined &&
+        ts.isIdentifier(parameter.name) &&
+        call.arguments[0]!.text === parameter.name.text &&
+        current.body?.statements.length === 1 &&
+        statement !== undefined &&
+        ts.isReturnStatement(statement) &&
+        statement.expression === call;
+    }
+    return false;
+  }
+
+  function analyzeCompatibilityFacade(
+    sourceFile: ts.SourceFile | undefined
+  ): {
+    readonly importDeclarationCount: number;
+    readonly valueImplementationCount: number;
+    readonly valueExports: readonly string[];
+    readonly typeDeclarations: readonly string[];
+  } {
+    if (sourceFile === undefined) {
+      violations.add(`${residentFactoryCompositionPath}:compatibility-facade`);
+      return {
+        importDeclarationCount: 0,
+        valueImplementationCount: 0,
+        valueExports: [],
+        typeDeclarations: []
+      };
+    }
+    const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+    const typeDeclarations = sourceFile.statements.flatMap((statement) =>
+      ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)
+        ? [statement.name.text]
         : []
     );
-    const inputDeclarations = declarations.filter((declaration) =>
-      ts.isIdentifier(declaration.name) &&
-      declaration.name.text === "input" &&
-      declaration.initializer !== undefined &&
-      ts.isCallExpression(declaration.initializer) &&
-      ts.isIdentifier(declaration.initializer.expression) &&
-      declaration.initializer.expression.text === "normalizeCompositionInput" &&
-      declaration.initializer.arguments.length === 1 &&
-      ts.isIdentifier(declaration.initializer.arguments[0]!) &&
-      ts.isIdentifier(factory.parameters[0]!.name) &&
-      declaration.initializer.arguments[0]!.text ===
-        factory.parameters[0]!.name.text
+    const valueStatements = sourceFile.statements.filter((statement) =>
+      ts.isFunctionDeclaration(statement) ||
+      ts.isVariableStatement(statement) ||
+      ts.isClassDeclaration(statement) ||
+      ts.isEnumDeclaration(statement)
     );
-    const wakeDeclarations = declarations.filter((declaration) =>
-      ts.isIdentifier(declaration.name) &&
-      declaration.name.text === "wakeRuntime" &&
-      declaration.initializer !== undefined &&
-      ts.isCallExpression(declaration.initializer) &&
-      ts.isIdentifier(declaration.initializer.expression) &&
-      declaration.initializer.expression.text === "createWakeSupervisorRuntime" &&
-      declaration.initializer.questionDotToken === undefined &&
-      declaration.initializer.arguments.length === 1 &&
-      ts.isIdentifier(declaration.initializer.arguments[0]!) &&
-      declaration.initializer.arguments[0]!.text === "input"
+    const valueExports = valueStatements.flatMap((statement) => {
+      if (!hasExportModifier(statement)) return [];
+      if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
+        return statement.name === undefined ? [] : [statement.name.text];
+      }
+      if (ts.isEnumDeclaration(statement)) return [statement.name.text];
+      return statement.declarationList.declarations.flatMap((declaration) =>
+        ts.isIdentifier(declaration.name) ? [declaration.name.text] : []
+      );
+    });
+    const exactImports = [
+      {
+        module: "../../agent/src/wake-supervisor.js",
+        names: ["WakeSupervisorCommandResultDto"],
+        typeOnly: true
+      },
+      {
+        module: "../../agent/src/specialist-handoff-authority.js",
+        names: [
+          "HandoffAuthorityBinding",
+          "MountedSpecialistHandoffAuthorityWitness"
+        ],
+        typeOnly: true
+      },
+      {
+        module: "./mounted-provider-authority.js",
+        names: [
+          "MountedProviderAuthority",
+          "MountedProviderAuthorityReadback"
+        ],
+        typeOnly: true
+      },
+      {
+        module: residentFactoryWakeModule,
+        names: [residentFactorySafeBuilder],
+        typeOnly: false
+      },
+      {
+        module: residentFactoryWakeModule,
+        names: [
+          "WakeSupervisorRuntime",
+          "WakeSupervisorRuntimeInput"
+        ],
+        typeOnly: true
+      },
+      {
+        module: "./runtime-factory.js",
+        names: ["LocalRuntimeHandle"],
+        typeOnly: true
+      }
+    ] as const;
+    const importShapeIsExact =
+      imports.length === exactImports.length &&
+      imports.every((statement, index) => {
+        const expected = exactImports[index]!;
+        const clause = statement.importClause;
+        const bindings = clause?.namedBindings;
+        return ts.isStringLiteral(statement.moduleSpecifier) &&
+          statement.moduleSpecifier.text === expected.module &&
+          clause !== undefined &&
+          clause.isTypeOnly === expected.typeOnly &&
+          clause.name === undefined &&
+          bindings !== undefined &&
+          ts.isNamedImports(bindings) &&
+          statement.attributes === undefined &&
+          bindings.elements.length === expected.names.length &&
+          bindings.elements.every((element, elementIndex) =>
+            element.propertyName === undefined &&
+            element.isTypeOnly === false &&
+            element.name.text === expected.names[elementIndex]
+          );
+      });
+    const wrapper = valueStatements.find(
+      (statement): statement is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.name?.text === residentFactorySafeFacadeExport
     );
-    return inputDeclarations.length === 1 && wakeDeclarations.length === 1;
+    const hasExportList = sourceFile.statements.some(ts.isExportDeclaration);
+    const exact =
+      importShapeIsExact &&
+      typeDeclarations.length === residentFactorySafeFacadeTypes.length &&
+      typeDeclarations.every(
+        (name, index) => name === residentFactorySafeFacadeTypes[index]
+      ) &&
+      valueStatements.length === 1 &&
+      valueExports.length === 1 &&
+      valueExports[0] === residentFactorySafeFacadeExport &&
+      wrapper !== undefined &&
+      hasExactSafeBuilderCall(safeBuilderCalls[0]?.call) &&
+      !hasExportList;
+    if (!exact) {
+      violations.add(`${residentFactoryCompositionPath}:compatibility-facade`);
+    }
+    return {
+      importDeclarationCount: imports.length,
+      valueImplementationCount: valueStatements.length,
+      valueExports,
+      typeDeclarations
+    };
   }
 
   function isInsideExactBind(
@@ -4892,49 +5467,93 @@ describe("wake supervisor runtime import boundary", () => {
     expect(source).toMatch(/import\(/);
   });
 
-  it("seals the exact construction issuer to one composition importer and caller token", () => {
+  it("seals factory issuance to one nonescaping lexical registrar and one safe facade wrapper", () => {
     const exactWake = `
-      export function registerResidentLoopFactoryAuthorityReadback(
-        issuerIdentity: object,
-        wakeRuntime: object,
-        readback: object
-      ): void {
-        void issuerIdentity;
-        void wakeRuntime;
-        void readback;
+      function issueResidentLoopFactoryWakeRuntime(input: object) {
+        const wakeRuntime = createWakeSupervisorRuntime(input);
+        const registerReadback = (readback: object): void => {
+          void readback;
+        };
+        return Object.freeze({ wakeRuntime, registerReadback });
+      }
+      export function createResidentLoopFactoryCompositionForFacade(
+        rawInput: unknown
+      ) {
+        const input = normalizeCompositionInput(rawInput);
+        const issuance = issueResidentLoopFactoryWakeRuntime(input);
+        const bind = async () => {
+          const readback = Object.freeze({});
+          issuance.registerReadback(readback);
+          return readback;
+        };
+        return Object.freeze({
+          wakeRuntime: issuance.wakeRuntime,
+          bind
+        });
       }
     `;
     const exactComposition = `
+      import type {
+        WakeSupervisorCommandResultDto
+      } from "../../agent/src/wake-supervisor.js";
+      import type {
+        HandoffAuthorityBinding,
+        MountedSpecialistHandoffAuthorityWitness
+      } from "../../agent/src/specialist-handoff-authority.js";
+      import type {
+        MountedProviderAuthority,
+        MountedProviderAuthorityReadback
+      } from "./mounted-provider-authority.js";
       import {
-        registerResidentLoopFactoryAuthorityReadback
+        createResidentLoopFactoryCompositionForFacade
       } from "./wake-supervisor-runtime.js";
-      export function createResidentLoopFactoryComposition(rawInput: unknown) {
-        const input = normalizeCompositionInput(rawInput);
-        const wakeRuntime = createWakeSupervisorRuntime(input);
-        const bind = async () => {
-          const readback = Object.freeze({});
-          registerResidentLoopFactoryAuthorityReadback(
-            input,
-            wakeRuntime,
-            readback
-          );
-          return readback;
+      import type {
+        WakeSupervisorRuntime,
+        WakeSupervisorRuntimeInput
+      } from "./wake-supervisor-runtime.js";
+      import type { LocalRuntimeHandle } from "./runtime-factory.js";
+
+      export interface ResidentLoopFactoryCompositionInput {
+        readonly runtimeHandle: LocalRuntimeHandle;
+        readonly actor: WakeSupervisorRuntimeInput["actor"];
+      }
+      export interface ResidentLoopFactoryAuthorityBindInput {
+        readonly providerAuthority: MountedProviderAuthority;
+        readonly handoffAuthorityWitness:
+          MountedSpecialistHandoffAuthorityWitness;
+      }
+      export interface ResidentLoopFactoryAuthorityReadback {
+        readonly provider: MountedProviderAuthorityReadback;
+        readonly handoff: {
+          readonly authorityBinding: HandoffAuthorityBinding;
         };
-        return { bind };
+      }
+      export interface ResidentLoopFactoryComposition {
+        readonly wakeRuntime: WakeSupervisorRuntime;
+        start(): Promise<WakeSupervisorCommandResultDto>;
+        bind(input: unknown):
+          Promise<ResidentLoopFactoryAuthorityReadback>;
+        stop(): Promise<void>;
+      }
+      export function createResidentLoopFactoryComposition(
+        rawInput: unknown
+      ): ResidentLoopFactoryComposition {
+        return createResidentLoopFactoryCompositionForFacade(rawInput);
       }
     `;
-    const analyzeControl = (
+    const analyzeTopologyControl = (
       compositionSource: string,
       extraSources: readonly {
         readonly label: string;
         readonly source: string;
-      }[] = []
+      }[] = [],
+      wakeSource = exactWake
     ) => residentFactoryIssuerAnalysis([
       {
         label: residentFactoryWakePath,
         sourceFile: ts.createSourceFile(
           residentFactoryWakePath,
-          exactWake,
+          wakeSource,
           ts.ScriptTarget.Latest,
           true,
           ts.ScriptKind.TS
@@ -4961,8 +5580,63 @@ describe("wake supervisor runtime import boundary", () => {
         )
       }))
     ]);
+    const baselineStatementCount = ts.createSourceFile(
+      residentFactoryCompositionPath,
+      exactComposition,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS
+    ).statements.length;
+    const analyzePrivateEscapeControl = (source: string) => {
+      const parsed = ts.createSourceFile(
+        residentFactoryCompositionPath,
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TS
+      );
+      const appended = parsed.statements
+        .slice(baselineStatementCount)
+        .map((statement) => statement.getFullText(parsed))
+        .join("")
+        .replaceAll(
+          residentFactoryIssuerRegistrar,
+          residentFactoryPrivateRegistrar
+        );
+      const corpusSource = `
+        const registerReadback = (readback: object): void => {
+          void readback;
+        };
+        ${appended}
+      `;
+      return residentFactoryIssuerAnalysis([
+        {
+          label: residentFactoryWakePath,
+          sourceFile: ts.createSourceFile(
+            residentFactoryWakePath,
+            corpusSource,
+            ts.ScriptTarget.Latest,
+            true,
+            ts.ScriptKind.TS
+          )
+        }
+      ], { mode: "private-escape-corpus" });
+    };
 
-    expect(analyzeControl(exactComposition).violations).toEqual([]);
+    expect(analyzeTopologyControl(exactComposition)).toEqual({
+      registrarDeclarationCount: 0,
+      registrarImporters: [],
+      registrarCallers: [],
+      privateFactoryIssuanceDeclarationCount: 1,
+      privateRegistrarClosureEscapes: 0,
+      safeBuilderImporters: [residentFactoryCompositionPath],
+      safeBuilderCallers: [residentFactoryCompositionPath],
+      facadeImportDeclarationCount: 6,
+      facadeValueImplementationCount: 1,
+      facadeValueExports: [residentFactorySafeFacadeExport],
+      facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
+      violations: []
+    });
     for (const [name, source] of [
       [
         "local named re-export",
@@ -4978,15 +5652,9 @@ describe("wake supervisor runtime import boundary", () => {
       ],
       [
         "imported local alias re-export",
-        `${exactComposition
-          .replace(
-            "registerResidentLoopFactoryAuthorityReadback\n      }",
-            "registerResidentLoopFactoryAuthorityReadback as importedRegistrar\n      }"
-          )
-          .replace(
-            "\n          registerResidentLoopFactoryAuthorityReadback(\n",
-            "\n          importedRegistrar(\n"
-          )}
+        `${exactComposition}
+         const importedRegistrar =
+           registerResidentLoopFactoryAuthorityReadback;
          export { importedRegistrar };`
       ],
       [
@@ -6196,9 +6864,9 @@ describe("wake supervisor runtime import boundary", () => {
       ]
     ] as const) {
       expect.soft(
-        analyzeControl(source).violations,
+        analyzePrivateEscapeControl(source).violations,
         name
-      ).toContain(`${residentFactoryCompositionPath}:registrar-reexport`);
+      ).toContain(`${residentFactoryWakePath}:private-registrar-escape`);
     }
     for (const [name, source] of [
       [
@@ -7254,9 +7922,12 @@ describe("wake supervisor runtime import boundary", () => {
          } = {};`
       ]
     ] as const) {
-      expect.soft(analyzeControl(source).violations, name).toEqual([]);
+      expect.soft(
+        analyzePrivateEscapeControl(source).violations,
+        name
+      ).toEqual([]);
     }
-    expect(analyzeControl(`${exactComposition}
+    expect(analyzePrivateEscapeControl(`${exactComposition}
       const unrelatedLocalExport = Object.freeze({});
       export {
         unrelatedLocalExport as registerResidentLoopFactoryAuthorityReadback
@@ -7326,17 +7997,21 @@ describe("wake supervisor runtime import boundary", () => {
       );
     `).violations).toEqual([]);
 
-    for (const [name, source, extras] of [
+    for (const [name, source, extras, wakeSource] of [
       [
         "barrel import",
         exactComposition.replace(
-          '"./wake-supervisor-runtime.js"',
-          '"./index.js"'
+          `import {
+        createResidentLoopFactoryCompositionForFacade
+      } from "./wake-supervisor-runtime.js";`,
+          `import {
+        createResidentLoopFactoryCompositionForFacade
+      } from "./index.js";`
         ),
         [{
           label: "packages/local-runtime/src/index.ts",
           source: `export {
-            registerResidentLoopFactoryAuthorityReadback
+            createResidentLoopFactoryCompositionForFacade
           } from "./wake-supervisor-runtime.js";`
         }]
       ],
@@ -7344,117 +8019,134 @@ describe("wake supervisor runtime import boundary", () => {
         "namespace import",
         exactComposition
           .replace(
-            /import\s*\{[\s\S]*?\}\s*from\s*"\.\/wake-supervisor-runtime\.js";/,
+            `import {
+        createResidentLoopFactoryCompositionForFacade
+      } from "./wake-supervisor-runtime.js";`,
             'import * as wake from "./wake-supervisor-runtime.js";'
           )
           .replace(
-            /registerResidentLoopFactoryAuthorityReadback\(/,
-            "wake.registerResidentLoopFactoryAuthorityReadback("
+            "return createResidentLoopFactoryCompositionForFacade(rawInput);",
+            "return wake.createResidentLoopFactoryCompositionForFacade(rawInput);"
           )
       ],
       [
         "dynamic loader",
         exactComposition
           .replace(
-            /import\s*\{[\s\S]*?\}\s*from\s*"\.\/wake-supervisor-runtime\.js";/,
+            `import {
+        createResidentLoopFactoryCompositionForFacade
+      } from "./wake-supervisor-runtime.js";`,
             ""
           )
           .replace(
-            /registerResidentLoopFactoryAuthorityReadback\(/,
-            '(await import("./wake-supervisor-runtime.js")).registerResidentLoopFactoryAuthorityReadback('
+            "return createResidentLoopFactoryCompositionForFacade(rawInput);",
+            'return (await import("./wake-supervisor-runtime.js")).createResidentLoopFactoryCompositionForFacade(rawInput);'
           )
       ],
       [
         "aliased import",
         exactComposition
           .replace(
-            "registerResidentLoopFactoryAuthorityReadback\n      }",
-            "registerResidentLoopFactoryAuthorityReadback as registerAuthority\n      }"
+            "createResidentLoopFactoryCompositionForFacade\n      }",
+            "createResidentLoopFactoryCompositionForFacade as createComposition\n      }"
           )
           .replace(
-            "\n          registerResidentLoopFactoryAuthorityReadback(\n",
-            "\n          registerAuthority(\n"
+            "return createResidentLoopFactoryCompositionForFacade(rawInput);",
+            "return createComposition(rawInput);"
           )
       ],
       [
         "alternate source",
         exactComposition.replace(
-          '"./wake-supervisor-runtime.js"',
-          '"./alternate-wake-supervisor-runtime.js"'
+          `from "./wake-supervisor-runtime.js";
+      import type {
+        WakeSupervisorRuntime,`,
+          `from "./alternate-wake-supervisor-runtime.js";
+      import type {
+        WakeSupervisorRuntime,`
         )
       ],
       [
         "alternate caller",
         `${exactComposition}
-         function alternateCaller(
-           input: object,
-           wakeRuntime: object,
-           readback: object
-         ) {
-           registerResidentLoopFactoryAuthorityReadback(
-             input,
-             wakeRuntime,
-             readback
-           );
+         export function alternateCaller(rawInput: unknown) {
+           return createResidentLoopFactoryCompositionForFacade(rawInput);
          }`
       ],
       [
         "optional call",
         exactComposition.replace(
-          "\n          registerResidentLoopFactoryAuthorityReadback(\n",
-          "\n          registerResidentLoopFactoryAuthorityReadback?.(\n"
+          "return createResidentLoopFactoryCompositionForFacade(rawInput);",
+          "return createResidentLoopFactoryCompositionForFacade?.(rawInput);"
         )
       ],
       [
         "spread call",
         exactComposition.replace(
-          "input,\n            wakeRuntime,\n            readback",
-          "...[input, wakeRuntime, readback]"
+          "return createResidentLoopFactoryCompositionForFacade(rawInput);",
+          "return createResidentLoopFactoryCompositionForFacade(...[rawInput]);"
         )
       ],
       [
-        "reordered arguments",
-        exactComposition.replace(
-          "input,\n            wakeRuntime,\n            readback",
-          "wakeRuntime,\n            input,\n            readback"
+        "returned private closure",
+        exactComposition,
+        [],
+        exactWake.replace(
+          "return Object.freeze({ wakeRuntime, registerReadback });",
+          "return registerReadback;"
         )
       ],
       [
-        "omitted issuer",
-        exactComposition.replace(
-          "input,\n            wakeRuntime,\n            readback",
-          "wakeRuntime,\n            readback"
+        "exported-object private property",
+        exactComposition,
+        [],
+        exactWake.replace(
+          `return Object.freeze({
+          wakeRuntime: issuance.wakeRuntime,
+          bind
+        });`,
+          `return Object.freeze({
+          wakeRuntime: issuance.wakeRuntime,
+          bind,
+          leakedRegistrar: issuance.registerReadback
+        });`
         )
       ],
       [
-        "copied issuer",
-        exactComposition.replace(
-          "input,\n            wakeRuntime,\n            readback",
-          "{ ...input },\n            wakeRuntime,\n            readback"
+        "private callback argument",
+        exactComposition,
+        [],
+        exactWake.replace(
+          "return Object.freeze({ wakeRuntime, registerReadback });",
+          `inspectCallback(registerReadback);
+        return Object.freeze({ wakeRuntime, registerReadback });`
         )
       ],
       [
-        "substitute issuer",
-        exactComposition
-          .replace(
-            "const wakeRuntime = createWakeSupervisorRuntime(input);",
-            "const callerInput = { ...input };\n        const wakeRuntime = createWakeSupervisorRuntime(input);"
-          )
-          .replace(
-            "input,\n            wakeRuntime,\n            readback",
-            "callerInput,\n            wakeRuntime,\n            readback"
-          )
+        "alternate exported private issuance caller",
+        exactComposition,
+        [],
+        `${exactWake}
+         export function exposePrivateIssuance(input: object) {
+           return issueResidentLoopFactoryWakeRuntime(input);
+         }`
       ],
       [
         "copied W construction input",
-        exactComposition.replace(
+        exactComposition,
+        [],
+        exactWake.replace(
           "createWakeSupervisorRuntime(input)",
           "createWakeSupervisorRuntime({ ...input })"
         )
       ]
     ] as const) {
       expect.soft(
-        analyzeControl(source, extras ?? []).violations,
+        analyzeTopologyControl(
+          source,
+          extras ?? [],
+          wakeSource ?? exactWake
+        ).violations,
         name
       ).not.toEqual([]);
     }
@@ -7477,9 +8169,17 @@ describe("wake supervisor runtime import boundary", () => {
       })
     );
     expect(productionAnalysis).toEqual({
-      registrarDeclarationCount: 1,
-      registrarImporters: [residentFactoryCompositionPath],
-      registrarCallers: [residentFactoryCompositionPath],
+      registrarDeclarationCount: 0,
+      registrarImporters: [],
+      registrarCallers: [],
+      privateFactoryIssuanceDeclarationCount: 1,
+      privateRegistrarClosureEscapes: 0,
+      safeBuilderImporters: [residentFactoryCompositionPath],
+      safeBuilderCallers: [residentFactoryCompositionPath],
+      facadeImportDeclarationCount: 6,
+      facadeValueImplementationCount: 1,
+      facadeValueExports: [residentFactorySafeFacadeExport],
+      facadeTypeDeclarations: [...residentFactorySafeFacadeTypes],
       violations: []
     });
   });
