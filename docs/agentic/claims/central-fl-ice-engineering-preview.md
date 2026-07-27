@@ -7,7 +7,7 @@
 - Branch: `codex/central-fl-ice-engineering-preview`
 - Worktree: `/home/drake/Projects/Cestus/.worktrees/central-fl-ice-engineering-preview`
 - Exact base: `dc05c43c4b9a592d0396acd034bfc32e177fd09a`
-- Status: claimed
+- Status: implementing
 
 ## Scope
 
@@ -48,6 +48,39 @@ Result on exact base: 8 files executed, 7 passed and 1 failed; 97 tests executed
 ## Durable Transitions
 
 - `claimed`: worktree and exact remote base verified; design, plan, mission level, owned files, gates, and safety identity recorded.
+- `implementing`: Task 2 established a test-first, development-only preflight and raw-candidate boundary. The module has no filesystem write port, inspects metadata for the complete selected tree before reading any content, and keeps live SSD and destination access outside unit tests.
+
+## Task 2 Verification
+
+RED:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts
+1 failed suite: central-fl-ice-preview module not found; 0 tests collected
+```
+
+GREEN:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file passed; 49 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+29 files passed; 242 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+The preflight binds the fixed source, mount, device, options, file count, destination, mission identities, base SHA, and exact execution SHA. It rejects unsafe mount/destination identity, forbidden metadata classes, ZIP containers, path ambiguity, symlinks, special files, nested mount crossings, count mismatch, and source mutation before any caller can persist the result. Stable candidate material preserves distinct duplicate occurrences plus explicit current, archived, and superseded status. Safe `.gitignore`, `.gitmodules`, and topical token/auth analysis filenames remain eligible; actual credential-like material is rejected without being opened or hashed.
+
+Fresh review round 1 required four corrections. The immutable production entry point no longer accepts a policy override; full required read-only mount posture is rechecked per traversed path and before/after every content read; common credential dotfiles, credential directories, key containers, provider-token names, and backup forms are rejected using metadata only while topical prose remains eligible; and mount-option provenance arrays are deeply frozen. Each correction received a focused failing test before implementation. The same fresh reviewer independently reran the focused suite (49/49) and approved the scoped round-2 re-review with all four findings resolved.
 
 ## Owned Files
 
