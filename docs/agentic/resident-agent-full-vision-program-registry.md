@@ -42888,3 +42888,67 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1153 — Task14 nested-carrier RED rejected on spread projection
+
+- Recorded at: 2026-07-27T03:14:44Z
+- The fourteenth fresh independent read-only review rejects exact test-only
+  candidate `fae00d20f9e81e08590f9f7553722429c12ec150`, tree
+  `d1298dcb7cc13d70093a7b2583f28c867d7dd6ca`, sole parent
+  `3b4ae9a44d38301f1716a82caa6bc3503dec9fca`, corrected test blob
+  `f5d4f976d18a14ee13d37304b9e74f21f7f866b3`, and exact review envelope
+  `7764f207e1344928c16300ab9cd3d83b602cd7d7`.
+- Identity, scope, envelope-parent, physical registry EOF, source/runtime
+  freezes, clean state, and full Git integrity pass. The reviewer proves one
+  finite candidate-bound local AST symbol-resolution false negative.
+- An abstract outer array literal has an earlier spread that emits multiple
+  runtime slots before a nested binding selection. The raw AST index selects
+  a later non-iterable class carrier, and the E-1152 exact-carrier rule
+  accepts that node. Runtime instead selects an `undefined` inner slot,
+  evaluates the registrar default exactly once, and exposes the registrar
+  while the oracle reports no violation.
+- Root cause is confined to the unit-test oracle. Array-literal projection
+  indexes `value.elements[index]` even when a preceding `SpreadElement`
+  makes AST positions differ from runtime positions. The exact-carrier proof
+  then reasons correctly about the wrong selected node. Product source and
+  both causal Task14 RED failures remain unchanged.
+- Reject exact `fae00d20` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `f5d4f976`. First add an abstract local
+  preceding-spread/nested-array control and reproduce its false-negative
+  oracle result against runtime default selection while retaining both
+  causal product REDs.
+- Then make array-literal selection indeterminate whenever a spread occurs
+  at or before the requested raw element index. Raw indexing remains valid
+  only across the spread-free prefix; a later spread must not affect an
+  earlier exact selection. Retain exact carrier occurrence proof only after
+  a valid projection.
+- Retain every E-1152 nested/top-level/wrapper/type-query/separate-use
+  control and every earlier separate-destructure/getter, declaration,
+  iterator/escape/alias, global-numeric/shadowed, awaited, unreachable,
+  indeterminate, callable, conditional, comma, and re-export control.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A fifteenth completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe spread-aware array
+  selection before exact-carrier proof, including spreads before, at, and
+  after the selected index. Changed bytes invalidate review. The reviewer
+  may not edit, commit, merge, authorize source work, or make prefix,
+  record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
