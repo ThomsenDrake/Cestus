@@ -3014,6 +3014,13 @@ function residentFactoryIssuerAnalysis(
       ts.isArrayLiteralExpression(value)
     ) {
       const index = element.parent.elements.indexOf(element);
+      if (
+        value.elements
+          .slice(0, index + 1)
+          .some(ts.isSpreadElement)
+      ) {
+        return indeterminateBindingInitializer;
+      }
       const selected = value.elements[index];
       return selected !== undefined &&
           !ts.isOmittedExpression(selected) &&
@@ -4238,6 +4245,26 @@ describe("wake supervisor runtime import boundary", () => {
          ]] = [[undefined]];`
       ],
       [
+        "exported nested-array default after preceding spread",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [, [
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [
+           ...[0, [undefined]],
+           NonIterableCarrier
+         ];`
+      ],
+      [
+        "exported nested-array default from selected spread",
+        `${exactComposition}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [...[[undefined]]];`
+      ],
+      [
         "exported usable empty object outer default",
         `${exactComposition}
          export const {
@@ -4612,6 +4639,18 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          ]] = [((carrierAlias as typeof carrierAlias)!)];`
+      ],
+      [
+        "later spread does not alter earlier nested class carrier",
+        `${exactComposition}
+         class NonIterableCarrier {}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [
+           NonIterableCarrier,
+           ...[[undefined]]
+         ];`
       ],
       [
         "parenthesized class alias does not evaluate nested default",
