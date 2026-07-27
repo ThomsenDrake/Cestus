@@ -45412,3 +45412,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   product candidacy, repository closure, strict record 29, publication,
   Wave 3 start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1186 — Task14 lexical-capability two-test RED authorized
+
+- Recorded at: 2026-07-27T13:45:52Z
+- E-1185 integrated the exact independently approved lexical-capability
+  design/plan amendment at program commit
+  `27882d2285cc29f2cd9b55a9f8f070c07d13a5e3`. Exact
+  history-preserving Task136 authority merge
+  `0be496734da5fae96ff7d242d6e82f20a13c0726` has parents approved
+  amendment candidate `4a03aafd7de245793f677afa25d8ac13b2211e50`
+  and that integrated program authority. The test-first precondition is
+  satisfied.
+- Authorize only the smallest forward test-only correction in:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` from exact
+  blob `8eb53787c4a539718f4ea74c8b1fab32639635be`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts` from
+  exact blob `2bfc4b368fddbd309af0f0ab08df51327e410be6`.
+- Preserve exact focused cardinality 96 by correcting the two existing
+  cumulative Task14 oracle cases rather than adding a test. The runtime test
+  must prove the old registrar property is absent, a generic directly created
+  accepted runtime rejects accessor-backed proposed binding through
+  `bindResidentLoopCapabilitiesForFactory`, zero proposed-readback getters
+  and zero authenticated-ledger reads occur, and the legitimate composition
+  and downstream binding remain exact.
+- The TypeScript AST/symbol-resolution test must replace only the obsolete
+  public-registrar topology. Require the old registrar to have zero exports,
+  imports, and callers; require the private issuance and registrar to remain
+  in the wake module without export, alias, return, callback, property,
+  re-export, or other escape through the already committed local corpus; and
+  require exactly one safe unaliased `ForFacade` builder import and wrapper
+  call through the six-import compatibility facade. Add no unrelated alias
+  case.
+- Freeze mounted test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, released FC-Core import-policy
+  test `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`, every other test, and all
+  product sources. Product source blobs remain composition
+  `ecb114bb1cc3c054c0d60400b7e3cc746823736b`, wake
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`.
+- Expected RED is exact focused
+  **96 = 94 passed + two Task14 failures**, card
+  **383 = 374 passed + nine failed**, and cross-boundary
+  **1,042 = 1,033 passed + nine failed**. The other seven failures are only
+  the preserved Task15-through-16 REDs.
+- Use `TMPDIR=/dev/shm`, one worker, and `--testTimeout=120000` for the
+  focused import-policy execution and serialized fixture-heavy gates.
+  Reproduce standalone typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, truthful legacy-staging
+  repository first stop, exact scope/freezes/ancestry/dependencies/diff/
+  integrity, and clean state.
+- Commit exactly one coherent two-test candidate with subject
+  `test(local-runtime): require lexical factory issuer`. Admit only its exact
+  SHA/tree/two blobs to a completely fresh independent read-only reviewer
+  ineligible under every prior author/reviewer/verifier exclusion. Changed
+  bytes invalidate review.
+- Only after exact RED approval, append-only recording, and
+  history-preserving integration may a separate GREEN event authorize exactly
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` and
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`. Mounted
+  store remains frozen unless a newly approved causal RED proves otherwise.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  exact two-test RED authority, not a test candidate, approval or integration,
+  source GREEN, Task14 completion, Task15 authority, repository closure,
+  strict record 29, publication, Wave 3 start, or product release. `neo`,
+  push, provider, credential, external-system, pull-request, and unrelated
+  actions remain unauthorized.
