@@ -2893,11 +2893,30 @@ function residentFactoryIssuerAnalysis(
       resolving
     )
   ): boolean {
+    if (element.dotDotDotToken !== undefined) {
+      return restBindingElementResolvesToRegistrar(
+        element,
+        containingInitializer,
+        resolving
+      );
+    }
     const selected = selectedBindingInitializer(
       element,
       containingInitializer,
       resolving
     );
+    return bindingElementResolvesFromSelected(
+      element,
+      selected,
+      resolving
+    );
+  }
+
+  function bindingElementResolvesFromSelected(
+    element: ts.BindingElement,
+    selected: BindingInitializer,
+    resolving: Set<ts.Symbol>
+  ): boolean {
     if (selected === unreachableBindingInitializer) return false;
     if (selected === indeterminateBindingInitializer) {
       return bindingNameResolvesToRegistrar(
@@ -2930,6 +2949,92 @@ function residentFactoryIssuerAnalysis(
         element.initializer,
         resolving
       );
+  }
+
+  function restBindingElementResolvesToRegistrar(
+    element: ts.BindingElement,
+    containingInitializer: BindingInitializer,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (
+      ts.isIdentifier(element.name) ||
+      !ts.isArrayBindingPattern(element.parent) ||
+      !ts.isArrayBindingPattern(element.name)
+    ) {
+      return false;
+    }
+    const slots = exactArrayBindingSlotsFromInitializer(
+      containingInitializer,
+      new Set(resolving)
+    );
+    if (
+      slots === undefined ||
+      slots === unreachableBindingInitializer
+    ) {
+      return false;
+    }
+    const index = element.parent.elements.indexOf(element);
+    return arrayBindingPatternResolvesFromSlots(
+      element.name,
+      slots.slice(index),
+      resolving
+    );
+  }
+
+  function exactArrayBindingSlotsFromInitializer(
+    initializer: BindingInitializer,
+    resolving: Set<ts.Symbol>
+  ):
+    | readonly (ts.Expression | undefined)[]
+    | typeof unreachableBindingInitializer
+    | undefined {
+    if (
+      initializer === undefined ||
+      initializer === indeterminateBindingInitializer ||
+      initializer === unreachableBindingInitializer
+    ) {
+      return initializer === unreachableBindingInitializer
+        ? unreachableBindingInitializer
+        : undefined;
+    }
+    let value = unwrapRegistrarExpression(initializer);
+    let exactUse = initializer;
+    while (ts.isIdentifier(value)) {
+      const aliasInitializer = useClosedLocalConstInitializer(
+        value,
+        resolving,
+        exactUse
+      );
+      if (aliasInitializer === undefined) return undefined;
+      exactUse = aliasInitializer;
+      value = unwrapRegistrarExpression(aliasInitializer);
+    }
+    return ts.isArrayLiteralExpression(value)
+      ? exactArrayLiteralBindingSlots(value, resolving)
+      : undefined;
+  }
+
+  function arrayBindingPatternResolvesFromSlots(
+    pattern: ts.ArrayBindingPattern,
+    slots: readonly (ts.Expression | undefined)[],
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    return pattern.elements.some((element, index) => {
+      if (!ts.isBindingElement(element)) return false;
+      if (element.dotDotDotToken !== undefined) {
+        return ts.isArrayBindingPattern(element.name) &&
+          arrayBindingPatternResolvesFromSlots(
+            element.name,
+            slots.slice(index),
+            new Set(resolving)
+          );
+      }
+      return bindingElementResolvesFromSelected(
+        element,
+        slots[index],
+        new Set(resolving)
+      );
+    });
   }
 
   function bindingPatternInitializer(
@@ -3063,7 +3168,8 @@ function residentFactoryIssuerAnalysis(
   function exactObjectLiteralBindingValue(
     object: ts.ObjectLiteralExpression,
     selectedName: string,
-    resolving: Set<ts.Symbol>
+    resolving: Set<ts.Symbol>,
+    includePrototype = true
   ): BindingInitializer {
     if (
       objectLiteralEvaluationIsUnreachable(
@@ -3074,6 +3180,7 @@ function residentFactoryIssuerAnalysis(
       return unreachableBindingInitializer;
     }
     let selected: BindingInitializer = undefined;
+    let inherited: BindingInitializer = undefined;
     for (const property of object.properties) {
       if (ts.isSpreadAssignment(property)) {
         const spreadResolving = new Set(resolving);
@@ -3089,9 +3196,21 @@ function residentFactoryIssuerAnalysis(
         const spreadSelected = exactObjectLiteralBindingValue(
           spreadObject,
           selectedName,
-          spreadResolving
+          spreadResolving,
+          false
         );
         if (spreadSelected !== undefined) selected = spreadSelected;
+        continue;
+      }
+      if (
+        ts.isPropertyAssignment(property) &&
+        objectLiteralSetsPrototype(property.name)
+      ) {
+        inherited = exactPrototypeBindingValue(
+          property.initializer,
+          selectedName,
+          new Set(resolving)
+        );
         continue;
       }
       const propertyName = bindingPropertyName(property.name);
@@ -3119,7 +3238,50 @@ function residentFactoryIssuerAnalysis(
       }
       selected = indeterminateBindingInitializer;
     }
-    return selected;
+    return selected === undefined && includePrototype
+      ? inherited
+      : selected;
+  }
+
+  function objectLiteralSetsPrototype(name: ts.PropertyName): boolean {
+    return (
+      ts.isIdentifier(name) ||
+      ts.isStringLiteral(name)
+    ) &&
+      name.text === "__proto__";
+  }
+
+  function exactPrototypeBindingValue(
+    expression: ts.Expression,
+    selectedName: string,
+    resolving: Set<ts.Symbol>
+  ): BindingInitializer {
+    const value = unwrapRegistrarExpression(expression);
+    if (value.kind === ts.SyntaxKind.NullKeyword) return undefined;
+    const prototypeObject = exactSpreadObjectLiteral(
+      expression,
+      resolving,
+      expression
+    );
+    if (prototypeObject !== undefined) {
+      return exactObjectLiteralBindingValue(
+        prototypeObject,
+        selectedName,
+        resolving
+      );
+    }
+    if (
+      ts.isStringLiteral(value) ||
+      ts.isNoSubstitutionTemplateLiteral(value) ||
+      ts.isNumericLiteral(value) ||
+      ts.isBigIntLiteral(value) ||
+      value.kind === ts.SyntaxKind.TrueKeyword ||
+      value.kind === ts.SyntaxKind.FalseKeyword ||
+      expressionIsDefinitelyUndefined(value, new Set(resolving))
+    ) {
+      return undefined;
+    }
+    return indeterminateBindingInitializer;
   }
 
   function exactSpreadObjectLiteral(
@@ -3251,7 +3413,7 @@ function residentFactoryIssuerAnalysis(
       }
       if (
         ts.isSpreadAssignment(property) &&
-        expressionEvaluationIsUnreachable(
+        objectSpreadCopyIsUnreachable(
           property.expression,
           new Set(resolving)
         )
@@ -3274,6 +3436,42 @@ function residentFactoryIssuerAnalysis(
       }
     }
     return false;
+  }
+
+  function objectSpreadCopyIsUnreachable(
+    expression: ts.Expression,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    if (
+      expressionEvaluationIsUnreachable(
+        expression,
+        new Set(resolving)
+      )
+    ) {
+      return true;
+    }
+    const spreadResolving = new Set(resolving);
+    const spreadObject = exactSpreadObjectLiteral(
+      expression,
+      spreadResolving,
+      expression
+    );
+    if (spreadObject === undefined) return false;
+    if (
+      objectLiteralEvaluationIsUnreachable(
+        spreadObject,
+        new Set(spreadResolving)
+      )
+    ) {
+      return true;
+    }
+    return spreadObject.properties.some((property) =>
+      ts.isGetAccessorDeclaration(property) &&
+      property.body !== undefined &&
+      property.body.statements.length === 1 &&
+      property.body.statements[0] !== undefined &&
+      ts.isThrowStatement(property.body.statements[0])
+    );
   }
 
   function shorthandAssignmentValueIsDefinitelyUndefined(
@@ -4839,6 +5037,98 @@ describe("wake supervisor runtime import boundary", () => {
          };`
       ],
       [
+        "literal prototype supplies registrar binding",
+        `${exactComposition}
+         export const { exposedRegistrar } = {
+           __proto__: {
+             exposedRegistrar:
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         };`
+      ],
+      [
+        "aliased literal prototype supplies registrar binding",
+        `${exactComposition}
+         const exactPrototype = {
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         } as const;
+         export const { exposedRegistrar } = {
+           __proto__: exactPrototype
+         };`
+      ],
+      [
+        "nested literal prototype supplies registrar binding",
+        `${exactComposition}
+         export const { exposedRegistrar } = {
+           __proto__: {
+             __proto__: {
+               exposedRegistrar:
+                 registerResidentLoopFactoryAuthorityReadback
+             }
+           }
+         };`
+      ],
+      [
+        "nested array rest projects remaining registrar binding",
+        `${exactComposition}
+         export const [...[exposedRegistrar]] = [
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "aliased nested array rest projects registrar binding",
+        `${exactComposition}
+         const values = [
+           Object.freeze({}),
+           registerResidentLoopFactoryAuthorityReadback
+         ] as const;
+         export const [, ...[exposedRegistrar]] = values;`
+      ],
+      [
+        "nonthrowing copied getter permits registrar binding",
+        `${exactComposition}
+         export const { exposedRegistrar } = {
+           ...{
+             get completed() {
+               return Object.freeze({});
+             }
+           },
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "copied method and setter bodies are not executed",
+        `${exactComposition}
+         function stopOnlyIfCalled(): never {
+           throw new Error("not-called");
+         }
+         export const { exposedRegistrar } = {
+           ...{
+             completed() {
+               stopOnlyIfCalled();
+             },
+             set assigned(value: object) {
+               void value;
+               stopOnlyIfCalled();
+             }
+           },
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "own registrar shadows opaque prototype",
+        `${exactComposition}
+         declare const opaquePrototype: object;
+         export const { exposedRegistrar } = {
+           __proto__: opaquePrototype,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
         "aliased exact object spread supplies registrar binding",
         `${exactComposition}
          const spreadAlias = {
@@ -5398,6 +5688,108 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar:
              registerResidentLoopFactoryAuthorityReadback,
            exposedRegistrar: Object.freeze({})
+         };`
+      ],
+      [
+        "object rest binds a fresh container",
+        `${exactComposition}
+         export const { ...exposedRegistrar } = {
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "array rest binds a fresh container",
+        `${exactComposition}
+         export const [...exposedRegistrar] = [
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "throwing copied getter prevents registrar binding",
+        `${exactComposition}
+         export const { exposedRegistrar } = {
+           ...{
+             get blocked(): never {
+               throw new Error("before-binding");
+             }
+           },
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "selected throwing copied getter prevents binding",
+        `${exactComposition}
+         export const { exposedRegistrar } = {
+           ...{
+             get exposedRegistrar(): never {
+               throw new Error("before-binding");
+             }
+           },
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "aliased throwing copied getter prevents binding",
+        `${exactComposition}
+         const throwingSource = {
+           get blocked(): never {
+             throw new Error("before-binding");
+           }
+         };
+         export const { exposedRegistrar } = {
+           ...throwingSource,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "nested throwing copied getter prevents binding",
+        `${exactComposition}
+         export const { exposedRegistrar } = {
+           ...{
+             ...{
+               get blocked(): never {
+                 throw new Error("before-binding");
+               }
+             }
+           },
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "own property shadows literal prototype registrar",
+        `${exactComposition}
+         export const { exposedRegistrar } = {
+           __proto__: {
+             exposedRegistrar:
+               registerResidentLoopFactoryAuthorityReadback
+           },
+           exposedRegistrar: Object.freeze({})
+         };`
+      ],
+      [
+        "object spread does not copy literal prototype",
+        `${exactComposition}
+         const inheritedCarrier = {
+           __proto__: {
+             exposedRegistrar:
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         };
+         export const { exposedRegistrar } = {
+           ...inheritedCarrier
+         };`
+      ],
+      [
+        "opaque prototype remains conservative",
+        `${exactComposition}
+         declare const opaquePrototype: object;
+         export const { exposedRegistrar } = {
+           __proto__: opaquePrototype
          };`
       ],
       [
