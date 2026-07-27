@@ -11,6 +11,11 @@ import {
   LegacyCestusInspector,
   type LegacyDetectionRecord
 } from "./legacy-inspector.js";
+import {
+  normalizeLocalFilesystemSelectedFiles,
+  readExactSelectedLocalFilesystemFile,
+  type LocalFilesystemSelectedFile
+} from "./local-filesystem.js";
 import { createIngestionRuntime } from "./runtime.js";
 import type { IngestionRuntimeError } from "./runtime-types.js";
 import {
@@ -58,6 +63,8 @@ export interface LegacyRuntimeInspectInput {
   readonly label: string;
   readonly sourceRoot: string;
   readonly scanBatchId: string;
+  readonly selectedFiles?: readonly LocalFilesystemSelectedFile[];
+  readonly revalidateAuthority?: (() => void) | undefined;
 }
 
 export interface LegacyRuntimeReportInput {
@@ -86,6 +93,7 @@ export interface LegacyRuntimeImportApprovedInput {
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
   readonly importBatchId: string;
+  readonly selectedFiles?: readonly LocalFilesystemSelectedFile[];
 }
 
 export interface LegacyRuntimeApproveStagingInput {
@@ -191,6 +199,10 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
       }
 
       try {
+        const selectedInput = command.selectedFiles;
+        const selectedFiles = selectedInput === undefined
+          ? undefined
+          : normalizeLocalFilesystemSelectedFiles(selectedInput);
         const sourceRoot = resolve(command.sourceRoot);
         const rootUri = pathToFileURL(sourceRoot).toString();
         const dryRun = await inspectAndParseLegacyRoot({
@@ -198,12 +210,16 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
           actor,
           sourceCollectionId: command.sourceCollectionId,
           scanBatchId: command.scanBatchId,
-          sourceRoot
+          sourceRoot,
+          ...(selectedFiles === undefined
+            ? {}
+            : { selectedFiles })
         });
 
         if (!dryRun.ok) {
           return sourceUnavailableError();
         }
+        command.revalidateAuthority?.();
 
         const sourceRegistration = await ensureSourceRegistration({
           workspace: workspace.workspace,
@@ -223,11 +239,15 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
           actor,
           sourceCollectionId: command.sourceCollectionId,
           scanBatchId: command.scanBatchId,
-          sourceRoot
+          sourceRoot,
+          ...(selectedFiles === undefined
+            ? {}
+            : { selectedFiles })
         });
         if (!inspected.ok) {
           return sourceUnavailableError();
         }
+        command.revalidateAuthority?.();
 
         const report = buildLegacyMigrationReport({
           sourceCollectionId: inspected.reportInput.sourceCollectionId,
@@ -374,10 +394,19 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
       }
 
       try {
+        const selectedInput = command.selectedFiles;
+        const selectedFiles = selectedInput === undefined
+          ? undefined
+          : normalizeLocalFilesystemSelectedFiles(selectedInput);
         const imported = await createIngestionRuntime({
           mountedWorkspace: workspace.workspace,
           actor
-        }).importApproved(command);
+        }).importApproved({
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          importBatchId: command.importBatchId,
+          ...(selectedFiles === undefined ? {} : { selectedFiles })
+        });
         if (!imported.ok) {
           return legacyErrorFromIngestion("legacy import", imported.error);
         }
@@ -612,7 +641,8 @@ async function ensureSourceRegistration(input: {
 
 async function parseDetectedLegacyMetadata(
   sourceRoot: string,
-  detections: readonly LegacyDetectionRecord[]
+  detections: readonly LegacyDetectionRecord[],
+  selectedFiles: readonly LocalFilesystemSelectedFile[] | undefined
 ): Promise<{
   readonly proposedAssertionCandidates: LegacyProposedAssertionCandidate[];
   readonly quarantineEntries: LegacyQuarantineEntry[];
@@ -625,7 +655,13 @@ async function parseDetectedLegacyMetadata(
       continue;
     }
 
-    const text = await readFile(join(sourceRoot, detection.sourcePath), "utf8");
+    const selected = selectedFiles?.find((item) => item.sourcePath === detection.sourcePath);
+    if (selectedFiles !== undefined && selected === undefined) {
+      throw new Error("Detected legacy metadata is outside the exact selected file set.");
+    }
+    const text = selected === undefined
+      ? await readFile(join(sourceRoot, detection.sourcePath), "utf8")
+      : readExactSelectedLocalFilesystemFile(sourceRoot, selected).toString("utf8");
     const parsed = parseLegacyClaimMetadata({
       sourcePath: detection.sourcePath,
       contentHash: detection.contentHash,
@@ -644,6 +680,7 @@ async function inspectAndParseLegacyRoot(input: {
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
   readonly sourceRoot: string;
+  readonly selectedFiles?: readonly LocalFilesystemSelectedFile[];
 }): Promise<
   | {
       readonly ok: true;
@@ -654,6 +691,10 @@ async function inspectAndParseLegacyRoot(input: {
   | { readonly ok: false }
 > {
   try {
+    const selectedInput = input.selectedFiles;
+    const selectedFiles = selectedInput === undefined
+      ? undefined
+      : normalizeLocalFilesystemSelectedFiles(selectedInput);
     const inspector = new LegacyCestusInspector({
       ledger: input.ledger,
       actor: input.actor,
@@ -662,9 +703,16 @@ async function inspectAndParseLegacyRoot(input: {
     const reportInput = await inspector.inspect({
       sourceCollectionId: input.sourceCollectionId,
       scanBatchId: input.scanBatchId,
-      rootDir: input.sourceRoot
+      rootDir: input.sourceRoot,
+      ...(selectedFiles === undefined
+        ? {}
+        : { selectedFiles })
     });
-    const parsed = await parseDetectedLegacyMetadata(input.sourceRoot, reportInput.detections);
+    const parsed = await parseDetectedLegacyMetadata(
+      input.sourceRoot,
+      reportInput.detections,
+      selectedFiles
+    );
 
     return {
       ok: true,

@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  readdirSync
+} from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { z } from "zod";
 import { actorRefSchema, type AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
@@ -25,6 +33,20 @@ export interface LocalFilesystemScanInput {
   sourceCollectionId: string;
   scanBatchId: string;
   rootDir: string;
+  /**
+   * Exact immutable selection for metadata-first safety callers. When present,
+   * directory enumeration is disabled and only these paths may be opened.
+   */
+  selectedFiles?: readonly LocalFilesystemSelectedFile[];
+}
+
+export interface LocalFilesystemSelectedFile {
+  readonly occurrenceId: string;
+  readonly sourcePath: string;
+  readonly contentHash: `sha256:${string}`;
+  readonly sizeBytes: number;
+  readonly deviceId: string;
+  readonly inode: string;
 }
 
 export interface LocalFilesystemOccurrence {
@@ -74,6 +96,11 @@ export interface LocalFilesystemDiagnostic {
 interface ScannedFile {
   relativePath: string;
   absolutePath: string;
+  selected?: ValidatedSelectedFile;
+}
+
+interface ValidatedSelectedFile extends LocalFilesystemSelectedFile {
+  readonly absolutePath: string;
 }
 
 interface CollectedFiles {
@@ -99,7 +126,19 @@ export class LocalFilesystemScanner {
   async scan(input: LocalFilesystemScanInput): Promise<LocalFilesystemScanResult> {
     const rootDir = resolve(input.rootDir);
     const streamId = this.streamId(input.scanBatchId);
-    const collected = this.collectFiles(rootDir);
+    const selectedFiles = input.selectedFiles === undefined
+      ? undefined
+      : validateSelectedFiles(input, rootDir);
+    const collected: CollectedFiles = selectedFiles === undefined
+      ? this.collectFiles(rootDir)
+      : {
+          files: selectedFiles.map((selected) => ({
+            relativePath: selected.sourcePath,
+            absolutePath: selected.absolutePath,
+            selected
+          })),
+          skipped: 0
+        };
     const files = collected.files.sort((left, right) => compareCodeUnits(left.relativePath, right.relativePath));
     const seenContentHashes = new Set<string>();
     const occurrences: LocalFilesystemOccurrence[] = [];
@@ -110,8 +149,19 @@ export class LocalFilesystemScanner {
     let skipped = collected.skipped;
 
     for (const file of files) {
-      const bytes = readFileSync(file.absolutePath);
+      const bytes = file.selected === undefined
+        ? readFileSync(file.absolutePath)
+        : readExactSelectedFile(file.selected);
       const containerHash = sha256(bytes);
+      if (
+        file.selected !== undefined
+        && (
+          containerHash !== file.selected.contentHash
+          || bytes.byteLength !== file.selected.sizeBytes
+        )
+      ) {
+        throw new Error(`Selected source changed before scan: ${file.relativePath}`);
+      }
 
       if (isZipPath(file.relativePath)) {
         try {
@@ -174,16 +224,16 @@ export class LocalFilesystemScanner {
         continue;
       }
 
-      const stat = lstatSync(file.absolutePath);
+      const sizeBytes = file.selected?.sizeBytes ?? lstatSync(file.absolutePath).size;
       const contentHash = containerHash;
       const status: OccurrenceStatus = seenContentHashes.has(contentHash) ? "duplicate" : "new";
 
       if (status === "new") {
         seenContentHashes.add(contentHash);
-        uniqueByteTotal += stat.size;
+        uniqueByteTotal += sizeBytes;
       }
 
-      observedByteTotal += stat.size;
+      observedByteTotal += sizeBytes;
 
       const occurrence: LocalFilesystemOccurrence = {
         occurrenceId: stableLocalFilesystemOccurrenceId({
@@ -197,9 +247,15 @@ export class LocalFilesystemScanner {
         sourceCollectionId: input.sourceCollectionId,
         contentHash,
         sourcePath: file.relativePath,
-        sizeBytes: stat.size,
+        sizeBytes,
         status
       };
+      if (
+        file.selected !== undefined
+        && occurrence.occurrenceId !== file.selected.occurrenceId
+      ) {
+        throw new Error(`Selected occurrence identity mismatch: ${file.relativePath}`);
+      }
 
       occurrences.push(occurrence);
       inventoryItems.push({
@@ -335,6 +391,164 @@ export class LocalFilesystemScanner {
 
 function isZipPath(relativePath: string): boolean {
   return relativePath.toLowerCase().endsWith(".zip");
+}
+
+function validateSelectedFiles(
+  input: LocalFilesystemScanInput,
+  rootDir: string
+): readonly ValidatedSelectedFile[] {
+  const selected = normalizeLocalFilesystemSelectedFiles(input.selectedFiles);
+
+  const paths = new Set<string>();
+  const occurrences = new Set<string>();
+  return Object.freeze(selected.map((item) => {
+    const normalized = item.sourcePath.normalize("NFC");
+    const absolutePath = resolve(rootDir, normalized);
+    const relativePath = relative(rootDir, absolutePath);
+    if (
+      normalized !== item.sourcePath
+      || normalized.length === 0
+      || isAbsolute(normalized)
+      || normalized.startsWith("../")
+      || normalized.includes("\\")
+      || normalized.includes("\0")
+      || relativePath !== normalized.split("/").join(sep)
+      || isZipPath(normalized)
+      || !/^occ_[a-zA-Z0-9_-]+$/.test(item.occurrenceId)
+      || !/^sha256:[a-f0-9]{64}$/.test(item.contentHash)
+      || !Number.isSafeInteger(item.sizeBytes)
+      || item.sizeBytes < 0
+      || typeof item.deviceId !== "string"
+      || item.deviceId.length === 0
+      || typeof item.inode !== "string"
+      || item.inode.length === 0
+      || paths.has(normalized)
+      || occurrences.has(item.occurrenceId)
+    ) {
+      throw new Error("Selected filesystem scan entry is invalid or duplicated.");
+    }
+    paths.add(normalized);
+    occurrences.add(item.occurrenceId);
+    return Object.freeze({ ...item, sourcePath: normalized, absolutePath });
+  }).sort((left, right) => compareCodeUnits(left.sourcePath, right.sourcePath)));
+}
+
+export function normalizeLocalFilesystemSelectedFiles(
+  value: readonly LocalFilesystemSelectedFile[] | undefined
+): readonly LocalFilesystemSelectedFile[] {
+  if (
+    value === undefined
+    || !Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Array.prototype
+  ) {
+    throw new Error("Selected filesystem scan requires a non-empty plain array.");
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const length = Object.getOwnPropertyDescriptor(value, "length");
+  const lengthValue = typeof length?.value === "number" ? length.value : -1;
+  if (
+    length === undefined
+    || !Object.hasOwn(length, "value")
+    || !Number.isSafeInteger(lengthValue)
+    || lengthValue < 1
+    || Reflect.ownKeys(value).length !== lengthValue + 1
+  ) {
+    throw new Error("Selected filesystem scan requires a dense own-data array.");
+  }
+  const selected: LocalFilesystemSelectedFile[] = [];
+  for (let index = 0; index < lengthValue; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (
+      descriptor === undefined
+      || !descriptor.enumerable
+      || !Object.hasOwn(descriptor, "value")
+    ) {
+      throw new Error("Selected filesystem scan requires a dense own-data array.");
+    }
+    selected.push(snapshotSelectedFile(descriptor.value as LocalFilesystemSelectedFile));
+  }
+  return Object.freeze(selected);
+}
+
+function snapshotSelectedFile(value: LocalFilesystemSelectedFile): LocalFilesystemSelectedFile {
+  if (
+    typeof value !== "object"
+    || value === null
+    || Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    throw new Error("Selected filesystem scan entry must be plain own data.");
+  }
+  const keys = ["occurrenceId", "sourcePath", "contentHash", "sizeBytes", "deviceId", "inode"] as const;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (
+    Reflect.ownKeys(value).length !== keys.length
+    || keys.some((key) =>
+      descriptors[key] === undefined
+      || !Object.hasOwn(descriptors[key]!, "value")
+    )
+  ) {
+    throw new Error("Selected filesystem scan entry must contain exact own-data fields.");
+  }
+  const snapshot = Object.fromEntries(keys.map((key) => [key, descriptors[key]!.value])) as unknown as LocalFilesystemSelectedFile;
+  return Object.freeze(snapshot);
+}
+
+function readExactSelectedFile(selected: ValidatedSelectedFile): Buffer {
+  let descriptor: number | undefined;
+  try {
+    descriptor = openSync(
+      selected.absolutePath,
+      constants.O_RDONLY | constants.O_NOFOLLOW
+    );
+    const before = fstatSync(descriptor, { bigint: true });
+    if (
+      !before.isFile()
+      || before.dev.toString() !== selected.deviceId
+      || before.ino.toString() !== selected.inode
+      || Number(before.size) !== selected.sizeBytes
+    ) {
+      throw new Error(`Selected source identity changed before scan: ${selected.sourcePath}`);
+    }
+    const bytes = readFileSync(descriptor);
+    const after = fstatSync(descriptor, { bigint: true });
+    if (
+      after.dev !== before.dev
+      || after.ino !== before.ino
+      || after.size !== before.size
+      || bytes.byteLength !== selected.sizeBytes
+      || `sha256:${createHash("sha256").update(bytes).digest("hex")}` !== selected.contentHash
+    ) {
+      throw new Error(`Selected source identity changed during read: ${selected.sourcePath}`);
+    }
+    return bytes;
+  } finally {
+    if (descriptor !== undefined) {
+      closeSync(descriptor);
+    }
+  }
+}
+
+export function readExactSelectedLocalFilesystemFile(
+  rootDir: string,
+  value: LocalFilesystemSelectedFile
+): Buffer {
+  const selected = snapshotSelectedFile(value);
+  const normalizedRoot = resolve(rootDir);
+  const absolutePath = resolve(normalizedRoot, selected.sourcePath);
+  const relativePath = relative(normalizedRoot, absolutePath);
+  if (
+    selected.sourcePath.length === 0
+    || selected.sourcePath !== selected.sourcePath.normalize("NFC")
+    || isAbsolute(selected.sourcePath)
+    || selected.sourcePath.startsWith("../")
+    || selected.sourcePath.includes("\\")
+    || selected.sourcePath.includes("\0")
+    || relativePath !== selected.sourcePath.split("/").join(sep)
+    || isZipPath(selected.sourcePath)
+  ) {
+    throw new Error("Selected filesystem read path is invalid.");
+  }
+  return readExactSelectedFile(Object.freeze({ ...selected, absolutePath }));
 }
 
 function archiveDiagnostic(sourcePath: string, error: unknown): LocalFilesystemDiagnostic {

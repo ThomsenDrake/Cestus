@@ -91,5 +91,59 @@ A second independent review of commit `429277af` found three additional adversar
 - `docs/agentic/claims/central-fl-ice-engineering-preview.md`
 - `packages/ingestion/src/central-fl-ice-preview.ts`
 - `packages/ingestion/src/central-fl-ice-preview-cli.ts`
+- `packages/ingestion/src/local-filesystem.ts` (exact selected-file safety seam)
+- `packages/ingestion/src/legacy-inspector.ts` (exact selected-file safety seam)
+- `packages/ingestion/src/legacy-runtime.ts` (exact selected-file safety seam)
+- `packages/ingestion/src/runtime.ts` (exact selected-file safety seam)
+- `packages/ingestion/src/source-materializer.ts` (exact selected-file safety seam)
 - `packages/ingestion/test/central-fl-ice-preview.test.ts`
 - `packages/agent/test/evidence-triage-workflow.test.ts` (verifier-only fixture edit)
+
+## Task 3 Candidate Verification
+
+RED:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts
+69 existing preview tests passed; the new workflow import failed because
+createCentralFloridaIcePreviewWorkflow did not exist.
+```
+
+GREEN:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts
+1 file passed; 87 tests passed
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+9 files passed; 184 tests passed
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test
+29 files passed; 280 tests passed
+
+TMPDIR=/dev/shm npm run typecheck
+passed
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed
+
+git diff --check
+passed
+```
+
+The candidate composes the existing portable workspace, legacy runtime, ontology-bootstrap dossier builder, derivative/blob stores, and rebuildable projections behind an isolated development-only CLI. Hash-chained checkpoints enforce exact phase/command transitions and reject chain, filename, hash, or schema drift. The raw-import and staging gates require explicit secret-safe human actor identities; the staging command accepts only an explicit unique subset of the exact previewed candidate IDs.
+
+The 136-file preflight selection is threaded through the scanner, detector, parser, and raw materializer as normalized immutable own-data records. Selected bytes are opened with `O_NOFOLLOW` and validated against device, inode, size, and content hash. Selection-mode components never enumerate the source root or fall back to an unbound path read, and public runtime selection getters are snapshotted once. The workflow revalidates source bytes, mount posture, destination authority, code SHA, and candidate hash before and after durable effects.
+
+The event boundary is an explicit allowlist. It permits only the existing evidence-first legacy/import/proposal event families needed by this preview and rejects accepted graph mutation, PRR/request sends, legal escalation, publication, provider approval, tool completion, and destructive effects. Repository-approved provider byte-transfer and mounted prompt authority are not exposed on the current `neo` runtime boundary, so handoff records the required safe resumable blocker and persists only deterministic local gaps, next actions, uncertainty, dependencies, risk notes, and unsent task/PRR drafts. No provider acceptance is fabricated.
+
+Task 3 is a verified implementer candidate pending the mission-required dual fresh review. The preview mission remains `implementing`; no live source inspection or destination workspace creation has occurred.

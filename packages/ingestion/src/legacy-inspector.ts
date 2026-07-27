@@ -5,8 +5,11 @@ import { actorRefSchema } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import {
   LocalFilesystemScanner,
+  normalizeLocalFilesystemSelectedFiles,
+  readExactSelectedLocalFilesystemFile,
   type LocalFilesystemOccurrence,
-  type LocalFilesystemScanResult
+  type LocalFilesystemScanResult,
+  type LocalFilesystemSelectedFile
 } from "./local-filesystem.js";
 import type { LegacyDetection, LegacyDetectorInput, LegacyFileRef } from "./legacy-types.js";
 import type { LegacyDetectorRegistry } from "./legacy-plugins.js";
@@ -25,6 +28,7 @@ export interface LegacyInspectInput {
   sourceCollectionId: string;
   scanBatchId: string;
   rootDir: string;
+  selectedFiles?: readonly LocalFilesystemSelectedFile[];
 }
 
 export interface LegacyInspectedFile extends LegacyFileRef {
@@ -61,13 +65,27 @@ export class LegacyCestusInspector {
 
   async inspect(input: LegacyInspectInput): Promise<LegacyReportInput> {
     const rootDir = resolve(input.rootDir);
+    const selectedInput = input.selectedFiles;
+    const selectedFiles = selectedInput === undefined
+      ? undefined
+      : normalizeLocalFilesystemSelectedFiles(selectedInput);
     const scanner = new LocalFilesystemScanner({
       ledger: this.dependencies.ledger,
       actor: this.dependencies.actor
     });
-    const scan = await scanner.scan({ ...input, rootDir });
+    const scan = await scanner.scan({
+      sourceCollectionId: input.sourceCollectionId,
+      scanBatchId: input.scanBatchId,
+      rootDir,
+      ...(selectedFiles === undefined ? {} : { selectedFiles })
+    });
     const files = scan.occurrences.map((occurrence) => this.inspectedFile(occurrence));
-    const detections = scan.occurrences.flatMap((occurrence) => this.detectOccurrence(rootDir, occurrence));
+    const selectedByPath = new Map(
+      (selectedFiles ?? []).map((selected) => [selected.sourcePath, selected])
+    );
+    const detections = scan.occurrences.flatMap((occurrence) =>
+      this.detectOccurrence(rootDir, occurrence, selectedByPath, selectedFiles !== undefined)
+    );
 
     return {
       sourceCollectionId: input.sourceCollectionId,
@@ -98,13 +116,24 @@ export class LegacyCestusInspector {
     };
   }
 
-  private detectOccurrence(rootDir: string, occurrence: LocalFilesystemOccurrence): LegacyDetectionRecord[] {
+  private detectOccurrence(
+    rootDir: string,
+    occurrence: LocalFilesystemOccurrence,
+    selectedByPath: ReadonlyMap<string, LocalFilesystemSelectedFile>,
+    selectionMode: boolean
+  ): LegacyDetectionRecord[] {
     if (occurrence.internalPath !== undefined) {
       return [];
     }
 
     const sourcePath = occurrence.sourcePath;
-    const previewBytes = readPreviewBytes(join(rootDir, sourcePath));
+    const selected = selectedByPath.get(sourcePath);
+    if (selectionMode && selected === undefined) {
+      throw new Error("Scanned occurrence is outside the exact selected file set.");
+    }
+    const previewBytes = selected === undefined
+      ? readPreviewBytes(join(rootDir, sourcePath))
+      : readExactSelectedLocalFilesystemFile(rootDir, selected).subarray(0, previewByteLimit);
     const detectorInput: LegacyDetectorInput = {
       sourcePath,
       sizeBytes: occurrence.sizeBytes,

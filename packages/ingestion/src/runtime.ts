@@ -7,7 +7,11 @@ import {
 } from "../../ontology/src/contracts.js";
 import type { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { IngestionImportService } from "./import-service.js";
-import { LocalFilesystemScanner } from "./local-filesystem.js";
+import {
+  LocalFilesystemScanner,
+  normalizeLocalFilesystemSelectedFiles,
+  type LocalFilesystemSelectedFile
+} from "./local-filesystem.js";
 import type { MountedWorkspace } from "./mount-contract.js";
 import { LocalParseService } from "./parser.js";
 import { ProviderParseApprovalService, type ApproveProviderBatchInput } from "./provider-adapter.js";
@@ -64,6 +68,7 @@ export interface ImportApprovedInput {
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
   readonly importBatchId: string;
+  readonly selectedFiles?: readonly LocalFilesystemSelectedFile[];
 }
 
 export interface ListIngestionJobsInput {
@@ -211,6 +216,15 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       if (!workspace.workspace.capabilities.canWriteBlobs) {
         return workspaceNotWritableError();
       }
+      let selectedFiles: readonly LocalFilesystemSelectedFile[] | undefined;
+      try {
+        const selectedInput = command.selectedFiles;
+        selectedFiles = selectedInput === undefined
+          ? undefined
+          : normalizeLocalFilesystemSelectedFiles(selectedInput);
+      } catch {
+        return staleApprovedInventoryError();
+      }
 
       const projection = await projectionFor(workspace.workspace);
       const source = projection.sources.get(command.sourceCollectionId);
@@ -256,7 +270,10 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         scanBatchId: command.scanBatchId,
         importBatchId: command.importBatchId,
         occurrences: approvedOccurrences.occurrences,
-        approvedSkippedArchivePaths: approvedOccurrences.approvedSkippedArchivePaths
+        approvedSkippedArchivePaths: approvedOccurrences.approvedSkippedArchivePaths,
+        ...(selectedFiles === undefined
+          ? {}
+          : { selectedFiles })
       });
 
       if (!materialized.ok) {
