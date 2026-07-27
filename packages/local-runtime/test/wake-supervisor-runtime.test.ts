@@ -21,7 +21,8 @@ import { createResidentLoopFactoryComposition } from "../src/resident-loop-facto
 import {
   bindResidentLoopCapabilitiesForFactory,
   createWakeSupervisorRuntime,
-  registerResidentLoopFactoryAuthorityReadback
+  registerResidentLoopFactoryAuthorityReadback,
+  type WakeSupervisorRuntimeInput
 } from "../src/wake-supervisor-runtime.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
@@ -39,15 +40,23 @@ interface RuntimeFixtureOptions {
   readonly supervisorEpoch?: string;
 }
 
-function runtimeFor(handle: LocalRuntimeHandle, options: RuntimeFixtureOptions = {}) {
-  return createWakeSupervisorRuntime({
+function runtimeInputFor(
+  handle: LocalRuntimeHandle,
+  options: RuntimeFixtureOptions = {}
+): Readonly<WakeSupervisorRuntimeInput> {
+  const input: WakeSupervisorRuntimeInput = {
     runtimeHandle: handle,
     actor: { id: "agent_wake_runtime", kind: "agent", label: "Wake runtime" },
     supervisorEpoch: options.supervisorEpoch ?? "epoch_wake_runtime",
     policy: { policyVersion: "policy.v1", policyDigest: "sha256:policy", lockStateDigest: "sha256:lock" },
     now: options.now ?? (() => "2026-07-16T00:00:00.000Z"),
     createSafeId: (kind) => `${kind}_wake_runtime`
-  });
+  };
+  return Object.freeze(input);
+}
+
+function runtimeFor(handle: LocalRuntimeHandle, options: RuntimeFixtureOptions = {}) {
+  return createWakeSupervisorRuntime(runtimeInputFor(handle, options));
 }
 
 async function fixture(options: RuntimeFixtureOptions = {}) {
@@ -62,8 +71,9 @@ async function fixture(options: RuntimeFixtureOptions = {}) {
   });
   handles.push(handle);
   await handle.residentIdentity.ready();
-  const runtime = runtimeFor(handle, options);
-  return { handle, runtime };
+  const runtimeInput = runtimeInputFor(handle, options);
+  const runtime = createWakeSupervisorRuntime(runtimeInput);
+  return { handle, runtime, runtimeInput };
 }
 
 describe("wake supervisor runtime", () => {
@@ -338,6 +348,10 @@ describe("wake supervisor runtime", () => {
       readonly all: number;
       readonly streams: readonly string[];
     } | undefined;
+    let directConstructorLedgerReads: {
+      readonly all: number;
+      readonly streams: readonly string[];
+    } | undefined;
     let eventsBefore: readonly KnowledgeEvent[] | undefined;
     let observedHandle: LocalRuntimeHandle | undefined;
     let completed: ResidentFixture | undefined;
@@ -440,15 +454,71 @@ describe("wake supervisor runtime", () => {
       legitimateFailure = error;
     }
 
+    const directConstructor = await fixture({
+      supervisorEpoch: "epoch_direct_constructor_issuer"
+    });
+    const directConstructorLedgerProbe = instrumentResidentLedger(
+      directConstructor.handle.ledger
+    );
+    await expect(
+      directConstructor.runtime.supervision.start()
+    ).resolves.toMatchObject({ outcome: "accepted" });
+    const directConstructorReadback = Object.freeze(
+      Object.defineProperties({}, {
+        provider: {
+          enumerable: true,
+          get() {
+            proposedReadbackReads += 1;
+            return Object.freeze({ schemaVersion: "direct-forged-provider.v1" });
+          }
+        },
+        handoff: {
+          enumerable: true,
+          get() {
+            proposedReadbackReads += 1;
+            return Object.freeze({
+              schemaVersion: "direct-forged-handoff.v1",
+              authorityBinding: Object.freeze({
+                schemaVersion: "direct-forged-binding.v1"
+              })
+            });
+          }
+        }
+      })
+    );
+    directConstructorLedgerProbe.reset();
+    hostileOutcomes.push({
+      kind: "direct-constructor-retained-issuer",
+      outcome: captureRegistrarOutcome(() => {
+        Reflect.apply(directRegistrar, undefined, [
+          directConstructor.runtimeInput,
+          directConstructor.runtime,
+          directConstructorReadback
+        ]);
+      })
+    });
+    directConstructorLedgerReads = Object.freeze({
+      all: directConstructorLedgerProbe.allReads,
+      streams: Object.freeze([
+        ...directConstructorLedgerProbe.streamReads
+      ])
+    });
+    await directConstructor.runtime.stop();
+
     expect.soft(hostileOutcomes).toEqual([
       { kind: "arbitrary-forged-issuer", outcome: "rejected" },
       { kind: "copied-outer-issuer", outcome: "rejected" },
       { kind: "caller-owned-outer-issuer", outcome: "rejected" },
       { kind: "original-caller-held-outer-issuer", outcome: "rejected" },
-      { kind: "missing-explicit-issuer", outcome: "rejected" }
+      { kind: "missing-explicit-issuer", outcome: "rejected" },
+      { kind: "direct-constructor-retained-issuer", outcome: "rejected" }
     ]);
     expect.soft(proposedReadbackReads).toBe(0);
     expect.soft(hostileLedgerReads).toEqual({ all: 0, streams: [] });
+    expect.soft(directConstructorLedgerReads).toEqual({
+      all: 0,
+      streams: []
+    });
     expect.soft(legitimateFailure).toBeUndefined();
     expect.soft(completed?.binding).toBeDefined();
 
