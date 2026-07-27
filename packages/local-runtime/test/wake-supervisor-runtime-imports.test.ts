@@ -3364,7 +3364,21 @@ function residentFactoryIssuerAnalysis(
     exactUse: ts.Expression
   ): ts.Expression | undefined {
     const symbol = checker.getSymbolAtLocation(identifier);
-    if (symbol === undefined || resolving.has(symbol)) return undefined;
+    return symbol === undefined
+      ? undefined
+      : useClosedLocalConstSymbolInitializer(
+          symbol,
+          resolving,
+          exactUse
+        );
+  }
+
+  function useClosedLocalConstSymbolInitializer(
+    symbol: ts.Symbol,
+    resolving: Set<ts.Symbol>,
+    exactUse: ts.Expression
+  ): ts.Expression | undefined {
+    if (resolving.has(symbol)) return undefined;
     const declaration = (symbol.declarations ?? []).find(
       (candidate): candidate is ts.VariableDeclaration =>
         ts.isVariableDeclaration(candidate) &&
@@ -3580,9 +3594,24 @@ function residentFactoryIssuerAnalysis(
 
   function expressionEvaluationIsUnreachable(
     expression: ts.Expression,
-    resolving: Set<ts.Symbol>
+    resolving: Set<ts.Symbol>,
+    exactUse: ts.Expression = expression
   ): boolean {
     const value = unwrapRegistrarExpression(expression);
+    if (ts.isIdentifier(value)) {
+      const aliasInitializer = useClosedLocalConstInitializer(
+        value,
+        resolving,
+        exactUse
+      );
+      if (aliasInitializer !== undefined) {
+        return expressionEvaluationIsUnreachable(
+          aliasInitializer,
+          resolving,
+          aliasInitializer
+        );
+      }
+    }
     if (ts.isVoidExpression(value)) {
       return expressionEvaluationIsUnreachable(
         value.expression,
@@ -3648,6 +3677,15 @@ function residentFactoryIssuerAnalysis(
         ts.isSpreadAssignment(property) &&
         objectSpreadCopyIsUnreachable(
           property.expression,
+          new Set(resolving)
+        )
+      ) {
+        return true;
+      }
+      if (
+        ts.isShorthandPropertyAssignment(property) &&
+        shorthandAssignmentEvaluationIsUnreachable(
+          property,
           new Set(resolving)
         )
       ) {
@@ -3779,6 +3817,25 @@ function residentFactoryIssuerAnalysis(
       descriptors,
       hasUnknownProperties
     };
+  }
+
+  function shorthandAssignmentEvaluationIsUnreachable(
+    property: ts.ShorthandPropertyAssignment,
+    resolving: Set<ts.Symbol>
+  ): boolean {
+    const symbol = checker.getShorthandAssignmentValueSymbol(property);
+    if (symbol === undefined) return false;
+    const initializer = useClosedLocalConstSymbolInitializer(
+      symbol,
+      resolving,
+      property.name
+    );
+    return initializer !== undefined &&
+      expressionEvaluationIsUnreachable(
+        initializer,
+        resolving,
+        initializer
+      );
   }
 
   function shorthandAssignmentValueIsDefinitelyUndefined(
@@ -5843,6 +5900,137 @@ describe("wake supervisor runtime import boundary", () => {
          };`
       ],
       [
+        "completing direct void selection permits later binding",
+        `${exactComposition}
+         function completeSelection(): object {
+           return Object.freeze({});
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: void completeSelection(),
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "use-closed completing void alias permits object binding",
+        `${exactComposition}
+         function completeSelection(): object {
+           return Object.freeze({});
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const selected = void completeSelection();
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "use-closed completing void alias chain permits array binding",
+        `${exactComposition}
+         function completeSelection(): object {
+           return Object.freeze({});
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const missing = void completeSelection();
+         const selected = missing;
+         export const [
+           blocked = returnDefault(),
+           exposedRegistrar
+         ] = [
+           selected,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "separately used throwing void alias remains conservative",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("conservative");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const selected = void stopDuringSelection();
+         void selected;
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "exported throwing void alias remains conservative",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("conservative");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         export const selected = void stopDuringSelection();
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "mutable throwing void alias remains conservative",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("conservative");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         let selected = void stopDuringSelection();
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "opaque void operand alias remains conservative",
+        `${exactComposition}
+         declare function evaluateSelection(): object;
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const selected = void evaluateSelection();
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
         "array-rest object pattern projects numeric property",
         `${exactComposition}
          export const [...{
@@ -6447,6 +6635,82 @@ describe("wake supervisor runtime import boundary", () => {
            void stopDuringSelection(),
            registerResidentLoopFactoryAuthorityReadback
          ];`
+      ],
+      [
+        "use-closed throwing void alias prevents object binding",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("before-carrier");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const selected = void stopDuringSelection();
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "use-closed throwing void shorthand prevents object binding",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("before-carrier");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const selected = void stopDuringSelection();
+         export const {
+           selected: blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
+      ],
+      [
+        "use-closed throwing void alias prevents array binding",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("before-carrier");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const selected = void stopDuringSelection();
+         export const [
+           blocked = returnDefault(),
+           exposedRegistrar
+         ] = [
+           selected,
+           registerResidentLoopFactoryAuthorityReadback
+         ];`
+      ],
+      [
+        "use-closed throwing void alias chain prevents binding",
+        `${exactComposition}
+         function stopDuringSelection(): never {
+           throw new Error("before-carrier");
+         }
+         function returnDefault(): object {
+           return Object.freeze({});
+         }
+         const missing = void stopDuringSelection();
+         const selected = missing;
+         export const {
+           blocked = returnDefault(),
+           exposedRegistrar
+         } = {
+           blocked: selected,
+           exposedRegistrar:
+             registerResidentLoopFactoryAuthorityReadback
+         };`
       ],
       [
         "use-closed undefined alias chain proves noncompletion",
