@@ -81,14 +81,7 @@ export function createResidentLoopFactoryComposition(rawInput: unknown): Residen
   const input = normalizeCompositionInput(rawInput);
   // W immediately authenticates the exact Task135D handle identity before any
   // handle member is observed by this module.
-  const wakeRuntime = createWakeSupervisorRuntime({
-    runtimeHandle: input.runtimeHandle,
-    actor: input.actor,
-    supervisorEpoch: input.supervisorEpoch,
-    policy: input.policy,
-    now: input.now,
-    createSafeId: input.createSafeId
-  });
+  const wakeRuntime = createWakeSupervisorRuntime(input);
 
   let stopped = false;
   let started = false;
@@ -134,7 +127,11 @@ export function createResidentLoopFactoryComposition(rawInput: unknown): Residen
         authorityBinding: Object.freeze({ ...handoff.binding })
       })
     });
-    registerResidentLoopFactoryAuthorityReadback(wakeRuntime, readback);
+    registerResidentLoopFactoryAuthorityReadback(
+      input,
+      wakeRuntime,
+      readback
+    );
     return readback;
   };
 
