@@ -45480,3 +45480,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, publication, Wave 3 start, or product release. `neo`,
   push, provider, credential, external-system, pull-request, and unrelated
   actions remain unauthorized.
+
+## RV-1-E-1187 — Task14 lexical-capability two-test RED admitted to review
+
+- Recorded at: 2026-07-27T14:21:31Z
+- Exact E-1186 test-only candidate is
+  `f8fd53d3b55bc1fb7e98b5f24a9bc8e639f5f3fd`, tree
+  `50bd9f8e23cdc3cb98663f1e21a70078ac5f0a30`, sole parent exact Task136
+  authority merge `26826dc59c6b894c2586ab43423529da5d2f7463`, with exact subject
+  `test(local-runtime): require lexical factory issuer`.
+- Exact scope is only
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, from
+  `8eb53787c4a539718f4ea74c8b1fab32639635be` to
+  `cc9c3129f8d36b1edde263d7cafdbd3b219f3538`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`, from
+  `2bfc4b368fddbd309af0f0ab08df51327e410be6` to
+  `de989fa1b5e6cdb948f262c59549ad858583214b`: exact total
+  **+941 / -216**. Every product source and every other test remains frozen.
+- The runtime oracle requires the obsolete exported registrar to be absent,
+  a generic direct runtime to remain permanently ineligible for factory
+  readback binding with zero accessor and zero authenticated-ledger reads,
+  and legitimate factory composition plus downstream binding to remain
+  exact.
+- The local TypeScript AST/symbol-resolution oracle requires private issuance
+  and registration to remain in the wake module without export or escape
+  through the approved local alias corpus, and requires the exact safe
+  unaliased `ForFacade` builder import and wrapper call through the six-import
+  compatibility facade. It adds no unrelated alias case.
+- Implementer execution is exact focused
+  **96 = 94 passed + two Task14 failures**, Task136 card
+  **383 = 374 passed + nine failed**, and cross-boundary
+  **1,042 = 1,033 passed + nine failed**. The other seven failures remain only
+  the preserved Task15-through-16 REDs. Serialized fixture-heavy executions
+  use `TMPDIR=/dev/shm`, one worker, and the 120-second timeout.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  pass **20/20**; markers remain **29 / 20 / 29 / 15**. Repository mode exits
+  one and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  with no success, closure, record-29, repository, or release marker.
+- Frozen blobs remain mounted test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, released FC-Core import-policy
+  test `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`, wake source
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`, composition source
+  `ecb114bb1cc3c054c0d60400b7e3cc746823736b`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`.
+- Exact ownership, 33-path ceiling, ancestry, TypeScript 5.9.3, Vitest 4.1.9,
+  dependencies, scope, freezes, diff hygiene, Git integrity, registry EOF,
+  and clean candidate worktree pass implementer verification.
+- Advance exact candidate `implementing -> candidate -> reviewing`. Assign
+  completely fresh independent read-only reviewer
+  `/root/task14_e1187_red_review`, excluded from every prior Task14 author,
+  reviewer, verifier, design-analysis, and correction role. Review is bound
+  to the exact candidate identity, tree, parent, two blobs, scope, oracle
+  behavior, failure identities, and all gates above. Changed bytes invalidate
+  review.
+- No candidate bytes may change. Approval requires a separate append-only
+  event, exact history-preserving integration, fresh integration-tree gates,
+  a separate integrated event, and a forward Task136 authority merge. Product
+  source remains unauthorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  review admission, not approval, integration, source GREEN, Task14
+  completion, Task15 authority, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, and unrelated actions
+  remain unauthorized.
