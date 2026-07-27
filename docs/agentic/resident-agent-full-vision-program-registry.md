@@ -42952,3 +42952,85 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, push, provider,
   credential, external-system, pull-request, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1154 — Spread-aware Task14 issuer RED admitted to fresh review
+
+- Recorded at: 2026-07-27T03:23:32Z
+- Exact forward test-only descendant
+  `1937c319c701ca001a1ebde7e405a9ae16950241`, tree
+  `6dec97e14b72e0f93582a32720586fdfa5471984`, has sole parent exact E-1153
+  authority merge `02d83a0775216bb8794eeee97d17cdc034169bbe` and exact subject
+  `test(local-runtime): make carrier projection spread-aware`. Rejected
+  candidate `fae00d20` and every earlier Task14 candidate remain immutable
+  ancestors.
+- The descendant changes only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  **+39 / -0** from rejected blob
+  `f5d4f976d18a14ee13d37304b9e74f21f7f866b3` to exact blob
+  `c27c00999a1a4d0e64d382d1a66dbb35a09d74d2`. Runtime test remains exact
+  `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8`; every product and other test
+  byte remains frozen.
+- Before correction, a preceding spread that emits multiple runtime slots
+  shifts a nested binding selection while the oracle uses raw AST indices;
+  the exact-carrier rule then accepts the wrong class node and misses one
+  registrar-default selection. After correction that projection is
+  indeterminate and the export is rejected.
+- Array-literal selection is now indeterminate when any spread occurs at or
+  before the requested raw index. Explicit controls retain rejection for a
+  spread at the selected index and acceptance for an earlier exact
+  non-iterable carrier when a spread occurs only after the selected index.
+- Every E-1152 nested/top-level/wrapper/type-query/separate-use control and
+  every earlier separate-destructure/getter, declaration,
+  iterator/escape/alias, global-numeric/shadowed, awaited, unreachable,
+  indeterminate, callable, conditional, comma, and re-export control remains
+  exact.
+- Exact focused execution remains
+  **96 = 94 passed + two causal issuer RED failures**. Static production
+  still fails only `issuer-registrar-signature` and
+  `exact-construction-issuer-thread`; unchanged runtime RED remains
+  pre-store and exposes only the missing explicit issuer defect.
+- Exact Task136 card remains
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution remains **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The failure set is only the two Task14 issuer REDs plus the seven preserved
+  Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20** with fixture-heavy commands isolated under
+  `TMPDIR=/dev/shm`; contract markers remain **29 / 20 / 29 / 15**. Clean
+  repository mode stops first only at
+  `Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no record-29, repository-closure, or release-success marker.
+- Exact one-test scope, source/runtime/other-test freezes, authority and
+  rejected-candidate ancestry, TypeScript 5.9.3 and Vitest 4.1.9
+  dependencies, diff hygiene, integrity, and clean state pass. Exact frozen
+  source blobs remain composition `b9a679c0`, wake `2fee564d`, and mounted
+  lifecycle store `c1a7d473`. No source, claim, design, plan, contract,
+  mission, dependency, route, provider, credential, release, or unrelated
+  byte changed.
+- Admit only exact `1937c319` as corrected Task14 issuer RED
+  `candidate -> reviewing`. Assign a fifteenth completely fresh independent
+  read-only reviewer who has never authored, reviewed, verified, or analyzed
+  corrected blob `c27c0099`.
+- The reviewer must inspect the complete cumulative two-test RED and exact
+  correction; independently reproduce spreads before, at, and after nested
+  array selection, retain exact-carrier and separate-use parity, and probe
+  every cumulative declaration/global/awaited/unreachable/value-flow surface
+  for a further finite candidate-bound gap. Reproduce causal runtime/static
+  failures, focused/card/cross signatures, assurance,
+  repository-first-stop, exact scope/freezes/ancestry/dependencies/diff/
+  integrity/clean state. Static analysis must supplement, not substitute for
+  runtime exact identity.
+- Every earlier Task14 reviewer, candidate author, correction-scope analyst,
+  test/source author/reviewer/verifier/analyst, amendment reviewer, and
+  coordinator is ineligible to approve. Changed bytes invalidate review.
+  The reviewer may not edit, commit, merge, authorize product correction or
+  Task15, or make prefix, record-29, release, or Wave claims.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected test-only RED review admission, not
+  approval, integration, source correction, Task14 approval/integration,
+  GREEN authority, Task15 authority, Task136 product candidacy, repository
+  closure, strict record 29, assurance-only transition, publication, Wave 3
+  start, or product release. `neo`, push, provider, credential,
+  external-system, pull-request, and unrelated actions remain unauthorized.
