@@ -183,3 +183,28 @@ After all gates and final verification:
 3. commit the final manifest reference atomically;
 4. push only `codex/central-fl-ice-engineering-preview`;
 5. do not open a PR or merge.
+
+## Task 3 Review Remediation
+
+The initial Task 3 candidate is not reviewable as approved until all of these
+test-first slices are green:
+
+1. immediate pre-create authority recheck with zero writes on drift;
+2. real portable-runtime crash/retry coverage after inspect, report, raw
+   approval/import, staging approval/proposals, and checkpoint append failure;
+3. ledger-authoritative approval/proposal IDs, actors, causation, counts, and
+   phase event IDs;
+4. zero-delta enforcement for nominal report/quarantine/preview reads;
+5. full stored Gate 2 artifact readback by hash and exact canonical comparison;
+6. adjacent checkpoint phases, immutable authority, and monotonic provenance;
+7. scanner inventory hash plus exact workflow and validation receipts in the
+   final manifest;
+8. provider blocker scoped to a fresh approved provider mission with no
+   fabricated next command;
+9. no-checkpoint crash recovery that rejects and does not write an unrecognized
+   existing destination.
+
+The validation runner is fixed in code: it executes only the source-mandated
+typecheck, nine-file cross-boundary suite, factory readiness check, and
+`git diff --check`, from the repository root with `TMPDIR=/dev/shm`, `shell:
+false`, and ignored subprocess output. Callers cannot supply commands.

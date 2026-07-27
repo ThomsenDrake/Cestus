@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import {
   CENTRAL_FL_ICE_PREVIEW,
   createFileCentralFloridaIcePreviewCheckpointStore,
@@ -23,6 +24,7 @@ import {
   type CentralFloridaIcePreviewCheckpoint,
   type CentralFloridaIcePreviewCheckpointDraft,
   type CentralFloridaIcePreviewCheckpointStore,
+  type CentralFloridaIcePreviewValidationReceipt,
   type CentralFloridaIcePreviewWorkspaceSnapshot,
   type PreviewFilesystemPort,
   type PreviewMountInspectionPort,
@@ -39,6 +41,7 @@ import {
   createLegacyImportRuntime,
   type LegacyImportRuntime
 } from "../src/legacy-runtime.js";
+import { stableLegacyAssertionId } from "../src/legacy-staging.js";
 import {
   buildLegacyMigrationReport,
   reportArtifactJson,
@@ -50,6 +53,7 @@ import {
   mountedWorkspaceCapabilities,
   type MountedWorkspace
 } from "../src/mount-contract.js";
+import { createPortableIngestionMountResolver } from "../src/portable-mount.js";
 import {
   legacyConfidenceSchema,
   legacySecretSafeDiagnosticTextSchema
@@ -854,10 +858,50 @@ function createMemoryCheckpointStore(): CentralFloridaIcePreviewCheckpointStore 
   };
 }
 
+function validRawGateCheckpointState(): CentralFloridaIcePreviewCheckpoint["state"] {
+  return {
+    codeSha: "0123456789abcdef0123456789abcdef01234567",
+    candidateSetHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    inventoryHash: "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    sourceIdentityHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    destinationIdentityHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    candidateArtifactHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    inspectionArtifactHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    legacyReportId: "legacy_report_transition",
+    reportHash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    legacyCandidateSetHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    quarantineArtifactHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    eventIds: ["evt_transition_inspect"],
+    artifactHashes: [
+      "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    ],
+    commands: ["inspect"],
+    commandReceipts: [{
+      command: "inspect",
+      argv: [
+        "npx",
+        "tsx",
+        "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+        "inspect"
+      ],
+      exitCode: 0,
+      result: "passed"
+    }],
+    counts: { candidates: 1 },
+    blockers: []
+  };
+}
+
 function workflowFixture(input?: {
   forbiddenInspectEvent?: boolean;
   foreignWorkspace?: boolean;
   proposalIdMismatch?: boolean;
+  rawApprovalActorMismatch?: boolean;
+  stagingApprovalActorMismatch?: boolean;
+  existingDestinationWithoutCheckpoint?: boolean;
 }) {
   const root = mkdtempSync(join(tmpdir(), "central-fl-preview-workflow-"));
   temporaryRoots.push(root);
@@ -888,6 +932,11 @@ function workflowFixture(input?: {
     candidates: [candidate],
     exclusions: []
   });
+  const inventoryHash = sha256(JSON.stringify([{
+    sourcePath: candidate.sourcePath,
+    contentHash: candidate.contentHash,
+    sizeBytes: candidate.sizeBytes
+  }]));
   const inspection: CentralFloridaIceCandidateInspection = {
     version: 1,
     workspaceId: CENTRAL_FL_ICE_PREVIEW.workspaceId,
@@ -896,7 +945,7 @@ function workflowFixture(input?: {
     importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
     stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
     sourceIdentity: {
-      rootRealpath: CENTRAL_FL_ICE_PREVIEW.sourceRoot,
+      rootRealpath: sourceRoot,
       mountTarget: CENTRAL_FL_ICE_PREVIEW.sourceMount,
       mountSource: CENTRAL_FL_ICE_PREVIEW.sourceDevice,
       fileSystem: "apfs",
@@ -935,8 +984,27 @@ function workflowFixture(input?: {
     }
   };
   let resumeInspectionCalls = 0;
+  let initialInspectionCalls = 0;
+  let initialDriftAt: number | undefined;
+  let driftedInitialInspection = inspection;
   let resumeDriftAt: number | undefined;
   let driftedInspection = resumedInspection;
+  let readMutation:
+    | "report"
+    | "staging-preview"
+    | "quarantine"
+    | "premature-staging-approval"
+    | undefined;
+  let stagingPreviewEvidenceId = "ev_central_fl_preview_001";
+  let rawApprovalEventId: string | undefined;
+  let stagingApprovalEventId: string | undefined;
+  let stagingApprovedBy: string | undefined;
+  let evidenceEventId: string | undefined;
+  let validationReceipts: CentralFloridaIcePreviewValidationReceipt[] = [{
+    argv: ["fixture-validation"],
+    exitCode: 0,
+    result: "passed" as const
+  }];
   const report = buildLegacyMigrationReport({
     sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
     scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
@@ -999,7 +1067,11 @@ function workflowFixture(input?: {
   };
   const fixedTime = "2026-07-27T12:00:00.000Z";
   const context = {
-    actor: { id: "actor_preview_fixture", kind: "agent" as const, label: "Preview fixture" },
+    actor: {
+      id: "actor_central_fl_ice_preview",
+      kind: "agent" as const,
+      label: "Central Florida ICE preview"
+    },
     occurredAt: fixedTime,
     correlationId: "corr_central_fl_preview",
     coreVersion: "0.1.0",
@@ -1069,7 +1141,7 @@ function workflowFixture(input?: {
           scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
           sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
           completedAt: fixedTime,
-          inventoryHash: contentHash,
+          inventoryHash,
           totals: {
             observedFiles: 1,
             uniqueContent: 1,
@@ -1130,6 +1202,13 @@ function workflowFixture(input?: {
       };
     },
     async report() {
+      if (readMutation === "report") {
+        readMutation = undefined;
+        await appendPreviewDiagnostic();
+      } else if (readMutation === "premature-staging-approval") {
+        readMutation = undefined;
+        await appendStagingApproval("actor_human_preview");
+      }
       return {
         ok: true,
         command: "legacy report",
@@ -1156,6 +1235,10 @@ function workflowFixture(input?: {
       };
     },
     async quarantine() {
+      if (readMutation === "quarantine") {
+        readMutation = undefined;
+        await appendPreviewDiagnostic();
+      }
       return {
         ok: true,
         command: "legacy quarantine",
@@ -1175,7 +1258,18 @@ function workflowFixture(input?: {
         type: "ingestion.import.approved",
         version: 1,
         streamId: `ingestion_import_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
-        context,
+        context: {
+          ...context,
+          actor: {
+            id: input?.rawApprovalActorMismatch
+              ? "actor_wrong_preview_agent"
+              : context.actor.id,
+            kind: "agent",
+            label: input?.rawApprovalActorMismatch
+              ? "Wrong preview agent"
+              : context.actor.label
+          }
+        },
         payload: {
           importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
           scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
@@ -1184,6 +1278,7 @@ function workflowFixture(input?: {
           approvedAt: fixedTime
         }
       });
+      rawApprovalEventId = event.id;
       return {
         ok: true,
         command: "legacy approve-import",
@@ -1197,6 +1292,9 @@ function workflowFixture(input?: {
     },
     async importApproved(command) {
       calls.push("runtime.importApproved");
+      if (rawApprovalEventId === undefined) {
+        throw new Error("fixture raw approval is missing");
+      }
       expect(command.selectedFiles).toEqual([expect.objectContaining({
         occurrenceId,
         contentHash
@@ -1205,7 +1303,7 @@ function workflowFixture(input?: {
         type: "evidence.ingested",
         version: 1,
         streamId: "evidence_ev_central_fl_preview_001",
-        context,
+        context: { ...context, causationId: rawApprovalEventId },
         payload: {
           evidenceId: "ev_central_fl_preview_001",
           source: {
@@ -1217,12 +1315,13 @@ function workflowFixture(input?: {
           sizeBytes: bytes.byteLength
         }
       });
+      evidenceEventId = evidence.id;
       await blobStore.put(bytes);
       const link = await append({
         type: "ingestion.evidence.linked",
         version: 1,
         streamId: "ingestion_evidence_link_central_fl_preview_001",
-        context,
+        context: { ...context, causationId: rawApprovalEventId },
         payload: {
           evidenceId: "ev_central_fl_preview_001",
           importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
@@ -1235,7 +1334,7 @@ function workflowFixture(input?: {
         type: "ingestion.import.completed",
         version: 1,
         streamId: `ingestion_import_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
-        context,
+        context: { ...context, causationId: rawApprovalEventId },
         payload: {
           importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
           scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
@@ -1283,6 +1382,10 @@ function workflowFixture(input?: {
     },
     async stagingPreview() {
       calls.push("runtime.stagingPreview");
+      if (readMutation === "staging-preview") {
+        readMutation = undefined;
+        await appendPreviewDiagnostic();
+      }
       return {
         ok: true,
         command: "legacy staging-preview",
@@ -1296,37 +1399,17 @@ function workflowFixture(input?: {
         candidateSetHash: report.candidateSetHash,
         candidates: [{
           ...report.proposedAssertionCandidates[0]!,
-          evidenceId: "ev_central_fl_preview_001"
+          evidenceId: stagingPreviewEvidenceId
         }],
         quarantineEntries: report.quarantineEntries
       };
     },
     async approveStaging(command) {
       calls.push("runtime.approveStaging");
-      const event = await append({
-        type: "legacy.ontology.staging.approved",
-        version: 1,
-        streamId: `legacy_staging_${report.sourceCollectionId}_${report.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.stagingBatchId}`,
-        context: {
-          ...context,
-          actor: {
-            id: command.approvedBy,
-            kind: "human",
-            label: "Preview approver"
-          }
-        },
-        payload: {
-          stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
-          legacyReportId: report.legacyReportId,
-          sourceCollectionId: report.sourceCollectionId,
-          scanBatchId: report.scanBatchId,
-          reportHash: report.reportHash,
-          candidateSetHash: report.candidateSetHash,
-          approvedBy: command.approvedBy,
-          approvedAt: fixedTime,
-          approvedAssertionCandidateIds: [...command.approvedAssertionCandidateIds]
-        }
-      });
+      const event = await appendStagingApproval(
+        command.approvedBy,
+        command.approvedAssertionCandidateIds
+      );
       return {
         ok: true,
         command: "legacy approve-staging",
@@ -1344,13 +1427,34 @@ function workflowFixture(input?: {
     },
     async stageApproved() {
       calls.push("runtime.stageApproved");
+      if (
+        stagingApprovalEventId === undefined
+        || stagingApprovedBy === undefined
+        || evidenceEventId === undefined
+      ) {
+        throw new Error("fixture staging approval is missing");
+      }
+      const assertionId = stableLegacyAssertionId({
+        sourceCollectionId: report.sourceCollectionId,
+        scanBatchId: report.scanBatchId,
+        stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+        candidateSetHash: report.candidateSetHash
+      }, "legacy_candidate_preview_001");
       const event = await append({
         type: "assertion.proposed",
         version: 1,
-        streamId: "assertion_as_central_fl_preview_001",
-        context,
+        streamId: `assertion_${assertionId}`,
+        context: {
+          ...context,
+          actor: {
+            id: stagingApprovedBy,
+            kind: "human",
+            label: "Central Florida ICE preview approver"
+          },
+          causationId: evidenceEventId
+        },
         payload: {
-          assertionId: "as_central_fl_preview_001",
+          assertionId,
           evidenceId: "ev_central_fl_preview_001",
           predicate: "mentions",
           object: "Central Florida",
@@ -1371,11 +1475,66 @@ function workflowFixture(input?: {
         proposedAssertionIds: [
           input?.proposalIdMismatch
             ? "as_central_fl_preview_mismatched"
-            : "as_central_fl_preview_001"
+            : assertionId
         ]
       };
     }
   };
+
+  async function appendPreviewDiagnostic() {
+    return append({
+      type: "diagnostic.recorded",
+      version: 1,
+      streamId: "diagnostic_central_fl_preview_read",
+      context,
+      payload: {
+        diagnosticId: "diag_central_fl_preview_read",
+        severity: "warning",
+        category: "ingestion",
+        message: "Nominal preview read unexpectedly mutated the ledger.",
+        repairHint: {
+          contract: "ZipArchiveAdapter.expand",
+          violatedPath: "preview-read",
+          allowedActions: ["retry supervised preview read"]
+        }
+      }
+    });
+  }
+
+  async function appendStagingApproval(
+    approvedBy: string,
+    approvedAssertionCandidateIds: readonly string[] = ["legacy_candidate_preview_001"]
+  ) {
+    const event = await append({
+        type: "legacy.ontology.staging.approved",
+        version: 1,
+        streamId: `legacy_staging_${report.sourceCollectionId}_${report.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.stagingBatchId}`,
+        context: {
+        ...context,
+        actor: {
+          id: input?.stagingApprovalActorMismatch
+            ? "actor_human_wrong"
+            : approvedBy,
+          kind: "human",
+            label: "Preview approver"
+          }
+        },
+        payload: {
+          stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+          legacyReportId: report.legacyReportId,
+          sourceCollectionId: report.sourceCollectionId,
+          scanBatchId: report.scanBatchId,
+          reportHash: report.reportHash,
+          candidateSetHash: report.candidateSetHash,
+          approvedBy,
+          approvedAt: fixedTime,
+          approvedAssertionCandidateIds: [...approvedAssertionCandidateIds]
+      }
+    });
+    stagingApprovalEventId = event.id;
+    stagingApprovedBy = approvedBy;
+    return event;
+  }
   const createWorkspace = vi.fn(() => calls.push("createWorkspace"));
   const mountResolver = {
     resolve: vi.fn(async () => ({ ok: true as const, workspace }))
@@ -1408,7 +1567,10 @@ function workflowFixture(input?: {
     now: () => fixedTime,
     initialInspection: () => {
       calls.push("initialInspection");
-      return inspection;
+      initialInspectionCalls += 1;
+      return initialDriftAt !== undefined && initialInspectionCalls >= initialDriftAt
+        ? driftedInitialInspection
+        : inspection;
     },
     resumeInspection: () => {
       calls.push("resumeInspection");
@@ -1418,10 +1580,12 @@ function workflowFixture(input?: {
         : resumedInspection;
     },
     createWorkspace,
+    destinationExists: () => input?.existingDestinationWithoutCheckpoint === true,
     mountResolver,
     legacyRuntimeFactory: () => runtime,
     readWorkspaceSnapshot,
-    checkpointStore
+    checkpointStore,
+    runEngineeringValidations: () => validationReceipts
   });
 
   return {
@@ -1437,6 +1601,7 @@ function workflowFixture(input?: {
     candidate,
     bytes,
     contentHash,
+    inventoryHash,
     occurrenceId,
     setResumedInspection(value: CentralFloridaIceCandidateInspection) {
       resumedInspection = value;
@@ -1445,6 +1610,23 @@ function workflowFixture(input?: {
     driftResumeAfter(additionalCalls: number, value: CentralFloridaIceCandidateInspection) {
       resumeDriftAt = resumeInspectionCalls + additionalCalls;
       driftedInspection = value;
+    },
+    driftInitialAfter(additionalCalls: number, value: CentralFloridaIceCandidateInspection) {
+      initialDriftAt = initialInspectionCalls + additionalCalls;
+      driftedInitialInspection = value;
+    },
+    mutateOnNextRead(value: typeof readMutation) {
+      readMutation = value;
+    },
+    setStagingPreviewEvidenceId(value: string) {
+      stagingPreviewEvidenceId = value;
+    },
+    failEngineeringValidation() {
+      validationReceipts = [{
+        argv: ["fixture-validation"],
+        exitCode: 1,
+        result: "failed"
+      }];
     }
   };
 }
@@ -1466,6 +1648,18 @@ describe("Central Florida ICE supervised preview workflow", () => {
 
     expect(checkpoint.phase).toBe("raw-approval-required");
     expect(checkpoint.allowedNextCommand).toBe("raw-import");
+    expect(checkpoint.state.inventoryHash).toBe(fixture.inventoryHash);
+    expect(checkpoint.state.commandReceipts).toEqual([{
+      command: "inspect",
+      argv: [
+        "npx",
+        "tsx",
+        "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+        "inspect"
+      ],
+      exitCode: 0,
+      result: "passed"
+    }]);
     expect(fixture.calls.indexOf("initialInspection")).toBeLessThan(
       fixture.calls.indexOf("createWorkspace")
     );
@@ -1484,6 +1678,22 @@ describe("Central Florida ICE supervised preview workflow", () => {
     expect((await fixture.ledger.readAll()).map((event) => event.type)).not.toContain(
       "evidence.ingested"
     );
+  });
+
+  it("rechecks stable source and destination authority immediately before first workspace creation", async () => {
+    const fixture = workflowFixture();
+    fixture.driftInitialAfter(2, {
+      ...fixture.inspection,
+      candidateSetHash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    });
+
+    await expect(fixture.workflow.inspect()).rejects.toThrow(
+      "source or mount authority changed"
+    );
+    expect(fixture.calls.filter((call) => call === "initialInspection")).toHaveLength(2);
+    expect(fixture.createWorkspace).not.toHaveBeenCalled();
+    expect(await fixture.ledger.readAll()).toEqual([]);
+    expect(fixture.checkpointStore.records).toEqual([]);
   });
 
   it("revalidates the exact candidate set before raw approval and performs no approval on drift", async () => {
@@ -1547,6 +1757,86 @@ describe("Central Florida ICE supervised preview workflow", () => {
     expect(fixture.checkpointStore.records.at(-1)?.state.stagingPreviewArtifactHash).toBeUndefined();
   });
 
+  it("requires staging-preview report and preview reads to have zero ledger delta", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+    fixture.mutateOnNextRead("report");
+
+    await expect(fixture.workflow.stagingPreview()).rejects.toThrow(
+      "nominal preview read mutated the ledger"
+    );
+    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("staging-preview-required");
+  });
+
+  it("snapshots stage before report reads and rejects a premature otherwise-allowed approval event", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.workflow.stagingPreview();
+    fixture.mutateOnNextRead("premature-staging-approval");
+
+    await expect(fixture.workflow.stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: ["legacy_candidate_preview_001"]
+    })).rejects.toThrow("nominal preview read mutated the ledger");
+    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("staging-approval-required");
+  });
+
+  it("requires handoff report and quarantine reads to have zero ledger delta", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.workflow.stagingPreview();
+    await fixture.workflow.stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: ["legacy_candidate_preview_001"]
+    });
+    fixture.mutateOnNextRead("quarantine");
+
+    await expect(fixture.workflow.handoff()).rejects.toThrow(
+      "nominal preview read mutated the ledger"
+    );
+    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("handoff-required");
+  });
+
+  it("loads Gate 2 material by checkpoint hash and rejects a rederived evidence binding swap", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.workflow.stagingPreview();
+    fixture.setStagingPreviewEvidenceId("ev_central_fl_preview_swapped");
+
+    await expect(fixture.workflow.stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: ["legacy_candidate_preview_001"]
+    })).rejects.toThrow("stored staging preview");
+    expect(fixture.calls).not.toContain("runtime.approveStaging");
+  });
+
+  it("rejects a raw approval whose ledger context actor is not the exact preview agent", async () => {
+    const fixture = workflowFixture({ rawApprovalActorMismatch: true });
+    await fixture.workflow.inspect();
+
+    await expect(fixture.workflow.rawImport({
+      approvedBy: "actor_human_preview"
+    })).rejects.toThrow("authoritative raw approval");
+    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("raw-approval-required");
+  });
+
+  it("rejects a staging approval whose ledger context actor is not the named human approver", async () => {
+    const fixture = workflowFixture({ stagingApprovalActorMismatch: true });
+    await fixture.workflow.inspect();
+    await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.workflow.stagingPreview();
+
+    await expect(fixture.workflow.stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: ["legacy_candidate_preview_001"]
+    })).rejects.toThrow("authoritative staging approval");
+    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("staging-approval-required");
+  });
+
   it("runs both human gates, imports evidence, proposes only selected evidence-bound assertions, blocks provider dispatch, replays, and manifests", async () => {
     const fixture = workflowFixture();
     await fixture.workflow.inspect();
@@ -1558,6 +1848,10 @@ describe("Central Florida ICE supervised preview workflow", () => {
       evidenceCreated: 1,
       occurrencesLinked: 1
     });
+    expect(imported.state).toEqual(expect.objectContaining({
+      rawApprovalEventId: expect.stringMatching(/^evt_/),
+      rawApprovedBy: "actor_human_preview"
+    }));
 
     await expect(fixture.workflow.stage({
       approvedBy: "actor_human_preview",
@@ -1578,6 +1872,11 @@ describe("Central Florida ICE supervised preview workflow", () => {
       candidateIds: ["legacy_candidate_preview_001"]
     });
     expect(staged.phase).toBe("handoff-required");
+    expect(staged.state).toEqual(expect.objectContaining({
+      stagingApprovalEventId: expect.stringMatching(/^evt_/),
+      stagingApprovedBy: "actor_human_preview",
+      approvedStagingCandidateIds: ["legacy_candidate_preview_001"]
+    }));
     const events = await fixture.ledger.readAll();
     expect(events.filter((event) => event.type === "assertion.proposed")).toHaveLength(1);
     expect(events.map((event) => event.type)).not.toContain("assertion.accepted");
@@ -1587,8 +1886,12 @@ describe("Central Florida ICE supervised preview workflow", () => {
     expect(handoff.phase).toBe("replay-verification-required");
     expect(handoff.state.blockers).toContainEqual(expect.objectContaining({
       code: "provider-mounted-authority-unavailable",
-      resumable: true
+      resumable: true,
+      resumableWithinMission: false,
+      resumeScope: "fresh-approved-provider-mission",
+      repairAction: expect.stringContaining("fresh approved provider mission")
     }));
+    expect(handoff.state.blockers[0]).not.toHaveProperty("allowedNextCommand");
     const handoffBytes = await fixture.workspace.derivativeStore.get(
       handoff.state.handoffArtifactHash!
     );
@@ -1639,11 +1942,38 @@ describe("Central Florida ICE supervised preview workflow", () => {
     }));
     expect(manifest.hashes).toEqual(expect.objectContaining({
       candidateArtifactHash: fixture.inspection.candidateSetHash,
+      scannerInventoryHash: imported.state.inventoryHash,
       inspectionArtifactHash: expect.stringMatching(/^sha256:/),
       quarantineArtifactHash: expect.stringMatching(/^sha256:/),
       dossierArtifactHash: expect.stringMatching(/^sha256:/),
       stagingPreviewArtifactHash: expect.stringMatching(/^sha256:/)
     }));
+    expect(manifest.approvals).toEqual({
+      rawImport: {
+        eventId: imported.state.rawApprovalEventId,
+        approvedBy: "actor_human_preview"
+      },
+      staging: {
+        eventId: staged.state.stagingApprovalEventId,
+        approvedBy: "actor_human_preview",
+        candidateIds: ["legacy_candidate_preview_001"]
+      }
+    });
+    expect(manifest.commandReceipts.map((receipt: { argv: string[] }) => receipt.argv))
+      .toEqual([
+        ["npx", "tsx", "packages/ingestion/src/central-fl-ice-preview-cli.ts", "inspect"],
+        ["npx", "tsx", "packages/ingestion/src/central-fl-ice-preview-cli.ts", "raw-import", "--approved-by", "actor_human_preview"],
+        ["npx", "tsx", "packages/ingestion/src/central-fl-ice-preview-cli.ts", "staging-preview"],
+        ["npx", "tsx", "packages/ingestion/src/central-fl-ice-preview-cli.ts", "stage", "--approved-by", "actor_human_preview", "--candidate", "legacy_candidate_preview_001"],
+        ["npx", "tsx", "packages/ingestion/src/central-fl-ice-preview-cli.ts", "handoff"],
+        ["npx", "tsx", "packages/ingestion/src/central-fl-ice-preview-cli.ts", "verify-replay"],
+        ["npx", "tsx", "packages/ingestion/src/central-fl-ice-preview-cli.ts", "manifest"]
+      ]);
+    expect(manifest.validationReceipts).toEqual([{
+      argv: ["fixture-validation"],
+      exitCode: 0,
+      result: "passed"
+    }]);
     expect(fixture.workspace.close).toHaveBeenCalled();
   });
 
@@ -1655,6 +1985,43 @@ describe("Central Florida ICE supervised preview workflow", () => {
     expect(fixture.calls).not.toContain("runtime.inspect");
   });
 
+  it("does not persist a final manifest when an exact engineering validation fails", async () => {
+    const fixture = workflowFixture();
+    await fixture.workflow.inspect();
+    await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.workflow.stagingPreview();
+    await fixture.workflow.stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: [...(preview.state.stagingCandidateIds ?? [])]
+    });
+    await fixture.workflow.handoff();
+    await fixture.workflow.verifyReplay();
+    fixture.failEngineeringValidation();
+
+    await expect(fixture.workflow.manifest()).rejects.toThrow(
+      "engineering validation failed"
+    );
+
+    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("manifest-required");
+    expect(fixture.checkpointStore.records.at(-1)?.state.finalManifestArtifactHash)
+      .toBeUndefined();
+  });
+
+  it("does not create, mutate, or checkpoint an existing foreign destination without preview state", async () => {
+    const fixture = workflowFixture({
+      foreignWorkspace: true,
+      existingDestinationWithoutCheckpoint: true
+    });
+
+    await expect(fixture.workflow.inspect()).rejects.toThrow(
+      "canonical portable preview workspace identity mismatch"
+    );
+
+    expect(fixture.createWorkspace).not.toHaveBeenCalled();
+    expect(fixture.checkpointStore.records).toEqual([]);
+    expect(await fixture.ledger.readAll()).toEqual([]);
+  });
+
   it("rejects forbidden events appended by a delegated runtime", async () => {
     const fixture = workflowFixture({ forbiddenInspectEvent: true });
 
@@ -1662,7 +2029,7 @@ describe("Central Florida ICE supervised preview workflow", () => {
     expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("inspection-blocked");
   });
 
-  it("rejects a runtime proposal ID claim that differs from exact ledger readback", async () => {
+  it("ignores a runtime proposal ID claim and persists exact authoritative ledger readback", async () => {
     const fixture = workflowFixture({ proposalIdMismatch: true });
     await fixture.workflow.inspect();
     await fixture.workflow.rawImport({
@@ -1670,12 +2037,21 @@ describe("Central Florida ICE supervised preview workflow", () => {
     });
     await fixture.workflow.stagingPreview();
 
-    await expect(fixture.workflow.stage({
+    const checkpoint = await fixture.workflow.stage({
       approvedBy: "actor_human_preview",
       candidateIds: ["legacy_candidate_preview_001"]
-    })).rejects.toThrow("proposal event readback does not match runtime result");
-    expect(fixture.checkpointStore.records.at(-1)?.phase).toBe(
-      "staging-approval-required"
+    });
+    expect(checkpoint.phase).toBe("handoff-required");
+    expect(checkpoint.state.proposedAssertionIds).toEqual([
+      stableLegacyAssertionId({
+        sourceCollectionId: fixture.report.sourceCollectionId,
+        scanBatchId: fixture.report.scanBatchId,
+        stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+        candidateSetHash: fixture.report.candidateSetHash
+      }, "legacy_candidate_preview_001")
+    ]);
+    expect(checkpoint.state.proposedAssertionIds).not.toContain(
+      "as_central_fl_preview_mismatched"
     );
   });
 
@@ -1706,14 +2082,7 @@ describe("Central Florida ICE supervised preview workflow", () => {
       command: "inspect",
       createdAt: "2026-07-27T12:00:00.000Z",
       allowedNextCommand: "raw-import",
-      state: {
-        codeSha: "0123456789abcdef0123456789abcdef01234567",
-        eventIds: [],
-        artifactHashes: [],
-        commands: ["inspect"],
-        counts: {},
-        blockers: []
-      }
+      state: validRawGateCheckpointState()
     });
     const checkpointRoot = join(root, "jobs", "central-fl-ice-engineering-preview");
     const [name] = readdirSync(checkpointRoot);
@@ -1734,14 +2103,7 @@ describe("Central Florida ICE supervised preview workflow", () => {
       command: "inspect",
       createdAt: "2026-07-27T12:00:00.000Z",
       allowedNextCommand: "raw-import",
-      state: {
-        codeSha: "0123456789abcdef0123456789abcdef01234567",
-        eventIds: [],
-        artifactHashes: [],
-        commands: ["inspect"],
-        counts: {},
-        blockers: []
-      }
+      state: validRawGateCheckpointState()
     });
     const checkpointRoot = join(root, "jobs", "central-fl-ice-engineering-preview");
     writeFileSync(join(checkpointRoot, "foreign.json"), "{}", "utf8");
@@ -1757,14 +2119,7 @@ describe("Central Florida ICE supervised preview workflow", () => {
       command: "inspect",
       createdAt: "2026-07-27T12:00:00.000Z",
       allowedNextCommand: "raw-import",
-      state: {
-        codeSha: "0123456789abcdef0123456789abcdef01234567",
-        eventIds: [],
-        artifactHashes: [],
-        commands: ["inspect"],
-        counts: {},
-        blockers: []
-      }
+      state: validRawGateCheckpointState()
     });
     const checkpointRoot = join(root, "jobs", "central-fl-ice-engineering-preview");
     const [name] = readdirSync(checkpointRoot);
@@ -1785,14 +2140,7 @@ describe("Central Florida ICE supervised preview workflow", () => {
       command: "inspect",
       createdAt: "2026-07-27T12:00:00.000Z",
       allowedNextCommand: "raw-import",
-      state: {
-        codeSha: "0123456789abcdef0123456789abcdef01234567",
-        eventIds: [],
-        artifactHashes: [],
-        commands: ["inspect"],
-        counts: {},
-        blockers: []
-      }
+      state: validRawGateCheckpointState()
     });
     const checkpointRoot = join(root, "jobs", "central-fl-ice-engineering-preview");
     const [name] = readdirSync(checkpointRoot);
@@ -1810,6 +2158,38 @@ describe("Central Florida ICE supervised preview workflow", () => {
     );
 
     expect(() => store.readAll()).toThrow("deterministic hash validation");
+  });
+
+  it("rejects a hash-valid nonadjacent raw-gate to complete checkpoint transition", () => {
+    const root = mkdtempSync(join(tmpdir(), "central-fl-preview-checkpoint-transition-"));
+    temporaryRoots.push(root);
+    const store = createFileCentralFloridaIcePreviewCheckpointStore(root);
+    const baseState = validRawGateCheckpointState();
+    store.append({
+      phase: "raw-approval-required",
+      command: "inspect",
+      createdAt: "2026-07-27T12:00:00.000Z",
+      allowedNextCommand: "raw-import",
+      state: baseState
+    });
+
+    expect(() => store.append({
+      phase: "complete",
+      command: "manifest",
+      createdAt: "2026-07-27T12:01:00.000Z",
+      allowedNextCommand: null,
+      state: {
+        ...baseState,
+        dossierArtifactHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        stagingPreviewArtifactHash: "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        stagingCandidateIds: ["legacy_candidate_transition"],
+        proposedAssertionIds: ["as_transition"],
+        handoffArtifactHash: "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        replayArtifactHash: "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        finalManifestArtifactHash: "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+        commands: ["inspect", "manifest"]
+      }
+    })).toThrow("checkpoint transition");
   });
 
   it("CLI rejects extra, duplicate, missing, and odd approval arguments without invoking a workflow", async () => {
@@ -2033,3 +2413,353 @@ describe("exact selected legacy filesystem seam", () => {
     })).rejects.toThrow();
   });
 });
+
+function portableCrashWorkflowFixture(
+  failAt:
+    | "raw-approval-required"
+    | "staging-preview-required"
+    | "handoff-required"
+    | "after-inspect"
+    | "after-report"
+    | "after-raw-approval"
+    | "after-staging-approval"
+    | "all-inspect-checkpoints"
+) {
+  const root = mkdtempSync(join(tmpdir(), "central-fl-portable-crash-"));
+  temporaryRoots.push(root);
+  const sourceRoot = join(root, "selected-source");
+  const workspaceRoot = join(root, "portable-workspace");
+  mkdirSync(join(sourceRoot, "ontology"), { recursive: true });
+  const sourcePath = "ontology/claims.json";
+  const sourceBytes = Buffer.from(JSON.stringify({
+    legacyCestusType: "claims",
+    claims: [{
+      id: "legacy_claim_preview_crash",
+      predicate: "agency.name",
+      object: "Example Agency"
+    }]
+  }, null, 2), "utf8");
+  const absoluteSourcePath = join(sourceRoot, sourcePath);
+  writeFileSync(absoluteSourcePath, sourceBytes);
+  const metadata = statSync(absoluteSourcePath, { bigint: true });
+  const contentHash = `sha256:${createHash("sha256").update(sourceBytes).digest("hex")}` as const;
+  const occurrenceId = stableLocalFilesystemOccurrenceId({
+    kind: "file",
+    sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+    scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+    sourcePath,
+    contentHash
+  });
+  const candidate = {
+    occurrenceId,
+    sourcePath,
+    contentHash,
+    mediaType: "application/json",
+    sizeBytes: sourceBytes.byteLength,
+    deviceId: metadata.dev.toString(),
+    inode: metadata.ino.toString(),
+    scanStatus: "new" as const,
+    preservationStatus: "current" as const,
+    sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+    scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId
+  };
+  const canonicalCandidateMaterial = stableJson({
+    version: 1,
+    candidates: [candidate],
+    exclusions: []
+  });
+  const destinationAuthority = {
+    destinationPath: CENTRAL_FL_ICE_PREVIEW.destinationRoot,
+    nearestExistingParent: workspaceRoot,
+    mountTarget: "/home",
+    mountSource: "/dev/internal",
+    fileSystem: "btrfs",
+    mountOptions: ["rw"],
+    mountDeviceId: "destination-dev",
+    parentDeviceId: "destination-dev",
+    initiallyPresent: true
+  };
+  const inspection: CentralFloridaIceCandidateInspection = {
+    version: 1,
+    workspaceId: CENTRAL_FL_ICE_PREVIEW.workspaceId,
+    sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+    scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+    importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
+    stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+    sourceIdentity: {
+      rootRealpath: sourceRoot,
+      mountTarget: CENTRAL_FL_ICE_PREVIEW.sourceMount,
+      mountSource: CENTRAL_FL_ICE_PREVIEW.sourceDevice,
+      fileSystem: "apfs",
+      mountOptions: ["gid=1000", "nodev", "noexec", "nosuid", "ro", "uid=1000"],
+      mountDeviceId: "source-dev",
+      rootDeviceId: "source-dev",
+      fileCount: 1,
+      totalBytes: sourceBytes.byteLength
+    },
+    destinationIdentity: destinationAuthority,
+    code: {
+      baseSha: CENTRAL_FL_ICE_PREVIEW.codeBaseSha,
+      codeSha: "0123456789abcdef0123456789abcdef01234567"
+    },
+    candidates: [candidate],
+    exclusions: [],
+    canonicalCandidateMaterial,
+    candidateSetHash: sha256(canonicalCandidateMaterial)
+  };
+  const baseStore = createFileCentralFloridaIcePreviewCheckpointStore(workspaceRoot);
+  let failureInjected = false;
+  let failuresEnabled = true;
+  const checkpointStore: CentralFloridaIcePreviewCheckpointStore = {
+    readAll: () => baseStore.readAll(),
+    append(draft) {
+      if (
+        failuresEnabled
+        && failAt === "all-inspect-checkpoints"
+        && draft.command === "inspect"
+      ) {
+        throw new Error("injected all inspect checkpoint writes");
+      }
+      if (!failureInjected && draft.phase === failAt) {
+        failureInjected = true;
+        throw new Error(`injected ${failAt} checkpoint crash`);
+      }
+      return baseStore.append(draft);
+    }
+  };
+  let workspaceCreated = false;
+  const portableResolver = createPortableIngestionMountResolver();
+  const createWorkflow = () => createCentralFloridaIcePreviewWorkflow({
+    codeSha: () => inspection.code.codeSha,
+    now: () => "2026-07-27T12:00:00.000Z",
+    initialInspection: () => ({
+      ...inspection,
+      destinationIdentity: {
+        ...destinationAuthority,
+        initiallyPresent: false
+      }
+    }),
+    resumeInspection: () => inspection,
+    createWorkspace: () => {
+      createPortableWorkspace({
+        rootDir: workspaceRoot,
+        workspaceId: CENTRAL_FL_ICE_PREVIEW.workspaceId,
+        label: "Central Florida ICE crash fixture",
+        createdBy: "actor_central_fl_ice_preview",
+        description: "Portable crash-retry fixture."
+      });
+      workspaceCreated = true;
+    },
+    destinationExists: () => workspaceCreated,
+    mountResolver: {
+      resolve: () => portableResolver.resolve({ workspaceRoot })
+    },
+    legacyRuntimeFactory: (workspace, actorOverride) => {
+      const runtime = createLegacyImportRuntime({
+        mountedWorkspace: workspace,
+        actor: actorOverride ?? {
+          id: "actor_central_fl_ice_preview",
+          kind: "agent",
+          label: "Central Florida ICE preview"
+        }
+      });
+      return {
+        ...runtime,
+        async inspect(command) {
+          const result = await runtime.inspect({ ...command, sourceRoot });
+          if (!failureInjected && failAt === "after-inspect") {
+            failureInjected = true;
+            throw new Error("injected after-inspect crash");
+          }
+          return result;
+        },
+        async report(command) {
+          const result = await runtime.report(command);
+          if (!failureInjected && failAt === "after-report") {
+            failureInjected = true;
+            throw new Error("injected after-report crash");
+          }
+          return result;
+        },
+        async importApproved(command) {
+          if (!failureInjected && failAt === "after-raw-approval") {
+            failureInjected = true;
+            throw new Error("injected after-raw-approval crash");
+          }
+          return runtime.importApproved(command);
+        },
+        async stageApproved(command) {
+          if (!failureInjected && failAt === "after-staging-approval") {
+            failureInjected = true;
+            throw new Error("injected after-staging-approval crash");
+          }
+          return runtime.stageApproved(command);
+        }
+      };
+    },
+    checkpointStore
+  });
+  return {
+    createWorkflow,
+    checkpointStore,
+    workspaceRoot,
+    get workspaceCreated() {
+      return workspaceCreated;
+    },
+    disableFailures() {
+      failuresEnabled = false;
+    },
+    async ledgerEvents() {
+      const mounted = await portableResolver.resolve({ workspaceRoot });
+      if (!mounted.ok) throw new Error("portable crash fixture did not mount");
+      try {
+        return await mounted.workspace.ledger.readAll();
+      } finally {
+        (mounted.workspace as MountedWorkspace & { close?: () => void }).close?.();
+      }
+    }
+  };
+}
+
+describe("Central Florida ICE real portable-runtime crash reconciliation", () => {
+  it("reconciles a crash after inspect and report read effects", async () => {
+    for (const failAt of ["after-inspect", "after-report"] as const) {
+      const fixture = portableCrashWorkflowFixture(failAt);
+      await expect(fixture.createWorkflow().inspect()).rejects.toThrow("inspection blocked");
+      const eventIds = (await fixture.ledgerEvents()).map((event) => event.id);
+
+      const checkpoint = await fixture.createWorkflow().inspect();
+
+      expect(checkpoint.phase).toBe("raw-approval-required");
+      expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+    }
+  });
+
+  it("reconciles inspect/report effects after checkpoint failure without duplicate events", async () => {
+    const fixture = portableCrashWorkflowFixture("raw-approval-required");
+    await expect(fixture.createWorkflow().inspect()).rejects.toThrow("inspection blocked");
+    const eventIds = (await fixture.ledgerEvents()).map((event) => event.id);
+
+    const checkpoint = await fixture.createWorkflow().inspect();
+
+    expect(checkpoint.phase).toBe("raw-approval-required");
+    expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+  });
+
+  it("recovers a complete exact preview workspace when no checkpoint survived the crash", async () => {
+    const fixture = portableCrashWorkflowFixture("all-inspect-checkpoints");
+    await expect(fixture.createWorkflow().inspect()).rejects.toThrow(
+      "injected all inspect checkpoint writes"
+    );
+    const eventIds = (await fixture.ledgerEvents()).map((event) => event.id);
+    expect(fixture.checkpointStore.readAll()).toEqual([]);
+
+    // The fixture now reports an existing destination; its exact ledger must
+    // reconcile without re-creating or duplicating runtime effects.
+    fixture.disableFailures();
+    const checkpoint = await fixture.createWorkflow().inspect();
+
+    expect(checkpoint.phase).toBe("raw-approval-required");
+    expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+  });
+
+  it("reconciles raw approval/import effects after checkpoint failure without duplicate events or blobs", async () => {
+    const fixture = portableCrashWorkflowFixture("staging-preview-required");
+    await fixture.createWorkflow().inspect();
+    await expect(fixture.createWorkflow().rawImport({
+      approvedBy: "actor_human_preview"
+    })).rejects.toThrow("injected staging-preview-required checkpoint crash");
+    const eventIds = (await fixture.ledgerEvents()).map((event) => event.id);
+    const blobCount = countRegularFiles(join(fixture.workspaceRoot, "blobs"));
+
+    const checkpoint = await fixture.createWorkflow().rawImport({
+      approvedBy: "actor_human_preview"
+    });
+
+    expect(checkpoint.phase).toBe("staging-preview-required");
+    expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+    expect(countRegularFiles(join(fixture.workspaceRoot, "blobs"))).toBe(blobCount);
+  });
+
+  it("reconciles a crash after raw approval before import without duplicate approval", async () => {
+    const fixture = portableCrashWorkflowFixture("after-raw-approval");
+    await fixture.createWorkflow().inspect();
+    await expect(fixture.createWorkflow().rawImport({
+      approvedBy: "actor_human_preview"
+    })).rejects.toThrow("after-raw-approval");
+    const approvalsBefore = (await fixture.ledgerEvents()).filter((event) =>
+      event.type === "ingestion.import.approved"
+    );
+    expect(approvalsBefore).toHaveLength(1);
+
+    const checkpoint = await fixture.createWorkflow().rawImport({
+      approvedBy: "actor_human_preview"
+    });
+
+    expect(checkpoint.phase).toBe("staging-preview-required");
+    expect((await fixture.ledgerEvents()).filter((event) =>
+      event.type === "ingestion.import.approved"
+    )).toHaveLength(1);
+  });
+
+  it("reconciles staging approval/proposals after checkpoint failure without duplicates", async () => {
+    const fixture = portableCrashWorkflowFixture("handoff-required");
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.createWorkflow().stagingPreview();
+    const candidateIds = [...(preview.state.stagingCandidateIds ?? [])];
+    await expect(fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds
+    })).rejects.toThrow("injected handoff-required checkpoint crash");
+    const eventIds = (await fixture.ledgerEvents()).map((event) => event.id);
+    const blobCount = countRegularFiles(join(fixture.workspaceRoot, "blobs"));
+
+    const checkpoint = await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds
+    });
+
+    expect(checkpoint.phase).toBe("handoff-required");
+    expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+    expect(countRegularFiles(join(fixture.workspaceRoot, "blobs"))).toBe(blobCount);
+  });
+
+  it("reconciles a crash after staging approval before proposals without duplicate approval", async () => {
+    const fixture = portableCrashWorkflowFixture("after-staging-approval");
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.createWorkflow().stagingPreview();
+    const candidateIds = [...(preview.state.stagingCandidateIds ?? [])];
+    await expect(fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds
+    })).rejects.toThrow("after-staging-approval");
+    const approvalsBefore = (await fixture.ledgerEvents()).filter((event) =>
+      event.type === "legacy.ontology.staging.approved"
+    );
+    expect(approvalsBefore).toHaveLength(1);
+
+    const checkpoint = await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds
+    });
+
+    expect(checkpoint.phase).toBe("handoff-required");
+    const events = await fixture.ledgerEvents();
+    expect(events.filter((event) =>
+      event.type === "legacy.ontology.staging.approved"
+    )).toHaveLength(1);
+    expect(events.filter((event) => event.type === "assertion.proposed")).toHaveLength(1);
+  });
+});
+
+function countRegularFiles(root: string): number {
+  if (!statSync(root).isDirectory()) {
+    return 0;
+  }
+  return readdirSync(root, { withFileTypes: true }).reduce((total, entry) => {
+    const path = join(root, entry.name);
+    return total + (entry.isDirectory() ? countRegularFiles(path) : entry.isFile() ? 1 : 0);
+  }, 0);
+}

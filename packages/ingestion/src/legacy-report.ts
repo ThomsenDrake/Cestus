@@ -124,6 +124,19 @@ export class LegacyMigrationReportService {
         totals: report.totals
       }
     };
+    const existingEvents = await this.dependencies.ledger.readStream(event.streamId);
+    if (existingEvents.length > 0) {
+      const existing = existingEvents[0];
+      if (
+        existingEvents.length !== 1
+        || existing?.type !== "legacy.import.report.generated"
+        || stableJson(existing.payload) !== stableJson(event.payload)
+        || stableJson(existing.context.actor) !== stableJson(event.context.actor)
+      ) {
+        throw new Error(`Existing report ${report.legacyReportId} conflicts with exact retry material`);
+      }
+      return existing;
+    }
     const appended = await this.dependencies.ledger.append(event, { expectedNextSequence: 1 });
 
     if (appended.type !== "legacy.import.report.generated") {

@@ -49,10 +49,29 @@ export class AssertionService {
       confidence: input.confidence,
       reviewState: "proposed"
     };
+    const streamId = this.streamId(input.assertionId);
+    const existingEvents = await this.dependencies.ledger.readStream(streamId);
+    const existingProposal = existingEvents.find(
+      (event): event is KnowledgeEventOf<"assertion.proposed"> =>
+        event.type === "assertion.proposed"
+    );
+    if (existingProposal !== undefined) {
+      if (
+        JSON.stringify(existingProposal.payload) !== JSON.stringify(payload)
+        || JSON.stringify(existingProposal.context.actor) !== JSON.stringify(input.actor)
+        || existingProposal.context.causationId !== evidence.id
+      ) {
+        throw new Error(`Assertion proposal ${input.assertionId} conflicts with exact retry material`);
+      }
+      return existingProposal;
+    }
+    if (existingEvents.length > 0) {
+      throw new Error(`Assertion proposal ${input.assertionId} conflicts with existing stream state`);
+    }
     const event: AppendableKnowledgeEvent<"assertion.proposed"> = {
       type: "assertion.proposed",
       version: 1,
-      streamId: this.streamId(input.assertionId),
+      streamId,
       context: {
         actor: input.actor,
         occurredAt: new Date().toISOString(),

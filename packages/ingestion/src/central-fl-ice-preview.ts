@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -11,7 +11,8 @@ import {
   writeFileSync
 } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { buildOntologyBootstrapDossier } from "../../ontology-bootstrap/src/dossier-builder.js";
 import {
   createStagingApprovalPreview,
@@ -32,6 +33,7 @@ import {
 import type { IngestionWorkspaceMountResolver } from "./mount-contract.js";
 import { buildIngestionProjection } from "./projection.js";
 import { buildLegacyImportProjection } from "./legacy-projection.js";
+import { stableLegacyAssertionId } from "./legacy-staging.js";
 import {
   sha256,
   stableJson,
@@ -66,6 +68,12 @@ export const CENTRAL_FL_ICE_PREVIEW = Object.freeze({
   stagingBatchId: "legacy_stage_central_fl_ice_preview_001",
   codeBaseSha: "dc05c43c4b9a592d0396acd034bfc32e177fd09a"
 } as const);
+
+const CENTRAL_FL_ICE_PREVIEW_AGENT: ActorRef = Object.freeze({
+  id: "actor_central_fl_ice_preview",
+  kind: "agent",
+  label: "Central Florida ICE preview"
+});
 
 interface PreviewPolicy {
   readonly sourceRoot: string;
@@ -1058,12 +1066,28 @@ export interface CentralFloridaIcePreviewBlocker {
   readonly code: string;
   readonly message: string;
   readonly resumable: boolean;
-  readonly allowedNextCommand: CentralFloridaIcePreviewCommand;
+  readonly resumableWithinMission: boolean;
+  readonly resumeScope: "same-preview-mission" | "fresh-approved-provider-mission";
+  readonly repairAction: string;
+}
+
+export interface CentralFloridaIcePreviewCommandReceipt {
+  readonly command: CentralFloridaIcePreviewCommand;
+  readonly argv: readonly string[];
+  readonly exitCode: number;
+  readonly result: "passed";
+}
+
+export interface CentralFloridaIcePreviewValidationReceipt {
+  readonly argv: readonly string[];
+  readonly exitCode: number;
+  readonly result: "passed" | "failed";
 }
 
 export interface CentralFloridaIcePreviewDurableState {
   readonly codeSha: string;
   readonly candidateSetHash?: `sha256:${string}`;
+  readonly inventoryHash?: `sha256:${string}`;
   readonly sourceIdentityHash?: `sha256:${string}`;
   readonly destinationIdentityHash?: `sha256:${string}`;
   readonly candidateArtifactHash?: `sha256:${string}`;
@@ -1075,6 +1099,11 @@ export interface CentralFloridaIcePreviewDurableState {
   readonly dossierArtifactHash?: `sha256:${string}`;
   readonly stagingPreviewArtifactHash?: `sha256:${string}`;
   readonly stagingCandidateIds?: readonly string[];
+  readonly rawApprovalEventId?: string;
+  readonly rawApprovedBy?: string;
+  readonly stagingApprovalEventId?: string;
+  readonly stagingApprovedBy?: string;
+  readonly approvedStagingCandidateIds?: readonly string[];
   readonly proposedAssertionIds?: readonly string[];
   readonly handoffArtifactHash?: `sha256:${string}`;
   readonly replayArtifactHash?: `sha256:${string}`;
@@ -1082,6 +1111,8 @@ export interface CentralFloridaIcePreviewDurableState {
   readonly eventIds: readonly string[];
   readonly artifactHashes: readonly `sha256:${string}`[];
   readonly commands: readonly CentralFloridaIcePreviewCommand[];
+  readonly commandReceipts: readonly CentralFloridaIcePreviewCommandReceipt[];
+  readonly validationReceipts?: readonly CentralFloridaIcePreviewValidationReceipt[];
   readonly counts: Readonly<Record<string, number>>;
   readonly blockers: readonly CentralFloridaIcePreviewBlocker[];
 }
@@ -1135,14 +1166,18 @@ export interface CentralFloridaIcePreviewWorkflowDependencies {
   readonly initialInspection?: (() => CentralFloridaIceCandidateInspection) | undefined;
   readonly resumeInspection?: (() => CentralFloridaIceCandidateInspection) | undefined;
   readonly createWorkspace?: (() => void) | undefined;
+  readonly destinationExists?: (() => boolean) | undefined;
   readonly mountResolver?: IngestionWorkspaceMountResolver | undefined;
   readonly legacyRuntimeFactory?: ((
-    workspace: MountedWorkspace
+    workspace: MountedWorkspace,
+    actorOverride?: ActorRef
   ) => LegacyImportRuntime) | undefined;
   readonly readWorkspaceSnapshot?: ((
     workspace: MountedWorkspace
   ) => Promise<CentralFloridaIcePreviewWorkspaceSnapshot>) | undefined;
   readonly checkpointStore?: CentralFloridaIcePreviewCheckpointStore | undefined;
+  readonly runEngineeringValidations?: ((
+  ) => readonly CentralFloridaIcePreviewValidationReceipt[]) | undefined;
 }
 
 export interface CentralFloridaIcePreviewWorkflow {
@@ -1185,19 +1220,19 @@ export function createCentralFloridaIcePreviewWorkflow(
       description: "Independent supervised evidence-first legacy engineering preview."
     });
   });
+  const destinationExists = overrides.destinationExists
+    ?? (() => existsSync(CENTRAL_FL_ICE_PREVIEW.destinationRoot));
   const mountResolver = overrides.mountResolver ?? createPortableIngestionMountResolver();
-  const legacyRuntimeFactory = overrides.legacyRuntimeFactory ?? ((workspace) =>
+  const legacyRuntimeFactory = overrides.legacyRuntimeFactory ?? ((workspace, actorOverride) =>
     createLegacyImportRuntime({
       mountedWorkspace: workspace,
-      actor: {
-        id: "actor_central_fl_ice_preview",
-        kind: "agent",
-        label: "Central Florida ICE preview"
-      }
+      actor: actorOverride ?? CENTRAL_FL_ICE_PREVIEW_AGENT
     }));
   const readWorkspaceSnapshot = overrides.readWorkspaceSnapshot ?? readPreviewWorkspaceSnapshot;
   const checkpointStore = overrides.checkpointStore
     ?? createFileCentralFloridaIcePreviewCheckpointStore(CENTRAL_FL_ICE_PREVIEW.destinationRoot);
+  const runEngineeringValidations = overrides.runEngineeringValidations
+    ?? runCentralFloridaIceEngineeringValidations;
 
   async function inspect(): Promise<CentralFloridaIcePreviewCheckpoint> {
     const checkpoints = checkpointStore.readAll();
@@ -1206,17 +1241,34 @@ export function createCentralFloridaIcePreviewWorkflow(
       transitionFailure("inspect", latest);
     }
 
-    const inspection = latest === undefined ? initialInspection() : resumeInspection();
+    const recoveringWithoutCheckpoint = latest === undefined && destinationExists();
+    const inspection = latest === undefined
+      ? recoveringWithoutCheckpoint
+        ? resumeInspection()
+        : initialInspection()
+      : resumeInspection();
+    let mayPersistCheckpoint = latest !== undefined;
     if (latest !== undefined) {
       assertInspectionMatchesCheckpoint(inspection, latest);
     } else {
-      createWorkspace();
+      assertInspectionsMatch(
+        inspection,
+        recoveringWithoutCheckpoint ? resumeInspection() : initialInspection()
+      );
+      if (!recoveringWithoutCheckpoint) {
+        createWorkspace();
+        mayPersistCheckpoint = true;
+      }
     }
 
     try {
       return await withPreviewWorkspace(mountResolver, async (workspace) => {
         const runtime = legacyRuntimeFactory(workspace);
         const before = await readWorkspaceSnapshot(workspace);
+        if (recoveringWithoutCheckpoint) {
+          assertRecoverableInspectionLedger(before, inspection);
+          mayPersistCheckpoint = true;
+        }
         const inspected = await runtime.inspect({
           sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
           label: "Central Florida ICE legacy investigation",
@@ -1235,6 +1287,7 @@ export function createCentralFloridaIcePreviewWorkflow(
           }
         });
         const inspectResult = requireLegacySuccess(inspected, "legacy inspect");
+        const beforeReads = await readWorkspaceSnapshot(workspace);
         const reportResult = requireLegacySuccess(
           await runtime.report({
             sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
@@ -1249,6 +1302,8 @@ export function createCentralFloridaIcePreviewWorkflow(
           }),
           "legacy quarantine"
         );
+        const afterReads = await readWorkspaceSnapshot(workspace);
+        assertNoLedgerDelta(beforeReads.events, afterReads.events);
         assertInspectionsMatch(inspection, resumeInspection());
         assertReportMatchesInspection(reportResult.report, inspection);
 
@@ -1276,6 +1331,11 @@ export function createCentralFloridaIcePreviewWorkflow(
           "legacy.import.report.generated",
           "diagnostic.recorded"
         ]));
+        const authoritative = assertAuthoritativeInspectionLedger(
+          after,
+          inspection,
+          reportResult
+        );
         assertInspectionsMatch(inspection, resumeInspection());
 
         return checkpointStore.append({
@@ -1286,6 +1346,7 @@ export function createCentralFloridaIcePreviewWorkflow(
           state: stablePreviewState({
             codeSha: inspection.code.codeSha,
             candidateSetHash: inspection.candidateSetHash,
+            inventoryHash: authoritative.inventoryHash,
             sourceIdentityHash: sha256(stableJson(inspection.sourceIdentity)),
             destinationIdentityHash: sha256(stableJson(
               stableDestinationAuthority(inspection.destinationIdentity)
@@ -1296,7 +1357,7 @@ export function createCentralFloridaIcePreviewWorkflow(
             reportHash: reportResult.reportHash,
             legacyCandidateSetHash: reportResult.candidateSetHash,
             quarantineArtifactHash: quarantineArtifact.contentHash,
-            eventIds: newEventIds(before.events, after.events),
+            eventIds: authoritative.eventIds,
             artifactHashes: [
               candidateArtifact.contentHash,
               inspectionArtifact.contentHash,
@@ -1304,6 +1365,7 @@ export function createCentralFloridaIcePreviewWorkflow(
               quarantineArtifact.contentHash
             ],
             commands: ["inspect"],
+            commandReceipts: [commandReceipt("inspect")],
             counts: {
               candidates: inspection.candidates.length,
               bytes: inspection.sourceIdentity.totalBytes,
@@ -1320,6 +1382,9 @@ export function createCentralFloridaIcePreviewWorkflow(
     } catch (error) {
       const previous = checkpointStore.readAll().at(-1);
       if (previous?.phase === "inspection-blocked") {
+        throw error;
+      }
+      if (!mayPersistCheckpoint) {
         throw error;
       }
       try {
@@ -1342,12 +1407,15 @@ export function createCentralFloridaIcePreviewWorkflow(
           eventIds: [],
           artifactHashes: [],
           commands: ["inspect"],
+          commandReceipts: [commandReceipt("inspect")],
           counts: { candidates: inspection.candidates.length },
           blockers: [{
             code: "inspection-runtime-blocked",
             message: "Inspection runtime did not reach the supervised raw-import gate.",
             resumable: true,
-            allowedNextCommand: "inspect"
+            resumableWithinMission: true,
+            resumeScope: "same-preview-mission",
+            repairAction: "Re-run the inspect command after resolving the recorded local runtime failure."
           }]
         })
       });
@@ -1400,6 +1468,11 @@ export function createCentralFloridaIcePreviewWorkflow(
         "diagnostic.recorded"
       ]));
       assertEvidenceBindings(inspection.candidates, after);
+      const authoritative = assertAuthoritativeRawImportLedger(
+        after,
+        latest,
+        approvedBy
+      );
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
 
       return checkpointStore.append({
@@ -1408,14 +1481,17 @@ export function createCentralFloridaIcePreviewWorkflow(
         createdAt: now(),
         allowedNextCommand: "staging-preview",
         state: mergePreviewState(latest.state, {
-          eventIds: [...latest.state.eventIds, ...approval.eventIds, ...imported.eventIds],
+          rawApprovalEventId: authoritative.approvalEventId,
+          rawApprovedBy: approvedBy,
+          eventIds: [...latest.state.eventIds, ...authoritative.eventIds],
           commands: [...latest.state.commands, "raw-import"],
+          commandReceipts: [
+            ...latest.state.commandReceipts,
+            commandReceipt("raw-import", ["--approved-by", approvedBy])
+          ],
           counts: {
             ...latest.state.counts,
-            evidenceCreated: imported.totals.evidenceCreated,
-            occurrencesLinked: imported.totals.occurrencesLinked,
-            duplicatesReused: imported.totals.duplicatesReused,
-            skipped: imported.totals.skipped
+            ...authoritative.totals
           }
         })
       });
@@ -1433,6 +1509,7 @@ export function createCentralFloridaIcePreviewWorkflow(
     return withPreviewWorkspace(mountResolver, async (workspace) => {
       const runtime = legacyRuntimeFactory(workspace);
       const legacyReportId = requiredStateString(latest, "legacyReportId");
+      const beforeReads = await readWorkspaceSnapshot(workspace);
       const report = requireLegacySuccess(await runtime.report({
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         legacyReportId
@@ -1441,8 +1518,9 @@ export function createCentralFloridaIcePreviewWorkflow(
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         legacyReportId
       }), "legacy staging-preview");
-      assertReportCheckpointIdentity(report, latest);
       const snapshot = await readWorkspaceSnapshot(workspace);
+      assertNoLedgerDelta(beforeReads.events, snapshot.events);
+      assertReportCheckpointIdentity(report, latest);
       const evidenceLinks = dossierEvidenceLinks(snapshot);
       const legacyProjection = buildLegacyImportProjection(snapshot.events);
       const reportEventId = legacyProjection.reports.get(legacyReportId)?.reportEventId;
@@ -1465,16 +1543,12 @@ export function createCentralFloridaIcePreviewWorkflow(
       const selectedCandidateIds = preview.candidates
         .map((candidate) => candidate.candidateId)
         .sort(compareCodeUnits);
+      assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
-      const stagingArtifact = await putStableArtifact(workspace, {
-        schemaVersion: "central-fl-ice-staging-preview.v1",
-        legacyReportId: preview.legacyReportId,
-        reportHash: preview.reportHash,
-        candidateSetHash: preview.candidateSetHash,
-        selectedCandidateIds,
-        candidates: preview.candidates,
-        quarantineEntries: preview.quarantineEntries
-      });
+      const stagingArtifact = await putStableArtifact(
+        workspace,
+        stagingPreviewArtifactValue(preview)
+      );
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
       const dossierArtifact = await putStableArtifact(workspace, dossier);
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
@@ -1494,6 +1568,10 @@ export function createCentralFloridaIcePreviewWorkflow(
             stagingArtifact.contentHash
           ],
           commands: [...latest.state.commands, "staging-preview"],
+          commandReceipts: [
+            ...latest.state.commandReceipts,
+            commandReceipt("staging-preview")
+          ],
           counts: {
             ...latest.state.counts,
             stagingCandidates: selectedCandidateIds.length,
@@ -1517,8 +1595,13 @@ export function createCentralFloridaIcePreviewWorkflow(
     assertInspectionMatchesCheckpoint(resumeInspection(), latest);
 
     return withPreviewWorkspace(mountResolver, async (workspace) => {
-      const runtime = legacyRuntimeFactory(workspace);
+      const runtime = legacyRuntimeFactory(workspace, {
+        id: approvedBy,
+        kind: "human",
+        label: "Central Florida ICE preview approver"
+      });
       const legacyReportId = requiredStateString(latest, "legacyReportId");
+      const beforeReads = await readWorkspaceSnapshot(workspace);
       const report = requireLegacySuccess(await runtime.report({
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         legacyReportId
@@ -1527,8 +1610,11 @@ export function createCentralFloridaIcePreviewWorkflow(
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         legacyReportId
       }), "legacy staging-preview");
+      const afterReads = await readWorkspaceSnapshot(workspace);
+      assertNoLedgerDelta(beforeReads.events, afterReads.events);
       assertReportCheckpointIdentity(report, latest);
       assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
+      await assertStoredStagingPreview(workspace, latest, preview);
 
       const evidenceRefs = preview.candidates
         .filter((candidate) => selectedCandidateIds.includes(candidate.candidateId))
@@ -1554,7 +1640,7 @@ export function createCentralFloridaIcePreviewWorkflow(
         executionPreview
       });
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
-      const before = await readWorkspaceSnapshot(workspace);
+      const before = afterReads;
       const approval = requireLegacySuccess(await runtime.approveStaging({
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
@@ -1576,15 +1662,16 @@ export function createCentralFloridaIcePreviewWorkflow(
         "assertion.proposed",
         "diagnostic.recorded"
       ]));
-      const newEvents = eventsAddedByIdentity(before.events, after.events);
-      const proposals = newEvents.filter((event) => event.type === "assertion.proposed");
-      const readbackProposalIds = proposals.flatMap((event) =>
-        event.type === "assertion.proposed" ? [event.payload.assertionId] : []
-      ).sort(compareCodeUnits);
-      const runtimeProposalIds = [...staged.proposedAssertionIds].sort(compareCodeUnits);
-      if (stableJson(readbackProposalIds) !== stableJson(runtimeProposalIds)) {
-        throw new Error("staged assertion proposal event readback does not match runtime result");
-      }
+      const authoritative = assertAuthoritativeStagingLedger(
+        after,
+        latest,
+        approvedBy,
+        selectedCandidateIds,
+        preview
+      );
+      const proposals = after.events.filter((event) =>
+        authoritative.proposalEventIds.includes(event.id)
+      );
       assertProposedAssertionsEvidenceBound(proposals, after);
       assertInspectionMatchesCheckpoint(resumeInspection(), latest);
 
@@ -1594,14 +1681,25 @@ export function createCentralFloridaIcePreviewWorkflow(
         createdAt: now(),
         allowedNextCommand: "handoff",
         state: mergePreviewState(latest.state, {
-          proposedAssertionIds: [...staged.proposedAssertionIds],
-          eventIds: [...latest.state.eventIds, ...approval.eventIds, ...staged.eventIds],
+          stagingApprovalEventId: authoritative.approvalEventId,
+          stagingApprovedBy: approvedBy,
+          approvedStagingCandidateIds: selectedCandidateIds,
+          proposedAssertionIds: [...authoritative.proposalIds],
+          eventIds: [...latest.state.eventIds, ...authoritative.eventIds],
           artifactHashes: [...latest.state.artifactHashes, previewArtifact.contentHash],
           commands: [...latest.state.commands, "stage"],
+          commandReceipts: [
+            ...latest.state.commandReceipts,
+            commandReceipt("stage", [
+              "--approved-by",
+              approvedBy,
+              ...selectedCandidateIds.flatMap((candidateId) => ["--candidate", candidateId])
+            ])
+          ],
           counts: {
             ...latest.state.counts,
             approvedStagingCandidates: selectedCandidateIds.length,
-            proposedAssertions: staged.proposedAssertionIds.length
+            proposedAssertions: authoritative.proposalIds.length
           }
         })
       });
@@ -1615,6 +1713,7 @@ export function createCentralFloridaIcePreviewWorkflow(
     return withPreviewWorkspace(mountResolver, async (workspace) => {
       const runtime = legacyRuntimeFactory(workspace);
       const legacyReportId = requiredStateString(latest, "legacyReportId");
+      const beforeReads = await readWorkspaceSnapshot(workspace);
       const report = requireLegacySuccess(await runtime.report({
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         legacyReportId
@@ -1623,11 +1722,15 @@ export function createCentralFloridaIcePreviewWorkflow(
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         legacyReportId
       }), "legacy quarantine");
+      const afterReads = await readWorkspaceSnapshot(workspace);
+      assertNoLedgerDelta(beforeReads.events, afterReads.events);
       const providerBlocker = {
         code: "provider-mounted-authority-unavailable",
-        message: "Repository-approved provider byte-transfer and mounted prompt authority are not available for autonomous dispatch on this code base.",
+        message: "Repository-approved provider byte-transfer and mounted prompt authority are unavailable in this preview mission.",
         resumable: true,
-        allowedNextCommand: "handoff" as const
+        resumableWithinMission: false,
+        resumeScope: "fresh-approved-provider-mission" as const,
+        repairAction: "Start a fresh approved provider mission with current mounted prompt authority and provider-byte-transfer approval."
       };
       const blockers = [providerBlocker];
       const handoff = {
@@ -1666,6 +1769,10 @@ export function createCentralFloridaIcePreviewWorkflow(
           eventIds: latest.state.eventIds,
           artifactHashes: [...latest.state.artifactHashes, artifact.contentHash],
           commands: [...latest.state.commands, "handoff"],
+          commandReceipts: [
+            ...latest.state.commandReceipts,
+            commandReceipt("handoff")
+          ],
           blockers: [...latest.state.blockers, ...blockers],
           counts: {
             ...latest.state.counts,
@@ -1745,6 +1852,10 @@ export function createCentralFloridaIcePreviewWorkflow(
           replayArtifactHash: artifact.contentHash,
           artifactHashes: [...latest.state.artifactHashes, artifact.contentHash],
           commands: [...latest.state.commands, "verify-replay"],
+          commandReceipts: [
+            ...latest.state.commandReceipts,
+            commandReceipt("verify-replay")
+          ],
           counts: {
             ...latest.state.counts,
             ledgerEvents: snapshot.events.length,
@@ -1764,6 +1875,16 @@ export function createCentralFloridaIcePreviewWorkflow(
     return withPreviewWorkspace(mountResolver, async (workspace) => {
       const snapshot = await readWorkspaceSnapshot(workspace);
       assertNoForbiddenEvents(snapshot.events);
+      const validationReceipts = runEngineeringValidations();
+      if (validationReceipts.some((receipt) =>
+        receipt.exitCode !== 0 || receipt.result !== "passed"
+      )) {
+        throw new Error("engineering validation failed; final manifest was not persisted");
+      }
+      const finalCommandReceipts = [
+        ...latest.state.commandReceipts,
+        commandReceipt("manifest")
+      ];
       const manifestValue = {
         schemaVersion: "central-fl-ice-preview-final-manifest.v1",
         code: {
@@ -1784,6 +1905,7 @@ export function createCentralFloridaIcePreviewWorkflow(
         workspaceId: CENTRAL_FL_ICE_PREVIEW.workspaceId,
         hashes: {
           candidateSetHash: latest.state.candidateSetHash,
+          scannerInventoryHash: latest.state.inventoryHash,
           candidateArtifactHash: latest.state.candidateArtifactHash,
           inspectionArtifactHash: latest.state.inspectionArtifactHash,
           reportHash: latest.state.reportHash,
@@ -1795,15 +1917,22 @@ export function createCentralFloridaIcePreviewWorkflow(
           replayArtifactHash: latest.state.replayArtifactHash
         },
         eventIds: latest.state.eventIds,
+        approvals: {
+          rawImport: {
+            eventId: latest.state.rawApprovalEventId,
+            approvedBy: latest.state.rawApprovedBy
+          },
+          staging: {
+            eventId: latest.state.stagingApprovalEventId,
+            approvedBy: latest.state.stagingApprovedBy,
+            candidateIds: latest.state.approvedStagingCandidateIds
+          }
+        },
         artifactHashes: latest.state.artifactHashes,
         counts: latest.state.counts,
         commands: [...latest.state.commands, "manifest"],
-        validationResults: [
-          "supervised-transition-chain:passed",
-          "forbidden-event-scan:passed",
-          "portable-remount-replay:passed",
-          "evidence-content-hash-readback:passed"
-        ],
+        commandReceipts: finalCommandReceipts,
+        validationReceipts,
         knownLimitations: latest.state.blockers.map((blocker) => blocker.message),
         unresolvedDefects: latest.state.blockers.map((blocker) => blocker.code),
         ledgerEventCount: snapshot.events.length
@@ -1820,7 +1949,9 @@ export function createCentralFloridaIcePreviewWorkflow(
         state: mergePreviewState(latest.state, {
           finalManifestArtifactHash: artifact.contentHash,
           artifactHashes: [...latest.state.artifactHashes, artifact.contentHash],
-          commands: [...latest.state.commands, "manifest"]
+          commands: [...latest.state.commands, "manifest"],
+          commandReceipts: finalCommandReceipts,
+          validationReceipts
         })
       });
     });
@@ -1982,6 +2113,7 @@ export function createFileCentralFloridaIcePreviewCheckpointStore(
         ...material,
         stateHash: sha256(stableJson(material))
       });
+      assertCheckpointChain([...(previous === undefined ? [] : readAll()), checkpoint]);
       mkdirSync(checkpointRoot, { recursive: true });
       const name = `${String(checkpoint.sequence).padStart(6, "0")}-${checkpoint.stateHash.replace(":", "-")}.json`;
       writeFileSync(join(checkpointRoot, name), `${stableJson(checkpoint)}\n`, {
@@ -2048,9 +2180,18 @@ function parsePreviewCheckpoint(value: unknown): CentralFloridaIcePreviewCheckpo
 }
 
 function validPreviewState(value: unknown): value is CentralFloridaIcePreviewDurableState {
-  const requiredKeys = ["codeSha", "eventIds", "artifactHashes", "commands", "counts", "blockers"];
+  const requiredKeys = [
+    "codeSha",
+    "eventIds",
+    "artifactHashes",
+    "commands",
+    "commandReceipts",
+    "counts",
+    "blockers"
+  ];
   const optionalHashKeys = [
     "candidateSetHash",
+    "inventoryHash",
     "sourceIdentityHash",
     "destinationIdentityHash",
     "candidateArtifactHash",
@@ -2064,13 +2205,29 @@ function validPreviewState(value: unknown): value is CentralFloridaIcePreviewDur
     "replayArtifactHash",
     "finalManifestArtifactHash"
   ];
-  const optionalStringKeys = ["legacyReportId"];
-  const optionalArrayKeys = ["stagingCandidateIds", "proposedAssertionIds"];
+  const optionalStringKeys = [
+    "legacyReportId",
+    "rawApprovalEventId",
+    "rawApprovedBy",
+    "stagingApprovalEventId",
+    "stagingApprovedBy"
+  ];
+  const optionalArrayKeys = [
+    "stagingCandidateIds",
+    "approvedStagingCandidateIds",
+    "proposedAssertionIds"
+  ];
   if (
     !isJsonObjectWithAllowedKeys(
       value,
       requiredKeys,
-      [...requiredKeys, ...optionalHashKeys, ...optionalStringKeys, ...optionalArrayKeys]
+      [
+        ...requiredKeys,
+        ...optionalHashKeys,
+        ...optionalStringKeys,
+        ...optionalArrayKeys,
+        "validationReceipts"
+      ]
     )
   ) {
     return false;
@@ -2094,6 +2251,11 @@ function validPreviewState(value: unknown): value is CentralFloridaIcePreviewDur
     || (state.artifactHashes as readonly string[]).some((hash) => !validHash(hash))
     || !validStringArray(state.commands, false)
     || (state.commands as readonly string[]).some((command) => !isPreviewCommand(command))
+    || !validCommandReceipts(state.commandReceipts, state.commands as readonly string[])
+    || (
+      state.validationReceipts !== undefined
+      && !validValidationReceipts(state.validationReceipts)
+    )
     || !isJsonObjectWithAllowedKeys(state.counts, [], Object.keys(state.counts as object))
     || Object.values(state.counts as Record<string, unknown>).some((count) =>
       !Number.isSafeInteger(count) || (count as number) < 0
@@ -2111,7 +2273,9 @@ function validPreviewBlocker(value: unknown): value is CentralFloridaIcePreviewB
     "code",
     "message",
     "resumable",
-    "allowedNextCommand"
+    "resumableWithinMission",
+    "resumeScope",
+    "repairAction"
   ])) {
     return false;
   }
@@ -2121,7 +2285,81 @@ function validPreviewBlocker(value: unknown): value is CentralFloridaIcePreviewB
     && typeof blocker.message === "string"
     && blocker.message.length > 0
     && blocker.resumable === true
-    && isPreviewCommand(blocker.allowedNextCommand);
+    && typeof blocker.resumableWithinMission === "boolean"
+    && (
+      blocker.resumeScope === "same-preview-mission"
+      || blocker.resumeScope === "fresh-approved-provider-mission"
+    )
+    && typeof blocker.repairAction === "string"
+    && blocker.repairAction.length > 0;
+}
+
+function validCommandReceipts(
+  value: unknown,
+  commands: readonly string[]
+): value is readonly CentralFloridaIcePreviewCommandReceipt[] {
+  if (!Array.isArray(value) || value.length !== commands.length) {
+    return false;
+  }
+  return value.every((item, index) =>
+    isExactJsonObject(item, ["command", "argv", "exitCode", "result"])
+    && (item as CentralFloridaIcePreviewCommandReceipt).command === commands[index]
+    && validStringArray((item as CentralFloridaIcePreviewCommandReceipt).argv, false)
+    && validWorkflowArgv(item as CentralFloridaIcePreviewCommandReceipt)
+    && (item as CentralFloridaIcePreviewCommandReceipt).exitCode === 0
+    && (item as CentralFloridaIcePreviewCommandReceipt).result === "passed"
+  );
+}
+
+function validValidationReceipts(
+  value: unknown
+): value is readonly CentralFloridaIcePreviewValidationReceipt[] {
+  const expectedArgv = engineeringValidationArgv();
+  return Array.isArray(value)
+    && value.length === expectedArgv.length
+    && value.every((item, index) =>
+      isExactJsonObject(item, ["argv", "exitCode", "result"])
+      && validStringArray((item as CentralFloridaIcePreviewValidationReceipt).argv, false)
+      && stableJson((item as CentralFloridaIcePreviewValidationReceipt).argv)
+        === stableJson(expectedArgv[index])
+      && Number.isSafeInteger((item as CentralFloridaIcePreviewValidationReceipt).exitCode)
+      && (item as CentralFloridaIcePreviewValidationReceipt).exitCode >= 0
+      && (
+        (
+          (item as CentralFloridaIcePreviewValidationReceipt).exitCode === 0
+          && (item as CentralFloridaIcePreviewValidationReceipt).result === "passed"
+        )
+        || (
+          (item as CentralFloridaIcePreviewValidationReceipt).exitCode !== 0
+          && (item as CentralFloridaIcePreviewValidationReceipt).result === "failed"
+        )
+      )
+    );
+}
+
+function validWorkflowArgv(receipt: CentralFloridaIcePreviewCommandReceipt): boolean {
+  const prefix = [
+    "npx",
+    "tsx",
+    "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+    receipt.command
+  ];
+  if (prefix.some((value, index) => receipt.argv[index] !== value)) {
+    return false;
+  }
+  if (receipt.command === "raw-import") {
+    return receipt.argv.length === 6
+      && receipt.argv[4] === "--approved-by";
+  }
+  if (receipt.command === "stage") {
+    return receipt.argv.length >= 8
+      && receipt.argv.length % 2 === 0
+      && receipt.argv[4] === "--approved-by"
+      && receipt.argv.slice(6).every((value, index) =>
+        index % 2 === 0 ? value === "--candidate" : !value.startsWith("--")
+      );
+  }
+  return receipt.argv.length === 4;
 }
 
 function validOptionalHash(value: unknown): boolean {
@@ -2185,6 +2423,213 @@ function assertCheckpointChain(
     ) {
       throw new Error("preview checkpoint chain is not append-only");
     }
+    if (previous === undefined) {
+      assertPhaseSpecificState(checkpoint);
+      if (
+        checkpoint.command !== "inspect"
+        || (checkpoint.phase !== "inspection-blocked"
+          && checkpoint.phase !== "raw-approval-required")
+      ) {
+        throw new Error("preview checkpoint transition has an invalid initial phase");
+      }
+      continue;
+    }
+    const nextPhases: Readonly<Record<
+      CentralFloridaIcePreviewPhase,
+      readonly CentralFloridaIcePreviewPhase[]
+    >> = {
+      "inspection-blocked": ["inspection-blocked", "raw-approval-required"],
+      "raw-approval-required": ["staging-preview-required"],
+      "staging-preview-required": ["staging-approval-required"],
+      "staging-approval-required": ["handoff-required"],
+      "handoff-required": ["replay-verification-required"],
+      "replay-verification-required": ["manifest-required"],
+      "manifest-required": ["complete"],
+      complete: []
+    };
+    if (
+      previous.allowedNextCommand !== checkpoint.command
+      || !nextPhases[previous.phase].includes(checkpoint.phase)
+    ) {
+      throw new Error("preview checkpoint transition is not an allowed adjacent phase");
+    }
+    assertPhaseSpecificState(checkpoint);
+    assertMonotonicCheckpointState(previous, checkpoint);
+  }
+}
+
+function assertPhaseSpecificState(checkpoint: CentralFloridaIcePreviewCheckpoint): void {
+  const state = checkpoint.state;
+  for (const field of [
+    "candidateSetHash",
+    "sourceIdentityHash",
+    "destinationIdentityHash"
+  ] as const) {
+    if (state[field] === undefined) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} is missing ${field}`);
+    }
+  }
+  if (checkpoint.phase === "inspection-blocked") {
+    if (state.blockers.length === 0) {
+      throw new Error("inspection-blocked checkpoint requires a blocker");
+    }
+    return;
+  }
+  for (const field of [
+    "candidateArtifactHash",
+    "inspectionArtifactHash",
+    "inventoryHash",
+    "legacyReportId",
+    "reportHash",
+    "legacyCandidateSetHash",
+    "quarantineArtifactHash"
+  ] as const) {
+    if (state[field] === undefined) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} is missing ${field}`);
+    }
+  }
+  if (
+    checkpoint.phase === "staging-preview-required"
+    || checkpoint.phase === "staging-approval-required"
+    || checkpoint.phase === "handoff-required"
+    || checkpoint.phase === "replay-verification-required"
+    || checkpoint.phase === "manifest-required"
+    || checkpoint.phase === "complete"
+  ) {
+    if (
+      state.rawApprovalEventId === undefined
+      || state.rawApprovedBy === undefined
+    ) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} lacks Gate 1 approval`);
+    }
+    const rawReceipt = state.commandReceipts.find((receipt) =>
+      receipt.command === "raw-import"
+    );
+    if (rawReceipt?.argv[5] !== state.rawApprovedBy) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} has a mismatched Gate 1 receipt`);
+    }
+  }
+  if (
+    checkpoint.phase === "staging-approval-required"
+    || checkpoint.phase === "handoff-required"
+    || checkpoint.phase === "replay-verification-required"
+    || checkpoint.phase === "manifest-required"
+    || checkpoint.phase === "complete"
+  ) {
+    if (
+      state.dossierArtifactHash === undefined
+      || state.stagingPreviewArtifactHash === undefined
+      || state.stagingCandidateIds === undefined
+    ) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} lacks Gate 2 material`);
+    }
+  }
+  if (
+    checkpoint.phase === "handoff-required"
+    || checkpoint.phase === "replay-verification-required"
+    || checkpoint.phase === "manifest-required"
+    || checkpoint.phase === "complete"
+  ) {
+    if (
+      state.stagingApprovalEventId === undefined
+      || state.stagingApprovedBy === undefined
+      || state.approvedStagingCandidateIds === undefined
+      || state.proposedAssertionIds === undefined
+    ) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} lacks Gate 2 approval or proposal material`);
+    }
+    const stagingReceipt = state.commandReceipts.find((receipt) =>
+      receipt.command === "stage"
+    );
+    if (
+      stagingReceipt?.argv[5] !== state.stagingApprovedBy
+      || stableJson(stagingReceipt.argv.slice(7).filter((_, index) => index % 2 === 0))
+        !== stableJson(state.approvedStagingCandidateIds)
+    ) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} has a mismatched Gate 2 receipt`);
+    }
+  }
+  if (
+    checkpoint.phase === "replay-verification-required"
+    || checkpoint.phase === "manifest-required"
+    || checkpoint.phase === "complete"
+  ) {
+    if (state.handoffArtifactHash === undefined) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} lacks handoff material`);
+    }
+  }
+  if (
+    checkpoint.phase === "manifest-required"
+    || checkpoint.phase === "complete"
+  ) {
+    if (state.replayArtifactHash === undefined) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} lacks replay material`);
+    }
+  }
+  if (
+    checkpoint.phase === "complete"
+    && (
+      state.finalManifestArtifactHash === undefined
+      || state.validationReceipts === undefined
+      || state.validationReceipts.some((receipt) => receipt.result !== "passed")
+    )
+  ) {
+    throw new Error("complete preview checkpoint lacks the final manifest or validation receipts");
+  }
+}
+
+function assertMonotonicCheckpointState(
+  previous: CentralFloridaIcePreviewCheckpoint,
+  current: CentralFloridaIcePreviewCheckpoint
+): void {
+  for (const field of [
+    "codeSha",
+    "candidateSetHash",
+    "sourceIdentityHash",
+    "destinationIdentityHash"
+  ] as const) {
+    if (previous.state[field] !== current.state[field]) {
+      throw new Error(`preview checkpoint immutable authority ${field} changed`);
+    }
+  }
+  if (
+    previous.state.inventoryHash !== undefined
+    && previous.state.inventoryHash !== current.state.inventoryHash
+  ) {
+    throw new Error("preview checkpoint immutable authority inventoryHash changed");
+  }
+  for (const field of ["eventIds", "artifactHashes", "commands", "commandReceipts"] as const) {
+    const prior = previous.state[field];
+    const next = current.state[field];
+    if (
+      next.length < prior.length
+      || prior.some((value, index) => stableJson(next[index]) !== stableJson(value))
+    ) {
+      throw new Error(`preview checkpoint ${field} provenance is not monotonic`);
+    }
+  }
+  if (current.state.commands.at(-1) !== current.command) {
+    throw new Error("preview checkpoint command receipt does not match its transition");
+  }
+  for (const field of [
+    "rawApprovalEventId",
+    "rawApprovedBy",
+    "stagingApprovalEventId",
+    "stagingApprovedBy"
+  ] as const) {
+    if (
+      previous.state[field] !== undefined
+      && previous.state[field] !== current.state[field]
+    ) {
+      throw new Error(`preview checkpoint approval provenance ${field} changed`);
+    }
+  }
+  if (
+    previous.state.approvedStagingCandidateIds !== undefined
+    && stableJson(previous.state.approvedStagingCandidateIds)
+      !== stableJson(current.state.approvedStagingCandidateIds)
+  ) {
+    throw new Error("preview checkpoint approved staging candidates changed");
   }
 }
 
@@ -2252,12 +2697,35 @@ function stablePreviewState(
     ...(state.stagingCandidateIds === undefined
       ? {}
       : { stagingCandidateIds: Object.freeze([...state.stagingCandidateIds]) }),
+    ...(state.approvedStagingCandidateIds === undefined
+      ? {}
+      : {
+          approvedStagingCandidateIds: Object.freeze([
+            ...state.approvedStagingCandidateIds
+          ])
+        }),
     ...(state.proposedAssertionIds === undefined
       ? {}
       : { proposedAssertionIds: Object.freeze([...state.proposedAssertionIds]) }),
     eventIds: Object.freeze([...state.eventIds]),
     artifactHashes: Object.freeze([...state.artifactHashes]),
     commands: Object.freeze([...state.commands]),
+    commandReceipts: Object.freeze(state.commandReceipts.map((receipt) =>
+      Object.freeze({
+        ...receipt,
+        argv: Object.freeze([...receipt.argv])
+      })
+    )),
+    ...(state.validationReceipts === undefined
+      ? {}
+      : {
+          validationReceipts: Object.freeze(state.validationReceipts.map((receipt) =>
+            Object.freeze({
+              ...receipt,
+              argv: Object.freeze([...receipt.argv])
+            })
+          ))
+        }),
     counts: Object.freeze({ ...state.counts }),
     blockers: Object.freeze(state.blockers.map((blocker) => Object.freeze({ ...blocker })))
   });
@@ -2268,6 +2736,67 @@ function mergePreviewState(
   patch: Partial<CentralFloridaIcePreviewDurableState>
 ): CentralFloridaIcePreviewDurableState {
   return stablePreviewState({ ...state, ...patch });
+}
+
+function commandReceipt(
+  command: CentralFloridaIcePreviewCommand,
+  options: readonly string[] = []
+): CentralFloridaIcePreviewCommandReceipt {
+  return Object.freeze({
+    command,
+    argv: Object.freeze([
+      "npx",
+      "tsx",
+      "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+      command,
+      ...options
+    ]),
+    exitCode: 0,
+    result: "passed"
+  });
+}
+
+function runCentralFloridaIceEngineeringValidations(
+): readonly CentralFloridaIcePreviewValidationReceipt[] {
+  const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+  return Object.freeze(engineeringValidationArgv().map((command) => {
+    const program = command[0]!;
+    const argv = command.slice(1);
+    const completed = spawnSync(program, argv, {
+      cwd: repositoryRoot,
+      env: { ...process.env, TMPDIR: "/dev/shm" },
+      shell: false,
+      stdio: "ignore"
+    });
+    const exitCode = completed.status ?? 1;
+    return Object.freeze({
+      argv: Object.freeze([program, ...argv]),
+      exitCode,
+      result: exitCode === 0 ? "passed" as const : "failed" as const
+    });
+  }));
+}
+
+function engineeringValidationArgv(): readonly (readonly string[])[] {
+  return [
+    ["npm", "run", "typecheck"],
+    [
+      "npm",
+      "test",
+      "--",
+      "packages/ingestion/test/central-fl-ice-preview.test.ts",
+      "packages/ingestion/test/legacy-inspector.test.ts",
+      "packages/ingestion/test/legacy-report.test.ts",
+      "packages/ingestion/test/legacy-runtime.test.ts",
+      "packages/ingestion/test/legacy-staging.test.ts",
+      "packages/ontology-bootstrap/test/dossier-builder.test.ts",
+      "packages/ontology-bootstrap/test/fake-runtime.test.ts",
+      "packages/agent/test/evidence-triage-workflow.test.ts",
+      "packages/agent/test/investigation-planner-workflow.test.ts"
+    ],
+    ["npm", "run", "factory:check"],
+    ["git", "diff", "--check"]
+  ] as const;
 }
 
 function requireTransition(
@@ -2345,6 +2874,185 @@ async function putStableArtifact(
   return workspace.derivativeStore.put(Buffer.from(stableJson(value), "utf8"));
 }
 
+function stagingPreviewArtifactValue(preview: LegacyStagingPreviewData) {
+  return {
+    schemaVersion: "central-fl-ice-staging-preview.v1",
+    legacyReportId: preview.legacyReportId,
+    reportHash: preview.reportHash,
+    candidateSetHash: preview.candidateSetHash,
+    selectedCandidateIds: preview.candidates
+      .map((candidate) => candidate.candidateId)
+      .sort(compareCodeUnits),
+    candidates: preview.candidates,
+    quarantineEntries: preview.quarantineEntries
+  };
+}
+
+async function assertStoredStagingPreview(
+  workspace: MountedWorkspace,
+  checkpoint: CentralFloridaIcePreviewCheckpoint,
+  preview: LegacyStagingPreviewData
+): Promise<void> {
+  const hash = checkpoint.state.stagingPreviewArtifactHash;
+  if (hash === undefined) {
+    throw new Error("stored staging preview is absent from the supervised gate");
+  }
+  const stored = await workspace.derivativeStore.get(hash);
+  const expected = Buffer.from(stableJson(stagingPreviewArtifactValue(preview)), "utf8");
+  if (!stored.equals(expected)) {
+    throw new Error("stored staging preview does not match exact rederived Gate 2 material");
+  }
+}
+
+function assertNoLedgerDelta(
+  before: readonly KnowledgeEvent[],
+  after: readonly KnowledgeEvent[]
+): void {
+  if (stableJson(before) !== stableJson(after)) {
+    throw new Error("nominal preview read mutated the ledger");
+  }
+}
+
+function expectedScannerInventoryHash(
+  inspection: CentralFloridaIceCandidateInspection
+): `sha256:${string}` {
+  return sha256(JSON.stringify(inspection.candidates.map((candidate) => ({
+    sourcePath: candidate.sourcePath,
+    contentHash: candidate.contentHash,
+    sizeBytes: candidate.sizeBytes
+  }))));
+}
+
+function assertRecoverableInspectionLedger(
+  snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
+  inspection: CentralFloridaIceCandidateInspection
+): void {
+  const sourceEvents = snapshot.events.filter((event) =>
+    event.type === "ingestion.source.registered"
+    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+  );
+  const scanStarts = snapshot.events.filter((event) =>
+    event.type === "ingestion.scan.started"
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+  );
+  const scanCompletions = snapshot.events.filter((event) =>
+    event.type === "ingestion.scan.completed"
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+  );
+  const reports = snapshot.events.filter((event) =>
+    event.type === "legacy.import.report.generated"
+    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+  );
+  const occurrences = snapshot.events.filter((event) =>
+    event.type === "ingestion.occurrence.observed"
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+  );
+  const allowed = new Set([
+    "ingestion.source.registered",
+    "ingestion.scan.started",
+    "ingestion.occurrence.observed",
+    "ingestion.scan.completed",
+    "legacy.import.report.generated",
+    "diagnostic.recorded"
+  ]);
+  if (
+    snapshot.events.length === 0
+    || snapshot.events.some((event) => !allowed.has(event.type))
+    || sourceEvents.length !== 1
+    || scanStarts.length !== 1
+    || scanCompletions.length !== 1
+    || reports.length !== 1
+    || occurrences.length !== inspection.candidates.length
+  ) {
+    throw new Error("existing destination lacks a complete exact preview inspection ledger");
+  }
+  const source = sourceEvents[0]!;
+  const start = scanStarts[0]!;
+  const completion = scanCompletions[0]!;
+  if (
+    source.type !== "ingestion.source.registered"
+    || start.type !== "ingestion.scan.started"
+    || completion.type !== "ingestion.scan.completed"
+    || stableJson(source.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || stableJson(start.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || stableJson(completion.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || source.payload.mode !== "read-only"
+    || stableJson(source.payload.adapter) !== stableJson({
+      name: "local-filesystem",
+      version: "0.1.0"
+    })
+    || source.payload.rootUri !== pathToFileURL(inspection.sourceIdentity.rootRealpath).href
+    || source.payload.workspaceUri !== `cestus-workspace://${CENTRAL_FL_ICE_PREVIEW.workspaceId}`
+    || start.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    || start.payload.hashPolicy !== "sha256-dry-run"
+    || completion.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    || completion.payload.inventoryHash !== expectedScannerInventoryHash(inspection)
+  ) {
+    throw new Error("existing destination inspection authority conflicts with the preview");
+  }
+  const actualOccurrences = occurrences.flatMap((event) =>
+    event.type === "ingestion.occurrence.observed"
+      ? [{
+          occurrenceId: event.payload.occurrenceId,
+          sourceCollectionId: event.payload.sourceCollectionId,
+          scanBatchId: event.payload.scanBatchId,
+          sourcePath: event.payload.sourcePath,
+          contentHash: event.payload.contentHash,
+          sizeBytes: event.payload.sizeBytes,
+          status: event.payload.status
+        }]
+      : []
+  ).sort((left, right) => compareCodeUnits(left.sourcePath, right.sourcePath));
+  const expectedOccurrences = inspection.candidates.map((candidate) => ({
+    occurrenceId: candidate.occurrenceId,
+    sourceCollectionId: candidate.sourceCollectionId,
+    scanBatchId: candidate.scanBatchId,
+    sourcePath: candidate.sourcePath,
+    contentHash: candidate.contentHash,
+    sizeBytes: candidate.sizeBytes,
+    status: candidate.scanStatus
+  }));
+  if (stableJson(actualOccurrences) !== stableJson(expectedOccurrences)) {
+    throw new Error("existing destination occurrence inventory conflicts with the preview");
+  }
+}
+
+function assertAuthoritativeInspectionLedger(
+  snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
+  inspection: CentralFloridaIceCandidateInspection,
+  report: LegacyReportData
+): {
+  readonly inventoryHash: `sha256:${string}`;
+  readonly eventIds: readonly string[];
+} {
+  assertRecoverableInspectionLedger(snapshot, inspection);
+  const reportEvents = snapshot.events.filter((event) =>
+    event.type === "legacy.import.report.generated"
+    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+  );
+  const reportEvent = reportEvents[0]!;
+  const completion = snapshot.events.find((event) =>
+    event.type === "ingestion.scan.completed"
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+  );
+  if (
+    reportEvent?.type !== "legacy.import.report.generated"
+    || completion?.type !== "ingestion.scan.completed"
+    || stableJson(reportEvent.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || reportEvent.payload.legacyReportId !== report.legacyReportId
+    || reportEvent.payload.reportHash !== report.reportHash
+    || reportEvent.payload.candidateSetHash !== report.candidateSetHash
+  ) {
+    throw new Error("authoritative inspection report ledger binding is invalid");
+  }
+  return {
+    inventoryHash: completion.payload.inventoryHash as `sha256:${string}`,
+    eventIds: snapshot.events.map((event) => event.id)
+  };
+}
+
 function assertReportMatchesInspection(
   report: LegacyMigrationReport,
   inspection: CentralFloridaIceCandidateInspection
@@ -2355,7 +3063,10 @@ function assertReportMatchesInspection(
       sourcePath: file.sourcePath,
       contentHash: file.contentHash,
       mediaType: file.mediaType,
-      sizeBytes: file.sizeBytes
+      sizeBytes: file.sizeBytes,
+      sourceCollectionId: file.sourceCollectionId,
+      scanBatchId: file.scanBatchId,
+      status: file.status
     }))
     .sort((left, right) => compareCodeUnits(left.sourcePath, right.sourcePath));
   const candidates = inspection.candidates.map((candidate) => ({
@@ -2363,7 +3074,10 @@ function assertReportMatchesInspection(
     sourcePath: candidate.sourcePath,
     contentHash: candidate.contentHash,
     mediaType: candidate.mediaType,
-    sizeBytes: candidate.sizeBytes
+    sizeBytes: candidate.sizeBytes,
+    sourceCollectionId: candidate.sourceCollectionId,
+    scanBatchId: candidate.scanBatchId,
+    status: candidate.scanStatus
   }));
   if (stableJson(reportFiles) !== stableJson(candidates)) {
     throw new Error("legacy migration report does not bind the exact preflight candidate bytes");
@@ -2456,6 +3170,102 @@ function assertEvidenceBindings(
   }
 }
 
+function assertAuthoritativeRawImportLedger(
+  snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
+  checkpoint: CentralFloridaIcePreviewCheckpoint,
+  approvedBy: string
+): {
+  readonly approvalEventId: string;
+  readonly eventIds: readonly string[];
+  readonly totals: {
+    readonly evidenceCreated: number;
+    readonly occurrencesLinked: number;
+    readonly duplicatesReused: number;
+    readonly skipped: number;
+  };
+} {
+  const approvals = snapshot.events.filter((event) =>
+    event.type === "ingestion.import.approved"
+    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+    && event.payload.importBatchId === CENTRAL_FL_ICE_PREVIEW.importBatchId
+  );
+  if (approvals.length !== 1) {
+    throw new Error("authoritative raw approval ledger readback is not unique");
+  }
+  const approval = approvals[0]!;
+  if (
+    approval.type !== "ingestion.import.approved"
+    || stableJson(approval.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    || approval.payload.approvedBy !== approvedBy
+  ) {
+    throw new Error("authoritative raw approval does not match preview agent and human approval");
+  }
+  const completions = snapshot.events.filter((event) =>
+    event.type === "ingestion.import.completed"
+    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    && event.payload.scanBatchId === CENTRAL_FL_ICE_PREVIEW.scanBatchId
+    && event.payload.importBatchId === CENTRAL_FL_ICE_PREVIEW.importBatchId
+  );
+  if (completions.length !== 1) {
+    throw new Error("authoritative raw import completion ledger readback is not unique");
+  }
+  const completion = completions[0]!;
+  if (
+    completion.type !== "ingestion.import.completed"
+    || completion.context.causationId !== approval.id
+  ) {
+    throw new Error("authoritative raw import completion lacks approval causation");
+  }
+  const links = snapshot.events.filter((event) =>
+    event.type === "ingestion.evidence.linked"
+    && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    && event.payload.importBatchId === CENTRAL_FL_ICE_PREVIEW.importBatchId
+  );
+  if (
+    links.length === 0
+    || links.some((event) =>
+      event.type !== "ingestion.evidence.linked"
+      || event.context.causationId !== approval.id
+    )
+  ) {
+    throw new Error("authoritative evidence links lack raw approval causation");
+  }
+  const linkedEvidenceIds = new Set(links.flatMap((event) =>
+    event.type === "ingestion.evidence.linked" ? [event.payload.evidenceId] : []
+  ));
+  const evidenceEvents = snapshot.events.filter((event) =>
+    event.type === "evidence.ingested" && linkedEvidenceIds.has(event.payload.evidenceId)
+  );
+  if (
+    evidenceEvents.length !== linkedEvidenceIds.size
+    || evidenceEvents.some((event) =>
+      event.type !== "evidence.ingested"
+      || stableJson(event.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
+    )
+  ) {
+    throw new Error("authoritative evidence ingestion lacks exact preview-agent provenance");
+  }
+  const priorIds = new Set(checkpoint.state.eventIds);
+  const phaseEvents = snapshot.events.filter((event) => !priorIds.has(event.id));
+  const allowed = new Set([
+    "ingestion.import.approved",
+    "evidence.ingested",
+    "ingestion.evidence.linked",
+    "ingestion.import.completed",
+    "ingestion.parse.job.created",
+    "diagnostic.recorded"
+  ]);
+  if (phaseEvents.some((event) => !allowed.has(event.type))) {
+    throw new Error("raw import reconciliation found conflicting preexisting effects");
+  }
+  return {
+    approvalEventId: approval.id,
+    eventIds: phaseEvents.map((event) => event.id),
+    totals: { ...completion.payload.totals }
+  };
+}
+
 function dossierEvidenceLinks(
   snapshot: CentralFloridaIcePreviewWorkspaceSnapshot
 ): {
@@ -2493,11 +3303,130 @@ function assertStageSelectionBindings(
     if (
       candidate === undefined
       || reportCandidate === undefined
-      || candidate.evidenceContentHash !== reportCandidate.evidenceContentHash
+      || stableJson({
+        candidateId: candidate.candidateId,
+        observationId: candidate.observationId,
+        evidenceContentHash: candidate.evidenceContentHash,
+        sourcePath: candidate.sourcePath,
+        predicate: candidate.predicate,
+        object: candidate.object,
+        confidence: candidate.confidence,
+        ...(candidate.subjectRef === undefined ? {} : { subjectRef: candidate.subjectRef })
+      }) !== stableJson(reportCandidate)
     ) {
       throw new Error("staging selection lacks exact evidence-bound report provenance");
     }
   }
+}
+
+function assertAuthoritativeStagingLedger(
+  snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
+  checkpoint: CentralFloridaIcePreviewCheckpoint,
+  approvedBy: string,
+  selectedCandidateIds: readonly string[],
+  preview: LegacyStagingPreviewData
+): {
+  readonly approvalEventId: string;
+  readonly eventIds: readonly string[];
+  readonly proposalEventIds: readonly string[];
+  readonly proposalIds: readonly string[];
+} {
+  const approvals = snapshot.events.filter((event) =>
+    event.type === "legacy.ontology.staging.approved"
+    && event.payload.stagingBatchId === CENTRAL_FL_ICE_PREVIEW.stagingBatchId
+  );
+  if (approvals.length !== 1) {
+    throw new Error("authoritative staging approval ledger readback is not unique");
+  }
+  const approval = approvals[0]!;
+  if (
+    approval.type !== "legacy.ontology.staging.approved"
+    || approval.context.actor.kind !== "human"
+    || approval.context.actor.id !== approvedBy
+    || approval.payload.approvedBy !== approvedBy
+    || approval.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
+    || approval.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
+    || approval.payload.legacyReportId !== preview.legacyReportId
+    || approval.payload.reportHash !== preview.reportHash
+    || approval.payload.candidateSetHash !== preview.candidateSetHash
+    || stableJson([...approval.payload.approvedAssertionCandidateIds].sort(compareCodeUnits))
+      !== stableJson([...selectedCandidateIds].sort(compareCodeUnits))
+  ) {
+    throw new Error("authoritative staging approval does not match exact Gate 2 authority");
+  }
+  const candidateById = new Map(preview.candidates.map((candidate) => [
+    candidate.candidateId,
+    candidate
+  ]));
+  const proposals = snapshot.events.filter((event) => {
+    if (event.type !== "assertion.proposed") {
+      return false;
+    }
+    return selectedCandidateIds.some((candidateId) =>
+      event.payload.assertionId === stableLegacyAssertionId({
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+        stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+        candidateSetHash: preview.candidateSetHash
+      }, candidateId)
+    );
+  });
+  if (proposals.length !== selectedCandidateIds.length) {
+    throw new Error("authoritative staged proposal count does not match approved candidates");
+  }
+  for (const candidateId of selectedCandidateIds) {
+    const candidate = candidateById.get(candidateId);
+    const assertionId = stableLegacyAssertionId({
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+      stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+      candidateSetHash: preview.candidateSetHash
+    }, candidateId);
+    const proposal = proposals.find((event) =>
+      event.type === "assertion.proposed" && event.payload.assertionId === assertionId
+    );
+    const evidenceEvent = snapshot.events.find((event) =>
+      event.type === "evidence.ingested"
+      && event.payload.evidenceId === candidate?.evidenceId
+      && event.payload.contentHash === candidate?.evidenceContentHash
+    );
+    if (
+      candidate === undefined
+      || proposal?.type !== "assertion.proposed"
+      || evidenceEvent?.type !== "evidence.ingested"
+      || proposal.context.actor.kind !== "human"
+      || proposal.context.actor.id !== approvedBy
+      || proposal.context.causationId !== evidenceEvent.id
+      || stableJson(proposal.payload) !== stableJson({
+        assertionId,
+        evidenceId: candidate.evidenceId,
+        ...(candidate.subjectRef === undefined ? {} : { subjectRef: candidate.subjectRef }),
+        predicate: candidate.predicate,
+        object: candidate.object,
+        confidence: candidate.confidence,
+        reviewState: "proposed"
+      })
+    ) {
+      throw new Error("authoritative proposal payload does not match approved candidate material");
+    }
+  }
+  const priorIds = new Set(checkpoint.state.eventIds);
+  const phaseEvents = snapshot.events.filter((event) => !priorIds.has(event.id));
+  if (phaseEvents.some((event) =>
+    event.type !== "legacy.ontology.staging.approved"
+    && event.type !== "assertion.proposed"
+    && event.type !== "diagnostic.recorded"
+  )) {
+    throw new Error("staging reconciliation found conflicting preexisting effects");
+  }
+  return {
+    approvalEventId: approval.id,
+    eventIds: phaseEvents.map((event) => event.id),
+    proposalEventIds: proposals.map((event) => event.id),
+    proposalIds: proposals.flatMap((event) =>
+      event.type === "assertion.proposed" ? [event.payload.assertionId] : []
+    ).sort(compareCodeUnits)
+  };
 }
 
 function assertProposedAssertionsEvidenceBound(

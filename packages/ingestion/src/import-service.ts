@@ -83,10 +83,32 @@ export class IngestionImportService {
   }
 
   async approveImport(input: ApproveImportInput): Promise<KnowledgeEventOf<"ingestion.import.approved">> {
+    const streamId = this.importStreamId(input);
+    const existingEvents = await this.dependencies.ledger.readStream(streamId);
+    const existingApproval = existingEvents.find(
+      (event): event is KnowledgeEventOf<"ingestion.import.approved"> =>
+        event.type === "ingestion.import.approved"
+    );
+    if (existingApproval !== undefined) {
+      if (
+        existingApproval.payload.importBatchId !== input.importBatchId
+        || existingApproval.payload.scanBatchId !== input.scanBatchId
+        || existingApproval.payload.sourceCollectionId !== input.sourceCollectionId
+        || existingApproval.payload.approvedBy !== input.approvedBy
+        || JSON.stringify(existingApproval.context.actor)
+          !== JSON.stringify(this.dependencies.actor)
+      ) {
+        throw new Error(`Import approval ${input.importBatchId} conflicts with exact retry material`);
+      }
+      return existingApproval;
+    }
+    if (existingEvents.length > 0) {
+      throw new Error(`Import approval ${input.importBatchId} conflicts with existing stream state`);
+    }
     const event: AppendableKnowledgeEvent<"ingestion.import.approved"> = {
       type: "ingestion.import.approved",
       version: 1,
-      streamId: this.importStreamId(input),
+      streamId,
       context: this.context(`corr_${input.importBatchId}`),
       payload: {
         importBatchId: input.importBatchId,

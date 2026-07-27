@@ -89,6 +89,50 @@ describe("LocalFilesystemScanner", () => {
     expect(second.inventoryHash).toBe(first.inventoryHash);
   });
 
+  it("resumes an exact partial scan-event prefix and appends only the missing suffix", async () => {
+    const baseLedger = new InMemoryEventLedger();
+    let appendAttempts = 0;
+    let injectFailure = true;
+    const ledger = {
+      readAll: () => baseLedger.readAll(),
+      readStream: (streamId: string) => baseLedger.readStream(streamId),
+      async append(...args: Parameters<InMemoryEventLedger["append"]>) {
+        appendAttempts += 1;
+        if (injectFailure && appendAttempts === 3) {
+          throw new Error("injected scan crash");
+        }
+        return baseLedger.append(...args);
+      }
+    };
+    const scanner = new LocalFilesystemScanner({
+      ledger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+    const command = {
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      rootDir: root
+    };
+
+    await expect(scanner.scan(command)).rejects.toThrow("injected scan crash");
+    const prefixIds = (await baseLedger.readAll()).map((event) => event.id);
+    expect(prefixIds).toHaveLength(2);
+    injectFailure = false;
+
+    const result = await scanner.scan(command);
+
+    expect(result.totals.observedFiles).toBe(3);
+    const finalEvents = await baseLedger.readAll();
+    expect(finalEvents.slice(0, prefixIds.length).map((event) => event.id)).toEqual(prefixIds);
+    expect(finalEvents.map((event) => event.type)).toEqual([
+      "ingestion.scan.started",
+      "ingestion.occurrence.observed",
+      "ingestion.occurrence.observed",
+      "ingestion.occurrence.observed",
+      "ingestion.scan.completed"
+    ]);
+  });
+
   it("uses stable occurrence IDs for the same batch, path, and hash in fresh ledgers", async () => {
     const firstLedger = new InMemoryEventLedger();
     const secondLedger = new InMemoryEventLedger();
