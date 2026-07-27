@@ -2579,6 +2579,13 @@ function residentFactoryIssuerAnalysis(
   const staticFalsy = 2;
   const staticNullish = 4;
   const staticUnknown = staticTruthy | staticFalsy | staticNullish;
+  const indeterminateBindingInitializer = Symbol(
+    "indeterminateBindingInitializer"
+  );
+  type BindingInitializer =
+    | ts.Expression
+    | typeof indeterminateBindingInitializer
+    | undefined;
   const registrarImportSymbols = new Set<ts.Symbol>();
   const registrarDeclarations: ts.FunctionDeclaration[] = [];
   const exactImports: Array<{
@@ -2855,11 +2862,12 @@ function residentFactoryIssuerAnalysis(
 
   function bindingNameResolvesToRegistrar(
     name: ts.BindingName,
-    initializer: ts.Expression | undefined,
+    initializer: BindingInitializer,
     resolving: Set<ts.Symbol>
   ): boolean {
     if (ts.isIdentifier(name)) {
       return initializer !== undefined &&
+        initializer !== indeterminateBindingInitializer &&
         expressionResolvesToRegistrar(initializer, resolving);
     }
     return name.elements.some((element) =>
@@ -2875,7 +2883,7 @@ function residentFactoryIssuerAnalysis(
   function bindingElementResolvesToRegistrar(
     element: ts.BindingElement,
     resolving: Set<ts.Symbol>,
-    containingInitializer = bindingPatternInitializer(
+    containingInitializer: BindingInitializer = bindingPatternInitializer(
       element.parent,
       resolving
     )
@@ -2885,6 +2893,21 @@ function residentFactoryIssuerAnalysis(
       containingInitializer,
       resolving
     );
+    if (selected === indeterminateBindingInitializer) {
+      return bindingNameResolvesToRegistrar(
+        element.name,
+        indeterminateBindingInitializer,
+        new Set(resolving)
+      ) ||
+        (
+          element.initializer !== undefined &&
+          bindingNameResolvesToRegistrar(
+            element.name,
+            element.initializer,
+            new Set(resolving)
+          )
+        );
+    }
     const usesDefault = selected === undefined ||
       expressionIsDefinitelyUndefined(selected, new Set(resolving));
     if (
@@ -2895,6 +2918,7 @@ function residentFactoryIssuerAnalysis(
       return true;
     }
     return usesDefault &&
+      element.initializer !== undefined &&
       bindingNameResolvesToRegistrar(
         element.name,
         element.initializer,
@@ -2905,7 +2929,7 @@ function residentFactoryIssuerAnalysis(
   function bindingPatternInitializer(
     pattern: ts.ArrayBindingPattern | ts.ObjectBindingPattern,
     resolving: Set<ts.Symbol>
-  ): ts.Expression | undefined {
+  ): BindingInitializer {
     const parent = pattern.parent;
     if (ts.isVariableDeclaration(parent)) return parent.initializer;
     if (ts.isBindingElement(parent)) {
@@ -2920,9 +2944,12 @@ function residentFactoryIssuerAnalysis(
 
   function selectedBindingInitializer(
     element: ts.BindingElement,
-    initializer: ts.Expression | undefined,
+    initializer: BindingInitializer,
     resolving: Set<ts.Symbol>
-  ): ts.Expression | undefined {
+  ): BindingInitializer {
+    if (initializer === indeterminateBindingInitializer) {
+      return indeterminateBindingInitializer;
+    }
     if (initializer === undefined) return undefined;
     let value = unwrapRegistrarExpression(initializer);
     const carrierPath = new Set(resolving);
@@ -2974,7 +3001,9 @@ function residentFactoryIssuerAnalysis(
         ? selected
         : undefined;
     }
-    return undefined;
+    return expressionIsDefinitelyUndefined(value, new Set(resolving))
+      ? undefined
+      : indeterminateBindingInitializer;
   }
 
   function bindingPropertyName(
@@ -3857,6 +3886,44 @@ describe("wake supervisor runtime import boundary", () => {
          ]] = await nestedArrayThenable;`
       ],
       [
+        "exported awaited nested default with outer default",
+        `${exactComposition}
+         const nestedOuterDefaultThenable = {
+           then(
+             resolve: (
+               value: { a: { exposedRegistrar: undefined } }
+             ) => unknown
+           ) {
+             resolve({ a: { exposedRegistrar: undefined } });
+           }
+         };
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           } = { exposedRegistrar: Object.freeze({}) }
+         } = await nestedOuterDefaultThenable;`
+      ],
+      [
+        "exported awaited nested outer-default result",
+        `${exactComposition}
+         const nestedDefaultResultThenable = {
+           then(
+             resolve: (
+               value: { a: { exposedRegistrar: object } }
+             ) => unknown
+           ) {
+             resolve({ a: { exposedRegistrar: Object.freeze({}) } });
+           }
+         };
+         export const {
+           a: { exposedRegistrar } = {
+             exposedRegistrar:
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         } = await nestedDefaultResultThenable;`
+      ],
+      [
         "exported direct nested-object default parity",
         `${exactComposition}
          export const {
@@ -3887,6 +3954,46 @@ describe("wake supervisor runtime import boundary", () => {
         analyzeControl(source).violations,
         name
       ).toContain(`${residentFactoryCompositionPath}:registrar-reexport`);
+    }
+    for (const [name, source] of [
+      [
+        "missing direct outer object does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         } = {};`
+      ],
+      [
+        "undefined direct outer object does not evaluate nested default",
+        `${exactComposition}
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         } = { a: undefined };`
+      ],
+      [
+        "missing direct outer array does not evaluate nested default",
+        `${exactComposition}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [];`
+      ],
+      [
+        "undefined direct outer array does not evaluate nested default",
+        `${exactComposition}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [undefined];`
+      ]
+    ] as const) {
+      expect.soft(analyzeControl(source).violations, name).toEqual([]);
     }
     expect(analyzeControl(`${exactComposition}
       const unrelatedLocalExport = Object.freeze({});
