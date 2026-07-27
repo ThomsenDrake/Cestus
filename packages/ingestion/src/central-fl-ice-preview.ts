@@ -12,7 +12,11 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import type {
+  ActorRef,
+  KnowledgeEvent,
+  KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import { buildOntologyBootstrapDossier } from "../../ontology-bootstrap/src/dossier-builder.js";
 import {
   createStagingApprovalPreview,
@@ -36,6 +40,7 @@ import { buildLegacyImportProjection } from "./legacy-projection.js";
 import { stableLegacyAssertionId } from "./legacy-staging.js";
 import {
   legacyReportStreamId,
+  readCanonicalStagedLegacyReport,
   sha256,
   stableJson,
   type LegacyMigrationReport
@@ -1303,7 +1308,8 @@ export function createCentralFloridaIcePreviewWorkflow(
         const runtime = legacyRuntimeFactory(workspace);
         const before = await readWorkspaceSnapshot(workspace);
         if (recoveringWithoutCheckpoint) {
-          assertRecoverableInspectionLedger(before, inspection);
+          const recoveredReport = await readRecoverableInspectionReport(workspace, before);
+          assertRecoverableInspectionLedger(before, inspection, recoveredReport);
           mayPersistCheckpoint = true;
         }
         const inspected = await runtime.inspect({
@@ -2961,96 +2967,240 @@ function expectedScannerInventoryHash(
   }))));
 }
 
+type CanonicalEventMaterial = Readonly<{
+  type: KnowledgeEvent["type"];
+  version: number;
+  streamId: string;
+  sequence: number;
+  context: Readonly<{
+    actor: KnowledgeEvent["context"]["actor"];
+    causationId?: string;
+    correlationId: string;
+    coreVersion: string;
+    packVersions: Readonly<Record<string, string>>;
+  }>;
+  payload: unknown;
+}>;
+
+const nondeterministicPayloadTimestampKeys: Readonly<
+Partial<Record<KnowledgeEvent["type"], readonly string[]>>
+> = Object.freeze({
+  "ingestion.scan.started": Object.freeze(["startedAt"]),
+  "ingestion.occurrence.observed": Object.freeze(["observedAt"]),
+  "ingestion.scan.completed": Object.freeze(["completedAt"]),
+  "ingestion.import.approved": Object.freeze(["approvedAt"]),
+  "ingestion.import.completed": Object.freeze(["completedAt"]),
+  "legacy.ontology.staging.approved": Object.freeze(["approvedAt"])
+});
+
+function canonicalCommittedEventMaterial(event: KnowledgeEvent): CanonicalEventMaterial {
+  const payload = structuredClone(event.payload) as Record<string, unknown>;
+  for (const key of nondeterministicPayloadTimestampKeys[event.type] ?? []) {
+    delete payload[key];
+  }
+  return {
+    type: event.type,
+    version: event.version,
+    streamId: event.streamId,
+    sequence: event.sequence,
+    context: {
+      actor: structuredClone(event.context.actor),
+      ...(event.context.causationId === undefined
+        ? {}
+        : { causationId: event.context.causationId }),
+      correlationId: event.context.correlationId,
+      coreVersion: event.context.coreVersion,
+      packVersions: structuredClone(event.context.packVersions)
+    },
+    payload
+  };
+}
+
+function expectedEventMaterial(
+  input: CanonicalEventMaterial
+): CanonicalEventMaterial {
+  return input;
+}
+
+function assertCanonicalEventMaterials(
+  actualEvents: readonly KnowledgeEvent[],
+  expected: readonly CanonicalEventMaterial[],
+  message: string,
+  order: "ledger" | "canonical" = "canonical"
+): void {
+  const actual = actualEvents.map(canonicalCommittedEventMaterial);
+  const normalize = (items: readonly CanonicalEventMaterial[]) =>
+    order === "ledger"
+      ? [...items]
+      : [...items].sort((left, right) =>
+          compareCodeUnits(stableJson(left), stableJson(right))
+        );
+  if (stableJson(normalize(actual)) !== stableJson(normalize(expected))) {
+    throw new Error(message);
+  }
+}
+
+function previewEventContext(
+  correlationId: string,
+  packVersions: Readonly<Record<string, string>>,
+  actor: KnowledgeEvent["context"]["actor"] = CENTRAL_FL_ICE_PREVIEW_AGENT,
+  causationId?: string
+): CanonicalEventMaterial["context"] {
+  return {
+    actor,
+    ...(causationId === undefined ? {} : { causationId }),
+    correlationId,
+    coreVersion: "0.1.0",
+    packVersions
+  };
+}
+
+async function readRecoverableInspectionReport(
+  workspace: MountedWorkspace,
+  snapshot: CentralFloridaIcePreviewWorkspaceSnapshot
+): Promise<LegacyMigrationReport> {
+  const reportEvents = snapshot.events.filter(
+    (event): event is KnowledgeEventOf<"legacy.import.report.generated"> =>
+      event.type === "legacy.import.report.generated"
+  );
+  const reportEvent = reportEvents[0];
+  if (reportEvents.length !== 1 || reportEvent === undefined) {
+    throw new Error(
+      "existing destination lacks a complete exact preview inspection ledger with canonical material"
+    );
+  }
+  const readback = await readCanonicalStagedLegacyReport({
+    ledger: workspace.ledger,
+    derivativeStore: workspace.derivativeStore,
+    reportEventId: reportEvent.id,
+    sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+    scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+    legacyReportId: reportEvent.payload.legacyReportId,
+    reportHash: reportEvent.payload.reportHash as `sha256:${string}`
+  });
+  if (!readback.ok) {
+    throw new Error(
+      "existing destination lacks a complete exact preview inspection ledger with canonical material"
+    );
+  }
+  return readback.report;
+}
+
 function assertRecoverableInspectionLedger(
   snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
-  inspection: CentralFloridaIceCandidateInspection
+  inspection: CentralFloridaIceCandidateInspection,
+  report: LegacyMigrationReport
 ): void {
-  const sourceEvents = snapshot.events.filter((event) =>
-    event.type === "ingestion.source.registered"
+  const scanStreamId = `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`;
+  const scanContext = previewEventContext(
+    `corr_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`,
+    { core: "0.1.0", ingestion: "0.1.0" }
   );
-  const scanStarts = snapshot.events.filter((event) =>
-    event.type === "ingestion.scan.started"
-  );
-  const scanCompletions = snapshot.events.filter((event) =>
-    event.type === "ingestion.scan.completed"
-  );
-  const reports = snapshot.events.filter((event) =>
-    event.type === "legacy.import.report.generated"
-  );
-  const occurrences = snapshot.events.filter((event) =>
-    event.type === "ingestion.occurrence.observed"
-  );
-  if (
-    snapshot.events.length !== inspection.candidates.length + 4
-    || sourceEvents.length !== 1
-    || scanStarts.length !== 1
-    || scanCompletions.length !== 1
-    || reports.length !== 1
-    || occurrences.length !== inspection.candidates.length
-  ) {
-    throw new Error("existing destination lacks a complete exact preview inspection ledger");
+  const uniqueHashes = new Set<string>();
+  let estimatedNewBlobBytes = 0;
+  for (const candidate of inspection.candidates) {
+    if (!uniqueHashes.has(candidate.contentHash)) {
+      uniqueHashes.add(candidate.contentHash);
+      estimatedNewBlobBytes += candidate.sizeBytes;
+    }
   }
-  const source = sourceEvents[0]!;
-  const start = scanStarts[0]!;
-  const completion = scanCompletions[0]!;
-  const report = reports[0]!;
-  if (
-    source.type !== "ingestion.source.registered"
-    || start.type !== "ingestion.scan.started"
-    || completion.type !== "ingestion.scan.completed"
-    || report.type !== "legacy.import.report.generated"
-    || stableJson(source.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
-    || stableJson(start.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
-    || stableJson(completion.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
-    || stableJson(report.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
-    || source.streamId !== `ingestion_source_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
-    || source.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    || source.payload.mode !== "read-only"
-    || stableJson(source.payload.adapter) !== stableJson({
-      name: "local-filesystem",
-      version: "0.1.0"
+  const expected: CanonicalEventMaterial[] = [
+    expectedEventMaterial({
+      type: "ingestion.source.registered",
+      version: 1,
+      streamId: `ingestion_source_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`,
+      sequence: 1,
+      context: previewEventContext(
+        `corr_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`,
+        { core: "0.1.0", ingestion: "0.1.0" }
+      ),
+      payload: {
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        label: "Central Florida ICE legacy investigation",
+        mode: "read-only",
+        adapter: { name: "local-filesystem", version: "0.1.0" },
+        rootUri: pathToFileURL(inspection.sourceIdentity.rootRealpath).href,
+        workspaceUri: `cestus-workspace://${CENTRAL_FL_ICE_PREVIEW.workspaceId}`
+      }
+    }),
+    expectedEventMaterial({
+      type: "ingestion.scan.started",
+      version: 1,
+      streamId: scanStreamId,
+      sequence: 1,
+      context: scanContext,
+      payload: {
+        scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        hashPolicy: "sha256-dry-run"
+      }
+    }),
+    ...inspection.candidates.map((candidate, index) => expectedEventMaterial({
+      type: "ingestion.occurrence.observed",
+      version: 1,
+      streamId: scanStreamId,
+      sequence: index + 2,
+      context: scanContext,
+      payload: {
+        occurrenceId: candidate.occurrenceId,
+        scanBatchId: candidate.scanBatchId,
+        sourceCollectionId: candidate.sourceCollectionId,
+        contentHash: candidate.contentHash,
+        sourcePath: candidate.sourcePath,
+        sizeBytes: candidate.sizeBytes,
+        status: candidate.scanStatus,
+        adapter: { name: "local-filesystem", version: "0.1.0" }
+      }
+    })),
+    expectedEventMaterial({
+      type: "ingestion.scan.completed",
+      version: 1,
+      streamId: scanStreamId,
+      sequence: inspection.candidates.length + 2,
+      context: scanContext,
+      payload: {
+        scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        inventoryHash: expectedScannerInventoryHash(inspection),
+        totals: {
+          observedFiles: inspection.candidates.length,
+          uniqueContent: uniqueHashes.size,
+          duplicateOccurrences: inspection.candidates.filter(
+            (candidate) => candidate.scanStatus === "duplicate"
+          ).length,
+          skipped: 0,
+          bytes: inspection.sourceIdentity.totalBytes,
+          estimatedNewBlobBytes
+        }
+      }
+    }),
+    expectedEventMaterial({
+      type: "legacy.import.report.generated",
+      version: 1,
+      streamId: legacyReportStreamId(report),
+      sequence: 1,
+      context: previewEventContext(
+        `corr_${report.legacyReportId}`,
+        { core: "0.1.0", ingestion: "0.1.0", legacy: "0.1.0" }
+      ),
+      payload: {
+        legacyReportId: report.legacyReportId,
+        sourceCollectionId: report.sourceCollectionId,
+        scanBatchId: report.scanBatchId,
+        reportHash: report.reportHash,
+        candidateSetHash: report.candidateSetHash,
+        generatedAt: report.generatedAt,
+        generator: report.generator,
+        totals: report.totals
+      }
     })
-    || source.payload.rootUri !== pathToFileURL(inspection.sourceIdentity.rootRealpath).href
-    || source.payload.workspaceUri !== `cestus-workspace://${CENTRAL_FL_ICE_PREVIEW.workspaceId}`
-    || start.streamId !== `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`
-    || start.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
-    || start.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    || start.payload.hashPolicy !== "sha256-dry-run"
-    || completion.streamId !== `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`
-    || completion.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
-    || completion.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    || completion.payload.inventoryHash !== expectedScannerInventoryHash(inspection)
-    || report.streamId !== legacyReportStreamId(report.payload)
-    || report.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    || report.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
-  ) {
-    throw new Error("existing destination inspection authority conflicts with the preview");
-  }
-  const actualOccurrences = occurrences.flatMap((event) =>
-    event.type === "ingestion.occurrence.observed"
-      ? [{
-          occurrenceId: event.payload.occurrenceId,
-          sourceCollectionId: event.payload.sourceCollectionId,
-          scanBatchId: event.payload.scanBatchId,
-          sourcePath: event.payload.sourcePath,
-          contentHash: event.payload.contentHash,
-          sizeBytes: event.payload.sizeBytes,
-          status: event.payload.status
-        }]
-      : []
-  ).sort((left, right) => compareCodeUnits(left.sourcePath, right.sourcePath));
-  const expectedOccurrences = inspection.candidates.map((candidate) => ({
-    occurrenceId: candidate.occurrenceId,
-    sourceCollectionId: candidate.sourceCollectionId,
-    scanBatchId: candidate.scanBatchId,
-    sourcePath: candidate.sourcePath,
-    contentHash: candidate.contentHash,
-    sizeBytes: candidate.sizeBytes,
-    status: candidate.scanStatus
-  }));
-  if (stableJson(actualOccurrences) !== stableJson(expectedOccurrences)) {
-    throw new Error("existing destination occurrence inventory conflicts with the preview");
-  }
+  ];
+  assertCanonicalEventMaterials(
+    snapshot.events,
+    expected,
+    "existing destination lacks a complete exact preview inspection ledger with canonical material",
+    "ledger"
+  );
 }
 
 function assertAuthoritativeInspectionLedger(
@@ -3061,7 +3211,7 @@ function assertAuthoritativeInspectionLedger(
   readonly inventoryHash: `sha256:${string}`;
   readonly eventIds: readonly string[];
 } {
-  assertRecoverableInspectionLedger(snapshot, inspection);
+  assertRecoverableInspectionLedger(snapshot, inspection, report.report);
   const reportEvents = snapshot.events.filter((event) =>
     event.type === "legacy.import.report.generated"
     && event.payload.sourceCollectionId === CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
@@ -3231,37 +3381,15 @@ function assertAuthoritativeRawImportLedger(
     );
   }
   const approval = approvals[0]!;
-  if (
-    approval.type !== "ingestion.import.approved"
-    || stableJson(approval.context.actor) !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
-    || approval.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    || approval.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
-    || approval.payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
-    || approval.payload.approvedBy !== approvedBy
-  ) {
-    throw new Error(
-      "authoritative raw approval does not match preview agent and human approval or exact Gate 1 candidate set"
-    );
-  }
   const completions = phaseEvents.filter((event) =>
     event.type === "ingestion.import.completed"
   );
   if (completions.length !== 1) {
-    throw new Error("authoritative raw import completion ledger readback is not unique");
+    throw new Error(
+      "authoritative raw import completion ledger readback is not unique; exact Gate 1 candidate set required"
+    );
   }
   const completion = completions[0]!;
-  if (
-    completion.type !== "ingestion.import.completed"
-    || completion.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-    || completion.payload.scanBatchId !== CENTRAL_FL_ICE_PREVIEW.scanBatchId
-    || completion.payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
-    || completion.context.causationId !== approval.id
-  ) {
-    throw new Error("authoritative raw import completion lacks approval causation");
-  }
-  const links = phaseEvents.filter((event) => event.type === "ingestion.evidence.linked");
-  const evidenceEvents = phaseEvents.filter((event) => event.type === "evidence.ingested");
-  const parseEvents = phaseEvents.filter((event) => event.type === "ingestion.parse.job.created");
   const groups = new Map<`sha256:${string}`, {
     readonly occurrenceIds: string[];
     readonly mediaType: string;
@@ -3285,64 +3413,162 @@ function assertAuthoritativeRawImportLedger(
     duplicatesReused: candidates.length - groups.size,
     skipped: 0
   };
-  const exactPhaseEventCount = 2 + (groups.size * 3);
-  if (
-    phaseEvents.length !== exactPhaseEventCount
-    || links.length !== groups.size
-    || evidenceEvents.length !== groups.size
-    || parseEvents.length !== groups.size
-    || stableJson(completion.payload.totals) !== stableJson(expectedTotals)
-  ) {
-    throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
-  }
+  const importStreamId =
+    `ingestion_import_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+    + `_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`;
+  const importContext = previewEventContext(
+    `corr_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+    { core: "0.1.0", ingestion: "0.1.0" }
+  );
+  const expected: CanonicalEventMaterial[] = [expectedEventMaterial({
+    type: "ingestion.import.approved",
+    version: 1,
+    streamId: importStreamId,
+    sequence: 1,
+    context: importContext,
+    payload: {
+      importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
+      scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      approvedBy
+    }
+  })];
   for (const [contentHash, group] of groups) {
-    const matchingLinks = links.filter((event) =>
-      event.type === "ingestion.evidence.linked"
-      && event.payload.contentHash === contentHash
+    const digest = contentHash.replace("sha256:", "");
+    const evidenceId = `ev_ing_${sha256(contentHash).replace("sha256:", "")}`;
+    const parseJobId =
+      `parse_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${digest.slice(0, 16)}`;
+    expected.push(
+      expectedEventMaterial({
+        type: "evidence.ingested",
+        version: 1,
+        streamId: `evidence_${evidenceId}`,
+        sequence: 1,
+        context: previewEventContext(
+          `corr_${evidenceId}`,
+          { core: "0.1.0" }
+        ),
+        payload: {
+          evidenceId,
+          source: {
+            kind: "dataset",
+            label:
+              `Public ingestion import ${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+              + `/${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+            uri:
+              `cestus://ingestion/source-collections/${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+              + `/imports/${CENTRAL_FL_ICE_PREVIEW.importBatchId}/content/${digest}`
+          },
+          contentHash,
+          mediaType: group.mediaType,
+          sizeBytes: group.sizeBytes
+        }
+      }),
+      expectedEventMaterial({
+        type: "ingestion.evidence.linked",
+        version: 1,
+        streamId:
+          `ingestion_evidence_link_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+          + `_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`
+          + `_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${digest}`,
+        sequence: 1,
+        context: previewEventContext(
+          `corr_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+          { core: "0.1.0", ingestion: "0.1.0" },
+          CENTRAL_FL_ICE_PREVIEW_AGENT,
+          approval.id
+        ),
+        payload: {
+          evidenceId,
+          importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
+          sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+          contentHash,
+          occurrenceIds: [...group.occurrenceIds]
+        }
+      }),
+      expectedEventMaterial({
+        type: "ingestion.parse.job.created",
+        version: 1,
+        streamId:
+          `ingestion_parse_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+          + `_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${parseJobId}`,
+        sequence: 1,
+        context: previewEventContext(
+          `corr_${parseJobId}`,
+          { core: "0.1.0", ingestion: "0.1.0" },
+          { id: "actor_local_parser", kind: "system", label: "Local Parser" }
+        ),
+        payload: {
+          parseJobId,
+          sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+          importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
+          evidenceId,
+          lane: "local",
+          parser: { name: "local-text", version: "0.1.0" },
+          state: "queued"
+        }
+      })
     );
-    const link = matchingLinks[0];
-    if (
-      matchingLinks.length !== 1
-      || link?.type !== "ingestion.evidence.linked"
-      || link.payload.sourceCollectionId !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-      || link.payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
-      || link.context.causationId !== approval.id
-      || stableJson([...link.payload.occurrenceIds].sort(compareCodeUnits))
-        !== stableJson([...group.occurrenceIds].sort(compareCodeUnits))
-    ) {
-      throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
-    }
-    const matchingEvidence = evidenceEvents.filter((event) =>
-      event.type === "evidence.ingested"
-      && event.payload.evidenceId === link.payload.evidenceId
-      && event.payload.contentHash === contentHash
-    );
-    if (
-      matchingEvidence.length !== 1
-      || matchingEvidence[0]?.type !== "evidence.ingested"
-      || matchingEvidence[0].payload.mediaType !== group.mediaType
-      || matchingEvidence[0].payload.sizeBytes !== group.sizeBytes
-      || stableJson(matchingEvidence[0].context.actor)
-        !== stableJson(CENTRAL_FL_ICE_PREVIEW_AGENT)
-    ) {
-      throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
-    }
-    const expectedParseJobId = `parse_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`;
-    const matchingParses = parseEvents.filter((event) =>
-      event.type === "ingestion.parse.job.created"
-      && event.payload.evidenceId === link.payload.evidenceId
-      && event.payload.parseJobId === expectedParseJobId
-    );
-    if (
-      matchingParses.length !== 1
-      || matchingParses[0]?.type !== "ingestion.parse.job.created"
-      || matchingParses[0].payload.sourceCollectionId
-        !== CENTRAL_FL_ICE_PREVIEW.sourceCollectionId
-      || matchingParses[0].payload.importBatchId !== CENTRAL_FL_ICE_PREVIEW.importBatchId
-    ) {
-      throw new Error("raw import ledger does not match the exact Gate 1 candidate set");
-    }
   }
+  expected.push(expectedEventMaterial({
+    type: "ingestion.import.completed",
+    version: 1,
+    streamId: importStreamId,
+    sequence: 2,
+    context: previewEventContext(
+      `corr_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+      { core: "0.1.0", ingestion: "0.1.0" },
+      CENTRAL_FL_ICE_PREVIEW_AGENT,
+      approval.id
+    ),
+    payload: {
+      importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
+      scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      totals: expectedTotals
+    }
+  }));
+  const staleDiagnostics = phaseEvents.filter((event) => event.type === "diagnostic.recorded");
+  staleDiagnostics.forEach((_event, index) => {
+    expected.push(expectedEventMaterial({
+      type: "diagnostic.recorded",
+      version: 1,
+      streamId:
+        `ingestion_diagnostic_v1.`
+        + `${Buffer.from(CENTRAL_FL_ICE_PREVIEW.sourceCollectionId, "utf8").toString("base64url")}.`
+        + `${Buffer.from(CENTRAL_FL_ICE_PREVIEW.scanBatchId, "utf8").toString("base64url")}.`
+        + Buffer.from(CENTRAL_FL_ICE_PREVIEW.importBatchId, "utf8").toString("base64url"),
+      sequence: index + 1,
+      context: previewEventContext(
+        `corr_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+        { core: "0.1.0", ingestion: "0.1.0" },
+        CENTRAL_FL_ICE_PREVIEW_AGENT,
+        approval.id
+      ),
+      payload: {
+        diagnosticId:
+          `diag_ingestion_stale_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+          + `_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+        severity: "error",
+        category: "ingestion",
+        message: "Approved dry-run inventory no longer matches current source bytes.",
+        repairHint: {
+          contract: "IngestionRuntime.importApproved",
+          violatedPath: "approvedDryRunInventory",
+          allowedActions: [
+            "rerun dry-run scan",
+            "review source changes",
+            "approve a new import batch"
+          ]
+        }
+      }
+    }));
+  });
+  assertCanonicalEventMaterials(
+    phaseEvents,
+    expected,
+    "authoritative raw approval/import ledger does not match canonical Gate 1 event material for the exact Gate 1 candidate set"
+  );
   return {
     approvalEventId: approval.id,
     eventIds: phaseEvents.map((event) => event.id),
@@ -3443,24 +3669,35 @@ function assertAuthoritativeStagingLedger(
     candidate.candidateId,
     candidate
   ]));
-  const expectedAssertionIds = selectedCandidateIds.map((candidateId) =>
-    stableLegacyAssertionId({
+  const proposals = phaseEvents.filter((event) => event.type === "assertion.proposed");
+  const humanActor: KnowledgeEvent["context"]["actor"] = {
+    id: approvedBy,
+    kind: "human",
+    label: "Central Florida ICE preview approver"
+  };
+  const expected: CanonicalEventMaterial[] = [expectedEventMaterial({
+    type: "legacy.ontology.staging.approved",
+    version: 1,
+    streamId:
+      `legacy_staging_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+      + `_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.stagingBatchId}`,
+    sequence: 1,
+    context: previewEventContext(
+      `corr_${CENTRAL_FL_ICE_PREVIEW.stagingBatchId}`,
+      { core: "0.1.0", ingestion: "0.1.0", legacy: "0.1.0" },
+      humanActor
+    ),
+    payload: {
+      stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+      legacyReportId: preview.legacyReportId,
       sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
       scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
-      stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
-      candidateSetHash: preview.candidateSetHash
-    }, candidateId)
-  ).sort(compareCodeUnits);
-  const proposals = phaseEvents.filter((event) => event.type === "assertion.proposed");
-  const actualAssertionIds = proposals.map((event) => event.payload.assertionId)
-    .sort(compareCodeUnits);
-  if (
-    phaseEvents.length !== 1 + selectedCandidateIds.length
-    || proposals.length !== selectedCandidateIds.length
-    || stableJson(actualAssertionIds) !== stableJson(expectedAssertionIds)
-  ) {
-    throw new Error("staging ledger does not match exact approved Gate 2 subset");
-  }
+      reportHash: preview.reportHash,
+      candidateSetHash: preview.candidateSetHash,
+      approvedBy,
+      approvedAssertionCandidateIds: [...selectedCandidateIds]
+    }
+  })];
   for (const candidateId of selectedCandidateIds) {
     const candidate = candidateById.get(candidateId);
     const assertionId = stableLegacyAssertionId({
@@ -3469,9 +3706,6 @@ function assertAuthoritativeStagingLedger(
       stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
       candidateSetHash: preview.candidateSetHash
     }, candidateId);
-    const proposal = proposals.find((event) =>
-      event.type === "assertion.proposed" && event.payload.assertionId === assertionId
-    );
     const evidenceEvent = snapshot.events.find((event) =>
       event.type === "evidence.ingested"
       && event.payload.evidenceId === candidate?.evidenceId
@@ -3479,12 +3713,22 @@ function assertAuthoritativeStagingLedger(
     );
     if (
       candidate === undefined
-      || proposal?.type !== "assertion.proposed"
       || evidenceEvent?.type !== "evidence.ingested"
-      || proposal.context.actor.kind !== "human"
-      || proposal.context.actor.id !== approvedBy
-      || proposal.context.causationId !== evidenceEvent.id
-      || stableJson(proposal.payload) !== stableJson({
+    ) {
+      throw new Error("authoritative proposal lacks exact approved evidence material");
+    }
+    expected.push(expectedEventMaterial({
+      type: "assertion.proposed",
+      version: 1,
+      streamId: `assertion_${assertionId}`,
+      sequence: 1,
+      context: previewEventContext(
+        `corr_${assertionId}`,
+        { core: "0.1.0" },
+        humanActor,
+        evidenceEvent.id
+      ),
+      payload: {
         assertionId,
         evidenceId: candidate.evidenceId,
         ...(candidate.subjectRef === undefined ? {} : { subjectRef: candidate.subjectRef }),
@@ -3492,11 +3736,14 @@ function assertAuthoritativeStagingLedger(
         object: candidate.object,
         confidence: candidate.confidence,
         reviewState: "proposed"
-      })
-    ) {
-      throw new Error("authoritative proposal payload does not match approved candidate material");
-    }
+      }
+    }));
   }
+  assertCanonicalEventMaterials(
+    phaseEvents,
+    expected,
+    "staging ledger does not match canonical Gate 2 event material for the exact approved Gate 2 subset"
+  );
   return {
     approvalEventId: approval.id,
     eventIds: phaseEvents.map((event) => event.id),

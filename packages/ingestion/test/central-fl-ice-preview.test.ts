@@ -901,14 +901,25 @@ function workflowFixture(input?: {
   foreignWorkspace?: boolean;
   proposalIdMismatch?: boolean;
   extraStageProposal?: boolean;
+  stagingLedgerMutation?:
+    | "approval-batch"
+    | "approval-stream"
+    | "approval-version"
+    | "proposal-stream";
   rawApprovalActorMismatch?: boolean;
   rawLedgerMutation?:
     | "extra-approval"
     | "extra-evidence"
     | "extra-link"
     | "extra-parse"
+    | "arbitrary-diagnostic"
     | "extra-occurrence"
-    | "inconsistent-totals";
+    | "inconsistent-totals"
+    | "approval-foreign-stream"
+    | "evidence-foreign-source"
+    | "link-foreign-actor"
+    | "parse-provider-lane"
+    | "completion-foreign-context";
   stagingApprovalActorMismatch?: boolean;
   existingDestinationWithoutCheckpoint?: boolean;
 }) {
@@ -1004,7 +1015,14 @@ function workflowFixture(input?: {
     | "quarantine"
     | "premature-staging-approval"
     | undefined;
-  let stagingPreviewEvidenceId = "ev_central_fl_preview_001";
+  const deterministicEvidenceId = `ev_ing_${createHash("sha256")
+    .update(contentHash)
+    .digest("hex")}`;
+  const deterministicSourceUri =
+    `cestus://ingestion/source-collections/${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`
+    + `/imports/${CENTRAL_FL_ICE_PREVIEW.importBatchId}`
+    + `/content/${contentHash.replace("sha256:", "")}`;
+  let stagingPreviewEvidenceId = deterministicEvidenceId;
   let rawApprovalEventId: string | undefined;
   let rawApprovedBy: string | undefined;
   let stagingApprovalEventId: string | undefined;
@@ -1080,12 +1098,13 @@ function workflowFixture(input?: {
     close
   };
   const fixedTime = "2026-07-27T12:00:00.000Z";
+  const previewActor = {
+    id: "actor_central_fl_ice_preview",
+    kind: "agent" as const,
+    label: "Central Florida ICE preview"
+  };
   const context = {
-    actor: {
-      id: "actor_central_fl_ice_preview",
-      kind: "agent" as const,
-      label: "Central Florida ICE preview"
-    },
+    actor: previewActor,
     occurredAt: fixedTime,
     correlationId: "corr_central_fl_preview",
     coreVersion: "0.1.0",
@@ -1107,7 +1126,11 @@ function workflowFixture(input?: {
         type: "ingestion.source.registered",
         version: 1,
         streamId: `ingestion_source_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`,
-        context,
+        context: {
+          ...context,
+          correlationId: `corr_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
         payload: {
           sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
           label: "Central Florida ICE legacy investigation",
@@ -1121,7 +1144,11 @@ function workflowFixture(input?: {
         type: "ingestion.scan.started",
         version: 1,
         streamId: `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`,
-        context,
+        context: {
+          ...context,
+          correlationId: `corr_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
         payload: {
           scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
           sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
@@ -1133,7 +1160,11 @@ function workflowFixture(input?: {
         type: "ingestion.occurrence.observed",
         version: 1,
         streamId: `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`,
-        context,
+        context: {
+          ...context,
+          correlationId: `corr_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
         payload: {
           occurrenceId,
           scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
@@ -1150,7 +1181,11 @@ function workflowFixture(input?: {
         type: "ingestion.scan.completed",
         version: 1,
         streamId: `ingestion_scan_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`,
-        context,
+        context: {
+          ...context,
+          correlationId: `corr_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
         payload: {
           scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
           sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
@@ -1174,7 +1209,10 @@ function workflowFixture(input?: {
         type: "legacy.import.report.generated",
         version: 1,
         streamId: `legacy_report_${report.sourceCollectionId}_${report.scanBatchId}_${report.legacyReportId}`,
-        context,
+        context: {
+          ...context,
+          correlationId: `corr_${report.legacyReportId}`
+        },
         payload: {
           legacyReportId: report.legacyReportId,
           sourceCollectionId: report.sourceCollectionId,
@@ -1271,9 +1309,13 @@ function workflowFixture(input?: {
       const event = await append({
         type: "ingestion.import.approved",
         version: 1,
-        streamId: `ingestion_import_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+        streamId: input?.rawLedgerMutation === "approval-foreign-stream"
+          ? "ingestion_import_foreign_gate1"
+          : `ingestion_import_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
         context: {
           ...context,
+          correlationId: `corr_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" },
           actor: {
             id: input?.rawApprovalActorMismatch
               ? "actor_wrong_preview_agent"
@@ -1317,13 +1359,20 @@ function workflowFixture(input?: {
       const evidence = await append({
         type: "evidence.ingested",
         version: 1,
-        streamId: "evidence_ev_central_fl_preview_001",
-        context: { ...context, causationId: rawApprovalEventId },
+        streamId: `evidence_${deterministicEvidenceId}`,
+        context: {
+          ...context,
+          correlationId: `corr_${deterministicEvidenceId}`,
+          packVersions: { core: "0.1.0" }
+        },
         payload: {
-          evidenceId: "ev_central_fl_preview_001",
+          evidenceId: deterministicEvidenceId,
           source: {
             kind: "dataset",
-            label: "Central Florida ICE preview import"
+            label: input?.rawLedgerMutation === "evidence-foreign-source"
+              ? "Foreign Gate 1 material"
+              : `Public ingestion import ${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}/${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+            uri: deterministicSourceUri
           },
           contentHash,
           mediaType: "text/plain",
@@ -1335,10 +1384,18 @@ function workflowFixture(input?: {
       const link = await append({
         type: "ingestion.evidence.linked",
         version: 1,
-        streamId: "ingestion_evidence_link_central_fl_preview_001",
-        context: { ...context, causationId: rawApprovalEventId },
+        streamId: `ingestion_evidence_link_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${contentHash.replace("sha256:", "")}`,
+        context: {
+          ...context,
+          actor: input?.rawLedgerMutation === "link-foreign-actor"
+            ? { id: "actor_foreign_gate1", kind: "agent", label: "Foreign Gate 1 actor" }
+            : previewActor,
+          causationId: rawApprovalEventId,
+          correlationId: `corr_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
         payload: {
-          evidenceId: "ev_central_fl_preview_001",
+          evidenceId: deterministicEvidenceId,
           importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
           sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
           contentHash,
@@ -1350,8 +1407,15 @@ function workflowFixture(input?: {
       const completed = await append({
         type: "ingestion.import.completed",
         version: 1,
-        streamId: `ingestion_import_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
-        context: { ...context, causationId: rawApprovalEventId },
+        streamId: `ingestion_import_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}_${CENTRAL_FL_ICE_PREVIEW.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+        context: {
+          ...context,
+          causationId: rawApprovalEventId,
+          correlationId: input?.rawLedgerMutation === "completion-foreign-context"
+            ? "corr_foreign_gate1"
+            : `corr_${CENTRAL_FL_ICE_PREVIEW.importBatchId}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
         payload: {
           importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
           scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
@@ -1368,14 +1432,19 @@ function workflowFixture(input?: {
       const parseJob = await append({
         type: "ingestion.parse.job.created",
         version: 1,
-        streamId: `ingestion_parse_parse_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`,
-        context,
+        streamId: `ingestion_parse_${CENTRAL_FL_ICE_PREVIEW.sourceCollectionId}_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_parse_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`,
+        context: {
+          ...context,
+          actor: { id: "actor_local_parser", kind: "system", label: "Local Parser" },
+          correlationId: `corr_parse_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`,
+          packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+        },
         payload: {
           parseJobId: `parse_${CENTRAL_FL_ICE_PREVIEW.importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`,
           sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
           importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
-          evidenceId: "ev_central_fl_preview_001",
-          lane: "local",
+          evidenceId: deterministicEvidenceId,
+          lane: input?.rawLedgerMutation === "parse-provider-lane" ? "provider" : "local",
           parser: { name: "local-text", version: "0.1.0" },
           state: "queued"
         }
@@ -1417,7 +1486,7 @@ function workflowFixture(input?: {
           streamId: "ingestion_evidence_link_foreign_gate1",
           context: { ...context, causationId: rawApprovalEventId },
           payload: {
-            evidenceId: "ev_central_fl_preview_001",
+            evidenceId: deterministicEvidenceId,
             importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
             sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
             contentHash,
@@ -1435,10 +1504,29 @@ function workflowFixture(input?: {
             parseJobId: "parse_foreign_gate1",
             sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
             importBatchId: CENTRAL_FL_ICE_PREVIEW.importBatchId,
-            evidenceId: "ev_central_fl_preview_001",
+            evidenceId: deterministicEvidenceId,
             lane: "local",
             parser: { name: "local-text", version: "0.1.0" },
             state: "queued"
+          }
+        });
+      }
+      if (input?.rawLedgerMutation === "arbitrary-diagnostic") {
+        await append({
+          type: "diagnostic.recorded",
+          version: 1,
+          streamId: "diagnostic_foreign_gate1",
+          context,
+          payload: {
+            diagnosticId: "diag_foreign_gate1",
+            severity: "error",
+            category: "ingestion",
+            message: "Foreign diagnostic material.",
+            repairHint: {
+              contract: "Foreign.contract",
+              violatedPath: "foreign",
+              allowedActions: ["reject foreign diagnostic"]
+            }
           }
         });
       }
@@ -1522,7 +1610,9 @@ function workflowFixture(input?: {
       const event = await append({
         type: "assertion.proposed",
         version: 1,
-        streamId: `assertion_${assertionId}`,
+        streamId: input?.stagingLedgerMutation === "proposal-stream"
+          ? "assertion_as_foreign_gate2"
+          : `assertion_${assertionId}`,
         context: {
           ...context,
           actor: {
@@ -1530,11 +1620,13 @@ function workflowFixture(input?: {
             kind: "human",
             label: "Central Florida ICE preview approver"
           },
-          causationId: evidenceEventId
+          causationId: evidenceEventId,
+          correlationId: `corr_${assertionId}`,
+          packVersions: { core: "0.1.0" }
         },
         payload: {
           assertionId,
-          evidenceId: "ev_central_fl_preview_001",
+          evidenceId: deterministicEvidenceId,
           predicate: "mentions",
           object: "Central Florida",
           confidence: 0.7,
@@ -1557,7 +1649,7 @@ function workflowFixture(input?: {
           },
           payload: {
             assertionId: "as_foreign_gate2",
-            evidenceId: "ev_central_fl_preview_001",
+            evidenceId: deterministicEvidenceId,
             predicate: "mentions",
             object: "Unapproved material",
             confidence: 0.7,
@@ -1611,19 +1703,24 @@ function workflowFixture(input?: {
     const event = await append({
         type: "legacy.ontology.staging.approved",
         version: 1,
-        streamId: `legacy_staging_${report.sourceCollectionId}_${report.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.stagingBatchId}`,
+        streamId: input?.stagingLedgerMutation === "approval-stream"
+          ? "legacy_staging_foreign_gate2"
+          : `legacy_staging_${report.sourceCollectionId}_${report.scanBatchId}_${CENTRAL_FL_ICE_PREVIEW.stagingBatchId}`,
         context: {
-        ...context,
-        actor: {
-          id: input?.stagingApprovalActorMismatch
-            ? "actor_human_wrong"
-            : approvedBy,
-          kind: "human",
-            label: "Preview approver"
-          }
+          ...context,
+          actor: {
+            id: input?.stagingApprovalActorMismatch
+              ? "actor_human_wrong"
+              : approvedBy,
+            kind: "human",
+            label: "Central Florida ICE preview approver"
+          },
+          correlationId: `corr_${CENTRAL_FL_ICE_PREVIEW.stagingBatchId}`
         },
         payload: {
-          stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+          stagingBatchId: input?.stagingLedgerMutation === "approval-batch"
+            ? "legacy_stage_foreign_gate2_001"
+            : CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
           legacyReportId: report.legacyReportId,
           sourceCollectionId: report.sourceCollectionId,
           scanBatchId: report.scanBatchId,
@@ -1644,7 +1741,15 @@ function workflowFixture(input?: {
   };
   const checkpointStore = createMemoryCheckpointStore();
   const readWorkspaceSnapshot = async (): Promise<CentralFloridaIcePreviewWorkspaceSnapshot> => {
-    const events = await ledger.readAll();
+    const events = (await ledger.readAll()).map((event): KnowledgeEvent => {
+      if (
+        input?.stagingLedgerMutation === "approval-version"
+        && event.type === "legacy.ontology.staging.approved"
+      ) {
+        return { ...event, version: 2 } as unknown as KnowledgeEvent;
+      }
+      return event;
+    });
     const projection = buildIngestionProjection(events);
     return {
       events,
@@ -1958,6 +2063,7 @@ describe("Central Florida ICE supervised preview workflow", () => {
     "extra-evidence",
     "extra-link",
     "extra-parse",
+    "arbitrary-diagnostic",
     "extra-occurrence",
     "inconsistent-totals"
   ] as const) {
@@ -1968,6 +2074,25 @@ describe("Central Florida ICE supervised preview workflow", () => {
       await expect(fixture.workflow.rawImport({
         approvedBy: "actor_human_preview"
       })).rejects.toThrow("exact Gate 1 candidate set");
+
+      expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("raw-approval-required");
+    });
+  }
+
+  for (const mutation of [
+    "approval-foreign-stream",
+    "evidence-foreign-source",
+    "link-foreign-actor",
+    "parse-provider-lane",
+    "completion-foreign-context"
+  ] as const) {
+    it(`rejects same-count Gate 1 substitution ${mutation}`, async () => {
+      const fixture = workflowFixture({ rawLedgerMutation: mutation });
+      await fixture.workflow.inspect();
+
+      await expect(fixture.workflow.rawImport({
+        approvedBy: "actor_human_preview"
+      })).rejects.toThrow("canonical Gate 1 event material");
 
       expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("raw-approval-required");
     });
@@ -1999,6 +2124,27 @@ describe("Central Florida ICE supervised preview workflow", () => {
 
     expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("staging-approval-required");
   });
+
+  for (const mutation of [
+    "approval-batch",
+    "approval-stream",
+    "approval-version",
+    "proposal-stream"
+  ] as const) {
+    it(`rejects same-count Gate 2 substitution ${mutation}`, async () => {
+      const fixture = workflowFixture({ stagingLedgerMutation: mutation });
+      await fixture.workflow.inspect();
+      await fixture.workflow.rawImport({ approvedBy: "actor_human_preview" });
+      const preview = await fixture.workflow.stagingPreview();
+
+      await expect(fixture.workflow.stage({
+        approvedBy: "actor_human_preview",
+        candidateIds: [...(preview.state.stagingCandidateIds ?? [])]
+      })).rejects.toThrow();
+
+      expect(fixture.checkpointStore.records.at(-1)?.phase).toBe("staging-approval-required");
+    });
+  }
 
   it("runs both human gates, imports evidence, proposes only selected evidence-bound assertions, blocks provider dispatch, replays, and manifests", async () => {
     const fixture = workflowFixture();
@@ -2786,6 +2932,59 @@ function portableCrashWorkflowFixture(
         database.close();
       }
     },
+    corruptInspectionEvent(
+      mutation:
+        | "source-label"
+        | "occurrence-adapter"
+        | "completion-totals"
+        | "report-generator"
+    ) {
+      const eventType = {
+        "source-label": "ingestion.source.registered",
+        "occurrence-adapter": "ingestion.occurrence.observed",
+        "completion-totals": "ingestion.scan.completed",
+        "report-generator": "legacy.import.report.generated"
+      }[mutation];
+      const database = new DatabaseSync(join(workspaceRoot, "ledger", "ontology.sqlite"));
+      try {
+        const row = database.prepare(
+          "SELECT global_sequence, payload_json FROM ontology_events WHERE type = ? LIMIT 1"
+        ).get(eventType) as { global_sequence: number; payload_json: string } | undefined;
+        if (row === undefined) {
+          throw new Error(`portable crash fixture expected ${eventType} to corrupt`);
+        }
+        const payload = JSON.parse(row.payload_json) as Record<string, unknown>;
+        if (mutation === "source-label") {
+          payload.label = "Foreign replacement source";
+        } else if (mutation === "occurrence-adapter") {
+          payload.adapter = { name: "foreign-adapter", version: "0.1.0" };
+        } else if (mutation === "completion-totals") {
+          payload.totals = {
+            observedFiles: 1,
+            uniqueContent: 1,
+            duplicateOccurrences: 0,
+            skipped: 1,
+            bytes: sourceBytes.byteLength,
+            estimatedNewBlobBytes: sourceBytes.byteLength
+          };
+        } else {
+          payload.generator = { name: "foreign-generator", version: "0.1.0" };
+        }
+        database.prepare(
+          "UPDATE ontology_events SET payload_json = ? WHERE global_sequence = ?"
+        ).run(JSON.stringify(payload), row.global_sequence);
+      } finally {
+        database.close();
+      }
+    },
+    mutateSelectedSourceBytes() {
+      const changed = Buffer.from(sourceBytes);
+      changed[0] = changed[0] === 0x7b ? 0x5b : 0x7b;
+      writeFileSync(absoluteSourcePath, changed);
+    },
+    restoreSelectedSourceBytes() {
+      writeFileSync(absoluteSourcePath, sourceBytes);
+    },
     async appendForeignInspectionEvent() {
       const mounted = await portableResolver.resolve({ workspaceRoot });
       if (!mounted.ok) throw new Error("portable crash fixture did not mount");
@@ -2904,6 +3103,51 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
 
     expect(fixture.checkpointStore.readAll()).toEqual([]);
     expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+  });
+
+  for (const mutation of [
+    "source-label",
+    "occurrence-adapter",
+    "completion-totals",
+    "report-generator"
+  ] as const) {
+    it(`rejects same-count no-checkpoint inspection replacement ${mutation} without a blocked checkpoint`, async () => {
+      const fixture = portableCrashWorkflowFixture("all-inspect-checkpoints");
+      await expect(fixture.createWorkflow().inspect()).rejects.toThrow(
+        "injected all inspect checkpoint writes"
+      );
+      fixture.corruptInspectionEvent(mutation);
+      const eventIds = (await fixture.ledgerEvents()).map((event) => event.id);
+      fixture.disableFailures();
+
+      await expect(fixture.createWorkflow().inspect()).rejects.toThrow();
+
+      expect(fixture.checkpointStore.readAll()).toEqual([]);
+      expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
+    });
+  }
+
+  it("carries an exact stale-source diagnostic into provenance after restored-byte retry", async () => {
+    const fixture = portableCrashWorkflowFixture("handoff-required");
+    await fixture.createWorkflow().inspect();
+    fixture.mutateSelectedSourceBytes();
+
+    await expect(fixture.createWorkflow().rawImport({
+      approvedBy: "actor_human_preview"
+    })).rejects.toThrow("legacy import failed closed");
+    const staleDiagnostic = (await fixture.ledgerEvents()).find((event) =>
+      event.type === "diagnostic.recorded"
+      && event.payload.diagnosticId.startsWith("diag_ingestion_stale_")
+    );
+    expect(staleDiagnostic).toBeDefined();
+
+    fixture.restoreSelectedSourceBytes();
+    const checkpoint = await fixture.createWorkflow().rawImport({
+      approvedBy: "actor_human_preview"
+    });
+
+    expect(checkpoint.phase).toBe("staging-preview-required");
+    expect(checkpoint.state.eventIds).toContain(staleDiagnostic!.id);
   });
 
   it("reconciles raw approval/import effects after checkpoint failure without duplicate events or blobs", async () => {
