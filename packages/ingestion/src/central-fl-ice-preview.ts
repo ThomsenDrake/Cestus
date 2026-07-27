@@ -203,8 +203,9 @@ export function inspectCentralFloridaIceCandidates(
   input: CentralFloridaIcePreviewInspectionInput
 ): CentralFloridaIceCandidateInspection {
   const policy = CENTRAL_FL_ICE_PREVIEW;
+  const inspectionInput = snapshotInspectionInput(input);
   validatePolicy(policy);
-  validateCodeSha(input.codeSha);
+  validateCodeSha(inspectionInput.codeSha);
 
   const source = inspectSourceAuthority(dependencies, policy);
   const destinationIdentity = inspectDestinationAuthority(dependencies, policy, source.mount);
@@ -231,7 +232,7 @@ export function inspectCentralFloridaIceCandidates(
   });
   const code = Object.freeze({
     baseSha: policy.codeBaseSha,
-    codeSha: input.codeSha
+    codeSha: inspectionInput.codeSha
   });
   const exclusions: readonly PreviewExclusion[] = Object.freeze([]);
   const canonicalCandidateMaterial = stableJson({
@@ -275,12 +276,20 @@ function inspectSourceAuthority(
     fail("SOURCE_REALPATH_MISMATCH", "Selected source root does not resolve to approved authority");
   }
 
-  const rootMetadata = dependencies.filesystem.lstat(policy.sourceRoot);
+  const rootMetadata = snapshotPathMetadata(
+    dependencies.filesystem.lstat(policy.sourceRoot),
+    "SOURCE_ROOT_INVALID",
+    "Selected source root metadata is not immutable plain data"
+  );
   if (rootMetadata.kind !== "directory") {
     fail("SOURCE_ROOT_INVALID", "Selected source root is not a directory");
   }
 
-  const mount = dependencies.mounts.inspect(policy.sourceRoot);
+  const mount = snapshotMountRecord(
+    dependencies.mounts.inspect(policy.sourceRoot),
+    "SOURCE_MOUNT_MISMATCH",
+    "Selected source mount record is not immutable plain data"
+  );
   if (mount.source !== policy.sourceDevice) {
     fail("SOURCE_DEVICE_MISMATCH", "Selected source is not on the approved device");
   }
@@ -319,7 +328,11 @@ function inspectDestinationAuthority(
 
   const initiallyPresent = dependencies.filesystem.exists(policy.destinationRoot);
   if (initiallyPresent) {
-    const destinationMetadata = dependencies.filesystem.lstat(policy.destinationRoot);
+    const destinationMetadata = snapshotPathMetadata(
+      dependencies.filesystem.lstat(policy.destinationRoot),
+      "DESTINATION_INVALID",
+      "Preview destination metadata is not immutable plain data"
+    );
     if (destinationMetadata.kind !== "directory") {
       fail("DESTINATION_COLLISION", "Preview destination collides with non-directory content");
     }
@@ -343,11 +356,19 @@ function inspectDestinationAuthority(
     fail("DESTINATION_INVALID", "Preview destination does not resolve to approved internal path");
   }
 
-  const parentMetadata = dependencies.filesystem.lstat(nearestExistingParent);
+  const parentMetadata = snapshotPathMetadata(
+    dependencies.filesystem.lstat(nearestExistingParent),
+    "DESTINATION_INVALID",
+    "Preview destination parent metadata is not immutable plain data"
+  );
   if (parentMetadata.kind !== "directory") {
     fail("DESTINATION_INVALID", "Preview destination parent is not a directory");
   }
-  const destinationMount = dependencies.mounts.inspect(nearestExistingParent);
+  const destinationMount = snapshotMountRecord(
+    dependencies.mounts.inspect(nearestExistingParent),
+    "DESTINATION_INVALID",
+    "Preview destination mount record is not immutable plain data"
+  );
   const destinationOptions = new Set(destinationMount.options);
 
   if (
@@ -411,7 +432,11 @@ function inventorySourceTree(
         fail("ARCHIVE_CONTAINER_FORBIDDEN", "Archive containers are outside approved source selection");
       }
 
-      const metadata = dependencies.filesystem.lstat(absolutePath);
+      const metadata = snapshotPathMetadata(
+        dependencies.filesystem.lstat(absolutePath),
+        "UNSAFE_FILE_TYPE",
+        "Source path metadata is not immutable plain data"
+      );
       if (metadata.kind === "symlink" || metadata.kind === "other") {
         fail("UNSAFE_FILE_TYPE", "Source tree contains a symlink or special file");
       }
@@ -441,12 +466,20 @@ function hashInventoriedFiles(
   const candidates: PreviewRawImportCandidate[] = [];
 
   for (const file of files) {
-    const before = dependencies.filesystem.lstat(file.absolutePath);
+    const before = snapshotPathMetadata(
+      dependencies.filesystem.lstat(file.absolutePath),
+      "SOURCE_CHANGED_DURING_HASH",
+      "Source file metadata changed to unsupported boundary data"
+    );
     assertSameMetadata(file.metadata, before);
     assertOnApprovedMount(dependencies, file.absolutePath, approvedMount, policy, before);
 
     const bytes = dependencies.filesystem.readFile(file.absolutePath);
-    const after = dependencies.filesystem.lstat(file.absolutePath);
+    const after = snapshotPathMetadata(
+      dependencies.filesystem.lstat(file.absolutePath),
+      "SOURCE_CHANGED_DURING_HASH",
+      "Source file metadata changed to unsupported boundary data"
+    );
     assertSameMetadata(file.metadata, after);
     assertOnApprovedMount(dependencies, file.absolutePath, approvedMount, policy, after);
 
@@ -478,6 +511,177 @@ function hashInventoriedFiles(
   }
 
   return Object.freeze(candidates);
+}
+
+function snapshotInspectionInput(
+  input: CentralFloridaIcePreviewInspectionInput
+): Readonly<{ codeSha: string }> {
+  if (typeof input !== "object" || input === null || Object.getPrototypeOf(input) !== Object.prototype) {
+    fail("CODE_SHA_INVALID", "Preview inspection input must be a plain own-data object");
+  }
+
+  const ownKeys = Reflect.ownKeys(input);
+  if (ownKeys.length !== 1 || ownKeys[0] !== "codeSha") {
+    fail("CODE_SHA_INVALID", "Preview inspection input contains unexpected fields");
+  }
+
+  const descriptor = Object.getOwnPropertyDescriptor(input, "codeSha");
+  if (
+    descriptor === undefined
+    || !Object.hasOwn(descriptor, "value")
+    || typeof descriptor.value !== "string"
+  ) {
+    fail("CODE_SHA_INVALID", "Preview code SHA must be an own data property");
+  }
+
+  return Object.freeze({ codeSha: descriptor.value });
+}
+
+function snapshotMountRecord(
+  value: PreviewMountRecord,
+  code: PreviewPreflightErrorCode,
+  message: string
+): PreviewMountRecord {
+  if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype) {
+    fail(code, message);
+  }
+
+  const expectedKeys = ["target", "source", "fileSystem", "options", "deviceId"] as const;
+  const ownKeys = Reflect.ownKeys(value);
+  if (
+    ownKeys.length !== expectedKeys.length
+    || ownKeys.some((key) => typeof key !== "string" || !expectedKeys.includes(key as typeof expectedKeys[number]))
+  ) {
+    fail(code, message);
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const target = mountStringValue(descriptors.target, code, message);
+  const source = mountStringValue(descriptors.source, code, message);
+  const fileSystem = mountStringValue(descriptors.fileSystem, code, message);
+  const deviceId = mountStringValue(descriptors.deviceId, code, message);
+  const optionsDescriptor = descriptors.options;
+  if (optionsDescriptor === undefined || !Object.hasOwn(optionsDescriptor, "value")) {
+    fail(code, message);
+  }
+  const options = snapshotMountOptions(optionsDescriptor.value, code, message);
+
+  return Object.freeze({
+    target,
+    source,
+    fileSystem,
+    options,
+    deviceId
+  });
+}
+
+function mountStringValue(
+  descriptor: PropertyDescriptor | undefined,
+  code: PreviewPreflightErrorCode,
+  message: string
+): string {
+  if (
+    descriptor === undefined
+    || !Object.hasOwn(descriptor, "value")
+    || typeof descriptor.value !== "string"
+    || descriptor.value.length === 0
+    || descriptor.value.trim() !== descriptor.value
+    || /[\u0000-\u001f\u007f]/.test(descriptor.value)
+  ) {
+    fail(code, message);
+  }
+
+  return descriptor.value;
+}
+
+function snapshotMountOptions(
+  value: unknown,
+  code: PreviewPreflightErrorCode,
+  message: string
+): readonly string[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) {
+    fail(code, message);
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const lengthDescriptor = descriptors.length;
+  if (
+    lengthDescriptor === undefined
+    || !Object.hasOwn(lengthDescriptor, "value")
+    || !Number.isSafeInteger(lengthDescriptor.value)
+    || lengthDescriptor.value < 0
+  ) {
+    fail(code, message);
+  }
+
+  const length = lengthDescriptor.value as number;
+  const expectedKeys = new Set<string>(["length"]);
+  const options: string[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const key = String(index);
+    expectedKeys.add(key);
+    const descriptor = descriptors[key];
+    const option = mountStringValue(descriptor, code, message);
+    options.push(option);
+  }
+
+  if (
+    Reflect.ownKeys(value).some((key) => typeof key !== "string" || !expectedKeys.has(key))
+    || new Set(options).size !== options.length
+  ) {
+    fail(code, message);
+  }
+
+  return Object.freeze(sortStrings(options));
+}
+
+function snapshotPathMetadata(
+  value: PreviewPathMetadata,
+  code: PreviewPreflightErrorCode,
+  message: string
+): PreviewPathMetadata {
+  if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype) {
+    fail(code, message);
+  }
+
+  const expectedKeys = ["kind", "deviceId", "sizeBytes", "inode"] as const;
+  const ownKeys = Reflect.ownKeys(value);
+  if (
+    ownKeys.length !== expectedKeys.length
+    || ownKeys.some((key) => typeof key !== "string" || !expectedKeys.includes(key as typeof expectedKeys[number]))
+  ) {
+    fail(code, message);
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const kindDescriptor = descriptors.kind;
+  if (
+    kindDescriptor === undefined
+    || !Object.hasOwn(kindDescriptor, "value")
+    || !new Set<PreviewPathKind>(["directory", "file", "symlink", "other"]).has(
+      kindDescriptor.value as PreviewPathKind
+    )
+  ) {
+    fail(code, message);
+  }
+  const deviceId = mountStringValue(descriptors.deviceId, code, message);
+  const inode = mountStringValue(descriptors.inode, code, message);
+  const sizeDescriptor = descriptors.sizeBytes;
+  if (
+    sizeDescriptor === undefined
+    || !Object.hasOwn(sizeDescriptor, "value")
+    || !Number.isSafeInteger(sizeDescriptor.value)
+    || sizeDescriptor.value < 0
+  ) {
+    fail(code, message);
+  }
+
+  return Object.freeze({
+    kind: kindDescriptor.value as PreviewPathKind,
+    deviceId,
+    sizeBytes: sizeDescriptor.value as number,
+    inode
+  });
 }
 
 function validatePolicy(policy: PreviewPolicy): void {
@@ -555,11 +759,23 @@ function assertOnApprovedMount(
   path: string,
   approvedMount: PreviewMountRecord,
   policy: PreviewPolicy,
-  metadata = dependencies.filesystem.lstat(path)
+  metadataInput?: PreviewPathMetadata
 ): void {
-  const mount = dependencies.mounts.inspect(path);
+  const metadata = snapshotPathMetadata(
+    metadataInput ?? dependencies.filesystem.lstat(path),
+    "SOURCE_MOUNT_CROSSING",
+    "Source path metadata changed to unsupported boundary data"
+  );
+  const mount = snapshotMountRecord(
+    dependencies.mounts.inspect(path),
+    "SOURCE_MOUNT_CROSSING",
+    "Source mount record changed to unsupported boundary data"
+  );
   if (
-    mount.target !== approvedMount.target
+    mount.target !== policy.sourceMount
+    || mount.source !== policy.sourceDevice
+    || mount.fileSystem.toLowerCase() !== policy.sourceFileSystem.toLowerCase()
+    || mount.target !== approvedMount.target
     || mount.source !== approvedMount.source
     || mount.fileSystem.toLowerCase() !== approvedMount.fileSystem.toLowerCase()
     || mount.deviceId !== approvedMount.deviceId
@@ -576,6 +792,12 @@ function assertOnApprovedMount(
     fail(
       "SOURCE_MOUNT_OPTIONS_MISMATCH",
       "Source mount safety options changed before content inspection"
+    );
+  }
+  if (!arraysEqual(mount.options, approvedMount.options)) {
+    fail(
+      "SOURCE_MOUNT_OPTIONS_MISMATCH",
+      "Source mount options changed after initial authority validation"
     );
   }
 }
@@ -614,6 +836,21 @@ function classifyForbiddenName(entry: string): string | undefined {
   if (
     new Set([
       ".cache",
+      ".pytest_cache",
+      ".mypy_cache",
+      ".ruff_cache",
+      ".hypothesis",
+      ".tox",
+      ".nox",
+      ".ipynb_checkpoints",
+      ".gradle",
+      ".cargo",
+      ".npm",
+      ".yarn",
+      ".pnpm-store",
+      ".parcel-cache",
+      ".turbo",
+      ".vite",
       "cache",
       "caches",
       "__pycache__",
@@ -629,6 +866,9 @@ function classifyForbiddenName(entry: string): string | undefined {
       "output",
       "coverage",
       "generated",
+      "target",
+      ".coverage",
+      "htmlcov",
       ".next",
       ".worktrees",
       "workspaces",
@@ -702,6 +942,10 @@ function mediaTypeForPath(path: string): string {
 
 function sortStrings(values: readonly string[]): string[] {
   return [...values].sort(compareCodeUnits);
+}
+
+function arraysEqual(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function compareCodeUnits(left: string, right: string): number {
