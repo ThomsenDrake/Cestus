@@ -43889,3 +43889,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, strict record 29, assurance-only transition, publication, Wave 3
   start, or product release. `neo`, push, provider, credential,
   external-system, pull-request, and unrelated actions remain unauthorized.
+
+## RV-1-E-1165 — Task14 rest-spread-prototype RED rejected on binding order
+
+- Recorded at: 2026-07-27T06:20:05Z
+- The twentieth fresh independent read-only review rejects exact test-only
+  candidate `f940c07f5ea07f7bac340c25e11b87ec4e58d1e7`, tree
+  `1f7ce81afa3461a2d9292d1e45a3c0a291440b42`, sole parent
+  `5f06358007c7030f5b76991166e4344b6e1f23b8`, corrected test blob
+  `b4303da7f388af9b194e8decae286fbf11f04f02`, and exact review envelope
+  `50d01e5fa8d868888ebc4ab33c4b80e7b5b2b8e8`.
+- Exact identity, scope, envelope parents, source/runtime freezes, ancestry,
+  dependency versions, clean state, diff hygiene, Git integrity, typecheck,
+  factory readiness, mission **20/20**, V4 **20/20**, and contract markers
+  **29 / 20 / 29 / 15** pass. Repository mode stops first only at the
+  preserved Task136 legacy-staging blob mismatch.
+- Focused execution remains **96 = 94 passed + two causal issuer RED
+  failures** and Task136 card remains **383 = 374 passed + nine failed**.
+  The exact admission cross signature remains
+  **1,042 = 1,033 passed + nine failed**; redundant cross repetition stops
+  after the decisive defect.
+- The reviewer confirms rest-container freshness, exact nested-rest identity,
+  direct/aliased/nested copied-getter behavior, returning getter parity,
+  computed prototype syntax, prototype accessor conservatism, own shadowing,
+  and prototype non-copying.
+- The reviewer proves one finite candidate-bound local AST symbol-resolution
+  false positive. A nested array rest pattern evaluates an earlier default
+  whose direct local callable body unconditionally throws before a later
+  registrar binding. Runtime never reaches the later binding, but
+  `arrayBindingPatternResolvesFromSlots` uses unordered boolean
+  accumulation and reports the later registrar.
+- The mismatch reproduces from both a direct exact finite array and a
+  use-closed immutable aliased finite array. Root cause is confined to the
+  unit-test oracle: nested binding-pattern evaluation completion is not
+  threaded through the newly reconstructed rest slots. Product source and
+  both causal Task14 RED failures remain unchanged.
+- Reject exact `f940c07f` as `reviewing -> implementing`. It is not approved
+  and remains an immutable ancestor. No product correction, Task14
+  approval/integration, GREEN authority, or Task15 work is authorized.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  from exact rejected blob `b4303da7`. First add abstract direct and aliased
+  nested-rest default-noncompletion controls and reproduce the false positive
+  while retaining both causal product REDs.
+- Replace unordered nested-rest slot accumulation with an ordered finite
+  binding outcome that carries both registrar resolution and definite
+  noncompletion. When a selected value is definitely `undefined` and its
+  default initializer is locally proven not to complete, or a nested binding
+  pattern is definitely unreachable, no earlier or later binding is exposed
+  by the failed module evaluation.
+- Thread the same finite completion outcome through direct exact array and
+  object binding patterns where their selected values are already exact, so
+  the correction does not leave the identical default-order defect outside
+  rest. Opaque selections and unsupported defaults remain conservative; do
+  not classify a merely effectful or conditional default as noncompletion.
+- Add parity for a throwing default before and after the would-be registrar,
+  nested array/object patterns, direct and use-closed aliased sources,
+  returning defaults, and opaque/conditional defaults. Retain all E-1164
+  rest freshness, spread-copy getter, prototype, final-property, exact
+  spread, carrier-closure, declaration/global/awaited/unreachable/value-flow
+  controls.
+- The correction must change only that one test file, preserve exact runtime
+  test blob `b53c4caf41cf19d6a45b8d39391ffba8f502a4f8` and all product/other-test
+  bytes, and leave the exact focused signature at
+  **96 = 94 passed + two causal issuer RED failures**. Task/card/cross,
+  typecheck, factory, mission, V4, contract-marker, repository-first-stop,
+  ancestry, freeze, dependency, diff, integrity, and clean-state evidence
+  must be independently reproduced before admission.
+- A twenty-first completely fresh independent read-only reviewer, ineligible
+  under all prior author/reviewer/verifier/coordinator exclusions, must
+  inspect the full cumulative RED and independently probe ordered binding
+  completion across direct/nested/rest array and object patterns, defaults
+  before and after registrar candidates, exact aliases, and conservative
+  opaque/conditional paths. Changed bytes invalidate review. The reviewer
+  may not edit, commit, merge, authorize source work, or make prefix,
+  record-29, release, or Wave claims.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This event is rejection and bounded forward test-correction
+  authority only, not corrected RED admission, approval, integration,
+  source correction, Task15 authority, Task136 product candidacy,
+  repository closure, strict record 29, assurance-only transition,
+  publication, Wave 3 start, or product release. `neo`, push, provider,
+  credential, external-system, pull-request, and unrelated actions remain
+  unauthorized.
