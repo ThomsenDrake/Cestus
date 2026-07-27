@@ -2895,7 +2895,6 @@ function residentFactoryIssuerAnalysis(
       return true;
     }
     return usesDefault &&
-      element.initializer !== undefined &&
       bindingNameResolvesToRegistrar(
         element.name,
         element.initializer,
@@ -3821,6 +3820,59 @@ describe("wake supervisor runtime import boundary", () => {
            exposedRegistrar =
              registerResidentLoopFactoryAuthorityReadback
          } = await undefinedThenable;`
+      ],
+      [
+        "exported awaited nested-object default",
+        `${exactComposition}
+         const nestedObjectThenable = {
+           a: { exposedRegistrar: Object.freeze({}) },
+           then(
+             resolve: (
+               value: { a: { exposedRegistrar: undefined } }
+             ) => unknown
+           ) {
+             resolve({ a: { exposedRegistrar: undefined } });
+           }
+         };
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         } = await nestedObjectThenable;`
+      ],
+      [
+        "exported awaited nested-array default",
+        `${exactComposition}
+         const nestedArrayThenable = {
+           then(
+             resolve: (value: [[undefined]]) => unknown
+           ) {
+             resolve([[undefined]]);
+           }
+         };
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = await nestedArrayThenable;`
+      ],
+      [
+        "exported direct nested-object default parity",
+        `${exactComposition}
+         export const {
+           a: {
+             exposedRegistrar =
+               registerResidentLoopFactoryAuthorityReadback
+           }
+         } = { a: { exposedRegistrar: undefined } };`
+      ],
+      [
+        "exported direct nested-array default parity",
+        `${exactComposition}
+         export const [[
+           exposedRegistrar =
+             registerResidentLoopFactoryAuthorityReadback
+         ]] = [[undefined]];`
       ],
       [
         "exported comma-expression alias binding",
