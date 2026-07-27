@@ -4207,9 +4207,10 @@ cross-boundary array, Tasks15-through-21 order, and all historical evidence.
   corpus.
 - `packages/local-runtime/src/wake-supervisor-runtime.ts` owns generic wake
   construction, private factory issuance and registration, the safe public
-  composition implementation and types, and the preserved downstream binder.
+  composition implementation, and the preserved downstream binder.
 - `packages/local-runtime/src/resident-loop-factory-composition.ts` is the
-  narrow compatibility facade for the existing safe public composition API.
+  exact six-import wrapper/type compatibility facade for the existing safe
+  public composition API.
 - `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` and its test
   remain byte-frozen.
 
@@ -4278,9 +4279,11 @@ composition import, and one composition call. Require instead:
 old exported registrar declarations/importers/callers = 0/0/0
 private factory issuance declarations = 1 in wake-supervisor-runtime.ts
 private registrar closure escapes = 0
-compatibility facade implementation statements = 0
-compatibility facade safe value exports = createResidentLoopFactoryComposition
-compatibility facade safe type exports =
+safe wake composition-builder production importers/callers = 1/1
+compatibility facade import declarations = 6
+compatibility facade value implementations = 1 wrapper
+compatibility facade local safe value export = createResidentLoopFactoryComposition
+compatibility facade local safe type declarations =
   ResidentLoopFactoryCompositionInput
   ResidentLoopFactoryAuthorityBindInput
   ResidentLoopFactoryAuthorityReadback
@@ -4289,10 +4292,12 @@ compatibility facade safe type exports =
 
 Exercise the already committed local direct/alias/destructuring/callable/
 conditional/logical/await/spread/default/comma corpus against the private
-binding. Do not add another alias fixture. Require a violation for export,
-re-export, returned closure, exported-object property, callback argument,
-namespace/barrel/dynamic access, alternate module/caller, copied
-construction, optional call, or spread call.
+binding. Do not add another alias fixture. Require a violation for private
+capability export, re-export, returned closure, exported-object property,
+callback argument, namespace/barrel/dynamic access, alternate module/caller,
+copied construction, optional call, or spread call. Permit the distinctly
+named safe builder only as one unaliased static import and one direct wrapper
+call in the exact facade.
 
 - [ ] **Step 3: Reproduce the exact RED and supporting gates**
 
@@ -4426,28 +4431,63 @@ flag, or other heuristic.
 
 - [ ] **Step 3: Co-locate composition and reduce the facade**
 
-Move the existing composition interfaces, normalization, start/bind/stop
-flow, provider and handoff authentication, currentness checks, and completed
-readback construction into `wake-supervisor-runtime.ts`.
+Move the composition normalization, start/bind/stop flow, provider and handoff
+authentication, currentness checks, and completed readback construction into
+`wake-supervisor-runtime.ts`. Export one distinctly named safe builder:
+
+```ts
+export function createResidentLoopFactoryCompositionForFacade(
+  rawInput: unknown
+): InternalResidentLoopFactoryComposition;
+```
+
+This safe builder accepts no registrar, issuer, token, callback, or brand and
+returns no private capability. Static policy permits only the exact facade to
+import and call it.
 
 Call private `registerReadback(readback)` immediately after constructing the
 exact completed frozen readback and before returning it. Do not return or
 otherwise expose `registerReadback`.
 
-Reduce `resident-loop-factory-composition.ts` to the explicit safe facade:
+Keep the existing public composition interfaces in
+`resident-loop-factory-composition.ts` and reduce its value behavior to an
+exact wrapper. Its six imports are all static, named, unaliased, and used:
 
 ```ts
-export {
-  createResidentLoopFactoryComposition,
-  type ResidentLoopFactoryAuthorityBindInput,
-  type ResidentLoopFactoryAuthorityReadback,
-  type ResidentLoopFactoryComposition,
-  type ResidentLoopFactoryCompositionInput
+import type {
+  WakeSupervisorCommandResultDto
+} from "../../agent/src/wake-supervisor.js";
+import type {
+  HandoffAuthorityBinding,
+  MountedSpecialistHandoffAuthorityWitness
+} from "../../agent/src/specialist-handoff-authority.js";
+import type {
+  MountedProviderAuthority,
+  MountedProviderAuthorityReadback
+} from "./mounted-provider-authority.js";
+import {
+  createResidentLoopFactoryCompositionForFacade
 } from "./wake-supervisor-runtime.js";
+import type {
+  WakeSupervisorRuntime,
+  WakeSupervisorRuntimeInput
+} from "./wake-supervisor-runtime.js";
+import type { LocalRuntimeHandle } from "./runtime-factory.js";
+
+export function createResidentLoopFactoryComposition(
+  rawInput: unknown
+): ResidentLoopFactoryComposition {
+  return createResidentLoopFactoryCompositionForFacade(rawInput);
+}
 ```
 
-No other value, type, state, constructor, registrar, provider operation,
-fallback, route, or activation belongs in the facade.
+Use those imported types to declare the existing
+`ResidentLoopFactoryCompositionInput`,
+`ResidentLoopFactoryAuthorityBindInput`,
+`ResidentLoopFactoryAuthorityReadback`, and
+`ResidentLoopFactoryComposition` interfaces exactly. No export-list syntax,
+other value, state, constructor, registrar, provider operation, fallback,
+route, or activation belongs in the facade.
 
 - [ ] **Step 4: Run GREEN and all exact gates**
 
