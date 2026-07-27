@@ -45110,3 +45110,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   transition, publication, Wave 3 start, or product release. `neo`, push,
   provider, credential, external-system, pull-request, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1181 — Task14 private lexical-capability amendment authorized
+
+- Recorded at: 2026-07-27T12:51:32Z
+- The human product-and-scope decision explicitly approves the coordinator's
+  recommended Task14 design Option 1 and authorizes this session to record and
+  execute it without another user approval when the committed amendment
+  matches this exact boundary.
+- E-1177 through E-1180 prove the current public constructor/public registrar
+  pair cannot authenticate a composition-only issuer. A direct caller can
+  invoke exported `createWakeSupervisorRuntime`, retain every construction
+  identity, receive the exact runtime, and reproduce every public registrar
+  argument. Any deterministic predicate that accepts the composition trace
+  also accepts that direct trace unless authority resides in one private
+  lexical boundary or uses a forbidden contextual heuristic.
+- Amend only
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`
+  and
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`
+  to specify the approved repair. No V4, mission, claim, contract, assurance,
+  product, test, dependency, configuration, route, or unrelated byte changes
+  in the documentation amendment.
+- Co-locate legitimate factory composition issuance and private readback
+  registration inside
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`. Keep exported
+  `createWakeSupervisorRuntime`, but runtimes created through that generic API
+  are permanently ineligible for factory readback registration. Remove the
+  exported `registerResidentLoopFactoryAuthorityReadback` API. Its replacement
+  is a private, one-shot lexical registrar capability that never escapes its
+  defining module.
+- Preserve exported `bindResidentLoopCapabilitiesForFactory`. Reduce
+  `packages/local-runtime/src/resident-loop-factory-composition.ts` to the
+  narrow compatibility facade that preserves the existing safe public
+  `createResidentLoopFactoryComposition` function and composition types.
+  Add no product path and retain Task136's exact **33-path** ceiling.
+- Do not add a provider, route, default runtime, activation behavior,
+  caller-visible brand, replaceable callback, report-store port, fallback
+  write, structural or first-seen acceptance, timing or allocation-order
+  inference, call-stack or source-text inspection, hidden global mutable
+  authority, process-local rendezvous, or any other caller-detection
+  heuristic.
+- After the exact design/plan amendment is committed and history-preservingly
+  integrated, authorize only the smallest test-only RED correction in:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`.
+  Freeze every product source, mounted test, other test, claim, contract,
+  mission, assurance, dependency, configuration, and unrelated path.
+- The runtime oracle must prove the old registrar is absent/nonexported, a
+  generic direct runtime cannot register or bind an accessor-backed proposed
+  readback and performs zero proposed-readback getter and authenticated-ledger
+  reads, and the legitimate composition path still issues and consumes its
+  exact one-shot binding.
+- The local TypeScript AST/symbol-resolution oracle must require the private
+  issuer/registrar capability to remain in the wake module, never export,
+  alias, return, pass, re-export, or otherwise escape, while the composition
+  facade exposes only the safe existing composition API and types. Preserve
+  the cumulative abstract local alias corpus; add no unrelated alias cases.
+- Preserve the exact 96-test focused cardinality by correcting the two
+  existing Task14 oracle cases. Expected RED is
+  **96 = 94 passed + two Task14 failures**; exact 17-file card is
+  **383 = 374 passed + nine failed**; exact 37-file cross-boundary execution
+  is **1,042 = 1,033 passed + nine failed**. The remaining seven failures are
+  only the preserved Task15-through-16 REDs.
+- Run fixture-heavy commands under `TMPDIR=/dev/shm` with one worker. Use
+  `--testTimeout=120000` for the focused import-policy execution. Reproduce
+  standalone typecheck, factory readiness, mission and V4 assurance
+  **20/20**, exact markers **29 / 20 / 29 / 15**, truthful legacy-staging
+  repository first stop, scope, freezes, ancestry, dependencies, diff,
+  integrity, and clean state.
+- Commit one exact two-test candidate and admit only its SHA/tree/blob set to
+  a completely fresh independent read-only reviewer. Changed bytes invalidate
+  review. Only after exact approval, append-only recording, and
+  history-preserving integration may a separate GREEN event authorize exactly
+  `packages/local-runtime/src/wake-supervisor-runtime.ts` and
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`.
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` remains frozen
+  unless a newly approved causal RED proves it necessary.
+- The separate GREEN must make the focused suite **96/96**, the card
+  **383 = 376 passed + seven preserved failures**, and cross-boundary
+  execution **1,042 = 1,035 passed + seven preserved failures**, then receive
+  a completely fresh independent source review before Task14 integration.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  approved design/plan amendment and bounded test-first authority, not a
+  documentation or test candidate, source GREEN, Task14 completion, Task15
+  authority, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, push, provider, credential, external-system,
+  pull-request, and unrelated actions remain unauthorized.
