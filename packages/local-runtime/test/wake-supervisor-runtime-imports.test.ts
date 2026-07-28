@@ -2636,6 +2636,7 @@ function residentFactoryIssuerAnalysis(
     readonly hasUnknownProperties: boolean;
   };
   const registrarImportSymbols = new Set<ts.Symbol>();
+  const privateIssuanceSymbols = new Set<ts.Symbol>();
   const safeBuilderImportSymbols = new Set<ts.Symbol>();
   const registrarDeclarations: ts.FunctionDeclaration[] = [];
   const privateIssuanceDeclarations: ts.FunctionDeclaration[] = [];
@@ -2670,6 +2671,10 @@ function residentFactoryIssuerAnalysis(
         statement.name?.text === residentFactoryPrivateIssuance
       ) {
         privateIssuanceDeclarations.push(statement);
+        const symbol = checker.getSymbolAtLocation(statement.name);
+        if (symbol !== undefined) {
+          privateIssuanceSymbols.add(symbol);
+        }
       }
       if (
         source.label === residentFactoryWakePath &&
@@ -3023,7 +3028,8 @@ function residentFactoryIssuerAnalysis(
   function recordRegistrarEscape(label: string): void {
     violations.add(
       `${label}:${
-        mode === "private-escape-corpus"
+        mode === "private-escape-corpus" ||
+        label === residentFactoryWakePath
           ? "private-registrar-escape"
           : "registrar-reexport"
       }`
@@ -3046,7 +3052,12 @@ function residentFactoryIssuerAnalysis(
     symbol: ts.Symbol,
     resolving: Set<ts.Symbol>
   ): boolean {
-    if (registrarImportSymbols.has(symbol)) return true;
+    if (
+      registrarImportSymbols.has(symbol) ||
+      privateIssuanceSymbols.has(symbol)
+    ) {
+      return true;
+    }
     if (resolving.has(symbol)) return false;
     resolving.add(symbol);
     if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
@@ -4638,6 +4649,15 @@ function residentFactoryIssuerAnalysis(
         boundCallableTarget(expression.expression)!,
         resolving
       );
+    }
+    if (ts.isCallExpression(expression)) {
+      const target = unwrapRegistrarExpression(expression.expression);
+      const symbol = ts.isIdentifier(target)
+        ? checker.getSymbolAtLocation(target)
+        : undefined;
+      if (symbol !== undefined && privateIssuanceSymbols.has(symbol)) {
+        return true;
+      }
     }
     if (ts.isArrowFunction(expression)) {
       return ts.isBlock(expression.body)
@@ -8127,6 +8147,9 @@ describe("wake supervisor runtime import boundary", () => {
         exactComposition,
         [],
         `${exactWake}
+         export {
+           issueResidentLoopFactoryWakeRuntime as exposedPrivateIssuance
+         };
          export function exposePrivateIssuance(input: object) {
            return issueResidentLoopFactoryWakeRuntime(input);
          }`
@@ -8141,14 +8164,21 @@ describe("wake supervisor runtime import boundary", () => {
         )
       ]
     ] as const) {
+      const analysis = analyzeTopologyControl(
+        source,
+        extras ?? [],
+        wakeSource ?? exactWake
+      );
       expect.soft(
-        analyzeTopologyControl(
-          source,
-          extras ?? [],
-          wakeSource ?? exactWake
-        ).violations,
+        analysis.violations,
         name
       ).not.toEqual([]);
+      if (name === "alternate exported private issuance caller") {
+        expect.soft(
+          analysis.violations,
+          `${name} private capability`
+        ).toContain(`${residentFactoryWakePath}:private-registrar-escape`);
+      }
     }
 
     const packagesRoot = fileURLToPath(new URL("../../", import.meta.url));
