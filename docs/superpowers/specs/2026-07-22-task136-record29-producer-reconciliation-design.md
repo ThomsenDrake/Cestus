@@ -2136,3 +2136,118 @@ source-text inspection, hidden global mutable authority, process-local
 rendezvous, dependency, credential, network call, or external effect.
 Task14 and Task136 remain `implementing`; the strict product frontier remains
 28 of 29 until every later committed gate exists.
+
+## RV-1-E-1213 Current Task16 Producer-Ownership Reconciliation
+
+This true-EOF section supersedes only the blocked Task16 R/W/G construction
+details. Task14 is complete. The exact 33-path ceiling, card and cross-card
+arrays, public factory input, eight-argument bounded issuer, T120 schemas,
+gateway readback own-key shapes, Task138 boundary, release graph, and every
+record-29 gate remain unchanged.
+
+### W owns orchestration-claim completion
+
+R does not receive raw-ledger authority and cannot lawfully invent
+`orchestrationClaimEventId` or `leaseClaimGeneration`. The public W operation
+remains:
+
+```ts
+suspendAndRelease(
+  checkpoint: unknown,
+  authority:
+    | OpaqueResidentLoopCurrentnessToken
+    | OpaqueResidentLoopSuspensionOnlyCapability
+): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1>;
+```
+
+R supplies the canonical checkpoint draft containing only fields it owns. W
+consumes the exact currentness or suspension-only capability, rereads its
+authenticated mounted snapshot, resolves the one exact orchestration claim
+for the bound task/attempt/run/retry tuple, and supplies the claim event ID and
+lease generation before normal checkpoint validation and append. Existing
+callers may include those two fields, but they are never authority: W requires
+exact equality with its reread claim and rejects a mismatch before append or
+release. The private claim identity is not added to the bounded issuer
+arguments, factory input, metadata, token, or any returned capability.
+
+### G owns canonical T120 tool-step material
+
+The internal mounted G port has exactly six operations. Its existing five
+remain unchanged and it gains one sixth non-executable operation:
+
+```ts
+readCanonicalToolStepMaterial(
+  exactIssuedReadback: object
+): Readonly<{
+  gatewayReadbacks: Readonly<Record<string, unknown>>;
+  allowlistEntryHash: `sha256:${string}`;
+  sideEffectClass: AgentToolSideEffectClass;
+  requiredApprovalClass: AgentApprovalClass;
+  previewHash: `sha256:${string}`;
+  inputArtifactHashes: readonly `sha256:${string}`[];
+  resultArtifactHashes: readonly `sha256:${string}`[];
+}>;
+```
+
+G records this material in a private WeakMap when it issues an exact
+same-instance `requested`, claim-without-receipt `claimed`, `completed`,
+`denied`, or `failed` readback. The operation rejects copied, foreign,
+unissued, transient `human-approved`, consumed-incompatible, and otherwise
+ineligible values. Requested and claimed material has empty result artifacts;
+terminal material uses the exact durable artifacts permitted by its prefix and
+is empty where that prefix carries none. The return is frozen plain own-data
+and exposes no preview body, descriptor, permit, adapter, executor, ledger,
+reader, callback, or authority. Existing readback own-key shapes remain
+byte-for-byte unchanged. R combines only this G-owned material with T120
+replay-owned identity/plan/budget fields; it never reconstructs G fields from
+C, fixture literals, or raw ledger access.
+
+Human branches use the package catalog's ordinal-9
+`legacy.staging.approve` descriptor with `ledger-review` side effect and
+approval class. Automatic branches retain ordinal-10
+`legacy.staging.execute` with `ledger-proposal` and `none`. Preview, input,
+and result artifact hashes originate from G material and are deliberately
+independent of plan/observation fixture hashes.
+
+### Dispatcher capability staleness is one-shot consumption
+
+The already committed dispatcher binder is genuinely one-shot. It consumes
+the exact capability WeakMap membership only after successful membership,
+mounted-ledger identity, and workspace/resident/task validation. A failed
+bind does not consume. A capability that has already bound once is stale and
+its first later factory presentation rejects. No issuance generation,
+ledger-high-water heuristic, global clock, caller inspection, or new public
+field is added.
+
+### Corrected RED and GREEN sequence
+
+The executable Task16 RED changes only the seven existing tests named by
+RV-1-E-1213, preserves every title and test cardinality, and has:
+
+```text
+Task16 focused: 9 = 3 passed + 6 failed
+producer controls: 144 = 140 passed + 4 failed
+Task136 card: 383 = 373 passed + 10 failed
+37-file cross-boundary: 1,042 = 1,032 passed + 10 failed
+Task138 boundary: 355/355
+```
+
+The four producer failures are W claim completion, G material behavior, G
+static ownership, and dispatcher one-shot consumption. The six remaining
+failures retain the three bounded-loop and three factory/import titles.
+
+Only after independent RED approval, append-only recording, and
+history-preserving integration may a producer-prerequisite GREEN change
+`mounted-wake-lifecycle-store.ts`, `resident-loop-tool-gateway.ts`, and
+`domain-execution-dispatcher.ts`. It must restore producer controls
+**144/144**, the card to **383 = 377 passed + six failed**, and cross-boundary
+to **1,042 = 1,036 passed + six failed**. Only after that GREEN is separately
+approved and integrated may the final R GREEN create `bounded-agent-loop.ts`
+and modify `resident-loop-factory-ports.ts`, producing complete card and
+cross-boundary GREEN.
+
+No path, provider, route, activation, default runtime, fallback write,
+dependency, credential, network call, external effect, raw-ledger port, or
+public authority is added. Mounted storage changes only for the newly causal
+W-owned claim completion. Task16 and Task136 remain `implementing`; the
+strict frontier remains 28 of 29.

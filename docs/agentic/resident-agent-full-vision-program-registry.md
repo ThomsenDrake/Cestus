@@ -47023,3 +47023,118 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1213 — Task16 held RED rejected; producer-owned seven-test correction authorized
+
+- Recorded at: 2026-07-28T21:34:17Z
+- Fresh independent precommit reviewer
+  `/root/task16_red_implementer_2/task16_red_precommit_review` rejects the
+  held E-1212 bytes. Exact held blobs are bounded test
+  `866faccaa584896ee2d603c54d31a86774b29e41`, factory behavior test
+  `25b830df2a95e9b35cca8bd006a2b92bf701a203`, and factory import-policy test
+  `17d1b681d5ff069db4da539177eab5bf34b79aab`. The uncommitted patch is exact
+  **4,093 insertions / 266 deletions** and remains only in those three tests.
+  It passes standalone typecheck and reaches focused
+  **9 = 3 passed + six failures**, but is not an approvable future-GREEN
+  oracle.
+- The eight-argument issuer cannot supply W-private orchestration claim ID and
+  lease generation. The held harness invents them. R has no lawful raw-ledger
+  source. W already owns the authenticated snapshot and must complete or
+  validate those fields without changing the public W operation or bounded
+  issuer ABI.
+- T120 requires preview, side-effect, approval, input-artifact, and
+  result-artifact material that C, the plan, and current G readback shapes do
+  not expose. Independent owner analysis
+  `/root/task16_claim_abi_analysis` binds those fields to G's durable request
+  and completion prefixes. Authorize one internal data-only sixth G operation
+  `readCanonicalToolStepMaterial(exactIssuedReadback)`, same-instance
+  WeakMap-backed, with exact frozen gateway readbacks, allowlist hash,
+  side-effect class, approval class, preview hash, input artifacts, and result
+  artifacts. It accepts only exact issued requested, claimed, completed,
+  denied, or failed stages. Preserve every issued readback own-key shape.
+  Reject copied, unissued, transient human-approved, consumed-incompatible,
+  and ineligible values.
+- The hostile factory title currently proves whole-bootstrap second use, not
+  dispatcher capability staleness. The committed design already defines the
+  dispatcher binder as one-shot. A capability becomes stale after one exact
+  successful direct bind; its first later factory presentation must reject.
+  Consume WeakMap membership only after all exact ledger and tuple checks.
+  Failed binds do not consume. Add no generation or high-water heuristic.
+- The reviewer also identifies detachable factory/import oracles: required
+  metadata is rejected by its own key regex; product surfaces need exact
+  frozen plain non-proxy data descriptors; start/bind/stop and the ten-step
+  factory chain are not bound to the exported function's exact symbols,
+  awaited order, arguments, outputs, or propagating stop; barrel and
+  activation checks miss aliased/star origins and loader aliases. Resume
+  retains an old token, rejected paths skip post-await settlement, durable G
+  and W append counters are incomplete, and only one branch preflights before
+  the absent API.
+- Append-only design, plan, and claim sections in this same authority commit
+  assign these fields to W/G/dispatcher, split Task16 into corrected RED,
+  producer-prerequisite GREEN, and final R GREEN, and update Task17's
+  source-union proof. They add no path and preserve the exact 33-path
+  SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  V4/mission mechanics, T120/ontology schemas, public APIs, readback shapes,
+  card arrays, release graph, and external behavior.
+- Supersede E-1212's executable three-test ceiling and exact-five G operation
+  statement only. The internal G object now has exactly six operations; its
+  existing five remain unchanged. Authorize the smallest corrected RED in
+  exactly seven existing tests:
+  `packages/agent/test/bounded-agent-loop.test.ts`,
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`,
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`,
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`,
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`,
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  and `packages/agent/test/domain-execution-dispatcher.test.ts`.
+  Continue the first, fifth, and sixth paths forward from held blobs
+  `866faccaa584896ee2d603c54d31a86774b29e41`,
+  `25b830df2a95e9b35cca8bd006a2b92bf701a203`, and
+  `17d1b681d5ff069db4da539177eab5bf34b79aab`; do not revert, discard, or
+  reconstruct them. Their exact clean ancestry baselines, followed by the
+  other four exact starting blobs, are respectively
+  `f9ffb08fb3f5a0741119b735e0a49f456750787e`,
+  `2db635799e8e92e84170c5487d94cb4f0877cc93`,
+  `9dbd369294ea25940f0be4fdc0daddbfca22350d`,
+  `cc9c3129f8d36b1edde263d7cafdbd3b219f3538`,
+  `e2a6a931d82da7b5ef5d42e8f297dbcbefbb250c`,
+  `57bbf0a2cfdab9ee7b174d5a75d7a5d207c9b15a`, and
+  `7bddefd21e4823c61b13f0fdc13f18e251172c64`.
+- Preserve every existing title and test cardinality. Implement the complete
+  review checklist plus W claimless-draft completion, G same-instance
+  material/ownership, dispatcher second-bind rejection, and a truly pre-bound
+  stale factory capability. Add no unrelated AST alias case.
+- Required corrected RED under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, and exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**. Task138 remains **355/355**.
+  Typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, truthful repository first-stop, exact scope/freezes/
+  ancestry/dependencies, diff hygiene, Git integrity, and clean state must
+  pass.
+- Freeze absent `packages/agent/src/bounded-agent-loop.ts`, factory source
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, mounted W source
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, G source
+  `2e7d7a79763758037c56cedd91a70f63c8d8feea`, dispatcher source
+  `230a0b53ee19e29cc3301750c0ff23bcb9225314`, every other source/test,
+  contract, mission, checker, dependency, configuration, route, provider,
+  credential, preview branch, and unrelated byte.
+- Commit only the exact seven-test correction, obtain completely fresh
+  independent read-only review, and record/approve/integrate exact immutable
+  bytes with approval-first/candidate-second plus forward Task136 merges.
+  Changed bytes invalidate review.
+- Only after that RED integration may a separate event authorize the
+  producer-prerequisite GREEN in mounted W, G, and dispatcher. Only after that
+  GREEN is independently approved and integrated may another event authorize
+  the final two-source R GREEN. No product source is authorized now.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  seven-test correction authority, not a corrected RED candidate, source
+  authority, Task16 acceptance, Task136 candidacy, repository closure, strict
+  record 29, publication, Wave 3 start, or product release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
