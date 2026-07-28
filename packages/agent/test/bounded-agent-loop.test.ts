@@ -669,7 +669,8 @@ function createIssuedCapabilityHarness(
     mutation,
     planEvent,
     finalObservationEvent,
-    branch
+    branch,
+    initialToolMaterial
   );
   const completionResult = residentResult(
     "handoff-recorded",
@@ -2432,9 +2433,12 @@ function residentSuspension(
   mutation: HarnessMutation,
   planEvent: Readonly<Record<string, unknown>>,
   observationEvent: Readonly<Record<string, unknown>>,
-  branch: HarnessBranch
+  branch: HarnessBranch,
+  material: CanonicalToolStepMaterial
 ): Readonly<Record<string, unknown>> {
   const plan = Reflect.get(planEvent, "payload") as Readonly<Record<string, unknown>>;
+  const steps = plan.steps as readonly Readonly<Record<string, unknown>>[];
+  const step = steps[0]!;
   const resumptionDeadlineAt = mutation === "deadline-mismatch"
     ? "2026-07-29T12:00:00.000Z"
     : "2026-07-28T13:00:00.000Z";
@@ -2452,12 +2456,12 @@ function residentSuspension(
     runId: plan.runId,
     planId: plan.planId,
     planRevision: plan.planRevision,
-    stepOrdinal: 1,
+    stepOrdinal: step.ordinal,
     toolRequestId: mutation === "burned-tool-request-reuse"
       ? "toolreq_bounded_reused"
       : "toolreq_bounded_harness",
-    toolId: "legacy.staging.execute",
-    toolVersion: "0.1.0",
+    toolId: step.toolId,
+    toolVersion: step.toolVersion,
     executionCapabilityHash: hash("9")
   };
   const humanUnknown = branch === "effect-outcome-unknown-human";
@@ -2479,7 +2483,7 @@ function residentSuspension(
         ...(humanUnknown ? {
           decisionEventId: "evt_gateway_decision",
           approvedBy: "human_bounded_reviewer",
-          approvedPreviewHash: hash("4")
+          approvedPreviewHash: material.previewHash
         } : {}),
         executionClaimEventId: "evt_gateway_claim",
         executionCapabilityHash: hash("9"),
