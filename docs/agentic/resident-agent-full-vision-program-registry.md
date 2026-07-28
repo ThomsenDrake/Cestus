@@ -46231,3 +46231,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1198 — Task15 default-export oracle correction admitted to review
+
+- Recorded at: 2026-07-28T16:22:49Z
+- Exact E-1197 test-only candidate is
+  `b3d96985ebb423b3aaa41d590a7a971ebaff4e2f`, tree
+  `bc4b50658c0afb36c83fe795f6ef818cdbe532a5`, sole parent exact repair
+  authority merge `841a71a4b840600ff1b27b22dc29e777646c810b`,
+  with exact subject `test(agent): require nonbarrel handoff reader`.
+- Exact scope is only
+  `packages/agent/test/specialist-handoff-projection.test.ts`, from rejected
+  named-export oracle blob
+  `a428e530cf4bb7d3b5e97180a6a9ee2801c7c29a` to
+  `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9`, exact **+13 / -3**.
+  No test case or cardinality is added.
+- The existing Task15 case now reads the direct module's `default` property,
+  requires a function with exact runtime name
+  `createInternalSpecialistHandoffProjectionPort`, requires the direct named
+  property to be absent, and requires the same named property to be absent
+  from the agent barrel. Existing completion, selected-readback, local
+  no-effect, and Task138-no-widening controls remain intact.
+- Test implementer `/root/task15_e1197_oracle_fix` reproduces exact focused
+  **37 = 36 passed + one missing-deep-default Task15 failure** and exact
+  Task138 boundary **355 = 354 passed + one Task15 failure**. Exact Task136
+  card is **383 = 376 passed + seven Task15-through-16 failures** and corrected
+  shell-asserted 37-file cross-boundary is
+  **1,042 = 1,035 passed + seven failures**, all under `TMPDIR=/dev/shm`,
+  one worker, and the 120-second timeout.
+- An earlier 34-file command caused by three substituted paths is explicitly
+  excluded and supplies no evidence. The implementer reran and bound this
+  candidate only to the exact committed 37-file array.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20**; exact markers remain **29 / 20 / 29 / 15**.
+  Repository mode exits one and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  with no closure or release success marker.
+- Task15 source remains frozen at
+  `311120f59e9d40628c4d091f958f3ba2bf2ff53d`; agent barrel remains frozen at
+  `69f60a5bb231a9041cd6dfea29203302293edeb8`; released Task138 source/test/
+  claim remain `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`,
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`. Every other product/test,
+  claim, contract, mission, checker, dependency, configuration, and path
+  remains frozen.
+- Exact one-file scope, starting/final blobs, all freezes, ownership,
+  33-path ceiling, ancestry, TypeScript 5.9.3, Vitest 4.1.9, diff hygiene,
+  Git integrity, and clean candidate state pass implementer verification.
+- Advance exact correction `implementing -> candidate -> reviewing`. Assign
+  completely fresh independent read-only reviewer
+  `/root/task15_e1198_oracle_review`, excluded from the Task15 implementer,
+  preflight, scope-review, oracle-analysis, and all Task14 roles. Review binds
+  exact candidate identity/tree/parent/blob/scope, ESM export-star/default
+  semantics, causal RED identity, every freeze, and all gates above. Changed
+  bytes invalidate review.
+- Approval requires a separate append-only event, approval-first/candidate-
+  second history-preserving program merge, fresh integration-tree gates, a
+  separate integrated event, and a forward Task136 merge before source
+  authority resumes.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  review admission, not approval, integration, source GREEN, Task15
+  acceptance, Task16 authority, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
