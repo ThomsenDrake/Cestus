@@ -469,6 +469,11 @@ describe("resident-loop tool gateway", () => {
       terminal: "automatic-pre-claim-failed",
       suffix: "canonical-material-failed"
     });
+    const postClaimFailed = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "human-approval",
+      terminal: "post-claim-failed",
+      suffix: "canonical-material-post-claim-failed"
+    });
     const issueRecoveryReadback = async (
       prefix: CanonicalResidentPrefix
     ): Promise<unknown> => {
@@ -482,6 +487,8 @@ describe("resident-loop tool gateway", () => {
     const claimedReadback = await issueRecoveryReadback(claimed);
     const deniedReadback = await issueRecoveryReadback(denied);
     const failedReadback = await issueRecoveryReadback(failed);
+    const postClaimFailedReadback =
+      await issueRecoveryReadback(postClaimFailed);
     const requestedExpected = {
       authorizationKind: "automatic-policy",
       stage: "requested",
@@ -516,6 +523,14 @@ describe("resident-loop tool gateway", () => {
         expectedReadback: expectedRecoveryReadback(
           failed,
           "automatic-pre-claim-failed"
+        )
+      },
+      {
+        prefix: postClaimFailed,
+        readback: postClaimFailedReadback,
+        expectedReadback: expectedRecoveryReadback(
+          postClaimFailed,
+          "post-claim-failed"
         )
       }
     ] as const;
@@ -563,7 +578,12 @@ describe("resident-loop tool gateway", () => {
       const resultArtifactHashes =
         entry.prefix.terminal?.type === "agent.resident-domain.completed.v1"
           ? [...entry.prefix.terminal.payload.resultArtifactHashes]
-          : [];
+          : entry.prefix.receipt?.type ===
+                "agent.resident-domain.outcome-observed.v1" &&
+              Reflect.get(entry.expectedReadback, "failurePhase") ===
+                "post-claim"
+            ? [...entry.prefix.receipt.payload.artifactHashes]
+            : [];
       const readCanonicalMaterial = reflectedOperation(
         entry.prefix.gateway,
         "readCanonicalToolStepMaterial"
