@@ -4551,3 +4551,130 @@ lifecycle transitions.
 Do not claim Task136 product candidacy, strict record 29, repository closure,
 publication, Wave 3 start, or product release before their exact committed
 gates pass. Remain local-only and preserve all history.
+
+## RV-1-E-1213 Task16 Producer-Reconciliation Amendment
+
+This true-EOF section replaces only the executable Task16 sequence above.
+Tasks 17 through 21 remain in order after the additional producer checkpoint.
+The Task136 scope remains exactly 33 paths with canonical SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+
+### Task 16A: Correct and integrate the executable RED
+
+**Modify only:**
+
+- `packages/agent/test/bounded-agent-loop.test.ts`
+- `packages/agent/test/resident-loop-tool-gateway.test.ts`
+- `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`
+- `packages/local-runtime/test/wake-supervisor-runtime.test.ts`
+- `packages/local-runtime/test/resident-loop-factory-ports.test.ts`
+- `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`
+- `packages/agent/test/domain-execution-dispatcher.test.ts`
+
+Preserve all existing titles and total cardinality. Correct the three held
+Task16 tests using the complete E-1213 review checklist: all branch preflights,
+exact latest/reclaimed W token use, after-rejection settled assertions,
+complete append counters, true prefix-invalid controls, frozen plain
+non-proxy factory surfaces, exact start/bind/stop observation, and
+symbol-resolved top-level awaited factory provenance with exact arguments,
+return values, barrel origin, activation loaders, and stop propagation.
+
+Extend the existing W state-zero title to prove that a claimless checkpoint
+draft is completed from W's exact authenticated orchestration claim and a
+caller-supplied mismatch rejects. Extend existing G titles to prove exact
+same-instance requested/claimed/completed/denied/failed material, copied and
+transient-stage rejection, and the sixth operation's protected source
+ownership. Extend the
+existing dispatcher closed-catalog title to prove an exact first bind succeeds
+and the identical second bind rejects. In the existing hostile factory title,
+pre-bind one exact capability and prove its first factory presentation rejects
+with zero effects; keep whole-factory reuse as a separate control.
+
+The bounded harness keeps the public eight issuer arguments. Its W mock
+privately completes or validates claim fields. Its G mock supplies canonical
+tool-step material; human cases use ordinal 9 and automatic cases ordinal 10.
+Use exact ledger append counts 0 for completed replay, 9 for approval
+suspension, 10 for either unknown-outcome branch, and 11 for successful
+resume. Resume must invalidate the original token and use only the reclaimed
+token.
+
+Run under `TMPDIR=/dev/shm`, one worker, and the 120-second timeout:
+
+```text
+Task16 focused 9 = 3 passed + 6 failed
+W/G/import/dispatcher producer controls 144 = 140 passed + 4 failed
+Task136 card 383 = 373 passed + 10 failed
+37-file cross-boundary 1,042 = 1,032 passed + 10 failed
+Task138 boundary 355/355
+```
+
+Also require standalone typecheck, factory readiness, mission and V4
+**20/20**, markers **29 / 20 / 29 / 15**, the exact legacy-staging repository
+first stop, scope and blob freezes, ancestry, dependencies, diff hygiene, Git
+integrity, and clean state.
+
+Commit only the seven tests. Obtain a completely fresh independent read-only
+review of the exact immutable bytes. Record approval append-only, merge
+approval-first/candidate-second into the program branch, rerun integration
+gates, append integration, and forward-merge authority into Task136. Changed
+bytes invalidate review. No product source may change before this completes.
+
+### Task 16B: Implement and integrate producer prerequisites
+
+**Modify only:**
+
+- `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`
+- `packages/agent/src/resident-loop-tool-gateway.ts`
+- `packages/agent/src/domain-execution-dispatcher.ts`
+
+W fills or validates only its exact orchestration claim ID and lease
+generation after authenticated currentness. G adds only
+`readCanonicalToolStepMaterial` with private same-instance material branding
+and unchanged readback shapes. The dispatcher consumes its capability only
+after a successful exact bind; failed binds do not consume.
+
+Keep T120, ontology, C, adapters, wake runtime, composition, H, factory ports,
+activation, routes, providers, credentials, and every test frozen. Required
+GREEN is:
+
+```text
+producer controls 144/144
+Task16 focused 9 = 3 passed + 6 failed
+Task136 card 383 = 377 passed + 6 failed
+37-file cross-boundary 1,042 = 1,036 passed + 6 failed
+Task138 boundary 355/355
+```
+
+Run all supporting gates from Task16A. Commit only the three sources, obtain
+fresh independent source review, record approval and integration append-only,
+and preserve approval-first/candidate-second plus forward Task136 merge
+history. Changed bytes invalidate review.
+
+### Task 16C: Implement and integrate R
+
+**Create/modify only:**
+
+- create `packages/agent/src/bounded-agent-loop.ts`
+- modify `packages/local-runtime/src/resident-loop-factory-ports.ts`
+
+Execute the original Task16 R/factory design against the integrated producer
+prerequisites. R receives the same eight exact capabilities, uses the new G
+material operation, supplies claimless W checkpoint drafts, revalidates W
+after every await, and returns only exact frozen `{ metadata, loop, stop }`.
+The factory executes the exact awaited Core/preflight/bind/ports/W/C/H/R
+chain and propagating stop wrapper proven by Task16A.
+
+Required GREEN is exact focused **9/9**, card **383/383**, cross-boundary
+**1,042/1,042**, producer **144/144**, Task138 **355/355**, and all supporting
+Task16A gates. Commit only the two R sources, obtain fresh independent review,
+and record/integrate history-preservingly before Task17.
+
+### Task 17 source-union adjustment
+
+Task17 still admits one exact 33-path candidate. Its source-only proof must
+include the separately approved Task16B producer GREEN SHA immediately before
+the Task16C R GREEN SHA. The sorted union remains the exact fifteen Task136
+sources; the final R GREEN remains the candidate tip. Every earlier RED,
+repair, review, approval, program merge, and forward Task136 merge remains
+ancestral. No candidate, record 29, or Task18 action exists before all Task16C
+gates pass.

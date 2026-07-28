@@ -2177,3 +2177,45 @@ The amendment changes exactly the nine E-1109 authority paths and no package
 or product byte. It requires completely fresh independent design and
 executability approvals before history-preserving integration and before a
 separate three-source Task14 GREEN authorization.
+
+## RV-1-E-1213 Current Task16 Producer-Reconciliation Authority
+
+This true-EOF section supersedes only Task16's blocked executable sequence.
+The exact 33-path `15/17/1` ceiling, position-23 composition source, canonical
+path SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+ten prerequisites, twelve compatibility entries, 17-test card, 37-test
+cross-boundary array, and every release pin remain current.
+
+Task14 and Task15 are complete. Task16 and Task136 remain `implementing`.
+Strict frontier is **28 of 29**. There is no Task136 product candidate,
+record 29, publication, Wave 3 start, repository closure, or product release.
+
+The Task16 correction preserves the public eight-argument bounded issuer and
+assigns missing material to its lawful owners:
+
+- W completes or validates orchestration claim ID and lease generation from
+  its exact authenticated mounted snapshot;
+- G exposes one internal data-only
+  `readCanonicalToolStepMaterial(exactIssuedReadback)` operation without
+  changing issued readback shapes; and
+- the dispatcher consumes its exact opaque capability after one successful
+  bind, so a previously bound capability is stale.
+
+The corrected seven-test RED is exact focused
+**9 = 3 passed + six failed**, producer
+**144 = 140 passed + four failed**, card
+**383 = 373 passed + ten failed**, and cross-boundary
+**1,042 = 1,032 passed + ten failed**, with Task138 **355/355**.
+
+After independent RED approval and integration, Task16 has two separate
+source gates. The producer-prerequisite GREEN changes only mounted W, G, and
+the dispatcher and restores card/cross-boundary to
+**377 + six / 1,036 + six**. The final R GREEN changes only the new bounded
+loop source and factory-ports source and must pass complete card and
+cross-boundary commands. Task17's source-union proof includes both source
+commits while retaining the same fifteen-source union and exact 33 paths.
+
+No route, provider, activation, default runtime, fallback, credential,
+network, external effect, dependency, raw-ledger port, new public authority,
+or high-water heuristic is authorized.
