@@ -47487,3 +47487,51 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Product source, `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1219 — Registry-order repair; Task16 phase-correct RED re-admitted
+
+- Recorded at: 2026-07-28T23:18:39Z
+- Program commit `b23f929c9bf3d404dc1793b935694a033baf327a`
+  preserved all prior Git history and exact event text but mistakenly
+  inserted E-1218 immediately before already committed E-1217 instead of at
+  true EOF. No candidate, test, source, contract, or other product byte
+  changed. Preserve that commit and both event texts in history; do not
+  amend, move, delete, renumber, or reconstruct them.
+- Treat misplaced E-1218 as an administratively invalid review admission
+  with no lifecycle effect. This true-EOF corrective event is the sole
+  effective admission of exact immutable phase-correct RED candidate
+  `58a3d2608fcd26515c4e6c536e14d9b54668fbdf`, tree
+  `87a1f0ec288d3e57d0ec78e1600f5a05cd811ed5`, sole parent
+  `c272c95b6d2e24adf3097eae933b7695228a5d47`, and exact subject
+  `test(task136): repair staged bounded RED oracles`.
+- Candidate-commit scope remains exactly the three E-1217 test paths,
+  **238 insertions / 7 deletions**, with exact blobs
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `aa1d371236e3cd7abbceceab654513d51bc31990`, and
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`. The complete seven-test
+  blobs and every causal repair, freeze, gate result, dependency version,
+  33-path hash, and no-source/no-release boundary are exactly those recorded
+  in E-1218.
+- Fresh main-session execution remains exact focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Typecheck,
+  factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact legacy-staging repository first-stop,
+  scope/blobs/freezes, ancestry, dependencies, diff hygiene, Git integrity,
+  and clean candidate state pass.
+- Assign completely fresh independent read-only reviewer
+  `/root/task16_e1219_fresh_review`. Review must treat E-1219 as admission
+  authority, bind the exact candidate/tree/parent and all seven current test
+  blobs, verify the E-1217 phase corrections and all earlier causal oracles,
+  and rerun the complete matrix from immutable committed bytes. Changed
+  bytes invalidate review.
+- Advance only the exact phase-correct RED `candidate -> reviewing`. Task16
+  and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is append-only registry-order recovery and review
+  admission, not approval, integration, producer GREEN authority, Task16
+  acceptance, Task136 candidacy, strict record 29, publication, Wave 3
+  start, repository closure, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
