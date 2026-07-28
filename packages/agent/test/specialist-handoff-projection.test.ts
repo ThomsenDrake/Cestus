@@ -16,7 +16,8 @@ import {
 } from "../src/specialist-handoff-manifest.js";
 import {
   buildSpecialistHandoffProjection,
-  type SpecialistHandoffManifestReader
+  type SpecialistHandoffManifestReader,
+  type SpecialistHandoffProjection
 } from "../src/specialist-handoff-projection.js";
 import type { SpecialistWorkflowHandoffDto } from "../src/specialist-handoffs.js";
 
