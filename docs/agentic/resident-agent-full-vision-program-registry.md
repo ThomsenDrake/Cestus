@@ -46086,3 +46086,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1196 — Integrated Task14 authorizes exact Task15 H GREEN
+
+- Recorded at: 2026-07-28T15:51:26Z
+- E-1195 integrates and completes the exact independently approved Task14
+  lexical-capability GREEN at program commit
+  `1eac5face36c69e9a352392ad3716874686a754d`. Exact history-preserving
+  Task136 authority merge `51dcbea687fc893e97c61bf11985112b885c30d4`
+  has E-1193 review envelope
+  `17139cb41661eaeef744a92ff1f1175ec61aa7ab` first and E-1195 completion
+  authority second. The committed Task15 precondition is satisfied.
+- Authorize exactly one product source:
+  `packages/agent/src/specialist-handoff-projection.ts`, from exact starting
+  blob `311120f59e9d40628c4d091f958f3ba2bf2ff53d`. Freeze its committed causal
+  RED test `packages/agent/test/specialist-handoff-projection.test.ts` at
+  `a428e530cf4bb7d3b5e97180a6a9ee2801c7c29a`.
+- Implement the committed non-barrel
+  `InternalSpecialistHandoffProjectionPort.readFull` builder. Its caller
+  supplies only exact resident-loop identity and authority; authoritative
+  ledger, mounted material, and manifest readers are prebound and cannot be
+  substituted by the caller.
+- Require exact task/run/authority, `state === "task-completed"`, complete
+  selected readback, recorded/terminal/task-status event identities, manifest
+  provenance, and safe diagnostics. Mounted readers accept one content hash,
+  read only fixed stores, require one matching byte value, verify
+  hash/currentness before and after, and never enumerate a path or write.
+- Preserve the Task138 browser DTO and agent barrel unchanged. Freeze exact
+  released Task138 source
+  `packages/local-runtime/src/agent-handoff-projection.ts` at
+  `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`, test
+  `packages/local-runtime/test/agent-handoff-projection.test.ts` at
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and claim
+  `docs/agentic/claims/task-138-resident-full-vision-handoff-projection.md` at
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`.
+- Freeze every Task14 source/test, every Task16 and other Task136
+  source/test, claim, contract, mission, checker, dependency, configuration,
+  route, provider, credential, and unrelated path. Add no barrel export,
+  route, default activation, enumeration, write, fallback, provider call,
+  credential access, network, or external behavior.
+- Run the focused H test and the exact Task138 two-file boundary under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. Required GREEN is
+  exact focused **37/37** and boundary **355/355**. Reproduce standalone
+  typecheck, diff hygiene, exact one-source scope, Task138/test/all-other
+  freezes, ancestry, dependencies, Git integrity, and clean state.
+- Reproduce the exact 17-file Task136 card as
+  **383 = 377 passed + six Task16 failures** and exact 37-file cross-boundary
+  as **1,042 = 1,036 passed + six Task16 failures**, plus factory readiness,
+  mission and V4 **20/20**, markers **29 / 20 / 29 / 15**, and the truthful
+  legacy-staging repository first stop.
+- Commit only the one source with exact subject
+  `feat(agent): issue internal full handoff readback`. Preserve its immutable
+  SHA/tree/parent/blob and all gate evidence for the exact whole-Task136
+  architecture and executability reviews required at Task17. Changed or
+  additional bytes invalidate this authority.
+- Advance Task15 `claimed -> implementing`. After its exact clean source
+  commit and gates, a separate append-only acceptance event must bind that
+  commit before Task16 begins.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  bounded one-source Task15 authority, not a source candidate, Task15
+  acceptance, Task16 authority, Task136 candidacy, repository closure, strict
+  record 29, publication, Wave 3 start, or product release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
