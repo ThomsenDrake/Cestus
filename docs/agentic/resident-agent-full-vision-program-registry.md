@@ -46815,3 +46815,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1209 — Task15 reader-prebinding repair admitted to review
+
+- Recorded at: 2026-07-28T18:19:15Z
+- Admit exact forward source repair
+  `c4ecb400d3a5f29ae4c39a6d6dc1c381c017eb24`, tree
+  `214e4f50a622683c67a765389d915423b864e1eb`, sole parent
+  `fcd010d7f72c20565013c780f0a45b218abc3031`, for completely fresh
+  independent read-only review. Exact scope is only
+  `packages/agent/src/specialist-handoff-projection.ts`, **+4 / -4**, from
+  rejected blob `41ccb01a702783a4eff5b2e299c483ba5a98440c`
+  to candidate blob `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0`.
+- The repair captures and binds exact `ledger.readAll` and
+  `handoffReader.readExact` method references once at port issuance and uses
+  only those functions inside `readFull`. Every interface, default export,
+  function name, exact completion/readback/authority/provenance validation,
+  and unrelated source byte remains unchanged.
+- Exact approved causal test blob
+  `67014dae42649e6370ed6a212cc468af81cfa24e` now observes original ledger
+  one, substituted ledger zero, original exact reader reached, substituted
+  exact reader zero. Fresh execution is focused **37/37**, Task138 boundary
+  **355/355**, Task136 card **383 = 377 passed + six Task16 failures**, and
+  exact 37-file cross-boundary **1,042 = 1,036 passed + six Task16 failures**
+  under the prescribed environment.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Clean repository mode stops first
+  only at the exact legacy-staging blob mismatch. Exact one-source scope,
+  test/Task138/barrel/all-other freezes, ancestry, dependencies, diff hygiene,
+  Git integrity, and clean state pass.
+- Review must bind exact candidate/tree/parent/blob/scope, causal counter,
+  interface and freeze invariants, and all gates. Changed bytes invalidate
+  review. Approval requires a separate append-only event, approval-first/
+  candidate-second history-preserving program merge, fresh integration-tree
+  gates, separate Task15 integrated/completed event, and forward Task136
+  merge before any Task16 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is source-repair review admission, not approval, integration,
+  Task15 completion, Task16 authority, Task136 candidacy, repository closure,
+  strict record 29, publication, Wave 3 start, or product release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
