@@ -47679,3 +47679,58 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Product source, `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1222 — Registry-order repair; Task16 gateway material RED re-admitted
+
+- Recorded at: 2026-07-28T23:51:52Z
+- Program commit `4c875ed7ac21645e53a56da7ce3324963aa0054d`
+  preserved all prior Git history and exact event text but mistakenly
+  inserted E-1221 immediately before already committed E-1219 and E-1220
+  instead of at true EOF. No candidate, test, source, contract, or other
+  product byte changed. Preserve that commit and event text in history; do
+  not amend, move, delete, renumber, or reconstruct it.
+- Treat misplaced E-1221 as an administratively invalid review admission
+  with no lifecycle effect. Completely fresh independent read-only reviewer
+  `/root/task16_e1221_fresh_review` detected the physical-order defect while
+  binding the immutable review packet. This true-EOF corrective event is the
+  sole effective admission of exact gateway-material RED candidate
+  `ce5107ace435cf0a27f1914d073b2f24f062f1ed`, tree
+  `e07f026294b322d46ca936bf51ca0bab89e80c05`, sole parent
+  `6fc155ee7b9792c1e36cb9ba73b84b428f81efa6`, and exact subject
+  `test(task136): cover post-claim failed material`.
+- Candidate scope remains exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`,
+  **21 insertions / 1 deletion**, with exact blob
+  `667f0e9fc448282f04d955d7c4757535edf98b33`. The complete seven-test
+  blobs, source freezes, absent bounded source, corrected post-claim
+  receipt-artifact oracle, pre-claim empty control, title/cardinality freeze,
+  and no-unrelated-case boundary are exactly those recorded in E-1221.
+- Fresh main-session execution remains exact isolated G
+  **48 = 47 passed + one failed**, focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Standalone
+  typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Exact legacy-staging repository
+  first-stop, canonical 33-path SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  scope/blobs/freezes, ancestry, dependencies, diff hygiene, Git integrity,
+  and clean candidate state pass.
+- Assign a different completely fresh independent read-only reviewer
+  `/root/task16_e1222_fresh_review`. Review must treat E-1222 as the sole
+  effective admission authority, bind the exact candidate/tree/parent and
+  complete frozen packet, verify the E-1220 material-oracle repair and all
+  earlier causal oracles, re-evaluate Task16B and Task16C phase
+  satisfiability, and rerun the complete gate matrix from immutable committed
+  bytes. Changed bytes invalidate review.
+- Advance only this exact gateway-material RED `candidate -> reviewing`.
+  Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is append-only registry-order recovery and review
+  admission, not approval, integration, producer GREEN authority, Task16
+  acceptance, Task136 candidacy, strict record 29, publication, Wave 3
+  start, repository closure, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
