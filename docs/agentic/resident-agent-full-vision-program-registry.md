@@ -47488,6 +47488,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
 
+## RV-1-E-1221 — Task16 gateway material RED admitted to fresh review
+
+- Recorded at: 2026-07-28T23:48:59Z
+- Exact immutable corrected RED candidate is
+  `ce5107ace435cf0a27f1914d073b2f24f062f1ed`, tree
+  `e07f026294b322d46ca936bf51ca0bab89e80c05`, sole parent
+  `6fc155ee7b9792c1e36cb9ba73b84b428f81efa6`, with exact subject
+  `test(task136): cover post-claim failed material`.
+- Candidate scope is exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`,
+  **21 insertions / 1 deletion**, starting from E-1220 blob
+  `00fbc6bcd18365224e301c26227e6fdc769ffabd` and producing exact blob
+  `667f0e9fc448282f04d955d7c4757535edf98b33`.
+- The existing canonical material title and total cardinality are unchanged.
+  Its already approved abstract local corpus now issues one same-instance
+  human post-claim failed recovery readback and requires the exact durable
+  outcome-receipt artifact hashes. The existing automatic pre-claim failed
+  case still requires an empty result-artifact array. No unrelated material,
+  alias, source, or behavior case was added.
+- The other six exact test blobs remain
+  `32962cf24a28087253368289480dc5ce2e741574`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`,
+  `aa1d371236e3cd7abbceceab654513d51bc31990`,
+  and `d88d435cda590b1922685f9a68f085e14d957e75`.
+  Source freezes remain factory
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, W
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, G
+  `2e7d7a79763758037c56cedd91a70f63c8d8feea`, dispatcher
+  `230a0b53ee19e29cc3301750c0ff23bcb9225314`, with the bounded source
+  absent.
+- Fresh execution under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout is exact isolated G **48 = 47 passed + one failed**, focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. The
+  corrected title remains RED only because
+  `readCanonicalToolStepMaterial` is absent; every failure remains only the
+  committed Task16 RED.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Clean program-tree repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Canonical 33-path SHA-256 is independently reproduced as
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+  Exact scope/blobs/freezes, ancestry, TypeScript **5.9.3**, Vitest **4.1.9**,
+  dependency freeze, diff hygiene, full Git integrity, and clean candidate
+  state pass.
+- Assign completely fresh independent read-only reviewer
+  `/root/task16_e1221_fresh_review`. Review must bind the exact
+  candidate/tree/parent, complete seven-test blobs and source freezes, verify
+  the post-claim receipt-artifact oracle and its pre-claim empty control,
+  re-evaluate Task16B and Task16C phase satisfiability, and rerun the complete
+  gate matrix from immutable committed bytes. Changed bytes invalidate
+  review.
+- Advance only this exact gateway-material RED `candidate -> reviewing`.
+  Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is review admission, not approval, integration, producer
+  GREEN authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
 ## RV-1-E-1219 — Registry-order repair; Task16 phase-correct RED re-admitted
 
 - Recorded at: 2026-07-28T23:18:39Z
