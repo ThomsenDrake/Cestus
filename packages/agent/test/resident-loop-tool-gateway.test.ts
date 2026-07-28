@@ -448,6 +448,215 @@ describe("resident-loop tool gateway", () => {
     expect(await human.ledger.readAll()).toHaveLength(beforeHuman);
     expect(automatic.effects.count).toBe(0);
     expect(human.effects.count).toBe(0);
+
+    const requested = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "automatic-policy",
+      terminal: "requested",
+      suffix: "canonical-material-requested"
+    });
+    const claimed = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "automatic-policy",
+      terminal: "claimed",
+      suffix: "canonical-material-claimed"
+    });
+    const denied = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "human-approval",
+      terminal: "denied",
+      suffix: "canonical-material-denied"
+    });
+    const failed = await appendCanonicalResidentDomainPrefix({
+      authorizationKind: "automatic-policy",
+      terminal: "automatic-pre-claim-failed",
+      suffix: "canonical-material-failed"
+    });
+    const issueRecoveryReadback = async (
+      prefix: CanonicalResidentPrefix
+    ): Promise<unknown> => {
+      const reread = reflectedOperation(
+        prefix.gateway,
+        "rereadAndIssueFromLedger"
+      );
+      return await Reflect.apply(reread, prefix.gateway, [prefix.locator]);
+    };
+    const requestedReadback = await issueRecoveryReadback(requested);
+    const claimedReadback = await issueRecoveryReadback(claimed);
+    const deniedReadback = await issueRecoveryReadback(denied);
+    const failedReadback = await issueRecoveryReadback(failed);
+    const requestedExpected = {
+      authorizationKind: "automatic-policy",
+      stage: "requested",
+      logicalLocator: requested.locator,
+      executionCapabilityHash: requested.locator.executionCapabilityHash,
+      requestEventId: requested.request.id
+    };
+    const materialCases = [
+      {
+        prefix: requested,
+        readback: requestedReadback,
+        expectedReadback: requestedExpected
+      },
+      {
+        prefix: claimed,
+        readback: claimedReadback,
+        expectedReadback: expectedRecoveryReadback(claimed, "claimed")
+      },
+      {
+        prefix: human,
+        readback: humanCompleted,
+        expectedReadback: expectedRecoveryReadback(human, "completed")
+      },
+      {
+        prefix: denied,
+        readback: deniedReadback,
+        expectedReadback: expectedRecoveryReadback(denied, "denied")
+      },
+      {
+        prefix: failed,
+        readback: failedReadback,
+        expectedReadback: expectedRecoveryReadback(
+          failed,
+          "automatic-pre-claim-failed"
+        )
+      }
+    ] as const;
+    const gatewayReadbackKeys = [
+      "authorizationKind",
+      "stage",
+      "requestEventId",
+      "decisionEventId",
+      "approvedBy",
+      "approvedPreviewHash",
+      "executionClaimEventId",
+      "outcomeReceiptEventId",
+      "resultEventId",
+      "denialEventId",
+      "failurePhase"
+    ] as const;
+    const materialOperations: ((readback: unknown) => unknown)[] = [];
+    const requiredMaterialRecord = (
+      value: unknown,
+      label: string
+    ): Readonly<Record<string, unknown>> => {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error(`${label} must be a plain object`);
+      }
+      return value as Readonly<Record<string, unknown>>;
+    };
+
+    for (const entry of materialCases) {
+      expect(entry.readback).toEqual(entry.expectedReadback);
+      expectExactOwnKeys(
+        entry.readback,
+        Reflect.ownKeys(entry.expectedReadback).map(String)
+      );
+      const expectedGatewayReadbacks = Object.freeze(Object.fromEntries(
+        gatewayReadbackKeys.flatMap((key) =>
+          Object.hasOwn(entry.expectedReadback, key)
+            ? [[key, Reflect.get(entry.expectedReadback, key)]]
+            : []
+        )
+      ));
+      const requestPayload = requiredMaterialRecord(
+        entry.prefix.request.payload,
+        "canonical material request"
+      );
+      const resultArtifactHashes =
+        entry.prefix.terminal?.type === "agent.resident-domain.completed.v1"
+          ? [...entry.prefix.terminal.payload.resultArtifactHashes]
+          : [];
+      const readCanonicalMaterial = reflectedOperation(
+        entry.prefix.gateway,
+        "readCanonicalToolStepMaterial"
+      );
+      materialOperations.push(readCanonicalMaterial);
+      const material = readCanonicalMaterial(entry.readback);
+      expect(material).toEqual({
+        gatewayReadbacks: expectedGatewayReadbacks,
+        allowlistEntryHash: requestPayload.allowlistEntryHash,
+        sideEffectClass: requestPayload.sideEffectClass,
+        requiredApprovalClass: requestPayload.requiredApprovalClass,
+        previewHash: requestPayload.previewHash,
+        inputArtifactHashes: requestPayload.inputArtifactHashes,
+        resultArtifactHashes
+      });
+      const materialRecord = requiredMaterialRecord(
+        material,
+        "canonical tool-step material"
+      );
+      expect(Object.getPrototypeOf(materialRecord)).toBe(Object.prototype);
+      expect(Object.isFrozen(materialRecord)).toBe(true);
+      expectExactOwnKeys(materialRecord, [
+        "gatewayReadbacks",
+        "allowlistEntryHash",
+        "sideEffectClass",
+        "requiredApprovalClass",
+        "previewHash",
+        "inputArtifactHashes",
+        "resultArtifactHashes"
+      ]);
+      expect(Object.values(Object.getOwnPropertyDescriptors(materialRecord))
+        .every((descriptor) =>
+          "value" in descriptor &&
+          descriptor.get === undefined &&
+          descriptor.set === undefined
+        )).toBe(true);
+      expect(Object.isFrozen(materialRecord.gatewayReadbacks)).toBe(true);
+      expect(Object.isFrozen(materialRecord.inputArtifactHashes)).toBe(true);
+      expect(Object.isFrozen(materialRecord.resultArtifactHashes)).toBe(true);
+      expectExactOwnKeys(
+        entry.readback,
+        Reflect.ownKeys(entry.expectedReadback).map(String)
+      );
+    }
+
+    const firstMaterial = materialOperations[0];
+    const firstReadback = materialCases[0]?.readback;
+    const foreignReadback = materialCases[1]?.readback;
+    if (
+      firstMaterial === undefined ||
+      firstReadback === undefined ||
+      foreignReadback === undefined
+    ) {
+      throw new Error("canonical material controls require issued readbacks");
+    }
+    expect(() => firstMaterial({ ...requiredMaterialRecord(
+      firstReadback,
+      "copied canonical readback"
+    ) })).toThrow(/issued|exact|readback|material|eligible|same-instance/i);
+    expect(() => firstMaterial(Object.freeze({})))
+      .toThrow(/issued|exact|readback|material|eligible|same-instance/i);
+    expect(() => firstMaterial(foreignReadback))
+      .toThrow(/issued|exact|readback|material|eligible|same-instance/i);
+
+    const transient = await prepareLiveHumanDecisionCase(
+      "canonical-material-transient-human-approved"
+    );
+    await appendResidentHumanApproval(
+      transient.harness.ledger,
+      transient.harness.locator,
+      "canonical-material-transient-human-approved"
+    );
+    const transientApproved = await Reflect.apply(
+      transient.readDecision,
+      transient.harness.gateway,
+      [transient.requested]
+    );
+    expectExactOwnKeys(transientApproved, [
+      "authorizationKind",
+      "stage",
+      "logicalLocator",
+      "executionCapabilityHash",
+      "requestEventId",
+      "decisionEventId",
+      "approvedBy",
+      "approvedPreviewHash"
+    ]);
+    const transientMaterial = reflectedOperation(
+      transient.harness.gateway,
+      "readCanonicalToolStepMaterial"
+    );
+    expect(() => transientMaterial(transientApproved))
+      .toThrow(/issued|exact|readback|material|eligible|transient|stage/i);
   });
 
   it("refuses a fresh execution when the exact stream already has its permanent claim", async () => {

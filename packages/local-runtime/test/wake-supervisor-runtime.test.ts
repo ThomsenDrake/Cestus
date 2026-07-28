@@ -600,6 +600,107 @@ describe("wake supervisor runtime", () => {
       )
     ).rejects.toThrow(/checkpoint|durable|absent|state/i);
     expect(await empty.handle.ledger.readAll()).toEqual(emptyBefore);
+
+    const mismatched = await issuedResidentFixture("state-0-mismatched-claim");
+    const mismatchedMaterial = await residentSuspensionMaterial(mismatched);
+    const mismatchedCurrent =
+      await mismatched.capabilities.mountedAuthority.reverifyAfterAwait(
+        mismatched.capabilities.currentnessToken
+      );
+    if (mismatchedCurrent.kind !== "current") {
+      throw new Error("claim mismatch control requires current mounted authority");
+    }
+    const mismatchedBefore = await mismatched.handle.ledger.readAll();
+    await expect(
+      mismatched.capabilities.mountedAuthority.suspendAndRelease(
+        Object.freeze({
+          ...mismatchedMaterial.checkpoint,
+          leaseClaimGeneration:
+            mismatched.claim.payload.leaseClaimGeneration + 1,
+          residentLoopSuspension: Object.freeze({
+            ...mismatchedMaterial.checkpoint.residentLoopSuspension,
+            orchestrationClaimEventId: mismatchedMaterial.plan.id,
+            leaseClaimGeneration:
+              mismatched.claim.payload.leaseClaimGeneration + 1
+          })
+        }),
+        mismatchedCurrent.token
+      )
+    ).rejects.toThrow(/claim|generation|checkpoint|authority/i);
+    expect(await mismatched.handle.ledger.readAll()).toEqual(mismatchedBefore);
+
+    const claimless = await issuedResidentFixture("state-0-claimless");
+    const claimlessMaterial = await residentSuspensionMaterial(claimless);
+    const {
+      leaseClaimGeneration: suppliedOuterGeneration,
+      residentLoopSuspension,
+      ...claimlessCheckpointFields
+    } = claimlessMaterial.checkpoint;
+    const {
+      orchestrationClaimEventId: suppliedClaimEventId,
+      leaseClaimGeneration: suppliedInnerGeneration,
+      ...claimlessInstructionFields
+    } = residentLoopSuspension;
+    expect({
+      suppliedOuterGeneration,
+      suppliedClaimEventId,
+      suppliedInnerGeneration
+    }).toEqual({
+      suppliedOuterGeneration:
+        claimless.claim.payload.leaseClaimGeneration,
+      suppliedClaimEventId: claimless.claim.id,
+      suppliedInnerGeneration:
+        claimless.claim.payload.leaseClaimGeneration
+    });
+    const claimlessCheckpoint = Object.freeze({
+      ...claimlessCheckpointFields,
+      residentLoopSuspension: Object.freeze(claimlessInstructionFields)
+    });
+    const claimlessCurrent =
+      await claimless.capabilities.mountedAuthority.reverifyAfterAwait(
+        claimless.capabilities.currentnessToken
+      );
+    if (claimlessCurrent.kind !== "current") {
+      throw new Error("claimless checkpoint control requires current mounted authority");
+    }
+    const claimlessBefore = await claimless.handle.ledger.readAll();
+    const released =
+      await claimless.capabilities.mountedAuthority.suspendAndRelease(
+        claimlessCheckpoint,
+        claimlessCurrent.token
+      );
+    const claimlessAfter = await claimless.handle.ledger.readAll();
+    const appended = claimlessAfter.slice(claimlessBefore.length);
+    expect(appended.map((event) => event.type)).toEqual(residentPrefixTypes);
+    expect(released).toEqual({
+      schemaVersion: "resident-loop-released-checkpoint-readback.v1",
+      checkpointEventId: appended[0]?.id,
+      suspensionEventId: appended[1]?.id,
+      resultEventId: appended[2]?.id,
+      releaseEventId: appended[3]?.id
+    });
+    const completedCheckpoint = residentRecord(
+      appended[0]?.payload,
+      "claim-completed checkpoint"
+    );
+    const completedInstruction = residentRecord(
+      completedCheckpoint.residentLoopSuspension,
+      "claim-completed suspension instruction"
+    );
+    expect({
+      outerLeaseClaimGeneration:
+        completedCheckpoint.leaseClaimGeneration,
+      orchestrationClaimEventId:
+        completedInstruction.orchestrationClaimEventId,
+      innerLeaseClaimGeneration:
+        completedInstruction.leaseClaimGeneration
+    }).toEqual({
+      outerLeaseClaimGeneration:
+        claimless.claim.payload.leaseClaimGeneration,
+      orchestrationClaimEventId: claimless.claim.id,
+      innerLeaseClaimGeneration:
+        claimless.claim.payload.leaseClaimGeneration
+    });
   });
 
   it.each([1, 2, 3, 4] as const)(
