@@ -47138,3 +47138,51 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, publication, Wave 3 start, or product release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1214 — Task16 corrected seven-test RED admitted to fresh review
+
+- Recorded at: 2026-07-28T22:08:09Z
+- Exact immutable corrected RED candidate is
+  `04e76dece8f720be2be37082c009a2ddbb347395`, tree
+  `8900a55d5906925ce17f59d6dd08e540722bd8a3`, sole parent
+  `13cb554d9e69d01f3779862ce5802c818318c331`, with exact subject
+  `test(task136): make bounded loop red executable`.
+- Candidate scope is exactly the seven E-1213 test paths, **5,204 insertions /
+  289 deletions**. Exact blobs in E-1213 path order are
+  `2362eaa60247dcd6137fffcc3c2aafd9db8f22f0`,
+  `76071498a59abd87b17ea29d32c7ea2edea0b60b`,
+  `f7ddd88e9161dad5449ed47fd3ad4739207af0fb`,
+  `29b3c744c55f79ba76e55192747f96eb050d6772`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`,
+  `f070107f9a7c20ca5f20bc96eea1d94cf3d7a1ff`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`.
+- Fresh execution under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout is exact focused **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and released Task138 boundary
+  **355/355**. The ten failures are only W claim completion, G material
+  behavior and static ownership, dispatcher one-shot consumption, three
+  bounded-loop titles, two factory titles, and one factory import-policy
+  title.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; markers remain **29 / 20 / 29 / 15**. Clean program-tree
+  repository mode stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact seven-test scope, E-1213 baselines and source freezes, merge ancestry,
+  TypeScript **5.9.3**, Vitest **4.1.9**, diff hygiene, and full Git integrity
+  pass.
+- Assign completely fresh independent read-only reviewer
+  `/root/task16_e1214_fresh_review`. The reviewer has not authored, reviewed,
+  verified, or analyzed any changed blob. Review must bind exact
+  candidate/tree/parent/blobs/scope, every E-1213 causal oracle and freeze,
+  and rerun the complete gate matrix from immutable committed bytes. Changed
+  bytes invalidate review.
+- Advance only the exact corrected RED `candidate -> reviewing`. Task16 and
+  Task136 remain `implementing`; strict product frontier remains **28 of 29**.
+  This is review admission, not approval, integration, producer GREEN
+  authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or product release. Product
+  source, `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
