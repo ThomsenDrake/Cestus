@@ -848,3 +848,34 @@ reconcile the exact approval and proposal effects from the ledger before any
 artifact or checkpoint write. Portable adversarial tests prove zero-write
 failure for corrupted approval identity, forged proposals, staging-preview
 bytes, and report authority. No live source or preview workspace was accessed.
+
+Both fresh reviews then found that the checkpoint's self-consistent eligible
+set was not compared with the complete current staging preview. A portable
+two-candidate RED proved that a coherently hash-valid checkpoint could omit one
+candidate, approve the remaining subset, and reach `handoff-required`:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "checkpoint omits current eligible candidates"
+1 file failed; 1 test failed, 143 tests skipped.
+Failure: stage resolved instead of rejecting.
+```
+
+The remediation compares the sorted checkpoint eligible identifiers and count
+with every current preview candidate before stage, handoff, and replay, and
+makes the eligible set monotonic after creation. The adversarial fixture
+coherently rehashes the full Gate 2 checkpoint suffix so chain validation
+passes; each consumer must independently fail closed before writes.
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "omits.*current eligible candidate"
+1 file passed; 3 tests passed, 143 tests skipped.
+
+Focused Gate 2 suite: 4 files passed; 185 tests passed.
+Ingestion plus ontology-bootstrap: 35 files passed; 382 tests passed.
+Preview-specialist boundary: 10 files passed; 257 tests passed.
+Typecheck passed. UI build passed with 165 modules and the existing
+externalization/chunk-size advisories. Factory readiness and `git diff --check`
+passed.
+```

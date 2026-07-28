@@ -415,3 +415,16 @@ replay writes. Repair this boundary test-first:
 The remediation uses only temporary fixtures. It does not inspect the live
 source or preview workspace and does not broaden production, provider, graph,
 send, legal, or fallback-write authority.
+
+Fresh implementation and quality review found one remaining boundary: the
+checkpoint eligible set was internally consistent but was not rebound to the
+complete rederived preview. Add a second test-first remediation:
+
+1. create a two-candidate portable preview and coherently rewrite the hash-valid
+   Gate 2 checkpoint suffix to omit one eligible candidate;
+2. prove RED when stage accepts the remaining subset;
+3. compare the full sorted checkpoint and current-preview candidate sets before
+   stage, handoff, and replay, and preserve the checkpoint set monotonically;
+4. prove stage, handoff, and replay each reject the coherently rehashed suffix
+   with zero checkpoint, ledger, or derivative writes;
+5. repeat all focused and broad gates and commit atomically for fresh review.

@@ -1692,6 +1692,7 @@ export function createCentralFloridaIcePreviewWorkflow(
       const afterReads = await readWorkspaceSnapshot(workspace);
       assertNoLedgerDelta(beforeReads.events, afterReads.events);
       assertReportCheckpointIdentity(report, latest);
+      assertStagingCandidateCheckpointIdentity(preview, latest);
       assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
       await assertStoredStagingPreview(workspace, latest, preview);
 
@@ -1809,6 +1810,7 @@ export function createCentralFloridaIcePreviewWorkflow(
       assertNoLedgerDelta(beforeReads.events, afterReads.events);
       const selectedCandidateIds = latest.state.approvedStagingCandidateIds ?? [];
       assertReportCheckpointIdentity(report, latest);
+      assertStagingCandidateCheckpointIdentity(preview, latest);
       assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
       await assertStoredStagingPreview(workspace, latest, preview);
       assertPersistedStagingAuthority(afterReads, latest, preview);
@@ -1898,6 +1900,7 @@ export function createCentralFloridaIcePreviewWorkflow(
       assertNoLedgerDelta(beforeReads.events, snapshot.events);
       const selectedCandidateIds = latest.state.approvedStagingCandidateIds ?? [];
       assertReportCheckpointIdentity(report, latest);
+      assertStagingCandidateCheckpointIdentity(preview, latest);
       assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
       await assertStoredStagingPreview(workspace, latest, preview);
       assertPersistedStagingAuthority(snapshot, latest, preview);
@@ -2811,6 +2814,13 @@ function assertMonotonicCheckpointState(
       !== stableJson(current.state.approvedStagingCandidateIds)
   ) {
     throw new Error("preview checkpoint approved staging candidates changed");
+  }
+  if (
+    previous.state.stagingCandidateIds !== undefined
+    && stableJson(previous.state.stagingCandidateIds)
+      !== stableJson(current.state.stagingCandidateIds)
+  ) {
+    throw new Error("preview checkpoint eligible staging candidates changed");
   }
 }
 
@@ -3765,6 +3775,25 @@ function assertStageSelectionBindings(
     ) {
       throw new Error("staging selection lacks exact evidence-bound report provenance");
     }
+  }
+}
+
+function assertStagingCandidateCheckpointIdentity(
+  preview: LegacyStagingPreviewData,
+  checkpoint: CentralFloridaIcePreviewCheckpoint
+): void {
+  const checkpointCandidateIds = checkpoint.state.stagingCandidateIds ?? [];
+  const previewCandidateIds = preview.candidates
+    .map((candidate) => candidate.candidateId)
+    .sort(compareCodeUnits);
+  if (
+    stableJson([...checkpointCandidateIds].sort(compareCodeUnits))
+      !== stableJson(previewCandidateIds)
+    || checkpoint.state.counts.stagingCandidates !== previewCandidateIds.length
+  ) {
+    throw new Error(
+      "checkpoint eligible staging candidates do not match the exact current staging preview"
+    );
   }
 }
 

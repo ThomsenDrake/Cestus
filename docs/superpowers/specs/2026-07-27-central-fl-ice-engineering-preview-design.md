@@ -456,3 +456,11 @@ human approval plus exact proposal set from the append-only ledger. Corrupted
 approval identity, an extra valid proposal, a changed report, or changed
 staging-preview bytes fails closed with zero ledger, artifact, or checkpoint
 writes. These rules apply equally to the explicit empty decision.
+
+The checkpoint's eligible identifiers are also bound to the complete current
+staging preview, not merely to the approved subset. Before stage, handoff, and
+restart replay, the sorted checkpoint `stagingCandidateIds` and stored count
+must equal the full rederived preview candidate set. Once created, that eligible
+set is immutable across later checkpoint transitions. A coherently rehashed
+checkpoint suffix that omits an eligible candidate therefore fails closed at
+each consumer before any write.
