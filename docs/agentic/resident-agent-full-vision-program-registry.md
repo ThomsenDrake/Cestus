@@ -46297,3 +46297,100 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1199 — Task15 default-export oracle correction approved
+
+- Recorded at: 2026-07-28T16:36:27Z
+- Completely fresh independent read-only reviewer
+  `/root/task15_e1198_oracle_review` returns **APPROVED** with no findings for
+  exact candidate `b3d96985ebb423b3aaa41d590a7a971ebaff4e2f`, tree
+  `bc4b50658c0afb36c83fe795f6ef818cdbe532a5`, sole parent
+  `841a71a4b840600ff1b27b22dc29e777646c810b`, inside exact clean envelope
+  `7f18f3f2e52e5d5ecba2527afcf653510b4a8a84`. Candidate bytes did not
+  change.
+- Exact scope is one test, **+13 / -3**, from
+  `a428e530cf4bb7d3b5e97180a6a9ee2801c7c29a` to reviewed blob
+  `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9`, with test cardinality
+  unchanged. The reviewer independently confirms the deep default function,
+  exact runtime name, deep named absence, and barrel named absence form a
+  sound ESM oracle because export-star excludes `default`.
+- Fresh independent execution is exact focused
+  **37 = 36 passed + one Task15 RED**, Task138 boundary
+  **355 = 354 passed + one**, Task136 card
+  **383 = 376 passed + seven**, and exact 37-file cross-boundary
+  **1,042 = 1,035 passed + seven** under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout. Failure identities are exactly the missing deep
+  default builder and six preserved Task16 REDs.
+- Typecheck and factory readiness pass. Mission and V4 assurance each pass
+  **20/20**; exact markers remain **29 / 20 / 29 / 15**. Repository mode
+  exits one and stops first only at the exact legacy-staging blob mismatch,
+  with no closure or release success marker.
+- Task15 source, agent barrel, released Task138 source/test/claim, every other
+  product/test, dependency, claim, contract, mission, checker,
+  configuration, and unrelated path remain frozen. TypeScript 5.9.3,
+  Vitest 4.1.9, exact ancestry/scope/ownership/33-path ceiling, diff hygiene,
+  Git integrity with 298 inherited dangling objects, and clean state pass.
+- The historical implementer 34-file substituted-path run and one
+  reviewer-local malformed shell invocation that exited before checks are
+  explicitly excluded. The reviewer reran all required exact commands before
+  verdict. The inherited missing `typescript.js.map` warning is noncausal.
+- Advance only exact correction `reviewing -> approved`. Authorize its exact
+  history-preserving no-ff program merge with this approval commit first and
+  the candidate second, followed by fresh integration-tree gates, a separate
+  integrated event, and a forward Task136 authority merge. Product source
+  remains unauthorized until a later separate event.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  approval, not integration, source GREEN, Task15 acceptance, Task16
+  authority, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
+
+## RV-1-E-1200 — Task15 default-export oracle correction integrated
+
+- Recorded at: 2026-07-28T16:43:49Z
+- Exact independently approved test-only candidate
+  `b3d96985ebb423b3aaa41d590a7a971ebaff4e2f`, tree
+  `bc4b50658c0afb36c83fe795f6ef818cdbe532a5`, is integrated without changed
+  bytes by history-preserving merge
+  `425d11cfc9bf3cbece63f7920f2ca006083ff4e1`, tree
+  `551e13f7d7c55eb4c2406d3a3546a00db29d10ee`. Its first parent is exact
+  E-1199 approval commit `a1b1ad6187dfa02be900b3a3313f39dc82dc086c`;
+  its second parent is the reviewed candidate.
+- Merge first-parent scope is only corrected H test blob
+  `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9`, exact **+13 / -3**.
+  Task15 source remains
+  `311120f59e9d40628c4d091f958f3ba2bf2ff53d`; agent barrel remains
+  `69f60a5bb231a9041cd6dfea29203302293edeb8`; released Task138 source/test/
+  claim remain `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`,
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`.
+- Fresh integration-tree execution is exact focused
+  **37 = 36 passed + one Task15 RED**, Task138 boundary
+  **355 = 354 passed + one**, Task136 card
+  **383 = 376 passed + seven**, and shell-asserted 37-file cross-boundary
+  **1,042 = 1,035 passed + seven** under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout. The failure set remains one missing deep default
+  builder plus six Task16 REDs.
+- Fresh typecheck and factory readiness pass. Mission and V4 assurance each
+  pass **20/20**; exact markers remain **29 / 20 / 29 / 15**. Repository
+  mode exits one and stops first only at the exact legacy-staging blob
+  mismatch, with no closure or release success marker.
+- Exact merge parent order, candidate identity/tree/parent/scope/blob,
+  all freezes, ownership, 33-path ceiling, ancestry, TypeScript 5.9.3,
+  Vitest 4.1.9, diff hygiene, Git integrity with 298 inherited dangling
+  objects, and clean integration state pass.
+- Advance exact oracle correction `approved -> integrated`. A
+  history-preserving forward merge of this integrated authority into the
+  Task136 review envelope is mandatory before a separate event may resume
+  the one-source Task15 GREEN in default-export form.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  integration, not source GREEN authority, Task15 acceptance, Task16
+  authority, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
