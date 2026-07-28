@@ -46898,3 +46898,51 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1211 — Task15 reader-prebinding repair integrated; Task15 completed
+
+- Recorded at: 2026-07-28T18:41:06Z
+- Exact independently approved Task15 source repair
+  `c4ecb400d3a5f29ae4c39a6d6dc1c381c017eb24`, tree
+  `214e4f50a622683c67a765389d915423b864e1eb`, is integrated without changed
+  bytes by history-preserving program merge
+  `452484b1903b002eb249e00b057431d5d38f905e`, tree
+  `9b201c4c4e0c2a50090ee9b32483d3d62e01b28d`. Its first parent is exact
+  E-1210 approval commit `13d75535edaba1edd5c295e229ac2220b0fa4b64`;
+  its second parent is the reviewed candidate.
+- The integration changes only
+  `packages/agent/src/specialist-handoff-projection.ts`, **+4 / -4**, to
+  exact approved blob `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0`.
+  Exact causal test blob
+  `67014dae42649e6370ed6a212cc468af81cfa24e`, barrel
+  `69f60a5bb231a9041cd6dfea29203302293edeb8`, and Task138 source/test/claim
+  `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404` /
+  `1a993ba0d14cb49e406f356568f09a00f17242f3` /
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358` remain frozen.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout passes focused **37/37** and released Task138
+  boundary **355/355**. Task136 card is exact
+  **383 = 377 passed + six Task16 failures**; exact 37-file cross-boundary is
+  **1,042 = 1,036 passed + six Task16 failures**. The six failures are only
+  three absent bounded-loop cases, two absent factory cases, and one
+  import-policy case.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; markers remain **29 / 20 / 29 / 15**. Clean repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Merge parent order, exact scope, all freezes, prerequisite ancestry,
+  TypeScript **5.9.3**, Vitest **4.1.9**, diff hygiene, full Git integrity,
+  connectivity, and clean state pass.
+- Advance exact Task15 source repair `approved -> integrated` and Task15
+  `implementing -> integrated`. Task15 is complete. A history-preserving
+  forward merge of this exact program authority into the clean Task136
+  review envelope is mandatory before any separate Task16 correction or
+  source authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains overall `implementing`; Task16 remains unauthorized until a
+  separate committed event. Strict product frontier remains **28 of 29**. No
+  Task136 product candidate or record 29 exists. This is Task15 completion,
+  not Task16 test or source authority, Task136 candidacy, repository closure,
+  strict record 29, publication, Wave 3 start, or product release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
