@@ -16,7 +16,8 @@ import {
 } from "../src/specialist-handoff-manifest.js";
 import {
   buildSpecialistHandoffProjection,
-  type SpecialistHandoffManifestReader
+  type SpecialistHandoffManifestReader,
+  type SpecialistHandoffProjection
 } from "../src/specialist-handoff-projection.js";
 import type { SpecialistWorkflowHandoffDto } from "../src/specialist-handoffs.js";
 
@@ -1170,6 +1171,39 @@ describe("specialist handoff projection", () => {
       "unsafe-diagnostic"
     ] as const;
     const effects = { enumeratePath: 0, fallbackRead: 0, write: 0, task138DtoMutation: 0 };
+    const fixture = handoffFixture({
+      runId: "run_internal_full_readback_001",
+      taskId: "task_internal_full_readback_001"
+    });
+    const authorityBinding = {
+      workspaceIdentityHash: hash111,
+      mountGeneration: "mount_generation_internal_001",
+      ledgerStoreIdentity: "ledger_store_internal_001",
+      artifactStoreIdentity: "artifact_store_internal_001",
+      ledgerHighWaterEventId: `evt_started_${fixture.runId}`,
+      policyHash: hash222,
+      activeLocksHash: hash333
+    } as const;
+    const events = validRecordedEvents(fixture);
+    const store = materializedStore(fixture);
+    const reads = {
+      originalLedger: 0,
+      substitutedLedger: 0,
+      originalExact: 0,
+      substitutedExact: 0
+    };
+    const ledger = {
+      async readAll(): Promise<readonly KnowledgeEvent[]> {
+        reads.originalLedger += 1;
+        return events;
+      }
+    };
+    const handoffReader = {
+      async readExact(contentHash: `sha256:${string}`): Promise<Uint8Array> {
+        reads.originalExact += 1;
+        return store.get(contentHash);
+      }
+    };
 
     expect(builder).toBeTypeOf("function");
     expect(builder).toHaveProperty("name", "createInternalSpecialistHandoffProjectionPort");
@@ -1182,6 +1216,43 @@ describe("specialist handoff projection", () => {
     expect(task138Source).not.toMatch(/InternalSpecialistHandoffProjectionPort|readFull/);
     expect(rejectedReadbacks).toHaveLength(14);
     expect(effects).toEqual({ enumeratePath: 0, fallbackRead: 0, write: 0, task138DtoMutation: 0 });
+
+    const port = (builder as (dependencies: {
+      readonly ledger: typeof ledger;
+      readonly handoffReader: typeof handoffReader;
+    }) => {
+      readFull(input: {
+        readonly taskId: string;
+        readonly runId: string;
+        readonly authorityBinding: typeof authorityBinding;
+      }): Promise<SpecialistHandoffProjection | undefined>;
+    })({ ledger, handoffReader });
+    ledger.readAll = async () => {
+      reads.substitutedLedger += 1;
+      return events;
+    };
+    handoffReader.readExact = async (contentHash) => {
+      reads.substitutedExact += 1;
+      return store.get(contentHash);
+    };
+
+    await port.readFull({
+      taskId: fixture.taskId ?? "task_internal_full_readback_001",
+      runId: fixture.runId,
+      authorityBinding
+    });
+
+    expect({
+      originalLedger: reads.originalLedger,
+      substitutedLedger: reads.substitutedLedger,
+      originalExactReached: reads.originalExact > 0,
+      substitutedExact: reads.substitutedExact
+    }).toEqual({
+      originalLedger: 1,
+      substitutedLedger: 0,
+      originalExactReached: true,
+      substitutedExact: 0
+    });
   });
 });
 
