@@ -428,3 +428,20 @@ complete rederived preview. Add a second test-first remediation:
 4. prove stage, handoff, and replay each reject the coherently rehashed suffix
    with zero checkpoint, ledger, or derivative writes;
 5. repeat all focused and broad gates and commit atomically for fresh review.
+
+Adversarial review of the candidate-set repair found that `manifest()` still
+trusted replay-era checkpoint material. Add a third bounded TDD remediation:
+
+1. after replay, corrupt the approval actor, append an allowed proposal, and
+   independently corrupt report, staging-preview, handoff, and replay artifact
+   bytes;
+2. prove all six cases reach manifest validation and persistence in RED;
+3. before validation or writes, re-read the report and full staging preview
+   with a zero-ledger-delta proof and repeat all Gate 2 authority checks;
+4. compare exact snapshot event identifiers, ledger/evidence/proposal counts,
+   and proposal identifiers with durable replay authority;
+5. content-address read every named and accumulated artifact hash;
+6. prove all six corruptions fail with zero validation calls, ledger effects,
+   derivative changes, or checkpoints;
+7. repeat focused and broad gates, update the durable evidence, and commit for
+   fresh review.
