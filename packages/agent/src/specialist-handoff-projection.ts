@@ -151,6 +151,67 @@ interface IndexedEvent<Event extends KnowledgeEvent> {
   readonly index: number;
 }
 
+interface ExactResidentLoopIdentityAndAuthority {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly authorityBinding: HandoffAuthorityBinding;
+}
+
+interface InternalSpecialistHandoffProjectionPort {
+  readFull(
+    input: ExactResidentLoopIdentityAndAuthority
+  ): Promise<SpecialistHandoffProjection | undefined>;
+}
+
+interface InternalSpecialistHandoffProjectionDependencies {
+  readonly ledger: {
+    readAll(): Promise<readonly KnowledgeEvent[]>;
+  };
+  readonly handoffReader: {
+    readExact(contentHash: ContentHash): Promise<Uint8Array>;
+  };
+}
+
+export default function createInternalSpecialistHandoffProjectionPort(
+  dependencies: InternalSpecialistHandoffProjectionDependencies
+): InternalSpecialistHandoffProjectionPort {
+  const ledger = dependencies.ledger;
+  const handoffReader = dependencies.handoffReader;
+  return Object.freeze({
+    async readFull(
+      input: ExactResidentLoopIdentityAndAuthority
+    ): Promise<SpecialistHandoffProjection | undefined> {
+      const projection = await buildSpecialistHandoffProjection({
+        events: await ledger.readAll(),
+        manifestReader: {
+          async get(contentHash: ContentHash): Promise<Buffer> {
+            return Buffer.from(await handoffReader.readExact(contentHash));
+          }
+        },
+        taskId: input.taskId,
+        runId: input.runId
+      });
+      const readback = projection.selectedReadback;
+      if (
+        projection.state !== "task-completed" ||
+        projection.diagnostics.length !== 0 ||
+        readback === undefined ||
+        readback.diagnostics.length !== 0 ||
+        readback.taskId !== input.taskId ||
+        readback.runId !== input.runId ||
+        !sameCanonicalValue(readback.authorityBinding, input.authorityBinding) ||
+        readback.recordedEventId.length === 0 ||
+        readback.terminalRunEventId.length === 0 ||
+        readback.taskStatusEventId.length === 0 ||
+        readback.manifestHash.length === 0
+      ) {
+        return undefined;
+      }
+      return projection;
+    }
+  });
+}
+
 export async function buildSpecialistHandoffProjection(
   input: BuildSpecialistHandoffProjectionInput
 ): Promise<SpecialistHandoffProjection> {
