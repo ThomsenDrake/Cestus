@@ -46765,3 +46765,53 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, publication, Wave 3 start, or product release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1208 — Integrated causal RED authorizes exact Task15 reader prebinding repair
+
+- Recorded at: 2026-07-28T18:11:54Z
+- E-1207 integrates the exact independently approved causal RED at program
+  commit `7a1b41b616db2fe1c410bebdc83419bbcc0639d3`. Exact history-preserving
+  Task136 forward merge `59065b32a13ab90a156a0af79471ea5af280c6ba`
+  has E-1205 review envelope
+  `a015b64d9293de49b9549a3181a5ee36e57e6d37` first and E-1207 integration
+  authority second.
+- Authorize only the smallest forward source repair in
+  `packages/agent/src/specialist-handoff-projection.ts`, starting from exact
+  rejected blob `41ccb01a702783a4eff5b2e299c483ba5a98440c`.
+  Capture and bind the exact `ledger.readAll` and
+  `handoffReader.readExact` functions once during port issuance, then use
+  only those bound functions inside `readFull`. Change no interface,
+  projection validation, default export, name, or other behavior.
+- Freeze exact approved causal test blob
+  `67014dae42649e6370ed6a212cc468af81cfa24e`, agent barrel
+  `69f60a5bb231a9041cd6dfea29203302293edeb8`,
+  Task138 source/test/claim
+  `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`,
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`. Freeze every other
+  product/test, claim, contract, mission, checker, dependency, configuration,
+  route, provider, credential, mounted store, and unrelated path.
+- Required GREEN is focused **37/37**, Task138 boundary **355/355**,
+  Task136 card **383 = 377 passed + six Task16 failures**, and exact 37-file
+  cross-boundary **1,042 = 1,036 passed + six Task16 failures** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. The causal
+  counter must observe original ledger one, substituted ledger zero, original
+  exact reader reached, and substituted exact reader zero.
+- Also require typecheck, factory readiness, mission and V4 **20/20**,
+  markers **29 / 20 / 29 / 15**, truthful repository first-stop, exact
+  one-source scope and all freezes, ancestry, dependencies, diff hygiene,
+  Git integrity, and clean state.
+- Commit only the one source with exact subject
+  `fix(agent): prebind full handoff readers`. Admit the exact immutable repair
+  to completely fresh independent read-only review and bind acceptance/
+  integration append-only before Task15 completes or Task16 begins. Changed
+  or additional bytes invalidate authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is exact forward source repair authority, not a repair
+  candidate, Task15 acceptance, Task16 authority, Task136 candidacy,
+  repository closure, strict record 29, publication, Wave 3 start, or product
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
