@@ -46946,3 +46946,80 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, publication, Wave 3 start, or product release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1212 — Task16 blocked oracle authorizes exact three-test RED correction
+
+- Recorded at: 2026-07-28T18:47:09Z
+- E-1211 completes Task15 at program commit
+  `56694c66c1517a0a10648e0d2fba6fe0adb0aba9`. Exact history-preserving
+  Task136 forward merge `ed93295f46386f342375a299c0d2fac384dac6e2`
+  has clean E-1209 review envelope
+  `275c6c7ce293013d7b1ef2a4cb5bdf0019a19206` first and exact E-1211
+  integration authority second. Task15 product/test bytes are unchanged.
+- Completely fresh independent read-only reviewer
+  `/root/task16_oracle_reconciliation_review` classifies the inherited
+  six-failure Task16 RED as a **blocked oracle**, not a product or scope
+  decision. Fresh focused execution is exact
+  **9 = 3 passed + six Task16 failures**.
+- All three bounded-loop titles inspect source tokens while their local
+  mutation arrays and effect counters are disconnected; a string-only
+  implementation can satisfy them. The positive factory title never calls
+  the factory and its fixture consumes the one-shot H witness and Core
+  binding before any future factory call. The hostile factory title's
+  zero-effect object is disconnected, so a reject-all factory passes it.
+- The import-policy title requires only the older bounded named import while
+  rejecting every default import. It therefore omits and contradicts
+  Task15's now-integrated default-only H builder. It also checks dispatcher/G
+  imports in the wake module even though the approved lexical-capability
+  amendment lawfully co-locates their private composition use with mounted
+  store issuance.
+- Supersede only the inherited Task16 test freezes. Authorize the smallest
+  test-only causal correction in exactly:
+  `packages/agent/test/bounded-agent-loop.test.ts` from blob
+  `f9ffb08fb3f5a0741119b735e0a49f456750787e`,
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` from blob
+  `e2a6a931d82da7b5ef5d42e8f297dbcbefbb250c`, and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`
+  from blob `57bbf0a2cfdab9ee7b174d5a75d7a5d207c9b15a`.
+- Preserve all six existing Task16 titles and exact nine-test cardinality.
+  Replace the three string-only bounded cases with executable, abstract local
+  advance/resume counterfactuals and connected effect counters. Make the
+  positive factory fixture leave Core/H issuance unused, issue the legitimate
+  package-owned domain-execution capability, invoke the factory, and observe
+  only `{ metadata, loop, stop }` plus `stop`. Make every hostile factory
+  input invoke the real factory and prove zero provider, gateway, approval,
+  ledger, fallback, local-write, and route effects.
+- Correct the local TypeScript AST/symbol-resolution oracle to require R's
+  exact direct default H import and call, exact bounded named issuer import
+  and call, safe factory-composition facade use, and exported
+  `bindResidentLoopCapabilitiesForFactory` use. Check dispatcher/G imports at
+  their lawful mounted-store location and keep activation paths frozen. Add
+  no unrelated alias case or source-text heuristic.
+- Freeze absent `packages/agent/src/bounded-agent-loop.ts`, exact factory
+  source blob `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, exact H source blob
+  `3d9d0ee4d38183fd9b1275b51738e7d48fb5e1d0`, every Task14 source, mounted
+  store, other product/test, claim, contract, mission, checker, dependency,
+  configuration, adapter, activation, route, provider, credential,
+  preview-branch, and unrelated byte.
+- Required corrected RED remains focused
+  **9 = 3 passed + six Task16 failures**, Task136 card
+  **383 = 377 passed + six**, and exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six** under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout. Also require typecheck, factory readiness, mission and
+  V4 **20/20**, markers **29 / 20 / 29 / 15**, truthful legacy-staging
+  repository first-stop, exact scope/freezes/ancestry/dependencies, diff
+  hygiene, Git integrity, and clean state.
+- Commit only the exact three-test correction, obtain completely fresh
+  independent read-only review, and record/integrate the exact immutable RED
+  with approval-first/candidate-second and forward Task136 merges. Changed
+  bytes invalidate review. Only then may a separate event authorize Task16
+  source GREEN in the two committed source paths.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task16 advances `claimed -> implementing`; Task136 remains overall
+  `implementing`. Strict product frontier remains **28 of 29**. No Task136
+  product candidate or record 29 exists. This is three-test correction
+  authority, not a corrected RED candidate, source authority, Task16
+  acceptance, Task136 candidacy, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
