@@ -45681,3 +45681,127 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1190 — Task14 lexical-issuer oracle correction approved
+
+- Recorded at: 2026-07-28T14:49:39Z
+- Completely fresh independent read-only reviewer
+  `/root/task14_e1189_red_review` returns **APPROVED** with no findings for
+  exact test-only candidate
+  `9af53052a546e5f9a923e5c803dfc5e235633ff4`, tree
+  `1e5a86f66b9a0efb8d67f32825583a4d9f8e47be`, sole parent
+  `5457adec9cf1feb45c897bf346522e52458de3a0`, subject
+  `test(local-runtime): close lexical issuer flow oracle`, and corrected blob
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`.
+- Review remained read-only beneath exact clean E-1189 envelope
+  `a2a84075827a10ec478d36eff1ecb73f77829c59`, whose parents are the exact
+  candidate then admission commit
+  `6b17d450d9f75d156c98ed6c1d566f34b35b752b`. Candidate bytes did not
+  change.
+- The reviewer independently proves that the exact private
+  `issueResidentLoopFactoryWakeRuntime` declaration symbol enters the
+  protected symbol set, named and aliased local export specifiers resolve
+  through the existing TypeScript alias resolver, a direct call resolves as
+  the whole private issuance carrier, and the reused
+  `alternate exported private issuance caller` control requires the exact
+  wake-module private-capability escape violation.
+- No fixture or unrelated alias case was added. The cumulative direct, alias,
+  object/array destructuring, callable, bound-callable, conditional, logical,
+  nullish, await, spread, default, comma-expression, reachability, and
+  negative corpus remains intact; all abstract controls pass before the
+  intended production assertion.
+- Fresh independent focused execution is exact
+  **96 = 94 passed + two Task14 failures**. Exact Task136 card is
+  **383 = 374 passed + nine failed**, and exact 37-file cross-boundary
+  execution is **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. The failure set
+  is exactly the two Task14 REDs plus seven preserved Task15-through-16 REDs.
+- Fresh standalone typecheck, factory readiness, mission **20/20**, V4
+  assurance **20/20**, and exact contract markers **29 / 20 / 29 / 15**
+  pass. Mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`.
+- Repository mode exits one after all four markers and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Exact one-file **+37 / -7** scope, starting/corrected blobs, runtime and
+  mounted-test freezes, FC-Core import-test freeze, every product/source/
+  claim/contract/mission/checker/dependency freeze, ancestry, TypeScript
+  5.9.3, Vitest 4.1.9, diff hygiene, Git integrity, and clean state pass
+  independent reproduction. The inherited missing `typescript.js.map`
+  warning and dangling Git objects remain nonblocking.
+- Advance only exact candidate `9af53052` `reviewing -> approved`. Authorize
+  its exact history-preserving no-ff merge into this program branch with
+  this approval commit as first parent and the candidate as second parent,
+  followed by fresh integration-tree focused/card/cross/typecheck/factory/
+  mission/V4/marker/repository-first-stop/scope/freeze/ancestry/dependency/
+  diff/integrity/clean gates and a separate append-only integrated event.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  approval, not integration, source GREEN, Task14 completion, Task15
+  authority, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
+
+## RV-1-E-1191 — Task14 lexical-issuer oracle correction integrated
+
+- Recorded at: 2026-07-28T15:01:14Z
+- Exact approved test-only candidate
+  `9af53052a546e5f9a923e5c803dfc5e235633ff4`, tree
+  `1e5a86f66b9a0efb8d67f32825583a4d9f8e47be`, sole parent
+  `5457adec9cf1feb45c897bf346522e52458de3a0`, is integrated without changed
+  bytes by history-preserving merge
+  `73eb84f12aa8c38afb766d76d7a1f76b88ce8fe3`, tree
+  `9cde736b6b267d8cb5687ecbf09122613c4210fd`. Its parents are exact E-1190
+  approval commit `94666e6418245dcd120ce20edff8975d5fcff55d` first and the
+  candidate second.
+- Candidate scope remains only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`, from
+  rejected blob `de989fa1b5e6cdb948f262c59549ad858583214b` to reviewed blob
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`, exact **+37 / -7**.
+  The integration merge's first-parent delta also materializes frozen runtime
+  test blob `cc9c3129f8d36b1edde263d7cafdbd3b219f3538` because the program
+  approval lineage did not contain the rejected candidate envelope while the
+  exact Task136 candidate ancestry did. That runtime oracle byte was already
+  substantively reviewed, remained frozen throughout E-1188 through E-1190,
+  and is not an additional correction.
+- Fresh integration-tree focused execution is exact
+  **96 = 94 passed + two Task14 failures**. Exact Task136 card execution is
+  **383 = 374 passed + nine failed** and exact 37-file cross-boundary
+  execution is **1,042 = 1,033 passed + nine failed**, all under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. The other seven
+  failures remain only the preserved Task15-through-16 REDs.
+- Fresh standalone typecheck and factory readiness pass. Mission and V4
+  assurance each pass **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  exact contract markers remain **29 / 20 / 29 / 15**.
+- Repository mode exits one after the four markers and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Product source remains frozen at wake
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`, composition
+  `ecb114bb1cc3c054c0d60400b7e3cc746823736b`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`; mounted test remains
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`. Every other product/test,
+  claim, contract, mission, checker, and dependency remains frozen.
+- Exact candidate scope, merge parent order, ownership, 33-path ceiling,
+  ancestry, TypeScript 5.9.3, Vitest 4.1.9, diff hygiene, Git integrity, and
+  clean integration worktree pass. The inherited missing
+  `typescript.js.map` warning and 298 dangling Git objects remain
+  nonblocking.
+- Advance exact candidate `approved -> integrated`. The next mandatory action
+  is a history-preserving forward merge of this integration authority into
+  the clean Task136 review envelope. Only after that merge and a separate
+  append-only GREEN authorization may the two approved product sources be
+  changed.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  integration, not source GREEN authority, Task14 completion, Task15
+  authority, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
