@@ -46454,3 +46454,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1202 — Task15 H GREEN rejected; prebound-reader causal RED authorized
+
+- Recorded at: 2026-07-28T17:16:12Z
+- Completely fresh independent read-only reviewer
+  `/root/task15_green_review` returns **REJECTED** with one P1 defect for exact
+  Task15 source candidate `efb79993a99a9e55d82dbe466867f5a348065b77`,
+  tree `4d01f624a8419bae8e5607b03f9cb15853e22d6c`, sole parent
+  `46d6f4d29e3c57c513eb90526d6ac266565a9861`, source blob
+  `41ccb01a702783a4eff5b2e299c483ba5a98440c`, exact one-source **+61**.
+  Candidate bytes remain unchanged and clean.
+- The candidate captures the ledger and mounted exact-hash reader objects but
+  performs late property lookup for `ledger.readAll` and
+  `handoffReader.readExact` inside `readFull`. A local post-construction
+  substitution counterexample executes the replacement ledger method with
+  exact counts `{ originalReads: 0, substitutedReads: 1 }`; the same
+  late-lookup mechanism applies to the exact-hash method. This violates
+  E-1201's prebound, non-substitutable authoritative reader requirement.
+- Focused H **37/37**, Task138 boundary **355/355**, typecheck, factory
+  readiness, Task136 card **383 = 377 passed + six Task16 failures**, exact
+  37-file cross-boundary **1,042 = 1,036 passed + six**, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact legacy-staging repository
+  first stop, scope, ancestry, freezes, diff hygiene, and clean state pass.
+  These gates do not cover the causal substitution counterexample and cannot
+  override it.
+- Supersede only E-1201's corrected-test freeze. Authorize the smallest
+  test-only causal RED correction in
+  `packages/agent/test/specialist-handoff-projection.test.ts`, starting from
+  exact reviewed blob `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9`.
+  Extend the existing internal full-readback case without adding a test:
+  issue one port from local abstract ledger and fixed-store exact-hash reader
+  objects, replace both methods after issuance, invoke `readFull`, and require
+  only the originally captured methods to execute. Keep fixture values
+  abstract and local.
+- Freeze rejected source candidate blob
+  `41ccb01a702783a4eff5b2e299c483ba5a98440c`, agent barrel
+  `69f60a5bb231a9041cd6dfea29203302293edeb8`, Task138 source/test/claim
+  `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`,
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`. Freeze every other source/test,
+  claim, contract, mission, checker, dependency, configuration, route,
+  provider, credential, mounted store, and unrelated path.
+- Required causal RED is focused
+  **37 = 36 passed + one Task15 failure**, Task138 boundary
+  **355 = 354 passed + one**, Task136 card
+  **383 = 376 passed + seven**, and exact 37-file cross-boundary
+  **1,042 = 1,035 passed + seven** under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout. Also require typecheck, factory readiness, mission
+  and V4 **20/20**, markers **29 / 20 / 29 / 15**, truthful repository
+  first-stop, exact scope/freezes/ancestry/dependencies, diff hygiene, Git
+  integrity, and clean state.
+- Commit only the one test with exact subject
+  `test(agent): require prebound handoff readers`, obtain completely fresh
+  independent read-only approval, and record/integrate it with
+  history-preserving merges before authorizing the smallest forward-only
+  source correction. Changed or additional bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is candidate-bound causal test authority, not a corrected RED
+  candidate, source repair, Task15 acceptance, Task16 authority, Task136
+  candidacy, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
