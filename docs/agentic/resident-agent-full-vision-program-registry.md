@@ -46519,3 +46519,54 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or product release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1203 — Task15 prebound-reader causal RED admitted to review
+
+- Recorded at: 2026-07-28T17:34:03Z
+- Admit exact test-only candidate
+  `0589efb7ff6f696f822e2ab067533cf41a945e79`, tree
+  `1605d9a969a8c291446d624a26c3d7a6d5de6f03`, sole parent
+  `900708513f27bdd0cff55691d5af804d37402a5d`, for completely fresh
+  independent read-only review. Exact scope is one existing test,
+  `packages/agent/test/specialist-handoff-projection.test.ts`, **+70 / -0**,
+  from reviewed blob `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9`
+  to candidate blob `d7fd4e59d48d4d82615751faaa830849e35fe392`.
+- The existing internal full-readback case now issues one port from local
+  abstract ledger and fixed-store exact-hash reader objects, replaces both
+  methods after issuance, invokes `readFull`, and requires only the originally
+  captured methods to execute. It adds no test or unrelated alias case.
+- With frozen rejected source blob
+  `41ccb01a702783a4eff5b2e299c483ba5a98440c`, the exact failure observes zero
+  original ledger reads and no original exact-hash read, but one substituted
+  ledger read and five substituted exact-hash reads. This binds the one
+  failure causally to both late-lookup paths identified by the E-1202 review.
+- Candidate execution is exact focused
+  **37 = 36 passed + one Task15 failure**, Task138 boundary
+  **355 = 354 passed + one**, Task136 card
+  **383 = 376 passed + seven**, and exact 37-file cross-boundary
+  **1,042 = 1,035 passed + seven** under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout. The remaining six failures are exactly Task16.
+- Typecheck and factory readiness pass. Mission and V4 assurance each pass
+  **20/20**; markers remain **29 / 20 / 29 / 15**. Clean repository mode
+  stops first at the exact legacy-staging blob mismatch, with no closure or
+  release success marker.
+- Source, agent barrel, Task138 source/test/claim, every other product/test,
+  claim, contract, mission, checker, dependency, configuration, route,
+  provider, credential, mounted store, and unrelated path remain frozen.
+  Exact scope, ancestry, ownership, 33-path ceiling, diff hygiene, Git
+  integrity, and clean state pass.
+- Review must bind the exact commit/tree/parent/test blob, causal failure,
+  frozen source, scope, and complete signature. Changed bytes invalidate
+  review. Approval requires a separate append-only event, approval-first/
+  candidate-second history-preserving program merge, fresh integration-tree
+  gates, a separate integrated event, and forward Task136 merge before
+  source repair authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is causal RED review admission, not approval, integration,
+  source correction, Task15 acceptance, Task16 authority, Task136 candidacy,
+  repository closure, strict record 29, publication, Wave 3 start, or product
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
