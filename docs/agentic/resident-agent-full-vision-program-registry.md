@@ -45611,3 +45611,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   authority, repository closure, strict record 29, publication, Wave 3 start,
   or product release. `neo`, provider, credential, external-system,
   pull-request, production-route, and unrelated actions remain unauthorized.
+
+## RV-1-E-1189 — Task14 lexical-issuer oracle correction admitted to review
+
+- Recorded at: 2026-07-28T14:34:12Z
+- Exact E-1188 forward test-only candidate is
+  `9af53052a546e5f9a923e5c803dfc5e235633ff4`, tree
+  `1e5a86f66b9a0efb8d67f32825583a4d9f8e47be`, sole parent exact Task136
+  authority merge `5457adec9cf1feb45c897bf346522e52458de3a0`, with exact subject
+  `test(local-runtime): close lexical issuer flow oracle`.
+- Exact scope is only
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`, from
+  rejected blob `de989fa1b5e6cdb948f262c59549ad858583214b` to
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`: exact **+37 / -7**.
+  Runtime test `cc9c3129f8d36b1edde263d7cafdbd3b219f3538`, every other test,
+  every product source, claim, contract, mission, checker, and dependency
+  remain frozen.
+- The corrected local TypeScript AST/symbol-resolution oracle records the
+  exact private issuance declaration symbol, follows its named or aliased
+  export through the existing symbol resolver, and treats a direct call of
+  that exact symbol as the whole private issuance carrier. It reuses the
+  existing abstract `alternate exported private issuance caller` control,
+  adds no fixture or unrelated alias case, and requires the exact wake-module
+  private-capability escape violation.
+- RED-first execution first retargeted only that existing control and
+  reproduced its missing
+  `packages/local-runtime/src/wake-supervisor-runtime.ts:private-registrar-escape`
+  violation before the helper correction. After correction, the control
+  passes while the two intended Task14 product expectations remain RED.
+- Implementer `/root/task14_e1188_oracle_fix` reproduces exact focused
+  **96 = 94 passed + two Task14 failures**, Task136 card
+  **383 = 374 passed + nine failed**, and 37-file cross-boundary
+  **1,042 = 1,033 passed + nine failed** with `TMPDIR=/dev/shm`, one worker,
+  and the 120-second timeout. The other seven failures remain only the
+  preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  pass **20/20**; exact contract markers remain **29 / 20 / 29 / 15**.
+  Repository mode exits one and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  with no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Frozen blobs additionally remain mounted test
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`, released FC-Core import-policy
+  test `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`, wake source
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`, composition source
+  `ecb114bb1cc3c054c0d60400b7e3cc746823736b`, and mounted store
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`.
+- Exact ownership, 33-path ceiling, ancestry, TypeScript 5.9.3, Vitest 4.1.9,
+  dependencies, one-file scope, freezes, diff hygiene, Git integrity, and
+  clean candidate worktree pass implementer verification. The inherited
+  missing `typescript.js.map` warning and dangling Git objects remain
+  nonblocking.
+- Advance this exact candidate `implementing -> candidate -> reviewing`.
+  Assign completely fresh independent read-only reviewer
+  `/root/task14_e1189_red_review`, excluded from every prior Task14 author,
+  reviewer, verifier, design-analysis, rehydration, and correction role.
+  Review is bound to the exact candidate identity, tree, parent, corrected
+  blob, scope, both local AST/symbol flows, failure identities, and every gate
+  above. Changed bytes invalidate review.
+- No candidate byte may change. Approval requires a separate append-only
+  event, approval-first/candidate-second history-preserving integration,
+  fresh integration-tree gates, a separate integrated event, and a forward
+  Task136 authority merge. Product source remains unauthorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  review admission, not approval, integration, source GREEN, Task14
+  completion, Task15 authority, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
