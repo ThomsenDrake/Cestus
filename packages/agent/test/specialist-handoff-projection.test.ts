@@ -1142,9 +1142,16 @@ describe("specialist handoff projection", () => {
       new URL("../../local-runtime/src/agent-handoff-projection.ts", import.meta.url),
       "utf8"
     );
-    const module: unknown = await import("../src/specialist-handoff-projection.js");
-    const builder = module !== null && typeof module === "object"
-      ? Reflect.get(module, "createInternalSpecialistHandoffProjectionPort")
+    const deepModule: unknown = await import("../src/specialist-handoff-projection.js");
+    const builder = deepModule !== null && typeof deepModule === "object"
+      ? Reflect.get(deepModule, "default")
+      : undefined;
+    const namedBuilder = deepModule !== null && typeof deepModule === "object"
+      ? Reflect.get(deepModule, "createInternalSpecialistHandoffProjectionPort")
+      : undefined;
+    const barrelModule: unknown = await import("../src/index.js");
+    const barrelNamedBuilder = barrelModule !== null && typeof barrelModule === "object"
+      ? Reflect.get(barrelModule, "createInternalSpecialistHandoffProjectionPort")
       : undefined;
     const rejectedReadbacks = [
       "caller-supplied-events",
@@ -1165,6 +1172,9 @@ describe("specialist handoff projection", () => {
     const effects = { enumeratePath: 0, fallbackRead: 0, write: 0, task138DtoMutation: 0 };
 
     expect(builder).toBeTypeOf("function");
+    expect(builder).toHaveProperty("name", "createInternalSpecialistHandoffProjectionPort");
+    expect(namedBuilder).toBeUndefined();
+    expect(barrelNamedBuilder).toBeUndefined();
     expect(source).toContain("InternalSpecialistHandoffProjectionPort");
     expect(source).toContain("readFull");
     expect(source).toContain('"task-completed"');
