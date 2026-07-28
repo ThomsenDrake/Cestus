@@ -46722,3 +46722,46 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, publication, Wave 3 start, or product release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1207 — Type-correct Task15 prebound-reader RED integrated
+
+- Recorded at: 2026-07-28T18:11:15Z
+- Exact independently approved corrected RED candidate
+  `bc9481c7461f4faad92e31d929731b4cb46b43e9`, tree
+  `ca623811a7de11731a4742d67ae9bb969aaa3f22`, is integrated without changed
+  bytes by history-preserving program merge
+  `112f82f9bd4807d52dbb06be0b700d836ccadf95`, tree
+  `0d5d8be22ccdd0743b4391d22cf82267ff0a1e1a`. Its first parent is exact
+  E-1206 approval commit `5c89a4de8faf28b398cfea718f7cc059c2a6385c`;
+  its second parent is the reviewed candidate.
+- Integration tree retains rejected Task15 source candidate blob
+  `41ccb01a702783a4eff5b2e299c483ba5a98440c` frozen and installs exact
+  approved causal test blob
+  `67014dae42649e6370ed6a212cc468af81cfa24e`. The candidate's sole forward
+  correction remains **+2 / -1** and cumulative causal oracle remains
+  **+72 / -1**, with 37 titles unchanged.
+- Fresh integration-tree execution is exact focused
+  **37 = 36 passed + one Task15 RED**, Task138 boundary
+  **355 = 354 passed + one**, Task136 card
+  **383 = 376 passed + seven**, and 37-file cross-boundary
+  **1,042 = 1,035 passed + seven** under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout. The causal failure again observes original ledger
+  zero, substituted ledger one, original exact reader unreached, substituted
+  exact reader five; the other six failures are exactly Task16.
+- Fresh standalone typecheck and factory readiness pass. Mission and V4 each
+  pass **20/20**; markers remain **29 / 20 / 29 / 15**. Clean repository
+  mode stops first only at the exact legacy-staging blob mismatch. Exact
+  parent order, scope, source/Task138/barrel/all-other freezes, ancestry,
+  dependencies, diff hygiene, Git integrity, and clean state pass.
+- Advance corrected causal RED `approved -> integrated`. A history-preserving
+  forward merge of this integration authority into exact Task136 review
+  envelope `a015b64d9293de49b9549a3181a5ee36e57e6d37` is mandatory before a
+  separate event may authorize the smallest forward-only source repair.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is causal RED integration, not source repair authority,
+  Task15 acceptance, Task16 authority, Task136 candidacy, repository closure,
+  strict record 29, publication, Wave 3 start, or product release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
