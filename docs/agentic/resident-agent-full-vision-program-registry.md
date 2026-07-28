@@ -47269,3 +47269,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1216 — Task16 repaired seven-test RED admitted to fresh review
+
+- Recorded at: 2026-07-28T22:44:37Z
+- Exact immutable repaired RED candidate is
+  `317fad088aae8b8948312851a8840ba1bff3d7c6`, tree
+  `42a8461ccb471340d092638b41884788661903a3`, sole parent
+  `c7bf1756a471596110ca62fbc6934bf7baf98c27`, with exact subject
+  `test(task136): close bounded RED oracle gaps`. It preserves rejected
+  candidate `04e76dece8f720be2be37082c009a2ddbb347395` and every subsequent
+  review and repair-authority merge in ancestry.
+- Candidate-commit scope is exactly
+  `packages/agent/test/bounded-agent-loop.test.ts`,
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`, and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  **281 insertions / 18 deletions**. Their exact repaired blobs are
+  `32962cf24a28087253368289480dc5ce2e741574`,
+  `00fbc6bcd18365224e301c26227e6fdc769ffabd`, and
+  `1c63b8f999e78375cf2f4403bd35884053e7425e`.
+- The complete seven-test RED blobs in E-1213 path order are now
+  `32962cf24a28087253368289480dc5ce2e741574`,
+  `00fbc6bcd18365224e301c26227e6fdc769ffabd`,
+  `f7ddd88e9161dad5449ed47fd3ad4739207af0fb`,
+  `29b3c744c55f79ba76e55192747f96eb050d6772`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`,
+  `1c63b8f999e78375cf2f4403bd35884053e7425e`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`.
+- The bounded suspension oracle now derives human and automatic durable
+  values from their exact plan/G materials. The existing G title proves
+  requested material eligibility before and rejection after its same-gateway
+  consuming transition. The factory oracle closes the exact runtime
+  value-import and module-initialization graph and admits required calls only
+  through explicit direct-statement ancestry. All seven titles and test
+  cardinality remain unchanged; no unrelated alias case was added.
+- Fresh execution under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  import-policy timeout is exact focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Every
+  failure remains only the committed Task16 RED.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; markers remain **29 / 20 / 29 / 15**. Clean program-tree
+  repository mode stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact three-test candidate scope, complete seven-test blobs, E-1215 source
+  and test freezes, absent bounded source, canonical 33-path SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  ancestry, TypeScript **5.9.3**, Vitest **4.1.9**, dependency freeze, diff
+  hygiene, full Git integrity, and clean candidate state pass.
+- Assign a different completely fresh independent read-only reviewer
+  `/root/task16_e1216_fresh_review`. Review must bind the exact
+  candidate/tree/parent, all seven current blobs, the E-1213 and E-1215
+  causal oracles and freezes, and rerun the complete gate matrix from
+  immutable committed bytes. Changed bytes invalidate review.
+- Advance only this exact repaired RED `candidate -> reviewing`. Task16 and
+  Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is review admission, not approval, integration,
+  producer GREEN authority, Task16 acceptance, Task136 candidacy, strict
+  record 29, publication, Wave 3 start, repository closure, or release.
+  Product source, `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
