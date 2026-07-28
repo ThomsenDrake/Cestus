@@ -46631,3 +46631,50 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1205 — Type-correct Task15 prebound-reader RED admitted to review
+
+- Recorded at: 2026-07-28T17:51:03Z
+- Admit exact forward correction candidate
+  `bc9481c7461f4faad92e31d929731b4cb46b43e9`, tree
+  `ca623811a7de11731a4742d67ae9bb969aaa3f22`, sole parent
+  `adaa8d661a9abd2cc3f30caa9dd0d429b688215d`, for completely fresh
+  independent read-only review. Its sole commit delta is the authorized
+  test, **+2 / -1**, adding only the missing static
+  `SpecialistHandoffProjection` type import. Final test blob is
+  `67014dae42649e6370ed6a212cc468af81cfa24e`.
+- The cumulative causal test delta from pre-E-1202 reviewed blob
+  `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9` is **+72 / -1** with test
+  cardinality unchanged. All issuance, substitution, exact-reader,
+  default-only/non-barrel, Task138-no-widening, and existing projection
+  assertions remain byte-identical to rejected causal blob
+  `d7fd4e59d48d4d82615751faaa830849e35fe392` except the type-only import.
+- Frozen source blob `41ccb01a702783a4eff5b2e299c483ba5a98440c`
+  still produces the exact causal failure: original ledger zero,
+  substituted ledger one, original exact-hash reader not reached, and
+  substituted exact-hash reader five. Exact execution is focused
+  **37 = 36 passed + one Task15 failure**, Task138 boundary
+  **355 = 354 passed + one**, Task136 card
+  **383 = 376 passed + seven**, and 37-file cross-boundary
+  **1,042 = 1,035 passed + seven** under the prescribed environment; the
+  remaining six failures are exactly Task16.
+- Standalone typecheck and factory readiness now pass. Mission and V4 each
+  pass **20/20**; markers remain **29 / 20 / 29 / 15**. Clean repository
+  mode stops first only at the exact legacy-staging blob mismatch. Scope,
+  source/Task138/barrel/all-other freezes, ancestry, dependencies, diff
+  hygiene, Git integrity, and clean state pass.
+- Review must bind exact candidate/tree/parent/blob, its one-import commit
+  delta, cumulative causal oracle, failure counts, frozen source, and all
+  gates. Changed bytes invalidate review. Approval requires a separate
+  append-only event, approval-first/candidate-second history-preserving
+  program merge, fresh integration-tree gates, separate integrated event,
+  and forward Task136 merge before source repair authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is corrected causal RED review admission, not approval,
+  integration, source repair, Task15 acceptance, Task16 authority, Task136
+  candidacy, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
