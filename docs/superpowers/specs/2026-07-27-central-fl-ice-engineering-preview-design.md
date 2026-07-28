@@ -474,3 +474,11 @@ replay counts to the durable checkpoint; and content-address read every named
 and accumulated artifact, including the handoff and replay artifacts. Any
 post-replay ledger or artifact drift fails closed without validation execution
 or new durable effects.
+
+The same complete manifest-authority readback runs again after successful
+engineering validations and immediately before the manifest artifact write.
+The final manifest's ledger count comes from this second fresh snapshot. A
+validation subprocess therefore cannot race finalization by changing approval
+material, appending an allowed proposal, or altering a referenced artifact;
+such drift fails closed after validation with no manifest artifact or
+checkpoint.
