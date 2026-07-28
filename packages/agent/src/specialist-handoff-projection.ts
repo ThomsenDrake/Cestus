@@ -175,17 +175,17 @@ interface InternalSpecialistHandoffProjectionDependencies {
 export default function createInternalSpecialistHandoffProjectionPort(
   dependencies: InternalSpecialistHandoffProjectionDependencies
 ): InternalSpecialistHandoffProjectionPort {
-  const ledger = dependencies.ledger;
-  const handoffReader = dependencies.handoffReader;
+  const readAll = dependencies.ledger.readAll.bind(dependencies.ledger);
+  const readExact = dependencies.handoffReader.readExact.bind(dependencies.handoffReader);
   return Object.freeze({
     async readFull(
       input: ExactResidentLoopIdentityAndAuthority
     ): Promise<SpecialistHandoffProjection | undefined> {
       const projection = await buildSpecialistHandoffProjection({
-        events: await ledger.readAll(),
+        events: await readAll(),
         manifestReader: {
           async get(contentHash: ContentHash): Promise<Buffer> {
-            return Buffer.from(await handoffReader.readExact(contentHash));
+            return Buffer.from(await readExact(contentHash));
           }
         },
         taskId: input.taskId,
