@@ -7,6 +7,16 @@ import {
 import { bootstrapReportFixture, metadataHash, rawHash } from "./fixtures/bootstrap-fixtures.js";
 
 describe("ontology bootstrap tool previews", () => {
+  const emptyReport = {
+    ...bootstrapReportFixture,
+    candidateSetHash: "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945" as const,
+    proposedAssertionCandidates: [],
+    totals: {
+      ...bootstrapReportFixture.totals,
+      proposedAssertionCandidates: 0
+    }
+  };
+
   it("builds preview hashes from exact raw import identity", () => {
     const preview = createRawImportApprovalPreview({
       sourceCollectionId: "src_old_cestus",
@@ -74,6 +84,50 @@ describe("ontology bootstrap tool previews", () => {
       createStagingExecutionPreview({
         report: bootstrapReportFixture,
         stagingBatchId: "legacy_stage_001",
+        selectedCandidateIds: []
+      })
+    ).toThrow(/candidate/i);
+  });
+
+  it("builds exact empty staging approval and execution previews only for an empty report", () => {
+    const approval = createStagingApprovalPreview({
+      report: emptyReport,
+      stagingBatchId: "legacy_stage_empty",
+      selectedCandidateIds: [],
+      evidenceRefs: []
+    });
+    const execution = createStagingExecutionPreview({
+      report: emptyReport,
+      stagingBatchId: "legacy_stage_empty",
+      selectedCandidateIds: []
+    });
+
+    expect(approval).toMatchObject({
+      toolId: "legacy.staging.approval.request",
+      selectedCandidateIds: [],
+      evidenceRefs: [],
+      requiresHumanApproval: true
+    });
+    expect(execution).toMatchObject({
+      toolId: "legacy.staging.execute",
+      selectedCandidateIds: [],
+      allowedEventTypes: ["assertion.proposed"]
+    });
+  });
+
+  it("rejects empty staging previews when the report contains any candidate", () => {
+    expect(() =>
+      createStagingApprovalPreview({
+        report: bootstrapReportFixture,
+        stagingBatchId: "legacy_stage_nonempty",
+        selectedCandidateIds: [],
+        evidenceRefs: []
+      })
+    ).toThrow(/candidate/i);
+    expect(() =>
+      createStagingExecutionPreview({
+        report: bootstrapReportFixture,
+        stagingBatchId: "legacy_stage_nonempty",
         selectedCandidateIds: []
       })
     ).toThrow(/candidate/i);

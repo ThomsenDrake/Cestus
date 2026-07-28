@@ -405,3 +405,31 @@ authorize a resumed import. The coordinator must preserve the failed workspace,
 run a fresh deterministic inspection under the repaired SHA, and present the
 new exact candidate set for human raw-import approval. No prior approval is
 silently carried forward.
+
+## Gate 2 Runtime Amendment: Explicit Empty Eligible Decision
+
+The corrected raw import can legitimately produce an evidence-bound staging
+preview with zero eligible assertion candidates. Zero eligible candidates is a
+review outcome, not permission to bypass the ontology staging gate.
+
+The preview therefore permits an empty staging selection only when the exact
+current eligible staging-preview set is empty:
+
+- the direct preview CLI still requires one secret-safe `--approved-by`
+  identity but accepts zero `--candidate` options;
+- preview selection rejects an empty subset whenever any eligible candidate is
+  present and rejects every nonempty selection when the eligible set is empty;
+- ontology-bootstrap approval and execution previews accept an empty selection
+  only when the bound migration report itself contains zero proposed assertion
+  candidates;
+- the legacy runtime records exactly one human
+  `legacy.ontology.staging.approved` event whose approved candidate list is
+  empty, then staging emits zero `assertion.proposed` events;
+- authoritative ledger reconciliation, checkpoints, command receipts, handoff,
+  restart replay, and the final manifest preserve the exact empty set and zero
+  proposal count;
+- retry after a staging checkpoint failure reuses the exact approval event and
+  appends no duplicate event.
+
+This is not a fallback write and does not accept graph truth. It preserves the
+human Gate 2 decision even when the safe decision is to propose nothing.

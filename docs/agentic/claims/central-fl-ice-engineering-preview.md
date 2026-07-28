@@ -693,3 +693,87 @@ previous Gate 1 candidate-set hash and approval are superseded. Live execution
 must preserve the failed workspace, repeat inspection, and stop at a fresh
 human raw-import gate. The mission remains `implementing` pending fresh dual
 review of this repair.
+
+## Gate 2 Empty Eligible Staging Correction
+
+The refreshed evidence import exposed a valid zero-candidate ontology staging
+decision. The implementation agent did not access the live source, canonical
+preview workspace, or preserved workspaces.
+
+RED evidence preceded every production edit:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology-bootstrap/test/tool-previews.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+3 files failed; 3 tests failed and 163 passed.
+```
+
+The failures proved that the direct preview CLI required at least one candidate,
+the legacy runtime rejected an empty eligible selection, and ontology-bootstrap
+previews rejected a report with zero candidates.
+
+Self-review then extended the portable test through durable checkpoint readback
+and handoff. Before the receipt validator changed, that exact test failed while
+136 unrelated preview tests were skipped because the six-argument empty-stage
+receipt did not satisfy the older eight-argument minimum. After the validator
+accepted approval plus zero or more candidate pairs, the same focused test
+passed and handoff reached `replay-verification-required`.
+
+Focused GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology-bootstrap/test/tool-previews.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+4 files passed; 176 tests passed.
+```
+
+Broader GREEN evidence:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test packages/ontology-bootstrap/test
+35 files passed; 373 tests passed.
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/ontology-bootstrap/test/tool-previews.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+10 files passed; 248 tests passed.
+
+TMPDIR=/dev/shm npm run typecheck
+typecheck passed.
+
+TMPDIR=/dev/shm npm run ui:build
+165 modules transformed; build passed with existing externalization and
+chunk-size advisories only.
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed.
+
+git diff --check
+passed.
+```
+
+The first typecheck found two test-only readonly-union narrowing errors. The
+fixtures were corrected without changing production behavior; the focused
+176-test set and typecheck then passed.
+
+The real temporary portable-workspace regression completes inspect, raw import,
+and staging preview with no eligible candidates; executes
+`stage --approved-by actor_human_preview` with no candidate options; records one
+human `legacy.ontology.staging.approved` event with an empty approved set;
+records zero proposals; reaches `handoff-required`; and reconciles a retry after
+an injected checkpoint failure without duplicate events. Nonempty reports still
+reject an empty selection. Accepted graph state, provider behavior, production
+activation, request sends, legal gates, and fallback-write policy are unchanged.

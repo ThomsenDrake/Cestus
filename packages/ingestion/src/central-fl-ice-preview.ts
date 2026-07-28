@@ -2479,7 +2479,7 @@ function validWorkflowArgv(receipt: CentralFloridaIcePreviewCommandReceipt): boo
       && receipt.argv[4] === "--approved-by";
   }
   if (receipt.command === "stage") {
-    return receipt.argv.length >= 8
+    return receipt.argv.length >= 6
       && receipt.argv.length % 2 === 0
       && receipt.argv[4] === "--approved-by"
       && receipt.argv.slice(6).every((value, index) =>
@@ -2975,11 +2975,13 @@ function exactCandidateSelection(
 ): string[] {
   const selected = [...values].sort(compareCodeUnits);
   if (
-    selected.length === 0
+    (selected.length === 0 && eligible.length !== 0)
     || new Set(selected).size !== selected.length
     || selected.some((candidateId) => !eligible.includes(candidateId))
   ) {
-    throw new Error("stage candidates must be a unique non-empty subset of the exact staging preview");
+    throw new Error(
+      "stage candidates must be a unique subset of the exact staging preview; empty is valid only when no candidate is eligible"
+    );
   }
   return selected;
 }
