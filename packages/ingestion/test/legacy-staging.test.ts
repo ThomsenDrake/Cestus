@@ -100,6 +100,40 @@ describe("LegacyOntologyStagingService", () => {
     expect(eventTypes).not.toContain("candidate.relationship.accepted");
   });
 
+  it("records an exact empty human approval and emits no proposals for an empty candidate set", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const candidates: ReturnType<typeof candidate>[] = [];
+    const stagingIdentity = stagingIdentityFor(candidates, {
+      stagingBatchId: "legacy_stage_empty_001"
+    });
+
+    const approval = await service.approveStaging({
+      ...stagingIdentity,
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: []
+    });
+    const proposed = await service.stageApprovedAssertions({
+      ...stagingIdentity,
+      candidates
+    });
+
+    expect(approval).toMatchObject({
+      type: "legacy.ontology.staging.approved",
+      context: {
+        actor: humanActor
+      },
+      payload: {
+        approvedBy: "actor_investigator",
+        approvedAssertionCandidateIds: []
+      }
+    });
+    expect(proposed).toEqual([]);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "legacy.ontology.staging.approved"
+    ]);
+  });
+
   it("rejects missing evidence after approval without appending assertion.proposed", async () => {
     const ledger = new InMemoryEventLedger();
     const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });

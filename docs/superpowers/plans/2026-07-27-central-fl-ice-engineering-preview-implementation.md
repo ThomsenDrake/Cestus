@@ -357,3 +357,30 @@ The repair does not access the live source or preview workspaces. Since it
 changes code identity and PDF candidate material, live execution must preserve
 the failed workspace, repeat Gate 1, and obtain a fresh exact approval rather
 than reusing the superseded candidate-set hash.
+
+## Task 5 Empty Eligible Staging Decision
+
+The refreshed raw import can produce a zero-candidate ontology staging preview.
+Implement this bounded Gate 2 correction test-first:
+
+1. exercise a real temporary portable workflow through inspect, raw import,
+   staging preview, and stage with zero eligible candidates;
+2. prove the CLI accepts `stage --approved-by <human>` without a candidate
+   option only for that exact empty eligible set;
+3. preserve rejection of empty selections for nonempty eligible reports and
+   reject nonempty selections for empty eligible reports;
+4. let ontology-bootstrap approval and execution previews represent an empty
+   decision only when the bound report has zero proposed candidates;
+5. record one exact human `legacy.ontology.staging.approved` event, emit zero
+   `assertion.proposed`, and checkpoint `handoff-required`;
+6. inject a checkpoint failure and prove retry appends no duplicate approval,
+   proposal, or blob effect;
+7. run the focused preview/runtime/bootstrap suites, all ingestion and
+   ontology-bootstrap tests, typecheck, UI build, factory readiness, and
+   `git diff --check`;
+8. update the durable claim and SDD scratch evidence and commit atomically for
+   the coordinator's required review.
+
+This repair does not access the live source or any preview workspace. It does
+not change accepted graph state, provider readiness, production activation,
+request sends, legal gates, or fallback-write policy.

@@ -615,7 +615,7 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
         if (newEvents.some((event) => forbiddenAcceptedEventTypes.has(event.type))) {
           return acceptedEventForbiddenError("legacy stage");
         }
-        if (proposed.length === 0) {
+        if (proposed.length === 0 && candidateIds.size > 0) {
           return candidateSetMismatchError("legacy stage");
         }
 
@@ -986,7 +986,7 @@ function validCandidateIdSelection(
   eligibleCandidateIds: ReadonlySet<string>
 ): boolean {
   if (candidateIds.length === 0) {
-    return false;
+    return eligibleCandidateIds.size === 0;
   }
 
   const uniqueCandidateIds = new Set(candidateIds);

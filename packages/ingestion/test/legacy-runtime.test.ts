@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -464,7 +464,7 @@ describe("LegacyImportRuntime gated import and staging workflow", () => {
       .toHaveLength(0);
   });
 
-  it("rejects empty staging approval candidate selections", async () => {
+  it("rejects empty staging approval selections when eligible candidates exist", async () => {
     const { runtime, inspected } = await preparedImportedRuntime();
 
     const approved = await runtime.approveStaging({
@@ -479,6 +479,73 @@ describe("LegacyImportRuntime gated import and staging workflow", () => {
     expect(approved.ok).toBe(false);
     if (approved.ok) return;
     expect(approved.error.code).toBe("LEGACY_IMPORT_CANDIDATE_SET_MISMATCH");
+  });
+
+  it("records and executes an empty human staging approval when no candidates are eligible", async () => {
+    rmSync(sourceRoot, { recursive: true, force: true });
+    sourceRoot = mkdtempSync(join(tmpdir(), "legacy-runtime-empty-source-"));
+    mkdirSync(join(sourceRoot, "notes"), { recursive: true });
+    writeFileSync(
+      join(sourceRoot, "notes", "field-notes.md"),
+      "# Evidence notes\n\nNo ontology claims are encoded here.\n",
+      "utf8"
+    );
+    const workspace = createFakeMountedWorkspace("Legacy empty staging workspace");
+    const runtime = createLegacyImportRuntime({
+      mountedWorkspace: workspace,
+      actor: { id: "actor_investigator", kind: "human", label: "Investigator" }
+    });
+    const inspected = await runtime.inspect({
+      sourceCollectionId: "src_empty_cestus",
+      label: "Empty legacy staging source",
+      sourceRoot,
+      scanBatchId: "scan_empty_cestus_001"
+    });
+    expect(inspected.ok).toBe(true);
+    if (!inspected.ok) return;
+    expect((await runtime.approveRawImport({
+      sourceCollectionId: "src_empty_cestus",
+      scanBatchId: "scan_empty_cestus_001",
+      importBatchId: "imp_empty_cestus_001",
+      approvedBy: "actor_investigator"
+    })).ok).toBe(true);
+    expect((await runtime.importApproved({
+      sourceCollectionId: "src_empty_cestus",
+      scanBatchId: "scan_empty_cestus_001",
+      importBatchId: "imp_empty_cestus_001"
+    })).ok).toBe(true);
+    const preview = await runtime.stagingPreview({
+      sourceCollectionId: "src_empty_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.candidates).toEqual([]);
+
+    const approval = await runtime.approveStaging({
+      sourceCollectionId: "src_empty_cestus",
+      scanBatchId: "scan_empty_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_empty_001",
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: []
+    });
+    expect(approval.ok).toBe(true);
+    const staged = await runtime.stageApproved({
+      sourceCollectionId: "src_empty_cestus",
+      scanBatchId: "scan_empty_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_empty_001"
+    });
+
+    expect(staged.ok).toBe(true);
+    if (!staged.ok) return;
+    expect(staged.proposedAssertionIds).toEqual([]);
+    const events = await workspace.ledger.readAll();
+    expect(events.filter((event) =>
+      event.type === "legacy.ontology.staging.approved"
+    )).toHaveLength(1);
+    expect(events.filter((event) => event.type === "assertion.proposed")).toHaveLength(0);
   });
 
   it("rejects duplicate staging approval candidate selections", async () => {

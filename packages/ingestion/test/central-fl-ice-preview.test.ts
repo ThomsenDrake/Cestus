@@ -2946,6 +2946,7 @@ function portableCrashWorkflowFixture(
     | "all-inspect-checkpoints",
   options: {
     readonly multipleCandidates?: boolean;
+    readonly emptyStagingCandidates?: boolean;
   } = {}
 ) {
   const root = mkdtempSync(join(tmpdir(), "central-fl-portable-crash-"));
@@ -2953,7 +2954,16 @@ function portableCrashWorkflowFixture(
   const sourceRoot = join(root, "selected-source");
   const workspaceRoot = join(root, "portable-workspace");
   mkdirSync(join(sourceRoot, "ontology"), { recursive: true });
-  const sourceFiles = [
+  const sourceFiles = options.emptyStagingCandidates === true
+    ? [{
+        sourcePath: "ontology/field-notes.md",
+        mediaType: "text/markdown",
+        sourceBytes: Buffer.from(
+          "# Central Florida field notes\n\nNo ontology claims are encoded here.\n",
+          "utf8"
+        )
+      }]
+    : [
     {
       sourcePath: "ontology/claims.json",
       mediaType: "application/json",
@@ -2977,7 +2987,7 @@ function portableCrashWorkflowFixture(
           sourceBytes: Buffer.from("%PDF-1.7\npreview fixture\n%%EOF\n", "utf8")
         }]
       : [])
-  ];
+    ];
   const candidates = sourceFiles.map(({ sourcePath, sourceBytes, mediaType }) => {
     const absolutePath = join(sourceRoot, sourcePath);
     writeFileSync(absolutePath, sourceBytes);
@@ -3605,6 +3615,64 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
     expect(checkpoint.phase).toBe("handoff-required");
     expect((await fixture.ledgerEvents()).map((event) => event.id)).toEqual(eventIds);
     expect(countRegularFiles(join(fixture.workspaceRoot, "blobs"))).toBe(blobCount);
+  });
+
+  it("records one empty human staging approval and no proposals through the portable workflow", async () => {
+    const fixture = portableCrashWorkflowFixture("handoff-required", {
+      emptyStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.createWorkflow().stagingPreview();
+    expect(preview.state.stagingCandidateIds).toEqual([]);
+
+    await expect(runCentralFloridaIcePreviewCli([
+      "stage",
+      "--approved-by",
+      "actor_human_preview"
+    ], fixture.createWorkflow)).rejects.toThrow("injected handoff-required checkpoint crash");
+    const eventIds = (await fixture.ledgerEvents()).map((event) => event.id);
+    const checkpoint = await runCentralFloridaIcePreviewCli([
+      "stage",
+      "--approved-by",
+      "actor_human_preview"
+    ], fixture.createWorkflow);
+
+    expect("phase" in checkpoint).toBe(true);
+    if (!("phase" in checkpoint)) return;
+    expect(checkpoint.phase).toBe("handoff-required");
+    expect(checkpoint.state).toMatchObject({
+      stagingApprovedBy: "actor_human_preview",
+      approvedStagingCandidateIds: [],
+      proposedAssertionIds: [],
+      counts: {
+        approvedStagingCandidates: 0,
+        proposedAssertions: 0
+      }
+    });
+    const events = await fixture.ledgerEvents();
+    expect(events.map((event) => event.id)).toEqual(eventIds);
+    const approvals = events.filter((event) =>
+      event.type === "legacy.ontology.staging.approved"
+    );
+    expect(approvals).toHaveLength(1);
+    expect(approvals[0]).toMatchObject({
+      context: {
+        actor: {
+          id: "actor_human_preview",
+          kind: "human"
+        }
+      },
+      payload: {
+        approvedBy: "actor_human_preview",
+        approvedAssertionCandidateIds: []
+      }
+    });
+    expect(events.filter((event) => event.type === "assertion.proposed")).toHaveLength(0);
+
+    const handoff = await fixture.createWorkflow().handoff();
+    expect(handoff.phase).toBe("replay-verification-required");
+    expect(handoff.state.proposedAssertionIds).toEqual([]);
   });
 
   it("reconciles a crash after staging approval before proposals without duplicate approval", async () => {

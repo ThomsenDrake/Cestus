@@ -57,7 +57,7 @@ export function createStagingApprovalPreview(
   const selectedCandidateIds = sortedCandidateIds(input.selectedCandidateIds);
   const evidenceRefs = sortedEvidenceRefs(input.evidenceRefs);
   const candidatesById = candidatesByIdFor(input.report);
-  assertSelectedCandidates(selectedCandidateIds);
+  assertSelectedCandidates(input.report, selectedCandidateIds);
   assertSelectedCandidatesBelongToReport(candidatesById, selectedCandidateIds);
   assertEvidenceRefsMatchSelection(selectedCandidateIds, evidenceRefs);
   assertEvidenceRefsMatchReportCandidates(candidatesById, evidenceRefs);
@@ -95,7 +95,7 @@ export function createStagingExecutionPreview(
 ): OntologyBootstrapToolPreview {
   const selectedCandidateIds = sortedCandidateIds(input.selectedCandidateIds);
   const candidatesById = candidatesByIdFor(input.report);
-  assertSelectedCandidates(selectedCandidateIds);
+  assertSelectedCandidates(input.report, selectedCandidateIds);
   assertSelectedCandidatesBelongToReport(candidatesById, selectedCandidateIds);
 
   return parsePreview({
@@ -154,8 +154,14 @@ function parsePreview(input: PreviewDraft): OntologyBootstrapToolPreview {
   });
 }
 
-function assertSelectedCandidates(candidateIds: readonly string[]): void {
-  if (candidateIds.length === 0) {
+function assertSelectedCandidates(
+  report: LegacyMigrationReport,
+  candidateIds: readonly string[]
+): void {
+  if (
+    candidateIds.length === 0
+    && report.proposedAssertionCandidates.length !== 0
+  ) {
     throw new Error("At least one selected candidate is required for ontology bootstrap staging previews.");
   }
 }

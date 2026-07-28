@@ -31,7 +31,7 @@ export async function runCentralFloridaIcePreviewCli(
       assertAllowedOptions(argv, new Set(["--approved-by", "--candidate"]));
       return workflow.stage({
         approvedBy: requiredSingleOption(argv, "--approved-by"),
-        candidateIds: requiredRepeatedOption(argv, "--candidate")
+        candidateIds: optionValues(argv, "--candidate")
       });
     case "handoff":
       assertNoArguments(argv);
@@ -62,14 +62,6 @@ function requiredSingleOption(argv: readonly string[], option: string): string {
     throw new Error("Preview command requires exactly one approval identity.");
   }
   return values[0]!;
-}
-
-function requiredRepeatedOption(argv: readonly string[], option: string): string[] {
-  const values = optionValues(argv, option);
-  if (values.length === 0) {
-    throw new Error("Preview stage command requires at least one candidate.");
-  }
-  return values;
 }
 
 function assertAllowedOptions(
