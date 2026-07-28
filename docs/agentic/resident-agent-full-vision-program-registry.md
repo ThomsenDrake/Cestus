@@ -45805,3 +45805,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or product release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1192 — Task14 private lexical-capability two-source GREEN authorized
+
+- Recorded at: 2026-07-28T15:02:31Z
+- E-1191 integrates the exact independently approved Task14A RED at program
+  commit `5f7b4a2ab3b0c73be9f230280a79f195131b86bf`. Exact
+  history-preserving Task136 authority merge
+  `5c158b025968cdd2368799a0f195803cd6c039c1` has the clean E-1189 review
+  envelope `a2a84075827a10ec478d36eff1ecb73f77829c59` first and E-1191
+  integration authority second. The source-GREEN precondition is satisfied.
+- Authorize exactly the Task14B two-source implementation in:
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, from blob
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6`, and
+  `packages/local-runtime/src/resident-loop-factory-composition.ts`, from blob
+  `ecb114bb1cc3c054c0d60400b7e3cc746823736b`.
+- Keep exported generic `createWakeSupervisorRuntime`, but make every runtime
+  issued through it permanently ineligible for factory readback
+  registration. Remove exported
+  `registerResidentLoopFactoryAuthorityReadback`. Preserve exported
+  `bindResidentLoopCapabilitiesForFactory`.
+- Co-locate nonexported `issueResidentLoopFactoryWakeRuntime`, its private
+  one-shot readback registrar, and safe
+  `createResidentLoopFactoryCompositionForFacade` implementation in
+  `wake-supervisor-runtime.ts`. The safe builder consumes the private
+  registrar internally and neither accepts, returns, exports, aliases, nor
+  otherwise exposes the capability.
+- Reduce `resident-loop-factory-composition.ts` to the exact six-static-named-
+  unaliased-import compatibility facade committed in the approved Task14
+  plan. It retains only the existing safe public
+  `createResidentLoopFactoryComposition` wrapper and the four existing public
+  composition interfaces/types, with one direct call to the distinctly named
+  safe wake-module builder.
+- Freeze mounted store
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` at
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5` and mounted test at
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`. Freeze approved runtime test
+  `cc9c3129f8d36b1edde263d7cafdbd3b219f3538`, approved AST oracle
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`, released FC-Core import-policy
+  test `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`, every other product/test,
+  claim, contract, mission, checker, dependency, configuration, and path.
+- Add no path, provider, route, activation behavior, fallback write,
+  caller-visible brand, replaceable callback, global mutable authority,
+  structural or first-seen acceptance, timing or allocation-order inference,
+  caller/call-stack/source-text inspection, unrelated AST alias case, network
+  action, credential access, or other product behavior.
+- Required GREEN is exact focused **96/96**, Task136 card
+  **383 = 376 passed + seven preserved failures**, and 37-file cross-boundary
+  **1,042 = 1,035 passed + seven preserved failures**. The seven failures must
+  remain only the committed Task15-through-16 REDs.
+- Run serialized fixture-heavy gates with `TMPDIR=/dev/shm`, one worker, and
+  the 120-second focused import-policy timeout. Require standalone typecheck,
+  factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact legacy-staging repository first stop,
+  two-source scope, every freeze, ancestry, dependencies, diff hygiene, Git
+  integrity, and clean state.
+- Commit one exact two-source GREEN candidate and admit its immutable
+  SHA/tree/parent/blobs to a completely fresh independent read-only reviewer
+  excluded from every prior Task14 author, reviewer, verifier, design,
+  rehydration, and oracle role. Changed bytes invalidate review. Approval,
+  history-preserving integration, fresh integration-tree gates, a separate
+  integrated event, and a forward Task136 merge are mandatory before Task14
+  completion or Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  bounded two-source GREEN authority, not a source candidate, approval,
+  integration, Task14 completion, Task15 authority, repository closure,
+  strict record 29, publication, Wave 3 start, or product release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
