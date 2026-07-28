@@ -18,10 +18,10 @@ import {
 import { issueMountedProviderAuthority } from "../src/mounted-provider-authority.js";
 import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
 import { createResidentLoopFactoryComposition } from "../src/resident-loop-factory-composition.js";
+import * as wakeRuntimeApi from "../src/wake-supervisor-runtime.js";
 import {
   bindResidentLoopCapabilitiesForFactory,
   createWakeSupervisorRuntime,
-  registerResidentLoopFactoryAuthorityReadback,
   type WakeSupervisorRuntimeInput
 } from "../src/wake-supervisor-runtime.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
@@ -335,10 +335,7 @@ describe("wake supervisor runtime", () => {
   });
 
   it("requires the exact private composition issuer before inspecting or consuming a factory readback", async () => {
-    type DirectRegistrar = (...input: readonly unknown[]) => void;
     type ResidentFixture = Awaited<ReturnType<typeof residentFixture>>;
-    const directRegistrar =
-      registerResidentLoopFactoryAuthorityReadback as unknown as DirectRegistrar;
     const hostileOutcomes: Array<{
       readonly kind: string;
       readonly outcome: "accepted" | "rejected";
@@ -356,6 +353,13 @@ describe("wake supervisor runtime", () => {
     let observedHandle: LocalRuntimeHandle | undefined;
     let completed: ResidentFixture | undefined;
     let legitimateFailure: unknown;
+
+    expect(
+      Reflect.get(
+        wakeRuntimeApi,
+        "registerResidentLoopFactoryAuthorityReadback"
+      )
+    ).toBeUndefined();
 
     try {
       completed = await residentFixture(
@@ -426,22 +430,25 @@ describe("wake supervisor runtime", () => {
           for (const attack of issuerAttacks) {
             hostileOutcomes.push({
               kind: attack.kind,
-              outcome: captureRegistrarOutcome(() => {
-                Reflect.apply(directRegistrar, undefined, [
-                  attack.input,
+              outcome: await captureResidentBindingOutcome(async () => {
+                await bindResidentLoopCapabilitiesForFactory(
                   composition.wakeRuntime,
-                  guardedReadback
-                ]);
+                  attack.kind === "arbitrary-forged-issuer"
+                    ? guardedReadback
+                    : attack.input,
+                  Object.freeze({})
+                );
               })
             });
           }
           hostileOutcomes.push({
             kind: "missing-explicit-issuer",
-            outcome: captureRegistrarOutcome(() => {
-              Reflect.apply(directRegistrar, undefined, [
+            outcome: await captureResidentBindingOutcome(async () => {
+              await bindResidentLoopCapabilitiesForFactory(
                 composition.wakeRuntime,
-                guardedReadback
-              ]);
+                undefined,
+                Object.freeze({})
+              );
             })
           });
           hostileLedgerReads = Object.freeze({
@@ -487,14 +494,31 @@ describe("wake supervisor runtime", () => {
       })
     );
     directConstructorLedgerProbe.reset();
+    proposedReadbackReads = 0;
+    await expect(
+      bindResidentLoopCapabilitiesForFactory(
+        directConstructor.runtime,
+        directConstructorReadback,
+        Object.freeze({})
+      )
+    ).rejects.toThrow(/authority|binding|unavailable/i);
+    expect(proposedReadbackReads).toBe(0);
+    expect({
+      all: directConstructorLedgerProbe.allReads,
+      streams: directConstructorLedgerProbe.streamReads
+    }).toEqual({ all: 0, streams: [] });
     hostileOutcomes.push({
       kind: "direct-constructor-retained-issuer",
-      outcome: captureRegistrarOutcome(() => {
-        Reflect.apply(directRegistrar, undefined, [
-          directConstructor.runtimeInput,
+      outcome: "rejected"
+    });
+    hostileOutcomes.push({
+      kind: "wrong-runtime",
+      outcome: await captureResidentBindingOutcome(async () => {
+        await bindResidentLoopCapabilitiesForFactory(
           directConstructor.runtime,
-          directConstructorReadback
-        ]);
+          completed?.binding,
+          completed?.domainExecution
+        );
       })
     });
     directConstructorLedgerReads = Object.freeze({
@@ -511,7 +535,8 @@ describe("wake supervisor runtime", () => {
       { kind: "caller-owned-outer-issuer", outcome: "rejected" },
       { kind: "original-caller-held-outer-issuer", outcome: "rejected" },
       { kind: "missing-explicit-issuer", outcome: "rejected" },
-      { kind: "direct-constructor-retained-issuer", outcome: "rejected" }
+      { kind: "direct-constructor-retained-issuer", outcome: "rejected" },
+      { kind: "wrong-runtime", outcome: "rejected" }
     ]);
     expect.soft(proposedReadbackReads).toBe(0);
     expect.soft(hostileLedgerReads).toEqual({ all: 0, streams: [] });
@@ -1290,11 +1315,11 @@ async function residentFixture(
   });
 }
 
-function captureRegistrarOutcome(
-  invoke: () => void
-): "accepted" | "rejected" {
+async function captureResidentBindingOutcome(
+  invoke: () => Promise<unknown>
+): Promise<"accepted" | "rejected"> {
   try {
-    invoke();
+    await invoke();
     return "accepted";
   } catch {
     return "rejected";
