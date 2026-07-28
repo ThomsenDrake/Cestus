@@ -631,6 +631,33 @@ describe("resident-loop tool gateway", () => {
     const transient = await prepareLiveHumanDecisionCase(
       "canonical-material-transient-human-approved"
     );
+    const transientMaterial = reflectedOperation(
+      transient.harness.gateway,
+      "readCanonicalToolStepMaterial"
+    );
+    const transientRequest = requiredResidentGatewayEvent(
+      await transient.harness.ledger.readStream(
+        residentDomainStreamId(transient.harness.locator)
+      ),
+      "agent.resident-domain.requested.v1"
+    );
+    const transientRequestPayload = requiredMaterialRecord(
+      transientRequest.payload,
+      "transient canonical material request"
+    );
+    expect(transientMaterial(transient.requested)).toEqual({
+      gatewayReadbacks: Object.freeze({
+        authorizationKind: "human-approval",
+        stage: "requested",
+        requestEventId: transientRequest.id
+      }),
+      allowlistEntryHash: transientRequestPayload.allowlistEntryHash,
+      sideEffectClass: transientRequestPayload.sideEffectClass,
+      requiredApprovalClass: transientRequestPayload.requiredApprovalClass,
+      previewHash: transientRequestPayload.previewHash,
+      inputArtifactHashes: transientRequestPayload.inputArtifactHashes,
+      resultArtifactHashes: []
+    });
     await appendResidentHumanApproval(
       transient.harness.ledger,
       transient.harness.locator,
@@ -651,10 +678,8 @@ describe("resident-loop tool gateway", () => {
       "approvedBy",
       "approvedPreviewHash"
     ]);
-    const transientMaterial = reflectedOperation(
-      transient.harness.gateway,
-      "readCanonicalToolStepMaterial"
-    );
+    expect(() => transientMaterial(transient.requested))
+      .toThrow(/issued|exact|readback|material|eligible|consumed|stage/i);
     expect(() => transientMaterial(transientApproved))
       .toThrow(/issued|exact|readback|material|eligible|transient|stage/i);
   });
