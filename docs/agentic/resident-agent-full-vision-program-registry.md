@@ -46678,3 +46678,47 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or product release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1206 — Type-correct Task15 prebound-reader RED approved
+
+- Recorded at: 2026-07-28T18:03:50Z
+- Completely fresh independent read-only reviewer
+  `/root/task15_e1205_red_review` returns **APPROVED** with no findings for
+  exact candidate `bc9481c7461f4faad92e31d929731b4cb46b43e9`,
+  tree `ca623811a7de11731a4742d67ae9bb969aaa3f22`, sole parent
+  `adaa8d661a9abd2cc3f30caa9dd0d429b688215d`, final test blob
+  `67014dae42649e6370ed6a212cc468af81cfa24e`, inside exact clean review
+  envelope `a015b64d9293de49b9549a3181a5ee36e57e6d37`.
+- Candidate commit scope is only the authorized missing type import,
+  **+2 / -1**. The cumulative causal oracle is **+72 / -1** from reviewed
+  pre-E-1202 blob `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9`;
+  all 37 test titles and every existing assertion remain.
+- Both post-issuance reader substitutions are causal under frozen source blob
+  `41ccb01a702783a4eff5b2e299c483ba5a98440c`: original ledger zero,
+  substituted ledger one, original exact reader unreached, substituted exact
+  reader five. Default-only/non-barrel, Task138 no-widening, and all other
+  projection assertions remain intact.
+- Fresh independent execution is exact focused
+  **37 = 36 passed + one Task15 RED**, Task138 boundary
+  **355 = 354 passed + one**, Task136 card
+  **383 = 376 passed + seven**, and exact cross-boundary
+  **1,042 = 1,035 passed + seven**; the remaining six failures are exactly
+  Task16.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**. Repository mode stops only at the
+  required legacy-staging blob mismatch. Scope, ancestry, all freezes, diff
+  hygiene, clean status, and Git integrity pass with only inherited dangling
+  objects.
+- Advance exact corrected causal RED `reviewing -> approved`. Authorize its
+  exact approval-first/candidate-second history-preserving program merge,
+  followed by fresh integration-tree gates, a separate integrated event, and
+  a forward Task136 authority merge before source correction begins. Changed
+  bytes invalidate approval.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is causal RED approval, not integration, source repair,
+  Task15 acceptance, Task16 authority, Task136 candidacy, repository closure,
+  strict record 29, publication, Wave 3 start, or product release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
