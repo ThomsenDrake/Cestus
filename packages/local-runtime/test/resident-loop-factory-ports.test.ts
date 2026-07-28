@@ -1,61 +1,63 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { types } from "node:util";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+import { createLegacyImportRuntime, type LegacyImportRuntime } from "../../ingestion/src/legacy-runtime.js";
+import { mountedWorkspaceCapabilities } from "../../ingestion/src/mount-contract.js";
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { createAgentProviderConfiguration } from "../src/agent-provider-configuration.js";
 import { issueMountedArtifactAuthorityOperationForFactory } from "../src/mounted-artifact-authority-operation.js";
-import { issueMountedProviderAuthority } from "../src/mounted-provider-authority.js";
+import {
+  inspectMountedProviderAuthority,
+  issueMountedProviderAuthority
+} from "../src/mounted-provider-authority.js";
 import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
-import { createResidentLoopFactoryComposition } from "../src/resident-loop-factory-composition.js";
+import * as residentLoopFactoryCompositionSurface from "../src/resident-loop-factory-composition.js";
+import type { ResidentLoopFactoryComposition } from "../src/resident-loop-factory-composition.js";
 import { createResidentLoopProviderPosture } from "../src/resident-loop-provider-posture.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
-import { createPortableWorkspace } from "../../workspace/src/index.js";
+import type { ResidentLoopFactoryPorts } from "../src/resident-loop-factory-ports.js";
 
 type FactoryPortsApi = {
-  readonly createResidentLoopFactoryPorts: (input: unknown) => {
-    readonly schemaVersion: "resident-loop-factory-ports.v1";
-    readonly residentAgentId: "agent_default";
-    readonly workspace: {
-      readonly workspaceId: string;
-      readonly mountInstanceId: string;
-      readonly admissionGenerationId: string;
-      readonly policyVersion: string;
-      readonly policyDigest: string;
-      readonly lockStateDigest: string;
-      readonly highWaterMark: string;
-      readonly highWaterOrdinal: number;
-    };
-    readonly run: {
-      readonly taskId: string;
-      readonly attemptId: string;
-      readonly runId: string;
-    };
-    readonly providerPosture: {
-      readonly selection: { readonly providerId: string; readonly modelId: string };
-      readonly approval: { readonly required: true; readonly approvalProfile: string; readonly requiredApprovalClass: string };
-    };
-  };
+  readonly createResidentLoopFactoryPorts: (input: unknown) => ResidentLoopFactoryPorts;
 };
 
 type Hash = `sha256:${string}`;
 
 const directories: string[] = [];
 const handles: LocalRuntimeHandle[] = [];
+const compositions: ResidentLoopFactoryComposition[] = [];
 const policy = Object.freeze({
   policyVersion: "policy_factory_ports_v1",
   policyDigest: hash("a"),
   lockStateDigest: hash("b")
 });
 
-afterEach(() => {
+afterEach(async () => {
+  for (const composition of compositions.splice(0).reverse()) {
+    await composition.stop().catch(() => undefined);
+  }
   for (const handle of handles.splice(0)) handle.close();
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
 describe("resident loop factory ports", () => {
   it("admits only an exact Core/P2 data pairing and returns no mounted authority", async () => {
-    const fixture = await mountedFixture("current");
+    const fixture = await mountedPortsFixture("current");
     const api = await factoryPortsApi();
 
     let getterCalls = 0;
@@ -125,7 +127,7 @@ describe("resident loop factory ports", () => {
   });
 
   it("rejects hostile P2 posture text, nested proxies, exact-shape drift, and cross-field substitutions", async () => {
-    const fixture = await mountedFixture("hostile-posture");
+    const fixture = await mountedPortsFixture("hostile-posture");
     const api = await factoryPortsApi();
     let credentialProxyCalls = 0;
     const credentialReference = new Proxy(fixture.providerPosture.credentialReference, {
@@ -196,71 +198,123 @@ describe("resident loop factory ports", () => {
   });
 
   it("runs createResidentBoundedAgentLoopFactory against the real mounted fixture", async () => {
-    const fixture = await mountedFixture("record29-real-mounted");
-    const source = (await import("node:fs")).readFileSync(
-      new URL("../src/resident-loop-factory-ports.ts", import.meta.url),
-      "utf8"
-    );
-    const module: unknown = await import("../src/resident-loop-factory-ports.js");
-    const factory = module !== null && typeof module === "object"
-      ? Reflect.get(module, "createResidentBoundedAgentLoopFactory")
-      : undefined;
+    const fixture = await mountedFactoryFixture("record29-real-mounted");
+    await expectAlternateActivationPathsRemainInert(fixture);
+    const stopProbe = observeFutureFactoryCompositionStop();
+    try {
+      const factory = await boundedFactory();
+      const before = await domainBoundarySnapshot(fixture);
 
-    expect(factory).toBeTypeOf("function");
-    expect(fixture.factoryInput).toMatchObject({
-      runtimeHandle: expect.any(Object),
-      providerAuthority: expect.any(Object),
-      handoff: expect.any(Object),
-      handoffLifecycle: {
-        taskId: "task_factory_ports",
-        attemptId: "attempt_factory_ports",
-        runId: "run_factory_ports"
-      },
-      providerPosture: fixture.providerPosture
-    });
-    expect(source).toContain("createResidentBoundedAgentLoopFactory");
-    expect(source).toContain("createResidentBoundedAgentLoopFromIssuedCapabilities");
-    expect(source).toContain("preflightPortableMountedAgentHandoffBinding");
-    expect(source).not.toMatch(/defaultLocalAgentRuntimeFactory|agent-http-routes|operator-status|server\.js/);
+      const issued = await factory(fixture.factoryInput);
+
+      assertExactFrozenOwnDataSurface(issued, ["loop", "metadata", "stop"]);
+      assertExactFrozenOwnDataSurface(issued.loop, ["advance", "resume"]);
+      for (const operation of [
+        issued.stop,
+        issued.loop.advance,
+        issued.loop.resume
+      ]) {
+        expect(typeof operation).toBe("function");
+        expect(types.isProxy(operation)).toBe(false);
+      }
+      assertExactFrozenDataTree(
+        issued.metadata,
+        expectedFactoryMetadata(fixture.providerPosture)
+      );
+      expect(typeof issued.stop).toBe("function");
+      expect(stopProbe.creations).toHaveLength(1);
+      expect(stopProbe.startCallCount()).toBe(1);
+      expect(stopProbe.bindInputs).toHaveLength(1);
+      assertExactFrozenOwnDataSurface(stopProbe.bindInputs[0], [
+        "handoffAuthorityWitness",
+        "providerAuthority"
+      ]);
+      expect(Reflect.get(stopProbe.bindInputs[0]!, "providerAuthority"))
+        .toBe(fixture.providerAuthority);
+      expect(Reflect.get(stopProbe.bindInputs[0]!, "handoffAuthorityWitness"))
+        .toBe(fixture.handoff.binding.authorityWitness);
+      expect(stopProbe.stopCallCount()).toBe(0);
+      assertNoAuthorityEscape(issued, fixture.authorityValues);
+      expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+
+      const retainedComposition = stopProbe.creations[0];
+      if (retainedComposition === undefined) {
+        throw new Error("bounded factory retained no safe composition");
+      }
+      await expect(issued.stop()).resolves.toBeUndefined();
+      expect(stopProbe.stopCallCount()).toBe(1);
+      await expect(retainedComposition.start()).rejects.toThrow(/factory composition/i);
+      expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+
+      await expect(issued.stop()).resolves.toBeUndefined();
+      expect(stopProbe.stopCallCount()).toBe(2);
+      await expect(retainedComposition.start()).rejects.toThrow(/factory composition/i);
+      expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+    } finally {
+      stopProbe.restore();
+    }
   });
 
   it("rejects fabricated swapped stale and substituted dispatcher capabilities", async () => {
-    const fixture = await mountedFixture("record29-hostile-capability");
-    const module: unknown = await import("../src/resident-loop-factory-ports.js");
-    const factory = module !== null && typeof module === "object"
-      ? Reflect.get(module, "createResidentBoundedAgentLoopFactory")
-      : undefined;
-    const capabilityTarget: Record<string, unknown> = {
-      schemaVersion: "resident-domain-execution-capability.v1",
-      executionCapabilityHash: hash("9")
-    };
+    const factory = await boundedFactory();
     let proxyReads = 0;
-    const hostileCapabilities = [
-      ["fabricated", Object.freeze({ ...capabilityTarget })],
-      ["swapped-task", Object.freeze({ ...capabilityTarget, taskId: "task_factory_ports_other" })],
-      ["stale-hash", Object.freeze({ ...capabilityTarget, executionCapabilityHash: hash("8") })],
-      ["proxied", new Proxy(capabilityTarget, {
-        get(target, property, receiver) {
-          proxyReads += 1;
-          return Reflect.get(target, property, receiver);
-        }
-      })],
-      ["post-construction-substituted", capabilityTarget]
-    ] as const;
-    const effects = { provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0, route: 0 };
 
-    expect(factory).toBeTypeOf("function");
-    for (const [label, domainExecution] of hostileCapabilities) {
-      if (label === "post-construction-substituted") {
-        capabilityTarget.executionCapabilityHash = hash("7");
+    const fabricated = await mountedFactoryFixture("record29-fabricated");
+    await expectFactoryRejectionWithoutDomainEffects(
+      [fabricated],
+      factory,
+      frozenFactoryInput(fabricated, Object.freeze({}))
+    );
+
+    const proxied = await mountedFactoryFixture("record29-proxied");
+    const capabilityProxy = new Proxy(proxied.domainExecution, {
+      get(target, property, receiver) {
+        proxyReads += 1;
+        return Reflect.get(target, property, receiver);
       }
-      await expect(Promise.resolve().then(() => Reflect.apply(factory as (...args: unknown[]) => unknown, undefined, [{
-        ...fixture.factoryInput,
-        domainExecution
-      }]))).rejects.toThrow(/capability|dispatcher|factory|resident/i);
-    }
+    });
+    await expectFactoryRejectionWithoutDomainEffects(
+      [proxied],
+      factory,
+      frozenFactoryInput(proxied, capabilityProxy)
+    );
+
+    const swapped = await mountedFactoryFixture("record29-swapped-owner");
+    const foreign = await mountedFactoryFixture("record29-swapped-foreign");
+    await expectFactoryRejectionWithoutDomainEffects(
+      [swapped, foreign],
+      factory,
+      frozenFactoryInput(swapped, foreign.domainExecution)
+    );
+
+    const stale = await mountedFactoryFixture("record29-stale");
+    const stalePort = dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(Object.freeze({
+      capability: stale.domainExecution,
+      mountedLedger: stale.handle.ledger,
+      workspaceId: stale.providerPosture.workspace.workspaceId,
+      residentAgentId: "agent_default",
+      taskId: stale.providerPosture.run.taskId
+    }));
+    expect(stalePort).toBeTypeOf("object");
+    expect(Object.isFrozen(stalePort)).toBe(true);
+    await expectFactoryRejectionWithoutDomainEffects([stale], factory, stale.factoryInput);
+
+    const reused = await mountedFactoryFixture("record29-reused");
+    const firstIssued = await factory(reused.factoryInput);
+    await firstIssued.stop();
+    await expectFactoryRejectionWithoutDomainEffects([reused], factory, reused.factoryInput);
+
+    const substituted = await mountedFactoryFixture("record29-substituted-owner");
+    const replacement = await mountedFactoryFixture("record29-substituted-foreign");
+    const mutableInput = { ...substituted.factoryInput };
+    const substitutionFixtures = [substituted, replacement] as const;
+    const beforeSubstitution = await domainBoundarySnapshots(substitutionFixtures);
+    const pending = factory(mutableInput);
+    mutableInput.domainExecution = replacement.domainExecution;
+    await expect(pending).rejects.toThrow(/capability|dispatcher|factory|resident|authority|handoff/i);
+    expect(await domainBoundarySnapshots(substitutionFixtures)).toEqual(beforeSubstitution);
+
     expect(proxyReads).toBe(0);
-    expect(effects).toEqual({ provider: 0, gateway: 0, approval: 0, ledger: 0, fallback: 0, localWrite: 0, route: 0 });
   });
 });
 
@@ -277,11 +331,53 @@ function isFactoryPortsApi(value: unknown): value is FactoryPortsApi {
     typeof Reflect.get(value, "createResidentLoopFactoryPorts") === "function";
 }
 
-async function mountedFixture(suffix: string): Promise<{
-  readonly authorityReadback: Awaited<ReturnType<ReturnType<typeof createResidentLoopFactoryComposition>["bind"]>>;
-  readonly providerPosture: Awaited<ReturnType<ReturnType<typeof createResidentLoopProviderPosture>["read"]>>;
+type ProviderPosture = Awaited<ReturnType<ReturnType<typeof createResidentLoopProviderPosture>["read"]>>;
+type FactoryMetadata = ReturnType<FactoryPortsApi["createResidentLoopFactoryPorts"]>;
+type FactoryProduct = {
+  readonly metadata: FactoryMetadata;
+  readonly loop: {
+    readonly advance: (...args: unknown[]) => unknown;
+    readonly resume: (...args: unknown[]) => unknown;
+  };
+  readonly stop: () => Promise<void>;
+};
+type BoundedFactory = (input: unknown) => Promise<FactoryProduct>;
+type RuntimeBoundaryCalls = {
+  preview: number;
+  approval: number;
+  effect: number;
+};
+type MountedFactoryFixture = {
+  readonly handle: LocalRuntimeHandle;
+  readonly actor: {
+    readonly id: string;
+    readonly kind: "agent";
+    readonly label: string;
+  };
+  readonly now: () => string;
+  readonly composition: ResidentLoopFactoryComposition;
+  readonly providerAuthority: ReturnType<typeof issueMountedProviderAuthority>;
+  readonly handoff: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>;
+  readonly providerPosture: ProviderPosture;
+  readonly domainExecution: object;
   readonly factoryInput: Readonly<Record<string, unknown>>;
-}> {
+  readonly runtimeCalls: RuntimeBoundaryCalls;
+  readonly authorityValues: readonly unknown[];
+};
+
+async function mountedPortsFixture(suffix: string) {
+  const fixture = await mountedFactoryFixture(suffix);
+  const authorityReadback = await fixture.composition.bind(Object.freeze({
+    providerAuthority: fixture.providerAuthority,
+    handoffAuthorityWitness: fixture.handoff.binding.authorityWitness
+  }));
+  return Object.freeze({
+    ...fixture,
+    authorityReadback
+  });
+}
+
+async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixture> {
   const root = mkdtempSync(join(tmpdir(), "cestus-factory-ports-"));
   directories.push(root);
   const workspaceId = `ws_factory_ports_${suffix}`;
@@ -308,7 +404,7 @@ async function mountedFixture(suffix: string): Promise<{
   const supervisorEpoch = `epoch_factory_ports_${suffix}`;
   const now = () => "2026-07-19T00:00:00.000Z";
   const createSafeId = (kind: "lease" | "diagnostic" | "reconciliation") => `${kind}_factory_ports_${suffix}`;
-  const composition = createResidentLoopFactoryComposition(Object.freeze({
+  const composition = residentLoopFactoryCompositionSurface.createResidentLoopFactoryComposition(Object.freeze({
     runtimeHandle: handle,
     actor,
     supervisorEpoch,
@@ -316,9 +412,10 @@ async function mountedFixture(suffix: string): Promise<{
     now,
     createSafeId
   }));
+  compositions.push(composition);
   await composition.start();
   const operation = issueMountedArtifactAuthorityOperationForFactory(composition.wakeRuntime);
-  const authority = issueMountedProviderAuthority(Object.freeze({ operation }));
+  const providerAuthority = issueMountedProviderAuthority(Object.freeze({ operation }));
   const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
     taskId: "task_factory_ports",
     attemptId: "attempt_factory_ports",
@@ -326,51 +423,518 @@ async function mountedFixture(suffix: string): Promise<{
     runType: "evidence-triage",
     retryGeneration: 0
   });
-  const authorityReadback = await composition.bind(Object.freeze({
-    providerAuthority: authority,
-    handoffAuthorityWitness: handoff.binding.authorityWitness
-  }));
+  const providerReadback = await inspectMountedProviderAuthority(providerAuthority);
   const providerPosture = await createResidentLoopProviderPosture(Object.freeze({
     configuration: createAgentProviderConfiguration(configurationInput()),
-    authority
+    authority: providerAuthority
   })).read({
-    workspaceId: authorityReadback.provider.workspaceId,
-    mountInstanceId: authorityReadback.provider.mountInstanceId,
-    admissionGenerationId: authorityReadback.provider.admissionGenerationId,
-    taskId: authorityReadback.handoff.taskId,
-    attemptId: authorityReadback.handoff.attemptId,
-    runId: authorityReadback.handoff.runId,
+    workspaceId: providerReadback.workspaceId,
+    mountInstanceId: providerReadback.mountInstanceId,
+    admissionGenerationId: providerReadback.admissionGenerationId,
+    taskId: "task_factory_ports",
+    attemptId: "attempt_factory_ports",
+    runId: "run_factory_ports",
     promptArtifactHash: hash("c"),
     approvalPreviewHash: hash("d"),
-    policyVersion: authorityReadback.provider.policyVersion,
-    policyDigest: authorityReadback.provider.policyDigest,
-    lockStateDigest: authorityReadback.provider.lockStateDigest,
-    highWaterMark: authorityReadback.provider.highWaterMark,
-    highWaterOrdinal: authorityReadback.provider.highWaterOrdinal
+    policyVersion: providerReadback.policyVersion,
+    policyDigest: providerReadback.policyDigest,
+    lockStateDigest: providerReadback.lockStateDigest,
+    highWaterMark: providerReadback.highWaterMark,
+    highWaterOrdinal: providerReadback.highWaterOrdinal
   });
-  return {
-    authorityReadback,
-    providerPosture,
-    factoryInput: Object.freeze({
-      runtimeHandle: handle,
-      actor,
-      supervisorEpoch,
-      policy,
-      now,
-      nowMonotonicMs: () => 0,
-      createSafeId,
-      providerAuthority: authority,
-      handoff,
-      handoffLifecycle: Object.freeze({
-        taskId: "task_factory_ports",
-        attemptId: "attempt_factory_ports",
-        runId: "run_factory_ports",
-        runType: "evidence-triage",
-        retryGeneration: 0
-      }),
-      providerPosture
+
+  const connectedRuntime = connectedLegacyRuntime(handle);
+  const domainExecution = await dispatcherDefault.createPackageOwnedResidentDomainExecutionCapability(
+    Object.freeze({
+      kind: "legacy-staging",
+      workspaceId,
+      residentAgentId: "agent_default",
+      taskId: "task_factory_ports",
+      context: Object.freeze({
+        runtime: connectedRuntime.runtime,
+        ledger: handle.ledger,
+        residentAgentId: "agent_default",
+        sourceCollectionId: `source_collection_factory_ports_${suffix}`,
+        scanBatchId: `scan_batch_factory_ports_${suffix}`,
+        stagingBatchId: `staging_batch_factory_ports_${suffix}`,
+        legacyReportId: `legacy_report_factory_ports_${suffix}`,
+        reportHash: hash("f"),
+        candidateSetHash: hash("1"),
+        selectedCandidateIds: Object.freeze([`candidate_factory_ports_${suffix}`])
+      })
     })
+  );
+  const handoffLifecycle = Object.freeze({
+    taskId: "task_factory_ports",
+    attemptId: "attempt_factory_ports",
+    runId: "run_factory_ports",
+    runType: "evidence-triage",
+    retryGeneration: 0
+  });
+  const factoryInput = Object.freeze({
+    runtimeHandle: handle,
+    actor,
+    supervisorEpoch,
+    policy,
+    now,
+    nowMonotonicMs: () => 0,
+    createSafeId,
+    providerAuthority,
+    handoff,
+    handoffLifecycle,
+    providerPosture,
+    domainExecution
+  });
+
+  return {
+    handle,
+    actor,
+    now,
+    composition,
+    providerAuthority,
+    handoff,
+    providerPosture,
+    domainExecution,
+    factoryInput,
+    runtimeCalls: connectedRuntime.calls,
+    authorityValues: Object.freeze([
+      handle,
+      handle.ledger,
+      handle.mountedWorkspace,
+      composition,
+      composition.wakeRuntime,
+      operation,
+      providerAuthority,
+      handoff,
+      handoff.binding,
+      handoff.binding.authorityWitness,
+      handoff.controller,
+      domainExecution,
+      connectedRuntime.runtime
+    ])
   };
+}
+
+function connectedLegacyRuntime(handle: LocalRuntimeHandle): {
+  readonly runtime: LegacyImportRuntime;
+  readonly calls: RuntimeBoundaryCalls;
+} {
+  const portable = handle.mountedWorkspace;
+  if (portable === undefined) throw new Error("factory fixture requires a mounted portable workspace");
+  const actual = createLegacyImportRuntime({
+    mountedWorkspace: {
+      workspaceId: portable.workspaceId,
+      label: "Factory ports legacy runtime",
+      ledger: handle.ledger,
+      blobStore: new FileBlobStore(portable.paths.blobRoot),
+      derivativeStore: new FileBlobStore(portable.paths.derivativeRoot),
+      jobStateRoot: portable.paths.jobRoot,
+      capabilities: mountedWorkspaceCapabilities({
+        canReadLedger: true,
+        canAppendLedger: true,
+        canWriteBlobs: true,
+        canWriteDerivatives: true,
+        canWriteJobState: true
+      })
+    },
+    actor: { id: "actor_factory_ports", kind: "human", label: "Factory ports" }
+  });
+  const calls: RuntimeBoundaryCalls = { preview: 0, approval: 0, effect: 0 };
+  const runtime = Object.freeze({
+    ...actual,
+    async stagingPreview(input: Parameters<LegacyImportRuntime["stagingPreview"]>[0]) {
+      calls.preview += 1;
+      return await actual.stagingPreview(input);
+    },
+    async approveStaging(input: Parameters<LegacyImportRuntime["approveStaging"]>[0]) {
+      calls.approval += 1;
+      return await actual.approveStaging(input);
+    },
+    async stageApproved(input: Parameters<LegacyImportRuntime["stageApproved"]>[0]) {
+      calls.effect += 1;
+      return await actual.stageApproved(input);
+    }
+  }) satisfies LegacyImportRuntime;
+  return Object.freeze({ runtime, calls });
+}
+
+function expectedFactoryMetadata(
+  providerPosture: ProviderPosture
+): FactoryMetadata {
+  return Object.freeze({
+    schemaVersion: "resident-loop-factory-ports.v1",
+    residentAgentId: "agent_default",
+    workspace: Object.freeze({
+      workspaceId: providerPosture.workspace.workspaceId,
+      mountInstanceId: providerPosture.workspace.mountInstanceId,
+      admissionGenerationId: providerPosture.workspace.admissionGenerationId,
+      policyVersion: providerPosture.workspace.policyVersion,
+      policyDigest: providerPosture.workspace.policyDigest,
+      lockStateDigest: providerPosture.workspace.lockStateDigest,
+      highWaterMark: providerPosture.workspace.highWaterMark,
+      highWaterOrdinal: providerPosture.workspace.highWaterOrdinal
+    }),
+    run: Object.freeze({
+      taskId: providerPosture.run.taskId,
+      attemptId: providerPosture.run.attemptId,
+      runId: providerPosture.run.runId
+    }),
+    providerPosture: Object.freeze({
+      selection: Object.freeze({
+        providerId: providerPosture.selection.providerId,
+        modelId: providerPosture.selection.modelId,
+        adapterVersion: providerPosture.selection.adapterVersion
+      }),
+      capability: Object.freeze({
+        capabilityId: providerPosture.capability.capabilityId,
+        capabilityVersion: providerPosture.capability.capabilityVersion,
+        capabilityHash: providerPosture.capability.capabilityHash,
+        capabilityRevision: providerPosture.capability.capabilityRevision
+      }),
+      approval: Object.freeze({
+        required: true,
+        approvalProfile: providerPosture.approval.approvalProfile,
+        requiredApprovalClass: providerPosture.approval.requiredApprovalClass
+      }),
+      binding: Object.freeze({
+        promptArtifactHash: providerPosture.binding.promptArtifactHash,
+        approvalPreviewHash: providerPosture.binding.approvalPreviewHash
+      })
+    })
+  });
+}
+
+function assertExactFrozenDataTree(actual: unknown, expected: unknown): void {
+  expect(actual).toStrictEqual(expected);
+  const visit = (actualValue: unknown, expectedValue: unknown): void => {
+    if (
+      expectedValue === null ||
+      typeof expectedValue !== "object"
+    ) {
+      return;
+    }
+    expect(actualValue).not.toBeNull();
+    expect(typeof actualValue).toBe("object");
+    if (actualValue === null || typeof actualValue !== "object") return;
+    expect(types.isProxy(actualValue)).toBe(false);
+    expect(Array.isArray(actualValue)).toBe(false);
+    expect(Object.getPrototypeOf(actualValue)).toBe(Object.prototype);
+    expect(Object.isFrozen(actualValue)).toBe(true);
+    const actualKeys = Reflect.ownKeys(actualValue);
+    expect(
+      actualKeys.every((key) => typeof key === "string"),
+      "factory metadata must not contain symbol-keyed fields"
+    ).toBe(true);
+    expect(
+      actualKeys.filter((key): key is string => typeof key === "string").sort()
+    ).toEqual(Object.keys(expectedValue).sort());
+    for (const key of Object.keys(expectedValue)) {
+      const descriptor = Object.getOwnPropertyDescriptor(actualValue, key);
+      expect(descriptor?.enumerable).toBe(true);
+      expect(descriptor?.get).toBeUndefined();
+      expect(descriptor?.set).toBeUndefined();
+      if (descriptor !== undefined && Object.hasOwn(descriptor, "value")) {
+        visit(descriptor.value, Reflect.get(expectedValue, key));
+      }
+    }
+  };
+  visit(actual, expected);
+}
+
+function assertExactFrozenOwnDataSurface(
+  value: unknown,
+  expectedKeys: readonly string[]
+): asserts value is Readonly<Record<string, unknown>> {
+  expect(value).not.toBeNull();
+  expect(typeof value).toBe("object");
+  if (value === null || typeof value !== "object") return;
+  expect(types.isProxy(value)).toBe(false);
+  expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+  expect(Object.isFrozen(value)).toBe(true);
+  expect(Reflect.ownKeys(value).sort()).toEqual([...expectedKeys].sort());
+  for (const key of expectedKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    expect(descriptor?.enumerable).toBe(true);
+    expect(descriptor?.get).toBeUndefined();
+    expect(descriptor?.set).toBeUndefined();
+    expect(descriptor !== undefined && Object.hasOwn(descriptor, "value")).toBe(true);
+  }
+}
+
+function observeFutureFactoryCompositionStop(): {
+  readonly creations: readonly ResidentLoopFactoryComposition[];
+  readonly bindInputs: readonly unknown[];
+  readonly startCallCount: () => number;
+  readonly stopCallCount: () => number;
+  readonly restore: () => void;
+} {
+  const createComposition =
+    residentLoopFactoryCompositionSurface.createResidentLoopFactoryComposition;
+  const creations: ResidentLoopFactoryComposition[] = [];
+  const bindInputs: unknown[] = [];
+  let startCalls = 0;
+  let stopCalls = 0;
+  const createSpy = vi.spyOn(
+    residentLoopFactoryCompositionSurface,
+    "createResidentLoopFactoryComposition"
+  ).mockImplementation((rawInput: unknown) => {
+    const retained = createComposition(rawInput);
+    creations.push(retained);
+    return Object.freeze({
+      wakeRuntime: retained.wakeRuntime,
+      async start() {
+        startCalls += 1;
+        return await retained.start();
+      },
+      async bind(input: unknown) {
+        bindInputs.push(input);
+        return await retained.bind(input);
+      },
+      async stop() {
+        stopCalls += 1;
+        await retained.stop();
+      }
+    });
+  });
+  return Object.freeze({
+    creations,
+    bindInputs,
+    startCallCount: () => startCalls,
+    stopCallCount: () => stopCalls,
+    restore: () => createSpy.mockRestore()
+  });
+}
+
+async function expectAlternateActivationPathsRemainInert(
+  fixture: MountedFactoryFixture
+): Promise<void> {
+  const before = await domainBoundarySnapshot(fixture);
+  const [
+    defaultRuntimeSurface,
+    routeSurface,
+    operatorStatusSurface,
+    httpHandlerSurface,
+    serverSurface
+  ] = await Promise.all([
+    import("../src/agent-runtime-factory.js"),
+    import("../src/agent-http-routes.js"),
+    import("../src/operator-status-providers.js"),
+    import("../src/http-handler.js"),
+    import("../src/server.js")
+  ]);
+
+  for (const surface of [
+    defaultRuntimeSurface,
+    routeSurface,
+    operatorStatusSurface,
+    httpHandlerSurface,
+    serverSurface
+  ]) {
+    expect(
+      Reflect.has(surface, "createResidentBoundedAgentLoopFactory"),
+      "bounded factory must not be exposed through an alternate activation surface"
+    ).toBe(false);
+  }
+
+  const defaultRuntimeInput = {
+    handle: fixture.handle,
+    actor: fixture.actor,
+    now: fixture.now
+  };
+  expect(
+    () => defaultRuntimeSurface.defaultLocalAgentRuntimeFactory(defaultRuntimeInput)
+  ).toThrow(/blocked\.factory-context-attestation-required/i);
+
+  const routeResponse = await routeSurface.handleAgentHttpRoute({
+    request: { method: "GET", url: "/api/agent/status" },
+    handle: fixture.handle,
+    actor: fixture.actor,
+    now: fixture.now
+  });
+  expect(routeResponse?.status).toBe(500);
+
+  const providers = operatorStatusSurface.createDefaultOperatorStatusProviders({
+    config: fixture.handle.config,
+    actor: { id: "actor_factory_ports", kind: "human", label: "Factory ports" },
+    handle: fixture.handle,
+    now: fixture.now
+  });
+  const agentStatusProvider = providers.agent;
+  expect(agentStatusProvider).toBeTypeOf("function");
+  if (agentStatusProvider === undefined) {
+    throw new Error("default operator status agent provider is unavailable");
+  }
+  await expect(agentStatusProvider()).rejects.toThrow(
+    /blocked\.factory-context-attestation-required/i
+  );
+
+  expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+}
+
+async function boundedFactory(): Promise<BoundedFactory> {
+  const modulePath = ["..", "src", "resident-loop-factory-ports.js"].join("/");
+  const imported: unknown = await import(modulePath);
+  const candidate = imported !== null && typeof imported === "object"
+    ? Reflect.get(imported, "createResidentBoundedAgentLoopFactory")
+    : undefined;
+  expect(
+    candidate,
+    "approved createResidentBoundedAgentLoopFactory deep API is absent"
+  ).toBeTypeOf("function");
+  if (typeof candidate !== "function") {
+    throw new Error("approved createResidentBoundedAgentLoopFactory deep API is absent");
+  }
+
+  return async (input: unknown) => {
+    const product: unknown = await Reflect.apply(candidate, undefined, [input]);
+    if (product === null || typeof product !== "object") {
+      throw new Error("bounded resident loop factory returned no product");
+    }
+    return product as FactoryProduct;
+  };
+}
+
+function frozenFactoryInput(
+  fixture: MountedFactoryFixture,
+  domainExecution: unknown
+): Readonly<Record<string, unknown>> {
+  return Object.freeze({ ...fixture.factoryInput, domainExecution });
+}
+
+async function expectFactoryRejectionWithoutDomainEffects(
+  fixtures: readonly MountedFactoryFixture[],
+  factory: BoundedFactory,
+  input: unknown
+): Promise<void> {
+  const before = await domainBoundarySnapshots(fixtures);
+  await expect(factory(input)).rejects.toThrow(
+    /capability|dispatcher|factory|resident|authority|handoff/i
+  );
+  expect(await domainBoundarySnapshots(fixtures)).toEqual(before);
+}
+
+async function domainBoundarySnapshots(
+  fixtures: readonly MountedFactoryFixture[]
+): Promise<readonly Awaited<ReturnType<typeof domainBoundarySnapshot>>[]> {
+  return await Promise.all(fixtures.map(domainBoundarySnapshot));
+}
+
+async function domainBoundarySnapshot(fixture: MountedFactoryFixture) {
+  const events = await fixture.handle.ledger.readAll();
+  return Object.freeze({
+    ledgerEventCount: events.length,
+    providerLedgerEvents: countEvents(events, (type) =>
+      /(?:provider|model).*(?:request|invocation|response|completion)/i.test(type)
+    ),
+    gatewayLedgerEvents: countEvents(events, (type) =>
+      /^agent\.(?:tool|domain|resident-domain)\./i.test(type)
+    ),
+    approvalLedgerEvents: countEvents(events, (type) =>
+      /(?:approved|approval|permission\.granted)(?:\.v\d+)?$/i.test(type)
+    ),
+    effectLedgerEvents: countEvents(events, (type) =>
+      /(?:assertion\.(?:proposed|accepted)|entity\.resolved|relationship\.accepted|export|report|correspondence)/i.test(type)
+    ),
+    runtimePreviewCalls: fixture.runtimeCalls.preview,
+    runtimeApprovalCalls: fixture.runtimeCalls.approval,
+    runtimeEffectCalls: fixture.runtimeCalls.effect,
+    portableNonLedgerFileSystem: snapshotPortableNonLedgerFileSystem(fixture.handle)
+  });
+}
+
+function countEvents(
+  events: readonly KnowledgeEvent[],
+  predicate: (type: string) => boolean
+): number {
+  return events.filter((event) => predicate(event.type)).length;
+}
+
+function snapshotPortableNonLedgerFileSystem(
+  handle: LocalRuntimeHandle
+): readonly string[] {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined) {
+    throw new Error("factory effect snapshot requires a mounted portable workspace");
+  }
+  const roots = [
+    ["blobRoot", mounted.paths.blobRoot],
+    ["derivativeRoot", mounted.paths.derivativeRoot],
+    ["jobRoot", mounted.paths.jobRoot],
+    ["projectionRoot", mounted.paths.projectionRoot],
+    ["cacheRoot", mounted.paths.cacheRoot],
+    ["configRoot", mounted.paths.configRoot]
+  ] as const;
+  return Object.freeze(roots.flatMap(([label, root]) => snapshotFileSystemRoot(label, root)));
+}
+
+function snapshotFileSystemRoot(label: string, root: string): readonly string[] {
+  if (!existsSync(root)) return Object.freeze([`${label}:<absent>`]);
+  const entries: string[] = [];
+  const visit = (absolutePath: string, relativePath: string): void => {
+    const stat = lstatSync(absolutePath);
+    const location = relativePath.length === 0 ? "." : relativePath;
+    const metadata = `${stat.mode}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+    if (stat.isDirectory()) {
+      entries.push(`${label}:${location}:directory:${metadata}`);
+      for (const entry of readdirSync(absolutePath, { withFileTypes: true })
+        .sort((left, right) => left.name.localeCompare(right.name, "en"))) {
+        visit(join(absolutePath, entry.name), relativePath.length === 0
+          ? entry.name
+          : `${relativePath}/${entry.name}`);
+      }
+      return;
+    }
+    if (stat.isFile()) {
+      const digest = createHash("sha256").update(readFileSync(absolutePath)).digest("hex");
+      entries.push(`${label}:${location}:file:${metadata}:sha256:${digest}`);
+      return;
+    }
+    if (stat.isSymbolicLink()) {
+      entries.push(`${label}:${location}:symlink:${metadata}:${readlinkSync(absolutePath)}`);
+      return;
+    }
+    entries.push(`${label}:${location}:other:${metadata}`);
+  };
+  visit(root, "");
+  return Object.freeze(entries);
+}
+
+function assertNoAuthorityEscape(
+  product: FactoryProduct,
+  authorityValues: readonly unknown[]
+): void {
+  const forbidden = new Set(authorityValues.filter((value) => value !== undefined));
+  const seen = new Set<object>();
+  const visit = (value: unknown): void => {
+    if (
+      value === null ||
+      (typeof value !== "object" && typeof value !== "function")
+    ) {
+      return;
+    }
+    const reference = value as object;
+    if (seen.has(reference)) return;
+    expect(forbidden.has(reference), "factory product escaped an input authority identity").toBe(false);
+    seen.add(reference);
+    for (const key of Reflect.ownKeys(reference)) {
+      expect(
+        typeof key,
+        "factory product must not hide authority behind a symbol-keyed property"
+      ).toBe("string");
+      if (typeof key === "string") {
+        expect(key).not.toMatch(
+          /runtime|handle|ledger|authority|witness|store|reader|operation|controller|adapter|executor|descriptor|credentialValue|secret/i
+        );
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(reference, key);
+      expect(descriptor?.get, "factory product must not expose authority through an accessor").toBeUndefined();
+      if (descriptor !== undefined && Object.hasOwn(descriptor, "value")) {
+        visit(descriptor.value);
+      }
+    }
+  };
+  visit(product.loop);
+  visit(product.stop);
 }
 
 function configurationInput() {

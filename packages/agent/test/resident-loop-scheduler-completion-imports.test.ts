@@ -100,6 +100,14 @@ describe("resident-loop scheduler completion import boundary", () => {
           "packages/agent/src/domain-execution-dispatcher.ts",
           "packages/agent/src/resident-loop-tool-gateway.ts"
         ],
+        residentGatewayOperations: [
+          "preparePlannedStepBindings",
+          "requestFreshAuthorized",
+          "readFreshHumanDecision",
+          "executeFreshAuthorized",
+          "rereadAndIssueFromLedger",
+          "readCanonicalToolStepMaterial"
+        ],
         permitConsumerOccurrences: 3,
         violations: []
       });
@@ -201,6 +209,14 @@ describe("resident-loop scheduler completion import boundary", () => {
       definitionSources: [
         "packages/agent/src/domain-execution-dispatcher.ts",
         "packages/agent/src/resident-loop-tool-gateway.ts"
+      ],
+      residentGatewayOperations: [
+        "preparePlannedStepBindings",
+        "requestFreshAuthorized",
+        "readFreshHumanDecision",
+        "executeFreshAuthorized",
+        "rereadAndIssueFromLedger",
+        "readCanonicalToolStepMaterial"
       ],
       permitConsumerOccurrences: 3,
       violations: []
@@ -399,9 +415,19 @@ function staticResidentAdapterModuleOrder(
 
 interface Task12ProtectedMentionAnalysis {
   readonly definitionSources: readonly string[];
+  readonly residentGatewayOperations: readonly string[];
   readonly permitConsumerOccurrences: number;
   readonly violations: readonly string[];
 }
+
+const residentGatewayOperations = Object.freeze([
+  "preparePlannedStepBindings",
+  "requestFreshAuthorized",
+  "readFreshHumanDecision",
+  "executeFreshAuthorized",
+  "rereadAndIssueFromLedger",
+  "readCanonicalToolStepMaterial"
+] as const);
 
 const task12ProtectedOwners = new Map<string, string>([
   [
@@ -416,26 +442,12 @@ const task12ProtectedOwners = new Map<string, string>([
     "consumeResidentDomainExecutionPermit",
     "packages/agent/src/resident-loop-tool-gateway.ts"
   ],
-  [
-    "preparePlannedStepBindings",
-    "packages/agent/src/resident-loop-tool-gateway.ts"
-  ],
-  [
-    "requestFreshAuthorized",
-    "packages/agent/src/resident-loop-tool-gateway.ts"
-  ],
-  [
-    "readFreshHumanDecision",
-    "packages/agent/src/resident-loop-tool-gateway.ts"
-  ],
-  [
-    "executeFreshAuthorized",
-    "packages/agent/src/resident-loop-tool-gateway.ts"
-  ],
-  [
-    "rereadAndIssueFromLedger",
-    "packages/agent/src/resident-loop-tool-gateway.ts"
-  ]
+  ...residentGatewayOperations.map(
+    (name) => [
+      name,
+      "packages/agent/src/resident-loop-tool-gateway.ts"
+    ] as const
+  )
 ]);
 
 function task12ProtectedMentionAnalysis(
@@ -449,12 +461,15 @@ function task12ProtectedMentionAnalysis(
   );
   let permitConsumerOccurrences = 0;
   let task14BinderOccurrences = 0;
+  let canonicalMaterialConsumerOccurrences = 0;
 
   for (const record of sources) {
     const { sourcePath, sourceFile } = record;
     const protectedHosts = protectedHostNames(sourceFile, protectedNames);
     const gatewayDefaultProvenance =
       gatewayDefaultLexicalProvenance(record);
+    const canonicalMaterialProvenance =
+      canonicalMaterialConsumerProvenance(record);
     if (gatewayDefaultProvenance.hasViolation) {
       violations.add(sourcePath);
     }
@@ -534,6 +549,34 @@ function task12ProtectedMentionAnalysis(
     }
 
     function classify(node: ts.Node, name: string): void {
+      if (name === "readCanonicalToolStepMaterial") {
+        if (
+          isAllowedTypeMention(node) &&
+          (
+            sourcePath === "packages/agent/src/resident-loop-tool-gateway.ts" ||
+            sourcePath === "packages/agent/src/bounded-agent-loop.ts"
+          )
+        ) {
+          return;
+        }
+        if (isEmittedDefinitionName(node)) {
+          if (task12ProtectedOwners.get(name) === sourcePath) {
+            admitDefinition(name, sourcePath);
+          } else {
+            violations.add(sourcePath);
+          }
+          return;
+        }
+        if (isDefinitionObjectShorthand(node, sourcePath, name)) {
+          return;
+        }
+        if (canonicalMaterialProvenance.isExactConsumer(node)) {
+          canonicalMaterialConsumerOccurrences += 1;
+          return;
+        }
+        violations.add(sourcePath);
+        return;
+      }
       if (name === "consumeResidentDomainExecutionPermit") {
         permitConsumerOccurrences += 1;
         if (
@@ -612,11 +655,92 @@ function task12ProtectedMentionAnalysis(
   if (task14BinderOccurrences > 1) {
     violations.add("packages/local-runtime/src/mounted-wake-lifecycle-store.ts");
   }
+  if (canonicalMaterialConsumerOccurrences === 0) {
+    violations.add("packages/agent/src/bounded-agent-loop.ts");
+  }
   return {
     definitionSources: [...definitionSources].sort(),
+    residentGatewayOperations: [...residentGatewayOperations],
     permitConsumerOccurrences,
     violations: [...violations].sort()
   };
+}
+
+interface CanonicalMaterialConsumerProvenance {
+  readonly isExactConsumer: (node: ts.Node) => boolean;
+}
+
+function canonicalMaterialConsumerProvenance(
+  record: SourceRecord
+): CanonicalMaterialConsumerProvenance {
+  if (record.sourcePath !== "packages/agent/src/bounded-agent-loop.ts") {
+    return { isExactConsumer: () => false };
+  }
+  const issuerDeclarations = record.sourceFile.statements.filter(
+    (
+      statement
+    ): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text ===
+        "createResidentBoundedAgentLoopFromIssuedCapabilities" &&
+      statement.body !== undefined &&
+      statement.parameters.length === 8 &&
+      ts.getModifiers(statement)?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
+      ) === true
+  );
+  if (issuerDeclarations.length !== 1) {
+    return { isExactConsumer: () => false };
+  }
+  const issuer = issuerDeclarations[0]!;
+  const gatewayParameter = issuer.parameters[2];
+  if (
+    gatewayParameter === undefined ||
+    !ts.isIdentifier(gatewayParameter.name)
+  ) {
+    return { isExactConsumer: () => false };
+  }
+  const checker = localLexicalTypeChecker(record.sourceFile);
+  const gatewaySymbol = checker.getSymbolAtLocation(gatewayParameter.name);
+  if (gatewaySymbol === undefined) {
+    return { isExactConsumer: () => false };
+  }
+  return {
+    isExactConsumer: (node) => {
+      if (
+        !ts.isIdentifier(node) ||
+        node.text !== "readCanonicalToolStepMaterial" ||
+        !ts.isPropertyAccessExpression(node.parent) ||
+        node.parent.name !== node ||
+        node.parent.questionDotToken !== undefined ||
+        !ts.isCallExpression(node.parent.parent) ||
+        node.parent.parent.expression !== node.parent ||
+        node.parent.parent.questionDotToken !== undefined ||
+        node.parent.parent.arguments.length !== 1 ||
+        ts.isSpreadElement(node.parent.parent.arguments[0]!) ||
+        issuer.body === undefined ||
+        !nodeIsWithin(node.parent.parent, issuer.body)
+      ) {
+        return false;
+      }
+      const receiver = unwrapStaticExpression(node.parent.expression);
+      return ts.isIdentifier(receiver) &&
+        checker.getSymbolAtLocation(receiver) === gatewaySymbol;
+    }
+  };
+}
+
+function nodeIsWithin(node: ts.Node, ancestor: ts.Node): boolean {
+  for (
+    let current: ts.Node | undefined = node;
+    current !== undefined;
+    current = current.parent
+  ) {
+    if (current === ancestor) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isDirectProtectedMention(
@@ -1146,6 +1270,8 @@ function protectedMentionControls(): ProtectedMentionControls {
     "packages/agent/src/domain-execution-dispatcher.ts";
   const gatewayPath =
     "packages/agent/src/resident-loop-tool-gateway.ts";
+  const boundedLoopPath =
+    "packages/agent/src/bounded-agent-loop.ts";
   const task14Path =
     "packages/local-runtime/src/mounted-wake-lifecycle-store.ts";
   const dispatcherPermitFrame = (
@@ -1194,6 +1320,7 @@ function protectedMentionControls(): ProtectedMentionControls {
       "function readFreshHumanDecision() {}",
       "function executeFreshAuthorized() {}",
       "function rereadAndIssueFromLedger() {}",
+      "function readCanonicalToolStepMaterial() {}",
       "const residentDomainExecutionPermitConsumer = Object.freeze({",
       "  consumeResidentDomainExecutionPermit",
       "});",
@@ -1202,7 +1329,8 @@ function protectedMentionControls(): ProtectedMentionControls {
       "  requestFreshAuthorized,",
       "  readFreshHumanDecision,",
       "  executeFreshAuthorized,",
-      "  rereadAndIssueFromLedger",
+      "  rereadAndIssueFromLedger,",
+      "  readCanonicalToolStepMaterial",
       "});",
       "export default residentDomainExecutionPermitConsumer;",
       "void gateway;",
@@ -1258,6 +1386,26 @@ function protectedMentionControls(): ProtectedMentionControls {
       "}",
       gatewayExtra
     ].join("\n")),
+    sourceRecordFromText(boundedLoopPath, [
+      "export function createResidentBoundedAgentLoopFromIssuedCapabilities(",
+      "  planObservation: unknown,",
+      "  candidateProvider: unknown,",
+      "  gateway: any,",
+      "  mountedAuthority: unknown,",
+      "  issuerToken: unknown,",
+      "  handoffProjection: unknown,",
+      "  metadata: unknown,",
+      "  nowMonotonicMs: unknown",
+      ") {",
+      "  void candidateProvider;",
+      "  void mountedAuthority;",
+      "  void issuerToken;",
+      "  void handoffProjection;",
+      "  void metadata;",
+      "  void nowMonotonicMs;",
+      "  return gateway.readCanonicalToolStepMaterial(planObservation);",
+      "}"
+    ].join("\n")),
     sourceRecordFromText(task14Path, [
       "import dispatcherDefault from " +
         "'../../agent/src/domain-execution-dispatcher.js';",
@@ -1311,7 +1459,24 @@ function protectedMentionControls(): ProtectedMentionControls {
     ),
     violations: [task14Path]
   });
+  const unsafeCanonicalConsumer = (
+    name: string,
+    sourcePath: string,
+    text: string
+  ) => ({
+    name,
+    sources: [
+      ...base(),
+      sourceRecordFromText(sourcePath, text)
+    ],
+    violations: [sourcePath]
+  });
   const unsafe = [
+    unsafeCanonicalConsumer(
+      "canonical material foreign consumer",
+      "packages/agent/src/foreign-bounded-loop.ts",
+      "gateway.readCanonicalToolStepMaterial(issuedReadback);"
+    ),
     unsafeTask14Binder("Task14 dispatcher zero-argument binder call", [
       "function bindMountedResidentLoopAuthorityForFactory() {",
       "  dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort();",
