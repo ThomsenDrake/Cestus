@@ -3260,6 +3260,7 @@ function portableCrashWorkflowFixture(
   let failureInjected = false;
   let failuresEnabled = true;
   let engineeringValidationCalls = 0;
+  let engineeringValidationMutation: (() => void) | undefined;
   const checkpointStore: CentralFloridaIcePreviewCheckpointStore = {
     readAll: () => baseStore.readAll(),
     append(draft) {
@@ -3351,6 +3352,7 @@ function portableCrashWorkflowFixture(
     checkpointStore,
     runEngineeringValidations: () => {
       engineeringValidationCalls += 1;
+      engineeringValidationMutation?.();
       return [{
         argv: ["portable-fixture-validation"],
         exitCode: 0,
@@ -3367,6 +3369,9 @@ function portableCrashWorkflowFixture(
     },
     get engineeringValidationCalls() {
       return engineeringValidationCalls;
+    },
+    mutateDuringEngineeringValidation(mutation: () => void) {
+      engineeringValidationMutation = mutation;
     },
     disableFailures() {
       failuresEnabled = false;
@@ -3638,6 +3643,52 @@ function portableCrashWorkflowFixture(
         (mounted.workspace as MountedWorkspace & { close?: () => void }).close?.();
       }
     },
+    appendForeignProposalSynchronously() {
+      const database = new DatabaseSync(join(workspaceRoot, "ledger", "ontology.sqlite"));
+      try {
+        const evidence = database.prepare(
+          "SELECT id, payload_json FROM ontology_events "
+            + "WHERE type = 'evidence.ingested' LIMIT 1"
+        ).get() as { id: string; payload_json: string } | undefined;
+        if (evidence === undefined) {
+          throw new Error("portable crash fixture expected imported evidence");
+        }
+        const payload = JSON.parse(evidence.payload_json) as { evidenceId: string };
+        database.prepare(
+          "INSERT INTO ontology_events "
+            + "(id, type, version, stream_id, stream_sequence, context_json, payload_json) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).run(
+          "evt_foreign_validation_proposal",
+          "assertion.proposed",
+          1,
+          "assertion_as_foreign_validation",
+          1,
+          JSON.stringify({
+            actor: {
+              id: "actor_human_foreign",
+              kind: "human",
+              label: "Foreign validation-window approver"
+            },
+            occurredAt: "2026-07-27T12:00:00.000Z",
+            causationId: evidence.id,
+            correlationId: "corr_as_foreign_validation",
+            coreVersion: "0.1.0",
+            packVersions: { core: "0.1.0" }
+          }),
+          JSON.stringify({
+            assertionId: "as_foreign_validation",
+            evidenceId: payload.evidenceId,
+            predicate: "foreign.validation",
+            object: "must not enter final manifest authority",
+            confidence: 0.5,
+            reviewState: "proposed"
+          })
+        );
+      } finally {
+        database.close();
+      }
+    },
     corruptDerivative(contentHash: `sha256:${string}`) {
       const digest = contentHash.replace("sha256:", "");
       writeFileSync(
@@ -3718,6 +3769,33 @@ async function expectPortableManifestFailureWithoutWrites(
   expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
   expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
     .toEqual(artifactsBefore);
+}
+
+async function expectPortableValidationWindowFailureWithoutPostWrite(
+  fixture: ReturnType<typeof portableCrashWorkflowFixture>
+): Promise<{
+  readonly eventIdsBefore: readonly string[];
+  readonly eventsAfter: readonly KnowledgeEvent[];
+  readonly artifactsBefore: readonly string[];
+  readonly artifactsAfter: readonly string[];
+}> {
+  const checkpointsBefore = fixture.checkpointStore.readAll();
+  const eventIdsBefore = (await fixture.ledgerEvents()).map((event) => event.id);
+  const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+  await expect(fixture.createWorkflow().manifest()).rejects.toThrow();
+
+  const artifactsAfter = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+  expect(fixture.engineeringValidationCalls).toBe(1);
+  expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+  expect(artifactsAfter.map((material) => material.split("\u0000")[0]))
+    .toEqual(artifactsBefore.map((material) => material.split("\u0000")[0]));
+  return {
+    eventIdsBefore,
+    eventsAfter: await fixture.ledgerEvents(),
+    artifactsBefore,
+    artifactsAfter
+  };
 }
 
 describe("Central Florida ICE real portable-runtime crash reconciliation", () => {
@@ -4264,6 +4342,50 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
       await expectPortableManifestFailureWithoutWrites(fixture);
     });
   }
+
+  it("rechecks authority after validation-window approval actor drift", async () => {
+    const fixture = portableCrashWorkflowFixture("none");
+    await advancePortableFixtureToManifest(fixture);
+    fixture.mutateDuringEngineeringValidation(() =>
+      fixture.corruptStagingApprovalActor()
+    );
+
+    const result = await expectPortableValidationWindowFailureWithoutPostWrite(fixture);
+
+    expect(result.eventsAfter.map((event) => event.id)).toEqual(result.eventIdsBefore);
+    expect(result.artifactsAfter).toEqual(result.artifactsBefore);
+  });
+
+  it("rechecks authority after a validation-window allowed proposal append", async () => {
+    const fixture = portableCrashWorkflowFixture("none");
+    await advancePortableFixtureToManifest(fixture);
+    fixture.mutateDuringEngineeringValidation(() =>
+      fixture.appendForeignProposalSynchronously()
+    );
+
+    const result = await expectPortableValidationWindowFailureWithoutPostWrite(fixture);
+
+    expect(result.eventsAfter.slice(0, -1).map((event) => event.id))
+      .toEqual(result.eventIdsBefore);
+    expect(result.eventsAfter.at(-1)).toEqual(expect.objectContaining({
+      id: "evt_foreign_validation_proposal",
+      type: "assertion.proposed"
+    }));
+    expect(result.artifactsAfter).toEqual(result.artifactsBefore);
+  });
+
+  it("rechecks authority after validation-window referenced artifact drift", async () => {
+    const fixture = portableCrashWorkflowFixture("none");
+    const replay = await advancePortableFixtureToManifest(fixture);
+    fixture.mutateDuringEngineeringValidation(() =>
+      fixture.corruptDerivative(replay.state.replayArtifactHash!)
+    );
+
+    const result = await expectPortableValidationWindowFailureWithoutPostWrite(fixture);
+
+    expect(result.eventsAfter.map((event) => event.id)).toEqual(result.eventIdsBefore);
+    expect(result.artifactsAfter).not.toEqual(result.artifactsBefore);
+  });
 
   it("reconciles a crash after staging approval before proposals without duplicate approval", async () => {
     const fixture = portableCrashWorkflowFixture("after-staging-approval");

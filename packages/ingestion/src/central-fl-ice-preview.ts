@@ -1975,40 +1975,49 @@ export function createCentralFloridaIcePreviewWorkflow(
     });
   }
 
+  async function assertManifestAuthority(
+    workspace: MountedWorkspace,
+    checkpoint: CentralFloridaIcePreviewCheckpoint
+  ): Promise<CentralFloridaIcePreviewWorkspaceSnapshot> {
+    const runtime = legacyRuntimeFactory(workspace);
+    const legacyReportId = requiredStateString(checkpoint, "legacyReportId");
+    const beforeReads = await readWorkspaceSnapshot(workspace);
+    const report = requireLegacySuccess(await runtime.report({
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      legacyReportId
+    }), "legacy report");
+    const preview = requireLegacySuccess(await runtime.stagingPreview({
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      legacyReportId
+    }), "legacy staging-preview");
+    const snapshot = await readWorkspaceSnapshot(workspace);
+    assertNoLedgerDelta(beforeReads.events, snapshot.events);
+    assertNoForbiddenEvents(snapshot.events);
+    const selectedCandidateIds = checkpoint.state.approvedStagingCandidateIds ?? [];
+    assertReportCheckpointIdentity(report, checkpoint);
+    assertStagingCandidateCheckpointIdentity(preview, checkpoint);
+    assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
+    await assertStoredStagingPreview(workspace, checkpoint, preview);
+    assertPersistedStagingAuthority(snapshot, checkpoint, preview);
+    assertReplayCheckpointAuthority(snapshot, checkpoint);
+    await assertReferencedArtifactReadback(workspace, checkpoint);
+    return snapshot;
+  }
+
   async function manifest(): Promise<CentralFloridaIcePreviewCheckpoint> {
     const latest = requireTransition(checkpointStore, "manifest", "manifest-required");
     const revalidatedInspection = resumeInspection();
     assertInspectionMatchesCheckpoint(revalidatedInspection, latest);
 
     return withPreviewWorkspace(mountResolver, async (workspace) => {
-      const runtime = legacyRuntimeFactory(workspace);
-      const legacyReportId = requiredStateString(latest, "legacyReportId");
-      const beforeReads = await readWorkspaceSnapshot(workspace);
-      const report = requireLegacySuccess(await runtime.report({
-        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
-        legacyReportId
-      }), "legacy report");
-      const preview = requireLegacySuccess(await runtime.stagingPreview({
-        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
-        legacyReportId
-      }), "legacy staging-preview");
-      const snapshot = await readWorkspaceSnapshot(workspace);
-      assertNoLedgerDelta(beforeReads.events, snapshot.events);
-      assertNoForbiddenEvents(snapshot.events);
-      const selectedCandidateIds = latest.state.approvedStagingCandidateIds ?? [];
-      assertReportCheckpointIdentity(report, latest);
-      assertStagingCandidateCheckpointIdentity(preview, latest);
-      assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
-      await assertStoredStagingPreview(workspace, latest, preview);
-      assertPersistedStagingAuthority(snapshot, latest, preview);
-      assertReplayCheckpointAuthority(snapshot, latest);
-      await assertReferencedArtifactReadback(workspace, latest);
+      await assertManifestAuthority(workspace, latest);
       const validationReceipts = runEngineeringValidations();
       if (validationReceipts.some((receipt) =>
         receipt.exitCode !== 0 || receipt.result !== "passed"
       )) {
         throw new Error("engineering validation failed; final manifest was not persisted");
       }
+      const snapshot = await assertManifestAuthority(workspace, latest);
       const finalCommandReceipts = [
         ...latest.state.commandReceipts,
         commandReceipt("manifest")

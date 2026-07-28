@@ -445,3 +445,18 @@ trusted replay-era checkpoint material. Add a third bounded TDD remediation:
    derivative changes, or checkpoints;
 7. repeat focused and broad gates, update the durable evidence, and commit for
    fresh review.
+
+Fresh adversarial review found a validation-window race in that repair. Apply a
+final focused TDD correction:
+
+1. let the portable validation callback mutate the staging approval actor,
+   synchronously append an allowed proposal, or corrupt the replay artifact;
+2. prove all three RED cases pass the initial authority check and still reach
+   `complete`;
+3. factor the full manifest authority readback into one reusable async check;
+4. run it before validation and again after successful receipts, immediately
+   before persistence, using the second snapshot for manifest ledger counts;
+5. prove each validation-window mutation rejects with one validation call and
+   no manifest derivative or checkpoint write;
+6. rerun the complete focused and broad gates, update durable evidence, and
+   commit atomically for fresh review.

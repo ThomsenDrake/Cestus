@@ -880,6 +880,37 @@ externalization/chunk-size advisories. Factory readiness and `git diff --check`
 passed.
 ```
 
+Fresh adversarial review then identified a TOCTOU window: engineering
+validations ran after the manifest authority readback, but persistence did not
+repeat that readback. Three portable RED callbacks changed authority during
+validation and still reached `complete`:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "rechecks authority after validation-window|rechecks authority after a validation-window"
+1 file failed; 3 tests failed, 152 tests skipped.
+```
+
+The repair factors the complete read-only manifest authority proof and runs it
+both before validations and immediately after successful receipts. The fresh
+second snapshot supplies the final ledger count. Approval-actor drift, a valid
+proposal append, and replay-artifact corruption during validation now fail
+without a new derivative path or checkpoint.
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "rechecks authority after validation-window|rechecks authority after a validation-window"
+1 file passed; 3 tests passed, 152 tests skipped.
+
+Combined manifest adversarial set: 9 tests passed, 146 tests skipped.
+Focused Gate 2/manifest suite: 4 files passed; 194 tests passed.
+Ingestion plus ontology-bootstrap: 35 files passed; 391 tests passed.
+Preview-specialist boundary: 10 files passed; 266 tests passed.
+Typecheck passed. UI build passed with 165 modules and the existing
+externalization/chunk-size advisories. Factory readiness and `git diff --check`
+passed.
+```
+
 Fresh adversarial review rejected the candidate because final manifest
 production did not repeat the authoritative readback proven at handoff and
 replay. Six portable post-replay RED cases all reached `complete` instead of
