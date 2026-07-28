@@ -47332,3 +47332,88 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Product source, `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1217 — Task16 repaired RED rejected; three-test phase oracle repair authorized
+
+- Recorded at: 2026-07-28T23:03:46Z
+- Different completely fresh independent read-only reviewer
+  `/root/task16_e1216_fresh_review` rejects exact candidate
+  `317fad088aae8b8948312851a8840ba1bff3d7c6`, tree
+  `42a8461ccb471340d092638b41884788661903a3`, sole parent
+  `c7bf1756a471596110ca62fbc6934bf7baf98c27`, inside clean review
+  envelope `f7b777d0bf4bcc197947ef3ed8fbd852f32b78a0`.
+- The scheduler import-policy oracle unconditionally reports absent
+  `packages/agent/src/bounded-agent-loop.ts` when its canonical material
+  consumer count is zero, although Task16B freezes that Task16C source
+  absent and requires producer controls **144/144**. Its provenance can count
+  a consumer only in that exact absent source, so no authorized three-source
+  Task16B implementation can satisfy the committed gate.
+- The shared W fixture binds its exact `domainExecution` capability to obtain
+  a preview port, then presents the same capability to W. Task16B's required
+  successful-bind consumption would stale every legitimate issued W fixture,
+  rather than only the dedicated prebound-stale factory control.
+- The factory AST oracle rejects module re-exports but permits local export
+  aliases and additional exported runtime functions. It therefore does not
+  prove that the trusted factory is the module's sole public runtime value.
+  Its direct-statement ancestry also permits multiple declarators in one
+  required variable statement, allowing an unrelated initializer/effect
+  beside an otherwise accepted required call.
+- Independent execution is exact focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Standalone
+  typecheck and factory readiness pass. Mission and V4 each pass **20/20**,
+  mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  markers remain **29 / 20 / 29 / 15**, and clean repository mode stops
+  first only at the exact legacy-staging blob mismatch.
+- Exact candidate/tree/parent/envelope identity, three-file candidate scope,
+  all seven current test blobs, source freezes, absent bounded source,
+  canonical 33-path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  ancestry, TypeScript **5.9.3**, Vitest **4.1.9**, dependencies, diff
+  hygiene, full Git integrity, and clean task/program worktrees pass. Those
+  gates do not override the four causal oracle defects.
+- Advance only this exact candidate `reviewing -> rejected`. Authorize the
+  smallest forward test-only correction in exactly
+  `packages/agent/test/resident-loop-scheduler-completion-imports.test.ts`,
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  starting respectively from exact blobs
+  `f7ddd88e9161dad5449ed47fd3ad4739207af0fb`,
+  `29b3c744c55f79ba76e55192747f96eb050d6772`, and
+  `1c63b8f999e78375cf2f4403bd35884053e7425e`.
+- Make the canonical material consumer requirement phase-aware: an absent R
+  source is permitted only before Task16C; once that exact source exists it
+  must contain exactly one approved direct consumer. Add only abstract local
+  missing/duplicate consumer controls needed to freeze that distinction.
+  Preserve the current G-definition RED.
+- Give the W preview port a distinct issued dispatcher capability and leave
+  the factory-presented capability untouched. Preserve the dedicated exact
+  prebound-stale factory control and every existing W title and assertion.
+- Require the factory's exact public runtime value surface to contain only
+  `createResidentBoundedAgentLoopFactory`, rejecting default, aliased, and
+  additional value exports. Require every retained call statement to contain
+  exactly one declarator, rejecting the abstract co-declarator effect.
+  Add no unrelated alias case.
+- Preserve the other four current test blobs
+  `32962cf24a28087253368289480dc5ce2e741574`,
+  `00fbc6bcd18365224e301c26227e6fdc769ffabd`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`, all seven titles and
+  cardinality, absent bounded source, every product source, every other
+  test, claim/design/plan/contract/mission, dependency, configuration,
+  route, provider, credential, preview branch, and unrelated byte.
+- Required repaired RED signatures and all supporting gates remain exactly
+  E-1216. Commit only the three corrected tests, admit the new immutable
+  bytes to another completely fresh independent read-only reviewer, and
+  record/approve/integrate append-only with approval-first/candidate-second
+  plus forward Task136 merges. Changed bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is forward unit-test-oracle repair authority, not
+  producer GREEN authority, Task16 acceptance, Task136 candidacy, strict
+  record 29, publication, Wave 3 start, repository closure, or release.
+  Product source, `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
