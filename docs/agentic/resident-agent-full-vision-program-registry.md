@@ -47535,3 +47535,79 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1220 — Task16 phase-correct RED rejected; gateway material oracle repair authorized
+
+- Recorded at: 2026-07-28T23:39:57Z
+- Completely fresh independent read-only reviewer
+  `/root/task16_e1219_fresh_review` rejects exact candidate
+  `58a3d2608fcd26515c4e6c536e14d9b54668fbdf`, tree
+  `87a1f0ec288d3e57d0ec78e1600f5a05cd811ed5`, sole parent
+  `c272c95b6d2e24adf3097eae933b7695228a5d47`, inside clean review
+  envelope `ac207db14c718be20e1374934874f54a85f0550a`.
+- The G canonical-material oracle covers a terminal failed readback only
+  with the abstract automatic pre-claim failure, and currently expects
+  `resultArtifactHashes` to be nonempty only for a completed terminal. A
+  producer that returns an empty artifact array for every failed readback
+  would therefore pass while violating an already approved abstract local
+  human post-claim failed prefix whose exact durable outcome receipt carries
+  nonempty artifact hashes.
+- Exact candidate identity, three-test scope, **238 insertions / 7
+  deletions**, seven current test blobs, source freezes, absent bounded
+  source, ancestry, dependency freeze, diff hygiene, and E-1217 phase
+  corrections all pass. The exact seven blobs are
+  `32962cf24a28087253368289480dc5ce2e741574`,
+  `00fbc6bcd18365224e301c26227e6fdc769ffabd`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`,
+  `aa1d371236e3cd7abbceceab654513d51bc31990`,
+  and `d88d435cda590b1922685f9a68f085e14d957e75`.
+  Source freezes remain factory
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, W
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`, G
+  `2e7d7a79763758037c56cedd91a70f63c8d8feea`, dispatcher
+  `230a0b53ee19e29cc3301750c0ff23bcb9225314`, with the bounded source
+  absent.
+- Independent execution is exact focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Standalone
+  typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Clean program-tree repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Canonical 33-path SHA-256 remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  TypeScript is **5.9.3**, Vitest is **4.1.9**, and full Git integrity and
+  clean task/program worktrees pass.
+- Advance only this exact candidate `reviewing -> rejected`. Authorize the
+  smallest forward test-only correction in exactly
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`, starting from
+  blob `00fbc6bcd18365224e301c26227e6fdc769ffabd`.
+- Extend only the existing canonical material title with one same-instance
+  abstract local human post-claim failed material case. Issue its recovery
+  readback, include it in the existing material-case table, and require
+  `resultArtifactHashes` to equal the exact validated
+  `receipt.payload.artifactHashes` for that post-claim failure while the
+  pre-claim failure remains empty. Preserve the title and test cardinality;
+  add no unrelated case.
+- Preserve the other six exact test blobs, every product source and source
+  freeze, absent bounded source, every other test, claim/design/plan/
+  contract/mission, dependency, configuration, route, provider, credential,
+  preview branch, and unrelated byte. Required RED signatures and all
+  supporting gates remain exactly those above.
+- Commit only the corrected G test, admit its immutable bytes to another
+  completely fresh independent read-only reviewer, and record, approve, and
+  integrate append-only with approval-first/candidate-second plus forward
+  Task136 merges. Changed bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is forward unit-test-oracle repair authority, not
+  producer GREEN authority, Task16 acceptance, Task136 candidacy, strict
+  record 29, publication, Wave 3 start, repository closure, or release.
+  Product source, `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
