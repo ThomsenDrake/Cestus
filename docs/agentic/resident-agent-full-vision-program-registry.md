@@ -45875,3 +45875,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   strict record 29, publication, Wave 3 start, or product release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1193 — Task14 private lexical-capability GREEN admitted to review
+
+- Recorded at: 2026-07-28T15:23:09Z
+- Exact E-1192 two-source GREEN candidate is
+  `98966df0795ad2252e17adf9792acc64c5c597bd`, tree
+  `89d3ca23bebcc44a895f043aa67215b11893fa39`, sole parent exact Task136
+  GREEN-authority merge `afa542940c5acf29a6c63876fd8c6cd262f58d39`,
+  with exact subject `feat(local-runtime): seal factory wake issuance`.
+- Exact scope is only
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, from blob
+  `50d226e32ce12d7ebf9c3d586f50e00274ebf9e6` to
+  `8f53e00c3f5ba59cd6f3158e67da9fc746f401c2`, exact **+543 / -38**,
+  and `packages/local-runtime/src/resident-loop-factory-composition.ts`, from
+  blob `ecb114bb1cc3c054c0d60400b7e3cc746823736b` to
+  `a5e554dd138dc82bcd9e01b79aef82742b12c366`, exact **+22 / -341**.
+- The candidate preserves exported generic `createWakeSupervisorRuntime` and
+  exported `bindResidentLoopCapabilitiesForFactory`, removes the legacy
+  exported registrar, and co-locates the nonexported factory issuer,
+  one-shot registrar closure, safe composition flow, and readback
+  registration inside `wake-supervisor-runtime.ts`. Generic runtimes receive
+  no registration capability and remain permanently unable to acquire an
+  exact factory binding.
+- Nonexported `issueResidentLoopFactoryWakeRuntime` calls the generic runtime
+  constructor, captures that exact runtime in one private
+  `registerReadback` closure, and returns only one frozen private issuance
+  carrier to the same-module safe builder. Exported safe
+  `createResidentLoopFactoryCompositionForFacade` consumes the carrier once
+  and neither accepts nor exposes any private capability.
+- The composition module is reduced to the committed six static named
+  unaliased imports, four existing public interfaces, and one safe public
+  `createResidentLoopFactoryComposition` wrapper whose only behavior is one
+  direct call to the distinctly named wake-module builder. Existing
+  normalization, start/bind/stop, provider/handoff authentication,
+  currentness, and completed readback behavior now remains co-located in the
+  wake module.
+- Implementer `/root/task14_green_implementation` first independently
+  reproduces exact pre-edit RED **96 = 94 passed + two Task14 failures**.
+  Candidate focused execution then passes **96/96**. Exact Task136 card is
+  **383 = 376 passed + seven failed** and exact 37-file cross-boundary is
+  **1,042 = 1,035 passed + seven failed** under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second timeout. All seven remaining failures are only
+  the preserved Task15-through-16 REDs.
+- Standalone typecheck and factory readiness pass. Mission and V4 assurance
+  each pass **20/20**; exact contract markers remain
+  **29 / 20 / 29 / 15**. Clean committed repository mode exits one and stops
+  first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  with no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Mounted store remains frozen at
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`; mounted test remains
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`; approved runtime test remains
+  `cc9c3129f8d36b1edde263d7cafdbd3b219f3538`; approved AST oracle remains
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`; released FC-Core import-policy
+  test remains `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
+  Every other product/test, claim, contract, mission, checker, dependency,
+  configuration, and path remains frozen.
+- No path, provider, route, activation, heuristic caller detection, global
+  mutable authority, timing check, call-stack/source inspection, fallback,
+  unrelated AST alias case, credential, network, or external behavior is
+  added. Exact two-source scope, starting/final blobs, all freezes, ownership,
+  33-path ceiling, ancestry, TypeScript 5.9.3, Vitest 4.1.9, diff hygiene,
+  Git integrity, and clean candidate state pass implementer verification.
+- Advance this exact candidate `implementing -> candidate -> reviewing`.
+  Assign completely fresh independent read-only reviewer
+  `/root/task14_e1193_green_review`, excluded from every prior Task14 author,
+  reviewer, verifier, design-analysis, rehydration, oracle-analysis, and
+  implementation role. Review binds the exact candidate SHA/tree/parent/two
+  blobs, cumulative runtime and AST oracles, all forbidden-behavior
+  exclusions, and every gate above. Changed bytes invalidate review.
+- No candidate byte may change. Approval requires a separate append-only
+  event, approval-first/candidate-second history-preserving program merge,
+  fresh integration-tree gates, a separate integrated/completion event, and
+  a forward Task136 authority merge before any Task15 authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  source review admission, not approval, integration, Task14 completion,
+  Task15 authority, repository closure, strict record 29, publication,
+  Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
