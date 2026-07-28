@@ -46394,3 +46394,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or product release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1201 — Integrated default-export RED authorizes exact Task15 H GREEN
+
+- Recorded at: 2026-07-28T16:46:22Z
+- E-1200 integrates the exact independently approved Task15 default-export
+  oracle correction at program commit
+  `966f595311dc72cee53d1f2521c0b18c9d85f136`. Exact history-preserving
+  Task136 authority merge `c99b148656fd470cf9b6088ac9e876568dc573ad`
+  has E-1198 review envelope
+  `7f18f3f2e52e5d5ecba2527afcf653510b4a8a84` first and E-1200 integration
+  authority second. The corrected RED is approved, recorded, integrated, and
+  present in the clean Task136 envelope.
+- Resume exact one-source GREEN authority only for
+  `packages/agent/src/specialist-handoff-projection.ts`, from exact starting
+  blob `311120f59e9d40628c4d091f958f3ba2bf2ff53d`. Freeze corrected causal RED
+  `packages/agent/test/specialist-handoff-projection.test.ts` at reviewed
+  blob `0a7664dbb3f4e648c03d72d381ff222f9a2bd4b9`.
+- Implement a named default function
+  `export default function createInternalSpecialistHandoffProjectionPort`.
+  Keep `InternalSpecialistHandoffProjectionPort` and every new helper type
+  nonexported. The deep module exposes the builder only through `default`;
+  direct and barrel named exports remain absent. Freeze agent barrel
+  `packages/agent/src/index.ts` at
+  `69f60a5bb231a9041cd6dfea29203302293edeb8`. Task16 must separately prove R
+  is the sole production direct default importer.
+- The builder prebinds the authoritative ledger reader and W's fixed-store
+  exact-hash material and manifest readers. Its issued `readFull` caller may
+  supply only exact task ID, run ID, and authority binding. Require exact
+  identity and authority, `state === "task-completed"`, complete
+  `selectedReadback`, recorded/terminal/task-status event IDs, manifest
+  provenance, verified hash/currentness, and safe diagnostics. Never permit
+  caller-supplied events or readers, path enumeration, writes, fallback, or
+  broader product behavior.
+- Preserve Task138 browser DTO and files byte-identically: source
+  `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`, test
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and claim
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`. Freeze every Task14/16 and
+  other Task136 source/test, claim, contract, mission, checker, dependency,
+  configuration, route, provider, credential, mounted store, and unrelated
+  path.
+- Required GREEN is exact focused **37/37**, Task138 boundary **355/355**,
+  Task136 card **383 = 377 passed + six Task16 failures**, and exact 37-file
+  cross-boundary **1,042 = 1,036 passed + six Task16 failures** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. Also require
+  typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, the truthful legacy-staging repository first stop,
+  exact scope/freezes/ancestry/dependencies, diff hygiene, Git integrity, and
+  clean state.
+- Commit only the one source with exact subject
+  `feat(agent): issue internal full handoff readback`. A separate append-only
+  acceptance event must bind the exact source commit and gates before Task16
+  begins. Changed or additional bytes invalidate this authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is bounded one-source GREEN authority, not Task15 acceptance,
+  Task16 authority, Task136 candidacy, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
