@@ -3259,6 +3259,7 @@ function portableCrashWorkflowFixture(
   const baseStore = createFileCentralFloridaIcePreviewCheckpointStore(workspaceRoot);
   let failureInjected = false;
   let failuresEnabled = true;
+  let engineeringValidationCalls = 0;
   const checkpointStore: CentralFloridaIcePreviewCheckpointStore = {
     readAll: () => baseStore.readAll(),
     append(draft) {
@@ -3347,7 +3348,15 @@ function portableCrashWorkflowFixture(
         }
       };
     },
-    checkpointStore
+    checkpointStore,
+    runEngineeringValidations: () => {
+      engineeringValidationCalls += 1;
+      return [{
+        argv: ["portable-fixture-validation"],
+        exitCode: 0,
+        result: "passed"
+      }];
+    }
   });
   return {
     createWorkflow,
@@ -3355,6 +3364,9 @@ function portableCrashWorkflowFixture(
     workspaceRoot,
     get workspaceCreated() {
       return workspaceCreated;
+    },
+    get engineeringValidationCalls() {
+      return engineeringValidationCalls;
     },
     disableFailures() {
       failuresEnabled = false;
@@ -3676,6 +3688,36 @@ function portableCrashWorkflowFixture(
       }
     }
   };
+}
+
+async function advancePortableFixtureToManifest(
+  fixture: ReturnType<typeof portableCrashWorkflowFixture>
+): Promise<CentralFloridaIcePreviewCheckpoint> {
+  await fixture.createWorkflow().inspect();
+  await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+  const preview = await fixture.createWorkflow().stagingPreview();
+  await fixture.createWorkflow().stage({
+    approvedBy: "actor_human_preview",
+    candidateIds: [...(preview.state.stagingCandidateIds ?? [])]
+  });
+  await fixture.createWorkflow().handoff();
+  return fixture.createWorkflow().verifyReplay();
+}
+
+async function expectPortableManifestFailureWithoutWrites(
+  fixture: ReturnType<typeof portableCrashWorkflowFixture>
+): Promise<void> {
+  const checkpointsBefore = fixture.checkpointStore.readAll();
+  const eventsBefore = await fixture.ledgerEvents();
+  const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+  await expect(fixture.createWorkflow().manifest()).rejects.toThrow();
+
+  expect(fixture.engineeringValidationCalls).toBe(0);
+  expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+  expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+  expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+    .toEqual(artifactsBefore);
 }
 
 describe("Central Florida ICE real portable-runtime crash reconciliation", () => {
@@ -4191,6 +4233,37 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
     expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
       .toEqual(artifactsBefore);
   });
+
+  it("blocks manifest before validation or writes when the staging approval actor drifts", async () => {
+    const fixture = portableCrashWorkflowFixture("none");
+    await advancePortableFixtureToManifest(fixture);
+    fixture.corruptStagingApprovalActor();
+
+    await expectPortableManifestFailureWithoutWrites(fixture);
+  });
+
+  it("blocks manifest before validation or writes when an allowed proposal is added", async () => {
+    const fixture = portableCrashWorkflowFixture("none");
+    await advancePortableFixtureToManifest(fixture);
+    await fixture.appendForeignProposal();
+
+    await expectPortableManifestFailureWithoutWrites(fixture);
+  });
+
+  for (const artifactField of [
+    "reportHash",
+    "stagingPreviewArtifactHash",
+    "handoffArtifactHash",
+    "replayArtifactHash"
+  ] as const) {
+    it(`blocks manifest before validation or writes when ${artifactField} bytes drift`, async () => {
+      const fixture = portableCrashWorkflowFixture("none");
+      const replay = await advancePortableFixtureToManifest(fixture);
+      fixture.corruptDerivative(replay.state[artifactField]!);
+
+      await expectPortableManifestFailureWithoutWrites(fixture);
+    });
+  }
 
   it("reconciles a crash after staging approval before proposals without duplicate approval", async () => {
     const fixture = portableCrashWorkflowFixture("after-staging-approval");

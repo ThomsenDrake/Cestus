@@ -464,3 +464,13 @@ must equal the full rederived preview candidate set. Once created, that eligible
 set is immutable across later checkpoint transitions. A coherently rehashed
 checkpoint suffix that omits an eligible candidate therefore fails closed at
 each consumer before any write.
+
+Final-manifest production is another authority consumer. Before it starts an
+engineering-validation subprocess or writes an artifact/checkpoint, it must
+re-read the current report and complete staging preview with a zero-ledger-delta
+proof; re-prove report, eligible-set, approved-selection, stored-preview, and
+canonical approval/proposal bindings; match exact ledger event identifiers and
+replay counts to the durable checkpoint; and content-address read every named
+and accumulated artifact, including the handoff and replay artifacts. Any
+post-replay ledger or artifact drift fails closed without validation execution
+or new durable effects.

@@ -879,3 +879,34 @@ Typecheck passed. UI build passed with 165 modules and the existing
 externalization/chunk-size advisories. Factory readiness and `git diff --check`
 passed.
 ```
+
+Fresh adversarial review rejected the candidate because final manifest
+production did not repeat the authoritative readback proven at handoff and
+replay. Six portable post-replay RED cases all reached `complete` instead of
+rejecting:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "blocks manifest before validation or writes"
+1 file failed; 6 tests failed, 146 tests skipped.
+```
+
+The cases corrupt the human approval actor, append an otherwise allowed
+proposal, or corrupt the report, staging-preview, handoff, or replay artifact
+bytes. The repair performs report/staging readback with a zero-ledger-delta
+proof, canonical Gate 2 reconciliation, exact event-ID and replay-count checks,
+and content-addressed reads of every named/accumulated artifact before running
+validations or writing.
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "blocks manifest before validation or writes"
+1 file passed; 6 tests passed, 146 tests skipped.
+
+Focused Gate 2 suite: 4 files passed; 191 tests passed.
+Ingestion plus ontology-bootstrap: 35 files passed; 388 tests passed.
+Preview-specialist boundary: 10 files passed; 263 tests passed.
+Typecheck passed. UI build passed with 165 modules and the existing
+externalization/chunk-size advisories. Factory readiness and `git diff --check`
+passed.
+```

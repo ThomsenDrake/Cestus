@@ -1981,8 +1981,28 @@ export function createCentralFloridaIcePreviewWorkflow(
     assertInspectionMatchesCheckpoint(revalidatedInspection, latest);
 
     return withPreviewWorkspace(mountResolver, async (workspace) => {
+      const runtime = legacyRuntimeFactory(workspace);
+      const legacyReportId = requiredStateString(latest, "legacyReportId");
+      const beforeReads = await readWorkspaceSnapshot(workspace);
+      const report = requireLegacySuccess(await runtime.report({
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        legacyReportId
+      }), "legacy report");
+      const preview = requireLegacySuccess(await runtime.stagingPreview({
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        legacyReportId
+      }), "legacy staging-preview");
       const snapshot = await readWorkspaceSnapshot(workspace);
+      assertNoLedgerDelta(beforeReads.events, snapshot.events);
       assertNoForbiddenEvents(snapshot.events);
+      const selectedCandidateIds = latest.state.approvedStagingCandidateIds ?? [];
+      assertReportCheckpointIdentity(report, latest);
+      assertStagingCandidateCheckpointIdentity(preview, latest);
+      assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
+      await assertStoredStagingPreview(workspace, latest, preview);
+      assertPersistedStagingAuthority(snapshot, latest, preview);
+      assertReplayCheckpointAuthority(snapshot, latest);
+      await assertReferencedArtifactReadback(workspace, latest);
       const validationReceipts = runEngineeringValidations();
       if (validationReceipts.some((receipt) =>
         receipt.exitCode !== 0 || receipt.result !== "passed"
@@ -3794,6 +3814,56 @@ function assertStagingCandidateCheckpointIdentity(
     throw new Error(
       "checkpoint eligible staging candidates do not match the exact current staging preview"
     );
+  }
+}
+
+function assertReplayCheckpointAuthority(
+  snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
+  checkpoint: CentralFloridaIcePreviewCheckpoint
+): void {
+  const eventIds = snapshot.events.map((event) => event.id);
+  const proposalIds = snapshot.events.flatMap((event) =>
+    event.type === "assertion.proposed" ? [event.payload.assertionId] : []
+  ).sort(compareCodeUnits);
+  const checkpointProposalIds = [...(checkpoint.state.proposedAssertionIds ?? [])]
+    .sort(compareCodeUnits);
+  if (
+    stableJson(eventIds) !== stableJson(checkpoint.state.eventIds)
+    || checkpoint.state.counts.ledgerEvents !== snapshot.events.length
+    || checkpoint.state.counts.evidenceLinks !== snapshot.evidenceLinks.length
+    || checkpoint.state.counts.replayedProposals !== proposalIds.length
+    || checkpoint.state.counts.proposedAssertions !== proposalIds.length
+    || stableJson(proposalIds) !== stableJson(checkpointProposalIds)
+  ) {
+    throw new Error(
+      "current preview workspace does not match exact durable replay authority"
+    );
+  }
+}
+
+async function assertReferencedArtifactReadback(
+  workspace: MountedWorkspace,
+  checkpoint: CentralFloridaIcePreviewCheckpoint
+): Promise<void> {
+  const namedHashes = [
+    checkpoint.state.candidateArtifactHash,
+    checkpoint.state.inspectionArtifactHash,
+    checkpoint.state.reportHash,
+    checkpoint.state.quarantineArtifactHash,
+    checkpoint.state.dossierArtifactHash,
+    checkpoint.state.stagingPreviewArtifactHash,
+    checkpoint.state.handoffArtifactHash,
+    checkpoint.state.replayArtifactHash
+  ];
+  if (namedHashes.some((hash) => hash === undefined)) {
+    throw new Error("final manifest authority lacks a referenced artifact hash");
+  }
+  const referencedHashes = new Set<`sha256:${string}`>([
+    ...checkpoint.state.artifactHashes,
+    ...(namedHashes as readonly `sha256:${string}`[])
+  ]);
+  for (const hash of referencedHashes) {
+    await workspace.derivativeStore.get(hash);
   }
 }
 
