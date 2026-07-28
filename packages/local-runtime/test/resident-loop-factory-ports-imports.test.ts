@@ -102,6 +102,7 @@ describe("resident loop factory ports import policy", () => {
   });
 
   it("enforces the exact dispatcher G W H R static import graph with no runtime activation", () => {
+    expectFactoryOracleControls();
     const paths = {
       dispatcher: resolve(process.cwd(), "packages/agent/src/domain-execution-dispatcher.ts"),
       gateway: resolve(process.cwd(), "packages/agent/src/resident-loop-tool-gateway.ts"),
@@ -160,7 +161,7 @@ describe("resident loop factory ports import policy", () => {
     expect(agentBarrelSource, "agent barrel must be part of the local TypeScript program").toBeDefined();
     if (agentBarrelSource === undefined) throw new Error("agent barrel is unavailable");
     const checker = program.getTypeChecker();
-    expectExactFactoryModuleGraph(factorySource);
+    expectExactFactoryModuleGraph(factorySource, checker);
     const compositionCall = expectDirectNamedImportAndCall(
       factorySource,
       checker,
@@ -275,7 +276,10 @@ function createFactoryProgram(factoryPath: string, ...additionalRootNames: reado
   });
 }
 
-function expectExactFactoryModuleGraph(source: ts.SourceFile): void {
+function expectExactFactoryModuleGraph(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker
+): void {
   const observed = new Map<string, {
     readonly defaultNames: string[];
     readonly namedNames: string[];
@@ -417,6 +421,7 @@ function expectExactFactoryModuleGraph(source: ts.SourceFile): void {
     "factory module must not execute top-level call/new/await/tagged initialization"
   ).toEqual([]);
   expect(violations, "factory module exact import/export posture").toEqual([]);
+  expectExactFactoryRuntimeValueExports(source, checker);
 
   function visitRuntimeInitializer(node: ts.Node): void {
     if (node !== source && ts.isFunctionLike(node)) return;
@@ -431,6 +436,176 @@ function expectExactFactoryModuleGraph(source: ts.SourceFile): void {
     }
     node.forEachChild(visitRuntimeInitializer);
   }
+}
+
+function expectExactFactoryRuntimeValueExports(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker
+): void {
+  const moduleSymbol = checker.getSymbolAtLocation(source);
+  expect(moduleSymbol, "factory module symbol").toBeDefined();
+  if (moduleSymbol === undefined) {
+    throw new Error("factory module symbol is unavailable");
+  }
+  const runtimeValueExports = checker.getExportsOfModule(moduleSymbol)
+    .filter((exported) =>
+      (resolveAliasSymbol(exported, checker).flags & ts.SymbolFlags.Value) !== 0
+    )
+    .map((exported) => exported.getName())
+    .sort();
+  expect(
+    runtimeValueExports,
+    "factory exact public runtime value surface"
+  ).toEqual(["createResidentBoundedAgentLoopFactory"]);
+}
+
+function expectFactoryOracleControls(): void {
+  const safeSurface = factorySurfaceControl([
+    "export interface CreateResidentBoundedAgentLoopFactoryInput {}",
+    "export type ResidentBoundedAgentLoopFactoryResult = object;",
+    "export async function createResidentBoundedAgentLoopFactory(",
+    "  _input: CreateResidentBoundedAgentLoopFactoryInput",
+    "): Promise<ResidentBoundedAgentLoopFactoryResult> {",
+    "  return {};",
+    "}"
+  ].join("\n"));
+  expect(() =>
+    expectExactFactoryRuntimeValueExports(
+      safeSurface.source,
+      safeSurface.checker
+    )
+  ).not.toThrow();
+
+  for (const sourceText of [
+    [
+      "export async function createResidentBoundedAgentLoopFactory() {}",
+      "export default function alternateFactory() {}"
+    ].join("\n"),
+    [
+      "async function createResidentBoundedAgentLoopFactory() {}",
+      "export { createResidentBoundedAgentLoopFactory };",
+      "export { createResidentBoundedAgentLoopFactory as alternateFactory };"
+    ].join("\n"),
+    [
+      "export async function createResidentBoundedAgentLoopFactory() {}",
+      "export function additionalFactorySurface() {}"
+    ].join("\n")
+  ]) {
+    const control = factorySurfaceControl(sourceText);
+    expect(() =>
+      expectExactFactoryRuntimeValueExports(control.source, control.checker)
+    ).toThrow();
+  }
+
+  const directCall = factoryCallControl([
+    "async function factory() {",
+    "  const retained = await requiredCall();",
+    "}"
+  ].join("\n"));
+  expect(() =>
+    expectStraightLineFactoryCall(
+      directCall.call,
+      directCall.body,
+      "direct-call control"
+    )
+  ).not.toThrow();
+
+  const coDeclarator = factoryCallControl([
+    "async function factory() {",
+    "  const retained = await requiredCall(), unrelated = unrelatedEffect();",
+    "}"
+  ].join("\n"));
+  expect(() =>
+    expectStraightLineFactoryCall(
+      coDeclarator.call,
+      coDeclarator.body,
+      "co-declarator control"
+    )
+  ).toThrow(/direct-statement|non-direct ancestry/i);
+}
+
+function factorySurfaceControl(sourceText: string): {
+  readonly source: ts.SourceFile;
+  readonly checker: ts.TypeChecker;
+} {
+  const fileName = "/factory-surface-control.ts";
+  const source = ts.createSourceFile(
+    fileName,
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    noLib: true,
+    target: ts.ScriptTarget.Latest
+  };
+  const host: ts.CompilerHost = {
+    fileExists: (path) => path === fileName,
+    getCanonicalFileName: (path) => path,
+    getCurrentDirectory: () => "/",
+    getDefaultLibFileName: () => "/lib.d.ts",
+    getDirectories: () => [],
+    getNewLine: () => "\n",
+    getSourceFile: (path) => path === fileName ? source : undefined,
+    readFile: (path) => path === fileName ? sourceText : undefined,
+    useCaseSensitiveFileNames: () => true,
+    writeFile: () => undefined
+  };
+  const program = ts.createProgram({
+    rootNames: [fileName],
+    options,
+    host
+  });
+  const programSource = program.getSourceFile(fileName);
+  if (programSource === undefined) {
+    throw new Error("factory surface control source is unavailable");
+  }
+  return {
+    source: programSource,
+    checker: program.getTypeChecker()
+  };
+}
+
+function factoryCallControl(sourceText: string): {
+  readonly call: ts.CallExpression;
+  readonly body: ts.Block;
+} {
+  const source = ts.createSourceFile(
+    "factory-call-control.ts",
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const factory = source.statements.find(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "factory" &&
+      statement.body !== undefined
+  );
+  if (factory?.body === undefined) {
+    throw new Error("factory call control body is unavailable");
+  }
+  let call: ts.CallExpression | undefined;
+  const visit = (node: ts.Node): void => {
+    if (
+      call === undefined &&
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "requiredCall"
+    ) {
+      call = node;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(factory.body);
+  if (call === undefined) {
+    throw new Error("factory call control required call is unavailable");
+  }
+  return { call, body: factory.body };
 }
 
 function expectDataOnlyBridgeIsolation(
@@ -1037,7 +1212,8 @@ function expectStraightLineFactoryCall(
       (
         ts.isVariableDeclarationList(parent) &&
         ts.isVariableDeclaration(current) &&
-        parent.declarations.includes(current)
+        parent.declarations.length === 1 &&
+        parent.declarations[0] === current
       ) ||
       (
         ts.isVariableStatement(parent) &&

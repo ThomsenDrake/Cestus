@@ -1373,7 +1373,7 @@ async function residentFixture(
     ledgerProbe
   });
   const binding = await composition.bind(factoryBindInput);
-  const domainExecution = await dispatcherDefault.createPackageOwnedResidentDomainExecutionCapability({
+  const domainExecutionBinding = {
     kind: "accepted-graph-review",
     workspaceId,
     residentAgentId: "agent_default",
@@ -1392,9 +1392,15 @@ async function residentFixture(
       reviewerRationaleDraft: "The mounted fixture binds one reviewed assertion.",
       ontologyPackVersions: { ...proposal.context.packVersions }
     }
-  });
+  };
+  const domainExecution = await dispatcherDefault.createPackageOwnedResidentDomainExecutionCapability(
+    domainExecutionBinding
+  );
+  const domainPreviewExecution = await dispatcherDefault.createPackageOwnedResidentDomainExecutionCapability(
+    domainExecutionBinding
+  );
   const domainPreviewPort = dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort({
-    capability: domainExecution,
+    capability: domainPreviewExecution,
     mountedLedger: handle.ledger,
     workspaceId,
     residentAgentId: "agent_default",

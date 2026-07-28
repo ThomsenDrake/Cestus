@@ -462,9 +462,13 @@ function task12ProtectedMentionAnalysis(
   let permitConsumerOccurrences = 0;
   let task14BinderOccurrences = 0;
   let canonicalMaterialConsumerOccurrences = 0;
+  let boundedAgentLoopSourcePresent = false;
 
   for (const record of sources) {
     const { sourcePath, sourceFile } = record;
+    if (sourcePath === "packages/agent/src/bounded-agent-loop.ts") {
+      boundedAgentLoopSourcePresent = true;
+    }
     const protectedHosts = protectedHostNames(sourceFile, protectedNames);
     const gatewayDefaultProvenance =
       gatewayDefaultLexicalProvenance(record);
@@ -655,7 +659,10 @@ function task12ProtectedMentionAnalysis(
   if (task14BinderOccurrences > 1) {
     violations.add("packages/local-runtime/src/mounted-wake-lifecycle-store.ts");
   }
-  if (canonicalMaterialConsumerOccurrences === 0) {
+  if (
+    boundedAgentLoopSourcePresent &&
+    canonicalMaterialConsumerOccurrences !== 1
+  ) {
     violations.add("packages/agent/src/bounded-agent-loop.ts");
   }
   return {
@@ -1443,6 +1450,34 @@ function protectedMentionControls(): ProtectedMentionControls {
         ].join("\n"))
       : record
   );
+  const absentBoundedLoopSources = base().filter(
+    (record) => record.sourcePath !== boundedLoopPath
+  );
+  const missingCanonicalMaterialConsumerSources = base().map((record) =>
+    record.sourcePath === boundedLoopPath
+      ? sourceRecordFromText(
+          boundedLoopPath,
+          record.text.replace(
+            "  return gateway.readCanonicalToolStepMaterial(planObservation);",
+            "  return planObservation;"
+          )
+        )
+      : record
+  );
+  const duplicateCanonicalMaterialConsumerSources = base().map((record) =>
+    record.sourcePath === boundedLoopPath
+      ? sourceRecordFromText(
+          boundedLoopPath,
+          record.text.replace(
+            "  return gateway.readCanonicalToolStepMaterial(planObservation);",
+            [
+              "  gateway.readCanonicalToolStepMaterial(planObservation);",
+              "  return gateway.readCanonicalToolStepMaterial(planObservation);"
+            ].join("\n")
+          )
+        )
+      : record
+  );
   const unsafeTask14Binder = (
     name: string,
     body: readonly string[]
@@ -1472,6 +1507,16 @@ function protectedMentionControls(): ProtectedMentionControls {
     violations: [sourcePath]
   });
   const unsafe = [
+    {
+      name: "canonical material missing bounded-loop consumer",
+      sources: missingCanonicalMaterialConsumerSources,
+      violations: [boundedLoopPath]
+    },
+    {
+      name: "canonical material duplicate bounded-loop consumer",
+      sources: duplicateCanonicalMaterialConsumerSources,
+      violations: [boundedLoopPath]
+    },
     unsafeCanonicalConsumer(
       "canonical material foreign consumer",
       "packages/agent/src/foreign-bounded-loop.ts",
@@ -2057,6 +2102,10 @@ function protectedMentionControls(): ProtectedMentionControls {
       {
         name: "shadowed unrelated dynamic record",
         sources: shadowedUnrelatedRecordSources
+      },
+      {
+        name: "canonical material bounded-loop source absent before R",
+        sources: absentBoundedLoopSources
       }
     ],
     unsafe
