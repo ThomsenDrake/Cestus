@@ -46026,3 +46026,63 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1195 — Task14 private lexical-capability GREEN integrated
+
+- Recorded at: 2026-07-28T15:48:49Z
+- Exact independently approved Task14B candidate
+  `98966df0795ad2252e17adf9792acc64c5c597bd`, tree
+  `89d3ca23bebcc44a895f043aa67215b11893fa39`, is integrated without changed
+  bytes by history-preserving merge
+  `b55a99ead8eddb819b570be341eae3e816e8bd95`, tree
+  `dc33b6fe9976f5ad1128b970c8d67b8799fa9c9d`. Its first parent is exact
+  E-1194 approval commit `482fa109dde6ec13b11f961f379e5fe14e6c7887`;
+  its second parent is the exact reviewed candidate.
+- The merge first-parent delta is exactly the two authorized reviewed
+  sources: wake blob
+  `8f53e00c3f5ba59cd6f3158e67da9fc746f401c2` and compatibility-facade blob
+  `a5e554dd138dc82bcd9e01b79aef82742b12c366`. No other path is changed.
+- Integrated behavior is the exact approved private lexical-capability
+  boundary: generic runtimes receive no registrar and remain permanently
+  ineligible; the legacy registrar export is absent; the nonexported issuer
+  and one-shot registrar remain co-located with the safe builder; the
+  downstream binder remains exported; and the composition module is only the
+  exact safe six-import/four-interface/one-wrapper facade.
+- Fresh integration-tree focused execution passes **96/96**. Exact Task136
+  card is **383 = 376 passed + seven failed** and exact shell-asserted 37-file
+  cross-boundary execution is **1,042 = 1,035 passed + seven failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. All remaining
+  failures are only the committed Task15-through-16 REDs.
+- Fresh standalone typecheck and factory readiness pass. Mission and V4
+  assurance each pass **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  exact contract markers remain **29 / 20 / 29 / 15**.
+- Repository mode exits one after the four markers and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Mounted store remains frozen at
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`; mounted test remains
+  `a3a5a28de9149ce6f42cb6791b934d75e03f42d3`; runtime test remains
+  `cc9c3129f8d36b1edde263d7cafdbd3b219f3538`; AST oracle remains
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`; released FC-Core import-policy
+  test remains `ad06c10be1fd5eb87fb70ddc94cbde4d81821129`.
+  Every other product/test, claim, contract, mission, checker, dependency,
+  configuration, and path remains frozen.
+- Exact merge parent order, candidate identity/tree/parent/scope/blobs,
+  ownership, 33-path ceiling, ancestry, TypeScript 5.9.3, Vitest 4.1.9,
+  diff hygiene, Git integrity with 298 inherited dangling objects, and clean
+  integration state pass.
+- Advance exact Task14 candidate `approved -> integrated`. Task14 is complete
+  at its committed integration gate. The next mandatory action is a
+  history-preserving forward merge of this completion authority into the clean
+  Task136 review envelope; only after that merge may a separate append-only
+  event authorize Task15's exact one-source GREEN.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  Task14 integration/completion, not Task15 authority, Task136 candidacy,
+  repository closure, strict record 29, publication, Wave 3 start, or product
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
