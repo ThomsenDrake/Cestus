@@ -2712,6 +2712,148 @@ describe("Central Florida ICE supervised preview workflow", () => {
     })).toThrow("checkpoint transition");
   });
 
+  it("rejects a hash-valid empty approval when the staged eligible set is nonempty", () => {
+    const root = mkdtempSync(join(tmpdir(), "central-fl-preview-checkpoint-gate2-"));
+    temporaryRoots.push(root);
+    const store = createFileCentralFloridaIcePreviewCheckpointStore(root);
+    const rawGate = validRawGateCheckpointState();
+    store.append({
+      phase: "raw-approval-required",
+      command: "inspect",
+      createdAt: "2026-07-27T12:00:00.000Z",
+      allowedNextCommand: "raw-import",
+      state: rawGate
+    });
+    const importedState: CentralFloridaIcePreviewCheckpoint["state"] = {
+      ...rawGate,
+      rawApprovalEventId: "evt_transition_raw_approval",
+      rawApprovedBy: "actor_human_preview",
+      eventIds: [...rawGate.eventIds, "evt_transition_raw_approval"],
+      commands: [...rawGate.commands, "raw-import"],
+      commandReceipts: [
+        ...rawGate.commandReceipts,
+        {
+          command: "raw-import",
+          argv: [
+            "npx",
+            "tsx",
+            "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+            "raw-import",
+            "--approved-by",
+            "actor_human_preview"
+          ],
+          exitCode: 0,
+          result: "passed"
+        }
+      ]
+    };
+    store.append({
+      phase: "staging-preview-required",
+      command: "raw-import",
+      createdAt: "2026-07-27T12:01:00.000Z",
+      allowedNextCommand: "staging-preview",
+      state: importedState
+    });
+    const stagingGateState: CentralFloridaIcePreviewCheckpoint["state"] = {
+      ...importedState,
+      dossierArtifactHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      stagingPreviewArtifactHash: "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      stagingCandidateIds: ["eligible_candidate"],
+      artifactHashes: [
+        ...importedState.artifactHashes,
+        "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      ],
+      commands: [...importedState.commands, "staging-preview"],
+      commandReceipts: [
+        ...importedState.commandReceipts,
+        {
+          command: "staging-preview",
+          argv: [
+            "npx",
+            "tsx",
+            "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+            "staging-preview"
+          ],
+          exitCode: 0,
+          result: "passed"
+        }
+      ],
+      counts: {
+        ...importedState.counts,
+        stagingCandidates: 1
+      }
+    };
+    store.append({
+      phase: "staging-approval-required",
+      command: "staging-preview",
+      createdAt: "2026-07-27T12:02:00.000Z",
+      allowedNextCommand: "stage",
+      state: stagingGateState
+    });
+    const forgedState: CentralFloridaIcePreviewCheckpoint["state"] = {
+      ...stagingGateState,
+      stagingApprovalEventId: "evt_transition_empty_approval",
+      stagingApprovedBy: "actor_human_preview",
+      approvedStagingCandidateIds: [],
+      proposedAssertionIds: [],
+      eventIds: [...stagingGateState.eventIds, "evt_transition_empty_approval"],
+      artifactHashes: [
+        ...stagingGateState.artifactHashes,
+        "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      ],
+      commands: [...stagingGateState.commands, "stage"],
+      commandReceipts: [
+        ...stagingGateState.commandReceipts,
+        {
+          command: "stage",
+          argv: [
+            "npx",
+            "tsx",
+            "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+            "stage",
+            "--approved-by",
+            "actor_human_preview"
+          ],
+          exitCode: 0,
+          result: "passed"
+        }
+      ],
+      counts: {
+        ...stagingGateState.counts,
+        approvedStagingCandidates: 0,
+        proposedAssertions: 0
+      }
+    };
+    const forgedDraft: CentralFloridaIcePreviewCheckpointDraft = {
+      phase: "handoff-required",
+      command: "stage",
+      createdAt: "2026-07-27T12:03:00.000Z",
+      allowedNextCommand: "handoff",
+      state: forgedState
+    };
+
+    expect(() => store.append(forgedDraft)).toThrow(/Gate 2|staging/i);
+    expect(store.readAll()).toHaveLength(3);
+
+    const previous = store.readAll().at(-1)!;
+    const material = {
+      schemaVersion: "central-fl-ice-preview-checkpoint.v1" as const,
+      sequence: 4,
+      ...forgedDraft,
+      previousStateHash: previous.stateHash
+    };
+    const stateHash = sha256(stableJson(material));
+    const checkpointRoot = join(root, "jobs", "central-fl-ice-engineering-preview");
+    writeFileSync(
+      join(checkpointRoot, `000004-${stateHash.replace(":", "-")}.json`),
+      `${stableJson({ ...material, stateHash })}\n`,
+      "utf8"
+    );
+
+    expect(() => store.readAll()).toThrow(/Gate 2|staging/i);
+  });
+
   it("CLI rejects extra, duplicate, missing, and odd approval arguments without invoking a workflow", async () => {
     const factory = vi.fn(() => workflowFixture().workflow);
 
@@ -2943,7 +3085,8 @@ function portableCrashWorkflowFixture(
     | "after-report"
     | "after-raw-approval"
     | "after-staging-approval"
-    | "all-inspect-checkpoints",
+    | "all-inspect-checkpoints"
+    | "none",
   options: {
     readonly multipleCandidates?: boolean;
     readonly emptyStagingCandidates?: boolean;
@@ -3320,6 +3463,78 @@ function portableCrashWorkflowFixture(
     restoreSelectedSourceBytes() {
       writeFileSync(absoluteSourcePath, sourceBytes);
     },
+    corruptStagingApprovalActor() {
+      const database = new DatabaseSync(join(workspaceRoot, "ledger", "ontology.sqlite"));
+      try {
+        const row = database.prepare(
+          "SELECT global_sequence, context_json FROM ontology_events "
+            + "WHERE type = 'legacy.ontology.staging.approved' LIMIT 1"
+        ).get() as { global_sequence: number; context_json: string } | undefined;
+        if (row === undefined) {
+          throw new Error("portable crash fixture expected a staging approval to corrupt");
+        }
+        const context = JSON.parse(row.context_json) as {
+          actor: { id: string; kind: string; label: string };
+        };
+        context.actor = {
+          id: "actor_human_foreign",
+          kind: "human",
+          label: "Foreign preview approver"
+        };
+        database.prepare(
+          "UPDATE ontology_events SET context_json = ? WHERE global_sequence = ?"
+        ).run(JSON.stringify(context), row.global_sequence);
+      } finally {
+        database.close();
+      }
+    },
+    async appendForeignProposal() {
+      const mounted = await portableResolver.resolve({ workspaceRoot });
+      if (!mounted.ok) throw new Error("portable crash fixture did not mount");
+      try {
+        const evidence = (await mounted.workspace.ledger.readAll()).find((event) =>
+          event.type === "evidence.ingested"
+        );
+        if (evidence?.type !== "evidence.ingested") {
+          throw new Error("portable crash fixture expected imported evidence");
+        }
+        await mounted.workspace.ledger.append({
+          type: "assertion.proposed",
+          version: 1,
+          streamId: "assertion_as_foreign_empty_stage",
+          context: {
+            actor: {
+              id: "actor_human_foreign",
+              kind: "human",
+              label: "Foreign preview approver"
+            },
+            occurredAt: "2026-07-27T12:00:00.000Z",
+            causationId: evidence.id,
+            correlationId: "corr_as_foreign_empty_stage",
+            coreVersion: "0.1.0",
+            packVersions: { core: "0.1.0" }
+          },
+          payload: {
+            assertionId: "as_foreign_empty_stage",
+            evidenceId: evidence.payload.evidenceId,
+            predicate: "foreign.preview",
+            object: "must not enter the empty staging decision",
+            confidence: 0.5,
+            reviewState: "proposed"
+          }
+        });
+      } finally {
+        (mounted.workspace as MountedWorkspace & { close?: () => void }).close?.();
+      }
+    },
+    corruptDerivative(contentHash: `sha256:${string}`) {
+      const digest = contentHash.replace("sha256:", "");
+      writeFileSync(
+        join(workspaceRoot, "derivatives", "sha256", digest.slice(0, 2), digest),
+        "corrupted preview derivative",
+        "utf8"
+      );
+    },
     async appendForeignInspectionEvent() {
       const mounted = await portableResolver.resolve({ workspaceRoot });
       if (!mounted.ok) throw new Error("portable crash fixture did not mount");
@@ -3673,6 +3888,127 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
     const handoff = await fixture.createWorkflow().handoff();
     expect(handoff.phase).toBe("replay-verification-required");
     expect(handoff.state.proposedAssertionIds).toEqual([]);
+  });
+
+  it("blocks handoff before writes when the empty staging approval actor is corrupted", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      emptyStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.createWorkflow().stagingPreview();
+    await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: []
+    });
+    fixture.corruptStagingApprovalActor();
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().handoff()).rejects.toThrow(/staging|Gate 2/i);
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+  });
+
+  it("blocks handoff before writes when a proposal is forged into the empty staging set", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      emptyStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.createWorkflow().stagingPreview();
+    await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: []
+    });
+    await fixture.appendForeignProposal();
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().handoff()).rejects.toThrow(/staging|Gate 2/i);
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+  });
+
+  it("blocks handoff before writes when the stored empty staging preview is corrupted", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      emptyStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.createWorkflow().stagingPreview();
+    await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: []
+    });
+    fixture.corruptDerivative(preview.state.stagingPreviewArtifactHash!);
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().handoff()).rejects.toThrow();
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+  });
+
+  it("blocks handoff before writes when the current report no longer matches Gate 2", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      emptyStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.createWorkflow().stagingPreview();
+    await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: []
+    });
+    await fixture.replaceReportEventAndArtifactCoherently();
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().handoff()).rejects.toThrow(/report|Gate 2/i);
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+  });
+
+  it("blocks replay before writes when persisted empty Gate 2 authority is corrupted", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      emptyStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    await fixture.createWorkflow().stagingPreview();
+    await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: []
+    });
+    await fixture.createWorkflow().handoff();
+    fixture.corruptStagingApprovalActor();
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().verifyReplay()).rejects.toThrow(/staging|Gate 2/i);
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
   });
 
   it("reconciles a crash after staging approval before proposals without duplicate approval", async () => {
