@@ -45681,3 +45681,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, or product release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1190 — Task14 lexical-issuer oracle correction approved
+
+- Recorded at: 2026-07-28T14:49:39Z
+- Completely fresh independent read-only reviewer
+  `/root/task14_e1189_red_review` returns **APPROVED** with no findings for
+  exact test-only candidate
+  `9af53052a546e5f9a923e5c803dfc5e235633ff4`, tree
+  `1e5a86f66b9a0efb8d67f32825583a4d9f8e47be`, sole parent
+  `5457adec9cf1feb45c897bf346522e52458de3a0`, subject
+  `test(local-runtime): close lexical issuer flow oracle`, and corrected blob
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`.
+- Review remained read-only beneath exact clean E-1189 envelope
+  `a2a84075827a10ec478d36eff1ecb73f77829c59`, whose parents are the exact
+  candidate then admission commit
+  `6b17d450d9f75d156c98ed6c1d566f34b35b752b`. Candidate bytes did not
+  change.
+- The reviewer independently proves that the exact private
+  `issueResidentLoopFactoryWakeRuntime` declaration symbol enters the
+  protected symbol set, named and aliased local export specifiers resolve
+  through the existing TypeScript alias resolver, a direct call resolves as
+  the whole private issuance carrier, and the reused
+  `alternate exported private issuance caller` control requires the exact
+  wake-module private-capability escape violation.
+- No fixture or unrelated alias case was added. The cumulative direct, alias,
+  object/array destructuring, callable, bound-callable, conditional, logical,
+  nullish, await, spread, default, comma-expression, reachability, and
+  negative corpus remains intact; all abstract controls pass before the
+  intended production assertion.
+- Fresh independent focused execution is exact
+  **96 = 94 passed + two Task14 failures**. Exact Task136 card is
+  **383 = 374 passed + nine failed**, and exact 37-file cross-boundary
+  execution is **1,042 = 1,033 passed + nine failed** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. The failure set
+  is exactly the two Task14 REDs plus seven preserved Task15-through-16 REDs.
+- Fresh standalone typecheck, factory readiness, mission **20/20**, V4
+  assurance **20/20**, and exact contract markers **29 / 20 / 29 / 15**
+  pass. Mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`.
+- Repository mode exits one after all four markers and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Exact one-file **+37 / -7** scope, starting/corrected blobs, runtime and
+  mounted-test freezes, FC-Core import-test freeze, every product/source/
+  claim/contract/mission/checker/dependency freeze, ancestry, TypeScript
+  5.9.3, Vitest 4.1.9, diff hygiene, Git integrity, and clean state pass
+  independent reproduction. The inherited missing `typescript.js.map`
+  warning and dangling Git objects remain nonblocking.
+- Advance only exact candidate `9af53052` `reviewing -> approved`. Authorize
+  its exact history-preserving no-ff merge into this program branch with
+  this approval commit as first parent and the candidate as second parent,
+  followed by fresh integration-tree focused/card/cross/typecheck/factory/
+  mission/V4/marker/repository-first-stop/scope/freeze/ancestry/dependency/
+  diff/integrity/clean gates and a separate append-only integrated event.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task14 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is RED
+  approval, not integration, source GREEN, Task14 completion, Task15
+  authority, repository closure, strict record 29, publication, Wave 3 start,
+  or product release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
