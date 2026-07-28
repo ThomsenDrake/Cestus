@@ -46570,3 +46570,64 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1204 — Task15 causal RED rejected; exact type-import correction authorized
+
+- Recorded at: 2026-07-28T17:43:35Z
+- Completely fresh independent read-only reviewer
+  `/root/task15_e1203_red_review` returns **REJECTED** for exact candidate
+  `0589efb7ff6f696f822e2ab067533cf41a945e79`, tree
+  `1605d9a969a8c291446d624a26c3d7a6d5de6f03`, sole parent
+  `900708513f27bdd0cff55691d5af804d37402a5d`, test blob
+  `d7fd4e59d48d4d82615751faaa830849e35fe392`, exact one-test
+  **+70 / -0**. Candidate bytes remain unchanged.
+- The causal counterexample itself is sound: original ledger reads are zero,
+  substituted ledger reads are one, the original exact-hash reader is not
+  reached, and the substituted exact-hash reader is reached five times.
+  Focused, Task138 boundary, card, and exact cross-boundary signatures are
+  respectively **37 = 36 + one**, **355 = 354 + one**,
+  **383 = 376 + seven**, and **1,042 = 1,035 + seven**; the other six
+  failures remain only Task16.
+- Fresh standalone typecheck deterministically fails `TS2304` at the new
+  return annotation because `SpecialistHandoffProjection` is referenced but
+  its type is not imported. Therefore E-1203's admission-time typecheck-pass
+  report is incorrect and cannot support approval. Factory readiness and
+  mission **20/20** pass; markers remain **29 / 20 / 29 / 15**. Remaining
+  redundant assurance and repository execution correctly stopped after the
+  mandatory mismatch.
+- Authorize only the smallest forward test-only correction in
+  `packages/agent/test/specialist-handoff-projection.test.ts`, starting from
+  exact rejected blob `d7fd4e59d48d4d82615751faaa830849e35fe392`:
+  add the missing `SpecialistHandoffProjection` type to the existing static
+  import from `../src/specialist-handoff-projection.js`. Change no assertion,
+  fixture, runtime import, test title, or other byte.
+- Freeze source blob `41ccb01a702783a4eff5b2e299c483ba5a98440c`,
+  agent barrel `69f60a5bb231a9041cd6dfea29203302293edeb8`,
+  Task138 source/test/claim
+  `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`,
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`, plus every other product/test,
+  claim, contract, mission, checker, dependency, configuration, route,
+  provider, credential, mounted store, and unrelated path.
+- Required corrected RED retains exact focused
+  **37 = 36 passed + one Task15 failure**, boundary
+  **355 = 354 passed + one**, card **383 = 376 passed + seven**, and
+  cross-boundary **1,042 = 1,035 passed + seven**, while standalone
+  typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, truthful repository first-stop, scope/freezes/
+  ancestry/dependencies, diff hygiene, Git integrity, and clean state pass
+  under the prescribed environment.
+- Commit only the one forward test correction with exact subject
+  `test(agent): type prebound handoff oracle`, admit the new immutable
+  candidate to a completely fresh independent read-only reviewer, and record/
+  integrate it with history-preserving merges before source repair authority.
+  Changed or additional bytes invalidate review.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task15 remains `implementing`; Task16 remains unauthorized. Strict product
+  frontier remains **28 of 29**. No Task136 product candidate or record 29
+  exists. This is one-line test-correction authority, not a corrected
+  candidate, approval, integration, source repair, Task15 acceptance, Task16
+  authority, Task136 candidacy, repository closure, strict record 29,
+  publication, Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
