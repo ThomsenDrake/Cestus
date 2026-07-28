@@ -2836,6 +2836,47 @@ describe("Central Florida ICE supervised preview workflow", () => {
     expect(() => store.append(forgedDraft)).toThrow(/Gate 2|staging/i);
     expect(store.readAll()).toHaveLength(3);
 
+    const substitutedCandidateId = "substituted_candidate";
+    const substitutedProposalId = stableLegacyAssertionId({
+      sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+      scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+      stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+      candidateSetHash: stagingGateState.legacyCandidateSetHash!
+    }, substitutedCandidateId);
+    expect(() => store.append({
+      ...forgedDraft,
+      state: {
+        ...forgedState,
+        stagingCandidateIds: [substitutedCandidateId],
+        approvedStagingCandidateIds: [substitutedCandidateId],
+        proposedAssertionIds: [substitutedProposalId],
+        commandReceipts: [
+          ...stagingGateState.commandReceipts,
+          {
+            command: "stage",
+            argv: [
+              "npx",
+              "tsx",
+              "packages/ingestion/src/central-fl-ice-preview-cli.ts",
+              "stage",
+              "--approved-by",
+              "actor_human_preview",
+              "--candidate",
+              substitutedCandidateId
+            ],
+            exitCode: 0,
+            result: "passed"
+          }
+        ],
+        counts: {
+          ...stagingGateState.counts,
+          approvedStagingCandidates: 1,
+          proposedAssertions: 1
+        }
+      }
+    })).toThrow(/eligible staging candidates changed/i);
+    expect(store.readAll()).toHaveLength(3);
+
     const previous = store.readAll().at(-1)!;
     const material = {
       schemaVersion: "central-fl-ice-preview-checkpoint.v1" as const,
@@ -3090,6 +3131,7 @@ function portableCrashWorkflowFixture(
   options: {
     readonly multipleCandidates?: boolean;
     readonly emptyStagingCandidates?: boolean;
+    readonly multipleStagingCandidates?: boolean;
   } = {}
 ) {
   const root = mkdtempSync(join(tmpdir(), "central-fl-portable-crash-"));
@@ -3116,7 +3158,13 @@ function portableCrashWorkflowFixture(
           id: "legacy_claim_preview_crash",
           predicate: "agency.name",
           object: "Example Agency"
-        }]
+        }, ...(options.multipleStagingCandidates === true
+          ? [{
+              id: "legacy_claim_preview_crash_second",
+              predicate: "agency.region",
+              object: "Central Florida"
+            }]
+          : [])]
       }, null, 2), "utf8")
     },
     ...(options.multipleCandidates === true
@@ -3310,6 +3358,57 @@ function portableCrashWorkflowFixture(
     },
     disableFailures() {
       failuresEnabled = false;
+    },
+    replaceGate2CheckpointCandidateSet(candidateIds: readonly string[]) {
+      const checkpoints = baseStore.readAll();
+      const latest = checkpoints.at(-1);
+      if (
+        latest?.phase !== "staging-approval-required"
+        && latest?.phase !== "handoff-required"
+        && latest?.phase !== "replay-verification-required"
+      ) {
+        throw new Error("portable crash fixture expected a Gate 2 consumer checkpoint");
+      }
+      const checkpointRoot = join(
+        workspaceRoot,
+        "jobs",
+        "central-fl-ice-engineering-preview"
+      );
+      let previousStateHash: `sha256:${string}` | null = null;
+      for (const checkpoint of checkpoints) {
+        const originalPath = join(
+          checkpointRoot,
+          `${String(checkpoint.sequence).padStart(6, "0")}-${checkpoint.stateHash.replace(":", "-")}.json`
+        );
+        const { stateHash: _stateHash, ...originalMaterial } = checkpoint;
+        const material = {
+          ...originalMaterial,
+          previousStateHash,
+          state: checkpoint.state.stagingCandidateIds === undefined
+            ? checkpoint.state
+            : {
+                ...checkpoint.state,
+                stagingCandidateIds: [...candidateIds],
+                counts: {
+                  ...checkpoint.state.counts,
+                  stagingCandidates: candidateIds.length
+                }
+              }
+        };
+        const stateHash = sha256(stableJson(material));
+        if (stateHash !== checkpoint.stateHash) {
+          rmSync(originalPath);
+          writeFileSync(
+            join(
+              checkpointRoot,
+              `${String(checkpoint.sequence).padStart(6, "0")}-${stateHash.replace(":", "-")}.json`
+            ),
+            `${stableJson({ ...material, stateHash })}\n`,
+            "utf8"
+          );
+        }
+        previousStateHash = stateHash;
+      }
     },
     corruptByRemovingInspectionEvent(type: KnowledgeEvent["type"]) {
       const database = new DatabaseSync(join(workspaceRoot, "ledger", "ontology.sqlite"));
@@ -3914,6 +4013,31 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
       .toEqual(artifactsBefore);
   });
 
+  it("blocks stage before writes when the checkpoint omits current eligible candidates", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      multipleStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.createWorkflow().stagingPreview();
+    expect(preview.state.stagingCandidateIds).toHaveLength(2);
+    const omittedCandidateSet = [preview.state.stagingCandidateIds![0]!];
+    fixture.replaceGate2CheckpointCandidateSet(omittedCandidateSet);
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: omittedCandidateSet
+    })).rejects.toThrow(/eligible|staging|Gate 2/i);
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+  });
+
   it("blocks handoff before writes when a proposal is forged into the empty staging set", async () => {
     const fixture = portableCrashWorkflowFixture("none", {
       emptyStagingCandidates: true
@@ -3931,6 +4055,34 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
     const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
 
     await expect(fixture.createWorkflow().handoff()).rejects.toThrow(/staging|Gate 2/i);
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+  });
+
+  it("blocks handoff before writes when its checkpoint omits a current eligible candidate", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      multipleStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.createWorkflow().stagingPreview();
+    expect(preview.state.stagingCandidateIds).toHaveLength(2);
+    const approvedCandidateSet = [preview.state.stagingCandidateIds![0]!];
+    await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: approvedCandidateSet
+    });
+    fixture.replaceGate2CheckpointCandidateSet(approvedCandidateSet);
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().handoff()).rejects.toThrow(
+      /eligible|staging|Gate 2/i
+    );
 
     expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
     expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
@@ -4004,6 +4156,35 @@ describe("Central Florida ICE real portable-runtime crash reconciliation", () =>
     const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
 
     await expect(fixture.createWorkflow().verifyReplay()).rejects.toThrow(/staging|Gate 2/i);
+
+    expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
+    expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
+    expect(regularFileMaterials(join(fixture.workspaceRoot, "derivatives")))
+      .toEqual(artifactsBefore);
+  });
+
+  it("blocks replay before writes when its checkpoint omits a current eligible candidate", async () => {
+    const fixture = portableCrashWorkflowFixture("none", {
+      multipleStagingCandidates: true
+    });
+    await fixture.createWorkflow().inspect();
+    await fixture.createWorkflow().rawImport({ approvedBy: "actor_human_preview" });
+    const preview = await fixture.createWorkflow().stagingPreview();
+    expect(preview.state.stagingCandidateIds).toHaveLength(2);
+    const approvedCandidateSet = [preview.state.stagingCandidateIds![0]!];
+    await fixture.createWorkflow().stage({
+      approvedBy: "actor_human_preview",
+      candidateIds: approvedCandidateSet
+    });
+    await fixture.createWorkflow().handoff();
+    fixture.replaceGate2CheckpointCandidateSet(approvedCandidateSet);
+    const checkpointsBefore = fixture.checkpointStore.readAll();
+    const eventsBefore = await fixture.ledgerEvents();
+    const artifactsBefore = regularFileMaterials(join(fixture.workspaceRoot, "derivatives"));
+
+    await expect(fixture.createWorkflow().verifyReplay()).rejects.toThrow(
+      /eligible|staging|Gate 2/i
+    );
 
     expect(fixture.checkpointStore.readAll()).toEqual(checkpointsBefore);
     expect(await fixture.ledgerEvents()).toEqual(eventsBefore);
