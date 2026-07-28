@@ -47186,3 +47186,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   source, `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1215 — Task16 corrected RED rejected; three-test oracle repair authorized
+
+- Recorded at: 2026-07-28T22:26:47Z
+- Completely fresh independent reviewer
+  `/root/task16_e1214_fresh_review` rejects exact candidate
+  `04e76dece8f720be2be37082c009a2ddbb347395`, tree
+  `8900a55d5906925ce17f59d6dd08e540722bd8a3`, sole parent
+  `13cb554d9e69d01f3779862ce5802c818318c331`, inside clean review envelope
+  `1e49e530ec3faa7887681f9a3e6b1895a840b1a5`.
+- The bounded human unknown-outcome fixture installs a durable suspension
+  whose locator uses the automatic ordinal-10 descriptor and whose approved
+  preview differs from the exact human G material. This contradicts the
+  issued ordinal-9 plan/tool material and does not prove W preserves the exact
+  supplied G-owned durable values.
+- The factory import-policy oracle permits required calls below a
+  `try`/`catch` or other non-direct block ancestry and does not close the
+  complete module value-import and module-initialization graph. A future
+  implementation can swallow start/preflight rejection or add an unrelated
+  static value path while retaining the current ten statement positions.
+- The G behavior oracle rejects copied, unissued, foreign, and transient
+  readbacks but never proves that an exact originally eligible same-instance
+  requested readback becomes ineligible after the human-decision or execution
+  path consumes it.
+- Independent execution remains exact focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Typecheck,
+  factory readiness, mission and V4 **20/20**, markers **29 / 20 / 29 / 15**,
+  exact legacy-staging repository first-stop, seven-test scope, source
+  freezes, 33-path hash, ancestry, dependencies, diff hygiene, Git integrity,
+  and clean state pass. These gates do not override the three causal oracle
+  defects.
+- Advance only this exact candidate `reviewing -> rejected`. Authorize the
+  smallest forward test-only correction in exactly:
+  `packages/agent/test/bounded-agent-loop.test.ts`,
+  `packages/agent/test/resident-loop-tool-gateway.test.ts`, and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`.
+  Start from rejected blobs
+  `2362eaa60247dcd6137fffcc3c2aafd9db8f22f0`,
+  `76071498a59abd87b17ea29d32c7ea2edea0b60b`, and
+  `f070107f9a7c20ca5f20bc96eea1d94cf3d7a1ff`; continue forward without
+  rewriting or discarding them.
+- In the bounded fixture, derive the suspension locator descriptor and
+  approved preview from the exact branch plan/G material. Human unknown
+  outcome must use `legacy.staging.approve`, ordinal 9 semantics,
+  `ledger-review / ledger-review`, and the exact G preview; automatic unknown
+  outcome must retain `legacy.staging.execute`, ordinal 10 semantics,
+  `ledger-proposal / none`.
+- In the factory oracle, admit required calls only through an explicit
+  transparent direct-statement ancestry; reject nested block, labeled,
+  exception, conditional, loop, switch, and function ancestry. Require the
+  exact one-parameter async named factory with no default/rest/optional
+  initializer. Close all runtime value imports to the existing data-only
+  bridge imports plus the exact composition/binder/preflight/C/H/R calls,
+  reject extra value/default/namespace bindings, re-exports, and top-level
+  call/new/await initialization, while permitting only type-only declaration
+  imports needed by the committed input/output types.
+- In the existing G title, prove one exact requested readback is material-
+  eligible before its same-gateway human-decision transition and rejected
+  afterward; retain transient-approved rejection and zero unrelated cases.
+- Preserve all seven test titles and cardinality. Freeze the other four
+  candidate blobs
+  `f7ddd88e9161dad5449ed47fd3ad4739207af0fb`,
+  `29b3c744c55f79ba76e55192747f96eb050d6772`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`, absent bounded source, every
+  product source, every other test, claim/design/plan/contract/mission,
+  dependency, configuration, route, provider, credential, preview branch,
+  and unrelated byte.
+- Required repaired RED signatures and every supporting gate remain exactly
+  E-1214. Commit only the three corrected tests, admit the new immutable bytes
+  to a different completely fresh independent read-only reviewer, and
+  record/approve/integrate append-only with approval-first/candidate-second
+  plus forward Task136 merges. Changed bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict frontier remains
+  **28 of 29**. This is test-oracle repair authority, not producer GREEN
+  authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
