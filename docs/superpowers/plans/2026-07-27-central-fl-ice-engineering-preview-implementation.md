@@ -384,3 +384,34 @@ Implement this bounded Gate 2 correction test-first:
 This repair does not access the live source or any preview workspace. It does
 not change accepted graph state, provider readiness, production activation,
 request sends, legal gates, or fallback-write policy.
+
+## Task 5 Quality-Review Remediation: Revalidate Empty Gate 2 Authority
+
+The first empty-staging candidate was rejected in fresh quality review because
+later phases trusted internally hash-valid but cross-field-inconsistent
+checkpoints and did not re-prove persisted Gate 2 authority before handoff or
+replay writes. Repair this boundary test-first:
+
+1. use a real file checkpoint store to reject append and `readAll()` for a
+   hash-valid chain that claims a nonempty eligible set but an empty approval
+   and proposal set with the six-argument stage receipt;
+2. enforce uniqueness, subset, empty-equivalence, deterministic
+   candidate-to-proposal mapping, and count consistency for Gate 2 checkpoint
+   material;
+3. before handoff writes, re-read the current report and staging preview,
+   verify stored artifact bytes, and reconcile the exact approval actor,
+   selection, approval event, and proposal effects from the ledger;
+4. perform the same authoritative revalidation before replay writes;
+5. use portable-workspace adversarial tests to prove corrupted approval
+   identity, an injected proposal, corrupted preview bytes, and a coherently
+   replaced report all fail closed without new checkpoints, events, or
+   derivative artifacts;
+6. run the focused preview/runtime/bootstrap suites, all ingestion and
+   ontology-bootstrap tests, the preview-specialist boundary, typecheck, UI
+   build, factory readiness, and `git diff --check`;
+7. record the RED/GREEN evidence and commit the remediation atomically for
+   fresh dual review.
+
+The remediation uses only temporary fixtures. It does not inspect the live
+source or preview workspace and does not broaden production, provider, graph,
+send, legal, or fallback-write authority.

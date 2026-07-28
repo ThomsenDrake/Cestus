@@ -1801,8 +1801,17 @@ export function createCentralFloridaIcePreviewWorkflow(
         sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
         legacyReportId
       }), "legacy quarantine");
+      const preview = requireLegacySuccess(await runtime.stagingPreview({
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        legacyReportId
+      }), "legacy staging-preview");
       const afterReads = await readWorkspaceSnapshot(workspace);
       assertNoLedgerDelta(beforeReads.events, afterReads.events);
+      const selectedCandidateIds = latest.state.approvedStagingCandidateIds ?? [];
+      assertReportCheckpointIdentity(report, latest);
+      assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
+      await assertStoredStagingPreview(workspace, latest, preview);
+      assertPersistedStagingAuthority(afterReads, latest, preview);
       const providerBlocker = {
         code: "provider-mounted-authority-unavailable",
         message: "Repository-approved provider byte-transfer and mounted prompt authority are unavailable in this preview mission.",
@@ -1874,7 +1883,24 @@ export function createCentralFloridaIcePreviewWorkflow(
     // `withPreviewWorkspace` closes the mounted SQLite ledger after the
     // callback. Opening here is therefore a true remount/readback boundary.
     return withPreviewWorkspace(mountResolver, async (workspace) => {
+      const runtime = legacyRuntimeFactory(workspace);
+      const legacyReportId = requiredStateString(latest, "legacyReportId");
+      const beforeReads = await readWorkspaceSnapshot(workspace);
+      const report = requireLegacySuccess(await runtime.report({
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        legacyReportId
+      }), "legacy report");
+      const preview = requireLegacySuccess(await runtime.stagingPreview({
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        legacyReportId
+      }), "legacy staging-preview");
       const snapshot = await readWorkspaceSnapshot(workspace);
+      assertNoLedgerDelta(beforeReads.events, snapshot.events);
+      const selectedCandidateIds = latest.state.approvedStagingCandidateIds ?? [];
+      assertReportCheckpointIdentity(report, latest);
+      assertStageSelectionBindings(report.report, preview, selectedCandidateIds);
+      await assertStoredStagingPreview(workspace, latest, preview);
+      assertPersistedStagingAuthority(snapshot, latest, preview);
       assertNoForbiddenEvents(snapshot.events);
       const ingestion = buildIngestionProjection(snapshot.events);
       const legacy = buildLegacyImportProjection(snapshot.events);
@@ -2650,6 +2676,12 @@ function assertPhaseSpecificState(checkpoint: CentralFloridaIcePreviewCheckpoint
     ) {
       throw new Error(`preview checkpoint phase ${checkpoint.phase} lacks Gate 2 material`);
     }
+    if (
+      new Set(state.stagingCandidateIds).size !== state.stagingCandidateIds.length
+      || state.counts.stagingCandidates !== state.stagingCandidateIds.length
+    ) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} has inconsistent Gate 2 eligible candidates`);
+    }
   }
   if (
     checkpoint.phase === "handoff-required"
@@ -2664,6 +2696,28 @@ function assertPhaseSpecificState(checkpoint: CentralFloridaIcePreviewCheckpoint
       || state.proposedAssertionIds === undefined
     ) {
       throw new Error(`preview checkpoint phase ${checkpoint.phase} lacks Gate 2 approval or proposal material`);
+    }
+    const stagedIds = new Set(state.stagingCandidateIds ?? []);
+    const approvedIds = state.approvedStagingCandidateIds;
+    const proposedIds = state.proposedAssertionIds;
+    const expectedProposalIds = approvedIds.map((candidateId) =>
+      stableLegacyAssertionId({
+        sourceCollectionId: CENTRAL_FL_ICE_PREVIEW.sourceCollectionId,
+        scanBatchId: CENTRAL_FL_ICE_PREVIEW.scanBatchId,
+        stagingBatchId: CENTRAL_FL_ICE_PREVIEW.stagingBatchId,
+        candidateSetHash: state.legacyCandidateSetHash!
+      }, candidateId)
+    ).sort(compareCodeUnits);
+    if (
+      new Set(approvedIds).size !== approvedIds.length
+      || approvedIds.some((candidateId) => !stagedIds.has(candidateId))
+      || (approvedIds.length === 0) !== (stagedIds.size === 0)
+      || new Set(proposedIds).size !== proposedIds.length
+      || stableJson([...proposedIds].sort(compareCodeUnits)) !== stableJson(expectedProposalIds)
+      || state.counts.approvedStagingCandidates !== approvedIds.length
+      || state.counts.proposedAssertions !== proposedIds.length
+    ) {
+      throw new Error(`preview checkpoint phase ${checkpoint.phase} has inconsistent Gate 2 selection or proposal material`);
     }
     const stagingReceipt = state.commandReceipts.find((receipt) =>
       receipt.command === "stage"
@@ -3837,6 +3891,58 @@ function assertAuthoritativeStagingLedger(
       event.type === "assertion.proposed" ? [event.payload.assertionId] : []
     ).sort(compareCodeUnits)
   };
+}
+
+function assertPersistedStagingAuthority(
+  snapshot: CentralFloridaIcePreviewWorkspaceSnapshot,
+  checkpoint: CentralFloridaIcePreviewCheckpoint,
+  preview: LegacyStagingPreviewData
+): void {
+  const approvedBy = checkpoint.state.stagingApprovedBy;
+  const selectedCandidateIds = checkpoint.state.approvedStagingCandidateIds;
+  const expectedApprovalEventId = checkpoint.state.stagingApprovalEventId;
+  const expectedProposalIds = checkpoint.state.proposedAssertionIds;
+  if (
+    approvedBy === undefined
+    || selectedCandidateIds === undefined
+    || expectedApprovalEventId === undefined
+    || expectedProposalIds === undefined
+  ) {
+    throw new Error("persisted Gate 2 authority is absent from the checkpoint");
+  }
+  const stagingEvents = snapshot.events.filter((event) =>
+    event.type === "legacy.ontology.staging.approved"
+    || event.type === "assertion.proposed"
+  );
+  const stagingEventIds = new Set(stagingEvents.map((event) => event.id));
+  const baseline: CentralFloridaIcePreviewCheckpoint = {
+    ...checkpoint,
+    state: {
+      ...checkpoint.state,
+      eventIds: checkpoint.state.eventIds.filter((eventId) =>
+        !stagingEventIds.has(eventId)
+      )
+    }
+  };
+  const authoritative = assertAuthoritativeStagingLedger(
+    snapshot,
+    baseline,
+    approvedBy,
+    selectedCandidateIds,
+    preview
+  );
+  const checkpointStagingEventIds = checkpoint.state.eventIds.filter((eventId) =>
+    stagingEventIds.has(eventId)
+  ).sort(compareCodeUnits);
+  if (
+    authoritative.approvalEventId !== expectedApprovalEventId
+    || stableJson([...authoritative.proposalIds].sort(compareCodeUnits))
+      !== stableJson([...expectedProposalIds].sort(compareCodeUnits))
+    || stableJson([...authoritative.eventIds].sort(compareCodeUnits))
+      !== stableJson(checkpointStagingEventIds)
+  ) {
+    throw new Error("persisted staging ledger does not match exact checkpoint Gate 2 authority");
+  }
 }
 
 function assertProposedAssertionsEvidenceBound(

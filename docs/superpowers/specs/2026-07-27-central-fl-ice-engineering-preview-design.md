@@ -433,3 +433,26 @@ current eligible staging-preview set is empty:
 
 This is not a fallback write and does not accept graph truth. It preserves the
 human Gate 2 decision even when the safe decision is to propose nothing.
+
+## Gate 2 Quality-Review Amendment: Persisted Authority Revalidation
+
+Every `staging-approval-required` or later checkpoint must carry a unique
+eligible candidate set whose count matches the stored candidate identifiers.
+Every `handoff-required` or later checkpoint must additionally prove that:
+
+- approved candidate identifiers are unique and are a subset of the staged
+  eligible set;
+- the approved set is empty if and only if the eligible set is empty;
+- proposal identifiers are the exact deterministic mapping of the approved
+  candidates, with unique identifiers and matching approved/proposed counts;
+- a hash-valid checkpoint cannot represent an empty approval for a nonempty
+  eligible set.
+
+Handoff and restart replay are consumers of persisted Gate 2 authority, not
+mere checkpoint readers. Before either operation writes an artifact or
+checkpoint, it re-reads the current migration report and stored staging
+preview, proves their hashes and candidate bindings, and reconciles the exact
+human approval plus exact proposal set from the append-only ledger. Corrupted
+approval identity, an extra valid proposal, a changed report, or changed
+staging-preview bytes fails closed with zero ledger, artifact, or checkpoint
+writes. These rules apply equally to the explicit empty decision.

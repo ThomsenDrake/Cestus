@@ -777,3 +777,74 @@ records zero proposals; reaches `handoff-required`; and reconciles a retry after
 an injected checkpoint failure without duplicate events. Nonempty reports still
 reject an empty selection. Accepted graph state, provider behavior, production
 activation, request sends, legal gates, and fallback-write policy are unchanged.
+
+Fresh quality review rejected the first empty-staging candidate because a
+hash-valid later checkpoint could pair a nonempty eligible set with an empty
+approval, and handoff/replay did not independently re-prove the stored Gate 2
+authority before writes.
+
+Remediation RED:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "hash-valid empty approval|blocks handoff before writes|blocks replay before writes"
+1 file failed; 5 tests failed, 1 test passed, 137 tests skipped.
+```
+
+The five failures showed that the file checkpoint store accepted the
+cross-field-inconsistent empty approval and that handoff/replay continued after
+approval-actor corruption, an injected proposal, corrupted staging-preview
+bytes, or corrupted persisted authority. The already-fail-closed coherent
+report-replacement case was the one passing adversarial test.
+
+Remediation GREEN:
+
+```text
+TMPDIR=/dev/shm npm test -- packages/ingestion/test/central-fl-ice-preview.test.ts \
+  -t "hash-valid empty approval|blocks handoff before writes|blocks replay before writes"
+1 file passed; 6 tests passed, 137 tests skipped.
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ontology-bootstrap/test/tool-previews.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/central-fl-ice-preview.test.ts
+4 files passed; 182 tests passed.
+
+TMPDIR=/dev/shm npm test -- packages/ingestion/test packages/ontology-bootstrap/test
+35 files passed; 379 tests passed.
+
+TMPDIR=/dev/shm npm test -- \
+  packages/ingestion/test/central-fl-ice-preview.test.ts \
+  packages/ingestion/test/legacy-inspector.test.ts \
+  packages/ingestion/test/legacy-report.test.ts \
+  packages/ingestion/test/legacy-runtime.test.ts \
+  packages/ingestion/test/legacy-staging.test.ts \
+  packages/ontology-bootstrap/test/dossier-builder.test.ts \
+  packages/ontology-bootstrap/test/fake-runtime.test.ts \
+  packages/ontology-bootstrap/test/tool-previews.test.ts \
+  packages/agent/test/evidence-triage-workflow.test.ts \
+  packages/agent/test/investigation-planner-workflow.test.ts
+10 files passed; 254 tests passed.
+
+TMPDIR=/dev/shm npm run typecheck
+typecheck passed.
+
+TMPDIR=/dev/shm npm run ui:build
+165 modules transformed; build passed with existing externalization and
+chunk-size advisories only.
+
+TMPDIR=/dev/shm npm run factory:check
+factory-readiness passed.
+
+git diff --check
+passed.
+```
+
+The repaired checkpoint validator rejects inconsistent eligible, approved, and
+proposed sets and their counts during both append and reconstruction. Handoff
+and replay now re-read the current report and stored staging preview and
+reconcile the exact approval and proposal effects from the ledger before any
+artifact or checkpoint write. Portable adversarial tests prove zero-write
+failure for corrupted approval identity, forged proposals, staging-preview
+bytes, and report authority. No live source or preview workspace was accessed.
