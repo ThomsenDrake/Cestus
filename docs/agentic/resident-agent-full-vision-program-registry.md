@@ -46151,3 +46151,83 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   record 29, publication, Wave 3 start, or product release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1197 — Task15 named-export oracle blocked; default-export RED correction authorized
+
+- Recorded at: 2026-07-28T16:08:37Z
+- Fresh read-only Task15 implementer preflight and independent scope reviewer
+  `/root/task15_nonbarrel_scope_review` stop exact E-1196 before any source or
+  test edit. Clean Task136 authority is
+  `38dc769ab29e8b6aaabb960fba9c036ee512dcd2`; focused execution is exact
+  **37 = 36 passed + one missing-builder failure**.
+- The frozen RED at blob
+  `a428e530cf4bb7d3b5e97180a6a9ee2801c7c29a` requires runtime named export
+  `createInternalSpecialistHandoffProjectionPort` from
+  `packages/agent/src/specialist-handoff-projection.ts`. Frozen agent barrel
+  `packages/agent/src/index.ts` at blob
+  `69f60a5bb231a9041cd6dfea29203302293edeb8` already contains
+  `export * from "./specialist-handoff-projection.js"`.
+- ECMAScript/TypeScript export-star semantics forward every unambiguous named
+  runtime export except `default`. Independent compiler symbol resolution
+  confirms the existing direct named
+  `buildSpecialistHandoffProjection` appears in both the deep module and the
+  barrel. Therefore any honest named builder required by the frozen RED would
+  become barrel-visible even though `index.ts` bytes remained unchanged,
+  violating the committed non-barrel/R-only invariant and E-1196's explicit
+  no-barrel-export rule.
+- No annotation, alias, closure, type-only declaration, WeakMap, or other
+  one-source implementation can remove a named export from the existing
+  export-star. Caller, call-stack, timing, global, conditional export, or
+  other heuristic behavior is forbidden and would not correct the static
+  export set.
+- The smallest design-preserving repair remains inside the existing 33-path
+  ceiling. Supersede only E-1196's test freeze and authorize the smallest
+  test-only correction in
+  `packages/agent/test/specialist-handoff-projection.test.ts`, starting from
+  exact blob `a428e530cf4bb7d3b5e97180a6a9ee2801c7c29a`.
+- Correct the existing single Task15 oracle case without adding a test.
+  Require the deep module's `default` property to be a function whose exact
+  runtime name is `createInternalSpecialistHandoffProjectionPort`; require
+  the deep module's named property
+  `createInternalSpecialistHandoffProjectionPort` to be absent; and require
+  that named property to be absent from the agent barrel. Preserve every
+  existing Task15 completion, selected-readback, and Task138-no-widening
+  assertion.
+- After the corrected RED is independently approved and integrated, the
+  source implementation must use a named default function
+  `export default function createInternalSpecialistHandoffProjectionPort`
+  while keeping `InternalSpecialistHandoffProjectionPort` and all new helper
+  types nonexported. Export-star does not forward `default`; Task16 must prove
+  R is the sole production direct default importer.
+- Freeze Task15 source
+  `packages/agent/src/specialist-handoff-projection.ts` at
+  `311120f59e9d40628c4d091f958f3ba2bf2ff53d`, frozen agent barrel at
+  `69f60a5bb231a9041cd6dfea29203302293edeb8`, all three released Task138
+  paths/blobs, every Task14/16 and other Task136 source/test, claim, contract,
+  mission, checker, dependency, configuration, route, provider, credential,
+  and unrelated path.
+- Required corrected RED remains focused
+  **37 = 36 passed + one Task15 failure**, Task138 boundary
+  **355 = 354 passed + one Task15 failure**, Task136 card
+  **383 = 376 passed + seven Task15-through-16 failures**, and exact 37-file
+  cross-boundary **1,042 = 1,035 passed + seven failures**. Run under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout, plus typecheck,
+  factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first stop, scope/freezes/ancestry/
+  dependencies/diff/integrity/clean gates.
+- Commit one immutable test-only candidate, admit it to a completely fresh
+  independent read-only reviewer, and require append-only approval,
+  history-preserving integration, fresh integration-tree gates, and a forward
+  Task136 authority merge before product source resumes. Changed or
+  additional bytes invalidate review.
+- Task15 remains `implementing`; E-1196's named-export source form is
+  unexecuted and superseded by this bounded oracle repair. Task16 remains
+  unauthorized.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Strict product frontier remains **28 of 29**. No Task136 product candidate
+  or record 29 exists. This is one-test oracle-correction authority, not a
+  corrected candidate, source GREEN, Task15 acceptance, Task16 authority,
+  Task136 candidacy, repository closure, strict record 29, publication,
+  Wave 3 start, or product release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
