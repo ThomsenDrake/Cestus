@@ -49097,3 +49097,107 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, or release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1244 — Task16 prepared-composition bootstrap amendment authorized
+
+- Recorded at: 2026-07-29T15:57:03Z
+- The human product-and-scope decision explicitly approves the coordinator's
+  recommended prepared-composition bootstrap for Task16 and authorizes this
+  session to record and execute it without another user approval when the
+  committed amendment matches this exact boundary.
+- The legitimate already-started Task14
+  `ResidentLoopFactoryComposition` is the single and sole durable supervisor-
+  lease owner. `createResidentBoundedAgentLoopFactory` must not construct,
+  start, or bind a second composition. Its prepared input consumes the exact
+  `WakeSupervisorRuntime` issued by that composition, the exact
+  `ResidentLoopFactoryAuthorityReadback` returned by that composition's one
+  bind, and the same exact `LocalRuntimeHandle` identity captured when the
+  wake runtime was created.
+- Authenticate all three identities before any accessor, ledger, provider,
+  handoff, dispatcher, or other effectful read. Extend only the existing
+  private wake-runtime state as necessary to retain and compare that exact
+  runtime-handle identity. Do not add a registry, rendezvous, memoization
+  layer, caller heuristic, timing test, stack inspection, structural
+  authority, or global authority mechanism.
+- The prepared factory input is exactly the frozen six-field own-data value
+  `{ runtimeHandle, wakeRuntime, authorityReadback, providerPosture,
+  domainExecution, nowMonotonicMs }`. Provider authority, handoff authority,
+  and the portable handoff preflight belong to preparation before the sole
+  composition bind; the bind consumes the handoff witness, so the factory
+  must not attempt a second preflight. The factory accepts no composition
+  object, registrar, caller-supplied stop callback, actor, epoch, policy,
+  clock-derived identity, safe-ID factory, provider operation, handoff
+  lifecycle, or other authority field.
+- The returned stop operation targets only the exact authenticated wake
+  runtime. It calls that owner at most once across repeated stop requests,
+  propagates the exact success or failure, and introduces no caller-
+  replaceable callback. The Task14 lexical boundary remains exact: the
+  private issuer/registrar stays private to
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`; generic
+  `createWakeSupervisorRuntime` runtimes remain permanently ineligible; and
+  `bindResidentLoopCapabilitiesForFactory` remains the sole bounded factory
+  binding seam.
+- Copied, fabricated, proxied, swapped, stale, stopped, already-consumed, or
+  generic runtime/readback/handle triples reject before every downstream read
+  or effect. A valid authenticated triple may proceed to the already approved
+  provider-posture, metadata, C, H, R, and dispatcher boundaries; failures at
+  those later boundaries retain their existing accounting.
+- Authorize a forward amendment candidate changing only the active Task136
+  design, implementation plan, and claim. It must supersede only the E-1241
+  fresh-composition portion of Task16C, retain Tasks17-through-21 in their
+  committed order, retain the exact **33 = 15 sources + 17 tests + one
+  claim** ceiling and canonical path hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  and add no product path, behavior, dependency, route, provider,
+  credential, activation, or external effect.
+- Preserve without staging, modifying, discarding, or treating as candidate
+  evidence the E-1243 diagnostic source blobs
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d` and
+  `cf5f3930576c9e296b09fd54a94051c21feefad5`, and held test blobs
+  `46c746178f29e970f7581eca464548bcdd0149ec` and
+  `00caccb5ff954a5056113c043eef5b0d90ad403b`.
+- After the exact three-document amendment receives completely fresh
+  independent read-only design and executability approval and is integrated
+  history-preservingly, authorize a separate smallest forward test-only RED
+  correction in exactly
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`.
+  Retain the valid held import-owner correction assigning direct dispatcher
+  and G imports to
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`.
+- The corrected RED must prove one prepared sole composition owner succeeds
+  with no second construction/start/bind; the exact handle/runtime/readback
+  triple authenticates before reads or effects; copied, fabricated, swapped,
+  generic, stopped, stale, and already-consumed inputs fail closed; and stop
+  targets only the exact wake owner with idempotency and failure propagation.
+  Preserve the existing abstract local corpus and test cardinality. Add no
+  unrelated alias case.
+- Required committed-tree RED under `TMPDIR=/dev/shm`, one worker, and the
+  120-second import-policy timeout remains focused
+  **9 = 3 passed + six failed**, producer controls **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. All six
+  failures remain only the absent bounded issuer, factory API, and import
+  graph. Also require typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope/freezes/ancestry/dependencies, canonical path hash, diff hygiene,
+  strict Git integrity, and clean committed-tree state.
+- Changed RED bytes invalidate review. Only after fresh independent RED
+  approval, append-only recording, approval-first/candidate-second program
+  integration, and forward Task136 integration may a separate GREEN
+  authority change the smallest causal existing Task136 paths, expected to
+  be `packages/agent/src/bounded-agent-loop.ts`,
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`, and
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+  `packages/local-runtime/src/resident-loop-factory-composition.ts` and
+  mounted storage remain frozen unless a newly approved causal RED proves a
+  change necessary.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This is
+  exact product-decision and documentation-amendment authority, not an
+  amendment candidate or approval, test RED candidacy, source GREEN, Task16
+  acceptance, Task136 candidacy, publication, Wave 3 start, repository
+  closure, production readiness, or release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
