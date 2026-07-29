@@ -415,7 +415,7 @@ function forbiddenTopLevelRuntimeInitializers(
     if (
       ts.isVariableStatement(statement) &&
       statement.modifiers === undefined &&
-      (statement.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+      statement.declarationList.flags === ts.NodeFlags.Const &&
       statement.declarationList.declarations.length === 1
     ) {
       const declaration = statement.declarationList.declarations[0]!;
@@ -622,6 +622,10 @@ function expectFactoryOracleControls(): void {
     [
       "top-level tagged initializer",
       "const escaped = abstractLocalTag`retained`;"
+    ],
+    [
+      "top-level await-using initializer",
+      "await using escaped = abstractLocal;"
     ]
   ] as const) {
     const control = ts.createSourceFile(
