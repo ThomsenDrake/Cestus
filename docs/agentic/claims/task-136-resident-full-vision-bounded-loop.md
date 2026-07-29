@@ -2219,3 +2219,70 @@ commits while retaining the same fifteen-source union and exact 33 paths.
 No route, provider, activation, default runtime, fallback, credential,
 network, external effect, dependency, raw-ledger port, new public authority,
 or high-water heuristic is authorized.
+
+## RV-1-E-1244 Current Task16 Prepared-Composition Authority
+
+This true-EOF section supersedes only E-1213's Task16C fresh-composition
+bootstrap. Task14 and Task15 remain complete. Task16 and Task136 remain
+`implementing`; strict frontier remains **28 of 29**. No Task136 product
+candidate, record 29, publication, Wave 3 start, repository closure,
+production readiness, or product release exists.
+
+The already-started Task14 `ResidentLoopFactoryComposition` is the single and
+sole durable supervisor-lease owner. Before factory entry, that exact
+composition starts once, completes provider and handoff preparation, binds
+once, and yields its exact privately registered
+`ResidentLoopFactoryAuthorityReadback`.
+
+The Task16 factory neither creates, starts, binds, structurally accepts, nor
+stops a composition. Its exact frozen own-data input contains only
+`runtimeHandle`, `wakeRuntime`, `authorityReadback`, `providerPosture`,
+`domainExecution`, and `nowMonotonicMs`. It accepts no provider or handoff
+authority, second preflight, composition, registrar, actor, epoch, policy,
+safe-ID factory, or caller stop callback.
+
+Descriptor-safe normalization captures those six values before the first
+await or effectful read. W then authenticates, in order, exact wake WeakMap
+membership, exact registered top-level readback identity, exact captured
+runtime-handle identity, Core-ready/not-stopped/not-in-flight/unconsumed state,
+and a synchronous private in-flight reservation before exact registered
+nested provider/handoff/binding identities. Only after those checks may
+mounted binding, metadata, C, H, R, provider, handoff, gateway, approval,
+dispatcher, ledger, or effects occur. Mounted rejection before capability
+issuance releases the reservation; issued capability binding burns it before
+later local validation. H receives only the authenticated handle's ledger.
+
+Copied, fabricated, proxied, swapped, generic, stopped, stale, and already-
+consumed runtime/readback/handle inputs and concurrent duplicate presentation
+fail before downstream reads or effects. The returned stop operation closes
+over only the authenticated wake runtime, memoizes one direct stop promise,
+propagates rejection exactly, and never accepts or retries a caller callback.
+
+The requested first RED changes only the two factory-port tests, retains the
+valid mounted-store dispatcher/G import-owner correction, and makes its
+already-failing import title require the exact handle as an explicit fourth
+W argument. After that RED integrates, a separate passing compatibility-
+oracle transition changes only the two wake tests. It visibly presents exact
+fixture handles in behavior calls and permits exactly the historical three-
+parameter or approved four-parameter W declaration while rejecting optional,
+default, rest, overload, `arguments`, callback, spread, and hidden-arity
+forms. It adds no failure, source behavior, or path. Both test candidates
+require completely fresh independent review, append-only approval, and
+history-preserving integration before source work.
+
+The final GREEN changes only the new bounded-loop source, factory-ports
+source, and wake-supervisor source. Composition and mounted storage remain
+frozen absent a newly approved causal RED. Exact RED signatures remain
+focused **9 = 3 + six**, producer **144/144**, card **383 = 377 + six**,
+cross-boundary **1,042 = 1,036 + six**, and Task138 **355/355**. GREEN
+requires **9/9**, **144/144**, **383/383**, **1,042/1,042**, **355/355**,
+typecheck, readiness, mission and V4 **20/20**, markers
+**29 / 20 / 29 / 15**, exact repository first-stop, scope, freezes,
+ancestry, dependencies, diff hygiene, Git integrity, and clean state.
+
+The exact 33-path `15/17/1` ceiling and canonical SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`
+remain unchanged. No registry, rendezvous, cache, hidden global, structural
+authority, caller/timing/stack heuristic, route, provider, activation,
+fallback, credential, network call, external effect, new public authority,
+or unrelated behavior is authorized.
