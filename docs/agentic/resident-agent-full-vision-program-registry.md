@@ -48952,3 +48952,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, or release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1242 — Task16C GREEN halted; exact two-test factory phase correction authorized
+
+- Recorded at: 2026-07-29T04:03:21Z
+- E-1241 is halted before any source candidate, source commit, or source
+  review. The only authorized working product bytes are the incomplete
+  `packages/agent/src/bounded-agent-loop.ts` scaffold at blob
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d` and the factory implementation
+  at blob `cf5f3930576c9e296b09fd54a94051c21feefad5`. They remain uncommitted,
+  unstaged, and frozen while this test-only repair proceeds; no product
+  acceptance is inferred.
+- Exact fresh execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout exposes two later-phase oracle contradictions. Frozen
+  import-policy blob `0b540e2c8e785035244a5022ebdec4377e33aa23`
+  requires dispatcher and G imports in frozen
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`, although E-1212
+  explicitly assigns those imports to their lawful owner
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, currently
+  blob `2d86fdcd570efbdee499d1ec807d2db1066f48bc`. Exact focused import
+  execution is **2 = 1 passed + one failed** at the wrong direct-import
+  owner.
+- Frozen behavior-test blob
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d` starts its bootstrap
+  composition before invoking the factory. That consumes the mounted
+  supervisor lease, while the approved exact factory must create and start
+  its own composition. Exact behavior execution is
+  **4 = 2 passed + two failed**, both at the factory composition start with
+  zero bounded-loop execution. Treating the second held lease as accepted
+  would make an unissued runtime Core-ready; passing the bootstrap
+  composition into the factory would widen the frozen factory input and
+  ten-statement provenance.
+- Completely fresh independent read-only reviewer
+  `/root/task16c_green_live_audit` confirms both defects are causal test
+  oracles and that no product seam is warranted. Authorize the smallest
+  correction in exactly
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`
+  from blob `0b540e2c8e785035244a5022ebdec4377e33aa23` and
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` from
+  blob `3a86c355bb1d6082cc64daa53af2995b6f42528d`.
+- Point the direct dispatcher/G ownership checks at exact
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`. In the
+  mounted factory fixture initialize the bootstrap wake issuer through
+  `wakeRuntime.supervision.status()` without acquiring the Core lease, and
+  start the composition only in `mountedPortsFixture` immediately before
+  that helper's direct Core bind. Preserve all existing titles, cardinality,
+  abstract local fixtures, exact factory input, and effect assertions. Add
+  no alias case or unrelated behavior.
+- Freeze the two paused E-1241 working source blobs, all other Task16 tests
+  at their E-1241 blobs, every committed product source, mounted storage,
+  W, G, dispatcher, Core, H, wake runtime, composition, ontology,
+  activation, routes, providers, credentials, configuration, dependencies,
+  contracts, claims, plans, preview branch, and unrelated bytes.
+- Required corrected committed-tree RED remains focused
+  **9 = 3 passed + six failed**, producer controls **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. All six failures
+  must remain only the absent Task16C bounded issuer, factory API, and import
+  graph. Also require typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope/freezes/ancestry/dependencies, canonical 33-path hash, diff hygiene,
+  strict Git integrity, and clean committed-tree state.
+- Commit only the exact two-test correction, obtain completely fresh
+  independent read-only review of exact immutable bytes, and record,
+  approve, and integrate it append-only with approval-first/candidate-second
+  plus forward Task136 merge history. Changed bytes invalidate review. Only
+  after integration may a separate event resume the two-source Task16C
+  GREEN.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only repair authority, not a corrected RED
+  candidate, resumed source authority, Task16 acceptance, Task136
+  candidacy, strict record 29, publication, Wave 3 start, repository
+  closure, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
