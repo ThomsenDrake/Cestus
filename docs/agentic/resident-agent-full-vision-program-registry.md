@@ -49201,3 +49201,90 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, production readiness, or release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1245 — Task16 prepared-bootstrap amendment rejected; forward correction authorized
+
+- Recorded at: 2026-07-29T16:12:42Z
+- Completely fresh independent read-only reviewer
+  `/root/task16_e1244_amendment_review` rejects exact immutable
+  three-document candidate
+  `593fffb3d031bc98ff818644aa6ed7cbf40dc92f`, tree
+  `180382d6ca25fe47da85777ac2819356ee5e6def`, sole parent exact E-1244
+  authority merge `8e3c9c320d2a5ebc05ee59d76415f520eeafc512`.
+  The candidate remains immutable and is not approved or integrated.
+- Exact rejected scope is only the active Task136 design, implementation
+  plan, and claim, **389 insertions / zero deletions**. Every package,
+  contract, mission, assurance, dependency, configuration, and script byte
+  is identical to the parent. The four E-1243 diagnostic working blobs remain
+  unchanged and unstaged.
+- **P1:** the candidate incorrectly specifies a second failing causal wake
+  static-oracle RED while also requiring the post-correction accounting to
+  remain producer **144/144**, card **383 = 377 + six**, and cross-boundary
+  **1,042 = 1,036 + six**. Frozen
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`
+  currently passes while pinning the three-parameter W binder. Requiring an
+  explicit fourth handle before source GREEN would add a seventh failing
+  title and make those exact signatures impossible.
+- **P2:** the candidate requires only an unconsumed-state check before
+  awaiting mounted binding. Current W sets `residentBound` only after that
+  await, so two concurrent exact presentations can both pass synchronous
+  authentication and reach mounted reads. The design and existing hostile
+  title need an exact private in-flight reservation and concurrent duplicate
+  proof.
+- Preserve the approved explicit four-argument factory seam. Authorize only
+  the smallest forward correction in the same three documentation paths.
+  The existing already-failing factory import-policy title remains the causal
+  RED and must require the exact positional call
+  `(wakeRuntime, authorityReadback, domainExecution, runtimeHandle)`.
+- Replace the proposed second failing wake RED with a separately reviewed,
+  passing compatibility-oracle transition after the two-factory-test RED is
+  integrated and before product GREEN. Its exact scope is the already-owned
+  wake behavior and import-policy tests:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, current
+  committed blob `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  current committed blob `b75ac2d21ead0b2d5e8b8506c1408105102713e2`.
+- The compatibility transition must keep every title and count passing.
+  Behavior calls explicitly present their fixture's exact runtime handle
+  through a visible test-only transition typing seam so both the frozen
+  three-argument source and later required four-argument source typecheck;
+  it adds no product alias or behavior assertion. The static oracle accepts
+  exactly either the historical three required named parameters or the
+  approved four required named parameters ending in `runtimeHandle`, while
+  retaining the exact one-call three-argument mounted-store binder and
+  rejecting optional/default/rest parameters, overload ambiguity,
+  `arguments`, callback carriers, optional/spread calls, alternate
+  declarations, and hidden arity channels.
+- This compatibility work is not a new RED and may not weaken cumulative
+  enforcement: the already-integrated factory import-policy RED requires the
+  direct four-argument factory call, and typecheck plus that oracle make the
+  final product's four-argument W declaration mandatory. Required accounting
+  remains focused **9 = 3 + six**, producer **144/144**, card
+  **383 = 377 + six**, cross-boundary **1,042 = 1,036 + six**, and Task138
+  **355/355** until product GREEN.
+- Require W to reserve the exact authenticated triple synchronously in its
+  existing private state before nested readback access or the first mounted
+  await. A concurrent presentation rejects before downstream reads. A
+  mounted bind that rejects before issuing capabilities releases only that
+  private in-flight reservation and remains unconsumed; once mounted binding
+  issues capabilities, the resident binding is burned even if later local
+  validation rejects. No reservation registry, external state, timing,
+  global, rendezvous, or memoization mechanism is permitted.
+- Add concurrent exact duplicate rejection and zero downstream deltas inside
+  the existing hostile factory test title and cardinality. Retain copied,
+  fabricated, proxied, swapped, generic, stopped, stale, already-consumed,
+  structural-composition, caller-stop, and later domain/dispatcher controls.
+- Commit only the corrected three documents, obtain another completely fresh
+  independent read-only architecture and executability review, and only then
+  record approval and integrate history-preservingly. Test edits remain
+  unauthorized until the corrected amendment is approved, integrated, and
+  followed by a separate exact starting-blob authority.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is documentation rejection and forward-correction
+  authority only, not a corrected amendment candidate, test authority,
+  source GREEN, Task16 acceptance, Task136 candidacy, record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
