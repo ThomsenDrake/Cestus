@@ -358,11 +358,21 @@ const mountedBinderWakePath =
   "packages/local-runtime/src/wake-supervisor-runtime.ts";
 const mountedBinderRegistrarName =
   "bindResidentLoopCapabilitiesForFactory";
-const mountedBinderRegistrarParameters = [
-  "wakeRuntime",
-  "binding",
-  "domainExecution"
+const mountedBinderRegistrarParameterSets = [
+  [
+    "wakeRuntime",
+    "binding",
+    "domainExecution"
+  ],
+  [
+    "wakeRuntime",
+    "binding",
+    "domainExecution",
+    "runtimeHandle"
+  ]
 ] as const;
+const mountedBinderRuntimeHandleName = "LocalRuntimeHandle";
+const mountedBinderRuntimeHandleModule = "./runtime-factory.js";
 
 function mountedBinderOwnershipAnalysis(
   program: ts.Program,
@@ -533,6 +543,15 @@ function mountedBinderOwnershipAnalysis(
       ) {
         return undefined;
       }
+      const declarationSymbol = checker.getSymbolAtLocation(current.name);
+      if (
+        declarationSymbol === undefined ||
+        declarationSymbol.declarations?.length !== 1 ||
+        declarationSymbol.declarations[0] !== current ||
+        current.typeParameters !== undefined
+      ) {
+        return undefined;
+      }
       const modifiers = current.modifiers ?? [];
       if (
         !modifiers.some((modifier) =>
@@ -544,19 +563,176 @@ function mountedBinderOwnershipAnalysis(
       ) {
         return undefined;
       }
-      return current.parameters.length ===
-        mountedBinderRegistrarParameters.length &&
+      const parameterNames = current.parameters.map((parameter) =>
+        ts.isIdentifier(parameter.name)
+          ? parameter.name.text
+          : undefined
+      );
+      const exactParameters = mountedBinderRegistrarParameterSets.find(
+        (candidate) =>
+          candidate.length === parameterNames.length &&
+          candidate.every((name, index) => name === parameterNames[index])
+      );
+      if (
+        exactParameters === undefined ||
         current.parameters.every((parameter, index) =>
           ts.isIdentifier(parameter.name) &&
-          parameter.name.text === mountedBinderRegistrarParameters[index] &&
+          parameter.name.text === exactParameters[index] &&
           parameter.dotDotDotToken === undefined &&
           parameter.questionToken === undefined &&
           parameter.initializer === undefined
         )
-        ? current
-        : undefined;
+          === false
+      ) {
+        return undefined;
+      }
+      const runtimeHandleParameter = current.parameters[3];
+      if (
+        (
+          runtimeHandleParameter !== undefined &&
+          !hasExactRuntimeHandleParameterType(
+            runtimeHandleParameter,
+            sourceFile
+          )
+        ) ||
+        hasForbiddenRegistrarArityCarrier(
+          current.body,
+          runtimeHandleParameter
+        )
+      ) {
+        return undefined;
+      }
+      return current;
     }
-    return undefined;
+
+    function hasExactRuntimeHandleParameterType(
+      parameter: ts.ParameterDeclaration,
+      sourceFile: ts.SourceFile
+    ): boolean {
+      if (
+        parameter.type === undefined ||
+        !ts.isTypeReferenceNode(parameter.type) ||
+        parameter.type.typeArguments !== undefined ||
+        !ts.isIdentifier(parameter.type.typeName) ||
+        parameter.type.typeName.text !== mountedBinderRuntimeHandleName
+      ) {
+        return false;
+      }
+      const exactImports = sourceFile.statements.flatMap((statement) => {
+        if (
+          !ts.isImportDeclaration(statement) ||
+          !ts.isStringLiteral(statement.moduleSpecifier) ||
+          statement.moduleSpecifier.text !== mountedBinderRuntimeHandleModule ||
+          statement.attributes !== undefined ||
+          statement.importClause === undefined ||
+          statement.importClause.isTypeOnly !== true ||
+          statement.importClause.name !== undefined ||
+          statement.importClause.namedBindings === undefined ||
+          !ts.isNamedImports(statement.importClause.namedBindings) ||
+          statement.importClause.namedBindings.elements.length !== 1
+        ) {
+          return [];
+        }
+        const element = statement.importClause.namedBindings.elements[0]!;
+        return element.isTypeOnly === false &&
+          element.propertyName === undefined &&
+          element.name.text === mountedBinderRuntimeHandleName
+          ? [element]
+          : [];
+      });
+      if (exactImports.length !== 1) return false;
+      const parameterSymbol =
+        checker.getSymbolAtLocation(parameter.type.typeName);
+      const importSymbol = checker.getSymbolAtLocation(exactImports[0]!.name);
+      return parameterSymbol !== undefined &&
+        parameterSymbol === importSymbol &&
+        parameterSymbol.declarations?.length === 1 &&
+        parameterSymbol.declarations[0] === exactImports[0];
+    }
+
+    function hasForbiddenRegistrarArityCarrier(
+      body: ts.Block,
+      runtimeHandleParameter: ts.ParameterDeclaration | undefined
+    ): boolean {
+      const runtimeHandleSymbol =
+        runtimeHandleParameter !== undefined &&
+          ts.isIdentifier(runtimeHandleParameter.name)
+          ? checker.getSymbolAtLocation(runtimeHandleParameter.name)
+          : undefined;
+      if (
+        runtimeHandleParameter !== undefined &&
+        runtimeHandleSymbol === undefined
+      ) {
+        return true;
+      }
+      let forbidden = false;
+      let runtimeHandleReferenceCount = 0;
+      visit(body);
+      return forbidden ||
+        (
+          runtimeHandleSymbol !== undefined &&
+          runtimeHandleReferenceCount === 0
+        );
+
+      function visit(node: ts.Node): void {
+        if (forbidden) return;
+        const identifierSymbol = ts.isIdentifier(node)
+          ? ts.isShorthandPropertyAssignment(node.parent) &&
+              node.parent.name === node
+            ? checker.getShorthandAssignmentValueSymbol(node.parent)
+            : checker.getSymbolAtLocation(node)
+          : undefined;
+        const isRuntimeHandleReference =
+          runtimeHandleSymbol !== undefined &&
+          identifierSymbol === runtimeHandleSymbol;
+        if (isRuntimeHandleReference) {
+          runtimeHandleReferenceCount += 1;
+        }
+        if (
+          (
+            runtimeHandleSymbol !== undefined &&
+            node !== body &&
+            ts.isFunctionLike(node)
+          ) ||
+          (
+            ts.isIdentifier(node) &&
+            node.text === "arguments"
+          ) ||
+          ts.isTypeAssertionExpression(node) ||
+          (
+            ts.isAsExpression(node) &&
+            !(
+              ts.isTypeReferenceNode(node.type) &&
+              node.type.typeArguments === undefined &&
+              ts.isIdentifier(node.type.typeName) &&
+              node.type.typeName.text === "const"
+            )
+          ) ||
+          (
+            isRuntimeHandleReference &&
+            !isDirectRuntimeHandleComparisonOperand(node)
+          )
+        ) {
+          forbidden = true;
+          return;
+        }
+        ts.forEachChild(node, visit);
+      }
+
+      function isDirectRuntimeHandleComparisonOperand(
+        identifier: ts.Identifier
+      ): boolean {
+        const parent = identifier.parent;
+        return ts.isBinaryExpression(parent) &&
+          (
+            parent.operatorToken.kind ===
+              ts.SyntaxKind.EqualsEqualsEqualsToken ||
+            parent.operatorToken.kind ===
+              ts.SyntaxKind.ExclamationEqualsEqualsToken
+          ) &&
+          (parent.left === identifier || parent.right === identifier);
+      }
+    }
   }
 
   function hasExactMountedBinderArguments(
@@ -8532,6 +8708,165 @@ describe("wake supervisor runtime import boundary", () => {
         );
       }
     `;
+    const fourParameterRegistrarWith = (
+      options: Readonly<{
+        runtimeHandleImport?: string;
+        runtimeHandleParameter?: string;
+        declarationPrefix?: string;
+        bodyPrefix?: string;
+        mountedCall?: string;
+      }> = {}
+    ) => `
+      ${options.runtimeHandleImport ??
+        'import type { LocalRuntimeHandle } from "./runtime-factory.js";'}
+      const residentWakeRuntimeStates =
+        new WeakMap<object, {
+          store: unknown;
+          runtimeHandle: LocalRuntimeHandle;
+        }>();
+      import {
+        bindMountedResidentLoopAuthorityForFactory
+      } from "./mounted-wake-lifecycle-store.js";
+      ${options.declarationPrefix ?? ""}
+      export async function bindResidentLoopCapabilitiesForFactory(
+        wakeRuntime: object,
+        binding: unknown,
+        domainExecution: unknown,
+        ${options.runtimeHandleParameter ??
+          "runtimeHandle: LocalRuntimeHandle"}
+      ) {
+        const state = residentWakeRuntimeStates.get(wakeRuntime);
+        if (state === undefined) throw new Error("missing state");
+        ${options.bodyPrefix ?? `
+          const preparedTransition = ["prepared"] as const;
+          void preparedTransition;
+        `}
+        if (state.runtimeHandle !== runtimeHandle) {
+          throw new Error("runtime handle mismatch");
+        }
+        return ${options.mountedCall ??
+          `bindMountedResidentLoopAuthorityForFactory(
+            state.store,
+            binding,
+            domainExecution
+          )`};
+      }
+    `;
+    expect(
+      mountedBinderControlAnalysis(fourParameterRegistrarWith())
+    ).toEqual(exactBinderOwnership);
+    for (const [name, text] of [
+      ["aliased runtime-handle type import", fourParameterRegistrarWith({
+        runtimeHandleImport:
+          'import type { LocalRuntimeHandle as RuntimeHandle } from "./runtime-factory.js";',
+        runtimeHandleParameter: "runtimeHandle: RuntimeHandle"
+      })],
+      ["value runtime-handle type import", fourParameterRegistrarWith({
+        runtimeHandleImport:
+          'import { LocalRuntimeHandle } from "./runtime-factory.js";'
+      })],
+      ["alternate runtime-handle type module", fourParameterRegistrarWith({
+        runtimeHandleImport:
+          'import type { LocalRuntimeHandle } from "./alternate-runtime-factory.js";'
+      })],
+      ["unknown fourth parameter", fourParameterRegistrarWith({
+        runtimeHandleParameter: "runtimeHandle: unknown"
+      })],
+      ["callback fourth parameter", fourParameterRegistrarWith({
+        runtimeHandleParameter:
+          "runtimeHandle: () => LocalRuntimeHandle"
+      })],
+      ["optional fourth parameter", fourParameterRegistrarWith({
+        runtimeHandleParameter: "runtimeHandle?: LocalRuntimeHandle"
+      })],
+      ["defaulted fourth parameter", fourParameterRegistrarWith({
+        declarationPrefix:
+          "declare const defaultRuntimeHandle: LocalRuntimeHandle;",
+        runtimeHandleParameter:
+          "runtimeHandle: LocalRuntimeHandle = defaultRuntimeHandle"
+      })],
+      ["rest fourth parameter", fourParameterRegistrarWith({
+        runtimeHandleParameter:
+          "...runtimeHandle: readonly LocalRuntimeHandle[]"
+      })],
+      ["overloaded registrar declaration", fourParameterRegistrarWith({
+        declarationPrefix: `
+          export function bindResidentLoopCapabilitiesForFactory(
+            wakeRuntime: object,
+            binding: unknown,
+            domainExecution: unknown,
+            runtimeHandle: LocalRuntimeHandle
+          ): unknown;
+        `
+      })],
+      ["implicit arguments carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          void arguments;
+        `
+      })],
+      ["angle-bracket assertion carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          const runtimeCarrier = <object>wakeRuntime;
+          void runtimeCarrier;
+        `
+      })],
+      ["non-const as assertion carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          const runtimeCarrier = wakeRuntime as object;
+          void runtimeCarrier;
+        `
+      })],
+      ["nested callback runtime-handle carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          const readRuntimeHandle = () => runtimeHandle;
+          void readRuntimeHandle;
+        `
+      })],
+      ["object runtime-handle carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          const runtimeCarrier = { runtimeHandle };
+          void runtimeCarrier;
+        `
+      })],
+      ["array runtime-handle carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          const runtimeCarrier = [runtimeHandle];
+          void runtimeCarrier;
+        `
+      })],
+      ["call runtime-handle carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          consumeRuntimeHandle(runtimeHandle);
+        `
+      })],
+      ["non-null runtime-handle carrier", fourParameterRegistrarWith({
+        bodyPrefix: `
+          const runtimeCarrier = runtimeHandle!;
+          void runtimeCarrier;
+        `
+      })],
+      ["optional mounted-binder call", fourParameterRegistrarWith({
+        mountedCall: `
+          bindMountedResidentLoopAuthorityForFactory?.(
+            state.store,
+            binding,
+            domainExecution
+          )
+        `
+      })],
+      ["spread mounted-binder call", fourParameterRegistrarWith({
+        mountedCall: `
+          bindMountedResidentLoopAuthorityForFactory(
+            ...[state.store, binding, domainExecution]
+          )
+        `
+      })]
+    ] as const) {
+      expect.soft(
+        mountedBinderControlAnalysis(text),
+        name
+      ).not.toEqual(exactBinderOwnership);
+    }
     const e1087CausalRedControls = [
       {
         id: "FA1",
