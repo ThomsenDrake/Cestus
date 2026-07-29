@@ -516,6 +516,7 @@ function bindPackageOwnedResidentDomainExecutionPort(input: unknown): object {
       return permitBinding.issueResidentDomainInvocationAttestation(attestation);
     }
   });
+  packageResidentCapabilities.delete(capability);
   return residentDomainExecutionPort;
 }
 
