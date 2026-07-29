@@ -48529,3 +48529,67 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3 start, repository closure, or release. Product source, `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1236 — Task16C two-source GREEN resumed
+
+- Recorded at: 2026-07-29T02:42:33Z
+- Exact E-1235 RED integration is forward-merged into clean Task136 as
+  `f0bafe7117de177f756ea6c14cac3c242a238daa`, with first parent exact E-1233
+  review envelope `ccd1cd87096b86b6912dd25dee5fdd7a93a4d988` and second parent exact
+  program integration record `b1dc76788469f6427352521693b0284d1789a423`.
+  Exact approved candidate `ef80e9b03870938997dfef7af9fd2b0521425310`,
+  approval-first integration `95eed8c1c20e641c3a897ce4b42d9dc65990f332`,
+  and all prior Task16 producer prerequisites remain ancestral.
+- Resume the halted E-1229 Task16C GREEN. Authorize exactly creation of
+  `packages/agent/src/bounded-agent-loop.ts` and modification of
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`, whose exact
+  starting blob is
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`. No other source or test may
+  change. Mounted storage, W, G, dispatcher, Core, H, wake runtime,
+  composition, ontology, activation, routes, providers, credentials,
+  configuration, dependencies, contracts, claims, plans, preview branch, and
+  unrelated bytes remain frozen.
+- Implement the approved Task16 R/factory design against the integrated
+  producer prerequisites and corrected RED. R receives the same eight exact
+  issued capabilities, uses G's private same-instance canonical-material
+  operation, supplies claimless W checkpoint drafts, revalidates W after
+  every await, accepts approval suspension only from a fresh distinct exact
+  `requested` G reread after the rejected decision lookup and post-reread W,
+  and returns only exact frozen `{ metadata, loop, stop }`. Non-requested
+  stages reject immediately after that W with no later material or effect.
+- The factory executes the exact awaited Core/preflight/bind/ports/W/C/H/R
+  chain, preserves the existing safe
+  `createResidentLoopFactoryPorts` export, adds only deep
+  `createResidentBoundedAgentLoopFactory`, and returns the proven propagating
+  stop wrapper. Its exact runtime value surface is those two named functions;
+  retain the single-declarator, direct-call, no-default, no-alias,
+  no-additional-value, no-loader, no-barrel, and no-activation graph.
+- Freeze the integrated Task16 tests at exact blobs
+  `3d970e1653355b4ffb05e19e3ecec71d65fde8dd`,
+  `667f0e9fc448282f04d955d7c4757535edf98b33`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`,
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`. Freeze W
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`, G
+  `cb2f9dcbfa71beca2600cc08134b1d1c5284e4da`, and dispatcher
+  `4518ba3cb08f23c02eba19faa269092ae4a44b87`.
+- Required GREEN under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout is exact focused **9/9**, producer controls **144/144**, Task136
+  card **383/383**, exact 37-file cross-boundary **1,042/1,042**, and Task138
+  **355/355**. Standalone typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope/freezes/ancestry/dependencies, canonical 33-path hash, diff hygiene,
+  strict Git integrity, and clean state must pass.
+- Commit only the two authorized sources, obtain completely fresh independent
+  read-only source review of exact immutable bytes, record approval and
+  integration append-only with approval-first/candidate-second plus forward
+  Task136 merge history. Changed bytes invalidate review. Only after Task16C
+  integration may Task17 admit the exact 33-path Task136 source union.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is Task16C GREEN authority, not Task16 acceptance,
+  Task136 candidacy, strict record 29, publication, Wave 3 start, repository
+  closure, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
