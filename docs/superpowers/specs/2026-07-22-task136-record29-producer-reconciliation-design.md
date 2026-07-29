@@ -2251,3 +2251,146 @@ dependency, credential, network call, external effect, raw-ledger port, or
 public authority is added. Mounted storage changes only for the newly causal
 W-owned claim completion. Task16 and Task136 remain `implementing`; the
 strict frontier remains 28 of 29.
+
+## RV-1-E-1244 Current Task16 Prepared-Composition Bootstrap
+
+This true-EOF section supersedes only Task16C's fresh-composition bootstrap
+and stop procedure. The Task14 private lexical-capability design, Task15 and
+Task16 producer ownership, the public bounded-loop issuer, all T120 behavior,
+the exact 33-path ceiling and canonical path hash, Tasks17-through-21, and
+every record-29 and publication gate remain unchanged.
+
+### One durable supervisor-lease owner
+
+The already-created and already-started Task14
+`ResidentLoopFactoryComposition` is the sole durable supervisor-lease owner.
+Before Task16 factory entry, that exact composition:
+
+1. starts once;
+2. issues the current provider and handoff authorities;
+3. completes the portable handoff preflight;
+4. binds once; and
+5. returns the exact privately registered
+   `ResidentLoopFactoryAuthorityReadback`.
+
+`createResidentBoundedAgentLoopFactory` does not import the composition
+builder as a value, create a composition, start or bind a composition, accept
+a structural composition object, repeat the portable handoff preflight, or
+accept a stop callback. The composition bind has already consumed the handoff
+witness, so a second factory-owned preflight is both unnecessary and
+causally invalid.
+
+The factory's exact frozen own-data prepared input has only:
+
+```ts
+interface PreparedResidentBoundedAgentLoopFactoryInput {
+  readonly runtimeHandle: LocalRuntimeHandle;
+  readonly wakeRuntime: WakeSupervisorRuntime;
+  readonly authorityReadback: ResidentLoopFactoryAuthorityReadback;
+  readonly providerPosture: ResidentLoopProviderPosture;
+  readonly domainExecution: OpaquePackageOwnedResidentDomainExecutionCapability;
+  readonly nowMonotonicMs: () => number;
+}
+```
+
+It has no actor, epoch, policy, wall clock, safe-ID factory, provider
+authority, provider operation, handoff authority, handoff lifecycle,
+composition, registrar, callback, or other authority field. Descriptor-safe
+normalization captures exactly these six own data values before the first
+await, accessor read, ledger read, provider call, handoff call, dispatcher
+bind, or other effect.
+
+### Exact triple authentication
+
+The wake module extends its existing private `ResidentWakeRuntimeState` only
+to retain the exact `LocalRuntimeHandle` captured when that wake runtime was
+created and the state needed to reject stopped or consumed runtimes. No new
+registry, cache, rendezvous, memoized lookup table, process-global authority,
+caller heuristic, timing test, stack inspection, or structural authority is
+introduced.
+
+The prepared factory invokes the existing bounded seam explicitly as:
+
+```ts
+await bindResidentLoopCapabilitiesForFactory(
+  prepared.wakeRuntime,
+  prepared.authorityReadback,
+  prepared.domainExecution,
+  prepared.runtimeHandle
+);
+```
+
+Inside the wake module, before inspecting the proposed readback or touching
+mounted state, the binder requires:
+
+1. exact WeakMap membership for the supplied wake runtime;
+2. exact top-level identity with that runtime's privately registered
+   authority readback;
+3. exact identity between the supplied runtime handle and the handle captured
+   at runtime construction;
+4. Core-ready, not-stopped, and unconsumed resident-binding state; and only
+   then
+5. exact registered provider, handoff, and authority-binding identities.
+
+Only after all five checks may W call the mounted binder and allow metadata,
+C, H, R, provider, handoff, gateway, approval, dispatcher, or effectful
+boundaries. H receives the ledger only from the authenticated prepared
+runtime handle. Copied, fabricated, proxied, swapped, generic, stopped, stale,
+or already-consumed runtime/readback/handle presentations fail before any
+downstream read or effect.
+
+The explicit fourth handle argument is a clean extension of the existing
+bounded seam, not a caller-detection mechanism. The frozen Task14 static
+oracle currently pins the earlier three-parameter declaration. Therefore,
+after the requested two-factory-test RED is independently integrated and
+before product GREEN, a separate smallest causal test-oracle correction must
+bind the explicit four-argument seam and its exact private-state provenance.
+It adds no path or behavior and requires its own immutable candidate, fresh
+review, append-only approval, and history-preserving integration.
+
+### Exact owner stop
+
+The returned factory product remains exact frozen
+`{ metadata, loop, stop }`. `stop` closes over only the authenticated
+`prepared.wakeRuntime`; it accepts no callback or composition. It memoizes
+the one direct `wakeRuntime.stop()` promise, returns that same outcome for
+concurrent or repeated calls, never retries after rejection, and propagates
+the exact failure. The authenticated wake runtime marks its private stopped
+state before any later bind can reach mounted reads.
+
+### Scope and lifecycle gates
+
+The first corrected RED changes only
+`packages/local-runtime/test/resident-loop-factory-ports.test.ts` and
+`packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`.
+It retains the valid direct dispatcher/G import ownership correction in
+`mounted-wake-lifecycle-store.ts`, proves one prepared composition succeeds
+with no second construction/start/bind, exercises every hostile triple
+dimension before downstream reads, and proves exact owner-stop idempotency
+and propagation. It preserves titles, cardinality, abstract local fixtures,
+and adds no unrelated alias case.
+
+After that RED and the separately reviewed causal binder-oracle correction
+are approved and integrated, the smallest GREEN may change only:
+
+- `packages/agent/src/bounded-agent-loop.ts`;
+- `packages/local-runtime/src/resident-loop-factory-ports.ts`; and
+- `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+
+`resident-loop-factory-composition.ts` and mounted storage remain frozen
+unless a newly approved causal RED proves otherwise.
+
+Required RED accounting remains focused
+**9 = 3 passed + six failed**, producer **144/144**, card
+**383 = 377 passed + six failed**, cross-boundary
+**1,042 = 1,036 passed + six failed**, and Task138 **355/355**. Required
+GREEN is complete focused **9/9**, producer **144/144**, card **383/383**,
+cross-boundary **1,042/1,042**, and Task138 **355/355**, plus typecheck,
+factory readiness, mission and V4 **20/20**, markers
+**29 / 20 / 29 / 15**, exact repository first-stop, scope, freezes,
+ancestry, dependencies, diff hygiene, strict Git integrity, and clean state.
+
+This amendment adds no path, provider, route, activation, default runtime,
+fallback, credential, network call, external effect, new public authority,
+structural authority object, hidden mutable global, or heuristic. Task16 and
+Task136 remain `implementing`; strict frontier remains **28 of 29**.
