@@ -48123,3 +48123,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, or release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1230 — Task16C GREEN halted; two-test phase oracle correction authorized
+
+- Recorded at: 2026-07-29T01:24:47Z
+- E-1229 is forward-merged into exact clean Task136 authority
+  `fc028cd9854cf6ac250854756ee0a2b7377c740a`. Main-session execution
+  reproduces focused **9 = 3 passed + six failed**. Completely independent
+  read-only analyst `/root/task16c_contract_analysis` and the separately
+  assigned implementation owner `/root/task16c_implementer` inspect the
+  immutable RED, approved design/plan, integrated G/W APIs, and AST controls.
+  Both find the same phase-satisfiability defects before any source edit.
+  The Task136 worktree remains clean; no Task16C source candidate or working
+  source diff exists.
+- The factory import oracle requires the module's runtime value exports to
+  equal only `createResidentBoundedAgentLoopFactory`. The approved design and
+  preserved behavior test simultaneously require the existing safe
+  `createResidentLoopFactoryPorts` runtime projection to remain a named
+  callable export. Exact TypeScript symbol resolution proves the current
+  module exports that preserved function. No lawful Task16C source can both
+  preserve and remove it.
+- Correct only that exact export-set oracle. During Task16C the exact runtime
+  value surface must be the two named functions
+  `createResidentLoopFactoryPorts` and
+  `createResidentBoundedAgentLoopFactory`. Update the existing abstract local
+  safe/default/alias/additional controls to bind that exact two-value set
+  while retaining the no-default, no-alias, no-additional-value,
+  single-declarator, direct-call, no-loader, no-activation, and all other
+  import-graph requirements. Add no unrelated alias or export case. This
+  supersedes only E-1217's inconsistent sole-runtime-value instruction.
+- The approval-required and human effect-outcome-unknown fixtures currently
+  expose identical empty replay, candidate, requested readback/material, and
+  successful `readFreshHumanDecision` behavior, while their expected traces
+  respectively forbid and require that call. No approved input distinguishes
+  them without a caller/source heuristic. Correct the existing harness so an
+  approval-required fresh-decision lookup performs its awaited G boundary and
+  rejects because no decision is durable. After W revalidation, the loop must
+  use G's existing `rereadAndIssueFromLedger` operation on the exact locator;
+  only exact reread stage `requested` permits approval suspension. Denied,
+  failed, terminal, approved, claimed, or other reread state remains
+  ineligible. The human unknown-outcome branch retains its exact successful
+  fresh decision and execution. Read and preserve requested canonical
+  material before the destructive decision lookup, and require exact
+  post-rejection W revalidation, one requested ledger reread, zero approval
+  consumption, zero execution/effect, and unchanged append accounting for
+  approval-required.
+- The initial-suspension fixture also requires hardcoded schema-valid
+  `suspensionSemanticKey` and `resultSemanticKey` hashes that are absent from
+  every issuer argument, durable prefix, and G material, with no committed
+  versioned derivation formula. As in E-1114, rejecting or reproducing an
+  unbound hash would require hardcoding or a heuristic. Correct the existing
+  harness to accept and copy two exact, distinct schema-valid content hashes
+  from the trusted checkpoint candidate, bind those same bytes throughout
+  the expected suspension/result prefix, and prove stable reuse for identical
+  canonical input inside the existing title. Do not prescribe an
+  unauthenticated literal or widen the public issuer ABI.
+- Halt E-1229 source execution. Authorize the smallest forward test-only
+  correction in exactly
+  `packages/agent/test/bounded-agent-loop.test.ts` and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  starting respectively from exact blobs
+  `32962cf24a28087253368289480dc5ce2e741574` and
+  `aa1d371236e3cd7abbceceab654513d51bc31990`. Preserve all five other
+  Task16 test blobs, factory source
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, integrated W/G/dispatcher
+  blobs, absent bounded source, every other product/test, title and total
+  cardinality, contract, claim, design, plan, mission, dependency,
+  configuration, route, provider, credential, activation, preview branch,
+  and unrelated byte.
+- The corrected test-only descendant must retain exact focused
+  **9 = 3 passed + six failed**, producer controls **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355** against the
+  frozen absent Task16C sources. Typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope/freezes/ancestry/dependencies, diff hygiene, Git integrity, and clean
+  state must pass.
+- Commit only the two corrected tests, admit exact immutable bytes to a
+  completely fresh independent read-only reviewer, and record, approve, and
+  integrate append-only with approval-first/candidate-second plus forward
+  Task136 merges. Changed bytes invalidate review. Only after corrected RED
+  integration may a separate event resume the two-source Task16C GREEN.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is forward unit-test-oracle repair authority, not
+  corrected RED candidacy, approval, integration, resumed Task16C source
+  authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
