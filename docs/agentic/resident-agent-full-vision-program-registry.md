@@ -49771,3 +49771,70 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, production readiness, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1252 — Corrected Task16 prepared-bootstrap RED rejected; exact-const oracle correction authorized
+
+- Recorded at: 2026-07-29T18:17:09Z
+- Completely fresh independent read-only reviewer
+  `/root/task16_e1251_corrected_red_fresh_review` rejects exact candidate
+  `4d8e36ea63e86f11c90493edb37d80ee71cadfe0`, tree
+  `def4a4179d205c0d4f13848959a0f74a3bca8ce8`, sole parent
+  `78717caf14c7cbc6188717257c16f793fd3e69e9`, inside clean review
+  envelope `f3697747b6c3015613065a5e93836216e3590dac`.
+  Exact rejected import-test blob is
+  `23e9791f75b1f97b76ff964eb36c3949f4b4f5a1`; frozen behavior-test blob
+  remains `7cb68b91f3acd31ad5895b3614b976780fb821d1`.
+- The nominal exact-`const` allowlist uses a bit-containment test
+  `(declarationList.flags & ts.NodeFlags.Const) !== 0`. TypeScript **5.9.3**
+  parses abstract local `await using` with flags **6**: `Const = 2`,
+  `Using = 4`, and `AwaitUsing = 6`. The predicate therefore admits a
+  non-`const` declaration whose module evaluation performs implicit disposal
+  symbol lookup and calls.
+- Independent main-session AST reproduction confirms exact ordinary
+  `const = 2`, `using = 4`, and `await using = 6`, with only ordinary and
+  await-using forms satisfying the rejected Const-bit predicate. This
+  candidate-bound unit-test-oracle case violates E-1250/E-1251's exact
+  unmodified internal-`const` and closed module-effect boundary.
+- Candidate identity, one-file correction scope, clean state, and diff
+  hygiene pass. The fresh reviewer reproduces exact focused
+  **9 = 3 passed + six failed**. E-1251's complete producer, card,
+  cross-card, Task138, typecheck, readiness, mission, V4, marker,
+  repository-first-stop, scope, ancestry, dependency, and Git-integrity
+  packet remains exact; those passing gates do not override the oracle
+  defect.
+- Advance only exact candidate
+  `4d8e36ea63e86f11c90493edb37d80ee71cadfe0`
+  `reviewing -> rejected`. Preserve it unmodified and unintegrated.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  starting from rejected blob
+  `23e9791f75b1f97b76ff964eb36c3949f4b4f5a1`.
+  Require exact equality
+  `statement.declarationList.flags === ts.NodeFlags.Const` and add one
+  explicit abstract local `await using` rejection control. Preserve every
+  other E-1251 symbol-provenance, pure-initializer, and counterexample byte;
+  add no other cases.
+- Freeze
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` at
+  `7cb68b91f3acd31ad5895b3614b976780fb821d1`, every product source, every
+  other test, wake compatibility tests, composition, mounted storage,
+  contract, mission, assurance, dependency, configuration, route, provider,
+  credential, preview branch, and unrelated byte. Preserve the two held
+  product diagnostics unstaged and byte-exact.
+- Required RED signatures and all supporting E-1251 gates remain unchanged.
+  Commit only the one corrected import-policy test with subject
+  `test(task136): require exact const initializer flags`. Admit the new
+  immutable candidate to another completely fresh independent read-only
+  reviewer. Changed bytes invalidate review. Record approval and integration
+  append-only with approval-first/candidate-second program integration,
+  fresh integration-tree gates, append-only integration event, and forward
+  Task136 merge before any wake compatibility-test transition.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is one-test oracle-correction authority, not a corrected
+  RED candidate, wake compatibility-test authority, source GREEN, Task16
+  acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
