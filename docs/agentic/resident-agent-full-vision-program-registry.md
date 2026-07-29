@@ -50030,3 +50030,82 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness, or release. Product source, `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1256 — Task16 passing binder-ABI compatibility transition authorized
+
+- Recorded at: 2026-07-29T18:59:49Z
+- Exact E-1255 corrected RED integration is forward-merged into Task136 as
+  `283b2672de35c92d40d102f8ad1fcb616951f488`, tree
+  `1e0b652ca4ee00fe9d8ebf66c5063f5394c031af`, with first parent exact
+  E-1253 review envelope
+  `40d8bb6576f4fd6cdb5e1586f91fb52be47aa9f9` and second parent exact
+  E-1255 program integration record
+  `10467d30c7e0278ff082cac95ba39e0d5d6bb312`.
+  Exact approved candidate
+  `14555dd9811db62fdfbb15135031fef6108592c8`, approval-first integration
+  `0fb9ea43d71e5258eb3a81f43364186d919b7544`, and all prior Task16
+  producer prerequisites remain ancestral.
+- Authorize only the passing Task16C-3 binder-ABI compatibility transition
+  in:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, starting at
+  exact blob `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`, and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting at exact blob
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`.
+  Freeze every product source, every other test, composition, mounted
+  storage, contracts, claims, plans, dependencies, configuration, routes,
+  providers, credentials, preview branch, and unrelated byte.
+- In the wake behavior test, visibly import the source binder through a
+  source alias and assign it directly, without wrapper or runtime cast, to
+  the existing local name under a four-required-argument transition type
+  derived from exact `Parameters[0..2]`, `LocalRuntimeHandle`, and
+  `ReturnType`. Pass each fixture's exact runtime handle as the fourth
+  positional argument to all existing **11** binder calls. Add no behavior
+  title, case, or assertion.
+- In the existing static title, accept exactly one top-level exported
+  implementation whose required named parameters are either exact
+  `wakeRuntime, binding, domainExecution` or exact
+  `wakeRuntime, binding, domainExecution, runtimeHandle`. Require the
+  fourth parameter, when present, to carry the exact direct unaliased
+  type-only `LocalRuntimeHandle` import from `./runtime-factory.js`.
+  Preserve the exact one direct three-argument mounted-store binder call.
+- Require exact single-declaration implementation provenance and reject
+  overload or alternate declarations, `arguments`, angle-bracket
+  assertions, non-`as const` assertions, callback or unknown fourth-
+  parameter carriers, optional/default/rest parameters, optional/spread
+  calls, wrappers, nested callbacks, alternate calls, barrels, loaders, and
+  hidden arity carriers. Add one abstract local four-parameter positive
+  control and only the isolated negative controls needed for those committed
+  cases within the existing static title. Preserve the source's required
+  safe `as const` expression and every Task14 lexical-issuer,
+  generic-runtime, ownership, no-barrel, no-loader, and no-alternate-caller
+  control.
+- Required clean committed-tree signature under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second timeout remains focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. Typecheck,
+  factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, scope, blobs,
+  freezes, ancestry, dependency pins, canonical 33-path hash, diff hygiene,
+  strict Git integrity, and clean state must pass.
+- Commit only the two wake tests with subject
+  `test(task136): permit prepared binder ABI transition`. Obtain a new
+  completely fresh independent read-only review of exact immutable bytes,
+  then record approval and integration append-only with approval-first/
+  candidate-second program integration, fresh integration gates, and a
+  forward Task136 merge. Changed bytes invalidate review. No product source
+  may change before this passing compatibility transition is integrated and
+  a separate GREEN authority exists.
+- Preserve the held future product diagnostics unstaged and byte-exact:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is passing two-test compatibility authority, not a
+  compatibility candidate, source GREEN, Task16 acceptance, Task136
+  candidacy, record 29, publication, Wave 3 start, repository closure,
+  production readiness, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
