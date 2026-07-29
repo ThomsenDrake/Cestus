@@ -50400,3 +50400,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1261 — Task16 prepared factory three-source GREEN authorized
+
+- Recorded at: 2026-07-29T20:11:12Z
+- Exact E-1260 compatibility integration is forward-merged into Task136 as
+  `98ef1403b27b02ff5e993181ea62e4f14e414a20`, tree
+  `bde5f55e2e9d6ebe65d8b1df4bb21e9bd133053a`, with exact first parent
+  E-1258 review envelope
+  `928f74e1c54f367c6985ea18444cdd227463d5ec` and exact second parent
+  E-1260 program integration record
+  `69c199c5dc98195779f7895eccc2139376f0770b`.
+  Exact approved candidate
+  `d21c391f1c18b78d5c9ccb002af6fa357a64b73e`, approval-first integration
+  `2f34850fb44ddb6def8b6652269ca926594add7d`, and every Task16 producer,
+  prepared-bootstrap, and compatibility prerequisite remain ancestral.
+- Authorize only Task16C-4 product GREEN in exactly:
+  `packages/agent/src/bounded-agent-loop.ts`,
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`, and
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+  The Task136 worktree must begin from the preserved held diagnostic blobs
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d` and
+  `cf5f3930576c9e296b09fd54a94051c21feefad5`, plus exact committed wake
+  source blob `8f53e00c3f5ba59cd6f3158e67da9fc746f401c2`.
+- In W, extend only the existing private wake-runtime state with the exact
+  captured `LocalRuntimeHandle`, stopped state, and synchronous
+  resident-binding-in-flight reservation needed by the approved design.
+  Require the explicit fourth `runtimeHandle` argument and authenticate exact
+  wake WeakMap membership, exact registered top-level readback, exact
+  captured handle identity, Core-ready, not-stopped, not-in-flight, and
+  unconsumed state before any `Reflect`, accessor, ledger, mounted-store,
+  provider, handoff, gateway, dispatcher, or other effectful read.
+- After synchronous reservation, authenticate exact registered nested
+  provider, handoff, and authority-binding identities and call the unchanged
+  mounted binder with its exact three arguments. Release the reservation only
+  when mounted binding rejects before capability issuance. Once mounted
+  binding resolves, burn the resident binding before any later local
+  validation. Generic, copied, fabricated, proxied, swapped, stale, stopped,
+  already-consumed, and concurrent duplicate runtime/readback/handle
+  presentations remain fail-closed with the exact committed accounting.
+- In factory ports, descriptor-safely normalize exactly the six frozen
+  own-data fields `runtimeHandle, wakeRuntime, authorityReadback,
+  providerPosture, domainExecution, nowMonotonicMs` before the first await.
+  Execute exact W binding first, then metadata projection, C, H using only the
+  authenticated handle ledger, and R issuance. Remove composition
+  construction, start, bind, preflight, structural composition, and
+  caller-supplied stop paths. Return only exact frozen
+  `{ metadata, loop, stop }`; one non-async memoized stop closure must call
+  the exact authenticated `wakeRuntime.stop()` once and propagate its exact
+  result or rejection.
+- Implement R only through the existing eight issued capability arguments and
+  frozen Task16 tests. Preserve exact T120/C/G/W/H capability identity,
+  descriptor-safe normalization, positive budgets, causal append/readback
+  order, W revalidation after every await, durable approval and
+  unknown-outcome suspension, reclaimed-token resume, exact full H readback,
+  no fallback write or effect, and exact frozen issuance surfaces. Add no
+  provider, route, activation, network, credential, or alternate authority
+  behavior.
+- Freeze every test and every other product path. In particular freeze
+  `packages/local-runtime/src/resident-loop-factory-composition.ts` at exact
+  blob `a5e554dd138dc82bcd9e01b79aef82742b12c366` and
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` at exact blob
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`.
+  No registrar, registry, rendezvous, memoization layer, caller heuristic,
+  timing test, stack inspection, global mutable authority, composition
+  change, mounted-store change, alias-corpus extension, route, provider,
+  activation, fallback, credential, preview, or unrelated behavior is
+  authorized.
+- Required clean candidate signature under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second focused import-policy timeout is focused **9/9**, producer
+  **144/144**, Task136 card **383/383**, exact 37-file cross-card
+  **1,042/1,042**, and Task138 **355/355**, plus passing standalone
+  typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, three-source scope,
+  every freeze, ancestry, dependency, canonical 33-path hash, diff hygiene,
+  strict Git integrity, and clean committed-tree checks.
+- Commit only the exact three sources with subject
+  `feat(local-runtime): compose bounded resident agent loop`. Obtain a
+  completely fresh independent read-only source review of exact immutable
+  bytes, record approval append-only, integrate approval-first/candidate-
+  second into the program branch, rerun every integration gate, append
+  Task16 integration/completion, and forward-merge authority into Task136
+  before Task17. Changed bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is source GREEN authority, not a GREEN candidate,
+  approval, integration, Task16 acceptance, Task136 candidacy, record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, test, documentation, and unrelated
+  actions remain unauthorized.
