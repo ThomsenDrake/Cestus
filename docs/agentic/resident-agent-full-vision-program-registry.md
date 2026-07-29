@@ -49605,3 +49605,87 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, production readiness, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1250 — Task16 prepared-bootstrap two-factory-test RED rejected; one-test oracle correction authorized
+
+- Recorded at: 2026-07-29T17:33:51Z
+- Completely fresh independent read-only reviewer
+  `/root/task16_e1249_red_fresh_review` rejects exact candidate
+  `b85f29463dcdb9f3510345f66409a48284d73909`, tree
+  `00cb230202aeb709a59666f2782943e9dcf91e3f`, sole parent exact E-1248
+  authority merge `aaa2355eb1c090f972fb93eae2c59228b14af424`,
+  inside clean review envelope
+  `80b1ec20d2e7b5588ab78a71e1a34f82eefa839e`. Exact rejected behavior-
+  test and import-test blobs are
+  `7cb68b91f3acd31ad5895b3614b976780fb821d1` and
+  `c20de1ad4cf4cb8d848b24d353dfbed2fdb9afe8`.
+- The import-policy oracle recognizes the final `Object.freeze(...)` receiver
+  by identifier text instead of TypeScript symbol provenance. Its top-level
+  initialization scan rejects call, construction, await, and tagged-template
+  expressions but does not close assignment or update initialization, and
+  it skips function bodies. An abstract local counterexample can therefore
+  shadow the freeze receiver, retain the required syntax and output shape,
+  and perform an otherwise unobserved module effect.
+- Independent isolated execution by
+  `/root/task16_oracle_escape_probe` confirms that exact local AST/symbol-
+  resolution counterexample passes both import-policy titles **2/2** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. The candidate
+  therefore does not yet prove the committed descriptor-safe-before-effect,
+  exact-freeze, no-alias, and no-unrelated-effect boundary.
+- The fresh reviewer independently reproduces exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, and Task136 card
+  **383 = 377 passed + six failed**. Candidate identity, ancestry, exact
+  two-path scope, and blobs pass. E-1249's complete cross-card, Task138,
+  typecheck, factory-readiness, mission, V4, marker, repository-first-stop,
+  scope, ancestry, dependency, diff-hygiene, and Git-integrity packet remains
+  exact; those passing gates do not override the candidate-bound oracle
+  defect.
+- Advance only exact candidate
+  `b85f29463dcdb9f3510345f66409a48284d73909`
+  `reviewing -> rejected`. Preserve it unmodified and unintegrated.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  starting from rejected blob
+  `c20de1ad4cf4cb8d848b24d353dfbed2fdb9afe8`. Require the final freeze
+  receiver to resolve through the TypeScript checker to the genuine
+  global/library `Object.freeze` declaration, reject local shadowing, and
+  close assignment, update, and effectful top-level initialization paths
+  with explicit abstract local counterexample controls. Add no unrelated
+  alias cases.
+- Freeze
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` at
+  rejected blob `7cb68b91f3acd31ad5895b3614b976780fb821d1`.
+  Preserve without staging or modification the held product diagnostics
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at working blob
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at working blob
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`. Freeze every product source,
+  every other test, composition, mounted storage, wake tests, contract,
+  mission, assurance, dependency, configuration, route, provider,
+  credential, preview branch, and unrelated byte.
+- Required corrected RED signatures and every supporting E-1249 gate remain
+  exact: focused **9 = 3 passed + six failed**, producer **144/144**,
+  Task136 card **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**, with only
+  the same three bounded-loop, two factory API, and one factory import-graph
+  failures. Typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, two-test lineage and
+  one-file correction scope, all freezes, 33-path hash, ancestry,
+  dependencies, diff hygiene, Git integrity, and clean committed-tree
+  execution must pass.
+- Commit only the one corrected import-policy test with subject
+  `test(task136): close prepared factory oracle effect gap`. Admit the new
+  immutable candidate to a different completely fresh independent read-only
+  reviewer. Changed bytes invalidate review. Record approval and integration
+  append-only with exact approval-first/candidate-second program integration,
+  fresh integration gates, append-only integration event, and forward
+  Task136 merge before any wake compatibility-test transition.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is one-test oracle-correction authority, not a corrected
+  RED candidate, wake compatibility-test authority, source GREEN, Task16
+  acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
