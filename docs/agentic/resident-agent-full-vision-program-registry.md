@@ -48484,3 +48484,48 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Product source, `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1235 — Approved Task16C reread-stage RED integrated
+
+- Recorded at: 2026-07-29T02:41:43Z
+- Exact clean approval-first/candidate-second program merge is
+  `95eed8c1c20e641c3a897ce4b42d9dc65990f332`, tree
+  `c2f94862787fd2824dae24504bb1480c071c66e6`, with exact first parent
+  E-1234 approval `63f0f3565fdcd6e380372689d602ae2706e27cd1` and exact second parent
+  approved RED candidate `ef80e9b03870938997dfef7af9fd2b0521425310`.
+  Candidate tree `04564f4b8ead352f8cac23c57691888c86b9b32b`, sole parent
+  `626b10eb86052150865f34fb3cb5e350b3e1fc86`, subject, one-test scope,
+  **200 / 11** diff, and review approval remain exact and ancestral.
+- Integrated bounded-loop test blob is
+  `3d970e1653355b4ffb05e19e3ecec71d65fde8dd`; corrected factory
+  import-policy test blob is
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`. The five other Task16 test
+  blobs, factory/W/G/dispatcher sources, every other product/test byte, and
+  absent bounded source remain exactly frozen.
+- Fresh integration execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is exact focused **9 = 3 passed + six failed**, producer
+  controls **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. All six
+  failures remain only the absent Task16C bounded issuer, factory API, and
+  import graph.
+- Fresh integration typecheck and factory readiness pass. Mission and V4
+  each pass **20/20** with unchanged fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode first stops only at
+  exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Canonical 33-path hash remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  dependency pins, scope/blobs/freezes, topology/ancestry, diff hygiene,
+  strict Git integrity, and clean state pass.
+- Advance only this Task16C test-only RED `approved -> integrated`.
+  Authorize the exact forward history-preserving Task136 merge of this
+  integration record. A separate append-only authority must resume the
+  two-source Task16C GREEN before any product edit.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is RED integration, not resumed source authority,
+  Task16 acceptance, Task136 candidacy, strict record 29, publication,
+  Wave 3 start, repository closure, or release. Product source, `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
