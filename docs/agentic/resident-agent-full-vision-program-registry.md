@@ -50185,3 +50185,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production readiness, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1258 — Corrected Task16 binder-ABI compatibility candidate admitted to fresh review
+
+- Recorded at: 2026-07-29T19:39:25Z
+- Exact immutable forward correction candidate is
+  `d21c391f1c18b78d5c9ccb002af6fa357a64b73e`, tree
+  `f15cfabb53fb5913d8c68f204b5aabcdd296c8bf`, sole parent exact E-1257
+  rejection-authority merge
+  `df23f0fea2238b2df8951d5ca42fefc9e13dbd15`, with exact subject
+  `test(task136): preserve runtime handle identifier narrowing`.
+- Correction scope is exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  **1 insertion / 0 deletions**, from rejected blob
+  `292c33cb4c5224ff3326f614fc47092251feeb41` to exact corrected blob
+  `0ec9f6840d5f6e84515417c42503e4f012a90078`.
+  Exact behavior-test blob remains frozen at
+  `d4eb04515063ac50ea88989a0b1335ecc0ea0f61`; the cumulative E-1256
+  two-test transition is **392 insertions / 22 deletions**.
+- The correction repeats only `ts.isIdentifier(node)` at the direct
+  comparison-operand helper call, preserving the existing symbol match while
+  restoring TypeScript control-flow narrowing. No title, control, alias,
+  assertion, fixture, or product byte changes.
+- The cumulative compatibility oracle preserves exactly **29** behavior
+  titles, **142** behavior assertions, **6** import-policy titles, and all
+  **11** direct binder calls with exact runtime-associated handles. The
+  closed fourth-parameter rule resolves shorthand value symbols, requires at
+  least one exact parameter-symbol reference, permits only direct
+  `===`/`!==` operands, and rejects nested function, object, array, call,
+  non-null, assertion, `arguments`, overload, callback-type, optional,
+  default, rest, optional-call, spread-call, and hidden-carrier controls.
+  Current three-parameter source and intended straight-line four-parameter
+  GREEN remain satisfiable.
+- Fresh clean detached execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The same
+  three absent bounded-loop, two absent factory API, and one factory import-
+  graph titles are the only failures.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix or release-closure marker.
+- Exact candidate identity, one-file correction and cumulative two-test
+  scope, all source/test freezes, exact 33-path ceiling and canonical
+  SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  E-1244 through E-1257 ancestry, Task138-H and V4 ancestry, TypeScript
+  **5.9.3**, Vitest **4.1.9**, dependency freezes, diff hygiene, clean
+  detached state, and strict Git integrity pass. Strict fsck reports
+  dangling objects only and no corruption.
+- The paused product diagnostics remain unstaged and byte-exact only in the
+  Task136 worktree:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`. They are not candidate
+  evidence and remain unauthorized for product execution.
+- Assign a completely fresh independent read-only reviewer to exact
+  candidate `d21c391f1c18b78d5c9ccb002af6fa357a64b73e`.
+  Bind exact tree, parent, one-test correction, cumulative two-test blobs,
+  E-1256/E-1257 contract, all local AST/symbol-resolution controls, immutable
+  signatures, future-GREEN satisfiability, and the complete gate packet.
+  Changed candidate bytes invalidate review.
+- Advance only this corrected passing Task16 compatibility transition
+  `candidate -> reviewing`. Task16 and Task136 remain `implementing`;
+  strict product frontier remains **28 of 29**. This is review admission,
+  not approval, integration, source GREEN, Task16 acceptance, Task136
+  candidacy, record 29, publication, Wave 3 start, repository closure,
+  production readiness, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
