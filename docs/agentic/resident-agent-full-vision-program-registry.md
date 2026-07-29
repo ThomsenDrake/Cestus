@@ -48674,3 +48674,85 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3 start, repository closure, or release. Product source, `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1238 — Corrected Task16C released-readback RED admitted to fresh review
+
+- Recorded at: 2026-07-29T03:22:01Z
+- Exact immutable forward RED candidate is
+  `6b0646fb21ec0e52db1c0631ec858136e3c33ad3`, tree
+  `6902f69b697c127d50625a8c58564cb57b29d719`, sole parent exact E-1237
+  authority merge `5b6c765f33ec8b240c03b4c89e3caef13da5f6dd`, with exact subject
+  `test(task136): align Task16C released readback oracle`.
+- Candidate scope is exactly
+  `packages/agent/test/bounded-agent-loop.test.ts`, **35 insertions /
+  9 deletions**, from E-1237 starting blob
+  `3d970e1653355b4ffb05e19e3ecec71d65fde8dd` to exact candidate blob
+  `8f38c7241f074bd870667363f3e483cfb3087176`. Corrected import-policy
+  test remains frozen at
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`; the other five Task16 tests
+  remain frozen at
+  `667f0e9fc448282f04d955d7c4757535edf98b33`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`. Every product source and
+  every other test remains frozen, and bounded source remains absent.
+- Each local harness now issues one deep-frozen plain W
+  released-checkpoint readback with exactly schema plus checkpoint,
+  suspension, result, and release IDs. The suspension oracle requires
+  approval and both unknown-outcome branches to return that exact object
+  identity and proves its exact five-key own-data surface. Separately, the
+  full resumable result remains the exact durable replay object: its ID
+  equals the opaque readback result ID, its result hash equals W's exact
+  result semantic key, its suspension/result semantic keys remain distinct,
+  and the retained replay validity, W internal append traces, effects,
+  ledger counts, and event order remain exact. Completion and resume retain
+  their exact full T120 terminal-result returns.
+- Swapped-W and stale-initial-token hostile cases still reject with zero
+  effect and zero proxy read but no longer demand that an inaccessible
+  original harness clear its pending flag after terminal first-W rejection.
+  Every other hostile case retains settlement, and all titles, cases,
+  cardinality, positive-path W counts, currentness, ordering, and
+  fail-closed assertions remain unchanged.
+- Fresh committed execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is exact focused
+  **9 = 3 passed + six failed**, producer controls **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. All six
+  failures are only the absent Task16C bounded issuer, factory API, and
+  import graph.
+- One diagnostic-only `vitest list --json` invocation treated the following
+  frozen G test path as its output filename. The accidental working-tree
+  overwrite was detected immediately, restored exactly to committed blob
+  `667f0e9fc448282f04d955d7c4757535edf98b33`, and never staged or
+  committed. The affected aggregation is excluded. The subsequent exact
+  serialized producer command passes **144/144**, and all final scope,
+  freeze, and clean-state checks bind the restored committed blob.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`.
+  Contract markers remain **29 / 20 / 29 / 15**. Repository mode exits one
+  after those markers and stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no closure or release marker.
+- Exact scope, all blobs and product/test freezes, E-1237 and producer
+  ancestry, dependency pins, TypeScript **5.9.3**, Vitest **4.1.9**,
+  canonical 33-path SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean candidate state pass.
+- Assign completely fresh independent read-only reviewer
+  `/root/task16c_e1238_red_review`. Bind exact candidate/tree/parent/blob and
+  one-test scope; inspect the complete diff and frozen W/test context;
+  reproduce the full gate packet; and independently prove exact opaque
+  identity/surface, full durable-result linkage and semantic bytes, preserved
+  completion/resume return contracts, the two narrowly omitted impossible
+  settlement assertions, every retained hostile/currentness/accounting
+  control, and source-phase satisfiability. Changed bytes invalidate review.
+- Advance only this forward Task16C test-only RED `candidate -> reviewing`.
+  Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is review admission, not RED approval or integration,
+  resumed Task16C source authority, Task16 acceptance, Task136 candidacy,
+  strict record 29, publication, Wave 3 start, repository closure, or
+  release. Product source, `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
