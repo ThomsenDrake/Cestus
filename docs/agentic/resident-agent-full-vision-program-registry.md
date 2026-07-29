@@ -48756,3 +48756,61 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. Product source, `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1239 — Corrected Task16C released-readback RED independently approved
+
+- Recorded at: 2026-07-29T03:40:05Z
+- Completely fresh independent read-only reviewer
+  `/root/task16c_e1238_red_review` approves with no P0-P3 defect, missing
+  test, specification drift, masking, or source-phase satisfiability gap
+  exact immutable candidate
+  `6b0646fb21ec0e52db1c0631ec858136e3c33ad3`, tree
+  `6902f69b697c127d50625a8c58564cb57b29d719`, sole parent
+  `5b6c765f33ec8b240c03b4c89e3caef13da5f6dd`, through exact E-1238 review
+  envelope `9c5cc3036e1613cc1ea375059c9fec0288c05859`. Changed candidate bytes
+  invalidate this approval.
+- Exact reviewed scope remains one test, **35 insertions / 9 deletions**,
+  from blob `3d970e1653355b4ffb05e19e3ecec71d65fde8dd` to
+  `8f38c7241f074bd870667363f3e483cfb3087176`. Every product source and
+  every other test remain frozen; bounded source remains absent.
+- Reviewer independently proves all three suspension branches require the
+  exact same deep-frozen plain five-key object issued by W. The full
+  resumable result remains a distinct exact schema-valid durable replay
+  object linked by `resultEventId`, with exact result hash and distinct
+  suspension/result semantic keys. Completion and resume retain their exact
+  full terminal T120 result return.
+- Reviewer independently proves only swapped-W and stale-initial-token omit
+  the impossible original-harness settlement assertion after terminal
+  first-W rejection. Every other hostile settlement, zero effect, zero proxy
+  read, currentness, ordering, replay, append, and accounting assertion
+  remains exact. Frozen W directly satisfies the corrected return contract;
+  no W, producer, API, or scope widening is required.
+- Fresh independent execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout reproduces focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The six
+  failures remain exclusively the absent Task16C bounded issuer, factory
+  API, and import graph.
+- Fresh typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15** and repository mode first stops only
+  at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Exact scope, freezes, ancestry, dependency pins, TypeScript **5.9.3**,
+  Vitest **4.1.9**, canonical 33-path hash, diff hygiene, strict Git
+  integrity, and clean state pass.
+- Advance only this corrected Task16C test-only RED
+  `reviewing -> approved`. Authorize its exact history-preserving
+  approval-first/candidate-second program merge, fresh integration packet,
+  append-only integration event, and forward Task136 authority merge.
+  Product execution remains halted until that integration is recorded and a
+  separate GREEN authority exists.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED approval, not integration, resumed
+  source authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
