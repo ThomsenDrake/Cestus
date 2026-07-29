@@ -48212,3 +48212,86 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1231 — Corrected Task16C phase RED admitted to fresh review
+
+- Recorded at: 2026-07-29T01:41:29Z
+- Exact immutable corrected RED candidate is
+  `855938fec8b7dbe2e9a45bbbf34f190df6bd0e9c`, tree
+  `725d14a28f40bc5c53fc2bf8df4aa21c7b3bc769`, sole parent exact E-1230
+  authority merge `8fafe1f4b68b40c7f3c381e9d6c4edb83d4332b1`, with exact subject
+  `test(task136): repair Task16C phase oracles`.
+- Candidate scope is exactly the two E-1230 tests,
+  **257 insertions / 20 deletions**. The bounded test changes
+  **247 / 19**, from
+  `32962cf24a28087253368289480dc5ce2e741574` to exact blob
+  `28fa495dda474438e030a22c4ccd03baabfcdece`. The import-policy test
+  changes **10 / 1**, from
+  `aa1d371236e3cd7abbceceab654513d51bc31990` to exact blob
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`.
+- The bounded harness now reads requested canonical material before the
+  destructive human-decision lookup. Approval-required performs an awaited
+  rejected decision read, W revalidation, exact G ledger reread returning a
+  fresh requested-stage identity, another W revalidation, and canonical
+  material read only from that reread. It proves zero decision consumption,
+  execution, or provider effect and unchanged append accounting. Human
+  unknown-outcome retains its successful decision/execution and claimed
+  reread.
+- W's test double recursively rejects proxy, accessor, symbol, prototype,
+  sparse/custom-array, and unfrozen checkpoint candidates before extracting
+  two exact, distinct schema-valid semantic hashes. It copies the supplied
+  result key into the expected durable resumable result and compares key pairs
+  from two independently issued loops over identical canonical approval
+  input. No unauthenticated literal or ninth issuer argument is introduced.
+- The symbol-resolved factory oracle now requires the exact two-value runtime
+  surface `createResidentLoopFactoryPorts` plus
+  `createResidentBoundedAgentLoopFactory`. Updated abstract local controls
+  retain rejection of default, aliased, and additional runtime exports and
+  preserve the single-declarator/direct-call/import/no-activation rules.
+  Existing titles and total cardinality remain **3** bounded plus **2**
+  import-policy tests.
+- The other five Task16 test blobs remain
+  `667f0e9fc448282f04d955d7c4757535edf98b33`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`. Factory source remains
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`; W, G, and dispatcher remain
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`,
+  `cb2f9dcbfa71beca2600cc08134b1d1c5284e4da`, and
+  `4518ba3cb08f23c02eba19faa269092ae4a44b87`; bounded source remains
+  absent. Every other product, test, authority, dependency, activation,
+  route, provider, credential, preview-branch, and unrelated byte is frozen.
+- Fresh execution under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout is exact focused **9 = 3 passed + six failed**, producer controls
+  **144/144**, Task136 card **383 = 377 passed + six failed**, exact 37-file
+  cross-boundary **1,042 = 1,036 passed + six failed**, and Task138
+  **355/355**. All six failures remain only the absent Task16C bounded issuer,
+  factory, and import graph; the corrected local controls pass before that
+  boundary.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Clean committed repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Canonical 33-path SHA-256 remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  exact scope/blobs/freezes, ancestry, TypeScript **5.9.3**, Vitest **4.1.9**,
+  diff hygiene, strict Git integrity, and clean candidate state pass.
+- Assign completely fresh independent read-only reviewer
+  `/root/task16c_e1231_red_review`. Bind exact candidate/tree/parent, inspect
+  the complete two-test diff and retained fixture context, reproduce the
+  frozen packet and complete gate matrix, and independently prove the exact
+  two-export symbol set, destructive-decision/requested-reread identity and
+  currentness sequence, zero-effect/accounting controls, semantic-key
+  non-hardcoding/distinctness/stability, and Task16C source-phase
+  satisfiability. Changed bytes invalidate review.
+- Advance only this corrected Task16C test-only RED
+  `candidate -> reviewing`. Task16 and Task136 remain `implementing`; strict
+  product frontier remains **28 of 29**. This is review admission, not RED
+  approval or integration, resumed Task16C source authority, Task16
+  acceptance, Task136 candidacy, strict record 29, publication, Wave 3
+  start, repository closure, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
