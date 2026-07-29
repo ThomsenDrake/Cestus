@@ -50707,3 +50707,61 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or release. Product execution, `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1265 — Task16 prepared preflight and claim-currentness constraints conflict; coordinator decision checkpoint
+
+- Recorded at: 2026-07-29T20:36:25Z
+- Exact E-1264 authority is forward-merged into Task136 as
+  `22ccd5c3e8d9be33a52a26c0edb0ac00f2095335`, tree
+  `d5e4b78f496d40ba2b3ac2486b9888117278b0e3`, with exact first parent
+  E-1263 authority merge `9e73c31d4d469f144428e055894a452756c4963f`
+  and exact second parent E-1264 program authority
+  `5209ac297e3314dbda0d6278885d2fb1fa3b090d`.
+- The uncommitted exact preflight-before-claim diagnostic is
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` blob
+  `5c5c291e05a40721e362ee370b07d6b9db2a179a`.
+  It preserves the one canonical attempt tuple, completes the portable
+  witness preflight, appends the exact task-created/queued/claimed prefix, and
+  then binds the legitimate composition. It is not a candidate.
+- Fresh execution under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout reaches product W and is **4 = 2 passed + two failed**. Both
+  factory titles now stop exactly at
+  `resident factory authority binding is stale or foreign`.
+- Exact source analysis proves the constraint conflict:
+  the mounted operation/provider/handoff authority snapshot is issued before
+  preflight and binds its then-current non-wake high-water mark; appending the
+  required claim after preflight advances the mounted store's non-wake
+  high-water and makes that provider snapshot correctly stale. Conversely,
+  placing the claim before operation issuance makes high-water current but
+  the existing portable preflight correctly rejects its nonempty
+  orchestration dispatch prelude. The same one-shot operation cannot be
+  reissued for the admission, and composition bind cannot rewrite either
+  authenticated snapshot.
+- No ordering of the current exact fixture can simultaneously preserve the
+  committed same-binding portable preflight, exact provider/store
+  high-water agreement, and required mounted orchestration claim. W,
+  factory ports, or test-only structural substitution cannot lawfully mask
+  the conflict.
+- Continuation therefore requires one genuine product/safety/scope decision:
+  either amend the prepared-bootstrap design and fixture to rely on
+  composition bind's consuming witness revalidation without the separate
+  early portable preflight, retaining Task136's existing 33-path ceiling; or
+  expand the product boundary beyond the 33-path ceiling to change the
+  previously released portable preflight/currentness semantics so the exact
+  claim prelude is admissible before operation issuance. The latter touches
+  a frozen prerequisite owner and is not authorized by current Task136
+  scope.
+- Preserve all diagnostic bytes unstaged and uncommitted:
+  bounded-test authenticated-H correction
+  `ae54b1488c6770333567f2e9261cc3614d692eef`,
+  wake source `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`,
+  factory source `01236381d656ee5166f5a4d391498431fe66892f`,
+  and bounded source
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`.
+  None is candidate, approval, or integration evidence.
+- Do not edit or commit another test or product byte, begin Task17, alter
+  composition, mounted storage, portable stores, scope, or release graph
+  until the exact decision is supplied and durably amended. Task16 and
+  Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 candidate, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release exists.
