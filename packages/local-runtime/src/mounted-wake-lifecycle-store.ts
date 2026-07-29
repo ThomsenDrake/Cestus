@@ -1042,6 +1042,7 @@ async function suspendAndReleaseResidentPrefix(
   authority: OpaqueResidentLoopCurrentnessToken | OpaqueResidentLoopSuspensionOnlyCapability
 ): Promise<OpaqueReleasedCheckpointReadback | ResidentLoopUnavailableV1> {
   const consumed = consumeSuspensionAuthority(owner, authority);
+  const copiedCheckpoint = copyResidentOwnData(rawCheckpoint);
   let snapshot: ResidentAuthoritySnapshot;
   try {
     snapshot = await owner.mounted.readSnapshot();
@@ -1055,7 +1056,12 @@ async function suspendAndReleaseResidentPrefix(
         snapshot
       );
   if (!currentEnough) return unavailableResidentLoop(owner);
-  const payload = normalizeResidentCheckpointPayload(owner, rawCheckpoint);
+  const completedCheckpoint = completeResidentCheckpointClaimFields(
+    owner,
+    copiedCheckpoint,
+    snapshot
+  );
+  const payload = normalizeResidentCheckpointPayload(owner, completedCheckpoint);
   assertResidentCheckpointBinding(owner, payload, snapshot);
   const checkpoint = await readOrAppendResidentCheckpoint(owner, payload);
   return await completeResidentSuspensionPrefix(owner, checkpoint);
@@ -1959,15 +1965,109 @@ function assertResidentFactoryBindingCurrent(
   }
 }
 
+function completeResidentCheckpointClaimFields(
+  owner: ResidentLoopBoundState,
+  copiedCheckpoint: unknown,
+  snapshot: ResidentAuthoritySnapshot
+): unknown {
+  if (
+    copiedCheckpoint === null ||
+    typeof copiedCheckpoint !== "object" ||
+    Array.isArray(copiedCheckpoint)
+  ) {
+    throw new Error("resident-loop checkpoint input must be plain own-data");
+  }
+  const payload = copiedCheckpoint as Readonly<Record<string, unknown>>;
+  const rawInstruction = payload.residentLoopSuspension;
+  if (
+    rawInstruction === null ||
+    typeof rawInstruction !== "object" ||
+    Array.isArray(rawInstruction)
+  ) {
+    throw new Error("resident-loop checkpoint input lacks its exact strict instruction");
+  }
+  const instruction = rawInstruction as Readonly<Record<string, unknown>>;
+  const observed = snapshot.facts.observedActiveClaim;
+  if (
+    observed === undefined ||
+    observed.workspaceId !== owner.binding.provider.workspaceId ||
+    observed.workspaceId !== snapshot.facts.workspaceId ||
+    observed.residentId !== snapshot.facts.residentId ||
+    observed.supervisorEpoch !== owner.mounted.input.supervisorEpoch
+  ) {
+    throw new Error("resident-loop checkpoint requires one authenticated active claim");
+  }
+  const matchingClaims = snapshot.events.filter(
+    (event): event is ResidentClaimEvent =>
+      event.id === observed.priorClaimEventId &&
+      event.type === "agent.task.orchestration.claimed"
+  );
+  if (matchingClaims.length !== 1 || matchingClaims[0] === undefined) {
+    throw new Error("resident-loop checkpoint active claim is absent or ambiguous");
+  }
+  const claim = matchingClaims[0];
+  const binding = owner.binding.handoff;
+  if (
+    claim.streamId !== orchestrationStreamId(binding.taskId, binding.runType) ||
+    claim.payload.taskId !== binding.taskId ||
+    claim.payload.attemptId !== binding.attemptId ||
+    claim.payload.runType !== binding.runType ||
+    claim.payload.retryGeneration !== binding.retryGeneration ||
+    claim.payload.workerId !== snapshot.facts.residentId ||
+    observed.claimId !== claim.payload.taskId ||
+    observed.attemptId !== claim.payload.attemptId ||
+    observed.priorClaimLeaseId !== claim.payload.idempotencyKey ||
+    observed.readbackEventId !== claim.id ||
+    observed.causation.causationId !== claim.payload.causationEventId ||
+    observed.causation.correlationId !== claim.context.correlationId
+  ) {
+    throw new Error("resident-loop checkpoint active claim does not match its bound tuple");
+  }
+  const generation = claim.payload.leaseClaimGeneration;
+  if (
+    Object.hasOwn(payload, "leaseClaimGeneration") &&
+    payload.leaseClaimGeneration !== generation
+  ) {
+    throw new Error("resident-loop checkpoint outer claim generation does not match");
+  }
+  if (
+    Object.hasOwn(instruction, "orchestrationClaimEventId") &&
+    instruction.orchestrationClaimEventId !== claim.id
+  ) {
+    throw new Error("resident-loop checkpoint claim event ID does not match");
+  }
+  if (
+    Object.hasOwn(instruction, "leaseClaimGeneration") &&
+    instruction.leaseClaimGeneration !== generation
+  ) {
+    throw new Error("resident-loop checkpoint inner claim generation does not match");
+  }
+  const completedInstruction = Object.freeze({
+    ...instruction,
+    ...(Object.hasOwn(instruction, "orchestrationClaimEventId")
+      ? {}
+      : { orchestrationClaimEventId: claim.id }),
+    ...(Object.hasOwn(instruction, "leaseClaimGeneration")
+      ? {}
+      : { leaseClaimGeneration: generation })
+  });
+  return Object.freeze({
+    ...payload,
+    ...(Object.hasOwn(payload, "leaseClaimGeneration")
+      ? {}
+      : { leaseClaimGeneration: generation }),
+    residentLoopSuspension: completedInstruction
+  });
+}
+
 function normalizeResidentCheckpointPayload(
   owner: ResidentLoopBoundState,
   value: unknown
 ): ResidentCheckpointEvent["payload"] {
-  const copied = copyResidentOwnData(value);
-  if (copied === null || typeof copied !== "object" || Array.isArray(copied)) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("resident-loop checkpoint input must be plain own-data");
   }
-  const payload = copied as ResidentCheckpointEvent["payload"];
+  const payload = value as ResidentCheckpointEvent["payload"];
   const instruction = payload.residentLoopSuspension;
   if (
     payload.checkpointKind !== "resident-loop-suspension" ||
@@ -2001,7 +2101,7 @@ function normalizeResidentCheckpointPayload(
   if (!parsed.success || parsed.data.type !== "agent.task.orchestration.checkpointed") {
     throw new Error("resident-loop checkpoint input is not canonical");
   }
-  return parsed.data.payload;
+  return payload;
 }
 
 function assertResidentCheckpointBinding(
