@@ -85,6 +85,18 @@ type HarnessBranch =
   | "effect-outcome-unknown-human"
   | "resume";
 
+const nonRequestedApprovalRereadStages = Object.freeze([
+  "human-approved",
+  "claimed",
+  "completed",
+  "denied",
+  "failed"
+] as const);
+
+type ApprovalRereadStage =
+  | "requested"
+  | typeof nonRequestedApprovalRereadStages[number];
+
 type HarnessMutation =
   | "none"
   | "missing-replay-result"
@@ -116,6 +128,7 @@ interface HarnessOptions {
   readonly mutation?: HarnessMutation;
   readonly budgetField?: BudgetField;
   readonly overBudget?: boolean;
+  readonly approvalRereadStage?: ApprovalRereadStage;
 }
 
 interface IssuedCapabilityHarness {
@@ -191,6 +204,12 @@ describe("bounded resident agent loop", () => {
     ] as const) {
       await createIssuedCapabilityHarness({ branch }).exercisePositiveControl();
     }
+    for (const approvalRereadStage of nonRequestedApprovalRereadStages) {
+      await createIssuedCapabilityHarness({
+        branch: "approval-required",
+        approvalRereadStage
+      }).exercisePositiveControl();
+    }
     const api = await boundedLoopApi();
 
     let approvalSemanticKeys: SuspensionSemanticKeys | undefined;
@@ -221,6 +240,71 @@ describe("bounded resident agent loop", () => {
     expect(identicalApproval.suspensionSemanticKeys()).toEqual(
       approvalSemanticKeys
     );
+
+    for (const approvalRereadStage of nonRequestedApprovalRereadStages) {
+      const nonRequested = createIssuedCapabilityHarness({
+        branch: "approval-required",
+        approvalRereadStage
+      });
+      expect(
+        await captureAdvance(api, nonRequested),
+        approvalRereadStage
+      ).toBe("rejected");
+      nonRequested.assertSettled();
+      expectTraceSubsequence(nonRequested.trace, [
+        "G.requestFreshAuthorized:initial",
+        "W.reverifyAfterAwait",
+        "G.readCanonicalToolStepMaterial:requested",
+        "G.readFreshHumanDecision",
+        "W.reverifyAfterAwait",
+        "G.rereadAndIssueFromLedger",
+        `G.rereadAndIssueFromLedger:${approvalRereadStage}`,
+        "W.reverifyAfterAwait"
+      ]);
+      expect(nonRequested.trace.at(-1), approvalRereadStage).toBe(
+        "W.reverifyAfterAwait"
+      );
+      expect(
+        nonRequested.trace.filter(
+          (entry) => entry === "W.reverifyAfterAwait"
+        ),
+        approvalRereadStage
+      ).toHaveLength(10);
+      expect(
+        nonRequested.trace.filter(
+          (entry) => entry === "G.readCanonicalToolStepMaterial"
+        ),
+        approvalRereadStage
+      ).toHaveLength(1);
+      expect(nonRequested.trace, approvalRereadStage).not.toContain(
+        `G.readCanonicalToolStepMaterial:${approvalRereadStage}`
+      );
+      expect(
+        nonRequested.trace.filter((entry) => entry.startsWith("T120.appended:")),
+        approvalRereadStage
+      ).toEqual([
+        "T120.appended:evt_plan_bounded_1",
+        "T120.appended:evt_observation_bounded_1"
+      ]);
+      for (const forbidden of [
+        "G.executeFreshAuthorized",
+        "T120.appendToolStep",
+        "T120.appendSuspension",
+        "T120.appendResult",
+        "W.suspendAndRelease",
+        "W.internal.completeOrValidateClaim",
+        "W.internal.T120.appendSuspension",
+        "W.internal.T120.appendResult",
+        "H.readFull"
+      ]) {
+        expect(nonRequested.trace, `${approvalRereadStage}:${forbidden}`)
+          .not.toContain(forbidden);
+      }
+      expect(nonRequested.effects, approvalRereadStage).toEqual({
+        ...zeroEffects(),
+        ledgerAppend: 3
+      });
+    }
 
     const resumed = createIssuedCapabilityHarness({ branch: "resume" });
     const resumedLoop = await issueLoop(api, resumed);
@@ -379,6 +463,13 @@ function createIssuedCapabilityHarness(
 ): IssuedCapabilityHarness {
   const branch = options.branch ?? "completed";
   const mutation = options.mutation ?? "none";
+  const approvalRereadStage = options.approvalRereadStage ?? "requested";
+  if (
+    approvalRereadStage !== "requested" &&
+    branch !== "approval-required"
+  ) {
+    throw new Error("non-requested approval rereads require the approval branch");
+  }
   const effects = zeroEffects();
   const trace: string[] = [];
   let awaitPending = false;
@@ -610,6 +701,25 @@ function createIssuedCapabilityHarness(
     } : {}),
     executionClaimEventId: "evt_gateway_claim"
   });
+  const humanCompletedGatewayReadbacks = deepFreeze({
+    ...claimedGatewayReadbacks,
+    stage: "completed",
+    outcomeReceiptEventId: "evt_gateway_receipt",
+    resultEventId: "evt_gateway_result"
+  });
+  const humanDeniedGatewayReadbacks = deepFreeze({
+    authorizationKind: "human-approval",
+    stage: "denied",
+    requestEventId: "evt_gateway_request",
+    denialEventId: "evt_gateway_denial"
+  });
+  const humanFailedGatewayReadbacks = deepFreeze({
+    authorizationKind: "human-approval",
+    stage: "failed",
+    failurePhase: "pre-approval",
+    requestEventId: "evt_gateway_request",
+    resultEventId: "evt_gateway_failure"
+  });
   const completedGatewayReadbacks = deepFreeze({
     authorizationKind: "automatic-policy",
     stage: "completed",
@@ -657,6 +767,19 @@ function createIssuedCapabilityHarness(
     replanRequestedGatewayReadbacks,
     []
   );
+  const approvalRereadToolMaterials: Readonly<
+    Record<ApprovalRereadStage, CanonicalToolStepMaterial | undefined>
+  > = Object.freeze({
+    requested: requestedToolMaterial,
+    "human-approved": undefined,
+    claimed: claimedToolMaterial,
+    completed: toolMaterial(
+      humanCompletedGatewayReadbacks,
+      gatewayResultArtifactHashes
+    ),
+    denied: toolMaterial(humanDeniedGatewayReadbacks, []),
+    failed: toolMaterial(humanFailedGatewayReadbacks, [])
+  });
   const initialToolMaterial = branch === "completed"
     ? completedToolMaterial
     : branch === "approval-required"
@@ -1115,6 +1238,7 @@ function createIssuedCapabilityHarness(
     approvedBy: "human_bounded_reviewer",
     approvedPreviewHash: gatewayPreviewHash
   });
+  const approvedReread = deepFreeze({ ...approved });
   const replanRequested = deepFreeze({
     authorizationKind: "automatic-policy",
     stage: "requested",
@@ -1132,6 +1256,35 @@ function createIssuedCapabilityHarness(
     } : {}),
     executionClaimEventId: "evt_gateway_claim",
     category: "effect-outcome-unknown"
+  });
+  const claimedReread = deepFreeze({ ...claimed });
+  const completedReread = deepFreeze({
+    ...approved,
+    stage: "completed",
+    executionClaimEventId: "evt_gateway_claim",
+    outcomeReceiptEventId: "evt_gateway_receipt",
+    resultEventId: "evt_gateway_result"
+  });
+  const deniedReread = deepFreeze({
+    ...requested,
+    stage: "denied",
+    denialEventId: "evt_gateway_denial"
+  });
+  const failedReread = deepFreeze({
+    ...requested,
+    stage: "failed",
+    failurePhase: "pre-approval",
+    resultEventId: "evt_gateway_failure"
+  });
+  const approvalRereads: Readonly<
+    Record<ApprovalRereadStage, Readonly<Record<string, unknown>>>
+  > = Object.freeze({
+    requested: requestedReread,
+    "human-approved": approvedReread,
+    claimed: claimedReread,
+    completed: completedReread,
+    denied: deniedReread,
+    failed: failedReread
   });
   const replanCompleted = deepFreeze({
     ...replanRequested,
@@ -1265,9 +1418,9 @@ function createIssuedCapabilityHarness(
       if (!sameCanonical(input, logicalLocator)) {
         throw new Error("gateway replay locator is not exact");
       }
-      const shouldRereadRequested =
+      const shouldRereadApproval =
         branch === "approval-required" && missingHumanDecisionObserved;
-      if (!shouldRereadRequested && branch !== "resume" && !unknownExecutionClaimed) {
+      if (!shouldRereadApproval && branch !== "resume" && !unknownExecutionClaimed) {
         throw new Error("gateway claim is not durably available for reread");
       }
       if (mutation === "prior-process-gateway-permit") {
@@ -1276,13 +1429,16 @@ function createIssuedCapabilityHarness(
           executable: true
         }));
       }
-      const reread = shouldRereadRequested ? requestedReread : claimed;
-      issuedToolMaterials.set(
-        reread,
-        shouldRereadRequested ? requestedToolMaterial : claimedToolMaterial
-      );
+      const reread = shouldRereadApproval
+        ? approvalRereads[approvalRereadStage]
+        : claimed;
+      const material = shouldRereadApproval
+        ? approvalRereadToolMaterials[approvalRereadStage]
+        : claimedToolMaterial;
+      if (material !== undefined) issuedToolMaterials.set(reread, material);
+      const rereadStage = String(Reflect.get(reread, "stage"));
       trace.push(
-        `G.rereadAndIssueFromLedger:${shouldRereadRequested ? "requested" : "claimed"}`
+        `G.rereadAndIssueFromLedger:${rereadStage}`
       );
       return await finishBoundary(reread);
     },
@@ -1661,7 +1817,7 @@ function createIssuedCapabilityHarness(
         requestedToolMaterial
       )) throw new Error("suspension positive control lost requested G material");
       let authorization = request;
-      let issuedForMaterial = request;
+      let issuedForMaterial: object = request;
       if (branch === "approval-required") {
         let decisionRejected = false;
         try {
@@ -1675,11 +1831,44 @@ function createIssuedCapabilityHarness(
         }
         issuedForMaterial = await gateway.rereadAndIssueFromLedger(logicalLocator);
         token = await nextToken(token);
+        const issuedStage = Reflect.get(issuedForMaterial, "stage");
         if (
           issuedForMaterial === request ||
-          Reflect.get(issuedForMaterial, "stage") !== "requested"
+          issuedStage !== approvalRereadStage
         ) {
-          throw new Error("approval suspension requires a fresh requested reread");
+          throw new Error("approval reread preflight lost its exact fresh stage");
+        }
+        if (approvalRereadStage !== "requested") {
+          if (
+            awaitPending ||
+            trace.at(-1) !== "W.reverifyAfterAwait" ||
+            trace.filter(
+              (entry) => entry === "W.reverifyAfterAwait"
+            ).length !== 10 ||
+            !trace.includes(
+              `G.rereadAndIssueFromLedger:${approvalRereadStage}`
+            ) ||
+            trace.filter(
+              (entry) => entry === "G.readCanonicalToolStepMaterial"
+            ).length !== 1 ||
+            !sameCanonical(
+              trace.filter((entry) => entry.startsWith("T120.appended:")),
+              [
+                `T120.appended:${planEvent.id}`,
+                `T120.appended:${observationEvent.id}`
+              ]
+            ) ||
+            !sameCanonical(effects, {
+              ...zeroEffects(),
+              ledgerAppend: 3
+            })
+          ) {
+            throw new Error("non-requested approval reread preflight did not fail closed");
+          }
+          trace.splice(0);
+          Object.assign(effects, zeroEffects());
+          awaitPending = false;
+          return;
         }
       } else if (branch === "effect-outcome-unknown-human") {
         authorization = await gateway.readFreshHumanDecision(request);
