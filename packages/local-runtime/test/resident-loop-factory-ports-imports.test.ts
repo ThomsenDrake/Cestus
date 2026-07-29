@@ -456,13 +456,19 @@ function expectExactFactoryRuntimeValueExports(
   expect(
     runtimeValueExports,
     "factory exact public runtime value surface"
-  ).toEqual(["createResidentBoundedAgentLoopFactory"]);
+  ).toEqual([
+    "createResidentBoundedAgentLoopFactory",
+    "createResidentLoopFactoryPorts"
+  ]);
 }
 
 function expectFactoryOracleControls(): void {
   const safeSurface = factorySurfaceControl([
     "export interface CreateResidentBoundedAgentLoopFactoryInput {}",
     "export type ResidentBoundedAgentLoopFactoryResult = object;",
+    "export function createResidentLoopFactoryPorts() {",
+    "  return {};",
+    "}",
     "export async function createResidentBoundedAgentLoopFactory(",
     "  _input: CreateResidentBoundedAgentLoopFactoryInput",
     "): Promise<ResidentBoundedAgentLoopFactoryResult> {",
@@ -478,15 +484,18 @@ function expectFactoryOracleControls(): void {
 
   for (const sourceText of [
     [
+      "export function createResidentLoopFactoryPorts() {}",
       "export async function createResidentBoundedAgentLoopFactory() {}",
       "export default function alternateFactory() {}"
     ].join("\n"),
     [
+      "export function createResidentLoopFactoryPorts() {}",
       "async function createResidentBoundedAgentLoopFactory() {}",
       "export { createResidentBoundedAgentLoopFactory };",
       "export { createResidentBoundedAgentLoopFactory as alternateFactory };"
     ].join("\n"),
     [
+      "export function createResidentLoopFactoryPorts() {}",
       "export async function createResidentBoundedAgentLoopFactory() {}",
       "export function additionalFactorySurface() {}"
     ].join("\n")

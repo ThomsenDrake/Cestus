@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { types } from "node:util";
 import {
   validateKnowledgeEvent,
   validateResidentLoopEventSequence,
@@ -59,6 +61,11 @@ type CanonicalToolStepMaterial = Readonly<{
   resultArtifactHashes: readonly `sha256:${string}`[];
 }>;
 
+type SuspensionSemanticKeys = Readonly<{
+  suspensionSemanticKey: `sha256:${string}`;
+  resultSemanticKey: `sha256:${string}`;
+}>;
+
 type DeepBoundedLoopApi = {
   readonly createResidentBoundedAgentLoopFromIssuedCapabilities: (...args: unknown[]) => unknown;
 };
@@ -77,6 +84,18 @@ type HarnessBranch =
   | "effect-outcome-unknown-automatic"
   | "effect-outcome-unknown-human"
   | "resume";
+
+const nonRequestedApprovalRereadStages = Object.freeze([
+  "human-approved",
+  "claimed",
+  "completed",
+  "denied",
+  "failed"
+] as const);
+
+type ApprovalRereadStage =
+  | "requested"
+  | typeof nonRequestedApprovalRereadStages[number];
 
 type HarnessMutation =
   | "none"
@@ -109,6 +128,7 @@ interface HarnessOptions {
   readonly mutation?: HarnessMutation;
   readonly budgetField?: BudgetField;
   readonly overBudget?: boolean;
+  readonly approvalRereadStage?: ApprovalRereadStage;
 }
 
 interface IssuedCapabilityHarness {
@@ -125,6 +145,7 @@ interface IssuedCapabilityHarness {
   readonly assertCompletionReadback: () => void;
   readonly assertSuspendedThroughWake: () => void;
   readonly assertDurableResume: () => void;
+  readonly suspensionSemanticKeys: () => SuspensionSemanticKeys | undefined;
 }
 
 describe("bounded resident agent loop", () => {
@@ -183,8 +204,15 @@ describe("bounded resident agent loop", () => {
     ] as const) {
       await createIssuedCapabilityHarness({ branch }).exercisePositiveControl();
     }
+    for (const approvalRereadStage of nonRequestedApprovalRereadStages) {
+      await createIssuedCapabilityHarness({
+        branch: "approval-required",
+        approvalRereadStage
+      }).exercisePositiveControl();
+    }
     const api = await boundedLoopApi();
 
+    let approvalSemanticKeys: SuspensionSemanticKeys | undefined;
     for (const branch of [
       "approval-required",
       "effect-outcome-unknown-automatic",
@@ -197,6 +225,85 @@ describe("bounded resident agent loop", () => {
       expect(result, branch).toEqual(harness.expectedResult);
       harness.assertSettled();
       harness.assertSuspendedThroughWake();
+      if (branch === "approval-required") {
+        approvalSemanticKeys = harness.suspensionSemanticKeys();
+      }
+    }
+
+    const identicalApproval = createIssuedCapabilityHarness({
+      branch: "approval-required"
+    });
+    const identicalApprovalLoop = await issueLoop(api, identicalApproval);
+    await identicalApprovalLoop.loop.advance(identicalApproval.initialCandidate);
+    identicalApproval.assertSettled();
+    identicalApproval.assertSuspendedThroughWake();
+    expect(identicalApproval.suspensionSemanticKeys()).toEqual(
+      approvalSemanticKeys
+    );
+
+    for (const approvalRereadStage of nonRequestedApprovalRereadStages) {
+      const nonRequested = createIssuedCapabilityHarness({
+        branch: "approval-required",
+        approvalRereadStage
+      });
+      expect(
+        await captureAdvance(api, nonRequested),
+        approvalRereadStage
+      ).toBe("rejected");
+      nonRequested.assertSettled();
+      expectTraceSubsequence(nonRequested.trace, [
+        "G.requestFreshAuthorized:initial",
+        "W.reverifyAfterAwait",
+        "G.readCanonicalToolStepMaterial:requested",
+        "G.readFreshHumanDecision",
+        "W.reverifyAfterAwait",
+        "G.rereadAndIssueFromLedger",
+        `G.rereadAndIssueFromLedger:${approvalRereadStage}`,
+        "W.reverifyAfterAwait"
+      ]);
+      expect(nonRequested.trace.at(-1), approvalRereadStage).toBe(
+        "W.reverifyAfterAwait"
+      );
+      expect(
+        nonRequested.trace.filter(
+          (entry) => entry === "W.reverifyAfterAwait"
+        ),
+        approvalRereadStage
+      ).toHaveLength(10);
+      expect(
+        nonRequested.trace.filter(
+          (entry) => entry === "G.readCanonicalToolStepMaterial"
+        ),
+        approvalRereadStage
+      ).toHaveLength(1);
+      expect(nonRequested.trace, approvalRereadStage).not.toContain(
+        `G.readCanonicalToolStepMaterial:${approvalRereadStage}`
+      );
+      expect(
+        nonRequested.trace.filter((entry) => entry.startsWith("T120.appended:")),
+        approvalRereadStage
+      ).toEqual([
+        "T120.appended:evt_plan_bounded_1",
+        "T120.appended:evt_observation_bounded_1"
+      ]);
+      for (const forbidden of [
+        "G.executeFreshAuthorized",
+        "T120.appendToolStep",
+        "T120.appendSuspension",
+        "T120.appendResult",
+        "W.suspendAndRelease",
+        "W.internal.completeOrValidateClaim",
+        "W.internal.T120.appendSuspension",
+        "W.internal.T120.appendResult",
+        "H.readFull"
+      ]) {
+        expect(nonRequested.trace, `${approvalRereadStage}:${forbidden}`)
+          .not.toContain(forbidden);
+      }
+      expect(nonRequested.effects, approvalRereadStage).toEqual({
+        ...zeroEffects(),
+        ledgerAppend: 3
+      });
     }
 
     const resumed = createIssuedCapabilityHarness({ branch: "resume" });
@@ -356,6 +463,13 @@ function createIssuedCapabilityHarness(
 ): IssuedCapabilityHarness {
   const branch = options.branch ?? "completed";
   const mutation = options.mutation ?? "none";
+  const approvalRereadStage = options.approvalRereadStage ?? "requested";
+  if (
+    approvalRereadStage !== "requested" &&
+    branch !== "approval-required"
+  ) {
+    throw new Error("non-requested approval rereads require the approval branch");
+  }
   const effects = zeroEffects();
   const trace: string[] = [];
   let awaitPending = false;
@@ -587,6 +701,25 @@ function createIssuedCapabilityHarness(
     } : {}),
     executionClaimEventId: "evt_gateway_claim"
   });
+  const humanCompletedGatewayReadbacks = deepFreeze({
+    ...claimedGatewayReadbacks,
+    stage: "completed",
+    outcomeReceiptEventId: "evt_gateway_receipt",
+    resultEventId: "evt_gateway_result"
+  });
+  const humanDeniedGatewayReadbacks = deepFreeze({
+    authorizationKind: "human-approval",
+    stage: "denied",
+    requestEventId: "evt_gateway_request",
+    denialEventId: "evt_gateway_denial"
+  });
+  const humanFailedGatewayReadbacks = deepFreeze({
+    authorizationKind: "human-approval",
+    stage: "failed",
+    failurePhase: "pre-approval",
+    requestEventId: "evt_gateway_request",
+    resultEventId: "evt_gateway_failure"
+  });
   const completedGatewayReadbacks = deepFreeze({
     authorizationKind: "automatic-policy",
     stage: "completed",
@@ -634,6 +767,19 @@ function createIssuedCapabilityHarness(
     replanRequestedGatewayReadbacks,
     []
   );
+  const approvalRereadToolMaterials: Readonly<
+    Record<ApprovalRereadStage, CanonicalToolStepMaterial | undefined>
+  > = Object.freeze({
+    requested: requestedToolMaterial,
+    "human-approved": undefined,
+    claimed: claimedToolMaterial,
+    completed: toolMaterial(
+      humanCompletedGatewayReadbacks,
+      gatewayResultArtifactHashes
+    ),
+    denied: toolMaterial(humanDeniedGatewayReadbacks, []),
+    failed: toolMaterial(humanFailedGatewayReadbacks, [])
+  });
   const initialToolMaterial = branch === "completed"
     ? completedToolMaterial
     : branch === "approval-required"
@@ -662,6 +808,16 @@ function createIssuedCapabilityHarness(
     false,
     suspensionBudget.consumed
   );
+  const controlSemanticKeys = deepFreeze({
+    suspensionSemanticKey: semanticKeyFor(
+      "resident-loop-suspension",
+      { binding, planId: proposedPlan.planId }
+    ),
+    resultSemanticKey: semanticKeyFor(
+      "resident-loop-result",
+      { binding, finalObservationId: finalObservationEvent.id }
+    )
+  });
 
   const suspension = residentSuspension(
     branch === "approval-required" ? "approval-required" : "effect-outcome-unknown",
@@ -680,13 +836,15 @@ function createIssuedCapabilityHarness(
     finalObservationEvent,
     authorityBinding
   );
-  const resumableResult = residentResult(
+  let resumableResult = residentResult(
     branch === "approval-required" ? "approval-required" : "effect-outcome-unknown",
     resumableResultBudget,
     false,
     planEvent,
     finalObservationEvent,
-    authorityBinding
+    authorityBinding,
+    undefined,
+    controlSemanticKeys.resultSemanticKey
   );
   const replayCompletion = mutation === "constant-default-result"
     ? deepFreeze({
@@ -864,7 +1022,7 @@ function createIssuedCapabilityHarness(
     authorityBinding,
     12
   );
-  const expectedResult = branch === "resume"
+  let expectedResult = branch === "resume"
     ? resumeTerminalResult
     : branch === "completed"
       ? completionResult
@@ -1072,6 +1230,7 @@ function createIssuedCapabilityHarness(
     executionCapabilityHash: hash("9"),
     requestEventId: "evt_gateway_request"
   });
+  const requestedReread = deepFreeze({ ...requested });
   const approved = deepFreeze({
     ...requested,
     stage: "human-approved",
@@ -1079,6 +1238,7 @@ function createIssuedCapabilityHarness(
     approvedBy: "human_bounded_reviewer",
     approvedPreviewHash: gatewayPreviewHash
   });
+  const approvedReread = deepFreeze({ ...approved });
   const replanRequested = deepFreeze({
     authorizationKind: "automatic-policy",
     stage: "requested",
@@ -1097,6 +1257,35 @@ function createIssuedCapabilityHarness(
     executionClaimEventId: "evt_gateway_claim",
     category: "effect-outcome-unknown"
   });
+  const claimedReread = deepFreeze({ ...claimed });
+  const completedReread = deepFreeze({
+    ...approved,
+    stage: "completed",
+    executionClaimEventId: "evt_gateway_claim",
+    outcomeReceiptEventId: "evt_gateway_receipt",
+    resultEventId: "evt_gateway_result"
+  });
+  const deniedReread = deepFreeze({
+    ...requested,
+    stage: "denied",
+    denialEventId: "evt_gateway_denial"
+  });
+  const failedReread = deepFreeze({
+    ...requested,
+    stage: "failed",
+    failurePhase: "pre-approval",
+    resultEventId: "evt_gateway_failure"
+  });
+  const approvalRereads: Readonly<
+    Record<ApprovalRereadStage, Readonly<Record<string, unknown>>>
+  > = Object.freeze({
+    requested: requestedReread,
+    "human-approved": approvedReread,
+    claimed: claimedReread,
+    completed: completedReread,
+    denied: deniedReread,
+    failed: failedReread
+  });
   const replanCompleted = deepFreeze({
     ...replanRequested,
     stage: "completed",
@@ -1106,6 +1295,7 @@ function createIssuedCapabilityHarness(
   });
   let freshRequestUsed = false;
   let humanDecisionUsed = false;
+  let missingHumanDecisionObserved = false;
   let freshExecutionUsed = false;
   let unknownExecutionClaimed = false;
   const issuedToolMaterials = new WeakMap<object, CanonicalToolStepMaterial>();
@@ -1182,6 +1372,11 @@ function createIssuedCapabilityHarness(
       }
       humanDecisionUsed = true;
       issuedToolMaterials.delete(requested);
+      if (branch === "approval-required") {
+        missingHumanDecisionObserved = true;
+        await finishBoundary(undefined);
+        throw new Error("no durable human decision is available");
+      }
       effects.approvalConsumption += 1;
       return await finishBoundary(approved);
     },
@@ -1223,7 +1418,9 @@ function createIssuedCapabilityHarness(
       if (!sameCanonical(input, logicalLocator)) {
         throw new Error("gateway replay locator is not exact");
       }
-      if (branch !== "resume" && !unknownExecutionClaimed) {
+      const shouldRereadApproval =
+        branch === "approval-required" && missingHumanDecisionObserved;
+      if (!shouldRereadApproval && branch !== "resume" && !unknownExecutionClaimed) {
         throw new Error("gateway claim is not durably available for reread");
       }
       if (mutation === "prior-process-gateway-permit") {
@@ -1232,8 +1429,18 @@ function createIssuedCapabilityHarness(
           executable: true
         }));
       }
-      issuedToolMaterials.set(claimed, claimedToolMaterial);
-      return await finishBoundary(claimed);
+      const reread = shouldRereadApproval
+        ? approvalRereads[approvalRereadStage]
+        : claimed;
+      const material = shouldRereadApproval
+        ? approvalRereadToolMaterials[approvalRereadStage]
+        : claimedToolMaterial;
+      if (material !== undefined) issuedToolMaterials.set(reread, material);
+      const rereadStage = String(Reflect.get(reread, "stage"));
+      trace.push(
+        `G.rereadAndIssueFromLedger:${rereadStage}`
+      );
+      return await finishBoundary(reread);
     },
     readCanonicalToolStepMaterial(this: unknown, issuedReadback: unknown) {
       beginBoundary("G.readCanonicalToolStepMaterial", this, gateway);
@@ -1262,7 +1469,9 @@ function createIssuedCapabilityHarness(
   const suspensionPayload = suspension.payload as Readonly<Record<string, unknown>>;
   const suspensionCheckpoint =
     suspensionPayload.checkpoint as Readonly<Record<string, unknown>>;
-  const expectedCheckpointCandidate = deepFreeze({
+  const expectedCheckpointCandidate = (
+    semanticKeys: SuspensionSemanticKeys
+  ) => deepFreeze({
     taskId: binding.taskId,
     runType: binding.runMode,
     attemptId: binding.attemptId,
@@ -1284,8 +1493,8 @@ function createIssuedCapabilityHarness(
       requestEventId: suspensionCheckpoint.requestEventId,
       resumptionDeadlineAt: suspensionCheckpoint.resumptionDeadlineAt,
       nextSafeAction: suspensionCheckpoint.nextSafeAction,
-      suspensionSemanticKey: hash("6"),
-      resultSemanticKey: hash("5"),
+      suspensionSemanticKey: semanticKeys.suspensionSemanticKey,
+      resultSemanticKey: semanticKeys.resultSemanticKey,
       ...(branch.startsWith("effect-outcome-unknown") ? {
         logicalLocator,
         ...(branch === "effect-outcome-unknown-human" ? {
@@ -1299,6 +1508,7 @@ function createIssuedCapabilityHarness(
     },
     safeNextActions: [suspensionCheckpoint.nextSafeAction]
   });
+  let issuedSuspensionSemanticKeys: SuspensionSemanticKeys | undefined;
 
   const mountedAuthority = Object.freeze({
     async reverifyAfterAwait(this: unknown, token: unknown) {
@@ -1315,9 +1525,20 @@ function createIssuedCapabilityHarness(
       if (token !== activeToken) {
         throw new Error("W suspension requires current authority");
       }
-      if (!sameCanonical(input, expectedCheckpointCandidate)) {
+      const semanticKeys = suspensionKeysFromCheckpointCandidate(input);
+      if (
+        semanticKeys === undefined ||
+        !sameCanonical(input, expectedCheckpointCandidate(semanticKeys))
+      ) {
         throw new Error("W suspension checkpoint candidate is not exact");
       }
+      if (
+        issuedSuspensionSemanticKeys !== undefined &&
+        !sameCanonical(semanticKeys, issuedSuspensionSemanticKeys)
+      ) {
+        throw new Error("W suspension semantic keys changed for identical canonical input");
+      }
+      issuedSuspensionSemanticKeys = semanticKeys;
       if (!sameCanonical(currentReplayEvents, [
         planEvent,
         observationEvent,
@@ -1331,6 +1552,21 @@ function createIssuedCapabilityHarness(
       trace.push("W.internal.completeOrValidateClaim");
       trace.push("W.internal.T120.appendSuspension");
       trace.push("W.internal.T120.appendResult");
+      if (branch !== "resume") {
+        resumableResult = residentResult(
+          branch === "approval-required"
+            ? "approval-required"
+            : "effect-outcome-unknown",
+          resumableResultBudget,
+          false,
+          planEvent,
+          finalObservationEvent,
+          authorityBinding,
+          undefined,
+          semanticKeys.resultSemanticKey
+        );
+        expectedResult = resumableResult;
+      }
       currentReplayEvents = [...currentReplayEvents, suspension, resumableResult];
       await Promise.resolve();
       return Object.freeze({
@@ -1576,12 +1812,68 @@ function createIssuedCapabilityHarness(
       token = await nextToken(token);
       const request = await gateway.requestFreshAuthorized(logicalLocator);
       token = await nextToken(token);
+      if (!sameCanonical(
+        gateway.readCanonicalToolStepMaterial(request),
+        requestedToolMaterial
+      )) throw new Error("suspension positive control lost requested G material");
       let authorization = request;
-      if (branch === "effect-outcome-unknown-human") {
+      let issuedForMaterial: object = request;
+      if (branch === "approval-required") {
+        let decisionRejected = false;
+        try {
+          await gateway.readFreshHumanDecision(request);
+        } catch {
+          decisionRejected = true;
+        }
+        token = await nextToken(token);
+        if (!decisionRejected) {
+          throw new Error("approval suspension requires an absent durable decision");
+        }
+        issuedForMaterial = await gateway.rereadAndIssueFromLedger(logicalLocator);
+        token = await nextToken(token);
+        const issuedStage = Reflect.get(issuedForMaterial, "stage");
+        if (
+          issuedForMaterial === request ||
+          issuedStage !== approvalRereadStage
+        ) {
+          throw new Error("approval reread preflight lost its exact fresh stage");
+        }
+        if (approvalRereadStage !== "requested") {
+          if (
+            awaitPending ||
+            trace.at(-1) !== "W.reverifyAfterAwait" ||
+            trace.filter(
+              (entry) => entry === "W.reverifyAfterAwait"
+            ).length !== 10 ||
+            !trace.includes(
+              `G.rereadAndIssueFromLedger:${approvalRereadStage}`
+            ) ||
+            trace.filter(
+              (entry) => entry === "G.readCanonicalToolStepMaterial"
+            ).length !== 1 ||
+            !sameCanonical(
+              trace.filter((entry) => entry.startsWith("T120.appended:")),
+              [
+                `T120.appended:${planEvent.id}`,
+                `T120.appended:${observationEvent.id}`
+              ]
+            ) ||
+            !sameCanonical(effects, {
+              ...zeroEffects(),
+              ledgerAppend: 3
+            })
+          ) {
+            throw new Error("non-requested approval reread preflight did not fail closed");
+          }
+          trace.splice(0);
+          Object.assign(effects, zeroEffects());
+          awaitPending = false;
+          return;
+        }
+      } else if (branch === "effect-outcome-unknown-human") {
         authorization = await gateway.readFreshHumanDecision(request);
         token = await nextToken(token);
       }
-      let issuedForMaterial = request;
       if (branch.startsWith("effect-outcome-unknown")) {
         await gateway.executeFreshAuthorized(authorization).catch(() => undefined);
         token = await nextToken(token);
@@ -1604,7 +1896,7 @@ function createIssuedCapabilityHarness(
       await planObservation.readObservation(finalObservationEvent.id);
       token = await nextToken(token);
       await mountedAuthority.suspendAndRelease(
-        expectedCheckpointCandidate,
+        expectedCheckpointCandidate(controlSemanticKeys),
         token
       );
       }
@@ -1619,7 +1911,9 @@ function createIssuedCapabilityHarness(
     binding,
     initialCandidate,
     resumeInput,
-    expectedResult,
+    get expectedResult() {
+      return expectedResult;
+    },
     effects,
     trace,
     positionalArguments,
@@ -1669,9 +1963,18 @@ function createIssuedCapabilityHarness(
       expect(trace.filter((entry) => entry === "G.requestFreshAuthorized")).toHaveLength(1);
       expect(trace.filter((entry) => entry === "W.suspendAndRelease")).toHaveLength(1);
       if (branch === "approval-required") {
-        expect(trace).not.toContain("G.readFreshHumanDecision");
+        expectTraceSubsequence(trace, [
+          "G.requestFreshAuthorized:initial",
+          "G.readCanonicalToolStepMaterial:requested",
+          "G.readFreshHumanDecision",
+          "W.reverifyAfterAwait",
+          "G.rereadAndIssueFromLedger",
+          "G.rereadAndIssueFromLedger:requested",
+          "W.reverifyAfterAwait",
+          "G.readCanonicalToolStepMaterial:requested",
+          `T120.appended:${toolStepEvent.id}`
+        ]);
         expect(trace).not.toContain("G.executeFreshAuthorized");
-        expect(trace).not.toContain("G.rereadAndIssueFromLedger");
       } else {
         expectTraceSubsequence(trace, [
           "G.requestFreshAuthorized:initial",
@@ -1688,8 +1991,9 @@ function createIssuedCapabilityHarness(
         expect(trace.filter((entry) => entry === "G.rereadAndIssueFromLedger")).toHaveLength(1);
       }
       expect(trace.filter((entry) => entry === "G.readFreshHumanDecision")).toHaveLength(
-        branch === "effect-outcome-unknown-human" ? 1 : 0
+        humanBranch ? 1 : 0
       );
+      expect(trace.filter((entry) => entry === "G.rereadAndIssueFromLedger")).toHaveLength(1);
       expect(effects).toEqual({
         ...zeroEffects(),
         provider: branch === "approval-required" ? 0 : 1,
@@ -1698,6 +2002,14 @@ function createIssuedCapabilityHarness(
         ledgerAppend: branch === "approval-required" ? 9 : 10
       });
       assertValidResidentReplayFixture(currentReplayEvents);
+      const semanticKeys = issuedSuspensionSemanticKeys;
+      expect(semanticKeys).toBeDefined();
+      expect(semanticKeys?.suspensionSemanticKey).not.toBe(
+        semanticKeys?.resultSemanticKey
+      );
+      expect(
+        (resumableResult.payload as Readonly<Record<string, unknown>>).resultHash
+      ).toBe(semanticKeys?.resultSemanticKey);
       expect(currentReplayEvents.map((event) => event.id)).toEqual([
         planEvent.id,
         observationEvent.id,
@@ -1758,6 +2070,9 @@ function createIssuedCapabilityHarness(
         resumeFinalObservationEvent.id,
         resumeTerminalResult.id
       ]);
+    },
+    suspensionSemanticKeys() {
+      return issuedSuspensionSemanticKeys;
     }
   };
 }
@@ -2376,7 +2691,8 @@ function residentResult(
   planEvent: Readonly<Record<string, unknown>>,
   observationEvent: Readonly<Record<string, unknown>>,
   authorityBinding: Readonly<Record<string, unknown>>,
-  sequence = terminal ? 5 : 6
+  sequence = terminal ? 5 : 6,
+  resultHash: `sha256:${string}` = hash("5")
 ): Readonly<Record<string, unknown>> {
   const plan = Reflect.get(planEvent, "payload") as Readonly<Record<string, unknown>>;
   const payload = {
@@ -2401,7 +2717,7 @@ function residentResult(
     finalObservationReadback: observationReadbackFor(observationEvent),
     outcome: terminal ? "completed" : "resumable",
     category,
-    resultHash: hash("5"),
+    resultHash,
     ...(terminal ? {
       handoffReadback: specialistHandoffReadback(
         "handoff_bounded",
@@ -2694,6 +3010,107 @@ function expectExactFrozenDataSurface(
   label: string
 ): void {
   expect(hasExactFrozenDataSurface(value, expectedKeys), label).toBe(true);
+}
+
+function suspensionKeysFromCheckpointCandidate(
+  value: unknown
+): SuspensionSemanticKeys | undefined {
+  if (!isExactFrozenOwnDataTree(value) || value === null || typeof value !== "object") {
+    return undefined;
+  }
+  const instruction = Reflect.get(value, "residentLoopSuspension");
+  if (
+    instruction === null ||
+    typeof instruction !== "object"
+  ) {
+    return undefined;
+  }
+  const suspensionSemanticKey = Reflect.get(
+    instruction,
+    "suspensionSemanticKey"
+  );
+  const resultSemanticKey = Reflect.get(instruction, "resultSemanticKey");
+  if (
+    !isContentHash(suspensionSemanticKey) ||
+    !isContentHash(resultSemanticKey) ||
+    suspensionSemanticKey === resultSemanticKey
+  ) {
+    return undefined;
+  }
+  return Object.freeze({ suspensionSemanticKey, resultSemanticKey });
+}
+
+function isExactFrozenOwnDataTree(value: unknown): boolean {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return true;
+  }
+  if (
+    typeof value !== "object" ||
+    types.isProxy(value) ||
+    !Object.isFrozen(value) ||
+    Object.getOwnPropertySymbols(value).length !== 0
+  ) {
+    return false;
+  }
+  const array = Array.isArray(value);
+  if (
+    Object.getPrototypeOf(value) !==
+      (array ? Array.prototype : Object.prototype)
+  ) {
+    return false;
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (array) {
+    const length = descriptors.length;
+    if (
+      length === undefined ||
+      !("value" in length) ||
+      !Number.isSafeInteger(length.value) ||
+      Object.keys(descriptors).length !== length.value + 1
+    ) {
+      return false;
+    }
+    for (let index = 0; index < length.value; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (
+        descriptor === undefined ||
+        !descriptor.enumerable ||
+        !("value" in descriptor) ||
+        !isExactFrozenOwnDataTree(descriptor.value)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+  for (const descriptor of Object.values(descriptors)) {
+    if (
+      !descriptor.enumerable ||
+      !("value" in descriptor) ||
+      !isExactFrozenOwnDataTree(descriptor.value)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isContentHash(value: unknown): value is `sha256:${string}` {
+  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+}
+
+function semanticKeyFor(
+  family: string,
+  value: unknown
+): `sha256:${string}` {
+  return `sha256:${createHash("sha256")
+    .update(`${family}\n${JSON.stringify(value)}`)
+    .digest("hex")}`;
 }
 
 function hasExactFrozenDataSurface(
