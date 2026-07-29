@@ -49027,3 +49027,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, or release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1243 — Task16C held factory repair rejected on bootstrap cycle
+
+- Recorded at: 2026-07-29T04:09:08Z
+- Exact E-1242 authority is forward-merged into Task136 as
+  `18bddacda5c5f079dfae91cfbcfc849526db559d`, tree
+  `221a7e7369ec407b386d46bd217e8824157d2f5e`, with first parent exact E-1241
+  authority merge `37bff97a874ffb77c81362a2c8541d805546b83c` and second parent exact
+  E-1242 program authority
+  `8504db0df7cbe47a00d1c8b76c0b8ea913de486b`.
+- Causal execution rejects the uncommitted E-1242 behavior correction at
+  exact blob `46c746178f29e970f7581eca464548bcdd0149ec`.
+  Replacing composition start with
+  `wakeRuntime.supervision.status()` leaves supervision initializing and
+  causes `issueMountedArtifactAuthorityOperationForFactory` to fail before
+  provider or H issuance because the portable workspace admission has no
+  verified lease. Exact behavior execution is **4/4 failed**, all first at
+  `portable workspace admission is not currently complete`.
+- The original committed behavior blob
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d` exposes the opposite side of
+  the same cycle. Starting the bootstrap composition is mandatory to issue
+  current provider and H authorities, but its unexpired durable supervisor
+  lease makes the factory's mandatory fresh composition start return
+  `supervisor-lease-held`. Stopping or expiring the bootstrap invalidates and
+  burns the operation-backed authorities. Pause does not release the lease.
+  No ordering of the current exact public inputs can therefore provide both
+  current authorities and a successful fresh Core start.
+- A test spy that substitutes the already-started fixture composition for
+  the factory's direct constructor would hide this impossible production
+  dependency graph. No production caller can cause that substitution, the
+  factory input carries no composition identity, and Task14 forbids hidden
+  memoization, process-local rendezvous, global mutable authority, timing
+  inference, or caller detection. Such a spy is not integrated-product
+  evidence and is unauthorized.
+- The held import-policy correction at exact blob
+  `00caccb5ff954a5056113c043eef5b0d90ad403b` remains a valid direction:
+  E-1212 assigns direct dispatcher/G ownership to
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, not
+  `wake-supervisor-runtime.ts`. It is not a candidate, approved, integrated,
+  or independently committable while the paired factory RED remains
+  causally incomplete.
+- Fresh independent read-only audits
+  `/root/task16c_green_live_audit` and
+  `/root/task16c_green_implementation_plan` agree that the status-only patch
+  and spy-only alternative must be rejected. This is a genuine trusted-
+  bootstrap API/design contradiction, not a routine oracle alias or fixture
+  correction.
+- Preserve without staging or committing the paused E-1241 source working
+  blobs `658e2538c0ffec8b90db463e1d3f55b56ef8250d` and
+  `cf5f3930576c9e296b09fd54a94051c21feefad5`, plus held test blobs
+  `46c746178f29e970f7581eca464548bcdd0149ec` and
+  `00caccb5ff954a5056113c043eef5b0d90ad403b`. They are rejected/paused
+  diagnostic state only and confer no candidacy or product authority.
+- Continuation requires a new explicit product decision and committed
+  design/plan amendment selecting one lawful bootstrap owner: consume an
+  exact already-started composition/readback identity, move provider/H
+  issuance inside the factory, or alter durable Core lease ownership.
+  Coordinator recommendation is the narrow first option because it reuses
+  the already-approved Task14 safe composition and private registrar,
+  preserves one lease owner, and need not expose the private lexical
+  capability. Its exact input/authentication/stop shape still requires human
+  product approval before any documentation, test, or source change.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. No Task136 product candidate or record 29 exists. This event
+  records a rejected held repair and product-decision checkpoint only. It
+  authorizes no documentation amendment, test commit, product edit, Task16
+  acceptance, Task136 candidacy, strict record 29, publication, Wave 3
+  start, repository closure, or release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
