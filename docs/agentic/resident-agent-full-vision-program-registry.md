@@ -50260,3 +50260,143 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production readiness, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1259 — Corrected Task16 binder-ABI compatibility RED approved
+
+- Recorded at: 2026-07-29T20:04:08Z
+- A completely fresh independent read-only reviewer approves exact immutable
+  corrected candidate `d21c391f1c18b78d5c9ccb002af6fa357a64b73e`,
+  tree `f15cfabb53fb5913d8c68f204b5aabcdd296c8bf`, sole parent exact E-1257
+  rejection-authority merge
+  `df23f0fea2238b2df8951d5ca42fefc9e13dbd15`, and exact E-1258 review
+  envelope `928f74e1c54f367c6985ea18444cdd227463d5ec`.
+  Review found no P0-P3 defect, missing test, specification drift, or
+  executability gap.
+- The approved correction remains exactly one insertion in
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  from rejected blob
+  `292c33cb4c5224ff3326f614fc47092251feeb41` to exact approved blob
+  `0ec9f6840d5f6e84515417c42503e4f012a90078`.
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` remains
+  frozen at exact blob
+  `d4eb04515063ac50ea88989a0b1335ecc0ea0f61`; the cumulative E-1256
+  two-test transition remains exactly **392 insertions / 22 deletions**.
+- The reviewer independently confirms exactly **29** behavior titles,
+  **142** behavior assertions, **6** import-policy titles, and all **11**
+  direct binder calls with exact runtime-associated handles. The single
+  repeated `ts.isIdentifier(node)` guard restores TypeScript narrowing
+  without relaxing symbol identity or direct-operand policy. Current exact
+  three-parameter source and intended exact fourth required
+  `runtimeHandle: LocalRuntimeHandle` source with a direct identity
+  comparison both satisfy the closed local AST and symbol-resolution
+  oracle.
+- Independent immutable execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second focused import-policy timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The only
+  failures remain the exact three bounded-loop, two factory API, and one
+  factory import-graph Task16 RED titles.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first exactly at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix, closure, record-29, repository, or release success marker.
+- Candidate identity, correction and cumulative scopes, exact blobs and
+  freezes, exact 33-path ceiling with canonical SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  E-1244 through E-1258, Task138-H integration
+  `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`, and V4 integration
+  `bf392124e556b60781b374579f09c7dfe19918a9` ancestry, TypeScript
+  **5.9.3**, Vitest **4.1.9**, dependency freezes, diff hygiene, clean
+  detached review state, and strict Git integrity pass. Strict fsck reports
+  dangling objects only and no corruption.
+- Advance exact candidate
+  `d21c391f1c18b78d5c9ccb002af6fa357a64b73e`
+  `reviewing -> approved`. Authorize only the prescribed approval-first,
+  candidate-second history-preserving merge into the program coordinator,
+  followed by fresh integration gates, an append-only integration event,
+  and a forward two-parent merge into Task136. Changed bytes invalidate
+  approval.
+- The paused product diagnostics remain unstaged and byte-exact only in the
+  Task136 worktree:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`. They remain outside the
+  approved compatibility bytes and unauthorized for product execution.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This approval is not compatibility integration, source
+  GREEN, Task16 acceptance, Task136 candidacy, record 29, publication, Wave
+  3 start, repository closure, production readiness, or release. Product
+  source, `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
+## RV-1-E-1260 — Corrected Task16 binder-ABI compatibility RED integrated
+
+- Recorded at: 2026-07-29T20:10:02Z
+- Exact clean approval-first/candidate-second program integration is
+  `2f34850fb44ddb6def8b6652269ca926594add7d`, tree
+  `fe9772ce79cab16706fe2cbb02491ae874b1aa5f`, with exact first parent
+  E-1259 approval `509fc321e37bed6e120a4cff1fa8e48a3f82b4c5`
+  and exact second parent approved candidate
+  `d21c391f1c18b78d5c9ccb002af6fa357a64b73e`.
+  Candidate tree `f15cfabb53fb5913d8c68f204b5aabcdd296c8bf`,
+  sole parent `df23f0fea2238b2df8951d5ca42fefc9e13dbd15`, subject, and E-1258
+  review admission remain exact and ancestral.
+- The first-parent integration delta is exactly the two authorized wake
+  tests, **392 insertions / 22 deletions**. Integrated blobs are exactly
+  `d4eb04515063ac50ea88989a0b1335ecc0ea0f61` and
+  `0ec9f6840d5f6e84515417c42503e4f012a90078`.
+  Every product source and every other package test remains frozen. The
+  candidate-to-integration delta is only the append-only E-1258 and E-1259
+  registry records, **149 insertions / 0 deletions**.
+- Fresh integration execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second focused import-policy timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The only
+  failures remain the exact three bounded-loop, two factory API, and one
+  factory import-graph Task16 RED titles. The only warning is the known
+  absent TypeScript source map; the cross-card retains the expected Task137
+  **8 allowed / 20 rejected** policy-corpus marker.
+- Fresh integration typecheck and factory readiness pass. Mission and V4 each
+  pass **20/20** with unchanged mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first and only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix, closure, record-29, repository, product-release, or other
+  success marker.
+- Exact parent order, candidate identity, two-test scope and blobs, all
+  product and other-test freezes, exact 33-path ceiling and canonical
+  SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  E-1244 through E-1259, Task138-H integration
+  `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`, and V4 integration
+  `bf392124e556b60781b374579f09c7dfe19918a9` ancestry, TypeScript
+  **5.9.3**, Vitest **4.1.9**, real dependency directory and freezes, diff
+  hygiene, strict Git integrity, and clean integration state pass. Strict
+  fsck exits zero with dangling objects only and no corruption.
+- The held future product diagnostics remain unstaged and byte-exact only in
+  the Task136 worktree:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`.
+  Program integration retains committed factory source blob
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e` and no bounded-loop source.
+- Advance exact corrected Task16 binder-ABI compatibility transition
+  `approved -> integrated`. Authorize only its forward history-preserving
+  merge into Task136. A separate append-only GREEN authority is mandatory
+  before any product source change or execution.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is compatibility integration, not source GREEN, Task16
+  acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
