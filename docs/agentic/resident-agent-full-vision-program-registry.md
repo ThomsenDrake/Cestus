@@ -49838,3 +49838,81 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1253 — Exact-const Task16 prepared-bootstrap RED admitted to fresh review
+
+- Recorded at: 2026-07-29T18:28:19Z
+- Exact immutable forward correction candidate is
+  `14555dd9811db62fdfbb15135031fef6108592c8`, tree
+  `31f2212aa98266951e567d2e3883390c0bbcdbd4`, sole parent exact E-1252
+  rejection-authority merge
+  `1a3cd77d7ad53ecee35f6116ef56b42d2657d0c4`, with exact subject
+  `test(task136): require exact const initializer flags`.
+- Correction scope is exactly
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  **5 insertions / 1 deletion**, from rejected blob
+  `23e9791f75b1f97b76ff964eb36c3949f4b4f5a1` to exact candidate blob
+  `140b521d38350f765c8bfdae79aad26d98d4ec15`.
+  The cumulative E-1248 package scope remains exactly the two authorized
+  factory tests.
+- The corrected module-initialization oracle now accepts a runtime variable
+  statement only when
+  `statement.declarationList.flags === ts.NodeFlags.Const`. Its explicit
+  abstract local `await using` control must reject. TypeScript **5.9.3**
+  parses ordinary `const` with exact flags **2**, `using` with **4**, and
+  `await using` with **6**, so no Const-bit composite remains admissible.
+  Every other E-1251 symbol-provenance, pure-initializer, counterexample, and
+  source-satisfiability byte is preserved.
+- Exact behavior-test blob remains frozen at
+  `7cb68b91f3acd31ad5895b3614b976780fb821d1`. Key product and test freezes
+  pass, including wake tests
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6` and
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`, factory source
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, wake source
+  `8f53e00c3f5ba59cd6f3158e67da9fc746f401c2`, composition source
+  `a5e554dd138dc82bcd9e01b79aef82742b12c366`, and mounted-store source
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`.
+- Fresh clean committed-tree execution under `TMPDIR=/dev/shm`, one worker,
+  and the 120-second timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The six
+  failures remain only the three absent bounded-loop titles, two absent
+  factory API titles, and one absent factory import graph.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  exact markers remain **29 / 20 / 29 / 15**. Repository mode exits one and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix or release-closure marker.
+- Exact candidate identity, one-file correction and cumulative two-test
+  scope, all freezes, dependency pins, exact 33-path ceiling and canonical
+  SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  E-1244 through E-1252 ancestry, Task138-H and V4 ancestry, diff hygiene,
+  clean detached execution state, non-symlink dependency directory, and
+  strict Git integrity pass. Strict fsck reports only benign dangling
+  objects and no corruption.
+- The paused product diagnostics remain unstaged and byte-exact only in the
+  Task136 worktree:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`. They are not candidate
+  evidence and remain unauthorized for product execution.
+- Assign another completely fresh independent read-only reviewer to exact
+  candidate `14555dd9811db62fdfbb15135031fef6108592c8`.
+  Bind the exact tree, parent, correction and cumulative blobs, E-1244
+  through E-1252 contract, abstract AST/symbol-resolution controls, full
+  cumulative two-test oracles, immutable RED signatures, source-phase
+  satisfiability, and complete gate packet. Changed candidate bytes invalidate
+  review.
+- Advance only this corrected Task16 test-only RED `candidate -> reviewing`.
+  Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is review admission, not RED approval or integration,
+  wake compatibility-test authority, source GREEN, Task16 acceptance,
+  Task136 candidacy, record 29, publication, Wave 3 start, repository
+  closure, production readiness, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
