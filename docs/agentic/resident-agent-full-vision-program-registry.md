@@ -50489,3 +50489,92 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, test, documentation, and unrelated
   actions remain unauthorized.
+
+## RV-1-E-1262 — Task16 GREEN causal-oracle defects confirmed; two-test forward correction authorized
+
+- Recorded at: 2026-07-29T20:26:34Z
+- Exact E-1261 GREEN authority is forward-integrated at Task136
+  `65656f727a5ea40f73ff58124622e8ce656b934d`, tree
+  `3a0a6056618a07c89dd740e1616b146762ee7bc5`, with exact first parent
+  E-1260 forward merge `98ef1403b27b02ff5e993181ea62e4f14e414a20`
+  and exact second parent E-1261 program authority
+  `6bda318c9117e8f8986f2faab87c2df0dccebdec`.
+- The authorized source attempt remains diagnostic-only and uncommitted.
+  Exact working wake blob
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`
+  passes the two wake suites **79/79**. Exact working factory blob
+  `01236381d656ee5166f5a4d391498431fe66892f`
+  passes its static import-policy controls and typecheck. The bounded source
+  remains at held blob
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`.
+  None is a GREEN candidate or review evidence.
+- Fresh execution of the factory behavior suite is **4 = 2 passed + two
+  failed**. Both failures stop exactly at the frozen mounted binder with
+  `resident factory authority binding requires one exact mounted orchestration claim`.
+  The approved mounted binder correctly requires exactly one claim matching
+  the prepared handoff task, attempt, retry generation, and run type after
+  provider high-water and durable-count agreement.
+- Completely fresh read-only comparison proves the prepared factory fixture
+  seeds no orchestration claim. The existing legitimate mounted resident
+  fixture instead establishes the canonical
+  `agent.task.created -> agent.task.status.changed(queued) ->
+  agent.task.orchestration.claimed` prefix after resident identity readiness
+  and before composition construction/start and provider/handoff authority
+  issuance. Appending after bind would invalidate the authenticated
+  high-water/count; omitting task creation/queue provenance would not be a
+  lawful durable task lifecycle. No factory, W, composition, or mounted-store
+  source change can manufacture this missing caller-owned prerequisite.
+- Separate fresh read-only symbol and data-flow review proves the bounded
+  resume terminal `resultHash` expected by
+  `packages/agent/test/bounded-agent-loop.test.ts` is not causally available.
+  Test-local `hash("5")` exists only as the terminal-result helper default.
+  Issued capabilities and durable input instead supply the exact authenticated
+  H `selectedReadback.manifestHash`, represented by the same abstract corpus
+  as `hash("7")`. Hard-coding the isolated fixture value would violate
+  provenance and content-addressed completion.
+- Authorize only the smallest forward test-only correction in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`, starting
+  at exact blob `7cb68b91f3acd31ad5895b3614b976780fb821d1`,
+  and `packages/agent/test/bounded-agent-loop.test.ts`, starting at exact blob
+  `8f38c7241f074bd870667363f3e483cfb3087176`.
+- In the existing mounted factory fixture, immediately after
+  `handle.residentIdentity.ready()`, append the exact abstract local
+  task-created, queued, and orchestration-claimed causal prefix for
+  `task_factory_ports`, `attempt_factory_ports`, run type
+  `evidence-triage`, and retry generation zero. Complete the prefix before
+  composition construction/start and authority issuance. Change no title,
+  assertion, behavior branch, production import, or product expectation.
+- In the existing local `residentResult` helper, change only its terminal
+  default from `hash("5")` to `hash("7")`, binding the expected terminal hash
+  to the exact authenticated H manifest-hash corpus. Add no case, helper,
+  title, assertion, literal product coupling, or unrelated alias.
+- Freeze both import-policy tests, every other test, every product source,
+  composition, mounted storage, claim, design, plan, contract, mission,
+  assurance, dependency, route, provider, activation, credential, preview
+  branch, and unrelated byte. Preserve the three source diagnostics
+  unstaged and byte-exact while making and committing the test correction.
+- Required clean committed-tree RED signature under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second focused import-policy timeout remains focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**, with the
+  same three absent bounded-loop, two absent factory API, and one factory
+  import-graph titles. Typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope, blobs, freezes, ancestry, dependencies, canonical 33-path hash, diff
+  hygiene, strict Git integrity, and clean detached state must pass.
+- Commit only the two corrected behavior tests with subject
+  `test(task136): seed prepared claim and bind terminal hash`. Obtain a
+  completely fresh independent read-only review of exact immutable bytes,
+  append approval, integrate approval-first/candidate-second into the program
+  branch, rerun all integration gates, append integration, and forward-merge
+  authority into Task136. Changed test bytes invalidate review. Resume the
+  existing E-1261 three-source GREEN only after this correction is approved
+  and integrated.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is causal test-oracle correction authority, not a test
+  candidate, source GREEN candidate, Task16 acceptance, Task136 candidacy,
+  record 29, publication, Wave 3 start, repository closure, production
+  readiness, or release. Product execution, `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
