@@ -4678,3 +4678,187 @@ sources; the final R GREEN remains the candidate tip. Every earlier RED,
 repair, review, approval, program merge, and forward Task136 merge remains
 ancestral. No candidate, record 29, or Task18 action exists before all Task16C
 gates pass.
+
+## RV-1-E-1244 Task16 Prepared-Composition Bootstrap Amendment
+
+This true-EOF section supersedes only Task16C's fresh-composition/start/
+preflight/bind/stop sequence. Tasks17-through-21 remain in their committed
+order. The exact 33-path ceiling and canonical SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`
+remain unchanged.
+
+### Task 16C-1: Integrate the prepared-bootstrap amendment
+
+Change only this design, this plan, and the Task136 claim. Record the
+human-approved E-1244 decision on the program branch, forward-merge it into
+Task136, commit the three-document amendment, obtain completely fresh
+independent read-only architecture and executability review of exact immutable
+bytes, append approval, merge approval-first/candidate-second into the program
+branch, rerun the full integration packet, append integration, and forward-
+merge that authority into Task136.
+
+Preserve the four E-1243 diagnostic working blobs exactly and do not stage or
+commit them as amendment evidence. Changed amendment bytes invalidate review.
+No test or product edit is authorized before this lifecycle completes.
+
+### Task 16C-2: Correct and integrate the two-factory-test RED
+
+**Modify only:**
+
+- `packages/local-runtime/test/resident-loop-factory-ports.test.ts`
+- `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`
+
+Start from and repair the held E-1243 diagnostic direction without resetting,
+rebasing, amending, discarding, or treating rejected bytes as a candidate.
+Retain the valid import-owner correction: direct dispatcher and G constructor
+ownership belongs to
+`packages/local-runtime/src/mounted-wake-lifecycle-store.ts`.
+
+In the mounted fixture, start the legitimate composition once, issue its
+provider and handoff authorities, complete the existing portable preflight,
+bind once, and retain the exact:
+
+```ts
+{
+  runtimeHandle,
+  wakeRuntime: composition.wakeRuntime,
+  authorityReadback,
+  providerPosture,
+  domainExecution,
+  nowMonotonicMs
+}
+```
+
+prepared value. The factory receives exactly that frozen six-key own-data
+input. Remove the factory's composition construction/start/bind and second
+handoff preflight expectations. Prove the successful factory call causes zero
+additional composition construction, start, or bind; returns exact frozen
+`{ metadata, loop, stop }`; and stops only the exact owner once across
+concurrent or repeated calls while propagating rejection.
+
+Within the existing hostile title and cardinality, independently reject
+copied, fabricated, proxied, swapped, generic, stopped, stale, and already-
+consumed runtime/readback/handle presentations before accessor, ledger,
+provider, handoff, gateway, approval, dispatcher, or effect deltas. Reject a
+structural composition object and caller stop callback without invoking
+either. Preserve later-boundary accounting for valid triples whose domain or
+dispatcher capability is invalid.
+
+The import-policy oracle requires descriptor-safe six-field normalization
+before the first await and then the exact direct sequence:
+
+1. W binding with exact wake runtime, readback, domain capability, and handle;
+2. metadata projection from the authenticated readback and posture;
+3. C;
+4. H using only the authenticated handle ledger;
+5. R issuance; and
+6. exact frozen return with direct memoized wake-runtime stop.
+
+It forbids composition value construction/calls, second preflight, generic
+wake construction, structural composition/stop authority, barrels, loaders,
+activation, aliases, optional calls, catches, and alternate stop receivers.
+Add no unrelated alias corpus.
+
+Freeze both held product-source diagnostics, every other source and test,
+composition, mounted storage, claim, contract, mission, assurance,
+dependency, provider, route, activation, credential, preview branch, and
+unrelated byte. Run under `TMPDIR=/dev/shm`, one worker, and the 120-second
+import-policy timeout:
+
+```text
+focused 9 = 3 passed + 6 failed
+producer 144/144
+Task136 card 383 = 377 passed + 6 failed
+37-file cross-boundary 1,042 = 1,036 passed + 6 failed
+Task138 boundary 355/355
+```
+
+Also run typecheck, factory readiness, mission and V4 **20/20**, markers
+**29 / 20 / 29 / 15**, exact repository first-stop, scope and blob freezes,
+ancestry, dependencies, canonical path hash, diff hygiene, Git integrity, and
+clean committed-tree checks.
+
+Commit only the two tests. Obtain completely fresh independent read-only
+review of exact immutable bytes, append approval, merge approval-first/
+candidate-second into the program branch, rerun the integration packet,
+append integration, and forward-merge that authority into Task136. Changed
+bytes invalidate review.
+
+### Task 16C-3: Correct and integrate the explicit binder ABI oracle
+
+The existing Task14 import-policy oracle pins the earlier three-parameter W
+binder and cannot admit the approved exact runtime-handle comparison. After
+Task16C-2 integration and before source GREEN, append a causal test-only
+authority for the smallest explicit ABI correction in the already-scoped wake
+runtime tests. Require a direct fourth `runtimeHandle` argument, exact
+private-state handle comparison before readback access or mounted work, and
+unchanged three-argument mounted-store binder ownership. Do not use
+`arguments`, overload ambiguity, callback carriers, optional/spread calls, or
+hidden arity channels.
+
+Commit only the causal oracle bytes, obtain a new completely fresh independent
+read-only review, and record/approve/integrate them with the same append-only
+and two-parent history. The corrected oracle must retain all Task14 lexical
+issuer and generic-runtime controls and the exact Task16C-2 RED accounting.
+No product edit is authorized until this additional RED is integrated.
+
+### Task 16C-4: Implement and integrate the prepared factory GREEN
+
+**Create/modify only:**
+
+- create `packages/agent/src/bounded-agent-loop.ts`
+- modify `packages/local-runtime/src/resident-loop-factory-ports.ts`
+- modify `packages/local-runtime/src/wake-supervisor-runtime.ts`
+
+Keep `resident-loop-factory-composition.ts`,
+`mounted-wake-lifecycle-store.ts`, every test, and every unrelated product
+path frozen.
+
+In W's existing private state retain the exact constructor
+`LocalRuntimeHandle` plus stopped and resident-consumed state. Extend
+`bindResidentLoopCapabilitiesForFactory` with the explicit fourth handle
+argument. Before `Reflect`, ledger, store, provider, handoff, gateway, or
+dispatcher access, require exact wake WeakMap membership, exact registered
+top-level readback identity, exact captured handle identity, and Core-ready/
+not-stopped/unconsumed state. Then validate the exact registered nested
+identities and call the mounted binder with its unchanged exact three
+arguments.
+
+In factory ports normalize exactly six own-data fields before the first await,
+call W first, then existing metadata/C/H/R in order, and supply H only the
+authenticated handle's ledger. Remove every composition value import and
+factory-owned construction/start/bind/preflight path. Return only exact frozen
+`{ metadata, loop, stop }`; memoize the one direct authenticated
+`wakeRuntime.stop()` promise and propagate its exact result or rejection.
+
+Implement the already approved bounded issuer against the integrated Task16B
+producer prerequisites and frozen bounded-loop tests. Add no registrar,
+composition change, mounted-store change, runtime registry, rendezvous,
+memoization layer, caller heuristic, timing test, stack inspection, global
+authority, route, provider, activation, fallback, credential, network call,
+or unrelated behavior.
+
+Required GREEN is:
+
+```text
+focused 9/9
+producer 144/144
+Task136 card 383/383
+37-file cross-boundary 1,042/1,042
+Task138 boundary 355/355
+```
+
+Run every supporting Task16C-2 gate. Commit only the three sources, obtain
+completely fresh independent source review, append approval, integrate
+approval-first/candidate-second into the program branch, rerun all integration
+gates, append Task16 integration/completion, and forward-merge authority into
+Task136 before Task17.
+
+### Task 17 source-union adjustment
+
+Task17 still admits one exact 33-path candidate. Its source-only proof includes
+the approved Task16B producer GREEN and the final three-source Task16C-4 GREEN.
+The sorted union remains the exact fifteen Task136 sources. Every RED,
+causal-repair, review, approval, program merge, and forward Task136 merge
+remains ancestral. No candidate, record 29, or Task18 action exists before all
+Task16C-4 gates pass.
