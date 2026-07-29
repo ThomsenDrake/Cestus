@@ -47899,3 +47899,75 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   publication, Wave 3 start, repository closure, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1226 — Task16B producer-prerequisite GREEN admitted to fresh review
+
+- Recorded at: 2026-07-29T00:45:56Z
+- Exact immutable Task16B GREEN candidate is
+  `fded47cc59ed24a82865384c80fbe9641e2ca849`, tree
+  `74e5809efacbb7352c44dfa04eab1ab1399803b5`, sole parent
+  `10b1ef70898678717f4cd97a285c8519f6f7499b`, with exact subject
+  `feat(task136): implement resident producer prerequisites`.
+- Candidate scope is exactly the three E-1225 sources,
+  **189 insertions / 24 deletions**. In authorized order their exact
+  starting-to-candidate blobs are W
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5` to
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`, G
+  `2e7d7a79763758037c56cedd91a70f63c8d8feea` to
+  `cb2f9dcbfa71beca2600cc08134b1d1c5284e4da`, and dispatcher
+  `230a0b53ee19e29cc3301750c0ff23bcb9225314` to
+  `4518ba3cb08f23c02eba19faa269092ae4a44b87`.
+- W copies caller own-data once, derives the exact active claim only from
+  the existing authenticated snapshot, validates present outer/inner
+  generation and nested claim ID fields with own-property semantics, fills
+  only absent fields, and preserves canonical validation without another
+  ledger, stream, snapshot, store, or caller-data read. G binds exact
+  eligible same-instance readbacks to frozen approved durable material in a
+  per-gateway WeakMap, adds only the private sixth operation, preserves
+  readback keys, and propagates post-claim receipt artifacts while keeping
+  pre-claim failure empty. The dispatcher consumes its private capability
+  only immediately before returning a fully constructed successful port.
+- Every test remains frozen at the integrated RED, including exact seven
+  Task16 blobs
+  `32962cf24a28087253368289480dc5ce2e741574`,
+  `667f0e9fc448282f04d955d7c4757535edf98b33`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`,
+  `aa1d371236e3cd7abbceceab654513d51bc31990`,
+  and `d88d435cda590b1922685f9a68f085e14d957e75`. The bounded source remains
+  absent and every other source, contract, claim, plan, dependency,
+  activation, route, provider, credential, preview branch, and unrelated
+  byte remains frozen.
+- Fresh candidate execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is exact producer controls **144/144**, focused
+  **9 = 3 passed + six failed**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The six
+  failures are only the absent Task16C bounded issuer, factory, and import
+  graph.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Clean committed repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Scope, blobs/freezes, ancestry, dependency pins TypeScript **5.9.3** and
+  Vitest **4.1.9**, diff hygiene, Git integrity, and clean state pass.
+- Assign completely fresh independent read-only source reviewer
+  `/root/task16b_e1226_fresh_review`. Bind the exact candidate/tree/parent,
+  read the task brief, implementer report, and immutable diff package, then
+  return separate specification-compliance and code-quality verdicts with
+  source evidence. Review the active-claim proof, one-copy/own-presence
+  semantics, every G issuance/consumption branch, exact material fields and
+  freezes, protected operation ownership, dispatcher deletion timing, and
+  no-extra/no-public/no-global boundaries. Changed bytes invalidate review.
+  The main session independently reproduces the complete gate packet from
+  committed bytes.
+- Advance only this exact Task16B GREEN `candidate -> reviewing`. Task16 and
+  Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is source review admission, not approval, integration,
+  Task16C authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
