@@ -314,6 +314,65 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
     throw new Error("Resident domain gateway requires a non-proxy clock.");
   }
   const owner = Object.freeze({});
+  const issuedCanonicalMaterial = new WeakMap<
+    object,
+    Readonly<Record<string, unknown>>
+  >();
+  const canonicalGatewayReadbackKeys = Object.freeze([
+    "authorizationKind",
+    "stage",
+    "requestEventId",
+    "decisionEventId",
+    "approvedBy",
+    "approvedPreviewHash",
+    "executionClaimEventId",
+    "outcomeReceiptEventId",
+    "resultEventId",
+    "denialEventId",
+    "failurePhase"
+  ] as const);
+
+  function brandCanonicalMaterial(
+    readback: object,
+    request: ResidentRequestedEvent,
+    resultArtifactHashes: readonly string[]
+  ): object {
+    const gatewayReadbacks = Object.freeze(Object.fromEntries(
+      canonicalGatewayReadbackKeys.flatMap((key) =>
+        Object.hasOwn(readback, key)
+          ? [[key, Reflect.get(readback, key)]]
+          : []
+      )
+    ));
+    const material = Object.freeze({
+      gatewayReadbacks,
+      allowlistEntryHash: request.payload.allowlistEntryHash,
+      sideEffectClass: request.payload.sideEffectClass,
+      requiredApprovalClass: request.payload.requiredApprovalClass,
+      previewHash: request.payload.previewHash,
+      inputArtifactHashes: Object.freeze([
+        ...request.payload.inputArtifactHashes
+      ]),
+      resultArtifactHashes: Object.freeze([...resultArtifactHashes])
+    });
+    issuedCanonicalMaterial.set(readback, material);
+    return readback;
+  }
+
+  function readCanonicalToolStepMaterial(value: unknown): object {
+    if (value === null || typeof value !== "object" || isProxy(value)) {
+      throw new Error(
+        "Resident canonical tool-step material requires an exact issued readback."
+      );
+    }
+    const material = issuedCanonicalMaterial.get(value);
+    if (material === undefined) {
+      throw new Error(
+        "Resident canonical tool-step material readback is not eligible in this gateway instance."
+      );
+    }
+    return material;
+  }
 
   async function preparePlannedStepBindings(value: unknown): Promise<readonly object[]> {
     const plan = residentGatewayRecord(value, "resident planned-step binding input");
@@ -441,19 +500,20 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       afterEffect,
       input.now()
     );
-    return issueResidentLiveStage({
+    return brandCanonicalMaterial(issueResidentLiveStage({
       owner,
       stage: "requested",
       locator,
       plan,
       request,
       portPreview
-    });
+    }), request, []);
   }
 
   async function readFreshHumanDecision(value: unknown): Promise<object> {
     const live = requireResidentLiveStage(value, owner, "requested");
     issuedResidentLiveStages.delete(value as object);
+    issuedCanonicalMaterial.delete(value as object);
     if (live.request.payload.authorizationKind !== "human-approval") {
       throw new Error("Resident human decision read requires a human-approval request.");
     }
@@ -514,6 +574,7 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       throw new Error("Resident execution requires the exact fresh authorized stage.");
     }
     issuedResidentLiveStages.delete(value as object);
+    issuedCanonicalMaterial.delete(value as object);
     const authorization = automatic
       ? Object.freeze({ authorizationKind: "automatic-policy" as const })
       : Object.freeze({
@@ -700,7 +761,7 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       afterEffect,
       input.now()
     );
-    return Object.freeze({
+    return brandCanonicalMaterial(Object.freeze({
       authorizationKind: live.request.payload.authorizationKind,
       stage: "completed",
       logicalLocator: live.locator,
@@ -718,7 +779,7 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
       executionClaimEventId: claim.id,
       outcomeReceiptEventId: receipt.id,
       resultEventId: completed.id
-    });
+    }), live.request, completed.payload.resultArtifactHashes);
   }
 
   async function rereadAndIssueFromLedger(value: unknown): Promise<object> {
@@ -770,15 +831,15 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
     } = prefix;
     let { completed } = prefix;
     if (denial !== undefined) {
-      return Object.freeze({
+      return brandCanonicalMaterial(Object.freeze({
         ...residentRecoveryBase(request, locator),
         stage: "denied",
         denialEventId: denial.id
-      });
+      }), request, []);
     }
     if (failure !== undefined) {
       const failureProof = failure.payload.failure;
-      return Object.freeze({
+      return brandCanonicalMaterial(Object.freeze({
         ...residentRecoveryBase(
           request,
           locator,
@@ -796,17 +857,19 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
             }
           : {}),
         resultEventId: failure.id
-      });
+      }), request, failureProof.failurePhase === "post-claim"
+        ? receipt!.payload.artifactHashes
+        : []);
     }
     if (completed !== undefined) {
-      return residentRecoveryReadback(
+      return brandCanonicalMaterial(residentRecoveryReadback(
         request,
         locator,
         approval,
         claim,
         receipt,
         completed
-      );
+      ), request, completed.payload.resultArtifactHashes);
     }
     if (receipt !== undefined) {
       if (claim === undefined) {
@@ -829,14 +892,14 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
           afterEffect,
           input.now()
         );
-        return residentRecoveryFailureReadback(
+        return brandCanonicalMaterial(residentRecoveryFailureReadback(
           request,
           locator,
           approval,
           claim,
           receipt,
           failed
-        );
+        ), request, receipt.payload.artifactHashes);
       }
       completed = await appendResidentCompletion(
         ledger,
@@ -859,22 +922,22 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
         afterEffect,
         input.now()
       );
-      return residentRecoveryReadback(
+      return brandCanonicalMaterial(residentRecoveryReadback(
         request,
         locator,
         approval,
         claim,
         receipt,
         completed
-      );
+      ), request, completed.payload.resultArtifactHashes);
     }
     if (claim !== undefined) {
-      return Object.freeze({
+      return brandCanonicalMaterial(Object.freeze({
         ...residentRecoveryBase(request, locator, approval),
         stage: "claimed",
         category: "effect-outcome-unknown",
         executionClaimEventId: claim.id
-      });
+      }), request, []);
     }
     if (request.payload.authorizationKind === "human-approval" && approval !== undefined) {
       return Object.freeze({
@@ -882,10 +945,10 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
         stage: "human-approved"
       });
     }
-    return Object.freeze({
+    return brandCanonicalMaterial(Object.freeze({
       ...residentRecoveryBase(request, locator, approval),
       stage: "requested"
-    });
+    }), request, []);
   }
 
   return Object.freeze({
@@ -893,7 +956,8 @@ function createResidentDomainGateway(input: ResidentLoopToolGatewayInput): objec
     requestFreshAuthorized,
     readFreshHumanDecision,
     executeFreshAuthorized,
-    rereadAndIssueFromLedger
+    rereadAndIssueFromLedger,
+    readCanonicalToolStepMaterial
   });
 }
 
