@@ -50109,3 +50109,79 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   production readiness, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1257 — Task16 binder-ABI compatibility candidate rejected; identifier-narrowing correction authorized
+
+- Recorded at: 2026-07-29T19:31:50Z
+- Exact immutable E-1256 compatibility candidate is
+  `ef72b2e01a321f4aa05a7915ed9d93f3548834e3`, tree
+  `f03ca53c0cc8ae98017fd0c7141408c418920fe4`, sole parent exact E-1256
+  authority merge `1ba38d41f231e28381a840bb9d97c2c697007ac6`,
+  with exact subject
+  `test(task136): permit prepared binder ABI transition`.
+- Candidate scope is exactly
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` and
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  **391 insertions / 22 deletions**. Exact candidate blobs are
+  `d4eb04515063ac50ea88989a0b1335ecc0ea0f61` and
+  `292c33cb4c5224ff3326f614fc47092251feeb41`; their exact E-1256 starting
+  blobs remain
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6` and
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`.
+- The candidate preserves all **29** behavior titles and **142** behavior
+  assertions, presents exact runtime-associated handles at all **11**
+  existing binder calls, and passes the two wake suites **79/79** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. Its closed
+  symbol-resolution controls reject the committed callback, object, array,
+  call, non-null, assertion, and `arguments` carriers while retaining exact
+  three- and four-parameter source satisfiability.
+- Fresh clean detached candidate execution passes Task138 **355/355** but
+  standalone typecheck exits **2** only at
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts:713:53`
+  with TypeScript **TS2345**: `Node` is not assignable to `Identifier`.
+  The boolean `isRuntimeHandleReference` expression proves the symbol match
+  but does not preserve `ts.isIdentifier(node)` control-flow narrowing for
+  the later helper call.
+- Candidate identity, exact two-test scope and blobs, frozen held product
+  diagnostics, diff hygiene, E-1244 through E-1256 ancestry, Task138-H and
+  V4 ancestry, dependency pins, canonical 33-path ceiling, clean detached
+  state, and strict Git integrity pass. Those gates do not override the
+  clean-tree typecheck failure.
+- Advance exact candidate
+  `ef72b2e01a321f4aa05a7915ed9d93f3548834e3`
+  `candidate -> rejected`. Preserve it unmodified and unintegrated.
+- Authorize the smallest forward test-only correction in exactly
+  `packages/local-runtime/test/wake-supervisor-runtime-imports.test.ts`,
+  starting from rejected blob
+  `292c33cb4c5224ff3326f614fc47092251feeb41`.
+  Preserve the boolean symbol-resolution check but repeat the explicit
+  `ts.isIdentifier(node)` guard at the
+  `isDirectRuntimeHandleComparisonOperand(node)` call so TypeScript narrows
+  the argument. Add no case, control, alias, assertion, or unrelated byte.
+- Freeze
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts` at
+  `d4eb04515063ac50ea88989a0b1335ecc0ea0f61`, every product source, every
+  other test, factory tests, composition, mounted storage, contract,
+  mission, assurance, dependency, configuration, route, provider,
+  credential, preview branch, and unrelated byte. Preserve the two held
+  future product diagnostics unstaged and byte-exact.
+- Required corrected compatibility signatures remain focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, Task138 **355/355**, passing
+  typecheck/readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, scope, freezes,
+  ancestry, dependencies, canonical 33-path hash, diff hygiene, strict Git
+  integrity, and clean state.
+- Commit only the one corrected import-policy test with subject
+  `test(task136): preserve runtime handle identifier narrowing`. Admit the
+  new exact immutable candidate to a completely fresh independent read-only
+  reviewer only after the full gate packet passes. Changed bytes invalidate
+  review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is one-test compatibility-oracle correction authority,
+  not a corrected candidate, source GREEN, Task16 acceptance, Task136
+  candidacy, record 29, publication, Wave 3 start, repository closure,
+  production readiness, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
