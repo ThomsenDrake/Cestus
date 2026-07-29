@@ -49415,3 +49415,101 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, production readiness, or release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1248 — Task16 prepared-bootstrap two-factory-test RED authorized
+
+- Recorded at: 2026-07-29T16:34:33Z
+- Exact E-1247 corrected amendment integration is forward-merged into
+  Task136 as
+  `5144b07683df5409eb019448ec6aadbd1d40096f`, with first parent exact
+  corrected amendment candidate
+  `8368a847b683f9b0e93c8e2134296d53ab57ef4b` and second parent exact
+  program integration event
+  `179390f5097b8f22ea974a8c90083dae10dd47be`.
+  E-1244 through E-1247 and all earlier producer prerequisites remain
+  ancestral.
+- Authorize only the smallest forward test-only RED correction in:
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`, whose
+  committed starting blob is
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`, and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  whose committed starting blob is
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`.
+- Preserve the E-1243 held diagnostic direction and change it only forward.
+  Exact current held behavior blob is
+  `46c746178f29e970f7581eca464548bcdd0149ec`; exact held import-policy blob
+  is `00caccb5ff954a5056113c043eef5b0d90ad403b`. Retain the valid direct
+  dispatcher/G owner correction assigning those imports to
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`.
+- Preserve without staging or modification the paused product diagnostics:
+  absent-at-HEAD `packages/agent/src/bounded-agent-loop.ts` working blob
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`, and
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` working blob
+  `cf5f3930576c9e296b09fd54a94051c21feefad5`. Freeze every committed
+  product source, every other test, both wake tests, composition, mounted
+  storage, claim, contract, mission, assurance, dependency, configuration,
+  provider, route, activation, credential, preview branch, and unrelated
+  byte.
+- In the mounted behavior fixture, start the sole legitimate composition
+  once; issue provider and handoff authorities; complete the existing portable
+  preflight; bind once; and retain exact
+  `{ runtimeHandle, wakeRuntime, authorityReadback, providerPosture,
+  domainExecution, nowMonotonicMs }`. The factory receives only that exact
+  frozen own-data prepared input and performs zero new composition
+  construction, start, bind, or handoff preflight.
+- Preserve the existing four behavior titles and total cardinality. The
+  positive title proves exact frozen `{ metadata, loop, stop }`, normal loop
+  effects, zero second-owner activity, and stop of only the exact wake owner
+  at most once across concurrent and repeated requests with exact failure
+  propagation.
+- Within the existing hostile title, independently cover copied, fabricated,
+  proxied, swapped, generic, stopped, stale, concurrent, and already-consumed
+  wake/readback/handle presentations; structural composition and caller stop
+  inputs; and the retained later domain/dispatcher controls. Measure after
+  setup and before final snapshots so invalid triple presentations prove zero
+  accessor, ledger, provider, handoff, gateway, approval, dispatcher, or
+  effect deltas. A concurrent duplicate rejects behind the exact private
+  in-flight reservation. Mounted rejection before issuance is retryable;
+  issuance burns the binding.
+- In the existing two-title import-policy test, retain the passing data-only
+  title and make only the already-failing graph title require descriptor-safe
+  exact six-field normalization followed by the direct awaited
+  `bindResidentLoopCapabilitiesForFactory(prepared.wakeRuntime,
+  prepared.authorityReadback, prepared.domainExecution,
+  prepared.runtimeHandle)` call before metadata, C, H, or R. Require H's
+  ledger only from the authenticated prepared handle and the exact direct
+  memoized wake-runtime stop receiver.
+- Remove composition value construction/start/bind and portable-preflight
+  value ownership from the factory graph. Retain composition only as the
+  lawful readback type source. Forbid generic wake construction, structural
+  composition/stop authority, alternate calls/receivers, optional/spread
+  calls, catches, aliases, barrels, loaders, activation, and unrelated
+  corpus. Retain every existing safe public export and data-only control.
+- Required committed-tree RED under `TMPDIR=/dev/shm`, one worker, and the
+  120-second import-policy timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The three
+  bounded-loop, two factory API, and one factory graph titles are the only
+  failures.
+- Also require standalone typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  exact two-test scope and all blobs/freezes, 33-path hash, ancestry,
+  dependencies, diff hygiene, strict Git integrity, and clean committed-tree
+  state.
+- Commit only the two tests with subject
+  `test(task136): require prepared factory bootstrap`. Admit exact immutable
+  candidate bytes to a completely fresh independent read-only reviewer.
+  Changed bytes invalidate review. Only after append-only approval,
+  approval-first/candidate-second program integration, fresh integration
+  gates, append-only integration, and forward Task136 merge may a separate
+  event authorize the passing two-wake-test compatibility transition.
+- Task-scoped subagent-driven development and test-driven development are explicitly approved for this task.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is exact test-only RED authority, not candidacy,
+  approval, integration, wake compatibility-test authority, source GREEN,
+  Task16 acceptance, Task136 candidacy, record 29, publication, Wave 3
+  start, repository closure, production readiness, or release. Product
+  source, `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
