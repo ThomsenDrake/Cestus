@@ -47734,3 +47734,96 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1223 — Task16 gateway material RED independently approved
+
+- Recorded at: 2026-07-29T00:08:40Z
+- Completely fresh independent read-only reviewer
+  `/root/task16_e1222_fresh_review` approves exact immutable candidate
+  `ce5107ace435cf0a27f1914d073b2f24f062f1ed`, tree
+  `e07f026294b322d46ca936bf51ca0bab89e80c05`, sole parent
+  `6fc155ee7b9792c1e36cb9ba73b84b428f81efa6`, under sole effective
+  true-EOF admission E-1222 inside clean envelope
+  `6b4855e824b0d44f06755bc39e52e73f9f877fc8`. Misplaced E-1221 remains
+  administratively invalid and has no lifecycle effect.
+- Candidate scope is exactly one G test, **21 insertions / 1 deletion**, with
+  exact blob `667f0e9fc448282f04d955d7c4757535edf98b33` from
+  `00fbc6bcd18365224e301c26227e6fdc769ffabd`. The same-instance abstract
+  local human post-claim failed recovery case requires exact durable
+  `receipt.payload.artifactHashes`; the automatic pre-claim failure remains
+  empty. The existing title and **48-test** cardinality are unchanged, and no
+  unrelated case exists.
+- All other six test blobs, four source freezes, absent bounded source,
+  ancestry, dependencies, scope, and static AST/import controls match
+  E-1222. The reviewer finds no P0-P3 defect, missing test, specification
+  drift, or Task16B/Task16C phase-satisfiability gap.
+- Fresh execution is exact isolated G
+  **48 = 47 passed + one failed**, focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Standalone
+  typecheck and factory readiness pass. Mission and V4 each pass **20/20**;
+  markers remain **29 / 20 / 29 / 15**, mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  and repository mode stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Canonical 33-path SHA-256 remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  TypeScript **5.9.3**, Vitest **4.1.9**, diff hygiene, strict Git integrity,
+  and clean worktree state pass.
+- Advance only this exact RED `reviewing -> approved`. Integrate by committing
+  this approval first, then merging exact candidate
+  `ce5107ace435cf0a27f1914d073b2f24f062f1ed` as the second parent with
+  preserved history. Rerun the complete integration matrix, append
+  integration at true EOF, and forward-merge that authority into Task136
+  before issuing separate Task16B GREEN authority.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is RED approval, not RED integration, producer GREEN
+  authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
+
+## RV-1-E-1224 — Task16 gateway material RED integrated
+
+- Recorded at: 2026-07-29T00:17:08Z
+- History-preserving program integration is exact merge
+  `5db4e5b99e34d1ffa71c3c28241fa155c519f3ba`, with approval-first parent
+  `e16ce0a61fed13a02c31d61d1348231f2da73f4a` and exact approved
+  candidate-second parent
+  `ce5107ace435cf0a27f1914d073b2f24f062f1ed`.
+- The integrated candidate remains tree
+  `e07f026294b322d46ca936bf51ca0bab89e80c05`, sole parent
+  `6fc155ee7b9792c1e36cb9ba73b84b428f81efa6`, exact one-file
+  **21 insertions / 1 deletion**, and G test blob
+  `667f0e9fc448282f04d955d7c4757535edf98b33`. All seven Task16 RED blobs
+  and every source freeze remain exactly E-1223.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout is exact isolated G
+  **48 = 47 passed + one failed**, focused
+  **9 = 3 passed + six failed**, producer controls
+  **144 = 140 passed + four failed**, Task136 card
+  **383 = 373 passed + ten failed**, exact 37-file cross-boundary
+  **1,042 = 1,032 passed + ten failed**, and Task138 **355/355**. Every
+  failure remains only the approved Task16 RED.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  contract markers remain **29 / 20 / 29 / 15**. Repository mode exits one
+  and stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Canonical 33-path SHA-256 remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  diff hygiene, full strict Git integrity, ancestry, dependencies, all blobs
+  and freezes, and clean program state pass.
+- Advance only the exact approved RED `approved -> integrated`. Commit this
+  event, then forward-merge the program integration and authority into
+  Task136 before separately authorizing Task16B.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is RED integration, not producer GREEN authority,
+  Task16 acceptance, Task136 candidacy, strict record 29, publication,
+  Wave 3 start, repository closure, or release. Product source, `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
