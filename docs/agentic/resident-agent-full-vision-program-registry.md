@@ -50578,3 +50578,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness, or release. Product execution, `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1263 — Task16 claim-seed draft rejected; canonical attempt identity correction authorized
+
+- Recorded at: 2026-07-29T20:30:16Z
+- Exact E-1262 causal-oracle authority is forward-merged into Task136 as
+  `30648d552ca0bf6d9e79620634b32e8ff3017e37`, tree
+  `effdd9c89e5793db603d6f589b3760b3302fc7e2`, with exact first parent
+  E-1261 authority merge `65656f727a5ea40f73ff58124622e8ce656b934d`
+  and exact second parent E-1262 program authority
+  `acc7dcaacf108df8f254d1cc4a0350074ce0038c`.
+- The uncommitted first claim-seed draft in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` has
+  working blob `6435b2b8ead0be5cc7025686e84a000e3bed4629`.
+  It lawfully places task creation, queue, and claim before composition
+  construction and authority issuance, but reuses historical short
+  `attempt_factory_ports`. Exact claim append rejects that value because a
+  mounted orchestration attempt must match
+  `^attempt_[a-f0-9]{64}$`. The draft is not a candidate and must remain
+  uncommitted.
+- Fresh read-only review confirms one exact canonical attempt identity must be
+  shared by the orchestration claim, portable handoff bind, handoff lifecycle,
+  provider-posture read, and resulting authority readback. Correcting only the
+  claim would make it foreign to the prepared handoff. Product source,
+  composition, W, and mounted storage cannot lawfully repair a caller-owned
+  identity mismatch.
+- Preserve the exact bounded-oracle one-line correction at working blob
+  `ae54b1488c6770333567f2e9261cc3614d692eef`; its authenticated H
+  manifest-hash correction is independently approved by E-1262 and has no
+  defect.
+- Authorize only the smallest forward correction in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`. Define
+  one abstract local canonical attempt ID
+  `attempt_${"a".repeat(64)}` in `mountedFactoryFixture` and use that exact
+  value for the claim, handoff bind, lifecycle, and posture read. Pass the
+  exact prepared task, attempt, run, and run-type tuple into the local claim
+  seeding helper so the seed cannot drift from later authority inputs.
+  Retain exact ordering
+  `identity -> task created -> queued -> claimed -> composition construction/
+  start -> authority issuance -> preflight -> bind`.
+- Add no title, assertion, branch, import, alias, product expectation, or
+  unrelated fixture case. Freeze the bounded correction, both import-policy
+  tests, every other test, and every product/source diagnostic exactly as
+  recorded by E-1262.
+- Required clean committed-tree RED signature and all supporting gates remain
+  exactly those in E-1262: focused **9 = 3 passed + six failed**, producer
+  **144/144**, card **383 = 377 passed + six failed**, cross-card
+  **1,042 = 1,036 passed + six failed**, Task138 **355/355**, passing
+  typecheck/readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, scope, freezes,
+  ancestry, dependencies, path hash, diff hygiene, Git integrity, and clean
+  detached state.
+- After this correction passes, commit exactly the two E-1262/E-1263 behavior
+  tests with the already-authorized subject
+  `test(task136): seed prepared claim and bind terminal hash`, then follow the
+  fresh review, append-only approval, approval-first integration, fresh
+  integration, and forward Task136 sequence. Changed bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is one-fixture correction authority, not a test
+  candidate, source GREEN, Task16 acceptance, Task136 candidacy, record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. Product execution, `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
