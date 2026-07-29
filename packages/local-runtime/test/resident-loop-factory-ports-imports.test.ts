@@ -21,39 +21,88 @@ const permittedResidentImports = Object.freeze({
     gatewayNamedConstructor: "../../agent/src/resident-loop-tool-gateway.js"
   },
   factoryPorts: {
-    boundedIssuer: "../../agent/src/bounded-agent-loop.js"
+    compositionFacade: {
+      moduleSpecifier: "./resident-loop-factory-composition.js",
+      importedName: "createResidentLoopFactoryComposition"
+    },
+    capabilityBinder: {
+      moduleSpecifier: "./wake-supervisor-runtime.js",
+      importedName: "bindResidentLoopCapabilitiesForFactory"
+    },
+    handoffBuilder: {
+      moduleSpecifier: "../../agent/src/specialist-handoff-projection.js",
+      localName: "createInternalSpecialistHandoffProjectionPort"
+    },
+    handoffPreflight: {
+      moduleSpecifier: "./portable-mounted-agent-artifact-stores.js",
+      importedName: "preflightPortableMountedAgentHandoffBinding"
+    },
+    candidateProvider: {
+      moduleSpecifier: "../../agent/src/resident-plan-candidate-provider.js",
+      importedName: "createResidentPlanCandidateProvider"
+    },
+    boundedIssuer: {
+      moduleSpecifier: "../../agent/src/bounded-agent-loop.js",
+      importedName: "createResidentBoundedAgentLoopFromIssuedCapabilities"
+    }
   }
 } as const);
+
+const exactFactoryValueImports = new Map<string, {
+  readonly defaultName?: string;
+  readonly namedNames: readonly string[];
+}>([
+  ["node:net", { namedNames: ["isIP"] }],
+  ["node:util", { namedNames: ["types"] }],
+  ["../../agent/src/secret-safety.js", {
+    namedNames: ["isAgentSecretSafeText"]
+  }],
+  ["./resident-loop-factory-composition.js", {
+    namedNames: ["createResidentLoopFactoryComposition"]
+  }],
+  ["./wake-supervisor-runtime.js", {
+    namedNames: ["bindResidentLoopCapabilitiesForFactory"]
+  }],
+  ["../../agent/src/specialist-handoff-projection.js", {
+    defaultName: "createInternalSpecialistHandoffProjectionPort",
+    namedNames: []
+  }],
+  ["./portable-mounted-agent-artifact-stores.js", {
+    namedNames: ["preflightPortableMountedAgentHandoffBinding"]
+  }],
+  ["../../agent/src/resident-plan-candidate-provider.js", {
+    namedNames: ["createResidentPlanCandidateProvider"]
+  }],
+  ["../../agent/src/bounded-agent-loop.js", {
+    namedNames: ["createResidentBoundedAgentLoopFromIssuedCapabilities"]
+  }]
+]);
+
+const exactFactoryTypeImportModules = new Set([
+  "../../agent/src/bounded-agent-loop.js",
+  "../../agent/src/domain-execution-dispatcher.js",
+  "../../agent/src/specialist-handoff-projection.js",
+  "../../agent/src/specialists.js",
+  "./mounted-provider-authority.js",
+  "./portable-mounted-agent-artifact-stores.js",
+  "./resident-loop-factory-composition.js",
+  "./resident-loop-provider-posture.js",
+  "./wake-supervisor-runtime.js"
+]);
 
 describe("resident loop factory ports import policy", () => {
   it("keeps the data-only bridge static, named, cycle-free, and outside mounted-authority producers", () => {
     if (!existsSync(sourcePath)) return;
 
-    const source = readFileSync(sourcePath, "utf8");
-    const parsed = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const imports = parsed.statements.filter(ts.isImportDeclaration);
-
-    expect([3, 5]).toContain(imports.length);
-    expect(source).toContain('from "node:util"');
-    expect(source).toContain('from "./resident-loop-factory-composition.js"');
-    expect(source).toContain('from "./resident-loop-provider-posture.js"');
-    if (imports.length === 5) {
-      expect(source).toContain('from "node:net"');
-      expect(source).toContain('from "../../agent/src/secret-safety.js"');
-    }
-    expect(source).not.toMatch(/runtime-factory\.js|mounted-(?:provider|artifact)-authority(?:-operation)?\.js|wake-supervisor-runtime\.js/);
-    expect(source).not.toMatch(/\bimport\s*\(|\brequire\s*\(|\bexport\s+(?:\*|\{)/);
-
-    for (const declaration of imports) {
-      expect(declaration.importClause?.name).toBeUndefined();
-      expect(declaration.importClause?.namedBindings === undefined || ts.isNamedImports(declaration.importClause.namedBindings)).toBe(true);
-      if (declaration.importClause?.namedBindings !== undefined && ts.isNamedImports(declaration.importClause.namedBindings)) {
-        for (const element of declaration.importClause.namedBindings.elements) expect(element.propertyName).toBeUndefined();
-      }
-    }
+    const program = createFactoryProgram(sourcePath);
+    const source = program.getSourceFile(sourcePath);
+    expect(source, "factory source must be part of the local TypeScript program").toBeDefined();
+    if (source === undefined) throw new Error("factory source is unavailable");
+    expectDataOnlyBridgeIsolation(source, program.getTypeChecker());
   });
 
   it("enforces the exact dispatcher G W H R static import graph with no runtime activation", () => {
+    expectFactoryOracleControls();
     const paths = {
       dispatcher: resolve(process.cwd(), "packages/agent/src/domain-execution-dispatcher.ts"),
       gateway: resolve(process.cwd(), "packages/agent/src/resident-loop-tool-gateway.ts"),
@@ -70,37 +119,1643 @@ describe("resident loop factory ports import policy", () => {
       "packages/local-runtime/src/operator-status-providers.ts",
       "packages/local-runtime/src/server.ts"
     ];
-    const forbiddenForms = [
-      /\bimport\s*\(/,
-      /\brequire\s*\(/,
-      /\beval\s*\(/,
-      /\bFunction\s*\(/,
-      /loader[-_ ]?exemption/i,
-      /import\s+\*\s+as\s+.*resident/i,
-      /export\s+(?:\*|\{)[^;]*resident/i
-    ];
+    const activationAbsolutePaths = activationPaths.map((path) => resolve(process.cwd(), path));
 
     expect(existsSync(paths.bounded)).toBe(true);
     const sources = Object.fromEntries(
       Object.entries(paths).map(([name, path]) => [name, readFileSync(path, "utf8")])
     ) as Record<keyof typeof paths, string>;
+    const parsedSources = Object.fromEntries(
+      Object.entries(paths).map(([name, path]) => [
+        name,
+        ts.createSourceFile(path, sources[name as keyof typeof paths], ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+      ])
+    ) as Record<keyof typeof paths, ts.SourceFile>;
 
-    expect(sources.dispatcher).toContain(`from "${permittedResidentImports.dispatcher.gatewayDefault}"`);
+    expectDirectDefaultImport(
+      parsedSources.dispatcher,
+      permittedResidentImports.dispatcher.gatewayDefault
+    );
     for (const adapter of permittedResidentImports.dispatcher.adapters) {
-      expect(sources.dispatcher).toContain(`from "${adapter}"`);
+      expectDirectImport(parsedSources.dispatcher, adapter);
     }
-    expect(sources.wake).toContain(`from "${permittedResidentImports.wakeRuntime.dispatcherDefault}"`);
-    expect(sources.wake).toContain(`from "${permittedResidentImports.wakeRuntime.gatewayNamedConstructor}"`);
-    expect(sources.factory).toContain(`from "${permittedResidentImports.factoryPorts.boundedIssuer}"`);
-    expect(sources.bounded).not.toMatch(/local-runtime|wake-supervisor-runtime|resident-loop-factory-ports/);
-    expect(sources.agentBarrel).not.toMatch(/BoundedAgentLoop|ResidentDomainExecution|PackageOwnedResident|InternalSpecialistHandoff/);
+    expectDirectDefaultImport(
+      parsedSources.wake,
+      permittedResidentImports.wakeRuntime.dispatcherDefault
+    );
+    expectDirectNamedImport(
+      parsedSources.wake,
+      permittedResidentImports.wakeRuntime.gatewayNamedConstructor,
+      "createResidentLoopToolGateway"
+    );
 
-    for (const [name, source] of Object.entries(sources)) {
-      for (const pattern of forbiddenForms) expect(source, `${name}:${pattern}`).not.toMatch(pattern);
+    const program = createFactoryProgram(
+      paths.factory,
+      paths.agentBarrel,
+      ...activationAbsolutePaths
+    );
+    const factorySource = program.getSourceFile(paths.factory);
+    expect(factorySource, "factory source must be part of the local TypeScript program").toBeDefined();
+    if (factorySource === undefined) throw new Error("factory source is unavailable");
+    const agentBarrelSource = program.getSourceFile(paths.agentBarrel);
+    expect(agentBarrelSource, "agent barrel must be part of the local TypeScript program").toBeDefined();
+    if (agentBarrelSource === undefined) throw new Error("agent barrel is unavailable");
+    const checker = program.getTypeChecker();
+    expectExactFactoryModuleGraph(factorySource, checker);
+    const compositionCall = expectDirectNamedImportAndCall(
+      factorySource,
+      checker,
+      permittedResidentImports.factoryPorts.compositionFacade.moduleSpecifier,
+      permittedResidentImports.factoryPorts.compositionFacade.importedName
+    );
+    const binderCall = expectDirectNamedImportAndCall(
+      factorySource,
+      checker,
+      permittedResidentImports.factoryPorts.capabilityBinder.moduleSpecifier,
+      permittedResidentImports.factoryPorts.capabilityBinder.importedName
+    );
+    const handoffCall = expectDirectDefaultImportAndCall(
+      factorySource,
+      checker,
+      permittedResidentImports.factoryPorts.handoffBuilder.moduleSpecifier,
+      permittedResidentImports.factoryPorts.handoffBuilder.localName
+    );
+    const preflightCall = expectDirectNamedImportAndCall(
+      factorySource,
+      checker,
+      permittedResidentImports.factoryPorts.handoffPreflight.moduleSpecifier,
+      permittedResidentImports.factoryPorts.handoffPreflight.importedName
+    );
+    const candidateCall = expectDirectNamedImportAndCall(
+      factorySource,
+      checker,
+      permittedResidentImports.factoryPorts.candidateProvider.moduleSpecifier,
+      permittedResidentImports.factoryPorts.candidateProvider.importedName
+    );
+    const issuerCall = expectDirectNamedImportAndCall(
+      factorySource,
+      checker,
+      permittedResidentImports.factoryPorts.boundedIssuer.moduleSpecifier,
+      permittedResidentImports.factoryPorts.boundedIssuer.importedName
+    );
+    const portsCall = expectLocalNamedCall(
+      factorySource,
+      checker,
+      "createResidentLoopFactoryPorts"
+    );
+    expectExactFactoryCallProvenance(factorySource, checker, {
+      compositionCall,
+      binderCall,
+      handoffCall,
+      preflightCall,
+      candidateCall,
+      issuerCall,
+      portsCall
+    });
+    expectNoHandoffReachThrough(factorySource, checker);
+    expectNoGenericWakeConstructor(factorySource);
+    expectNoForbiddenFactoryHeuristics(factorySource);
+    expectNoForbiddenFactoryHeuristics(parsedSources.bounded);
+    expectExactBoundedHRead(parsedSources.bounded);
+
+    expectNoModuleEdge(
+      parsedSources.bounded,
+      /local-runtime|wake-supervisor-runtime|resident-loop-factory-ports/
+    );
+    expectNoModuleEdge(
+      parsedSources.bounded,
+      /(?:^|\/)(?:fs|path|child_process|http|https|net|tls|dgram)(?:\/|\.|$)|provider|route|runtime-factory/
+    );
+    for (const forbidden of [
+      "createWakeSupervisorRuntime",
+      "registerResidentLoopFactoryAuthorityReadback",
+      "createResidentLoopFactoryCompositionForFacade",
+      "bindMountedResidentLoopAuthorityForFactory"
+    ]) {
+      expectNoIdentifier(factorySource, forbidden);
+      expectNoIdentifier(parsedSources.bounded, forbidden);
     }
-    for (const path of activationPaths) {
-      const source = readFileSync(resolve(process.cwd(), path), "utf8");
-      expect(source, path).not.toMatch(/resident-loop-factory-ports|createResidentBoundedAgentLoopFactory|bounded-agent-loop/);
+    expectNoAgentBarrelExposure(
+      agentBarrelSource,
+      checker,
+      paths.bounded,
+      paths.handoff,
+      /BoundedAgentLoop|ResidentDomainExecution|PackageOwnedResident|InternalSpecialistHandoff/
+    );
+
+    for (const [name, source] of Object.entries(parsedSources)) {
+      expectNoDynamicLoaderSyntax(source, name);
+    }
+    for (const [index, path] of activationPaths.entries()) {
+      const absolute = activationAbsolutePaths[index]!;
+      const source = program.getSourceFile(absolute);
+      expect(source, `${path}: activation source in TypeScript program`).toBeDefined();
+      if (source === undefined) throw new Error(`${path}: activation source is unavailable`);
+      expectNoModuleEdge(source, /resident-loop-factory-ports|bounded-agent-loop/);
+      expectNoIdentifier(source, "createResidentBoundedAgentLoopFactory");
+      expectNoActivationSurfaceReference(source, path);
+      expectNoActivationSymbolOrigin(
+        source,
+        checker,
+        [paths.factory, paths.bounded],
+        path
+      );
+      expectNoDynamicLoaderSyntax(source, path);
     }
   });
 });
+
+function createFactoryProgram(factoryPath: string, ...additionalRootNames: readonly string[]): ts.Program {
+  const configPath = resolve(process.cwd(), "tsconfig.json");
+  const config = ts.readConfigFile(configPath, ts.sys.readFile);
+  expect(config.error).toBeUndefined();
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, process.cwd());
+  return ts.createProgram({
+    rootNames: [factoryPath, ...additionalRootNames],
+    options: parsed.options
+  });
+}
+
+function expectExactFactoryModuleGraph(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker
+): void {
+  const observed = new Map<string, {
+    readonly defaultNames: string[];
+    readonly namedNames: string[];
+    valueDeclarationCount: number;
+  }>();
+  const violations: string[] = [];
+
+  for (const statement of source.statements) {
+    if (
+      ts.isClassDeclaration(statement) ||
+      ts.isEnumDeclaration(statement) ||
+      ts.isModuleDeclaration(statement)
+    ) {
+      violations.push(`top-level-runtime-declaration:${statement.kind}`);
+      continue;
+    }
+    if (ts.isImportEqualsDeclaration(statement)) {
+      violations.push(`import-equals:${statement.getText(source)}`);
+      continue;
+    }
+    if (ts.isExportAssignment(statement)) {
+      violations.push(`export-assignment:${statement.getText(source)}`);
+      continue;
+    }
+    if (
+      ts.isExportDeclaration(statement) &&
+      statement.moduleSpecifier !== undefined
+    ) {
+      violations.push(`module-re-export:${statement.getText(source)}`);
+      continue;
+    }
+    if (!ts.isImportDeclaration(statement)) continue;
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) {
+      violations.push(`nonliteral-import:${statement.getText(source)}`);
+      continue;
+    }
+    const moduleSpecifier = statement.moduleSpecifier.text;
+    const clause = statement.importClause;
+    if (clause === undefined) {
+      violations.push(`side-effect-import:${moduleSpecifier}`);
+      continue;
+    }
+
+    const defaultNames: string[] = [];
+    const namedNames: string[] = [];
+    let hasTypeBinding = clause.isTypeOnly;
+    if (!clause.isTypeOnly && clause.name !== undefined) {
+      defaultNames.push(clause.name.text);
+    }
+    if (clause.namedBindings !== undefined) {
+      if (ts.isNamespaceImport(clause.namedBindings)) {
+        if (clause.isTypeOnly) {
+          hasTypeBinding = true;
+        } else {
+          violations.push(`namespace-value-import:${moduleSpecifier}`);
+        }
+      } else {
+        for (const element of clause.namedBindings.elements) {
+          if (clause.isTypeOnly || element.isTypeOnly) {
+            hasTypeBinding = true;
+            continue;
+          }
+          const importedName = (element.propertyName ?? element.name).text;
+          if (element.name.text !== importedName) {
+            violations.push(
+              `aliased-value-import:${moduleSpecifier}:${importedName}->${element.name.text}`
+            );
+          }
+          namedNames.push(importedName);
+        }
+      }
+    }
+
+    if (
+      hasTypeBinding &&
+      !exactFactoryTypeImportModules.has(moduleSpecifier) &&
+      !exactFactoryValueImports.has(moduleSpecifier)
+    ) {
+      violations.push(`unexpected-type-import:${moduleSpecifier}`);
+    }
+    if (defaultNames.length === 0 && namedNames.length === 0) {
+      if (!hasTypeBinding) {
+        violations.push(`empty-runtime-import:${moduleSpecifier}`);
+      }
+      continue;
+    }
+
+    const entry = observed.get(moduleSpecifier) ?? {
+      defaultNames: [],
+      namedNames: [],
+      valueDeclarationCount: 0
+    };
+    entry.defaultNames.push(...defaultNames);
+    entry.namedNames.push(...namedNames);
+    entry.valueDeclarationCount += 1;
+    observed.set(moduleSpecifier, entry);
+  }
+
+  expect(
+    [...observed.keys()].sort(),
+    "factory module exact runtime value-import modules"
+  ).toEqual([...exactFactoryValueImports.keys()].sort());
+  for (const [moduleSpecifier, expected] of exactFactoryValueImports) {
+    const actual = observed.get(moduleSpecifier);
+    expect(actual, `${moduleSpecifier}: runtime value import`).toBeDefined();
+    if (actual === undefined) continue;
+    expect(
+      actual.valueDeclarationCount,
+      `${moduleSpecifier}: one runtime import declaration`
+    ).toBe(1);
+    expect(
+      actual.defaultNames,
+      `${moduleSpecifier}: exact default value binding`
+    ).toEqual(expected.defaultName === undefined ? [] : [expected.defaultName]);
+    expect(
+      [...actual.namedNames].sort(),
+      `${moduleSpecifier}: exact named value bindings`
+    ).toEqual([...expected.namedNames].sort());
+  }
+
+  const topLevelRuntimeInitializers: string[] = [];
+  for (const statement of source.statements) {
+    if (
+      ts.isImportDeclaration(statement) ||
+      ts.isImportEqualsDeclaration(statement) ||
+      ts.isFunctionDeclaration(statement) ||
+      ts.isInterfaceDeclaration(statement) ||
+      ts.isTypeAliasDeclaration(statement) ||
+      ts.isEnumDeclaration(statement) ||
+      ts.isClassDeclaration(statement) ||
+      ts.isModuleDeclaration(statement)
+    ) {
+      continue;
+    }
+    visitRuntimeInitializer(statement);
+  }
+  expect(
+    topLevelRuntimeInitializers,
+    "factory module must not execute top-level call/new/await/tagged initialization"
+  ).toEqual([]);
+  expect(violations, "factory module exact import/export posture").toEqual([]);
+  expectExactFactoryRuntimeValueExports(source, checker);
+
+  function visitRuntimeInitializer(node: ts.Node): void {
+    if (node !== source && ts.isFunctionLike(node)) return;
+    if (
+      ts.isCallExpression(node) ||
+      ts.isNewExpression(node) ||
+      ts.isAwaitExpression(node) ||
+      ts.isTaggedTemplateExpression(node)
+    ) {
+      topLevelRuntimeInitializers.push(node.getText(source));
+      return;
+    }
+    node.forEachChild(visitRuntimeInitializer);
+  }
+}
+
+function expectExactFactoryRuntimeValueExports(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker
+): void {
+  const moduleSymbol = checker.getSymbolAtLocation(source);
+  expect(moduleSymbol, "factory module symbol").toBeDefined();
+  if (moduleSymbol === undefined) {
+    throw new Error("factory module symbol is unavailable");
+  }
+  const runtimeValueExports = checker.getExportsOfModule(moduleSymbol)
+    .filter((exported) =>
+      (resolveAliasSymbol(exported, checker).flags & ts.SymbolFlags.Value) !== 0
+    )
+    .map((exported) => exported.getName())
+    .sort();
+  expect(
+    runtimeValueExports,
+    "factory exact public runtime value surface"
+  ).toEqual(["createResidentBoundedAgentLoopFactory"]);
+}
+
+function expectFactoryOracleControls(): void {
+  const safeSurface = factorySurfaceControl([
+    "export interface CreateResidentBoundedAgentLoopFactoryInput {}",
+    "export type ResidentBoundedAgentLoopFactoryResult = object;",
+    "export async function createResidentBoundedAgentLoopFactory(",
+    "  _input: CreateResidentBoundedAgentLoopFactoryInput",
+    "): Promise<ResidentBoundedAgentLoopFactoryResult> {",
+    "  return {};",
+    "}"
+  ].join("\n"));
+  expect(() =>
+    expectExactFactoryRuntimeValueExports(
+      safeSurface.source,
+      safeSurface.checker
+    )
+  ).not.toThrow();
+
+  for (const sourceText of [
+    [
+      "export async function createResidentBoundedAgentLoopFactory() {}",
+      "export default function alternateFactory() {}"
+    ].join("\n"),
+    [
+      "async function createResidentBoundedAgentLoopFactory() {}",
+      "export { createResidentBoundedAgentLoopFactory };",
+      "export { createResidentBoundedAgentLoopFactory as alternateFactory };"
+    ].join("\n"),
+    [
+      "export async function createResidentBoundedAgentLoopFactory() {}",
+      "export function additionalFactorySurface() {}"
+    ].join("\n")
+  ]) {
+    const control = factorySurfaceControl(sourceText);
+    expect(() =>
+      expectExactFactoryRuntimeValueExports(control.source, control.checker)
+    ).toThrow();
+  }
+
+  const directCall = factoryCallControl([
+    "async function factory() {",
+    "  const retained = await requiredCall();",
+    "}"
+  ].join("\n"));
+  expect(() =>
+    expectStraightLineFactoryCall(
+      directCall.call,
+      directCall.body,
+      "direct-call control"
+    )
+  ).not.toThrow();
+
+  const coDeclarator = factoryCallControl([
+    "async function factory() {",
+    "  const retained = await requiredCall(), unrelated = unrelatedEffect();",
+    "}"
+  ].join("\n"));
+  expect(() =>
+    expectStraightLineFactoryCall(
+      coDeclarator.call,
+      coDeclarator.body,
+      "co-declarator control"
+    )
+  ).toThrow(/direct-statement|non-direct ancestry/i);
+}
+
+function factorySurfaceControl(sourceText: string): {
+  readonly source: ts.SourceFile;
+  readonly checker: ts.TypeChecker;
+} {
+  const fileName = "/factory-surface-control.ts";
+  const source = ts.createSourceFile(
+    fileName,
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    noLib: true,
+    target: ts.ScriptTarget.Latest
+  };
+  const host: ts.CompilerHost = {
+    fileExists: (path) => path === fileName,
+    getCanonicalFileName: (path) => path,
+    getCurrentDirectory: () => "/",
+    getDefaultLibFileName: () => "/lib.d.ts",
+    getDirectories: () => [],
+    getNewLine: () => "\n",
+    getSourceFile: (path) => path === fileName ? source : undefined,
+    readFile: (path) => path === fileName ? sourceText : undefined,
+    useCaseSensitiveFileNames: () => true,
+    writeFile: () => undefined
+  };
+  const program = ts.createProgram({
+    rootNames: [fileName],
+    options,
+    host
+  });
+  const programSource = program.getSourceFile(fileName);
+  if (programSource === undefined) {
+    throw new Error("factory surface control source is unavailable");
+  }
+  return {
+    source: programSource,
+    checker: program.getTypeChecker()
+  };
+}
+
+function factoryCallControl(sourceText: string): {
+  readonly call: ts.CallExpression;
+  readonly body: ts.Block;
+} {
+  const source = ts.createSourceFile(
+    "factory-call-control.ts",
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const factory = source.statements.find(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "factory" &&
+      statement.body !== undefined
+  );
+  if (factory?.body === undefined) {
+    throw new Error("factory call control body is unavailable");
+  }
+  let call: ts.CallExpression | undefined;
+  const visit = (node: ts.Node): void => {
+    if (
+      call === undefined &&
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "requiredCall"
+    ) {
+      call = node;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(factory.body);
+  if (call === undefined) {
+    throw new Error("factory call control required call is unavailable");
+  }
+  return { call, body: factory.body };
+}
+
+function expectDataOnlyBridgeIsolation(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker
+): void {
+  const bridges = source.statements.filter(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "createResidentLoopFactoryPorts"
+  );
+  expect(bridges, "data-only factory-ports bridge declaration").toHaveLength(1);
+  const bridge = bridges[0]!;
+  expect(
+    bridge.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword),
+    "data-only bridge must remain a named export"
+  ).toBe(true);
+  expect(bridge.body, "data-only bridge must have a static function body").toBeDefined();
+  if (bridge.body === undefined) throw new Error("data-only bridge body is unavailable");
+
+  const safeDataModules = new Set([
+    "node:net",
+    "node:util",
+    "../../agent/src/secret-safety.js"
+  ]);
+  const reachedImportedModules: string[] = [];
+  const dynamicLoads: ts.Node[] = [];
+  const unresolvedLocalCalls: string[] = [];
+  const pending: ts.Node[] = [bridge.body];
+  const inspectedBodies = new Set<ts.Node>();
+  while (pending.length > 0) {
+    const body = pending.pop()!;
+    if (inspectedBodies.has(body)) continue;
+    inspectedBodies.add(body);
+    visit(body, (node) => {
+      if (
+        ts.isCallExpression(node) &&
+        (
+          node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+          (ts.isIdentifier(node.expression) && node.expression.text === "require")
+        )
+      ) {
+        dynamicLoads.push(node);
+      }
+      if (ts.isIdentifier(node)) {
+        const symbol = checker.getSymbolAtLocation(node);
+        for (const declaration of symbol?.declarations ?? []) {
+          const importDeclaration = enclosingImportDeclaration(declaration);
+          if (
+            importDeclaration !== undefined &&
+            ts.isStringLiteral(importDeclaration.moduleSpecifier)
+          ) {
+            reachedImportedModules.push(importDeclaration.moduleSpecifier.text);
+          }
+        }
+      }
+      if (!ts.isCallExpression(node)) return;
+      if (
+        node.questionDotToken !== undefined ||
+        (
+          ts.isPropertyAccessExpression(node.expression) &&
+          ["call", "apply", "bind"].includes(node.expression.name.text)
+        )
+      ) {
+        unresolvedLocalCalls.push(node.getText(source));
+        return;
+      }
+      const callable = localCallableBodies(node.expression, source, checker);
+      pending.push(...callable.bodies);
+      if (callable.local && callable.bodies.length === 0) {
+        unresolvedLocalCalls.push(node.getText(source));
+      }
+    });
+  }
+  expect(
+    [...new Set(reachedImportedModules)].filter((module) => !safeDataModules.has(module)),
+    "data-only bridge reachable helpers must not reach Core/W/H/R authority imports"
+  ).toEqual([]);
+  expect(dynamicLoads, "data-only bridge must not load a module dynamically").toHaveLength(0);
+  expect(
+    unresolvedLocalCalls,
+    "data-only bridge must not call an unresolved local callback or alias"
+  ).toEqual([]);
+}
+
+function localCallableBodies(
+  expression: ts.Expression,
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  seen = new Set<ts.Declaration>()
+): { readonly local: boolean; readonly bodies: readonly ts.Node[] } {
+  const unwrapped = unwrapExpression(expression);
+  if (ts.isArrowFunction(unwrapped) || ts.isFunctionExpression(unwrapped)) {
+    return { local: true, bodies: [unwrapped.body] };
+  }
+  const lookup = ts.isPropertyAccessExpression(unwrapped)
+    ? unwrapped.name
+    : unwrapped;
+  const symbol = checker.getSymbolAtLocation(lookup);
+  let local = false;
+  const bodies: ts.Node[] = [];
+  for (const declaration of symbol?.declarations ?? []) {
+    if (
+      declaration.getSourceFile() !== source ||
+      enclosingImportDeclaration(declaration) !== undefined ||
+      seen.has(declaration)
+    ) {
+      continue;
+    }
+    local = true;
+    seen.add(declaration);
+    if (
+      (
+        ts.isFunctionDeclaration(declaration) ||
+        ts.isMethodDeclaration(declaration) ||
+        ts.isGetAccessorDeclaration(declaration) ||
+        ts.isSetAccessorDeclaration(declaration)
+      ) &&
+      declaration.body !== undefined
+    ) {
+      bodies.push(declaration.body);
+      continue;
+    }
+    const initializer = (
+      ts.isVariableDeclaration(declaration) ||
+      ts.isPropertyDeclaration(declaration) ||
+      ts.isPropertyAssignment(declaration)
+    )
+      ? declaration.initializer
+      : undefined;
+    if (initializer === undefined) continue;
+    const nested = localCallableBodies(initializer, source, checker, seen);
+    bodies.push(...nested.bodies);
+  }
+  return { local, bodies };
+}
+
+function enclosingImportDeclaration(node: ts.Node): ts.ImportDeclaration | undefined {
+  let current: ts.Node | undefined = node;
+  while (current !== undefined && !ts.isSourceFile(current)) {
+    if (ts.isImportDeclaration(current)) return current;
+    current = current.parent;
+  }
+  return undefined;
+}
+
+function directImports(source: ts.SourceFile, moduleSpecifier: string): ts.ImportDeclaration[] {
+  return source.statements.filter(
+    (statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === moduleSpecifier
+  );
+}
+
+function expectDirectImport(source: ts.SourceFile, moduleSpecifier: string): ts.ImportDeclaration {
+  const declarations = directImports(source, moduleSpecifier);
+  expect(declarations, moduleSpecifier).toHaveLength(1);
+  return declarations[0]!;
+}
+
+function expectDirectDefaultImport(
+  source: ts.SourceFile,
+  moduleSpecifier: string
+): ts.ImportClause {
+  const clause = expectDirectImport(source, moduleSpecifier).importClause;
+  expect(clause?.isTypeOnly, moduleSpecifier).toBe(false);
+  expect(clause?.name, moduleSpecifier).toBeDefined();
+  expect(clause?.namedBindings, moduleSpecifier).toBeUndefined();
+  if (clause === undefined || clause.name === undefined) {
+    throw new Error(`default import is unavailable for ${moduleSpecifier}`);
+  }
+  return clause;
+}
+
+function expectDirectNamedImport(
+  source: ts.SourceFile,
+  moduleSpecifier: string,
+  importedName: string
+): ts.ImportSpecifier {
+  const clause = expectDirectImport(source, moduleSpecifier).importClause;
+  expect(clause?.name, moduleSpecifier).toBeUndefined();
+  expect(clause?.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings), moduleSpecifier).toBe(true);
+  if (clause?.namedBindings === undefined || !ts.isNamedImports(clause.namedBindings)) {
+    throw new Error(`named imports are unavailable for ${moduleSpecifier}`);
+  }
+  const matches = clause.namedBindings.elements.filter(
+    (element) => (element.propertyName ?? element.name).text === importedName
+  );
+  expect(matches, `${moduleSpecifier}:${importedName}`).toHaveLength(1);
+  const binding = matches[0]!;
+  expect(binding.isTypeOnly, importedName).toBe(false);
+  expect(binding.propertyName, importedName).toBeUndefined();
+  expect(binding.name.text, importedName).toBe(importedName);
+  return binding;
+}
+
+function expectDirectNamedImportAndCall(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  moduleSpecifier: string,
+  importedName: string
+): ts.CallExpression {
+  const binding = expectDirectNamedImport(source, moduleSpecifier, importedName);
+  const call = expectSingleSymbolCall(
+    source,
+    checker,
+    binding.name,
+    `${moduleSpecifier}:${importedName}`
+  );
+  expectSymbolUsedOnlyAsDirectCall(
+    source,
+    checker,
+    binding.name,
+    `${moduleSpecifier}:${importedName}`
+  );
+  return call;
+}
+
+function expectDirectDefaultImportAndCall(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  moduleSpecifier: string,
+  localName: string
+): ts.CallExpression {
+  const clause = expectDirectDefaultImport(source, moduleSpecifier);
+  expect(clause.name?.text, moduleSpecifier).toBe(localName);
+  const call = expectSingleSymbolCall(
+    source,
+    checker,
+    clause.name!,
+    `${moduleSpecifier}:default`
+  );
+  expectSymbolUsedOnlyAsDirectCall(
+    source,
+    checker,
+    clause.name!,
+    `${moduleSpecifier}:default`
+  );
+  return call;
+}
+
+function expectLocalNamedCall(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  localName: string
+): ts.CallExpression {
+  const declarations = source.statements.filter(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === localName
+  );
+  expect(declarations, `${localName}:local declaration`).toHaveLength(1);
+  const declaration = declarations[0]!;
+  if (declaration.name === undefined) throw new Error(`${localName} declaration has no name`);
+  const call = expectSingleSymbolCall(source, checker, declaration.name, localName);
+  expectSymbolUsedOnlyAsDirectCall(source, checker, declaration.name, localName);
+  return call;
+}
+
+function expectSingleSymbolCall(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  binding: ts.Identifier,
+  label: string
+): ts.CallExpression {
+  const bindingSymbol = checker.getSymbolAtLocation(binding);
+  expect(bindingSymbol, `${label}:binding`).toBeDefined();
+  const calls: ts.CallExpression[] = [];
+  visit(source, (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      checker.getSymbolAtLocation(node.expression) === bindingSymbol
+    ) {
+      calls.push(node);
+    }
+  });
+  expect(calls, `${label}:calls`).toHaveLength(1);
+  return calls[0]!;
+}
+
+function assignedDeclarationIdentifier(call: ts.CallExpression): ts.Identifier {
+  let current: ts.Expression = call;
+  let parent = current.parent;
+  while (
+    parent !== undefined &&
+    (
+      ts.isAwaitExpression(parent) ||
+      ts.isParenthesizedExpression(parent) ||
+      ts.isAsExpression(parent) ||
+      ts.isSatisfiesExpression(parent) ||
+      ts.isNonNullExpression(parent)
+    )
+  ) {
+    current = parent;
+    parent = current.parent;
+  }
+  expect(
+    parent !== undefined &&
+      ts.isVariableDeclaration(parent) &&
+      ts.isIdentifier(parent.name),
+    "call result must be retained once in a direct identifier"
+  ).toBe(true);
+  if (
+    parent === undefined ||
+    !ts.isVariableDeclaration(parent) ||
+    !ts.isIdentifier(parent.name)
+  ) {
+    throw new Error("call result is not retained in one direct identifier");
+  }
+  return parent.name;
+}
+
+function expectSingleDirectPropertyCall(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  issuerCall: ts.CallExpression,
+  propertyName: string
+): ts.CallExpression {
+  const binding = assignedDeclarationIdentifier(issuerCall);
+  const bindingSymbol = checker.getSymbolAtLocation(binding);
+  expect(bindingSymbol, `${propertyName}: retained binding`).toBeDefined();
+  const calls: ts.CallExpression[] = [];
+  visit(source, (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === propertyName
+    ) {
+      const receiver = unwrapExpression(node.expression.expression);
+      if (
+        ts.isIdentifier(receiver) &&
+        checker.getSymbolAtLocation(receiver) === bindingSymbol
+      ) {
+        calls.push(node);
+      }
+    }
+  });
+  expect(calls, `${propertyName}: exact retained-receiver calls`).toHaveLength(1);
+  return calls[0]!;
+}
+
+function expectCallAwaited(
+  call: ts.CallExpression,
+  expected: boolean,
+  label: string
+): void {
+  let current: ts.Node = call;
+  let parent = current.parent;
+  while (
+    parent !== undefined &&
+    (
+      ts.isParenthesizedExpression(parent) ||
+      ts.isAsExpression(parent) ||
+      ts.isSatisfiesExpression(parent) ||
+      ts.isNonNullExpression(parent)
+    )
+  ) {
+    current = parent;
+    parent = current.parent;
+  }
+  expect(
+    parent !== undefined &&
+      ts.isAwaitExpression(parent) &&
+      parent.expression === current,
+    `${label}: exact await posture`
+  ).toBe(expected);
+}
+
+function expectExactFactoryCallProvenance(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  calls: {
+    readonly compositionCall: ts.CallExpression;
+    readonly binderCall: ts.CallExpression;
+    readonly handoffCall: ts.CallExpression;
+    readonly preflightCall: ts.CallExpression;
+    readonly candidateCall: ts.CallExpression;
+    readonly issuerCall: ts.CallExpression;
+    readonly portsCall: ts.CallExpression;
+  }
+): void {
+  const factories = source.statements.filter(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "createResidentBoundedAgentLoopFactory"
+  );
+  expect(factories, "sole exported bounded factory declaration").toHaveLength(1);
+  const factory = factories[0]!;
+  const modifiers = factory.modifiers ?? [];
+  expect(
+    modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword),
+    "bounded factory must be a direct named export"
+  ).toBe(true);
+  expect(
+    modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword),
+    "bounded factory must be async"
+  ).toBe(true);
+  expect(
+    modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword),
+    "bounded factory must not be a default export"
+  ).toBe(false);
+  expect(factory.parameters, "bounded factory exact input parameter").toHaveLength(1);
+  expect(
+    factory.parameters[0] !== undefined && ts.isIdentifier(factory.parameters[0].name),
+    "bounded factory input must be one direct identifier"
+  ).toBe(true);
+  const inputParameter = factory.parameters[0];
+  const inputName = inputParameter !== undefined && ts.isIdentifier(inputParameter.name)
+    ? inputParameter.name.text
+    : "<missing-input>";
+  expect(inputName, "bounded factory input name").toBe("input");
+  expect(inputParameter?.dotDotDotToken, "bounded factory input must not be rest").toBeUndefined();
+  expect(inputParameter?.questionToken, "bounded factory input must not be optional").toBeUndefined();
+  expect(inputParameter?.initializer, "bounded factory input must not have an initializer").toBeUndefined();
+  expect(inputParameter?.modifiers, "bounded factory input must not have parameter modifiers").toBeUndefined();
+
+  const factoryBody = factory.body;
+  expect(factoryBody, "bounded factory body").toBeDefined();
+  if (factoryBody === undefined) throw new Error("bounded factory body is unavailable");
+  const compositionBinding = assignedIdentifier(calls.compositionCall);
+  const startCall = expectSingleDirectPropertyCall(
+    source,
+    checker,
+    calls.compositionCall,
+    "start"
+  );
+  const compositionBindCall = expectSingleDirectPropertyCall(
+    source,
+    checker,
+    calls.compositionCall,
+    "bind"
+  );
+  const stopCall = expectSingleDirectPropertyCall(
+    source,
+    checker,
+    calls.compositionCall,
+    "stop"
+  );
+  const orderedCalls = [
+    ["composition creation", calls.compositionCall, false],
+    ["composition start", startCall, true],
+    ["portable H preflight", calls.preflightCall, true],
+    ["composition bind", compositionBindCall, true],
+    ["metadata projection", calls.portsCall, false],
+    ["W factory binder", calls.binderCall, true],
+    ["stateless C construction", calls.candidateCall, false],
+    ["internal H construction", calls.handoffCall, false],
+    ["bounded issuer", calls.issuerCall, false]
+  ] as const;
+  expect(factoryBody.statements, "exact straight-line factory statement count").toHaveLength(10);
+  for (const [index, [label, call, awaited]] of orderedCalls.entries()) {
+    const statement = expectStraightLineFactoryCall(call, factoryBody, label);
+    expect(
+      factoryBody.statements.indexOf(statement),
+      `${label}: exact top-level order`
+    ).toBe(index);
+    expectCallAwaited(call, awaited, label);
+  }
+  expect(
+    factoryBody.statements[9] !== undefined &&
+      ts.isReturnStatement(factoryBody.statements[9]),
+    "exact return must terminate the straight-line factory"
+  ).toBe(true);
+
+  expectExactObjectArgument(calls.compositionCall, {
+    runtimeHandle: "input.runtimeHandle",
+    actor: "input.actor",
+    supervisorEpoch: "input.supervisorEpoch",
+    policy: "input.policy",
+    now: "input.now",
+    createSafeId: "input.createSafeId"
+  }, "safe composition input");
+  expectExactObjectArgument(calls.preflightCall, {
+    binding: "input.handoff.binding",
+    controller: "input.handoff.controller",
+    taskId: "input.handoffLifecycle.taskId",
+    attemptId: "input.handoffLifecycle.attemptId",
+    runId: "input.handoffLifecycle.runId",
+    runType: "input.handoffLifecycle.runType",
+    retryGeneration: "input.handoffLifecycle.retryGeneration"
+  }, "portable H preflight");
+  expectExactObjectArgument(compositionBindCall, {
+    providerAuthority: "input.providerAuthority",
+    handoffAuthorityWitness: "input.handoff.binding.authorityWitness"
+  }, "safe composition bind");
+
+  expect(calls.binderCall.arguments, "W factory binder positional ABI").toHaveLength(3);
+  expectExpressionPath(
+    calls.binderCall.arguments[0],
+    `${compositionBinding}.wakeRuntime`,
+    "W wake runtime"
+  );
+  const authorityReadbackBinding = assignedIdentifier(compositionBindCall);
+  expectExpressionPath(
+    calls.binderCall.arguments[1],
+    authorityReadbackBinding,
+    "W authority readback"
+  );
+  expectExpressionPath(calls.binderCall.arguments[2], "input.domainExecution", "W domain execution");
+  expect(calls.candidateCall.arguments, "stateless C construction").toHaveLength(0);
+
+  expect(calls.issuerCall.arguments, "bounded issuer positional ABI").toHaveLength(8);
+
+  const candidateBinding = assignedIdentifier(calls.candidateCall);
+  const handoffBinding = assignedIdentifier(calls.handoffCall);
+  const mountedBinding = assignedIdentifier(calls.binderCall);
+  expectExactObjectArgument(calls.handoffCall, {
+    ledger: "input.runtimeHandle.ledger",
+    handoffReader: `${mountedBinding}.handoffReader`
+  }, "internal H construction");
+  expect(
+    calls.handoffCall.getStart(source) > calls.binderCall.getEnd(),
+    "internal H construction must consume the retained mounted binder result"
+  ).toBe(true);
+  expectExpressionPath(calls.issuerCall.arguments[1], candidateBinding, "bounded issuer C");
+  expectExpressionPath(calls.issuerCall.arguments[5], handoffBinding, "bounded issuer H");
+  for (const [index, path] of [
+    [0, `${mountedBinding}.planObservation`],
+    [2, `${mountedBinding}.gateway`],
+    [3, `${mountedBinding}.mountedAuthority`],
+    [4, `${mountedBinding}.currentnessToken`],
+    [7, "input.nowMonotonicMs"]
+  ] as const) {
+    expectExpressionPath(calls.issuerCall.arguments[index], path, `bounded issuer argument ${index + 1}`);
+  }
+
+  expectExactObjectArgument(calls.portsCall, {
+    authorityReadback: authorityReadbackBinding,
+    providerPosture: "input.providerPosture"
+  }, "metadata projection");
+  const metadataBinding = assignedIdentifier(calls.portsCall);
+  expectExpressionPath(
+    calls.issuerCall.arguments[6],
+    metadataBinding,
+    "bounded issuer metadata"
+  );
+
+  const issuerBinding = assignedIdentifier(calls.issuerCall);
+  const returns = factoryBody.statements.filter(ts.isReturnStatement);
+  expect(returns, "one straight-line bounded factory return").toHaveLength(1);
+  const returned = returnedObjectLiteral(returns[0]?.expression);
+  expect(returned, "bounded factory exact return object").toBeDefined();
+  if (returned === undefined) throw new Error("bounded factory return object is unavailable");
+  const returnedProperties = new Map<string, ts.Expression>();
+  for (const property of returned.properties) {
+    if (ts.isShorthandPropertyAssignment(property)) {
+      returnedProperties.set(property.name.text, property.name);
+      continue;
+    }
+    expect(ts.isPropertyAssignment(property), "bounded factory return uses data properties only").toBe(true);
+    if (!ts.isPropertyAssignment(property)) {
+      throw new Error("bounded factory return contains a non-data property");
+    }
+    const name = propertyName(property.name);
+    if (name === undefined) throw new Error("bounded factory return has a computed key");
+    returnedProperties.set(name, property.initializer);
+  }
+  expect([...returnedProperties.keys()].sort(), "bounded factory exact return keys").toEqual([
+    "loop",
+    "metadata",
+    "stop"
+  ]);
+  expectExpressionPath(returnedProperties.get("metadata"), metadataBinding, "returned metadata");
+  expectExpressionPath(returnedProperties.get("loop"), `${issuerBinding}.loop`, "returned issued loop");
+  expect(
+    isExactPropagatingCompositionStop(
+      returnedProperties.get("stop"),
+      stopCall,
+      source,
+      checker
+    ),
+    "returned stop must await or return the exact safe composition stop call"
+  ).toBe(true);
+}
+
+function expectStraightLineFactoryCall(
+  call: ts.CallExpression,
+  body: ts.Block,
+  label: string
+): ts.Statement {
+  let current: ts.Node = call;
+  while (current.parent !== body) {
+    const parent = current.parent;
+    expect(parent, `${label}: factory ancestry`).toBeDefined();
+    if (parent === undefined) throw new Error(`${label} is outside the bounded factory`);
+    const transparent =
+      (
+        (
+          ts.isAwaitExpression(parent) ||
+          ts.isParenthesizedExpression(parent) ||
+          ts.isAsExpression(parent) ||
+          ts.isSatisfiesExpression(parent) ||
+          ts.isNonNullExpression(parent) ||
+          ts.isTypeAssertionExpression(parent)
+        ) &&
+        parent.expression === current
+      ) ||
+      (
+        ts.isVariableDeclaration(parent) &&
+        parent.initializer === current
+      ) ||
+      (
+        ts.isVariableDeclarationList(parent) &&
+        ts.isVariableDeclaration(current) &&
+        parent.declarations.length === 1 &&
+        parent.declarations[0] === current
+      ) ||
+      (
+        ts.isVariableStatement(parent) &&
+        parent.declarationList === current
+      ) ||
+      (
+        ts.isExpressionStatement(parent) &&
+        parent.expression === current
+      );
+    expect(
+      transparent,
+      `${label} must use only transparent direct-statement ancestry`
+    ).toBe(true);
+    if (!transparent) {
+      throw new Error(`${label} has non-direct ancestry ${ts.SyntaxKind[parent.kind]}`);
+    }
+    current = parent;
+  }
+  expect(ts.isStatement(current), `${label} must be retained by a direct factory statement`).toBe(true);
+  if (!ts.isStatement(current)) throw new Error(`${label} is not retained by a statement`);
+  return current;
+}
+
+function returnedObjectLiteral(
+  expression: ts.Expression | undefined
+): ts.ObjectLiteralExpression | undefined {
+  if (expression === undefined) return undefined;
+  const unwrapped = unwrapExpression(expression);
+  if (
+    ts.isCallExpression(unwrapped) &&
+    ts.isPropertyAccessExpression(unwrapped.expression) &&
+    ts.isIdentifier(unwrapped.expression.expression) &&
+    unwrapped.expression.expression.text === "Object" &&
+    unwrapped.expression.name.text === "freeze" &&
+    unwrapped.arguments.length === 1
+  ) {
+    const argument = unwrapExpression(unwrapped.arguments[0]!);
+    return ts.isObjectLiteralExpression(argument) ? argument : undefined;
+  }
+  return undefined;
+}
+
+function isExactPropagatingCompositionStop(
+  expression: ts.Expression | undefined,
+  exactStopCall: ts.CallExpression,
+  source: ts.SourceFile,
+  checker: ts.TypeChecker
+): boolean {
+  if (expression === undefined) return false;
+  const unwrapped = unwrapExpression(expression);
+  if (!ts.isArrowFunction(unwrapped) && !ts.isFunctionExpression(unwrapped)) return false;
+  if (
+    unwrapped.parameters.length !== 0 ||
+    !unwrapped.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)
+  ) {
+    return false;
+  }
+  const body = unwrapped.body;
+  let candidate: ts.Expression | undefined;
+  let requiresAwait = false;
+  if (ts.isBlock(body)) {
+    if (body.statements.length !== 1) return false;
+    const statement = body.statements[0]!;
+    if (ts.isReturnStatement(statement)) {
+      candidate = statement.expression;
+    } else if (ts.isExpressionStatement(statement)) {
+      candidate = statement.expression;
+      requiresAwait = true;
+    } else {
+      return false;
+    }
+  } else {
+    candidate = body;
+  }
+  if (candidate === undefined) return false;
+
+  let current = candidate;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  ) {
+    current = current.expression;
+  }
+  if (requiresAwait && !ts.isAwaitExpression(current)) return false;
+  if (ts.isAwaitExpression(current)) current = current.expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  ) {
+    current = current.expression;
+  }
+  if (current !== exactStopCall || exactStopCall.arguments.length !== 0) return false;
+  const expressionSymbol = ts.isPropertyAccessExpression(exactStopCall.expression)
+    ? checker.getSymbolAtLocation(exactStopCall.expression.name)
+    : undefined;
+  return expressionSymbol !== undefined &&
+    exactStopCall.getSourceFile() === source;
+}
+
+function expectExactObjectArgument(
+  call: ts.CallExpression,
+  expected: Readonly<Record<string, string>>,
+  label: string
+): void {
+  expect(call.arguments, `${label}: argument count`).toHaveLength(1);
+  const argument = unwrapExpression(call.arguments[0]!);
+  expect(ts.isObjectLiteralExpression(argument), `${label}: exact object literal`).toBe(true);
+  if (!ts.isObjectLiteralExpression(argument)) throw new Error(`${label} is not an object literal`);
+  const properties = new Map<string, ts.Expression>();
+  for (const property of argument.properties) {
+    expect(ts.isPropertyAssignment(property), `${label}: no spread/shorthand/method`).toBe(true);
+    if (!ts.isPropertyAssignment(property)) throw new Error(`${label} has a non-property assignment`);
+    const name = propertyName(property.name);
+    expect(name, `${label}: static property name`).toBeDefined();
+    if (name === undefined) throw new Error(`${label} has a computed property`);
+    properties.set(name, property.initializer);
+  }
+  expect([...properties.keys()].sort(), `${label}: exact keys`).toEqual(Object.keys(expected).sort());
+  for (const [name, path] of Object.entries(expected)) {
+    expectExpressionPath(properties.get(name), path, `${label}.${name}`);
+  }
+}
+
+function expectExactBoundedHRead(source: ts.SourceFile): void {
+  const issuers: ts.FunctionDeclaration[] = [];
+  const readCalls: ts.CallExpression[] = [];
+  visit(source, (node) => {
+    if (
+      ts.isFunctionDeclaration(node) &&
+      node.name?.text === "createResidentBoundedAgentLoopFromIssuedCapabilities"
+    ) {
+      issuers.push(node);
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === "readFull"
+    ) {
+      readCalls.push(node);
+    }
+  });
+  expect(issuers, "sole bounded issuer declaration").toHaveLength(1);
+  expect(issuers[0]?.parameters, "bounded issuer must not accept a structural port bag").toHaveLength(8);
+  expect(readCalls, "exact H full-read call").toHaveLength(1);
+  expectExactObjectArgument(readCalls[0]!, {
+    taskId: "*.taskId",
+    runId: "*.runId",
+    authorityBinding: "*.authorityBinding"
+  }, "H readFull input");
+}
+
+function assignedIdentifier(call: ts.CallExpression): string {
+  let current: ts.Expression = call;
+  let parent = current.parent;
+  while (
+    parent !== undefined &&
+    (
+      ts.isAwaitExpression(parent) ||
+      ts.isParenthesizedExpression(parent) ||
+      ts.isAsExpression(parent) ||
+      ts.isSatisfiesExpression(parent)
+    )
+  ) {
+    current = parent;
+    parent = current.parent;
+  }
+  expect(parent !== undefined && ts.isVariableDeclaration(parent), "call result must be retained once").toBe(true);
+  if (parent === undefined || !ts.isVariableDeclaration(parent) || !ts.isIdentifier(parent.name)) {
+    throw new Error("call result is not retained in one identifier");
+  }
+  return parent.name.text;
+}
+
+function expectExpressionPath(
+  expression: ts.Expression | undefined,
+  expected: string,
+  label: string
+): void {
+  expect(expression, label).toBeDefined();
+  if (expression === undefined) throw new Error(`${label} is unavailable`);
+  const actual = expressionPath(unwrapExpression(expression));
+  const matches = expected.startsWith("*.")
+    ? actual?.endsWith(expected.slice(1)) === true
+    : expected.endsWith(".*")
+      ? actual?.startsWith(expected.slice(0, -1)) === true
+      : actual === expected;
+  expect(matches, `${label}: ${actual ?? "<non-path>"}`).toBe(true);
+}
+
+function expressionPath(expression: ts.Expression): string | undefined {
+  if (ts.isIdentifier(expression)) return expression.text;
+  if (ts.isPropertyAccessExpression(expression)) {
+    const prefix = expressionPath(unwrapExpression(expression.expression));
+    return prefix === undefined ? undefined : `${prefix}.${expression.name.text}`;
+  }
+  if (
+    ts.isElementAccessExpression(expression) &&
+    expression.argumentExpression !== undefined &&
+    ts.isStringLiteral(expression.argumentExpression)
+  ) {
+    const prefix = expressionPath(unwrapExpression(expression.expression));
+    return prefix === undefined ? undefined : `${prefix}.${expression.argumentExpression.text}`;
+  }
+  return undefined;
+}
+
+function unwrapExpression(expression: ts.Expression): ts.Expression {
+  let current = expression;
+  while (
+    ts.isAwaitExpression(current) ||
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function propertyName(name: ts.PropertyName): string | undefined {
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+    return name.text;
+  }
+  return undefined;
+}
+
+function expectSymbolUsedOnlyAsDirectCall(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  binding: ts.Identifier,
+  label: string
+): void {
+  const symbol = checker.getSymbolAtLocation(binding);
+  expect(symbol, `${label}:binding`).toBeDefined();
+  const uses: ts.Identifier[] = [];
+  visit(source, (node) => {
+    if (
+      ts.isIdentifier(node) &&
+      node !== binding &&
+      checker.getSymbolAtLocation(node) === symbol
+    ) {
+      uses.push(node);
+    }
+  });
+  expect(uses, `${label}:uses`).toHaveLength(1);
+  const use = uses[0]!;
+  expect(
+    ts.isCallExpression(use.parent) && use.parent.expression === use,
+    `${label} must be used only as the direct callee`
+  ).toBe(true);
+}
+
+function expectNoHandoffReachThrough(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker
+): void {
+  const handoffImports = directImports(
+    source,
+    permittedResidentImports.factoryPorts.handoffBuilder.moduleSpecifier
+  );
+  const localBinding = handoffImports[0]?.importClause?.name;
+  const localSymbol = localBinding === undefined
+    ? undefined
+    : checker.getSymbolAtLocation(localBinding);
+  for (const statement of source.statements) {
+    if (ts.isExportDeclaration(statement)) {
+      const specifier = statement.moduleSpecifier;
+      expect(
+        specifier === undefined ||
+          !ts.isStringLiteral(specifier) ||
+          specifier.text !== permittedResidentImports.factoryPorts.handoffBuilder.moduleSpecifier,
+        "R must not re-export H"
+      ).toBe(true);
+      if (statement.exportClause !== undefined && ts.isNamedExports(statement.exportClause)) {
+        for (const element of statement.exportClause.elements) {
+          const reference = element.propertyName ?? element.name;
+          expect(
+            localSymbol === undefined || checker.getSymbolAtLocation(reference) !== localSymbol,
+            "R must not re-export its default H binding"
+          ).toBe(true);
+        }
+      }
+    }
+    if (
+      ts.isExportAssignment(statement) &&
+      ts.isIdentifier(statement.expression)
+    ) {
+      expect(
+        localSymbol === undefined ||
+          checker.getSymbolAtLocation(statement.expression) !== localSymbol,
+        "R must not default-export its H binding"
+      ).toBe(true);
+    }
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const moduleSpecifier = statement.moduleSpecifier.text;
+    expect(moduleSpecifier, "R must not import the agent barrel").not.toMatch(/(?:^|\/)(?:index)\.js$/);
+    if (moduleSpecifier !== permittedResidentImports.factoryPorts.handoffBuilder.moduleSpecifier) continue;
+    expect(statement.importClause?.namedBindings, "H must be default-imported only").toBeUndefined();
+  }
+}
+
+function expectNoModuleEdge(source: ts.SourceFile, forbidden: RegExp): void {
+  const matches: string[] = [];
+  visit(source, (node) => {
+    if (
+      (
+        ts.isImportDeclaration(node) ||
+        ts.isExportDeclaration(node)
+      ) &&
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      forbidden.test(node.moduleSpecifier.text)
+    ) {
+      matches.push(node.moduleSpecifier.text);
+    }
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] !== undefined &&
+      ts.isStringLiteral(node.arguments[0]) &&
+      forbidden.test(node.arguments[0].text)
+    ) {
+      matches.push(node.arguments[0].text);
+    }
+  });
+  expect(matches, `forbidden module edge ${forbidden}`).toEqual([]);
+}
+
+function expectNoAgentBarrelExposure(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  boundedSourcePath: string,
+  handoffSourcePath: string,
+  forbidden: RegExp
+): void {
+  const moduleSymbol = checker.getSymbolAtLocation(source);
+  expect(moduleSymbol, "agent barrel module symbol").toBeDefined();
+  if (moduleSymbol === undefined) throw new Error("agent barrel module symbol is unavailable");
+
+  const boundedAbsolute = resolve(boundedSourcePath);
+  const handoffAbsolute = resolve(handoffSourcePath);
+  const exposed: string[] = [];
+  for (const exported of checker.getExportsOfModule(moduleSymbol)) {
+    const target = resolveAliasSymbol(exported, checker);
+    const targetNames = new Set([
+      exported.getName(),
+      target.getName(),
+      ...(target.declarations ?? []).flatMap(declarationNames)
+    ]);
+    const declarations = target.declarations ?? [];
+    const fromBounded = declarations.some(
+      (declaration) => resolve(declaration.getSourceFile().fileName) === boundedAbsolute
+    );
+    const internalFromHandoff = declarations.some(
+      (declaration) => resolve(declaration.getSourceFile().fileName) === handoffAbsolute
+    ) && [...targetNames].some((name) => forbidden.test(name));
+    if (
+      fromBounded ||
+      internalFromHandoff ||
+      [...targetNames].some((name) => forbidden.test(name))
+    ) {
+      exposed.push(`${exported.getName()}=>${target.getName()}`);
+    }
+  }
+  expect(
+    exposed,
+    "agent barrel must not expose R, dispatcher capability, or internal H symbols through direct, aliased, or star exports"
+  ).toEqual([]);
+}
+
+function declarationNames(declaration: ts.Declaration): readonly string[] {
+  const named = declaration as ts.Declaration & { readonly name?: ts.DeclarationName };
+  if (named.name === undefined) return [];
+  if (ts.isIdentifier(named.name) || ts.isStringLiteral(named.name)) {
+    return [named.name.text];
+  }
+  return [];
+}
+
+function resolveAliasSymbol(symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
+  let current = symbol;
+  const seen = new Set<ts.Symbol>();
+  while ((current.flags & ts.SymbolFlags.Alias) !== 0 && !seen.has(current)) {
+    seen.add(current);
+    const target = checker.getAliasedSymbol(current);
+    if (target === current) break;
+    current = target;
+  }
+  return current;
+}
+
+function expectNoActivationSurfaceReference(
+  source: ts.SourceFile,
+  label: string
+): void {
+  const forbidden = /resident-loop-factory-ports|bounded-agent-loop|createResidentBoundedAgentLoopFactory/;
+  const matches: string[] = [];
+  visit(source, (node) => {
+    if (
+      (
+        ts.isIdentifier(node) ||
+        ts.isStringLiteral(node) ||
+        ts.isNoSubstitutionTemplateLiteral(node)
+      ) &&
+      forbidden.test(node.text)
+    ) {
+      matches.push(node.text);
+    }
+    if (ts.isTemplateExpression(node)) {
+      const fragments = [
+        node.head.text,
+        ...node.templateSpans.map((span) => span.literal.text)
+      ];
+      matches.push(...fragments.filter((fragment) => forbidden.test(fragment)));
+    }
+  });
+  expect(matches, `${label}: forbidden bounded-factory surface references`).toEqual([]);
+}
+
+function expectNoActivationSymbolOrigin(
+  source: ts.SourceFile,
+  checker: ts.TypeChecker,
+  forbiddenSourcePaths: readonly string[],
+  label: string
+): void {
+  const forbidden = new Set(forbiddenSourcePaths.map((path) => resolve(path)));
+  const matches = new Set<string>();
+  visit(source, (node) => {
+    if (!ts.isIdentifier(node)) return;
+    const symbol = checker.getSymbolAtLocation(node);
+    if (symbol === undefined) return;
+    const target = resolveAliasSymbol(symbol, checker);
+    if (
+      (target.declarations ?? []).some(
+        (declaration) => forbidden.has(resolve(declaration.getSourceFile().fileName))
+      )
+    ) {
+      matches.add(`${node.text}=>${target.getName()}`);
+    }
+  });
+  expect(
+    [...matches],
+    `${label}: activation must not reach factory/R through imported aliases or barrel origins`
+  ).toEqual([]);
+}
+
+function expectNoDynamicLoaderSyntax(source: ts.SourceFile, label: string): void {
+  const matches: string[] = [];
+  visit(source, (node) => {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      matches.push("import()");
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      ["require", "eval", "Function"].includes(node.expression.text)
+    ) {
+      matches.push(`${node.expression.text}()`);
+    }
+    if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "Function"
+    ) {
+      matches.push("new Function()");
+    }
+  });
+  expect(matches, `${label}:dynamic/evaluator syntax`).toEqual([]);
+}
+
+function expectNoIdentifier(source: ts.SourceFile, forbidden: string): void {
+  const matches: ts.Identifier[] = [];
+  visit(source, (node) => {
+    if (ts.isIdentifier(node) && node.text === forbidden) matches.push(node);
+  });
+  expect(matches, `forbidden identifier ${forbidden}`).toHaveLength(0);
+}
+
+function expectNoGenericWakeConstructor(source: ts.SourceFile): void {
+  const matches: ts.Node[] = [];
+  visit(source, (node) => {
+    if (
+      (ts.isIdentifier(node) && node.text === "createWakeSupervisorRuntime") ||
+      (ts.isPropertyAccessExpression(node) && node.name.text === "createWakeSupervisorRuntime") ||
+      (
+        ts.isImportSpecifier(node) &&
+        (node.propertyName ?? node.name).text === "createWakeSupervisorRuntime"
+      )
+    ) {
+      matches.push(node);
+    }
+  });
+  expect(matches, "R must use the safe composition facade, not the generic wake runtime").toHaveLength(0);
+}
+
+function expectNoForbiddenFactoryHeuristics(source: ts.SourceFile): void {
+  const matches: string[] = [];
+  visit(source, (node) => {
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      ["caller", "callee", "stack"].includes(node.name.text)
+    ) {
+      matches.push(node.getText(source));
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      (
+        (
+          node.expression.name.text === "now" &&
+          ts.isIdentifier(node.expression.expression) &&
+          ["Date", "performance"].includes(node.expression.expression.text)
+        ) ||
+        (
+          node.expression.name.text === "hrtime" &&
+          ts.isIdentifier(node.expression.expression) &&
+          node.expression.expression.text === "process"
+        ) ||
+        node.expression.name.text === "toString"
+      )
+    ) {
+      matches.push(node.getText(source));
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isPropertyAccessExpression(node.left) &&
+      ts.isIdentifier(node.left.expression) &&
+      node.left.expression.text === "globalThis"
+    ) {
+      matches.push(node.getText(source));
+    }
+  });
+  expect(matches, "factory/loop must not infer authority from timing, caller, source, stack, or globals").toEqual([]);
+}
+
+function visit(node: ts.Node, inspect: (node: ts.Node) => void): void {
+  inspect(node);
+  node.forEachChild((child) => visit(child, inspect));
+}

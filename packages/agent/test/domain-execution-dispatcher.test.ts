@@ -404,6 +404,8 @@ describe("agent domain execution dispatcher", () => {
         taskId: accepted.taskId
       })).toThrow(/capability|resident|package|authority/i);
     }
+    const oneShotCapability = await api.create(accepted.binding);
+    expect(oneShotCapability).toSatisfy(isFrozenOpaqueObject);
     for (const [field, value] of [
       ["mountedLedger", new InMemoryEventLedger()],
       ["workspaceId", "ws_dispatcher_other"],
@@ -411,7 +413,7 @@ describe("agent domain execution dispatcher", () => {
       ["taskId", "task_dispatcher_other"]
     ] as const) {
       expect(() => api.bind({
-        capability: acceptedCapability,
+        capability: oneShotCapability,
         mountedLedger: accepted.ledger,
         workspaceId: accepted.workspaceId,
         residentAgentId: accepted.residentAgentId,
@@ -419,6 +421,18 @@ describe("agent domain execution dispatcher", () => {
         [field]: value
       })).toThrow(/ledger|workspace|resident|task|binding|capability/i);
     }
+    const exactOneShotBinding = Object.freeze({
+      capability: oneShotCapability,
+      mountedLedger: accepted.ledger,
+      workspaceId: accepted.workspaceId,
+      residentAgentId: accepted.residentAgentId,
+      taskId: accepted.taskId
+    });
+    const oneShotPort = api.bind(exactOneShotBinding);
+    expect(oneShotPort).toSatisfy(isFrozenOpaqueObject);
+    expect(() => api.bind(exactOneShotBinding)).toThrow(
+      /bound|capability|consum|package|resident|stale|authority/i
+    );
 
     const hostileBindings = [
       { ...accepted.binding, kind: "unknown-family" },
