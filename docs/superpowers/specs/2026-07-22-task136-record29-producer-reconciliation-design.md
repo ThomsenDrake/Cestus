@@ -2288,7 +2288,7 @@ interface PreparedResidentBoundedAgentLoopFactoryInput {
   readonly wakeRuntime: WakeSupervisorRuntime;
   readonly authorityReadback: ResidentLoopFactoryAuthorityReadback;
   readonly providerPosture: ResidentLoopProviderPosture;
-  readonly domainExecution: OpaquePackageOwnedResidentDomainExecutionCapability;
+  readonly domainExecution: object;
   readonly nowMonotonicMs: () => number;
 }
 ```
@@ -2304,10 +2304,10 @@ bind, or other effect.
 
 The wake module extends its existing private `ResidentWakeRuntimeState` only
 to retain the exact `LocalRuntimeHandle` captured when that wake runtime was
-created and the state needed to reject stopped or consumed runtimes. No new
-registry, cache, rendezvous, memoized lookup table, process-global authority,
-caller heuristic, timing test, stack inspection, or structural authority is
-introduced.
+created and the stopped, resident-binding-in-flight, and consumed state. No
+new registry, cache, rendezvous, memoized lookup table, process-global
+authority, caller heuristic, timing test, stack inspection, or structural
+authority is introduced.
 
 The prepared factory invokes the existing bounded seam explicitly as:
 
@@ -2328,25 +2328,38 @@ mounted state, the binder requires:
    authority readback;
 3. exact identity between the supplied runtime handle and the handle captured
    at runtime construction;
-4. Core-ready, not-stopped, and unconsumed resident-binding state; and only
-   then
-5. exact registered provider, handoff, and authority-binding identities.
+4. Core-ready, not-stopped, not-in-flight, and unconsumed resident-binding
+   state;
+5. a synchronous private in-flight reservation for that exact triple; and
+   only then
+6. exact registered provider, handoff, and authority-binding identities.
 
-Only after all five checks may W call the mounted binder and allow metadata,
-C, H, R, provider, handoff, gateway, approval, dispatcher, or effectful
-boundaries. H receives the ledger only from the authenticated prepared
-runtime handle. Copied, fabricated, proxied, swapped, generic, stopped, stale,
-or already-consumed runtime/readback/handle presentations fail before any
-downstream read or effect.
+Only after all six steps may W call the mounted binder and allow metadata, C,
+H, R, provider, handoff, gateway, approval, dispatcher, or effectful
+boundaries. A concurrent presentation rejects before nested readback access
+or mounted work. A mounted bind that rejects before issuing capabilities
+releases the private reservation and remains unconsumed. Once mounted binding
+issues capabilities, W burns the resident binding even if a later local
+capability validation rejects. H receives the ledger only from the
+authenticated prepared runtime handle. Copied, fabricated, proxied, swapped,
+generic, stopped, stale, concurrent, or already-consumed runtime/readback/
+handle presentations fail before any downstream read or effect.
 
 The explicit fourth handle argument is a clean extension of the existing
-bounded seam, not a caller-detection mechanism. The frozen Task14 static
-oracle currently pins the earlier three-parameter declaration. Therefore,
-after the requested two-factory-test RED is independently integrated and
-before product GREEN, a separate smallest causal test-oracle correction must
-bind the explicit four-argument seam and its exact private-state provenance.
-It adds no path or behavior and requires its own immutable candidate, fresh
-review, append-only approval, and history-preserving integration.
+bounded seam, not a caller-detection mechanism. The already-failing factory
+import-policy title is the causal RED and requires that exact four-argument
+factory call plus private-state provenance. The frozen Task14 static oracle
+currently passes while pinning the earlier three-parameter declaration.
+After the two-factory-test RED is integrated and before product GREEN, a
+separately reviewed passing compatibility-oracle transition changes only the
+two wake tests. Existing behavior calls visibly present their fixture's exact
+handle through a test-only transition type, and the static oracle accepts
+exactly either the historical three required named parameters or the approved
+four required named parameters ending in `runtimeHandle`. It continues to
+reject optional/default/rest parameters, overload ambiguity, `arguments`,
+callback carriers, optional/spread calls, alternate declarations, and hidden
+arity channels. This transition adds no failing title, path, or product
+behavior; producer and card accounting remain exact.
 
 ### Exact owner stop
 
@@ -2366,12 +2379,12 @@ The first corrected RED changes only
 It retains the valid direct dispatcher/G import ownership correction in
 `mounted-wake-lifecycle-store.ts`, proves one prepared composition succeeds
 with no second construction/start/bind, exercises every hostile triple
-dimension before downstream reads, and proves exact owner-stop idempotency
-and propagation. It preserves titles, cardinality, abstract local fixtures,
-and adds no unrelated alias case.
+dimension and concurrent duplicate presentation before downstream reads, and
+proves exact owner-stop idempotency and propagation. It preserves titles,
+cardinality, abstract local fixtures, and adds no unrelated alias case.
 
-After that RED and the separately reviewed causal binder-oracle correction
-are approved and integrated, the smallest GREEN may change only:
+After that RED and the separately reviewed passing compatibility-oracle
+transition are approved and integrated, the smallest GREEN may change only:
 
 - `packages/agent/src/bounded-agent-loop.ts`;
 - `packages/local-runtime/src/resident-loop-factory-ports.ts`; and

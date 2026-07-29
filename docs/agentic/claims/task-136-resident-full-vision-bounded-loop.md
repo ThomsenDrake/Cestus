@@ -2244,26 +2244,31 @@ safe-ID factory, or caller stop callback.
 Descriptor-safe normalization captures those six values before the first
 await or effectful read. W then authenticates, in order, exact wake WeakMap
 membership, exact registered top-level readback identity, exact captured
-runtime-handle identity, Core-ready/not-stopped/unconsumed state, and exact
-registered nested provider/handoff/binding identities. Only after those
-checks may mounted binding, metadata, C, H, R, provider, handoff, gateway,
-approval, dispatcher, ledger, or effects occur. H receives only the
-authenticated handle's ledger.
+runtime-handle identity, Core-ready/not-stopped/not-in-flight/unconsumed state,
+and a synchronous private in-flight reservation before exact registered
+nested provider/handoff/binding identities. Only after those checks may
+mounted binding, metadata, C, H, R, provider, handoff, gateway, approval,
+dispatcher, ledger, or effects occur. Mounted rejection before capability
+issuance releases the reservation; issued capability binding burns it before
+later local validation. H receives only the authenticated handle's ledger.
 
 Copied, fabricated, proxied, swapped, generic, stopped, stale, and already-
-consumed runtime/readback/handle inputs fail before downstream reads or
-effects. The returned stop operation closes over only the authenticated wake
-runtime, memoizes one direct stop promise, propagates rejection exactly, and
-never accepts or retries a caller callback.
+consumed runtime/readback/handle inputs and concurrent duplicate presentation
+fail before downstream reads or effects. The returned stop operation closes
+over only the authenticated wake runtime, memoizes one direct stop promise,
+propagates rejection exactly, and never accepts or retries a caller callback.
 
-The requested first RED changes only the two factory-port tests and retains
-the valid mounted-store dispatcher/G import-owner correction. A separate
-smallest causal Task14 static-oracle correction is required after that RED
-integrates because the frozen oracle pins the prior three-parameter binder;
-the approved factory must pass the exact handle as an explicit fourth
-argument. Both REDs require immutable candidates, completely fresh
-independent review, append-only approval, and history-preserving integration
-before source work.
+The requested first RED changes only the two factory-port tests, retains the
+valid mounted-store dispatcher/G import-owner correction, and makes its
+already-failing import title require the exact handle as an explicit fourth
+W argument. After that RED integrates, a separate passing compatibility-
+oracle transition changes only the two wake tests. It visibly presents exact
+fixture handles in behavior calls and permits exactly the historical three-
+parameter or approved four-parameter W declaration while rejecting optional,
+default, rest, overload, `arguments`, callback, spread, and hidden-arity
+forms. It adds no failure, source behavior, or path. Both test candidates
+require completely fresh independent review, append-only approval, and
+history-preserving integration before source work.
 
 The final GREEN changes only the new bounded-loop source, factory-ports
 source, and wake-supervisor source. Composition and mounted storage remain
