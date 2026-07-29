@@ -48295,3 +48295,75 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1232 — Corrected Task16C phase RED rejected; reread-stage oracle repair authorized
+
+- Recorded at: 2026-07-29T01:52:47Z
+- Completely fresh independent read-only reviewer
+  `/root/task16c_e1231_red_review` rejects exact immutable corrected RED
+  candidate `855938fec8b7dbe2e9a45bbbf34f190df6bd0e9c`, tree
+  `725d14a28f40bc5c53fc2bf8df4aa21c7b3bc769`, sole parent
+  `8fafe1f4b68b40c7f3c381e9d6c4edb83d4332b1`, as admitted by E-1231 and
+  reviewed through exact Task136 envelope
+  `304fd402d140a34917222a4a24a942f20320cff8`.
+- The reviewer confirms the exact two-runtime-value export oracle, requested
+  reread identity/currentness path, human unknown-outcome path, and
+  dynamically bound distinct stable semantic keys are sound. The remaining
+  candidate-bound defect is that the approval-required oracle proves only a
+  positive `requested` G reread. A source implementation that accepts every
+  fresh G reread stage can satisfy the present RED even though the approved
+  design permits suspension only from exact stage `requested`.
+- Add only the missing negative reread-stage controls inside the existing
+  approval-required bounded-loop test. Exercise actual fresh G rereads at
+  stages `human-approved`, `claimed`, `completed`, `denied`, and `failed`.
+  For each variant preserve the exact awaited sequence: request fresh
+  authorization, read requested canonical material, receive a rejected fresh
+  human-decision lookup, revalidate W, reread G at the exact locator,
+  revalidate W again, then reject. Prove settled currentness, no use of the
+  non-requested reread material, no suspension, tool-step, result, or release
+  append, no W suspension, and zero decision, execution, provider, gateway,
+  approval, fallback, write, route, runtime, or other external effect.
+- The independent reviewer reported one ledger append for those rejection
+  variants. Main-session full-prefix accounting corrects that observation:
+  the bounded loop has already appended T120's plan and observation before
+  G's request append, so every non-requested-stage rejection must prove
+  exact ledger append count **3**. The valid requested-stage suspension path
+  retains exact ledger append count **9** and all existing controls.
+- Advance exact E-1231 candidate only `reviewing -> rejected`. Authorize the
+  smallest forward test-only correction in exactly
+  `packages/agent/test/bounded-agent-loop.test.ts`, starting from exact blob
+  `28fa495dda474438e030a22c4ccd03baabfcdece`. Freeze the corrected
+  import-policy test at exact blob
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`, the other five Task16 tests at
+  `667f0e9fc448282f04d955d7c4757535edf98b33`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`, and freeze factory source
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, integrated W/G/dispatcher
+  sources, absent bounded source, every other product/test, title and total
+  cardinality, contract, claim, design, plan, dependency, configuration,
+  route, provider, credential, activation, preview branch, and unrelated
+  byte. Add no other alias, phase, or behavior case.
+- The forward descendant must retain exact focused
+  **9 = 3 passed + six failed**, producer controls **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355** against the
+  frozen absent Task16C sources. Standalone typecheck, factory readiness,
+  mission and V4 **20/20**, markers **29 / 20 / 29 / 15**, exact repository
+  first-stop, scope/freezes/ancestry/dependencies, diff hygiene, Git
+  integrity, and clean state must pass under the committed execution
+  constraints.
+- Commit only the one corrected test, admit exact immutable bytes to a
+  completely fresh independent read-only reviewer, and record, approve, and
+  integrate append-only with approval-first/candidate-second plus forward
+  Task136 merges. Changed bytes invalidate review. Only after corrected RED
+  integration may a separate event resume the two-source Task16C GREEN.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is forward unit-test-oracle repair authority, not
+  corrected RED candidacy, approval, integration, resumed Task16C source
+  authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. Product source,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
