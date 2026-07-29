@@ -49356,3 +49356,62 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1247 — Corrected Task16 prepared-bootstrap amendment integrated
+
+- Recorded at: 2026-07-29T16:33:45Z
+- Exact independently approved corrected amendment
+  `8368a847b683f9b0e93c8e2134296d53ab57ef4b`, tree
+  `5ae7027559710e2a832dbce94747169ef324f2e5`, is integrated by exact
+  history-preserving program merge
+  `b53ce55b741687e5799c34f68b36db4de69ce3a9`, tree
+  `fa864f4e851994ea54ba91c01599be17027b02ac`. Its first parent is exact
+  E-1246 approval `66852430a741d60cfd5c4526e54cd395ed5ffeaf`;
+  its second parent is the exact approved candidate.
+- Exact integrated scope is only the active Task136 design, plan, and claim.
+  The rejected `593fffb3d031bc98ff818644aa6ed7cbf40dc92f`
+  candidate, E-1245 forward correction, E-1244 human decision, and all prior
+  producer and lexical-capability history remain ancestral. Every package,
+  test, contract, mission, assurance, dependency, configuration, and script
+  byte remains frozen.
+- Current Task16 bootstrap authority is exact: one already-started Task14
+  composition is the sole lease owner; the factory receives only the exact
+  six-field prepared input; W authenticates runtime/readback/handle and
+  reserves the triple before downstream access; the factory constructs,
+  starts, binds, and preflights no second composition; and stop targets only
+  the exact authenticated wake runtime.
+- The existing factory import-policy failure is the four-argument causal RED.
+  A later separately authorized two-wake-test compatibility transition remains
+  fully passing. Final GREEN scope is only bounded-loop source, factory-ports
+  source, and wake-supervisor source. Composition and mounted storage remain
+  frozen absent another approved causal RED.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second timeout reproduces focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. All six
+  failures remain only the three absent bounded-loop titles, two absent
+  factory API titles, and one absent factory import graph.
+- Fresh standalone typecheck and factory readiness pass. Mission and V4 each
+  pass **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  exact contract markers remain **29 / 20 / 29 / 15**. Repository mode exits
+  one and stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix, closure, record-29, repository, or release success marker.
+- Exact approval-first/candidate-second parent order, candidate identity/tree/
+  parent/scope, all package/test freezes, 33-path ceiling and canonical hash,
+  Task138-H and V4 ancestry, dependencies, diff hygiene, strict Git integrity,
+  and clean program state pass.
+- Advance the exact corrected prepared-bootstrap amendment
+  `approved -> integrated`. Authorize only its exact forward
+  history-preserving merge into Task136. A separate append-only event binding
+  the exact two factory-test starting and held diagnostic blobs is mandatory
+  before either test changes.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is documentation integration, not test RED authority,
+  passing compatibility-test authority, source GREEN, Task16 acceptance,
+  Task136 candidacy, record 29, publication, Wave 3 start, repository
+  closure, production readiness, or release. `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
