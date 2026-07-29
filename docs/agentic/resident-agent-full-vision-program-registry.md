@@ -48069,3 +48069,57 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, or release. `neo`, provider, credential,
   external-system, pull-request, production-route, preview-branch, and
   unrelated actions remain unauthorized.
+
+## RV-1-E-1229 — Task16C bounded-loop and factory GREEN authorized
+
+- Recorded at: 2026-07-29T01:07:23Z
+- E-1228 integrates the exact independently approved Task16B producer
+  prerequisites and is forward-merged into Task136 as
+  `c218926e5ad64181a8fb743327a46b2c0da0b220`. Authorize the separate
+  Task16C GREEN to create only
+  `packages/agent/src/bounded-agent-loop.ts` and modify only
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`, whose exact
+  starting blob is
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`.
+- Implement the original approved Task16 R/factory design against the
+  integrated producer prerequisites. R receives the same eight exact
+  capabilities, uses G's private same-instance canonical-material operation,
+  supplies claimless W checkpoint drafts, revalidates W after every await,
+  and returns only exact frozen `{ metadata, loop, stop }`. The factory
+  executes the exact awaited Core/preflight/bind/ports/W/C/H/R chain and
+  returns the proven propagating stop wrapper. Preserve the deep
+  `createResidentBoundedAgentLoopFromIssuedCapabilities` and
+  `createResidentBoundedAgentLoopFactory` boundaries proven by the integrated
+  RED; add no barrel or activation export.
+- Freeze Task16B sources W
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`, G
+  `cb2f9dcbfa71beca2600cc08134b1d1c5284e4da`, and dispatcher
+  `4518ba3cb08f23c02eba19faa269092ae4a44b87`. Freeze the exact seven
+  integrated tests at blobs
+  `32962cf24a28087253368289480dc5ce2e741574`,
+  `667f0e9fc448282f04d955d7c4757535edf98b33`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`,
+  `aa1d371236e3cd7abbceceab654513d51bc31990`,
+  and `d88d435cda590b1922685f9a68f085e14d957e75`. Freeze every other
+  product, test, contract, claim, plan, configuration, dependency, route,
+  provider, credential, activation, preview-branch, and unrelated byte.
+- Required GREEN under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout is exact focused **9/9**, producer controls **144/144**, Task136
+  card **383/383**, exact 37-file cross-boundary **1,042/1,042**, and
+  Task138 **355/355**. Standalone typecheck, factory readiness, mission and
+  V4 **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope/freezes/ancestry/dependencies, diff hygiene, Git integrity, and clean
+  state must pass.
+- Commit only the two authorized sources, obtain completely fresh independent
+  read-only source review of exact immutable bytes, record approval and
+  integration append-only with approval-first/candidate-second plus forward
+  Task136 merge history. Changed bytes invalidate review. Only after Task16C
+  integration may Task17 admit the exact 33-path Task136 source union.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is Task16C GREEN authority, not Task16 acceptance,
+  Task136 candidacy, strict record 29, publication, Wave 3 start, repository
+  closure, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
