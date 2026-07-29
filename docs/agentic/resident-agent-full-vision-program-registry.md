@@ -49689,3 +49689,85 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1251 — Corrected Task16 prepared-bootstrap RED admitted to fresh review
+
+- Recorded at: 2026-07-29T18:05:26Z
+- Exact immutable forward correction candidate is
+  `4d8e36ea63e86f11c90493edb37d80ee71cadfe0`, tree
+  `def4a4179d205c0d4f13848959a0f74a3bca8ce8`, sole parent exact E-1250
+  rejection-authority merge
+  `78717caf14c7cbc6188717257c16f793fd3e69e9`, with exact subject
+  `test(task136): close prepared factory oracle effect gap`.
+- Correction scope is exactly
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  **215 insertions / 25 deletions**, from rejected blob
+  `c20de1ad4cf4cb8d848b24d353dfbed2fdb9afe8` to exact candidate blob
+  `23e9791f75b1f97b76ff964eb36c3949f4b4f5a1`.
+  The cumulative E-1248 package scope remains exactly the two authorized
+  factory tests.
+- The corrected oracle resolves both `Object` and `freeze` through the
+  TypeScript checker and accepts only declarations from the exact installed
+  TypeScript default-library directory. A local shadow is rejected.
+- The module-initialization oracle is closed by construction rather than by
+  an incomplete effect blacklist. Imports, interfaces, type aliases, and
+  deferred function declarations remain admissible; the only runtime
+  variable form is one unmodified internal `const` identifier initialized
+  directly by a regular-expression literal. Assignment, update, delete,
+  getter-capable access, spread, coercion, object, array, call, construction,
+  await, tagged-template, and every other initializer shape reject through
+  abstract local controls. All exact 22 current factory regex constants
+  remain satisfiable.
+- Exact behavior-test blob remains frozen at
+  `7cb68b91f3acd31ad5895b3614b976780fb821d1`. Key product and test freezes
+  pass, including wake tests
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6` and
+  `b75ac2d21ead0b2d5e8b8506c1408105102713e2`, factory source
+  `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, wake source
+  `8f53e00c3f5ba59cd6f3158e67da9fc746f401c2`, composition source
+  `a5e554dd138dc82bcd9e01b79aef82742b12c366`, and mounted-store source
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`.
+- Fresh clean committed-tree execution under `TMPDIR=/dev/shm`, one worker,
+  and the 120-second timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The six
+  failures remain only the three absent bounded-loop titles, two absent
+  factory API titles, and one absent factory import graph.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  exact markers remain **29 / 20 / 29 / 15**. Repository mode exits one and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix, closure, record-29, repository, or release success marker.
+- Exact candidate identity, one-file correction and cumulative two-test
+  scope, all freezes, dependency pins, TypeScript **5.9.3**, Vitest
+  **4.1.9**, exact 33-path ceiling and canonical SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  E-1244 through E-1250 ancestry, Task138-H and V4 ancestry, diff hygiene,
+  clean detached execution state, non-symlink dependency directory, and
+  strict Git integrity pass. Strict fsck reports only benign dangling
+  objects and no corruption.
+- The paused product diagnostics remain unstaged and byte-exact only in the
+  Task136 worktree:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`. They are not candidate
+  evidence and remain unauthorized for product execution.
+- Assign a different completely fresh independent read-only reviewer to exact
+  candidate `4d8e36ea63e86f11c90493edb37d80ee71cadfe0`.
+  Bind the exact tree, parent, correction and cumulative blobs, E-1244
+  through E-1250 contract, abstract AST/symbol-resolution controls, full
+  cumulative two-test oracles, immutable RED signatures, source-phase
+  satisfiability, and complete gate packet. Changed candidate bytes invalidate
+  review.
+- Advance only this corrected Task16 test-only RED `candidate -> reviewing`.
+  Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is review admission, not RED approval or integration,
+  wake compatibility-test authority, source GREEN, Task16 acceptance,
+  Task136 candidacy, record 29, publication, Wave 3 start, repository
+  closure, production readiness, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
