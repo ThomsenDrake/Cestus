@@ -48593,3 +48593,84 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, or release. `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1237 — Task16C GREEN halted; causal one-test RED repair authorized
+
+- Recorded at: 2026-07-29T02:59:13Z
+- Halt E-1236 before any product edit. Exact clean Task136 authority head is
+  `521edd44805e3b9ab55128861372b45f760ee2f2`, tree
+  `99c595ecc01fd951dc562e644f9f488d110ef113`, with first parent exact
+  E-1233 review envelope `ccd1cd87096b86b6912dd25dee5fdd7a93a4d988`
+  and second parent exact E-1236 program authority
+  `586b289d8551e5b4ff5c8ee592a7673cdbca3226`. The Task136 and program
+  worktrees are clean, bounded source remains absent, factory source remains
+  at `f60b07537d0efa98ca9934ac3bcf5e79af246a6e`, mounted W remains at
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`, and no E-1236 source byte
+  exists.
+- Independent read-only source-phase audits
+  `/root/task16c_green_design_audit` and
+  `/root/task16c_green_implementer` prove the integrated RED contains two
+  causal unit-test-oracle mismatches that the authorized R/factory sources
+  cannot satisfy. First, frozen W consumes its sole currentness authority
+  and returns only its exact issued opaque four-ID released-checkpoint
+  readback, while the suspension branches require R to return the complete
+  W-owned T120 resumable event. R cannot lawfully reread that event after
+  terminal release, reclaim without an extra durable claim, or reproduce
+  exact W-owned event bytes. Second, the swapped-W and stale-initial-token
+  cases require the original harness to be settled after the first W
+  verification rejects, although neither the substituted W nor a stale
+  token can clear the original harness's pending boundary; a preliminary
+  probe would add an eleventh W call and violate the exact ten-W positive
+  contract.
+- Authorize only the smallest forward correction in
+  `packages/agent/test/bounded-agent-loop.test.ts`, starting from exact blob
+  `3d970e1653355b4ffb05e19e3ecec71d65fde8dd`. In the existing suspension
+  oracle, issue one exact frozen local W released-checkpoint readback per
+  harness, return that same object from `suspendAndRelease`, expose it only
+  through the harness, and require approval and both unknown-outcome
+  suspension branches to return that exact object identity with the exact
+  five-key own-data surface. Continue independently proving that the exact
+  full resumable result is durably present in the local replay, that its ID
+  equals the opaque readback's `resultEventId`, and that its semantic key,
+  result hash, W internal append traces, and existing accounting are exact.
+  Completion and resume terminal paths continue returning their exact full
+  T120 result events.
+- In the existing hostile corpus, preserve swapped-W and stale-token
+  immediate rejection, zero effects, and zero proxy reads, but do not require
+  the original harness's pending flag to be cleared after those terminal
+  first-W rejections. Preserve `assertSettled()` for every other hostile
+  case and preserve every existing positive-path W count, ordering,
+  currentness, fail-closed, and cardinality assertion. Add no new case or
+  behavior.
+- Freeze corrected import-policy test
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`, the other five Task16 tests at
+  `667f0e9fc448282f04d955d7c4757535edf98b33`,
+  `6522e06d27b0b22d88a0c97acb599782d14135cc`,
+  `2291b74da1c19d012bcd977b29c9a7f9cfdcf9a6`,
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d`, and
+  `d88d435cda590b1922685f9a68f085e14d957e75`; freeze every product source,
+  every other test, design, plan, claim, contract, dependency,
+  configuration, route, provider, credential, activation, preview branch,
+  and unrelated byte.
+- The corrected forward RED must retain exact focused
+  **9 = 3 passed + six failed**, producer controls **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. All six
+  failures must remain only the absent Task16C bounded issuer, factory API,
+  and import graph. Standalone typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  scope/freezes/ancestry/dependencies, canonical 33-path hash, diff hygiene,
+  strict Git integrity, and clean state must pass under the committed
+  execution constraints.
+- Commit only the corrected one-test RED, admit exact immutable bytes to a
+  completely fresh independent read-only reviewer, and record, approve, and
+  integrate append-only with approval-first/candidate-second plus forward
+  Task136 merges. Changed bytes invalidate review. Only after corrected RED
+  integration may a separate event resume the two-source Task16C GREEN.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is forward unit-test-oracle repair authority, not
+  corrected RED candidacy, approval, integration, resumed source authority,
+  Task16 acceptance, Task136 candidacy, strict record 29, publication,
+  Wave 3 start, repository closure, or release. Product source, `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
