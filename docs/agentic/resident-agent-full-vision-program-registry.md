@@ -49288,3 +49288,71 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1246 — Corrected Task16 prepared-bootstrap amendment approved
+
+- Recorded at: 2026-07-29T16:25:41Z
+- Completely fresh independent read-only reviewer
+  `/root/task16_e1245_fast_fresh_review` returns **APPROVED** with no P0-P3
+  defect, missing test, specification drift, or executability gap for exact
+  corrected three-document candidate
+  `8368a847b683f9b0e93c8e2134296d53ab57ef4b`, tree
+  `5ae7027559710e2a832dbce94747169ef324f2e5`, sole parent exact E-1245
+  authority merge `e402eb91a153393cb78ab51cc4f39880d23c2640`.
+  Changed candidate bytes invalidate this approval.
+- Exact forward correction scope is only the active Task136 design, plan, and
+  claim, **121 insertions / 69 deletions**. Cumulatively the approved
+  amendment changes only those same three documents from pre-amendment
+  authority. Every package, test, contract, mission, assurance, dependency,
+  configuration, and script byte remains frozen.
+- The rejected `593fffb3d031bc98ff818644aa6ed7cbf40dc92f`
+  candidate, E-1245 rejection/correction authority, E-1244 human decision,
+  and all earlier Task16 producer history remain immutable ancestors.
+- The reviewer independently approves the sole already-started Task14
+  composition owner, exact frozen six-field prepared input, descriptor-safe
+  normalization, exact wake/readback/handle authentication before downstream
+  reads, four-argument bounded W seam, exact owner-stop idempotency and
+  propagation, frozen composition/mounted storage, and exact three-source
+  GREEN ceiling.
+- E-1245 P1 is corrected without changing RED accounting. The already-
+  failing factory import-policy title is the only causal four-argument RED.
+  The later two-wake-test compatibility candidate remains fully passing,
+  visibly supplies exact fixture handles, accepts only the exact historical
+  three-parameter or approved four-parameter W declaration, and rejects
+  optional/default/rest/overload/`arguments`/callback/spread/hidden-arity
+  forms. Factory static provenance plus typecheck makes the final exact
+  four-argument declaration mandatory.
+- E-1245 P2 is corrected. W reserves the exact triple synchronously in private
+  state before nested access or mounted await; concurrent duplicate
+  presentation rejects before downstream reads; mounted rejection before
+  capability issuance releases the reservation; and capability issuance
+  burns the resident binding before later local validation.
+- Main-session clean pre-amendment execution already reproduces focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout. Package/test
+  bytes are unchanged in the approved amendment.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode stops first only at
+  exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+- Exact candidate identity/tree/parent/scope, package/test freezes, 33-path
+  ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  E-1244/E-1245 ancestry, Task138-H and V4 ancestry, dependencies, diff
+  hygiene, strict Git integrity, and clean program state pass.
+- Advance exact corrected prepared-bootstrap amendment
+  `reviewing -> approved`. Authorize its exact history-preserving
+  approval-first/candidate-second merge into the program branch, fresh
+  integration-tree gates, append-only integration event, and forward
+  Task136 merge. Do not authorize tests or product source in this event.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is documentation approval, not integration, test RED
+  authority, passing compatibility-test authority, source GREEN, Task16
+  acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
