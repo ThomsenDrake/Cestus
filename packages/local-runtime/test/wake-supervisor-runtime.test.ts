@@ -20,12 +20,29 @@ import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable
 import { createResidentLoopFactoryComposition } from "../src/resident-loop-factory-composition.js";
 import * as wakeRuntimeApi from "../src/wake-supervisor-runtime.js";
 import {
-  bindResidentLoopCapabilitiesForFactory,
+  bindResidentLoopCapabilitiesForFactory as bindResidentLoopCapabilitiesForFactorySource,
   createWakeSupervisorRuntime,
   type WakeSupervisorRuntimeInput
 } from "../src/wake-supervisor-runtime.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
+
+type BindResidentLoopCapabilitiesForFactoryTransition = (
+  wakeRuntime: Parameters<
+    typeof bindResidentLoopCapabilitiesForFactorySource
+  >[0],
+  binding: Parameters<
+    typeof bindResidentLoopCapabilitiesForFactorySource
+  >[1],
+  domainExecution: Parameters<
+    typeof bindResidentLoopCapabilitiesForFactorySource
+  >[2],
+  runtimeHandle: LocalRuntimeHandle
+) => ReturnType<typeof bindResidentLoopCapabilitiesForFactorySource>;
+
+const bindResidentLoopCapabilitiesForFactory:
+  BindResidentLoopCapabilitiesForFactoryTransition =
+    bindResidentLoopCapabilitiesForFactorySource;
 
 const directories: string[] = [];
 const handles: LocalRuntimeHandle[] = [];
@@ -256,7 +273,8 @@ describe("wake supervisor runtime", () => {
     const issued = await bindResidentLoopCapabilitiesForFactory(
       mounted.composition.wakeRuntime,
       mounted.binding,
-      mounted.domainExecution
+      mounted.domainExecution,
+      mounted.handle
     );
 
     expect(Reflect.ownKeys(issued).map(String).sort()).toEqual([
@@ -273,7 +291,8 @@ describe("wake supervisor runtime", () => {
     await expect(bindResidentLoopCapabilitiesForFactory(
       mounted.composition.wakeRuntime,
       mounted.binding,
-      mounted.domainExecution
+      mounted.domainExecution,
+      mounted.handle
     )).rejects.toThrow(/unconsumed|authority|bound/i);
     expect(await mounted.handle.ledger.readAll()).toEqual(before);
   });
@@ -325,7 +344,14 @@ describe("wake supervisor runtime", () => {
         : local.domainExecution;
 
     await expect(
-      bindResidentLoopCapabilitiesForFactory(runtime, binding, domainExecution),
+      bindResidentLoopCapabilitiesForFactory(
+        runtime,
+        binding,
+        domainExecution,
+        mutation === "swapped-runtime"
+          ? foreign!.handle
+          : local.handle
+      ),
       mutation
     ).rejects.toThrow(/authority|binding|capability|dispatcher|runtime|mounted/i);
     expect(await local.handle.ledger.readAll(), mutation).toEqual(beforeLocal);
@@ -436,7 +462,8 @@ describe("wake supervisor runtime", () => {
                   attack.kind === "arbitrary-forged-issuer"
                     ? guardedReadback
                     : attack.input,
-                  Object.freeze({})
+                  Object.freeze({}),
+                  handle
                 );
               })
             });
@@ -447,7 +474,8 @@ describe("wake supervisor runtime", () => {
               await bindResidentLoopCapabilitiesForFactory(
                 composition.wakeRuntime,
                 undefined,
-                Object.freeze({})
+                Object.freeze({}),
+                handle
               );
             })
           });
@@ -499,7 +527,8 @@ describe("wake supervisor runtime", () => {
       bindResidentLoopCapabilitiesForFactory(
         directConstructor.runtime,
         directConstructorReadback,
-        Object.freeze({})
+        Object.freeze({}),
+        directConstructor.handle
       )
     ).rejects.toThrow(/authority|binding|unavailable/i);
     expect(proposedReadbackReads).toBe(0);
@@ -517,7 +546,8 @@ describe("wake supervisor runtime", () => {
         await bindResidentLoopCapabilitiesForFactory(
           directConstructor.runtime,
           completed?.binding,
-          completed?.domainExecution
+          completed?.domainExecution,
+          directConstructor.handle
         );
       })
     });
@@ -562,13 +592,15 @@ describe("wake supervisor runtime", () => {
       const issued = await bindResidentLoopCapabilitiesForFactory(
         completed.composition.wakeRuntime,
         completed.binding,
-        completed.domainExecution
+        completed.domainExecution,
+        completed.handle
       );
       expect(issued.currentnessToken).toBeDefined();
       await expect(bindResidentLoopCapabilitiesForFactory(
         completed.composition.wakeRuntime,
         completed.binding,
-        completed.domainExecution
+        completed.domainExecution,
+        completed.handle
       )).rejects.toThrow(/unconsumed|authority|bound/i);
     }
   });
@@ -582,7 +614,8 @@ describe("wake supervisor runtime", () => {
       bindResidentLoopCapabilitiesForFactory(
         preCore.composition.wakeRuntime,
         undefined,
-        undefined
+        undefined,
+        preCore.handle
       )
     ).rejects.toThrow(/Core authority/i);
 
@@ -1463,7 +1496,8 @@ async function issuedResidentFixture(suffix: string) {
   const capabilities = await bindResidentLoopCapabilitiesForFactory(
     mounted.composition.wakeRuntime,
     mounted.binding,
-    mounted.domainExecution
+    mounted.domainExecution,
+    mounted.handle
   );
   return Object.freeze({ ...mounted, capabilities });
 }
