@@ -50641,3 +50641,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. Product execution, `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1264 — Task16 canonical claim draft rejected; preflight-before-claim ordering authorized
+
+- Recorded at: 2026-07-29T20:33:47Z
+- Exact E-1263 authority is forward-merged into Task136 as
+  `9e73c31d4d469f144428e055894a452756c4963f`, tree
+  `65997218962a43ed6de481e66e24b5e6ddb91964`, with exact first parent
+  E-1262 authority merge `30648d552ca0bf6d9e79620634b32e8ff3017e37`
+  and exact second parent E-1263 program authority
+  `b389bdd2a2b1b68a75050705a2edf4c7dce099fd`.
+- The uncommitted canonical-attempt draft in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` is exact
+  working blob `5ec5ff33e825a8758de2e00db6117c658f55a0a4`.
+  It shares one valid
+  `attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`
+  identity across the claim, handoff, lifecycle, and posture, but seeds the
+  task/claim prefix before portable witness preflight. It is not a candidate.
+- Fresh focused execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is **4 failed / 4** and stops each fixture exactly at
+  `portable-mounted-handoff-authority-invalid` during
+  `preflightPortableMountedAgentHandoffBinding`. No product factory or
+  mounted resident binder is reached.
+- Exact source inspection proves this portable preflight intentionally accepts
+  only its freshly issued initial cursor with no canonical handoff material
+  and no dispatch prelude. An existing orchestration claim is a dispatch
+  prelude, so preflight correctly rejects it. After successful preflight, the
+  same cursor's later witness consumption revalidates an appended exact task/
+  claim prefix before composition bind. Provider readback then observes the
+  updated durable count, and W's mounted binder receives the required exact
+  claim.
+- Authorize only moving the existing exact claim-seed call in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` from
+  immediately after resident identity readiness to immediately after the
+  successful portable handoff preflight and before
+  `composition.bind`. Preserve the canonical local task/attempt/run/run-type
+  tuple and the exact three-event seed bytes.
+- The required lawful fixture order is:
+  resident identity ready; composition construct/start; mounted operation,
+  provider authority, and portable handoff issue; exact portable preflight;
+  task created; task queued; exact orchestration claim; composition bind;
+  provider posture and domain preparation. Add no second composition,
+  preflight, authority, claim, title, assertion, import, alias, product
+  expectation, or unrelated byte.
+- Freeze the exact bounded hash correction at
+  `ae54b1488c6770333567f2e9261cc3614d692eef`, every import-policy test,
+  every other test, and every product/source diagnostic recorded by E-1262.
+- Required clean committed-tree RED signature and all supporting gates remain
+  exact focused **9 = 3 passed + six failed**, producer **144/144**, card
+  **383 = 377 passed + six failed**, cross-card
+  **1,042 = 1,036 passed + six failed**, Task138 **355/355**, passing
+  typecheck/readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, scope, freezes,
+  ancestry, dependencies, path hash, diff hygiene, Git integrity, and clean
+  detached state.
+- After focused fixture execution confirms this order, commit only the exact
+  two behavior tests with subject
+  `test(task136): seed prepared claim and bind terminal hash`, then follow the
+  fresh review and history-preserving lifecycle already authorized by E-1262.
+  Changed bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is one-call fixture-order correction authority, not a
+  test candidate, source GREEN, Task16 acceptance, Task136 candidacy, record
+  29, publication, Wave 3 start, repository closure, production readiness,
+  or release. Product execution, `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
