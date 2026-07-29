@@ -49513,3 +49513,95 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   source, `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1249 — Task16 prepared-bootstrap two-factory-test RED admitted to fresh review
+
+- Recorded at: 2026-07-29T17:09:38Z
+- Exact immutable forward RED candidate is
+  `b85f29463dcdb9f3510345f66409a48284d73909`, tree
+  `00cb230202aeb709a59666f2782943e9dcf91e3f`, sole parent exact E-1248
+  authority merge `aaa2355eb1c090f972fb93eae2c59228b14af424`, with exact subject
+  `test(task136): require prepared factory bootstrap`.
+- Candidate scope is exactly
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` and
+  `packages/local-runtime/test/resident-loop-factory-ports-imports.test.ts`,
+  **1,052 insertions / 318 deletions**. Exact candidate blobs are
+  `7cb68b91f3acd31ad5895b3614b976780fb821d1` and
+  `c20de1ad4cf4cb8d848b24d353dfbed2fdb9afe8`. Their committed E-1248
+  starting blobs remain
+  `3a86c355bb1d6082cc64daa53af2995b6f42528d` and
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`; the rejected held E-1243
+  blobs remain historical evidence only.
+- The behavior fixture starts the sole legitimate Task14 composition,
+  issues provider and H authority, performs portable H preflight, binds once,
+  and retains only exact frozen
+  `{ runtimeHandle, wakeRuntime, authorityReadback, providerPosture,
+  domainExecution, nowMonotonicMs }`. The factory is required to construct
+  zero later compositions and to return only exact frozen
+  `{ metadata, loop, stop }`.
+- The existing positive title proves the exact prepared owner enters stopped
+  state, concurrent and repeated stop requests are idempotent, and one local
+  abstract owner-stop rejection is invoked exactly once and propagated by
+  exact identity. No composition or stop callback is caller-supplied.
+- The existing hostile title now covers copied, fabricated, proxied, swapped,
+  generic, stopped, exact stale-handle/runtime, concurrent, and consumed
+  runtime/readback/handle presentations; structural composition and caller
+  stop fields; pre-issuance retry; post-issuance burn; and the retained later
+  domain/dispatcher substitutions. Invalid exact-triple presentations prove
+  zero accessor and ledger calls and zero provider, H, gateway, approval,
+  dispatcher, runtime, filesystem, or effect delta.
+- The import-policy oracle retains mounted-wake ownership of direct
+  dispatcher/G imports and requires composition only as the exact unaliased
+  readback type. The factory input is one direct exported nongeneric,
+  noninherited exact six-property interface. Descriptor-safe normalization
+  is the sole raw-input use and precedes the first await; the exact direct
+  order is W with four positional identities, metadata, C, H from the
+  authenticated handle ledger, and R.
+- After R, the oracle permits only one local uninitialized stop-promise
+  variable, an optional direct local stop callable, and the final exact
+  frozen return. It requires one direct memoized
+  `prepared.wakeRuntime.stop()` receiver and forbids composition/preflight/
+  generic-wake value ownership, aliases, alternate receivers, optional or
+  spread calls, catches, indirect calls, barrels, loaders, and activation
+  surfaces.
+- Fresh clean committed-tree execution under `TMPDIR=/dev/shm`, one worker,
+  and the 120-second timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The six
+  failures remain only the three absent bounded-loop titles, two absent
+  factory API titles, and one absent factory import graph.
+- Fresh standalone typecheck and factory readiness pass. Mission and V4 each
+  pass **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  exact markers remain **29 / 20 / 29 / 15**. Repository mode exits one and
+  stops first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix, closure, record-29, repository, or release success marker.
+- Exact parent, subject, two-path scope, all other committed product and test
+  freezes, dependency pins, TypeScript **5.9.3**, Vitest **4.1.9**, exact
+  33-path ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  E-1244 through E-1248 ancestry, V4 prerequisites, diff hygiene, strict Git
+  integrity, and clean candidate execution state pass.
+- The paused product diagnostics remain unstaged and byte-exact only in the
+  Task136 worktree:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`. They are not candidate
+  evidence and remain unauthorized for product execution.
+- Assign a completely fresh independent read-only reviewer to exact candidate
+  `b85f29463dcdb9f3510345f66409a48284d73909`. Bind the exact tree, parent,
+  two blobs, scope, frozen diagnostics, E-1244 through E-1248 contract, full
+  cumulative test oracles, immutable RED signatures, source-phase
+  satisfiability, and complete gate packet. Changed candidate bytes invalidate
+  review.
+- Advance only this Task16 test-only RED `candidate -> reviewing`. Task16 and
+  Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is review admission, not RED approval or integration,
+  wake compatibility-test authority, source GREEN, Task16 acceptance,
+  Task136 candidacy, record 29, publication, Wave 3 start, repository
+  closure, production readiness, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
