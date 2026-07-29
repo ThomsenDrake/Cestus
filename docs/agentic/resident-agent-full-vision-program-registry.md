@@ -48367,3 +48367,69 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1233 — Forward Task16C reread-stage RED admitted to fresh review
+
+- Recorded at: 2026-07-29T02:24:40Z
+- Exact immutable forward RED candidate is
+  `ef80e9b03870938997dfef7af9fd2b0521425310`, tree
+  `04564f4b8ead352f8cac23c57691888c86b9b32b`, sole parent exact E-1232
+  authority merge `626b10eb86052150865f34fb3cb5e350b3e1fc86`, with exact subject
+  `test(task136): close Task16C reread-stage oracle`.
+- Candidate scope is exactly
+  `packages/agent/test/bounded-agent-loop.test.ts`, **200 insertions /
+  11 deletions**, from E-1232 starting blob
+  `28fa495dda474438e030a22c4ccd03baabfcdece` to exact candidate blob
+  `3d970e1653355b4ffb05e19e3ecec71d65fde8dd`. The corrected factory
+  import-policy test remains frozen at
+  `0b540e2c8e785035244a5022ebdec4377e33aa23`; every product source and
+  every other test remains frozen, and bounded source remains absent.
+- The existing approval-suspension title now uses an exact frozen stage
+  corpus `human-approved`, `claimed`, `completed`, `denied`, and `failed`.
+  Each local reference preflight executes before the intentionally absent
+  Task16C source boundary and proves request, initial requested material,
+  rejected fresh human-decision lookup, W revalidation, fresh exact-stage G
+  reread, and final W revalidation. It proves distinct reread identity,
+  exactly ten W revalidations, one material operation, only plan and
+  observation appends, exact ledger append count **3**, and zero remaining
+  effects before resetting its isolated harness.
+- The retained post-import source oracle runs all five stages against R and
+  requires immediate rejection only after the post-reread W boundary. It
+  forbids non-requested material use, execution, tool-step, suspension,
+  result, release, internal W append, and H read; requires exact plan plus
+  observation append traces and ledger append count **3**; and retains the
+  valid requested-stage suspension path at exact ledger append count **9**.
+  The stage fixtures match G's actual local readback/material model:
+  transient `human-approved` is unbranded, while claimed, completed, denied,
+  and pre-approval failed use exact canonical material shapes.
+- Fresh execution under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout is exact focused **9 = 3 passed + six failed**, producer controls
+  **144/144**, Task136 card **383 = 377 passed + six failed**, exact 37-file
+  cross-boundary **1,042 = 1,036 passed + six failed**, and Task138
+  **355/355**. All six failures remain only the absent Task16C bounded issuer,
+  factory, and import graph.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Clean-index repository mode stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  Canonical 33-path SHA-256 remains
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`;
+  exact scope/blobs/freezes, ancestry, TypeScript **5.9.3**, Vitest **4.1.9**,
+  diff hygiene, strict Git integrity, and clean candidate state pass.
+- Assign completely fresh independent read-only reviewer
+  `/root/task16c_e1233_red_review`. Bind exact candidate/tree/parent, inspect
+  the complete one-test diff and retained fixture/source context, reproduce
+  the full frozen gate packet, and independently prove all five preflights,
+  exact stage shapes/branding, requested positive preservation, immediate
+  post-W rejection, no masked later rejection, exact accounting/currentness,
+  and Task16C source-phase satisfiability. Changed bytes invalidate review.
+- Advance only this forward Task16C test-only RED `candidate -> reviewing`.
+  Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is review admission, not RED approval or integration,
+  resumed Task16C source authority, Task16 acceptance, Task136 candidacy,
+  strict record 29, publication, Wave 3 start, repository closure, or
+  release. Product source, `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
