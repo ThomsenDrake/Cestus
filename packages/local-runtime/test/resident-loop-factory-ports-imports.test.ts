@@ -390,42 +390,47 @@ function expectExactFactoryModuleGraph(
     ).toEqual([...expected.namedNames].sort());
   }
 
-  const topLevelRuntimeInitializers: string[] = [];
+  expect(
+    forbiddenTopLevelRuntimeInitializers(source),
+    "factory module permits only direct internal const regular-expression runtime initializers"
+  ).toEqual([]);
+  expect(violations, "factory module exact import/export posture").toEqual([]);
+  expectExactFactoryRuntimeValueExports(source, checker);
+}
+
+function forbiddenTopLevelRuntimeInitializers(
+  source: ts.SourceFile
+): readonly string[] {
+  const forbidden: string[] = [];
   for (const statement of source.statements) {
     if (
       ts.isImportDeclaration(statement) ||
       ts.isImportEqualsDeclaration(statement) ||
       ts.isFunctionDeclaration(statement) ||
       ts.isInterfaceDeclaration(statement) ||
-      ts.isTypeAliasDeclaration(statement) ||
-      ts.isEnumDeclaration(statement) ||
-      ts.isClassDeclaration(statement) ||
-      ts.isModuleDeclaration(statement)
+      ts.isTypeAliasDeclaration(statement)
     ) {
       continue;
     }
-    visitRuntimeInitializer(statement);
-  }
-  expect(
-    topLevelRuntimeInitializers,
-    "factory module must not execute top-level call/new/await/tagged initialization"
-  ).toEqual([]);
-  expect(violations, "factory module exact import/export posture").toEqual([]);
-  expectExactFactoryRuntimeValueExports(source, checker);
-
-  function visitRuntimeInitializer(node: ts.Node): void {
-    if (node !== source && ts.isFunctionLike(node)) return;
     if (
-      ts.isCallExpression(node) ||
-      ts.isNewExpression(node) ||
-      ts.isAwaitExpression(node) ||
-      ts.isTaggedTemplateExpression(node)
+      ts.isVariableStatement(statement) &&
+      statement.modifiers === undefined &&
+      (statement.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+      statement.declarationList.declarations.length === 1
     ) {
-      topLevelRuntimeInitializers.push(node.getText(source));
-      return;
+      const declaration = statement.declarationList.declarations[0]!;
+      if (
+        ts.isIdentifier(declaration.name) &&
+        declaration.exclamationToken === undefined &&
+        declaration.type === undefined &&
+        declaration.initializer?.kind === ts.SyntaxKind.RegularExpressionLiteral
+      ) {
+        continue;
+      }
     }
-    node.forEachChild(visitRuntimeInitializer);
+    forbidden.push(statement.getText(source));
   }
+  return forbidden;
 }
 
 function expectExactFactoryRuntimeValueExports(
@@ -521,6 +526,168 @@ function expectFactoryOracleControls(): void {
       "co-declarator control"
     )
   ).toThrow(/direct-statement|non-direct ancestry/i);
+
+  const globalFreeze = factoryReturnControl([
+    "function factory() {",
+    "  return Object.freeze({ retained: true });",
+    "}"
+  ].join("\n"));
+  expect(
+    returnedObjectLiteral(globalFreeze.returned, globalFreeze.checker),
+    "genuine TypeScript global Object.freeze control"
+  ).toBeDefined();
+
+  const shadowedFreeze = factoryReturnControl([
+    "declare function abstractLocalEffect(): void;",
+    "function factory() {",
+    "  const Object = {",
+    "    freeze<T>(value: T): T {",
+    "      abstractLocalEffect();",
+    "      return value;",
+    "    }",
+    "  };",
+    "  return Object.freeze({ retained: true });",
+    "}"
+  ].join("\n"));
+  expect(
+    returnedObjectLiteral(shadowedFreeze.returned, shadowedFreeze.checker),
+    "locally shadowed Object.freeze counterexample"
+  ).toBeUndefined();
+
+  const safeTopLevel = ts.createSourceFile(
+    "safe-top-level-control.ts",
+    [
+      "const retainedPattern = /^retained$/gi;",
+      "interface DeferredShape { readonly retained: boolean; }",
+      "type DeferredValue = string;",
+      "export function later() {",
+      "  const escaped = delete abstractLocal.target;",
+      "  return { ...abstractLocal, escaped };",
+      "}"
+    ].join("\n"),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  expect(
+    forbiddenTopLevelRuntimeInitializers(safeTopLevel),
+    "exact regex constant and deferred callable body control"
+  ).toEqual([]);
+
+  for (const [label, sourceText] of [
+    [
+      "top-level assignment initializer",
+      "const escaped = (abstractLocal.target = 1);"
+    ],
+    [
+      "top-level update initializer",
+      "const escaped = abstractLocal.target++;"
+    ],
+    [
+      "top-level delete initializer",
+      "const escaped = delete abstractLocal.target;"
+    ],
+    [
+      "top-level getter-capable property initializer",
+      "const escaped = abstractLocal.target;"
+    ],
+    [
+      "top-level spread initializer",
+      "const escaped = { ...abstractLocal };"
+    ],
+    [
+      "top-level coercion initializer",
+      "const escaped = `${abstractLocal}`;"
+    ],
+    [
+      "top-level object initializer",
+      "const escaped = { retained: true };"
+    ],
+    [
+      "top-level array initializer",
+      "const escaped = [abstractLocal];"
+    ],
+    [
+      "top-level call initializer",
+      "const escaped = abstractLocal();"
+    ],
+    [
+      "top-level construction initializer",
+      "const escaped = new AbstractLocal();"
+    ],
+    [
+      "top-level await initializer",
+      "const escaped = await abstractLocal;"
+    ],
+    [
+      "top-level tagged initializer",
+      "const escaped = abstractLocalTag`retained`;"
+    ]
+  ] as const) {
+    const control = ts.createSourceFile(
+      `${label.replaceAll(" ", "-")}-control.ts`,
+      sourceText,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS
+    );
+    expect(forbiddenTopLevelRuntimeInitializers(control), label).toHaveLength(1);
+  }
+}
+
+function factoryReturnControl(sourceText: string): {
+  readonly returned: ts.Expression | undefined;
+  readonly checker: ts.TypeChecker;
+} {
+  const fileName = "/factory-return-control.ts";
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    target: ts.ScriptTarget.Latest
+  };
+  const source = ts.createSourceFile(
+    fileName,
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const defaultHost = ts.createCompilerHost(options, true);
+  const host: ts.CompilerHost = {
+    ...defaultHost,
+    fileExists: (path) => path === fileName || defaultHost.fileExists(path),
+    getSourceFile: (path, languageVersion, onError, shouldCreateNewSourceFile) =>
+      path === fileName
+        ? source
+        : defaultHost.getSourceFile(
+          path,
+          languageVersion,
+          onError,
+          shouldCreateNewSourceFile
+        ),
+    readFile: (path) => path === fileName
+      ? sourceText
+      : defaultHost.readFile(path)
+  };
+  const program = ts.createProgram({
+    rootNames: [fileName],
+    options,
+    host
+  });
+  const programSource = program.getSourceFile(fileName);
+  if (programSource === undefined) {
+    throw new Error("factory return control source is unavailable");
+  }
+  const factory = programSource.statements.find(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "factory" &&
+      statement.body !== undefined
+  );
+  const returned = factory?.body?.statements.find(ts.isReturnStatement);
+  return {
+    returned: returned?.expression,
+    checker: program.getTypeChecker()
+  };
 }
 
 function factorySurfaceControl(sourceText: string): {
@@ -1110,7 +1277,7 @@ function expectExactFactoryCallProvenance(
   const issuerBinding = assignedIdentifier(calls.issuerCall);
   const returns = factoryBody.statements.filter(ts.isReturnStatement);
   expect(returns, "one straight-line bounded factory return").toHaveLength(1);
-  const returned = returnedObjectLiteral(returns[0]?.expression);
+  const returned = returnedObjectLiteral(returns[0]?.expression, checker);
   expect(returned, "bounded factory exact return object").toBeDefined();
   if (returned === undefined) throw new Error("bounded factory return object is unavailable");
   const returnedProperties = new Map<string, ts.Expression>();
@@ -1575,7 +1742,8 @@ function expectStraightLineFactoryCall(
 }
 
 function returnedObjectLiteral(
-  expression: ts.Expression | undefined
+  expression: ts.Expression | undefined,
+  checker: ts.TypeChecker
 ): ts.ObjectLiteralExpression | undefined {
   if (expression === undefined) return undefined;
   const unwrapped = unwrapExpression(expression);
@@ -1585,12 +1753,34 @@ function returnedObjectLiteral(
     ts.isIdentifier(unwrapped.expression.expression) &&
     unwrapped.expression.expression.text === "Object" &&
     unwrapped.expression.name.text === "freeze" &&
+    isTypeScriptLibrarySymbol(unwrapped.expression.expression, checker) &&
+    isTypeScriptLibrarySymbol(unwrapped.expression.name, checker) &&
     unwrapped.arguments.length === 1
   ) {
     const argument = unwrapExpression(unwrapped.arguments[0]!);
     return ts.isObjectLiteralExpression(argument) ? argument : undefined;
   }
   return undefined;
+}
+
+function isTypeScriptLibrarySymbol(
+  location: ts.Node,
+  checker: ts.TypeChecker
+): boolean {
+  const symbol = checker.getSymbolAtLocation(location);
+  if (symbol === undefined) return false;
+  const defaultLibraryDirectory = resolve(
+    ts.getDefaultLibFilePath({}),
+    ".."
+  );
+  const declarations = resolveAliasSymbol(symbol, checker).declarations ?? [];
+  return declarations.length > 0 && declarations.every((declaration) => {
+    const source = declaration.getSourceFile();
+    return source.isDeclarationFile &&
+      source.hasNoDefaultLib &&
+      resolve(source.fileName, "..") === defaultLibraryDirectory &&
+      /(?:^|[\\/])lib(?:\.[^\\/]+)+\.d\.ts$/.test(source.fileName);
+  });
 }
 
 function isExactMemoizedWakeRuntimeStop(
