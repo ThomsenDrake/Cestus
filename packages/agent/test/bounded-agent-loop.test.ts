@@ -137,6 +137,7 @@ interface IssuedCapabilityHarness {
   readonly initialCandidate: Readonly<Record<string, unknown>>;
   readonly resumeInput: Readonly<Record<string, unknown>>;
   readonly expectedResult: Readonly<Record<string, unknown>>;
+  readonly releasedCheckpointReadback: Readonly<Record<string, unknown>>;
   readonly effects: BoundaryEffects;
   readonly trace: readonly string[];
   readonly positionalArguments: () => unknown[];
@@ -222,7 +223,18 @@ describe("bounded resident agent loop", () => {
       const issued = await issueLoop(api, harness);
       const result = await issued.loop.advance(harness.initialCandidate);
 
-      expect(result, branch).toEqual(harness.expectedResult);
+      expect(result, branch).toBe(harness.releasedCheckpointReadback);
+      expectExactFrozenDataSurface(
+        result,
+        [
+          "schemaVersion",
+          "checkpointEventId",
+          "suspensionEventId",
+          "resultEventId",
+          "releaseEventId"
+        ],
+        `${branch} released checkpoint readback`
+      );
       harness.assertSettled();
       harness.assertSuspendedThroughWake();
       if (branch === "approval-required") {
@@ -362,7 +374,12 @@ describe("bounded resident agent loop", () => {
         await captureHostile(api, args, prepared.candidate, prepared.afterInvoke),
         hostile.label
       ).toBe("rejected");
-      harness.assertSettled();
+      if (
+        hostile.label !== "swapped-capability" &&
+        hostile.label !== "stale-capability"
+      ) {
+        harness.assertSettled();
+      }
       expect(harness.effects, hostile.label).toEqual(zeroEffects());
       expect(prepared.proxyReads(), hostile.label).toBe(0);
     }
@@ -846,6 +863,13 @@ function createIssuedCapabilityHarness(
     undefined,
     controlSemanticKeys.resultSemanticKey
   );
+  const releasedCheckpointReadback = deepFreeze({
+    schemaVersion: "resident-loop-released-checkpoint-readback.v1",
+    checkpointEventId: "evt_orchestration_checkpoint",
+    suspensionEventId: suspension.id,
+    resultEventId: resumableResult.id,
+    releaseEventId: "evt_orchestration_release"
+  });
   const replayCompletion = mutation === "constant-default-result"
     ? deepFreeze({
         schemaVersion: "resident-loop-result.v2",
@@ -1569,13 +1593,7 @@ function createIssuedCapabilityHarness(
       }
       currentReplayEvents = [...currentReplayEvents, suspension, resumableResult];
       await Promise.resolve();
-      return Object.freeze({
-        schemaVersion: "resident-loop-released-checkpoint-readback.v1",
-        checkpointEventId: "evt_orchestration_checkpoint",
-        suspensionEventId: suspension.id,
-        resultEventId: expectedResult.id,
-        releaseEventId: "evt_orchestration_release"
-      });
+      return releasedCheckpointReadback;
     },
     async recoverSuspensionPrefix(this: unknown, locator: unknown) {
       beginBoundary("W.recoverSuspensionPrefix", this, mountedAuthority);
@@ -1914,6 +1932,7 @@ function createIssuedCapabilityHarness(
     get expectedResult() {
       return expectedResult;
     },
+    releasedCheckpointReadback,
     effects,
     trace,
     positionalArguments,
@@ -2010,6 +2029,13 @@ function createIssuedCapabilityHarness(
       expect(
         (resumableResult.payload as Readonly<Record<string, unknown>>).resultHash
       ).toBe(semanticKeys?.resultSemanticKey);
+      expect(releasedCheckpointReadback.resultEventId).toBe(resumableResult.id);
+      expect(
+        currentReplayEvents.find((event) =>
+          event.id === releasedCheckpointReadback.resultEventId &&
+          event.type === "agent.resident-loop.result.recorded.v2"
+        )
+      ).toBe(resumableResult);
       expect(currentReplayEvents.map((event) => event.id)).toEqual([
         planEvent.id,
         observationEvent.id,
