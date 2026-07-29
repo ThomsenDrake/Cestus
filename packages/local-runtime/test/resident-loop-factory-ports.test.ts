@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { types } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+import * as wakeSupervisorSurface from "../../agent/src/wake-supervisor.js";
 import { createLegacyImportRuntime, type LegacyImportRuntime } from "../../ingestion/src/legacy-runtime.js";
 import { mountedWorkspaceCapabilities } from "../../ingestion/src/mount-contract.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
@@ -24,13 +25,23 @@ import {
   inspectMountedProviderAuthority,
   issueMountedProviderAuthority
 } from "../src/mounted-provider-authority.js";
-import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
+import {
+  createPortableMountedAgentArtifactStoreProducer,
+  preflightPortableMountedAgentHandoffBinding
+} from "../src/portable-mounted-agent-artifact-stores.js";
 import * as residentLoopFactoryCompositionSurface from "../src/resident-loop-factory-composition.js";
-import type { ResidentLoopFactoryComposition } from "../src/resident-loop-factory-composition.js";
+import type {
+  ResidentLoopFactoryAuthorityReadback,
+  ResidentLoopFactoryComposition
+} from "../src/resident-loop-factory-composition.js";
 import { createResidentLoopProviderPosture } from "../src/resident-loop-provider-posture.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
 import type { ResidentLoopFactoryPorts } from "../src/resident-loop-factory-ports.js";
+import {
+  createWakeSupervisorRuntime,
+  type WakeSupervisorRuntime
+} from "../src/wake-supervisor-runtime.js";
 
 type FactoryPortsApi = {
   readonly createResidentLoopFactoryPorts: (input: unknown) => ResidentLoopFactoryPorts;
@@ -41,6 +52,7 @@ type Hash = `sha256:${string}`;
 const directories: string[] = [];
 const handles: LocalRuntimeHandle[] = [];
 const compositions: ResidentLoopFactoryComposition[] = [];
+const genericWakeRuntimes: WakeSupervisorRuntime[] = [];
 const policy = Object.freeze({
   policyVersion: "policy_factory_ports_v1",
   policyDigest: hash("a"),
@@ -48,6 +60,9 @@ const policy = Object.freeze({
 });
 
 afterEach(async () => {
+  for (const runtime of genericWakeRuntimes.splice(0).reverse()) {
+    await runtime.stop().catch(() => undefined);
+  }
   for (const composition of compositions.splice(0).reverse()) {
     await composition.stop().catch(() => undefined);
   }
@@ -199,12 +214,25 @@ describe("resident loop factory ports", () => {
 
   it("runs createResidentBoundedAgentLoopFactory against the real mounted fixture", async () => {
     const fixture = await mountedFactoryFixture("record29-real-mounted");
+    const exactStopFailure = new Error("abstract exact wake owner stop failure");
+    const stopFailureFixture = await mountedFactoryFixture(
+      "record29-stop-failure",
+      { exactStopFailure }
+    );
     await expectAlternateActivationPathsRemainInert(fixture);
-    const stopProbe = observeFutureFactoryCompositionStop();
+    const constructionProbe = observeFutureFactoryCompositionConstruction();
     try {
       const factory = await boundedFactory();
       const before = await domainBoundarySnapshot(fixture);
 
+      assertExactFrozenOwnDataSurface(fixture.factoryInput, [
+        "authorityReadback",
+        "domainExecution",
+        "nowMonotonicMs",
+        "providerPosture",
+        "runtimeHandle",
+        "wakeRuntime"
+      ]);
       const issued = await factory(fixture.factoryInput);
 
       assertExactFrozenOwnDataSurface(issued, ["loop", "metadata", "stop"]);
@@ -222,99 +250,290 @@ describe("resident loop factory ports", () => {
         expectedFactoryMetadata(fixture.providerPosture)
       );
       expect(typeof issued.stop).toBe("function");
-      expect(stopProbe.creations).toHaveLength(1);
-      expect(stopProbe.startCallCount()).toBe(1);
-      expect(stopProbe.bindInputs).toHaveLength(1);
-      assertExactFrozenOwnDataSurface(stopProbe.bindInputs[0], [
-        "handoffAuthorityWitness",
-        "providerAuthority"
-      ]);
-      expect(Reflect.get(stopProbe.bindInputs[0]!, "providerAuthority"))
-        .toBe(fixture.providerAuthority);
-      expect(Reflect.get(stopProbe.bindInputs[0]!, "handoffAuthorityWitness"))
-        .toBe(fixture.handoff.binding.authorityWitness);
-      expect(stopProbe.stopCallCount()).toBe(0);
+      expect(fixture.preparationCalls).toEqual({
+        construction: 1,
+        start: 1,
+        preflight: 1,
+        bind: 1
+      });
+      expect(constructionProbe.callCount()).toBe(0);
       assertNoAuthorityEscape(issued, fixture.authorityValues);
       expect(await domainBoundarySnapshot(fixture)).toEqual(before);
 
-      const retainedComposition = stopProbe.creations[0];
-      if (retainedComposition === undefined) {
-        throw new Error("bounded factory retained no safe composition");
-      }
+      await expect(Promise.all([issued.stop(), issued.stop()])).resolves.toEqual([
+        undefined,
+        undefined
+      ]);
+      const afterConcurrentStop = await domainBoundarySnapshot(fixture);
       await expect(issued.stop()).resolves.toBeUndefined();
-      expect(stopProbe.stopCallCount()).toBe(1);
-      await expect(retainedComposition.start()).rejects.toThrow(/factory composition/i);
-      expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+      expect(await domainBoundarySnapshot(fixture)).toEqual(afterConcurrentStop);
+      await expect(fixture.composition.wakeRuntime.supervision.resume({
+        schemaVersion: "resident-wake-command.v1",
+        commandId: "resume_factory_ports_after_stop",
+        sourceEventIds: [],
+        requestedAt: "2026-07-19T00:00:00.000Z",
+        causation: {
+          causationId: "evt_resume_factory_ports_after_stop",
+          correlationId: "corr_resume_factory_ports_after_stop"
+        }
+      })).resolves.toMatchObject({
+        outcome: "blocked",
+        blocked: { category: "supervisor-stopped" }
+      });
+      expect(constructionProbe.callCount()).toBe(0);
 
-      await expect(issued.stop()).resolves.toBeUndefined();
-      expect(stopProbe.stopCallCount()).toBe(2);
-      await expect(retainedComposition.start()).rejects.toThrow(/factory composition/i);
-      expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+      const failureProduct = await factory(stopFailureFixture.factoryInput);
+      const failedStops = await Promise.allSettled([
+        failureProduct.stop(),
+        failureProduct.stop()
+      ]);
+      expect(failedStops.map((settled) => settled.status)).toEqual([
+        "rejected",
+        "rejected"
+      ]);
+      const firstFailure = failedStops[0];
+      const secondFailure = failedStops[1];
+      expect(firstFailure?.status).toBe("rejected");
+      expect(secondFailure?.status).toBe("rejected");
+      if (firstFailure?.status !== "rejected" || secondFailure?.status !== "rejected") {
+        throw new Error("exact wake owner stop failure was not propagated");
+      }
+      expect(firstFailure.reason).toBe(exactStopFailure);
+      expect(secondFailure.reason).toBe(firstFailure.reason);
+      await expect(failureProduct.stop()).rejects.toBe(firstFailure.reason);
+      expect(stopFailureFixture.exactOwnerStopCallCount()).toBe(1);
+      expect(constructionProbe.callCount()).toBe(0);
     } finally {
-      stopProbe.restore();
+      constructionProbe.restore();
     }
   });
 
   it("rejects fabricated swapped stale and substituted dispatcher capabilities", async () => {
     const factory = await boundedFactory();
-    let proxyReads = 0;
+    const owner = await mountedFactoryFixture("record29-owner");
+    const foreign = await mountedFactoryFixture("record29-foreign");
+    const stopped = await mountedFactoryFixture("record29-stopped");
+    const staleRuntime = await mountedFactoryFixture("record29-stale-runtime");
+    const retryable = await mountedFactoryFixture("record29-retryable");
+    const burned = await mountedFactoryFixture("record29-burned");
+    const staleDomain = await mountedFactoryFixture("record29-stale-domain");
+    const single = await mountedFactoryFixture("record29-single");
+    const concurrent = await mountedFactoryFixture("record29-concurrent");
+    const substituted = await mountedFactoryFixture("record29-substituted");
+    const replacement = await mountedFactoryFixture("record29-replacement");
+    await stopped.composition.stop();
 
-    const fabricated = await mountedFactoryFixture("record29-fabricated");
-    await expectFactoryRejectionWithoutDomainEffects(
-      [fabricated],
-      factory,
-      frozenFactoryInput(fabricated, Object.freeze({}))
-    );
+    const genericRuntime = createWakeSupervisorRuntime({
+      runtimeHandle: foreign.handle,
+      actor: foreign.actor,
+      supervisorEpoch: "epoch_factory_ports_generic",
+      policy,
+      now: foreign.now,
+      createSafeId: (kind) => `${kind}_factory_ports_generic`
+    });
+    genericWakeRuntimes.push(genericRuntime);
 
-    const proxied = await mountedFactoryFixture("record29-proxied");
-    const capabilityProxy = new Proxy(proxied.domainExecution, {
+    let runtimeProxyReads = 0;
+    let readbackProxyReads = 0;
+    let handleProxyReads = 0;
+    let topLevelAccessorReads = 0;
+    let structuralCompositionCalls = 0;
+    let callerStopCalls = 0;
+    const runtimeProxy = new Proxy(owner.composition.wakeRuntime, {
       get(target, property, receiver) {
-        proxyReads += 1;
+        runtimeProxyReads += 1;
         return Reflect.get(target, property, receiver);
       }
     });
-    await expectFactoryRejectionWithoutDomainEffects(
-      [proxied],
+    const readbackProxy = new Proxy(owner.authorityReadback, {
+      get(target, property, receiver) {
+        readbackProxyReads += 1;
+        return Reflect.get(target, property, receiver);
+      }
+    });
+    const handleProxy = new Proxy(owner.handle, {
+      get(target, property, receiver) {
+        handleProxyReads += 1;
+        return Reflect.get(target, property, receiver);
+      }
+    });
+    const copiedRuntime = Object.freeze({
+      supervision: owner.composition.wakeRuntime.supervision,
+      stop: owner.composition.wakeRuntime.stop
+    });
+    const copiedReadback = Object.freeze({ ...owner.authorityReadback });
+    const copiedHandle = Object.freeze({ ...owner.handle });
+
+    for (const input of [
+      preparedFactoryInput(owner, { wakeRuntime: copiedRuntime }),
+      preparedFactoryInput(owner, { wakeRuntime: Object.freeze({}) }),
+      preparedFactoryInput(owner, { wakeRuntime: runtimeProxy }),
+      preparedFactoryInput(owner, { wakeRuntime: foreign.composition.wakeRuntime }),
+      preparedFactoryInput(owner, { wakeRuntime: genericRuntime }),
+      preparedFactoryInput(owner, { authorityReadback: copiedReadback }),
+      preparedFactoryInput(owner, { authorityReadback: Object.freeze({}) }),
+      preparedFactoryInput(owner, { authorityReadback: readbackProxy }),
+      preparedFactoryInput(owner, { authorityReadback: foreign.authorityReadback }),
+      preparedFactoryInput(owner, { runtimeHandle: copiedHandle }),
+      preparedFactoryInput(owner, { runtimeHandle: Object.freeze({}) }),
+      preparedFactoryInput(owner, { runtimeHandle: handleProxy }),
+      preparedFactoryInput(owner, { runtimeHandle: foreign.handle })
+    ]) {
+      await expectFactoryRejectionBeforeReads(
+        [owner, foreign],
+        factory,
+        input
+      );
+    }
+    await expectFactoryRejectionBeforeReads(
+      [stopped],
       factory,
-      frozenFactoryInput(proxied, capabilityProxy)
+      stopped.factoryInput
     );
 
-    const swapped = await mountedFactoryFixture("record29-swapped-owner");
-    const foreign = await mountedFactoryFixture("record29-swapped-foreign");
-    await expectFactoryRejectionWithoutDomainEffects(
-      [swapped, foreign],
-      factory,
-      frozenFactoryInput(swapped, foreign.domainExecution)
+    const staleRuntimeBefore = await domainBoundarySnapshot(staleRuntime);
+    const staleRuntimeCallsBefore = { ...staleRuntime.runtimeCalls };
+    const staleRuntimeProbe = installLedgerActivityProbe(staleRuntime);
+    staleRuntime.handle.close();
+    try {
+      await expect(factory(staleRuntime.factoryInput)).rejects.toThrow(
+        /capability|dispatcher|factory|resident|authority|handoff/i
+      );
+      expect(staleRuntimeProbe.snapshot()).toEqual({
+        append: 0,
+        readAll: 0,
+        readStream: 0
+      });
+    } finally {
+      staleRuntimeProbe.restore();
+    }
+    expect(staleRuntime.runtimeCalls).toEqual(staleRuntimeCallsBefore);
+    expect(snapshotPortableNonLedgerFileSystem(staleRuntime.handle)).toEqual(
+      staleRuntimeBefore.portableNonLedgerFileSystem
     );
 
-    const stale = await mountedFactoryFixture("record29-stale");
+    const accessorInput = Object.freeze(Object.create(Object.prototype, {
+      runtimeHandle: {
+        enumerable: true,
+        get() {
+          topLevelAccessorReads += 1;
+          return owner.handle;
+        }
+      },
+      wakeRuntime: { enumerable: true, value: owner.composition.wakeRuntime },
+      authorityReadback: { enumerable: true, value: owner.authorityReadback },
+      providerPosture: { enumerable: true, value: owner.providerPosture },
+      domainExecution: { enumerable: true, value: owner.domainExecution },
+      nowMonotonicMs: { enumerable: true, value: owner.nowMonotonicMs }
+    }));
+    await expectFactoryRejectionBeforeReads([owner], factory, accessorInput);
+    expect(topLevelAccessorReads).toBe(0);
+
+    await expectFactoryRejectionBeforeReads(
+      [owner],
+      factory,
+      Object.freeze({
+        ...owner.factoryInput,
+        composition: Object.freeze({
+          start() {
+            structuralCompositionCalls += 1;
+          }
+        })
+      })
+    );
+    await expectFactoryRejectionBeforeReads(
+      [owner],
+      factory,
+      Object.freeze({
+        ...owner.factoryInput,
+        stop() {
+          callerStopCalls += 1;
+        }
+      })
+    );
+    expect(structuralCompositionCalls).toBe(0);
+    expect(callerStopCalls).toBe(0);
+    expect(runtimeProxyReads).toBe(0);
+    expect(readbackProxyReads).toBe(0);
+    expect(handleProxyReads).toBe(0);
+
+    await expectFactoryRejectionWithoutDomainEffects(
+      [retryable],
+      factory,
+      preparedFactoryInput(retryable, { domainExecution: Object.freeze({}) })
+    );
+    const retryProduct = await factory(retryable.factoryInput);
+    await retryProduct.stop();
+
+    const invalidPosture = Object.freeze({
+      ...burned.providerPosture,
+      run: Object.freeze({
+        ...burned.providerPosture.run,
+        runId: "run_factory_ports_other"
+      })
+    });
+    await expectFactoryRejectionWithoutDomainEffects(
+      [burned],
+      factory,
+      preparedFactoryInput(burned, { providerPosture: invalidPosture })
+    );
+    await expectFactoryRejectionBeforeReads(
+      [burned],
+      factory,
+      burned.factoryInput
+    );
+
     const stalePort = dispatcherDefault.bindPackageOwnedResidentDomainExecutionPort(Object.freeze({
-      capability: stale.domainExecution,
-      mountedLedger: stale.handle.ledger,
-      workspaceId: stale.providerPosture.workspace.workspaceId,
+      capability: staleDomain.domainExecution,
+      mountedLedger: staleDomain.handle.ledger,
+      workspaceId: staleDomain.providerPosture.workspace.workspaceId,
       residentAgentId: "agent_default",
-      taskId: stale.providerPosture.run.taskId
+      taskId: staleDomain.providerPosture.run.taskId
     }));
     expect(stalePort).toBeTypeOf("object");
     expect(Object.isFrozen(stalePort)).toBe(true);
-    await expectFactoryRejectionWithoutDomainEffects([stale], factory, stale.factoryInput);
+    await expectFactoryRejectionWithoutDomainEffects(
+      [staleDomain],
+      factory,
+      staleDomain.factoryInput
+    );
 
-    const reused = await mountedFactoryFixture("record29-reused");
-    const firstIssued = await factory(reused.factoryInput);
-    await firstIssued.stop();
-    await expectFactoryRejectionWithoutDomainEffects([reused], factory, reused.factoryInput);
+    const singleActivity = await captureFactoryLedgerActivity(single, async () => {
+      const product = await factory(single.factoryInput);
+      await product.stop();
+    });
+    const concurrentActivity = await captureFactoryLedgerActivity(concurrent, async () => {
+      const settled = await Promise.allSettled([
+        factory(concurrent.factoryInput),
+        factory(concurrent.factoryInput)
+      ]);
+      expect(settled.map((result) => result.status).sort()).toEqual([
+        "fulfilled",
+        "rejected"
+      ]);
+      const fulfilled = settled.find(
+        (result): result is PromiseFulfilledResult<FactoryProduct> =>
+          result.status === "fulfilled"
+      );
+      expect(fulfilled).toBeDefined();
+      if (fulfilled === undefined) throw new Error("concurrent factory issued no product");
+      await fulfilled.value.stop();
+    });
+    expect(concurrentActivity).toEqual(singleActivity);
+    await expectFactoryRejectionBeforeReads(
+      [concurrent],
+      factory,
+      concurrent.factoryInput
+    );
 
-    const substituted = await mountedFactoryFixture("record29-substituted-owner");
-    const replacement = await mountedFactoryFixture("record29-substituted-foreign");
-    const mutableInput = { ...substituted.factoryInput };
     const substitutionFixtures = [substituted, replacement] as const;
-    const beforeSubstitution = await domainBoundarySnapshots(substitutionFixtures);
-    const pending = factory(mutableInput);
-    mutableInput.domainExecution = replacement.domainExecution;
-    await expect(pending).rejects.toThrow(/capability|dispatcher|factory|resident|authority|handoff/i);
-    expect(await domainBoundarySnapshots(substitutionFixtures)).toEqual(beforeSubstitution);
-
-    expect(proxyReads).toBe(0);
+    await expectFactoryRejectionWithoutDomainEffects(
+      substitutionFixtures,
+      factory,
+      preparedFactoryInput(substituted, {
+        domainExecution: replacement.domainExecution
+      })
+    );
   });
 });
 
@@ -356,28 +575,32 @@ type MountedFactoryFixture = {
   };
   readonly now: () => string;
   readonly composition: ResidentLoopFactoryComposition;
+  readonly authorityReadback: ResidentLoopFactoryAuthorityReadback;
   readonly providerAuthority: ReturnType<typeof issueMountedProviderAuthority>;
   readonly handoff: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>;
   readonly providerPosture: ProviderPosture;
   readonly domainExecution: object;
+  readonly nowMonotonicMs: () => number;
   readonly factoryInput: Readonly<Record<string, unknown>>;
+  readonly exactOwnerStopCallCount: () => number;
+  readonly preparationCalls: Readonly<{
+    readonly construction: 1;
+    readonly start: 1;
+    readonly preflight: 1;
+    readonly bind: 1;
+  }>;
   readonly runtimeCalls: RuntimeBoundaryCalls;
   readonly authorityValues: readonly unknown[];
 };
 
 async function mountedPortsFixture(suffix: string) {
-  const fixture = await mountedFactoryFixture(suffix);
-  const authorityReadback = await fixture.composition.bind(Object.freeze({
-    providerAuthority: fixture.providerAuthority,
-    handoffAuthorityWitness: fixture.handoff.binding.authorityWitness
-  }));
-  return Object.freeze({
-    ...fixture,
-    authorityReadback
-  });
+  return await mountedFactoryFixture(suffix);
 }
 
-async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixture> {
+async function mountedFactoryFixture(
+  suffix: string,
+  options: Readonly<{ exactStopFailure?: Error }> = {}
+): Promise<MountedFactoryFixture> {
   const root = mkdtempSync(join(tmpdir(), "cestus-factory-ports-"));
   directories.push(root);
   const workspaceId = `ws_factory_ports_${suffix}`;
@@ -404,6 +627,24 @@ async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixt
   const supervisorEpoch = `epoch_factory_ports_${suffix}`;
   const now = () => "2026-07-19T00:00:00.000Z";
   const createSafeId = (kind: "lease" | "diagnostic" | "reconciliation") => `${kind}_factory_ports_${suffix}`;
+  const createWakeSupervisor = wakeSupervisorSurface.createWakeSupervisor;
+  let exactOwnerStopCalls = 0;
+  const supervisorSpy = options.exactStopFailure === undefined
+    ? undefined
+    : vi.spyOn(
+      wakeSupervisorSurface,
+      "createWakeSupervisor"
+    ).mockImplementation((input) => {
+      const created = createWakeSupervisor(input);
+      return Object.freeze({
+        ...created,
+        async stop() {
+          exactOwnerStopCalls += 1;
+          await created.stop();
+          throw options.exactStopFailure;
+        }
+      });
+    });
   const composition = residentLoopFactoryCompositionSurface.createResidentLoopFactoryComposition(Object.freeze({
     runtimeHandle: handle,
     actor,
@@ -413,7 +654,11 @@ async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixt
     createSafeId
   }));
   compositions.push(composition);
-  await composition.start();
+  try {
+    await composition.start();
+  } finally {
+    supervisorSpy?.mockRestore();
+  }
   const operation = issueMountedArtifactAuthorityOperationForFactory(composition.wakeRuntime);
   const providerAuthority = issueMountedProviderAuthority(Object.freeze({ operation }));
   const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
@@ -423,6 +668,26 @@ async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixt
     runType: "evidence-triage",
     retryGeneration: 0
   });
+  const handoffLifecycle = Object.freeze({
+    taskId: "task_factory_ports",
+    attemptId: "attempt_factory_ports",
+    runId: "run_factory_ports",
+    runType: "evidence-triage",
+    retryGeneration: 0
+  } as const);
+  await preflightPortableMountedAgentHandoffBinding({
+    binding: handoff.binding,
+    controller: handoff.controller,
+    taskId: handoffLifecycle.taskId,
+    attemptId: handoffLifecycle.attemptId,
+    runId: handoffLifecycle.runId,
+    runType: handoffLifecycle.runType,
+    retryGeneration: handoffLifecycle.retryGeneration
+  });
+  const authorityReadback = await composition.bind(Object.freeze({
+    providerAuthority,
+    handoffAuthorityWitness: handoff.binding.authorityWitness
+  }));
   const providerReadback = await inspectMountedProviderAuthority(providerAuthority);
   const providerPosture = await createResidentLoopProviderPosture(Object.freeze({
     configuration: createAgentProviderConfiguration(configurationInput()),
@@ -464,26 +729,14 @@ async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixt
       })
     })
   );
-  const handoffLifecycle = Object.freeze({
-    taskId: "task_factory_ports",
-    attemptId: "attempt_factory_ports",
-    runId: "run_factory_ports",
-    runType: "evidence-triage",
-    retryGeneration: 0
-  });
+  const nowMonotonicMs = () => 0;
   const factoryInput = Object.freeze({
     runtimeHandle: handle,
-    actor,
-    supervisorEpoch,
-    policy,
-    now,
-    nowMonotonicMs: () => 0,
-    createSafeId,
-    providerAuthority,
-    handoff,
-    handoffLifecycle,
+    wakeRuntime: composition.wakeRuntime,
+    authorityReadback,
     providerPosture,
-    domainExecution
+    domainExecution,
+    nowMonotonicMs
   });
 
   return {
@@ -491,11 +744,20 @@ async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixt
     actor,
     now,
     composition,
+    authorityReadback,
     providerAuthority,
     handoff,
     providerPosture,
     domainExecution,
+    nowMonotonicMs,
     factoryInput,
+    exactOwnerStopCallCount: () => exactOwnerStopCalls,
+    preparationCalls: Object.freeze({
+      construction: 1,
+      start: 1,
+      preflight: 1,
+      bind: 1
+    }),
     runtimeCalls: connectedRuntime.calls,
     authorityValues: Object.freeze([
       handle,
@@ -509,6 +771,10 @@ async function mountedFactoryFixture(suffix: string): Promise<MountedFactoryFixt
       handoff.binding,
       handoff.binding.authorityWitness,
       handoff.controller,
+      authorityReadback,
+      authorityReadback.provider,
+      authorityReadback.handoff,
+      authorityReadback.handoff.authorityBinding,
       domainExecution,
       connectedRuntime.runtime
     ])
@@ -661,46 +927,22 @@ function assertExactFrozenOwnDataSurface(
   }
 }
 
-function observeFutureFactoryCompositionStop(): {
-  readonly creations: readonly ResidentLoopFactoryComposition[];
-  readonly bindInputs: readonly unknown[];
-  readonly startCallCount: () => number;
-  readonly stopCallCount: () => number;
+function observeFutureFactoryCompositionConstruction(): {
+  readonly callCount: () => number;
   readonly restore: () => void;
 } {
   const createComposition =
     residentLoopFactoryCompositionSurface.createResidentLoopFactoryComposition;
-  const creations: ResidentLoopFactoryComposition[] = [];
-  const bindInputs: unknown[] = [];
-  let startCalls = 0;
-  let stopCalls = 0;
+  let calls = 0;
   const createSpy = vi.spyOn(
     residentLoopFactoryCompositionSurface,
     "createResidentLoopFactoryComposition"
   ).mockImplementation((rawInput: unknown) => {
-    const retained = createComposition(rawInput);
-    creations.push(retained);
-    return Object.freeze({
-      wakeRuntime: retained.wakeRuntime,
-      async start() {
-        startCalls += 1;
-        return await retained.start();
-      },
-      async bind(input: unknown) {
-        bindInputs.push(input);
-        return await retained.bind(input);
-      },
-      async stop() {
-        stopCalls += 1;
-        await retained.stop();
-      }
-    });
+    calls += 1;
+    return createComposition(rawInput);
   });
   return Object.freeze({
-    creations,
-    bindInputs,
-    startCallCount: () => startCalls,
-    stopCallCount: () => stopCalls,
+    callCount: () => calls,
     restore: () => createSpy.mockRestore()
   });
 }
@@ -794,11 +1036,11 @@ async function boundedFactory(): Promise<BoundedFactory> {
   };
 }
 
-function frozenFactoryInput(
+function preparedFactoryInput(
   fixture: MountedFactoryFixture,
-  domainExecution: unknown
+  replacements: Readonly<Record<string, unknown>>
 ): Readonly<Record<string, unknown>> {
-  return Object.freeze({ ...fixture.factoryInput, domainExecution });
+  return Object.freeze({ ...fixture.factoryInput, ...replacements });
 }
 
 async function expectFactoryRejectionWithoutDomainEffects(
@@ -811,6 +1053,77 @@ async function expectFactoryRejectionWithoutDomainEffects(
     /capability|dispatcher|factory|resident|authority|handoff/i
   );
   expect(await domainBoundarySnapshots(fixtures)).toEqual(before);
+}
+
+async function expectFactoryRejectionBeforeReads(
+  fixtures: readonly MountedFactoryFixture[],
+  factory: BoundedFactory,
+  input: unknown
+): Promise<void> {
+  const before = await domainBoundarySnapshots(fixtures);
+  const probes = fixtures.map(installLedgerActivityProbe);
+  try {
+    await expect(factory(input)).rejects.toThrow(
+      /capability|dispatcher|factory|resident|authority|handoff/i
+    );
+    for (const probe of probes) {
+      expect(probe.snapshot()).toEqual({
+        append: 0,
+        readAll: 0,
+        readStream: 0
+      });
+    }
+  } finally {
+    for (const probe of probes.reverse()) probe.restore();
+  }
+  expect(await domainBoundarySnapshots(fixtures)).toEqual(before);
+}
+
+type LedgerActivity = Readonly<{
+  append: number;
+  readAll: number;
+  readStream: number;
+}>;
+
+function installLedgerActivityProbe(fixture: MountedFactoryFixture): {
+  readonly snapshot: () => LedgerActivity;
+  readonly restore: () => void;
+} {
+  const append = vi.spyOn(fixture.handle.ledger, "append");
+  const readAll = vi.spyOn(fixture.handle.ledger, "readAll");
+  const readStream = vi.spyOn(fixture.handle.ledger, "readStream");
+  append.mockClear();
+  readAll.mockClear();
+  readStream.mockClear();
+  return Object.freeze({
+    snapshot: () => Object.freeze({
+      append: append.mock.calls.length,
+      readAll: readAll.mock.calls.length,
+      readStream: readStream.mock.calls.length
+    }),
+    restore: () => {
+      readStream.mockRestore();
+      readAll.mockRestore();
+      append.mockRestore();
+    }
+  });
+}
+
+async function captureFactoryLedgerActivity(
+  fixture: MountedFactoryFixture,
+  execute: () => Promise<void>
+): Promise<LedgerActivity> {
+  const before = await domainBoundarySnapshot(fixture);
+  const probe = installLedgerActivityProbe(fixture);
+  let activity: LedgerActivity;
+  try {
+    await execute();
+    activity = probe.snapshot();
+  } finally {
+    probe.restore();
+  }
+  expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+  return activity!;
 }
 
 async function domainBoundarySnapshots(
