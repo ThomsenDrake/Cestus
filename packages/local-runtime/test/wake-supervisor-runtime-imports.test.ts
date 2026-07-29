@@ -710,6 +710,7 @@ function mountedBinderOwnershipAnalysis(
           ) ||
           (
             isRuntimeHandleReference &&
+            ts.isIdentifier(node) &&
             !isDirectRuntimeHandleComparisonOperand(node)
           )
         ) {
