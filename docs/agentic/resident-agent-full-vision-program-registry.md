@@ -47827,3 +47827,75 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Wave 3 start, repository closure, or release. Product source, `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1225 — Task16B producer-prerequisite GREEN authorized
+
+- Recorded at: 2026-07-29T00:17:58Z
+- E-1224 integrates the exact independently approved executable Task16 RED
+  and is forward-merged into Task136 as
+  `3b17362805d9958ffc67f5ce4ebd2796836e8d74`. Authorize the separate
+  Task16B GREEN in exactly:
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`,
+  `packages/agent/src/resident-loop-tool-gateway.ts`, and
+  `packages/agent/src/domain-execution-dispatcher.ts`, starting respectively
+  from exact blobs
+  `c1a7d473d7e79ee51d3a1546f12bde55388f2dc5`,
+  `2e7d7a79763758037c56cedd91a70f63c8d8feea`, and
+  `230a0b53ee19e29cc3301750c0ff23bcb9225314`.
+- W preserves the existing public operation and completes or validates only
+  the orchestration claim event ID and outer/inner lease generation in a
+  caller checkpoint draft. Copy caller own-data exactly once before an await;
+  after consuming the exact opaque authority and obtaining the existing
+  authenticated mounted snapshot, resolve the one exact active claim already
+  identified by that snapshot for the bound stream/task/attempt/run/retry
+  tuple. Reject absence, ambiguity, expiry, release, terminal state, explicit
+  `undefined`, or any supplied mismatch before append or release. Fill only
+  truly absent own fields, run existing canonical validation, and preserve
+  exact frozen copies. Perform no extra ledger, stream, snapshot, store, or
+  caller-data read to obtain the claim.
+- G adds only the private same-instance data operation
+  `readCanonicalToolStepMaterial` as exactly one nested definition and the
+  exact sixth shorthand on each issued gateway object. A per-gateway WeakMap
+  binds exact eligible requested, claimed, completed, denied, and failed
+  readback identities to frozen plain own-data material without changing any
+  readback own key or public interface. Material includes only the approved
+  gateway readback fields, durable request policy hashes/classes and copied
+  input artifacts, completed result artifacts, or exact validated receipt
+  artifacts for a post-claim failure. Pre-claim failures remain empty.
+  Copied, foreign, unissued, transient human-approved, and consumed readbacks
+  reject. Reading does not consume; existing requested-stage consumption
+  removes eligibility. No global authority or reconstruction exists.
+- The dispatcher deletes the exact opaque package capability from its
+  private WeakMap only after every current membership, ledger, workspace,
+  resident, task, and structural check succeeds and the frozen port is fully
+  constructed. Failed binds remain retryable; the first successful bind
+  makes every later presentation stale.
+- Preserve the exact seven integrated RED test blobs, absent bounded source,
+  factory source, T120, ontology, C, adapters, wake runtime, composition, H,
+  factory ports, activation, routes, providers, credentials, contracts,
+  claims, plans, configuration, dependencies, preview branch, and every
+  other byte. Do not add a public operation/export, heuristic, generation
+  counter, high-water shortcut, caller inspection, timing test, route,
+  provider, activation behavior, or unrelated product behavior.
+- Required GREEN under `TMPDIR=/dev/shm`, one worker, and the 120-second
+  timeout is exact producer controls **144/144**, focused
+  **9 = 3 passed + six failed**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-boundary
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The six
+  remaining failures must be only the committed Task16C R/factory RED.
+  Standalone typecheck, factory readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, scope/freezes/
+  ancestry/dependencies, diff hygiene, Git integrity, and clean state must
+  pass.
+- Commit only the three authorized sources, obtain completely fresh
+  independent read-only source review of exact immutable bytes, record
+  approval and integration append-only with approval-first/candidate-second
+  plus forward Task136 merge history. Changed bytes invalidate review. Only
+  after Task16B integration may a separate event authorize the final
+  two-source Task16C GREEN.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is Task16B GREEN authority, not Task16B acceptance,
+  Task16C authority, Task16 acceptance, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
