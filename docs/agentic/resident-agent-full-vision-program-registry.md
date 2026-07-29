@@ -49916,3 +49916,117 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   closure, production readiness, or release. Product source, `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1254 — Exact-const Task16 prepared-bootstrap RED independently approved
+
+- Recorded at: 2026-07-29T18:49:00Z
+- Completely fresh independent read-only reviewer
+  `/root/task16_e1253_exact_const_fresh_review` approves with no
+  P0-P3 defect, missing test, specification drift, or executability gap exact
+  immutable candidate `14555dd9811db62fdfbb15135031fef6108592c8`,
+  tree `31f2212aa98266951e567d2e3883390c0bbcdbd4`, sole parent
+  `1a3cd77d7ad53ecee35f6116ef56b42d2657d0c4`, inside clean E-1253
+  review envelope `40d8bb6576f4fd6cdb5e1586f91fb52be47aa9f9`,
+  tree `b3fed4af1ed20122d4ddd94def66299334a79ebe`. Changed candidate bytes
+  invalidate this approval.
+- Reviewer confirms exact one-authorized-test scope, **5 insertions /
+  1 deletion**, candidate blob
+  `140b521d38350f765c8bfdae79aad26d98d4ec15`, and frozen behavior-test
+  blob `7cb68b91f3acd31ad5895b3614b976780fb821d1`.
+  Every other E-1251 test-oracle and symbol-provenance byte remains exact.
+- Independent TypeScript **5.9.3** AST reproduction is exact ordinary
+  `const = 2`, `using = 4`, and `await using = 6`. Exact flag equality
+  admits only ordinary `const`; the explicit abstract local `await using`
+  control rejects. Both the committed and held future factory source remain
+  satisfiable with all **22/22** exact-const regular-expression initializers.
+- Fresh reviewer execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout reproduces focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The exact
+  six failures remain only the three absent bounded-loop titles, two absent
+  factory API titles, and one absent factory import graph.
+- Fresh typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20** with mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix or release-closure marker.
+- Exact 33-path scope is **15 sources / 17 tests / 1 claim** with canonical
+  SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+  All declared freezes, E-1244 through E-1253 ancestry, Task138-H and V4
+  ancestry, TypeScript **5.9.3**, Vitest **4.1.9**, real dependency
+  directory, diff hygiene, clean state, and strict Git integrity pass; fsck
+  reports benign dangling objects only.
+- Advance only this exact corrected Task16 test-only RED
+  `reviewing -> approved`. Authorize the exact approval-first/candidate-
+  second history-preserving program merge, fresh integration-tree gate
+  packet, separate append-only integration event, and forward Task136 merge.
+  Do not begin the wake compatibility-test transition before integration is
+  recorded and separately authorized.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is test-only RED approval, not integration, wake
+  compatibility-test authority, source GREEN, Task16 acceptance, Task136
+  candidacy, record 29, publication, Wave 3 start, repository closure,
+  production readiness, or release. Product source, `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1255 — Exact-const Task16 prepared-bootstrap RED integrated
+
+- Recorded at: 2026-07-29T18:58:32Z
+- Exact clean approval-first/candidate-second program merge is
+  `0fb9ea43d71e5258eb3a81f43364186d919b7544`, tree
+  `06ffecd5af6aaea217a55d64c1a4ebf207aa704f`, with exact first parent
+  E-1254 approval `b90242644ba06ca86196add6b8d537b43262822f`
+  and exact second parent approved RED candidate
+  `14555dd9811db62fdfbb15135031fef6108592c8`.
+  Candidate tree `31f2212aa98266951e567d2e3883390c0bbcdbd4`, sole parent
+  `1a3cd77d7ad53ecee35f6116ef56b42d2657d0c4`, subject, one-test
+  correction scope, **5 / 1** diff, and E-1254 review approval remain exact
+  and ancestral.
+- Integrated factory behavior-test and import-test blobs are exactly
+  `7cb68b91f3acd31ad5895b3614b976780fb821d1` and
+  `140b521d38350f765c8bfdae79aad26d98d4ec15`.
+  Wake tests, factory/wake/composition/mounted sources, every other
+  product/test byte, and absent bounded source remain exactly frozen.
+- Fresh integration execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. The six
+  failures remain only the three absent bounded-loop titles, two absent
+  factory API titles, and one absent factory import graph.
+- Fresh integration typecheck and factory readiness pass. Mission and V4
+  each pass **20/20** with unchanged mission fingerprint
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**. Repository mode exits one and stops
+  first only at
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`,
+  with no prefix or release-closure marker.
+- Exact two-test cumulative integration scope, all blobs/freezes,
+  approval-first/candidate-second topology, E-1244 through E-1254 ancestry,
+  Task138-H and V4 ancestry, dependency pins, canonical 33-path SHA-256
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean integration state pass.
+  Strict fsck reports benign dangling objects only.
+- The held future product diagnostics remain unstaged and byte-exact only in
+  the Task136 worktree:
+  `packages/local-runtime/src/resident-loop-factory-ports.ts` at
+  `cf5f3930576c9e296b09fd54a94051c21feefad5` and absent-at-HEAD
+  `packages/agent/src/bounded-agent-loop.ts` at
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`. They are not integrated
+  evidence and remain unauthorized for product execution.
+- Advance only this Task16 prepared-bootstrap test-only RED
+  `approved -> integrated`. Authorize its exact forward history-preserving
+  merge into Task136. A separate append-only authority is mandatory before
+  either passing Task16C-3 wake compatibility test changes.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is corrected RED integration, not wake compatibility-
+  test authority, source GREEN, Task16 acceptance, Task136 candidacy,
+  record 29, publication, Wave 3 start, repository closure, production
+  readiness, or release. Product source, `neo`, provider, credential,
+  external-system, pull-request, production-route, preview-branch, and
+  unrelated actions remain unauthorized.
