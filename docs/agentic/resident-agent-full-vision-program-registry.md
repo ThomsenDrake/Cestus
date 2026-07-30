@@ -50862,3 +50862,72 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. Product execution, `neo`, provider, credential, external-system,
   pull-request, production-route, preview-branch, and unrelated actions
   remain unauthorized.
+
+## RV-1-E-1267 — Task16 consuming-bind prepared-bootstrap amendment approved
+
+- Recorded at: 2026-07-30T15:11:07Z
+- Completely fresh independent read-only reviewer
+  `/root/e1266_amendment_fresh_review` returns **APPROVED** with no P0-P3
+  defect, missing requirement, specification drift, or executability gap for
+  exact immutable three-document candidate
+  `5709dabdbad915c1d33e6c7084b3abe76c7ea296`, tree
+  `01f4306ee2e7a28bfeef8e35e121c63dbf4bccd0`, sole parent exact E-1266
+  authority merge `f2a94a6e38b7e9b54047be90e2a2d71c5aad560f`.
+  Changed candidate bytes invalidate this approval.
+- Exact scope is only the active Task136 design, implementation plan, and
+  claim, **254 insertions / zero deletions**, appended at true EOF. Exact
+  reviewed blobs are design
+  `7fece048c6e96df5b9246c948514e127a2469455`, plan
+  `c24c8fad34eba768de2906b8dc74220c908dbb3b`, and claim
+  `2f783a01265f246c33f043f9fe03bdc73cfe7d51`. Prefix hashes through each
+  parent line count reproduce the exact parent blob; every package, test,
+  contract, mission, assurance, dependency, configuration, and script byte
+  remains frozen.
+- The reviewer independently approves the exact E-1265 Option A order:
+  establish the shared abstract task-created/queued/orchestration-claimed
+  prefix before sole composition construction/start and authority issuance;
+  then start one legitimate Task14 composition, issue current authorities,
+  and bind exactly once. Existing one-shot consuming `composition.bind()`
+  handoff-witness revalidation remains the sole portable
+  witness/currentness validation; no separate preflight remains on this
+  prepared path.
+- Every other E-1244 private lexical-capability, exact six-field input,
+  runtime/readback/handle authentication, private reservation and burn,
+  single owner/bind, exact stop, hostile-input fail-closed, and zero-
+  downstream-effect requirement remains exact. The already-integrated
+  import-policy compatibility transition is frozen. The next RED is limited
+  to the two behavior tests, and E-1261 remains paused until that RED is
+  separately approved and integrated.
+- Main-session and reviewer execution independently reproduce focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355** under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second import-policy timeout.
+  The six failures are exactly the three absent bounded-loop titles, two
+  absent factory-API titles, and one factory import-graph title.
+- Typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**, mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  and markers remain **29 / 20 / 29 / 15**. Repository mode stops first only
+  at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Exact candidate identity/tree/parent/scope, true-EOF append semantics,
+  five working diagnostic hash bindings, Task136/Task138-H/V4 ancestry,
+  dependencies, the exact **33 = 15 sources + 17 tests + one claim** ceiling
+  and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean detached state pass.
+- Advance the exact amendment `reviewing -> approved`. Authorize its exact
+  history-preserving approval-first/candidate-second merge into the program
+  branch, fresh integration-tree execution of every cited gate, append-only
+  integration recording, and forward Task136 merge. Do not authorize a test
+  or product edit in this event.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is documentation approval, not integration, test RED
+  authority, source GREEN, Task16 acceptance, Task136 candidacy, record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
