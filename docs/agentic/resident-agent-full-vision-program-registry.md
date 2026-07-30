@@ -51785,6 +51785,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
 
+## RV-1-E-1285 — Task16 exact terminal-result one-source GREEN authorized
+
+- Recorded at: 2026-07-30T20:03:01Z
+- Exact E-1284 terminal-action RED integration is forward-merged into
+  Task136 by history-preserving merge
+  `54ad8225fe61a973d60c74f2983a3365fa9efbac`, tree
+  `b9949b41ff9f09bd4e58c458e84f7df01413660f`, with exact first parent
+  approved candidate `8f86ba0246670aeed58228520368c223ff2a2c43`
+  and exact second parent E-1284 program integration record
+  `f0d000c050088e7c0a4b341cfb92b6f1bf66c261`. The integrated RED remains
+  exact blob `9d5f473e7dc499ed8e2cb047299a7153905be9f6`.
+- Read-only feasibility auditor `/root/e1281_source_fresh_review` confirms
+  the E-1282 defect is implementable with one source-only repair in
+  `packages/agent/src/bounded-agent-loop.ts`, starting from exact rejected
+  source blob `c0aa5a20d4cee67326a0e49a38472a5b70fef6bf`.
+- Authorize only that source. Extract the existing pure completed-result
+  payload construction from `appendCompletedResult` into one shared local
+  builder. The builder receives the durable plan, exact plan event, exact
+  final-observation event, the final observation's exact durable budget, and
+  one H readback; it must derive the terminal budget by the existing
+  `advanceBudget(..., "activeExecutionMs")` operation and construct the exact
+  completed result payload already emitted on the fresh path.
+- On completed replay, before H or any later effect, call that builder with
+  the exact durable plan and events plus the terminal payload's carried
+  `handoffReadback`, then exact-compare the whole durable terminal result
+  payload to the canonical result. Never accept the terminal event's supplied
+  budget as builder input. The exact non-unit action RED must therefore fail
+  before H. Only after the full payload comparison passes may the existing
+  `readVerifiedHandoff(..., resultPayload)` authenticate the carried readback;
+  retain exact post-H manifest/result-hash equality.
+- Preserve all E-1281 controls: consumed currentness rejects before reads,
+  nonempty replay never calls C or G preparation, the exact T120 plan remains
+  authoritative, strict ontology parsing and sequence validation remain
+  mandatory, exact observation/tool/final payload validation remains, H
+  remains the authenticity boundary, and own-`__proto__` normalization
+  remains fail-closed. Add no new authority, registry, heuristic, timing
+  equality, fallback, provider, route, activation, or unrelated behavior.
+- Freeze exact test blob
+  `9d5f473e7dc499ed8e2cb047299a7153905be9f6`, factory source
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, wake source
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`, composition, mounted
+  storage, portable artifact storage, every other test and source, design,
+  plan, claim, contract, mission, assurance, dependency, route, provider,
+  activation, credential, preview branch, and unrelated byte. The repair
+  adds no path and remains inside the exact 33-path ceiling.
+- Required clean GREEN under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is bounded **3/3**, focused **9/9**, producer
+  **144/144**, Task136 card **383/383**, exact 37-file cross-card
+  **1,042/1,042**, and Task138 **355/355**, plus passing typecheck, factory
+  readiness, mission and V4 **20/20**, markers **29 / 20 / 29 / 15**,
+  exact repository first-stop, one-source scope, all freezes, ancestry,
+  dependencies, exact 33-path hash, diff hygiene, strict Git integrity, and
+  clean committed-tree checks.
+- Commit only the bounded-loop source with subject
+  `fix(agent): validate exact terminal replay result`. Obtain a completely
+  fresh independent read-only source review of exact immutable bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun every integration gate, append Task16 integration/completion, and
+  forward-merge authority into Task136 before Task17. Changed source bytes
+  invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded source repair authority, not source
+  candidacy, Task16 acceptance, Task136 candidacy, record 29, publication,
+  Wave 3 start, repository closure, production readiness, or release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
+
 ## RV-1-E-1281 — Task16 exact bounded replay one-source GREEN authorized
 
 - Recorded at: 2026-07-30T19:08:57Z
