@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import { types } from "node:util";
+import {
+  validateKnowledgeEvent,
+  validateResidentLoopEventSequence
+} from "../../ontology/src/contracts.js";
 
 type DataRecord = Readonly<Record<string, unknown>>;
 type CurrentnessToken = object;
@@ -213,6 +217,7 @@ async function advanceResidentLoop(
   context: LoopContext,
   candidateInput: unknown
 ): Promise<unknown> {
+  if (context.state.token === undefined) throw unavailable();
   const candidate = normalizeCandidate(candidateInput, "initial");
   const proposedPlan = requiredRecord(candidate, "proposedPlan");
   const providerPosture = requiredRecord(candidate, "providerPosture");
@@ -223,6 +228,10 @@ async function advanceResidentLoop(
   const replayRaw = await context.planObservation.readReplay(identity);
   await reverify(context);
   const replay = normalizeReplay(replayRaw, identity);
+
+  if (replay.events.length !== 0) {
+    return await completeFromReplay(context, replay, proposedPlan);
+  }
 
   const createdRaw = await context.candidateProvider.createInitialCandidate(
     freezeOwnedData({
@@ -241,10 +250,6 @@ async function advanceResidentLoop(
   await reverify(context);
   const bindings = normalizePlannedBindings(preparedRaw, proposedPlan);
   const boundPlan = boundPlanPayload(proposedPlan, bindings);
-
-  if (replay.events.length !== 0) {
-    return await completeFromReplay(context, replay, boundPlan);
-  }
 
   const planEvent = await appendAndReadPlan(context, boundPlan);
   const observationBudget = advanceBudget(
@@ -521,7 +526,7 @@ async function resumeResidentLoop(
 async function completeFromReplay(
   context: LoopContext,
   replay: ReplaySnapshot,
-  boundPlan: DataRecord
+  proposedPlan: DataRecord
 ): Promise<unknown> {
   if (
     replay.events.length !== 5 ||
@@ -548,12 +553,20 @@ async function completeFromReplay(
     requiredText(finalObservation, "type") !==
       "agent.resident-observation.recorded.v2" ||
     requiredText(resultEvent, "type") !==
-      "agent.resident-loop.result.recorded.v2" ||
-    !sameCanonical(eventPayload(planEvent), boundPlan)
+      "agent.resident-loop.result.recorded.v2"
   ) {
     throw unavailable();
   }
   validateResidentEventChain(replay.events);
+  const durablePlan = eventPayload(planEvent);
+  validateDurableReplayPlan(durablePlan, proposedPlan);
+  validateCompletedReplayPayloads(
+    durablePlan,
+    planEvent,
+    firstObservation,
+    toolEvent,
+    finalObservation
+  );
   const resultPayload = eventPayload(resultEvent);
   if (
     requiredText(resultPayload, "outcome") !== "completed" ||
@@ -565,8 +578,8 @@ async function completeFromReplay(
   }
   const selectedReadback = await readVerifiedHandoff(
     context,
-    identityFromPlan(boundPlan),
-    requiredRecord(boundPlan, "authority"),
+    identityFromPlan(durablePlan),
+    requiredRecord(durablePlan, "authority"),
     resultPayload
   );
   if (
@@ -1032,6 +1045,15 @@ function validateSuspendedReplay(
 }
 
 function validateResidentEventChain(events: readonly DataRecord[]): void {
+  const parsedEvents = events.map((event) => {
+    const parsed = validateKnowledgeEvent(event);
+    if (!parsed.success) throw unavailable();
+    return parsed.data;
+  });
+  if (!validateResidentLoopEventSequence(parsedEvents).success) {
+    throw unavailable();
+  }
+
   let previousBudget: DataRecord | undefined;
   let previousSequence = 0;
   const ids = new Set<string>();
@@ -1048,6 +1070,101 @@ function validateResidentEventChain(events: readonly DataRecord[]): void {
       requireBudgetProgression(previousBudget, budget);
     }
     previousBudget = budget;
+  }
+}
+
+function validateDurableReplayPlan(
+  durablePlan: DataRecord,
+  proposedPlan: DataRecord
+): void {
+  const durableSteps = requiredArray(durablePlan, "steps");
+  const proposedSteps = requiredArray(proposedPlan, "steps");
+  if (
+    durableSteps.length !== proposedSteps.length ||
+    durableSteps.length !== 1
+  ) {
+    throw unavailable();
+  }
+  const unboundSteps = durableSteps.map((value) => {
+    const step = requiredRecordValue(value);
+    requiredText(step, "toolRequestId");
+    requireHash(step, "executionCapabilityHash");
+    return freezeOwnedData(Object.fromEntries(
+      Object.entries(step).filter(([key]) =>
+        key !== "toolRequestId" && key !== "executionCapabilityHash"
+      )
+    ));
+  });
+  const unboundDurablePlan = freezeOwnedData({
+    ...durablePlan,
+    steps: unboundSteps
+  });
+  if (!sameCanonical(unboundDurablePlan, proposedPlan)) {
+    throw unavailable();
+  }
+}
+
+function validateCompletedReplayPayloads(
+  durablePlan: DataRecord,
+  planEvent: DataRecord,
+  firstObservation: DataRecord,
+  toolEvent: DataRecord,
+  finalObservation: DataRecord
+): void {
+  const firstPayload = eventPayload(firstObservation);
+  if (!sameCanonical(
+    firstPayload,
+    contextObservationPayload(
+      durablePlan,
+      planEvent,
+      requiredRecord(firstPayload, "budget")
+    )
+  )) {
+    throw unavailable();
+  }
+
+  const durableStep = requiredRecordValue(
+    requiredArray(durablePlan, "steps")[0]
+  );
+  const toolPayload = eventPayload(toolEvent);
+  const gatewayReadbacks = requiredRecord(toolPayload, "gatewayReadbacks");
+  const toolMaterial = freezeOwnedData({
+    gatewayReadbacks,
+    allowlistEntryHash: requiredText(toolPayload, "allowlistEntryHash"),
+    sideEffectClass: requiredText(toolPayload, "sideEffectClass"),
+    requiredApprovalClass: requiredText(toolPayload, "requiredApprovalClass"),
+    previewHash: requiredText(toolPayload, "previewHash"),
+    inputArtifactHashes: requiredArray(toolPayload, "inputArtifactHashes"),
+    resultArtifactHashes: requiredArray(toolPayload, "resultArtifactHashes")
+  });
+  if (
+    requiredText(gatewayReadbacks, "stage") !== "completed" ||
+    !sameCanonical(
+      toolPayload,
+      toolStepPayload(
+        durablePlan,
+        planEvent,
+        requiredRecord(toolPayload, "budget"),
+        toolMaterial,
+        durableStep
+      )
+    )
+  ) {
+    throw unavailable();
+  }
+
+  const finalPayload = eventPayload(finalObservation);
+  if (!sameCanonical(
+    finalPayload,
+    finalObservationPayloadFor(
+      durablePlan,
+      planEvent,
+      toolEvent,
+      requiredRecord(finalPayload, "budget"),
+      durableStep
+    )
+  )) {
+    throw unavailable();
   }
 }
 
@@ -1891,6 +2008,7 @@ function normalizeFrozenData(value: unknown): unknown {
   }
   if (Object.getPrototypeOf(value) !== Object.prototype) throw unavailable();
   const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Object.hasOwn(descriptors, "__proto__")) throw unavailable();
   const result: Record<string, unknown> = {};
   for (const [key, descriptor] of Object.entries(descriptors)) {
     if (
