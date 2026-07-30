@@ -112,7 +112,10 @@ interface FactoryCurrentness {
 
 interface ResidentWakeRuntimeState {
   readonly store: ReturnType<typeof createMountedWakeLifecycleStore>;
+  readonly runtimeHandle: LocalRuntimeHandle;
   coreReady: boolean;
+  stopped: boolean;
+  residentBindingInFlight: boolean;
   residentBound: boolean;
   factoryBinding?: {
     readonly readback: object;
@@ -159,6 +162,11 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
       status: async () => (await supervisor()).status()
     }),
     async stop() {
+      const residentState = residentWakeRuntimeStates.get(runtime);
+      if (residentState === undefined) {
+        throw new Error("wake runtime resident authority state is unavailable");
+      }
+      residentState.stopped = true;
       try {
         if (supervisorPromise !== undefined) await supervisorPromise.then((created) => created.stop());
       } finally {
@@ -208,7 +216,10 @@ export function createWakeSupervisorRuntime(rawInput: WakeSupervisorRuntimeInput
   const issuedRuntime = Object.freeze(runtime);
   residentWakeRuntimeStates.set(issuedRuntime, {
     store,
+    runtimeHandle: input.runtimeHandle,
     coreReady: false,
+    stopped: false,
+    residentBindingInFlight: false,
     residentBound: false
   });
   return issuedRuntime;
@@ -230,6 +241,8 @@ function issueResidentLoopFactoryWakeRuntime(
   const registerReadback = (readback: object): void => {
     if (
       !state.coreReady ||
+      state.stopped ||
+      state.residentBindingInFlight ||
       state.residentBound ||
       state.factoryBinding !== undefined
     ) {
@@ -369,16 +382,24 @@ export function createResidentLoopFactoryCompositionForFacade(
 export async function bindResidentLoopCapabilitiesForFactory(
   wakeRuntime: WakeSupervisorRuntime,
   binding: unknown,
-  domainExecution: unknown
+  domainExecution: unknown,
+  runtimeHandle: LocalRuntimeHandle
 ): Promise<MountedResidentLoopCapabilities> {
   const state = residentWakeRuntimeStates.get(wakeRuntime);
-  if (state === undefined || !state.coreReady || state.residentBound) {
+  if (
+    state === undefined ||
+    state.factoryBinding === undefined ||
+    binding !== state.factoryBinding.readback ||
+    state.runtimeHandle !== runtimeHandle ||
+    !state.coreReady ||
+    state.stopped ||
+    state.residentBindingInFlight ||
+    state.residentBound
+  ) {
     throw new Error("wake runtime resident capability binding requires exact unconsumed Core authority");
   }
   const registered = state.factoryBinding;
-  if (registered === undefined || binding !== registered.readback) {
-    throw new Error("wake runtime resident capability binding requires exact issued factory authority");
-  }
+  state.residentBindingInFlight = true;
   const provider = binding === null || typeof binding !== "object"
     ? undefined
     : Reflect.get(binding, "provider");
@@ -395,11 +416,19 @@ export async function bindResidentLoopCapabilitiesForFactory(
   ) {
     throw new Error("wake runtime resident capability binding requires exact issued factory authority");
   }
-  const issued = await bindMountedResidentLoopAuthorityForFactory(
-    state.store,
-    binding,
-    domainExecution
-  );
+  let issued: MountedResidentLoopCapabilities;
+  try {
+    issued = await bindMountedResidentLoopAuthorityForFactory(
+      state.store,
+      binding,
+      domainExecution
+    );
+  } catch (error) {
+    state.residentBindingInFlight = false;
+    throw error;
+  }
+  state.residentBound = true;
+  state.residentBindingInFlight = false;
   const { recoverSuspensionPrefix, suspendAndRelease } = issued.mountedAuthority;
   const mountedSuspensionContract = Object.freeze([
     "resident-loop-suspension",
@@ -413,7 +442,6 @@ export async function bindResidentLoopCapabilitiesForFactory(
   ) {
     throw new Error("wake runtime resident suspension authority is incomplete");
   }
-  state.residentBound = true;
   return issued;
 }
 
