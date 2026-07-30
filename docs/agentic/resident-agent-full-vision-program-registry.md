@@ -51784,3 +51784,74 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1281 — Task16 exact bounded replay one-source GREEN authorized
+
+- Recorded at: 2026-07-30T19:08:57Z
+- Exact E-1280 RED integration is forward-merged into Task136 by
+  history-preserving merge
+  `1445b1c28fd97a9cc9473038762fc8d4e6fd9efa`, tree
+  `825d2b6b238c1ddf2bb8fa13ddeb3e2df1692abb`, with exact first parent
+  approved candidate `ff8300577601643016a0795530066249b7822763` and exact
+  second parent E-1280 program integration record
+  `580cba7a547937f0c58039f3b008414bef2ef96d`.
+  The integrated RED remains exact blob
+  `e925492df08de60947650f98a97d903a0648cfab`.
+- Read-only feasibility auditor `/root/e1277_red_fresh_review` confirms every
+  E-1277 defect and the corrected E-1278 oracle are implementable with one
+  source-only repair in
+  `packages/agent/src/bounded-agent-loop.ts`, starting from exact rejected
+  source blob `e6c1d2728ff23620552760409343521468b14956`.
+- Authorize only that source. At `advance` entry, reject absent consumed
+  currentness before candidate normalization, T120, W, ledger, gateway, H,
+  provider, dispatcher, append, or any other boundary. Do not place this
+  check in the shared exclusive-loop wrapper because `resume` lawfully begins
+  without a token and obtains one only through W reclaim.
+- After the exact T120 replay read and W revalidation, normalize the replay
+  and route every nonempty replay immediately to terminal replay handling.
+  C and G preparation remain exclusively on the empty-replay path. The exact
+  durable T120 plan is authoritative; compare its unbound fields to the
+  caller plan while validating and excluding only the two G-owned step
+  fields `toolRequestId` and `executionCapabilityHash`. Never regenerate,
+  reconstruct over, or replace durable C/G bindings.
+- Before H or any later effect, validate every event through the existing
+  strict ontology event parser and complete resident-loop sequence validator,
+  then retain local identity, unique-ID, hard-ceiling, and terminal checks as
+  defense in depth. Require exact version, stream, context/payload binding,
+  contiguous order, complete observation/tool/final/result payload and
+  readback bindings, causal edges, and all ten budget/action transitions.
+  Use the exact durable plan for H identity and authority; preserve exact H
+  readback equality and terminal result-hash binding.
+- Reject an own enumerable `__proto__` data key during recursive frozen
+  own-data normalization before copying any property. Issuance must reject
+  synchronously with zero accessor, proxy, boundary, write, or effect
+  observation. Add no alternate prototype, caller heuristic, timing
+  equality, fallback normalization, global state, or new authority.
+- Freeze exact factory source
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, wake source
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`, composition, mounted
+  storage, portable artifact storage, every test, every other source,
+  design, plan, claim, contract, mission, assurance, dependency, route,
+  provider, activation, credential, preview branch, and unrelated byte.
+  The repair adds no path and remains inside the exact 33-path ceiling.
+- Required clean GREEN under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is bounded **3/3**, focused **9/9**, producer
+  **144/144**, Task136 card **383/383**, exact 37-file cross-card
+  **1,042/1,042**, and Task138 **355/355**, plus passing typecheck, factory
+  readiness, mission and V4 **20/20**, markers **29 / 20 / 29 / 15**,
+  exact repository first-stop, one-source scope, all freezes, ancestry,
+  dependencies, exact 33-path hash, diff hygiene, strict Git integrity, and
+  clean committed-tree checks.
+- Commit only the bounded-loop source with subject
+  `fix(agent): validate exact bounded replay`. Obtain a completely fresh
+  independent read-only source review of exact immutable bytes, append
+  approval, integrate approval-first/candidate-second on the program branch,
+  rerun every integration gate, append Task16 integration/completion, and
+  forward-merge authority into Task136 before Task17. Changed source bytes
+  invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is bounded source repair authority, not source
+  candidacy, Task16 acceptance, Task136 candidacy, record 29, publication,
+  Wave 3 start, repository closure, production readiness, or release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
