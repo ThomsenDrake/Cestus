@@ -50984,3 +50984,80 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1269 — Task16 consuming-bind two-behavior-test RED authorized
+
+- Recorded at: 2026-07-30T15:17:19Z
+- Exact E-1268 amendment integration is forward-merged into Task136 as
+  `e44014d96ba446069fb16471d061d4fcc164bff7`, tree
+  `db2680be90b7448e695e4b3f11223d262486406c`, with exact first parent
+  reviewed amendment candidate
+  `5709dabdbad915c1d33e6c7084b3abe76c7ea296` and exact second parent
+  E-1268 program integration record
+  `fd7b139eedd3a53eafb52cf613f03b9dc9e1fadf`.
+- Authorize only the smallest forward test-only RED correction in:
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` and
+  `packages/agent/test/bounded-agent-loop.test.ts`. Start from exact held
+  working blobs
+  `5c5c291e05a40721e362ee370b07d6b9db2a179a` and
+  `ae54b1488c6770333567f2e9261cc3614d692eef`, respectively. Neither held
+  blob is candidate or approval evidence before this correction.
+- In `mountedFactoryFixture`, remove only the obsolete separate
+  `preflightPortableMountedAgentHandoffBinding` import and call. Establish
+  the existing exact shared canonical task/attempt/run/run-type lifecycle
+  object and append its task-created, task-queued, and
+  orchestration-claimed prefix immediately after resident identity readiness
+  and before sole composition construction/start or any mounted operation,
+  provider-authority, or portable-handoff issuance.
+- Then construct and start the one legitimate Task14 composition, issue the
+  current mounted operation, provider authority, and portable handoff
+  authority, and call `composition.bind()` exactly once. Preserve its
+  existing one-shot consuming witness revalidation unchanged as the sole
+  portable witness/currentness validation. Retain the exact resulting
+  `wakeRuntime`, `authorityReadback`, and `LocalRuntimeHandle` identities.
+- Retain the bounded test's already-approved one-line authenticated-H
+  terminal-hash correction exactly. Preserve every title, assertion
+  cardinality, abstract local corpus, hostile identity case, exact owner-stop
+  case, and the valid dispatcher/G import-owner correction assigned to
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`. Add no test
+  helper beyond the already-held exact claim seeder, alias case, literal
+  product coupling, product expectation, or unrelated byte.
+- Freeze both import-policy tests, every other test, every product source,
+  design, plan, claim, composition, portable store, mounted storage,
+  contract, mission, assurance, dependency, route, provider, activation,
+  credential, preview branch, and unrelated path. In particular preserve
+  these source diagnostics unstaged and byte-exact:
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`,
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`
+  `01236381d656ee5166f5a4d391498431fe66892f`, and
+  `packages/agent/src/bounded-agent-loop.ts`
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`.
+- Required clean committed-tree RED under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second import-policy timeout remains focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. All six
+  failures remain only the absent bounded issuer, factory API, and factory
+  import graph.
+- Also require passing typecheck, factory readiness, mission and V4
+  **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  exact two-test scope and source/test freezes, ancestry, dependencies,
+  canonical 33-path hash, diff hygiene, strict Git integrity, and clean
+  detached review state.
+- Commit only the two behavior tests with subject
+  `test(task136): seed prepared claim and bind terminal hash`. Obtain
+  completely fresh independent read-only review of exact immutable bytes,
+  append approval, integrate approval-first/candidate-second into the program
+  branch, rerun the full integration packet, append integration, and
+  forward-merge that authority into Task136. Changed test bytes invalidate
+  review.
+- Only after that exact RED is approved and integrated may the existing
+  E-1261 three-source GREEN resume. Task16 and Task136 remain
+  `implementing`; strict product frontier remains **28 of 29**. This is
+  test-only correction authority, not a RED candidate, source GREEN, Task16
+  acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. Product execution,
+  `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
