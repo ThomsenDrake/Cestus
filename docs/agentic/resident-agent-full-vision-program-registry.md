@@ -51234,3 +51234,78 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1273 — Task16 prepared-factory three-source GREEN resumed
+
+- Recorded at: 2026-07-30T15:46:05Z
+- Exact E-1272 corrected RED integration is forward-merged into Task136 as
+  `75c1f4a78a3bb22fec148e2984d6fbc3ad962e84`, tree
+  `06e5b71347a081276241f78d15f6e0da29f4d254`, with exact first parent
+  corrected RED candidate
+  `8a4f1db9478fecfecc459311bfac18adc805c3fe` and exact second parent
+  E-1272 program integration record
+  `3264ae918dabff556ee72cf343d1da76b453a685`.
+- The approved RED is exact and current at factory behavior blob
+  `67e27f3bb1116152c0ebe2062eebde9b92e2c776` and bounded behavior blob
+  `ae54b1488c6770333567f2e9261cc3614d692eef`. Both import-policy tests and
+  every other test remain frozen. The obsolete separate preflight action and
+  accounting are absent; the claim prefix precedes composition/authority
+  issuance; and `composition.bind()` remains the sole consuming portable
+  validation.
+- Resume the existing E-1261 Task16C three-source GREEN authority for exactly:
+  `packages/agent/src/bounded-agent-loop.ts`,
+  `packages/local-runtime/src/resident-loop-factory-ports.ts`, and
+  `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+  Begin from exact held diagnostics bounded
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`, factory
+  `01236381d656ee5166f5a4d391498431fe66892f`, and wake
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`.
+- Complete only the approved E-1244/E-1266 design. W retains exact captured
+  handle identity plus stopped, in-flight, and consumed state in its existing
+  private runtime state; authenticates exact runtime/readback/handle and
+  readiness before downstream access; reserves synchronously; validates
+  exact nested identities; calls the unchanged mounted binder; releases only
+  pre-issuance rejection; and burns after issuance.
+- Factory ports descriptor-safely normalize exactly the frozen six own-data
+  fields before the first await, then execute W, metadata, C, H from only the
+  authenticated handle ledger, and R in order. It neither imports nor calls
+  a separate portable preflight. Return exact frozen
+  `{ metadata, loop, stop }`; memoize one direct exact wake-runtime stop
+  promise and propagate its exact outcome.
+- Complete the bounded issuer only through its existing eight issued
+  capability arguments and the approved tests. Preserve exact T120/C/G/W/H
+  identity, positive budgets, causal append/readback order, W revalidation
+  after every await, durable approval and unknown-outcome suspension,
+  reclaimed-token resume, exact full H readback, and zero fallback write or
+  effect.
+- Freeze `packages/local-runtime/src/resident-loop-factory-composition.ts`,
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`,
+  `packages/local-runtime/src/portable-mounted-agent-artifact-stores.ts`,
+  every test, every other source, design, plan, claim, contract, mission,
+  assurance, dependency, route, provider, activation, credential, preview
+  branch, and unrelated path. Add no registrar, registry, rendezvous,
+  structural authority, memoization layer, caller/timing/stack heuristic,
+  global mutable authority, route, provider, activation, fallback,
+  credential, network call, or external effect.
+- Required clean GREEN under `TMPDIR=/dev/shm`, one worker, and the
+  120-second import-policy timeout is focused **9/9**, producer **144/144**,
+  Task136 card **383/383**, exact 37-file cross-card **1,042/1,042**, and
+  Task138 **355/355**, plus passing typecheck, factory readiness, mission and
+  V4 **20/20**, markers **29 / 20 / 29 / 15**, exact repository first-stop,
+  three-source scope, every freeze, ancestry, dependencies, canonical
+  33-path hash, diff hygiene, strict Git integrity, and clean committed-tree
+  checks.
+- Commit only the exact three sources with subject
+  `feat(local-runtime): compose bounded resident agent loop`. Obtain
+  completely fresh independent read-only source review of immutable bytes,
+  append approval, integrate approval-first/candidate-second into the program
+  branch, rerun every integration gate, append Task16 integration/completion,
+  and forward-merge authority into Task136 before Task17. Changed source
+  bytes invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is resumed source GREEN authority, not a source
+  candidate, approval, integration, Task16 acceptance, Task136 candidacy,
+  record 29, publication, Wave 3 start, repository closure, production
+  readiness, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
