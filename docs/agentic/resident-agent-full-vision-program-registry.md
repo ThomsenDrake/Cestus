@@ -51665,3 +51665,68 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   start, repository closure, production readiness, or release. `neo`,
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1279 — Task16 isolated exact replay RED approved
+
+- Recorded at: 2026-07-30T18:58:58Z
+- Completely fresh independent read-only Level 2 reviewer
+  `/root/e1278_corrected_red_fresh_review` returns **APPROVED** with no
+  P0-P3 defect, missing test, specification drift, or executability gap for
+  exact immutable candidate
+  `ff8300577601643016a0795530066249b7822763`, tree
+  `21bf935ab87ef9893fed5e81818ba08d2340e57a`, sole parent exact E-1278
+  authority merge `dcbe79bd7a19342bbf18a6d18ff017c90d4650e4`.
+  Independent oracle auditor `/root/e1278_budget_oracle_audit` separately
+  returns **APPROVED** for the corrected context, reclaim, and budget
+  controls. Changed bytes invalidate both approvals.
+- Exact scope is only
+  `packages/agent/test/bounded-agent-loop.test.ts`, changing rejected blob
+  `3af5c7c4c83cb795ef0b462c2bb0287ccfb1fcdf` to approved blob
+  `e925492df08de60947650f98a97d903a0648cfab` with **+16 / -21** and exact
+  subject `test(agent): isolate exact bounded replay controls`.
+- The reviewer confirms `event-context` changes only the third event's
+  context correlation while its payload remains exact; failed reclaim
+  returns the committed `undefined` no-token sentinel and retains the
+  original undefined-only positive guard; and the action control leaves the
+  plan and first four events exact while changing only the terminal
+  `activeExecutionMs` action, consumed, and remaining fields. Its arithmetic
+  remains internally consistent with the preceding final observation, so
+  rejection requires the missing durable-action validation.
+- Every other E-1277 control, all three titles and total cardinality, the
+  positive `T120 -> W -> H -> W` trace, consumed-currentness controls,
+  direct own-`__proto__` case, abstract corpus, authenticated-H terminal
+  hash, both factory tests, every other test, and every product source remain
+  exact and frozen.
+- Main-session execution under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout reproduces bounded
+  **3 = zero passed + three failed**, focused
+  **9 = 6 passed + three failed**, producer **144/144**, Task136 card
+  **383 = 380 passed + three failed**, exact 37-file cross-card
+  **1,042 = 1,039 passed + three failed**, policy corpus
+  **8 allowed / 20 rejected**, and Task138 **355/355**. Only the three
+  bounded-loop titles fail.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  and markers remain **29 / 20 / 29 / 15**. Clean committed repository mode
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no repository-prefix, closure, record-29, repository, or
+  product-release success marker.
+- Exact one-test scope, E-1278/E-1277 and Task136 ancestry, source and
+  factory-test freezes, TypeScript **5.9.3**, Vitest **4.1.9**, local
+  non-symlink dependencies, exact 33-path `15/17/1` ceiling and canonical
+  hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean state pass.
+- Advance the exact test-only RED `reviewing -> approved`. Authorize only its
+  history-preserving approval-first/candidate-second merge into the program
+  branch, fresh integration-tree execution, append-only integration
+  recording, and forward Task136 merge. Do not edit product source before
+  that sequence and a separate bounded-loop repair authority both exist.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is RED approval, not integration, source repair,
+  Task16 acceptance, Task136 candidacy, record 29, publication, Wave 3
+  start, repository closure, production readiness, or release. `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
