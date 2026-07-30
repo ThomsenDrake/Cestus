@@ -568,12 +568,14 @@ async function completeFromReplay(
     finalObservation
   );
   const resultPayload = eventPayload(resultEvent);
-  if (
-    requiredText(resultPayload, "outcome") !== "completed" ||
-    requiredText(resultPayload, "category") !== "handoff-recorded" ||
-    requiredText(resultPayload, "causationId") !==
-      requiredText(finalObservation, "id")
-  ) {
+  const expectedResultPayload = completedResultPayload(
+    durablePlan,
+    planEvent,
+    finalObservation,
+    requiredRecord(eventPayload(finalObservation), "budget"),
+    requiredRecord(resultPayload, "handoffReadback")
+  );
+  if (!sameCanonical(resultPayload, expectedResultPayload)) {
     throw unavailable();
   }
   const selectedReadback = await readVerifiedHandoff(
@@ -604,8 +606,38 @@ async function appendCompletedResult(
     identity,
     requiredRecord(plan, "authority")
   );
-  const budget = advanceBudget(priorBudget, "activeExecutionMs");
-  const resultPayload = freezeOwnedData({
+  const resultPayload = completedResultPayload(
+    plan,
+    planEvent,
+    finalObservationEvent,
+    priorBudget,
+    selectedReadback
+  );
+  const appended = await context.planObservation.appendResult(resultPayload);
+  await reverify(context);
+  const event = normalizeResidentEvent(appended);
+  requireEvent(event, "agent.resident-loop.result.recorded.v2", resultPayload);
+  const readback = await context.planObservation.readResult(
+    requiredText(event, "id")
+  );
+  await reverify(context);
+  const normalizedReadback = normalizeResidentEvent(readback);
+  if (!sameCanonical(normalizedReadback, event)) throw unavailable();
+  return normalizedReadback;
+}
+
+function completedResultPayload(
+  plan: DataRecord,
+  planEvent: DataRecord,
+  finalObservationEvent: DataRecord,
+  finalObservationBudget: DataRecord,
+  handoffReadback: DataRecord
+): DataRecord {
+  const budget = advanceBudget(
+    finalObservationBudget,
+    "activeExecutionMs"
+  );
+  return freezeOwnedData({
     schemaVersion: "resident-loop-result.v2",
     residentAgentId: requiredText(plan, "residentAgentId"),
     workspaceId: requiredText(plan, "workspaceId"),
@@ -627,20 +659,9 @@ async function appendCompletedResult(
     finalObservationReadback: observationReadback(finalObservationEvent),
     outcome: "completed",
     category: "handoff-recorded",
-    resultHash: requiredText(selectedReadback, "manifestHash"),
-    handoffReadback: selectedReadback
+    resultHash: requiredText(handoffReadback, "manifestHash"),
+    handoffReadback
   });
-  const appended = await context.planObservation.appendResult(resultPayload);
-  await reverify(context);
-  const event = normalizeResidentEvent(appended);
-  requireEvent(event, "agent.resident-loop.result.recorded.v2", resultPayload);
-  const readback = await context.planObservation.readResult(
-    requiredText(event, "id")
-  );
-  await reverify(context);
-  const normalizedReadback = normalizeResidentEvent(readback);
-  if (!sameCanonical(normalizedReadback, event)) throw unavailable();
-  return normalizedReadback;
 }
 
 async function appendAndReadPlan(
