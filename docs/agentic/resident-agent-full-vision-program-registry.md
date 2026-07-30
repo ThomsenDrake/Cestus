@@ -51427,3 +51427,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1276 — Task16 Task135D public-companion oracle correction integrated
+
+- Recorded at: 2026-07-30T17:21:46Z
+- Exact independently approved one-test candidate
+  `e652ec2cae47fea30771f6d223f7af0f65852366`, tree
+  `9fe08932dd2bc072ae54d7897a4bb75c25e7e3b5`, is integrated by exact
+  history-preserving program merge
+  `f3cd6caaf5c4ad97501d173eaee4e4f4887ad3e5`, tree
+  `b330785d4a0adc1a16e4f77f556bc85cd0be02fe`.
+  Its first parent is exact E-1275 approval
+  `989387851effa310f6d18a32ffd77edad91bd871`; its second parent is the
+  exact approved candidate.
+- The two-parent union is exact. Relative to its approval first parent it adds
+  only
+  `packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts`
+  blob `68aa54a4ed1af4cc531023b063e767286757f0ec` with **+1 / -1**.
+  Relative to its candidate second parent it adds only the E-1275 append-only
+  registry approval with **+53 / -0**.
+- Fresh independent integration-tree execution under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second timeout passes targeted Task135D **4/4** and
+  producer **144/144**. The pre-GREEN committed tree preserves focused
+  **9 = 3 passed + six expected Task16 failures**, Task136 card
+  **383 = 377 passed + six**, and cross-card
+  **1,042 = 1,036 passed + six**, with policy corpus
+  **8 allowed / 20 rejected**. Task138 passes **355/355**.
+- Typecheck and factory readiness pass. Mission and V4 each pass **20/20**,
+  mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  markers remain **29 / 20 / 29 / 15**, and repository mode stops first only
+  at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+- Exact parent order, candidate/test blobs, one-test scope, E-1274/E-1273,
+  Task138-H/V4 and Task136 ancestry, dependencies, TypeScript **5.9.3**,
+  Vitest **4.1.9**, exact 33-path `15/17/1` ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  diff hygiene, strict Git integrity, and clean program state pass.
+- Advance the exact oracle correction `approved -> integrated`. Authorize its
+  forward history-preserving merge into Task136 while preserving the three
+  E-1273 diagnostics unstaged and byte-exact: bounded
+  `e6c1d2728ff23620552760409343521468b14956`, factory
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, and wake
+  `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`.
+- After that forward merge, E-1273 resumes without further product or user
+  approval for exactly the same three source paths. Changed source bytes
+  require fresh GREEN execution and review; no other test or product edit is
+  authorized.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is test-oracle integration, not source GREEN approval,
+  Task16 acceptance, Task136 candidacy, record 29, publication, Wave 3 start,
+  repository closure, production readiness, or release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
