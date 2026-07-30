@@ -112,7 +112,19 @@ type HarnessMutation =
   | "missing-task-status-event"
   | "consumed-plus-remaining-mismatch"
   | "replan-budget-reset"
+  | "event-version"
+  | "event-stream"
+  | "event-sequence-gap"
+  | "event-context"
+  | "payload-binding"
+  | "plan-readback"
+  | "tool-binding-state"
+  | "observation-causation"
+  | "final-observation-causation"
+  | "terminal-final-readback"
+  | "required-action-budget-zero"
   | "missing-suspension"
+  | "failed-reclaim"
   | "cross-run-anchor"
   | "deadline-mismatch"
   | "next-safe-action-mismatch"
@@ -163,9 +175,30 @@ describe("bounded resident agent loop", () => {
       expect(result, budgetField).toEqual(harness.expectedResult);
       harness.assertSettled();
       harness.assertCompletionReadback();
+      if (budgetField === tenBudgetFields[0]) {
+        expect.soft(harness.trace, "completed durable replay").toEqual([
+          "T120.readReplay",
+          "W.reverifyAfterAwait",
+          "H.readFull",
+          "W.reverifyAfterAwait"
+        ]);
+      }
       expect(harness.effects).toEqual(zeroEffects());
     }
 
+    const exactReplayMutations: readonly HarnessMutation[] = [
+      "event-version",
+      "event-stream",
+      "event-sequence-gap",
+      "event-context",
+      "payload-binding",
+      "plan-readback",
+      "tool-binding-state",
+      "observation-causation",
+      "final-observation-causation",
+      "terminal-final-readback",
+      "required-action-budget-zero"
+    ];
     const completionMutations: readonly HarnessMutation[] = [
       "missing-replay-result",
       "constant-default-result",
@@ -179,14 +212,24 @@ describe("bounded resident agent loop", () => {
       "missing-terminal-event",
       "missing-task-status-event",
       "consumed-plus-remaining-mismatch",
-      "replan-budget-reset"
+      "replan-budget-reset",
+      ...exactReplayMutations
     ];
     for (const mutation of completionMutations) {
       const harness = createIssuedCapabilityHarness({ mutation });
       const outcome = await captureAdvance(api, harness);
-      expect(outcome, mutation).toBe("rejected");
+      expect.soft(outcome, mutation).toBe("rejected");
       harness.assertSettled();
       expect(harness.effects, mutation).toEqual(zeroEffects());
+      if (exactReplayMutations.includes(mutation)) {
+        expect.soft(
+          harness.trace,
+          `${mutation}:before exact replay rejection`
+        ).toEqual([
+          "T120.readReplay",
+          "W.reverifyAfterAwait"
+        ]);
+      }
     }
     for (const budgetField of tenBudgetFields) {
       const harness = createIssuedCapabilityHarness({ budgetField, overBudget: true });
@@ -240,7 +283,47 @@ describe("bounded resident agent loop", () => {
       if (branch === "approval-required") {
         approvalSemanticKeys = harness.suspensionSemanticKeys();
       }
+      const settledTrace = [...harness.trace];
+      const settledEffects = { ...harness.effects };
+      expect.soft(
+        await captureIssuedAdvance(issued, harness.initialCandidate),
+        `${branch}:consumed-currentness`
+      ).toBe("rejected");
+      expect.soft(harness.trace, `${branch}:consumed-currentness trace`).toEqual(
+        settledTrace
+      );
+      expect.soft(
+        harness.effects,
+        `${branch}:consumed-currentness effects`
+      ).toEqual(
+        settledEffects
+      );
     }
+
+    const failedReclaim = createIssuedCapabilityHarness({
+      branch: "resume",
+      mutation: "failed-reclaim"
+    });
+    const failedReclaimLoop = await issueLoop(api, failedReclaim);
+    expect.soft(
+      await captureIssuedResume(failedReclaimLoop, failedReclaim.resumeInput),
+      "failed-reclaim"
+    ).toBe("rejected");
+    const failedReclaimTrace = [...failedReclaim.trace];
+    const failedReclaimEffects = { ...failedReclaim.effects };
+    expect.soft(
+      await captureIssuedAdvance(
+        failedReclaimLoop,
+        failedReclaim.initialCandidate
+      ),
+      "failed-reclaim consumed currentness"
+    ).toBe("rejected");
+    expect.soft(failedReclaim.trace, "failed-reclaim trace").toEqual(
+      failedReclaimTrace
+    );
+    expect.soft(failedReclaim.effects, "failed-reclaim effects").toEqual(
+      failedReclaimEffects
+    );
 
     const identicalApproval = createIssuedCapabilityHarness({
       branch: "approval-required"
@@ -370,6 +453,23 @@ describe("bounded resident agent loop", () => {
       const args = harness.positionalArguments();
       const prepared = hostile.prepare(args, harness.initialCandidate);
 
+      if (hostile.label === "own-prototype-data") {
+        let synchronouslyRejected = false;
+        try {
+          Reflect.apply(
+            api.createResidentBoundedAgentLoopFromIssuedCapabilities,
+            undefined,
+            args
+          );
+        } catch {
+          synchronouslyRejected = true;
+        }
+        expect(synchronouslyRejected, hostile.label).toBe(true);
+        expect(harness.trace, hostile.label).toEqual([]);
+        expect(harness.effects, hostile.label).toEqual(zeroEffects());
+        expect(prepared.proxyReads(), hostile.label).toBe(0);
+        continue;
+      }
       expect(
         await captureHostile(api, args, prepared.candidate, prepared.afterInvoke),
         hostile.label
@@ -444,6 +544,30 @@ async function captureResume(
   try {
     const issued = await issueLoop(api, harness);
     const result = await issued.loop.resume(harness.resumeInput);
+    return isUnavailable(result) ? "rejected" : "accepted";
+  } catch {
+    return "rejected";
+  }
+}
+
+async function captureIssuedAdvance(
+  issued: IssuedLoop,
+  candidate: unknown
+): Promise<"accepted" | "rejected"> {
+  try {
+    const result = await issued.loop.advance(candidate);
+    return isUnavailable(result) ? "rejected" : "accepted";
+  } catch {
+    return "rejected";
+  }
+}
+
+async function captureIssuedResume(
+  issued: IssuedLoop,
+  input: unknown
+): Promise<"accepted" | "rejected"> {
+  try {
+    const result = await issued.loop.resume(input);
     return isUnavailable(result) ? "rejected" : "accepted";
   } catch {
     return "rejected";
@@ -880,7 +1004,16 @@ function createIssuedCapabilityHarness(
   const replayEvents: Readonly<Record<string, unknown>>[] = branch === "completed"
     ? mutation === "missing-replay-result" || mutation === "replan-budget-reset"
       ? [planEvent, observationEvent, toolStepEvent, finalObservationEvent]
-      : [planEvent, observationEvent, toolStepEvent, finalObservationEvent, replayCompletion]
+      : mutateCompletedReplayEvents(
+          [
+            planEvent,
+            observationEvent,
+            toolStepEvent,
+            finalObservationEvent,
+            replayCompletion
+          ],
+          mutation
+        )
     : branch === "resume"
       ? mutation === "missing-suspension"
         ? [planEvent, observationEvent, toolStepEvent, finalObservationEvent]
@@ -1625,6 +1758,7 @@ function createIssuedCapabilityHarness(
         throw new Error("W reclaim anchor mismatch");
       }
       await Promise.resolve();
+      if (mutation === "failed-reclaim") return null;
       effects.ledgerAppend += 1;
       return issueToken();
     }
@@ -1677,7 +1811,9 @@ function createIssuedCapabilityHarness(
     if (branch === "resume") {
       await mountedAuthority.recoverSuspensionPrefix(resumeLocator);
       let token = await mountedAuthority.reclaimAndReverify(resumeLocator);
-      if (token === undefined) throw new Error("resume positive control did not reclaim");
+      if (token === undefined || token === null) {
+        throw new Error("resume positive control did not reclaim");
+      }
       const readback = await planObservation.readReplay(identity);
       token = await nextToken(token);
       if (!sameCanonical(readback, replay())) {
@@ -2192,6 +2328,20 @@ function hostileCases(): readonly {
       label: "unsafe-prototype",
       prepare(args, candidate) {
         args[6] = Object.assign(Object.create(null), args[6]);
+        return prepared(candidate);
+      }
+    },
+    {
+      label: "own-prototype-data",
+      prepare(args, candidate) {
+        const metadata = structuredClone(args[6]) as Record<string, unknown>;
+        Object.defineProperty(metadata, "__proto__", {
+          value: deepFreeze({ marker: "abstract-local" }),
+          enumerable: true,
+          configurable: true,
+          writable: true
+        });
+        args[6] = deepFreeze(metadata);
         return prepared(candidate);
       }
     },
@@ -2767,6 +2917,83 @@ function residentResult(
     `evt_result_${category.replaceAll("-", "_")}`,
     sequence
   );
+}
+
+function mutateCompletedReplayEvents(
+  events: readonly Readonly<Record<string, unknown>>[],
+  mutation: HarnessMutation
+): Readonly<Record<string, unknown>>[] {
+  const copied = structuredClone(events) as Record<string, unknown>[];
+  const event = (index: number): Record<string, unknown> => copied[index]!;
+  const payload = (index: number): Record<string, unknown> =>
+    event(index).payload as Record<string, unknown>;
+  const context = (index: number): Record<string, unknown> =>
+    event(index).context as Record<string, unknown>;
+
+  switch (mutation) {
+    case "event-version":
+      event(0).version = 999;
+      break;
+    case "event-stream":
+      event(1).streamId = "agent_resident_loop_abstract_other";
+      break;
+    case "event-sequence-gap":
+      for (let index = 1; index < copied.length; index += 1) {
+        event(index).sequence = (index + 1) * 10;
+      }
+      break;
+    case "event-context":
+      context(2).occurredAt = "2026-07-28T12:00:01.000Z";
+      break;
+    case "payload-binding":
+      payload(1).correlationId = "corr_bounded_other";
+      context(1).correlationId = "corr_bounded_other";
+      break;
+    case "plan-readback": {
+      const readback = payload(1).planReadback as Record<string, unknown>;
+      readback.planRecordEventId = "evt_plan_abstract_other";
+      break;
+    }
+    case "tool-binding-state":
+      payload(2).state = "suspended";
+      break;
+    case "observation-causation":
+      payload(1).causationId = "evt_abstract_other";
+      context(1).causationId = "evt_abstract_other";
+      break;
+    case "final-observation-causation":
+      payload(3).causationId = "evt_abstract_other";
+      context(3).causationId = "evt_abstract_other";
+      break;
+    case "terminal-final-readback": {
+      const readback =
+        payload(4).finalObservationReadback as Record<string, unknown>;
+      readback.observationEventId = "evt_observation_abstract_other";
+      break;
+    }
+    case "required-action-budget-zero": {
+      const zeroConsumed = Object.fromEntries(
+        tenBudgetFields.map((field) => [field, 0])
+      );
+      const fullRemaining = Object.fromEntries(
+        tenBudgetFields.map((field) => [field, hardMaximums[field]])
+      );
+      const ceilings = { ...hardMaximums };
+      for (const replayEvent of copied) {
+        const replayPayload = replayEvent.payload as Record<string, unknown>;
+        replayPayload.budget = {
+          ceilings: { ...ceilings },
+          consumed: { ...zeroConsumed },
+          remaining: { ...fullRemaining },
+          actionConsumption: { ...zeroConsumed }
+        };
+      }
+      break;
+    }
+    default:
+      return events as Readonly<Record<string, unknown>>[];
+  }
+  return deepFreeze(copied);
 }
 
 function residentSuspension(
