@@ -52855,3 +52855,73 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1295 — Mounted GREEN halted; two-test terminal-oracle correction authorized
+
+- Recorded at: 2026-07-30T23:21:01Z
+- E-1294 one-source authority is committed and pushed at exact program head
+  `c1733f0771c9a5ab51abf2d36e6e120ccd300088`, then forward-merged and
+  pushed into Task136 by exact two-parent merge
+  `cf0a7731b962314447467022eda400350431e885`. Only
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` was edited
+  afterward. Its uncommitted diagnostic blob is
+  `2aa4020ec747f5906b447c30df0f18e1efea9610`; it is not a candidate and
+  must remain unstaged and uncommitted while this correction advances.
+- Standalone typecheck passes. Exact-title execution under
+  `TMPDIR=/dev/shm`, one worker, and the 120-second timeout proves the
+  catalog-attested currentness stage now advances, then exposes two earlier
+  masked test-oracle defects before the intended mounted-currentness
+  assertions can complete.
+- Completely fresh independent read-only diagnostic
+  `/root/task17_factory_candidate_oracle_diagnostic` proves the real-mounted
+  factory candidate is rejected by R's exact budget normalization before W:
+  four fixture ceiling literals are lower than the already committed
+  bounded-loop and ontology maxima. Authorize only their exact correction in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`:
+  `contextBytes` to **1,048,576**, `derivativeArtifactBytes` to
+  **16,777,216**, `activeExecutionMs` to **900,000**, and
+  `approvalSuspensionMs` to **86,400,000**. Derived consumed, remaining, and
+  action-consumption fields remain unchanged.
+- Different completely fresh independent read-only diagnostic
+  `/root/task17_wake_result_oracle_diagnostic` proves the direct W control
+  asks the frozen T120 store to append a resumable result immediately after
+  an observation, without its mandatory suspension, and therefore fails in
+  sequence validation before W revalidation. In the existing title
+  `keeps currentness only across the exact approved resident causal advance`,
+  correct only that terminal payload in
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`: preserve the
+  existing exact same-bound identity, authority, stream, causation,
+  correlation, plan and observation readbacks; remove the resumable-only
+  anchor; use exact terminal outcome `failed`, category
+  `validation-failed`, and the exact observation-to-terminal budget advance
+  with only `activeExecutionMs` consumed by the action. Append through the
+  real T120 plan-observation store; a raw-ledger bypass is forbidden.
+- Preserve both test titles, cardinalities, abstract local corpus, all
+  import-policy tests, and every other test byte. Freeze every product source
+  at E-1294's committed starting tree for RED review; in particular mounted
+  W remains committed blob
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`. No product change can lawfully
+  repair either pre-W oracle failure.
+- The corrected two-test RED on the frozen committed source must reproduce
+  focused **9 = eight passed + one causal failure**, producer
+  **144 = 143 passed + one causal failure**, factory boundary
+  **10 = nine passed + one causal failure**, wake boundary
+  **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  The only failures remain initial completed-H binding and the exact
+  catalog-attested currentness transition on frozen W.
+- Commit only the two corrected tests with subject
+  `test(local-runtime): correct mounted completion terminals`. Obtain a
+  completely fresh independent read-only review of exact immutable bytes,
+  append approval, integrate approval-first/candidate-second on the program
+  branch, rerun the integration packet, append integration, and forward-merge
+  into Task136. Changed test bytes invalidate review. Only then may E-1294's
+  one-source GREEN resume from the preserved diagnostic work.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is oracle-repair authority, not product
+  authority, source candidacy, Task136 candidacy, strict record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
