@@ -2286,3 +2286,59 @@ remain unchanged. No registry, rendezvous, cache, hidden global, structural
 authority, caller/timing/stack heuristic, route, provider, activation,
 fallback, credential, network call, external effect, new public authority,
 or unrelated behavior is authorized.
+
+## RV-1-E-1266 Current Task16 Consuming-Bind Authority
+
+This true-EOF section supersedes only E-1244's separate early
+`preflightPortableMountedAgentHandoffBinding` requirement for the Task16
+prepared-composition path and the E-1264 ordering correction derived from
+that requirement. All other E-1244 authority remains exact.
+
+The abstract task-created, task-queued, and orchestration-claimed prefix must
+exist before the sole legitimate Task14 composition is constructed or
+started and before its mounted operation, provider authority, or portable
+handoff authority is issued. The same exact canonical
+task/attempt/run/run-type tuple spans that prefix and later handoff,
+lifecycle, posture, and prepared-factory inputs.
+
+After the prefix exists, the one legitimate composition starts, issues the
+current authorities, and binds exactly once. Its existing one-shot consuming
+handoff-witness revalidation is the sole portable witness/currentness
+validation for this prepared path. It is not weakened, bypassed, duplicated,
+replaced, or preceded by a separate portable preflight. The prepared factory
+then receives only the exact frozen six-field own-data input containing that
+composition's exact `wakeRuntime`, returned `authorityReadback`, and captured
+`LocalRuntimeHandle`.
+
+The Task14 private issuer/registrar remains private to W; generic wake
+runtimes remain ineligible; the bounded factory binder remains the only
+binding seam. Exact wake/readback/handle identities authenticate before
+accessor, ledger, provider, handoff, dispatcher, or other effectful reads.
+Copied, fabricated, proxied, swapped, generic, stopped, stale, concurrent, or
+already-consumed inputs fail closed with zero downstream effects. The factory
+does not accept or create a composition or caller stop callback. Its stop
+operation targets only the exact authenticated wake owner, memoizes one
+direct stop outcome, and propagates failure.
+
+After this amendment is independently approved and integrated, the corrected
+RED changes only `resident-loop-factory-ports.test.ts` and
+`bounded-agent-loop.test.ts`: remove the obsolete fixture preflight, place
+the exact claim prefix before composition/authority issuance, and retain the
+authenticated-H terminal-hash correction. Both import-policy tests, titles,
+cardinality, abstract corpus, every other test, and every source remain
+frozen. Exact RED remains focused **9 = 3 + six**, producer **144/144**,
+card **383 = 377 + six**, cross-boundary **1,042 = 1,036 + six**, and
+Task138 **355/355**.
+
+Only after fresh RED approval and integration may E-1261 resume for exactly
+the bounded-loop, factory-ports, and wake-supervisor sources.
+`portable-mounted-agent-artifact-stores.ts`, mounted storage,
+`resident-loop-factory-composition.ts`, contracts, release graph, routes,
+providers, credentials, activation behavior, and unrelated product paths
+remain frozen. The exact 33-path `15/17/1` ceiling and canonical SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`
+remain unchanged.
+
+Task16 and Task136 remain `implementing`; strict frontier remains
+**28 of 29**. No Task136 candidate, record 29, publication, Wave 3 start,
+repository closure, production readiness, or release exists.

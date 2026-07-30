@@ -2407,3 +2407,86 @@ This amendment adds no path, provider, route, activation, default runtime,
 fallback, credential, network call, external effect, new public authority,
 structural authority object, hidden mutable global, or heuristic. Task16 and
 Task136 remain `implementing`; strict frontier remains **28 of 29**.
+
+## RV-1-E-1266 Current Task16 Consuming-Bind Prepared Bootstrap
+
+This true-EOF section supersedes only E-1244's requirement that Task16's
+prepared-composition fixture separately call
+`preflightPortableMountedAgentHandoffBinding`, together with the E-1264
+ordering correction derived from that requirement. Every other E-1244
+lexical-capability, exact identity-authentication, one-owner, one-bind,
+stop-idempotency, fail-closed, zero-downstream-effect, and exact frozen
+six-field prepared-input requirement remains current.
+
+### Sole portable witness validation and exact order
+
+The exact abstract resident task identity and its task-created, task-queued,
+and orchestration-claimed prefix are durable before the legitimate Task14
+composition is constructed or started and before the mounted operation,
+provider authority, or portable handoff authority is issued. The exact
+task/attempt/run/run-type tuple used by that prefix remains the same tuple
+used by later handoff, lifecycle, posture, and prepared-factory inputs.
+
+Only after that prefix exists may the fixture:
+
+1. construct and start the sole legitimate Task14
+   `ResidentLoopFactoryComposition`;
+2. issue the current mounted operation, provider authority, and portable
+   handoff authority;
+3. call that exact composition's `bind()` exactly once; and
+4. retain its exact `wakeRuntime`, returned `authorityReadback`, and captured
+   `LocalRuntimeHandle` identities for the frozen six-field prepared input.
+
+The composition bind's existing one-shot consuming handoff-witness
+revalidation is the sole portable witness/currentness validation for this
+prepared path. No separate early portable preflight is imported, called,
+duplicated, substituted, weakened, bypassed, or moved. The bind continues to
+consume and revalidate the exact current witness under its existing
+fail-closed semantics.
+
+The factory still does not construct, start, bind, structurally accept, or
+stop a composition. W still authenticates exact wake-runtime membership,
+registered readback identity, captured handle identity, readiness and private
+one-shot state before downstream access, then validates the exact registered
+nested identities. Copied, fabricated, proxied, swapped, generic, stopped,
+stale, concurrent, or already-consumed presentations still fail before
+accessor, ledger, provider, handoff, dispatcher, or other effectful reads.
+The returned stop still memoizes the one direct exact authenticated
+`wakeRuntime.stop()` outcome and propagates its exact success or failure.
+
+### Corrected RED and frozen GREEN boundary
+
+After this three-document amendment is independently approved and integrated,
+the smallest corrected RED changes only:
+
+- `packages/local-runtime/test/resident-loop-factory-ports.test.ts`; and
+- `packages/agent/test/bounded-agent-loop.test.ts`.
+
+The resident fixture removes only the obsolete separate-preflight action and
+places its existing exact canonical task-created/queued/claimed prefix before
+composition construction and authority issuance. The bounded fixture retains
+only the already-approved authenticated-H terminal-hash correction. Titles,
+cardinality, the abstract local corpus, both import-policy tests, every other
+test, and every product source remain frozen.
+
+Required committed RED remains focused
+**9 = 3 passed + six failed**, producer **144/144**, card
+**383 = 377 passed + six failed**, cross-boundary
+**1,042 = 1,036 passed + six failed**, and Task138 **355/355**. Only after
+fresh independent RED approval, append-only approval, approval-first/
+candidate-second integration, and forward Task136 integration may the
+existing E-1261 GREEN resume for exactly:
+
+- `packages/agent/src/bounded-agent-loop.ts`;
+- `packages/local-runtime/src/resident-loop-factory-ports.ts`; and
+- `packages/local-runtime/src/wake-supervisor-runtime.ts`.
+
+`portable-mounted-agent-artifact-stores.ts`, mounted storage,
+`resident-loop-factory-composition.ts`, contracts, routes, providers,
+credentials, activation behavior, and unrelated product paths remain frozen.
+The exact **33 = 15 sources + 17 tests + one claim** ceiling and canonical
+path SHA-256
+`4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`
+remain unchanged. Tasks17-through-21 and every record-29/publication gate
+remain in committed order. Task16 and Task136 remain `implementing`; strict
+frontier remains **28 of 29**.
