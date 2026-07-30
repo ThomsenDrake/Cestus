@@ -50931,3 +50931,56 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   release. `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1268 — Task16 consuming-bind prepared-bootstrap amendment integrated
+
+- Recorded at: 2026-07-30T15:16:38Z
+- Exact independently approved amendment
+  `5709dabdbad915c1d33e6c7084b3abe76c7ea296`, tree
+  `01f4306ee2e7a28bfeef8e35e121c63dbf4bccd0`, is integrated by exact
+  history-preserving program merge
+  `c318d5fdf5d1a70ad8356d514a43327c75ebc4f0`, tree
+  `074884500133e6f6de20e408b9e96e8ddf96995c`. Its first parent is exact
+  E-1267 approval
+  `df415118189930ddee02e2d614c6dcb34818beaa`; its second parent is the exact
+  approved candidate.
+- The integration union is exact. Relative to its approval first parent it
+  adds only the reviewed design, plan, and claim blobs. Relative to its
+  candidate second parent it adds only the E-1267 append-only registry
+  approval. Exact reviewed document blobs and the approved E-1266/E-1265
+  ancestry remain unchanged. Every package, test, contract, mission,
+  assurance, dependency, configuration, and script byte is frozen.
+- Fresh integration-tree execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second import-policy timeout reproduces focused
+  **9 = 3 passed + six failed**, producer **144/144**, Task136 card
+  **383 = 377 passed + six failed**, exact 37-file cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. Only the
+  exact three bounded-loop, two factory-API, and one factory import-graph
+  RED titles fail.
+- Typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**, mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`,
+  and markers remain **29 / 20 / 29 / 15**. Repository mode exits one and
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  without any repository-prefix, closure, record-29, repository, or
+  product-release success marker.
+- Exact ordered parents, candidate and authority ancestry, approved document
+  blobs, five diagnostic hash bindings, Task138-H/V4 ancestry, dependencies,
+  exact **33 = 15 sources + 17 tests + one claim** ceiling and canonical
+  hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  two-parent diff hygiene, strict Git integrity, and clean program state
+  pass.
+- Advance the exact amendment `approved -> integrated`. Authorize only its
+  forward history-preserving merge into Task136 with all five E-1265
+  diagnostic working blobs preserved unstaged and byte-exact. The separate
+  two-behavior-test RED authority must be appended after that forward merge;
+  do not edit a test or product source under this event.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is documentation integration, not test RED authority,
+  source GREEN, Task16 acceptance, Task136 candidacy, record 29,
+  publication, Wave 3 start, repository closure, production readiness, or
+  release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
