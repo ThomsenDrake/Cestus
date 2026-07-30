@@ -51061,3 +51061,66 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `neo`, provider, credential, external-system, pull-request,
   production-route, preview-branch, and unrelated actions remain
   unauthorized.
+
+## RV-1-E-1270 — Task16 consuming-bind RED rejected; preparation-accounting correction authorized
+
+- Recorded at: 2026-07-30T15:28:02Z
+- Completely fresh independent read-only reviewer
+  `/root/e1269_red_fresh_review` returns **REJECTED** for exact immutable
+  two-test candidate
+  `2ee548b3eeffc2b0312b32690b7b7bee499ec4a9`, tree
+  `b0b43395c4d9081e0584adaf5aba246d754e2ba1`, sole parent exact E-1269
+  authority merge `50b1cf6304bb9e376aa4438109d19abbd9af7b27`.
+- Exact rejected scope is only
+  `packages/agent/test/bounded-agent-loop.test.ts` blob
+  `ae54b1488c6770333567f2e9261cc3614d692eef` and
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts` blob
+  `4f5366ada41cc0d48664f028c1597b418ac2bb82`.
+  Every import-policy test, product source, document, contract, mission,
+  assurance, dependency, configuration, and script byte is frozen.
+- One candidate-bound **P2** defect exists. The factory behavior fixture
+  correctly removes the separate preflight import/call and places the exact
+  claim prefix before composition and authority issuance, but its
+  `preparationCalls` type, returned value, and assertion still name
+  `preflight: 1`. That stale literal falsely records the superseded E-1244
+  stage and can pass without representing Option A's actual preparation
+  sequence.
+- Authorize only the smallest forward correction in
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`, starting
+  from exact rejected blob
+  `4f5366ada41cc0d48664f028c1597b418ac2bb82`: replace exactly the three
+  preparation-accounting keys `preflight: 1` with `claimPrefix: 1`.
+  Preserve the existing `construction: 1`, `start: 1`, and `bind: 1`
+  accounting so the exact current sequence is represented as claim prefix,
+  one construction/start, and one consuming bind.
+- Add no helper, call, assertion, title, case, branch, counter, alias, import,
+  product expectation, or unrelated byte. Preserve the corrected fixture
+  order, removed preflight import/call, exact canonical tuple, claim seeder,
+  consuming bind, and bounded authenticated-H blob
+  `ae54b1488c6770333567f2e9261cc3614d692eef` exactly.
+- Preserve the three product diagnostics unstaged and byte-exact:
+  wake source `a7e34e53fff3b4194c77f3b2dfb626dbe5dff2eb`,
+  factory source `01236381d656ee5166f5a4d391498431fe66892f`,
+  and bounded source
+  `658e2538c0ffec8b90db463e1d3f55b56ef8250d`.
+- The rejected candidate nevertheless reproduces exact focused
+  **9 = 3 passed + six failed**, producer **144/144**, card
+  **383 = 377 passed + six failed**, cross-card
+  **1,042 = 1,036 passed + six failed**, and Task138 **355/355**. Static
+  scope, typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, repository first-stop, ancestry, 33-path hash,
+  diff hygiene, strict Git integrity, and clean detached state also pass.
+  These passing gates do not cure the semantic oracle defect.
+- Commit only the one corrected factory behavior test. Obtain a new
+  completely fresh independent read-only review of exact immutable corrected
+  bytes, reproduce the full E-1269 packet, append approval, integrate
+  approval-first/candidate-second into the program branch, rerun integration
+  gates, append integration, and forward-merge into Task136. Changed bytes
+  invalidate review.
+- Task16 and Task136 remain `implementing`; strict product frontier remains
+  **28 of 29**. This is candidate rejection and one-test forward-correction
+  authority, not approval, integration, source GREEN, Task16 acceptance,
+  Task136 candidacy, record 29, publication, Wave 3 start, repository
+  closure, production readiness, or release. Product execution, `neo`,
+  provider, credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
