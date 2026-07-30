@@ -26,7 +26,10 @@ import * as wakeSupervisorSurface from "../../agent/src/wake-supervisor.js";
 import { createLegacyImportRuntime, type LegacyImportRuntime } from "../../ingestion/src/legacy-runtime.js";
 import { mountedWorkspaceCapabilities } from "../../ingestion/src/mount-contract.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import type {
+  KnowledgeEvent,
+  KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { createAgentProviderConfiguration } from "../src/agent-provider-configuration.js";
 import {
@@ -1109,6 +1112,8 @@ async function appendExactCompletedFactoryHandoff(input: Readonly<{
     input.handoff.controller,
     "final-output"
   );
+  const finalOutputStepId =
+    `step_final_output_factory_ports_${input.suffix}`;
   const finalOutput = await input.handle.ledger.append({
     type: "agent.specialist-run.step.recorded",
     version: 1,
@@ -1116,7 +1121,7 @@ async function appendExactCompletedFactoryHandoff(input: Readonly<{
     context: eventContext(started.id),
     payload: {
       runId: input.runId,
-      stepId: `step_final_output_factory_ports_${input.suffix}`,
+      stepId: finalOutputStepId,
       summary: "Abstract local factory output is durably persisted.",
       stepKind: "final-output",
       stepSchemaId: "evidence-triage-handoff.v1",
@@ -1170,7 +1175,7 @@ async function appendExactCompletedFactoryHandoff(input: Readonly<{
     status: "ready-for-review",
     safeSummary: material.safeSummary,
     stateKind: "completed",
-    finalOutputStepId: finalOutput.payload.stepId,
+    finalOutputStepId,
     finalOutputEventId: finalOutput.id,
     handoffMaterialArtifactHash: storedMaterial.contentHash,
     contextPackRefs: [contextPackRef],
@@ -1190,16 +1195,19 @@ async function appendExactCompletedFactoryHandoff(input: Readonly<{
   if (storedManifest.contentHash !== manifestHash) {
     throw new Error("factory handoff manifest hash is not canonical");
   }
-  const compactBinding = {
+  const compactBinding: Extract<
+    KnowledgeEventOf<"agent.specialist-handoff.prepared">["payload"],
+    { manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" }
+  > = {
     handoffId: manifest.handoffId,
     handoffRevision: manifest.handoffRevision,
     idempotencyKey:
-      `specialist-handoff:${manifest.runId}:${manifest.taskId}:${manifest.runType}:${manifest.status}:${manifestHash}`,
+      `specialist-handoff:${manifest.runId}:${manifest.taskId ?? "none"}:${manifest.runType}:${manifest.status}:${manifestHash}`,
     handoffManifestHash: manifestHash,
     handoffMaterialArtifactHash: manifest.handoffMaterialArtifactHash,
     handoffDtoHash: manifest.handoffDtoHash,
     runId: manifest.runId,
-    taskId: manifest.taskId,
+    ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
     runType: input.runType,
     residentAgentId: manifest.residentAgentId,
     status: manifest.status,
@@ -1209,7 +1217,9 @@ async function appendExactCompletedFactoryHandoff(input: Readonly<{
     contextPackHashes: manifest.contextPackRefs.map(
       (reference) => reference.contentHash
     ),
-    promptArtifactHash: manifest.promptArtifactHash,
+    ...(manifest.promptArtifactHash === undefined
+      ? {}
+      : { promptArtifactHash: manifest.promptArtifactHash }),
     outputArtifactHashes: manifest.outputArtifacts.map(
       (artifact) => artifact.artifactHash
     ),
@@ -1218,7 +1228,7 @@ async function appendExactCompletedFactoryHandoff(input: Readonly<{
     relatedEventIds: [...manifest.relatedEventIds],
     manifestSchemaVersion: manifest.schemaVersion,
     authorityBinding
-  } as const;
+  };
 
   await beforeMountedHandoffAuthorityEffect(
     input.handoff.controller,
@@ -1485,6 +1495,7 @@ function connectedLegacyRuntime(
   const evidenceId = `ev_factory_ports_${suffix}`;
   const abstractCandidate = Object.freeze({
     candidateId,
+    observationId: `observation_factory_ports_${suffix}`,
     evidenceId,
     evidenceContentHash: hash("2"),
     predicate: "legacy.factory.fixture",
