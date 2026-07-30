@@ -852,13 +852,29 @@ describe("wake supervisor runtime", () => {
     const terminal = await issuedResidentFixture("current-approved-terminal");
     const terminalOldToken = terminal.capabilities.currentnessToken;
     const terminalMaterial = await residentSuspensionMaterial(terminal);
+    const {
+      resumeAnchor,
+      ...terminalPayloadWithoutResumeAnchor
+    } = residentResultPayload(
+      terminalMaterial,
+      terminalMaterial.observation.id
+    );
+    expect(resumeAnchor).toBeDefined();
+    const terminalPayload = {
+      ...terminalPayloadWithoutResumeAnchor,
+      budget: residentBudget(
+        {
+          contextBytes: 1,
+          observationRecords: 1,
+          activeExecutionMs: 1
+        },
+        { activeExecutionMs: 1 }
+      ),
+      outcome: "failed" as const,
+      category: "validation-failed" as const
+    };
     const terminalEvent = await terminal.capabilities.planObservation
-      .appendResult(
-        residentResultPayload(
-          terminalMaterial,
-          terminalMaterial.observation.id
-        )
-      );
+      .appendResult(terminalPayload);
     expect(terminalEvent).toMatchObject({
       type: "agent.resident-loop.result.recorded.v2",
       payload: {
@@ -869,6 +885,7 @@ describe("wake supervisor runtime", () => {
         runId: terminal.runId
       }
     });
+    expect(terminalEvent.payload).toEqual(terminalPayload);
     const terminalBeforeReverify = await terminal.handle.ledger.readAll();
     const terminalResult =
       await terminal.capabilities.mountedAuthority.reverifyAfterAwait(
