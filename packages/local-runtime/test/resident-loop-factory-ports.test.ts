@@ -13,19 +13,38 @@ import { join } from "node:path";
 import { types } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import dispatcherDefault from "../../agent/src/domain-execution-dispatcher.js";
+import {
+  buildAuthorityBoundSpecialistHandoffManifest,
+  buildSpecialistHandoffMaterial,
+  canonicalSpecialistHandoffJson,
+  canonicalSpecialistHandoffMaterialBytes,
+  computeSpecialistHandoffId,
+  hashCanonicalSpecialistHandoffJson,
+  hashSpecialistHandoffManifest
+} from "../../agent/src/specialist-handoff-manifest.js";
 import * as wakeSupervisorSurface from "../../agent/src/wake-supervisor.js";
 import { createLegacyImportRuntime, type LegacyImportRuntime } from "../../ingestion/src/legacy-runtime.js";
 import { mountedWorkspaceCapabilities } from "../../ingestion/src/mount-contract.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
-import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import type {
+  KnowledgeEvent,
+  KnowledgeEventOf
+} from "../../ontology/src/contracts.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { createAgentProviderConfiguration } from "../src/agent-provider-configuration.js";
-import { issueMountedArtifactAuthorityOperationForFactory } from "../src/mounted-artifact-authority-operation.js";
+import {
+  inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores,
+  issueMountedArtifactAuthorityOperationForFactory
+} from "../src/mounted-artifact-authority-operation.js";
 import {
   inspectMountedProviderAuthority,
   issueMountedProviderAuthority
 } from "../src/mounted-provider-authority.js";
-import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
+import {
+  afterMountedHandoffAuthorityAppend,
+  beforeMountedHandoffAuthorityEffect,
+  createPortableMountedAgentArtifactStoreProducer
+} from "../src/portable-mounted-agent-artifact-stores.js";
 import * as residentLoopFactoryCompositionSurface from "../src/resident-loop-factory-composition.js";
 import type {
   ResidentLoopFactoryAuthorityReadback,
@@ -210,7 +229,10 @@ describe("resident loop factory ports", () => {
   });
 
   it("runs createResidentBoundedAgentLoopFactory against the real mounted fixture", async () => {
-    const fixture = await mountedFactoryFixture("record29-real-mounted");
+    const fixture = await mountedFactoryFixture(
+      "record29-real-mounted",
+      { completeHandoff: true, abstractAutomaticLegacy: true }
+    );
     const exactStopFailure = new Error("abstract exact wake owner stop failure");
     const stopFailureFixture = await mountedFactoryFixture(
       "record29-stop-failure",
@@ -256,6 +278,40 @@ describe("resident loop factory ports", () => {
       expect(constructionProbe.callCount()).toBe(0);
       assertNoAuthorityEscape(issued, fixture.authorityValues);
       expect(await domainBoundarySnapshot(fixture)).toEqual(before);
+
+      const result = await issued.loop.advance(fixture.initialCandidate);
+      const resultId = Reflect.get(result as object, "id");
+      const events = await fixture.handle.ledger.readAll();
+      const reread = events.find((event) => event.id === resultId);
+      expect(result).toMatchObject({
+        id: expect.stringMatching(/^evt_/),
+        type: "agent.resident-loop.result.recorded.v2",
+        payload: {
+          outcome: "completed",
+          category: "handoff-recorded",
+          resultHash: fixture.handoffManifestHash
+        }
+      });
+      expect(reread).toBeDefined();
+      expect(JSON.stringify(result)).toBe(JSON.stringify(reread));
+      expect(events.filter((event) =>
+        event.type === "assertion.proposed" &&
+        event.payload.predicate === "legacy.factory.fixture" &&
+        event.payload.object === fixture.legacyCandidateId
+      )).toHaveLength(1);
+      expect(fixture.runtimeCalls).toEqual({
+        preview: 1,
+        approval: 0,
+        effect: 1
+      });
+      const afterAdvance = await domainBoundarySnapshot(fixture);
+      expect(afterAdvance.providerLedgerEvents).toBe(before.providerLedgerEvents);
+      expect(afterAdvance.approvalLedgerEvents).toBe(before.approvalLedgerEvents);
+      expect(afterAdvance.effectLedgerEvents).toBe(before.effectLedgerEvents + 1);
+      expect(afterAdvance.portableNonLedgerFileSystem).toEqual(
+        before.portableNonLedgerFileSystem
+      );
+      expect(constructionProbe.callCount()).toBe(0);
 
       await expect(Promise.all([issued.stop(), issued.stop()])).resolves.toEqual([
         undefined,
@@ -563,6 +619,11 @@ type RuntimeBoundaryCalls = {
   approval: number;
   effect: number;
 };
+type MountedFactoryOptions = Readonly<{
+  exactStopFailure?: Error;
+  completeHandoff?: boolean;
+  abstractAutomaticLegacy?: boolean;
+}>;
 type MountedFactoryFixture = {
   readonly handle: LocalRuntimeHandle;
   readonly actor: {
@@ -588,6 +649,9 @@ type MountedFactoryFixture = {
   }>;
   readonly runtimeCalls: RuntimeBoundaryCalls;
   readonly authorityValues: readonly unknown[];
+  readonly initialCandidate: unknown;
+  readonly handoffManifestHash: Hash | undefined;
+  readonly legacyCandidateId: string;
 };
 
 async function mountedPortsFixture(suffix: string) {
@@ -596,7 +660,7 @@ async function mountedPortsFixture(suffix: string) {
 
 async function mountedFactoryFixture(
   suffix: string,
-  options: Readonly<{ exactStopFailure?: Error }> = {}
+  options: MountedFactoryOptions = {}
 ): Promise<MountedFactoryFixture> {
   const root = mkdtempSync(join(tmpdir(), "cestus-factory-ports-"));
   directories.push(root);
@@ -630,7 +694,11 @@ async function mountedFactoryFixture(
     runType,
     retryGeneration: 0
   } as const);
-  await seedMountedFactoryClaim(handle, suffix, handoffLifecycle);
+  const orchestrationClaim = await seedMountedFactoryClaim(
+    handle,
+    suffix,
+    handoffLifecycle
+  );
 
   const actor = { id: "agent_factory_ports", kind: "agent", label: "Factory ports" } as const;
   const supervisorEpoch = `epoch_factory_ports_${suffix}`;
@@ -677,6 +745,19 @@ async function mountedFactoryFixture(
     runType,
     retryGeneration: 0
   });
+  const completedHandoff = options.completeHandoff === true
+    ? await appendExactCompletedFactoryHandoff({
+      handle,
+      operation,
+      handoff,
+      orchestrationClaim,
+      suffix,
+      taskId,
+      attemptId,
+      runId,
+      runType
+    })
+    : undefined;
   const authorityReadback = await composition.bind(Object.freeze({
     providerAuthority,
     handoffAuthorityWitness: handoff.binding.authorityWitness
@@ -701,7 +782,11 @@ async function mountedFactoryFixture(
     highWaterOrdinal: providerReadback.highWaterOrdinal
   });
 
-  const connectedRuntime = connectedLegacyRuntime(handle);
+  const connectedRuntime = connectedLegacyRuntime(
+    handle,
+    suffix,
+    options.abstractAutomaticLegacy === true
+  );
   const domainExecution = await dispatcherDefault.createPackageOwnedResidentDomainExecutionCapability(
     Object.freeze({
       kind: "legacy-staging",
@@ -752,6 +837,11 @@ async function mountedFactoryFixture(
       bind: 1
     }),
     runtimeCalls: connectedRuntime.calls,
+    initialCandidate: options.abstractAutomaticLegacy === true
+      ? residentFactoryInitialCandidate(providerPosture, authorityReadback)
+      : undefined,
+    handoffManifestHash: completedHandoff?.manifestHash,
+    legacyCandidateId: `candidate_factory_ports_${suffix}`,
     authorityValues: Object.freeze([
       handle,
       handle.ledger,
@@ -783,7 +873,7 @@ async function seedMountedFactoryClaim(
     readonly runId: string;
     readonly runType: "evidence-triage";
   }>
-): Promise<void> {
+): Promise<KnowledgeEvent> {
   const { taskId, attemptId, runType } = binding;
   const occurredAt = "2026-07-19T00:00:00.000Z";
   const actor = {
@@ -797,6 +887,29 @@ async function seedMountedFactoryClaim(
   if (identity === undefined) {
     throw new Error("factory fixture resident identity is required");
   }
+  await handle.ledger.append({
+    type: "evidence.ingested",
+    version: 1,
+    streamId: `evidence_ev_factory_ports_${suffix}`,
+    context: {
+      actor,
+      occurredAt,
+      causationId: identity.id,
+      correlationId: `corr_factory_ports_evidence_${suffix}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      evidenceId: `ev_factory_ports_${suffix}`,
+      source: {
+        kind: "file",
+        label: `Abstract factory fixture ${suffix}`
+      },
+      contentHash: hash("2"),
+      mediaType: "application/json",
+      sizeBytes: 1
+    }
+  });
   const taskCreated = await handle.ledger.append({
     type: "agent.task.created",
     version: 1,
@@ -880,9 +993,480 @@ async function seedMountedFactoryClaim(
   if (claim.type !== "agent.task.orchestration.claimed") {
     throw new Error("factory fixture orchestration claim is required");
   }
+  return claim;
 }
 
-function connectedLegacyRuntime(handle: LocalRuntimeHandle): {
+async function appendExactCompletedFactoryHandoff(input: Readonly<{
+  handle: LocalRuntimeHandle;
+  operation: ReturnType<typeof issueMountedArtifactAuthorityOperationForFactory>;
+  handoff: Awaited<ReturnType<ReturnType<typeof createPortableMountedAgentArtifactStoreProducer>["bind"]>>;
+  orchestrationClaim: KnowledgeEvent;
+  suffix: string;
+  taskId: string;
+  attemptId: string;
+  runId: string;
+  runType: "evidence-triage";
+}>): Promise<Readonly<{ manifestHash: Hash }>> {
+  if (input.orchestrationClaim.type !== "agent.task.orchestration.claimed") {
+    throw new Error("factory handoff requires the exact orchestration claim");
+  }
+  const occurredAt = "2026-07-19T00:00:00.000Z";
+  const actor = {
+    id: "agent_default",
+    kind: "agent" as const,
+    label: "Resident agent"
+  };
+  const eventContext = (causationId: string) => ({
+    actor,
+    occurredAt,
+    causationId,
+    correlationId: `corr_${input.taskId}`,
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  });
+  const checkpoint = await input.handle.ledger.append({
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId: input.orchestrationClaim.streamId,
+    context: eventContext(input.orchestrationClaim.id),
+    payload: {
+      taskId: input.taskId,
+      runType: input.runType,
+      attemptId: input.attemptId,
+      retryGeneration: 0,
+      leaseClaimGeneration:
+        input.orchestrationClaim.payload.leaseClaimGeneration,
+      checkpointKind: "runner-dispatching",
+      checkpointedAt: occurredAt,
+      runId: input.runId,
+      resumeIdempotencyKey:
+        `task-orchestrator:${input.taskId}:${input.runType}:0:${input.attemptId}:runner-dispatching`,
+      contextBindings: [],
+      safeNextActions: ["wait for durable specialist handoff readback"]
+    }
+  });
+  const started = await input.handle.ledger.append({
+    type: "agent.specialist-run.started",
+    version: 1,
+    streamId: `agent_run_${input.runId}`,
+    context: eventContext(checkpoint.id),
+    payload: {
+      runId: input.runId,
+      residentAgentId: "agent_default",
+      runType: input.runType,
+      startedBy: "agent_default",
+      taskId: input.taskId,
+      sourceEventIds: [checkpoint.id],
+      inputArtifactHashes: [hash("5")]
+    }
+  });
+  const contextPackRef = Object.freeze({
+    contextPackId: "task-run-history.v1",
+    version: 1,
+    contentHash: hash("4"),
+    sizeBytes: 256,
+    generatedAt: occurredAt,
+    safeSummary: "Abstract local factory task and run history.",
+    provenanceRefs: [started.id],
+    sourceEventIds: [started.id],
+    artifactHashes: [hash("5")]
+  });
+  const outputArtifact = Object.freeze({
+    artifactId: `artifact_factory_ports_${input.suffix}`,
+    artifactKind: "triage-dossier",
+    schemaId: "evidence-triage-handoff.v1",
+    artifactHash: hash("6"),
+    safeSummary: "Abstract local factory evidence is ready for review."
+  });
+  const nextSafeAction = Object.freeze({
+    actionId: `action_review_factory_ports_${input.suffix}`,
+    label: "Review abstract local factory evidence",
+    kind: "review" as const,
+    effect: "none" as const,
+    artifactId: outputArtifact.artifactId
+  });
+  const material = buildSpecialistHandoffMaterial({
+    status: "ready-for-review",
+    safeSummary: "Abstract local factory handoff is ready for review.",
+    contextPackRefs: [contextPackRef],
+    promptArtifactHash: hash("5"),
+    outputArtifacts: [outputArtifact],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [nextSafeAction],
+    sourceEventIds: [started.id],
+    relatedEventIds: [started.id]
+  });
+  const materialBytes = canonicalSpecialistHandoffMaterialBytes(material);
+  const storedMaterial = await input.handoff.binding.materialStore.put(
+    materialBytes
+  );
+  if (
+    storedMaterial.contentHash !==
+      hashCanonicalSpecialistHandoffJson(material)
+  ) {
+    throw new Error("factory handoff material hash is not canonical");
+  }
+
+  await beforeMountedHandoffAuthorityEffect(
+    input.handoff.controller,
+    "final-output"
+  );
+  const finalOutputStepId =
+    `step_final_output_factory_ports_${input.suffix}`;
+  const finalOutput = await input.handle.ledger.append({
+    type: "agent.specialist-run.step.recorded",
+    version: 1,
+    streamId: `agent_run_${input.runId}`,
+    context: eventContext(started.id),
+    payload: {
+      runId: input.runId,
+      stepId: finalOutputStepId,
+      summary: "Abstract local factory output is durably persisted.",
+      stepKind: "final-output",
+      stepSchemaId: "evidence-triage-handoff.v1",
+      idempotencyKey:
+        `specialist-final-output:${input.runId}:${input.taskId}:${input.runType}:ready-for-review:${storedMaterial.contentHash}`,
+      handoffMaterialArtifactHash: storedMaterial.contentHash,
+      inputArtifactHashes: [hash("4"), hash("5")],
+      outputArtifactHashes: [outputArtifact.artifactHash]
+    }
+  });
+  await afterMountedHandoffAuthorityAppend(
+    input.handoff.controller,
+    "final-output",
+    finalOutput.id
+  );
+
+  const snapshot =
+    inspectMountedArtifactAuthorityOperationForPortableMountedAgentArtifactStores(
+      input.operation
+    ).snapshot;
+  const authorityBinding = Object.freeze({
+    workspaceIdentityHash: hashCanonicalSpecialistHandoffJson({
+      schemaVersion: "mounted-handoff-workspace-identity.v1",
+      workspaceId: snapshot.workspaceId,
+      workspaceIdentityEventId: snapshot.workspaceIdentityEventId
+    }),
+    mountGeneration: snapshot.admissionGenerationId,
+    ledgerStoreIdentity: snapshot.ledgerStoreEvidenceId,
+    artifactStoreIdentity: snapshot.artifactStoreEvidenceId,
+    ledgerHighWaterEventId: snapshot.highWaterMark,
+    policyHash: snapshot.policyDigest as Hash,
+    activeLocksHash: snapshot.lockStateDigest as Hash
+  });
+  const handoffId = computeSpecialistHandoffId({
+    runId: input.runId,
+    taskId: input.taskId,
+    runType: input.runType,
+    status: "ready-for-review",
+    finalOutputEventId: finalOutput.id,
+    outputArtifactHashes: [outputArtifact.artifactHash],
+    handoffRevision: 1
+  });
+  const manifest = buildAuthorityBoundSpecialistHandoffManifest({
+    handoffId,
+    handoffRevision: 1,
+    runId: input.runId,
+    taskId: input.taskId,
+    runType: input.runType,
+    residentAgentId: "agent_default",
+    generatedAt: occurredAt,
+    status: "ready-for-review",
+    safeSummary: material.safeSummary,
+    stateKind: "completed",
+    finalOutputStepId,
+    finalOutputEventId: finalOutput.id,
+    handoffMaterialArtifactHash: storedMaterial.contentHash,
+    contextPackRefs: [contextPackRef],
+    promptArtifactHash: hash("5"),
+    outputArtifacts: [outputArtifact],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [nextSafeAction],
+    sourceEventIds: [started.id],
+    relatedEventIds: [started.id],
+    authorityBinding
+  });
+  const manifestHash = hashSpecialistHandoffManifest(manifest);
+  const storedManifest = await input.handoff.binding.manifestStore.put(
+    canonicalSpecialistHandoffJson(manifest)
+  );
+  if (storedManifest.contentHash !== manifestHash) {
+    throw new Error("factory handoff manifest hash is not canonical");
+  }
+  const compactBinding: Extract<
+    KnowledgeEventOf<"agent.specialist-handoff.prepared">["payload"],
+    { manifestSchemaVersion: "agent-specialist-handoff-manifest.v2" }
+  > = {
+    handoffId: manifest.handoffId,
+    handoffRevision: manifest.handoffRevision,
+    idempotencyKey:
+      `specialist-handoff:${manifest.runId}:${manifest.taskId ?? "none"}:${manifest.runType}:${manifest.status}:${manifestHash}`,
+    handoffManifestHash: manifestHash,
+    handoffMaterialArtifactHash: manifest.handoffMaterialArtifactHash,
+    handoffDtoHash: manifest.handoffDtoHash,
+    runId: manifest.runId,
+    ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
+    runType: input.runType,
+    residentAgentId: manifest.residentAgentId,
+    status: manifest.status,
+    safeSummary: manifest.safeSummary,
+    finalOutputStepId: manifest.finalOutputStepId,
+    finalOutputEventId: manifest.finalOutputEventId,
+    contextPackHashes: manifest.contextPackRefs.map(
+      (reference) => reference.contentHash
+    ),
+    ...(manifest.promptArtifactHash === undefined
+      ? {}
+      : { promptArtifactHash: manifest.promptArtifactHash }),
+    outputArtifactHashes: manifest.outputArtifacts.map(
+      (artifact) => artifact.artifactHash
+    ),
+    toolRequestIds: [...manifest.toolRequestIds],
+    sourceEventIds: [...manifest.sourceEventIds],
+    relatedEventIds: [...manifest.relatedEventIds],
+    manifestSchemaVersion: manifest.schemaVersion,
+    authorityBinding
+  };
+
+  await beforeMountedHandoffAuthorityEffect(
+    input.handoff.controller,
+    "handoff-prepared"
+  );
+  const prepared = await input.handle.ledger.append({
+    type: "agent.specialist-handoff.prepared",
+    version: 1,
+    streamId: `agent_run_${input.runId}`,
+    context: eventContext(finalOutput.id),
+    payload: compactBinding
+  });
+  await afterMountedHandoffAuthorityAppend(
+    input.handoff.controller,
+    "handoff-prepared",
+    prepared.id
+  );
+
+  await beforeMountedHandoffAuthorityEffect(
+    input.handoff.controller,
+    "handoff-recorded"
+  );
+  const recorded = await input.handle.ledger.append({
+    type: "agent.specialist-handoff.recorded",
+    version: 1,
+    streamId: `agent_run_${input.runId}`,
+    context: eventContext(prepared.id),
+    payload: {
+      ...compactBinding,
+      preparedEventId: prepared.id,
+      verifiedAt: occurredAt
+    }
+  });
+  await afterMountedHandoffAuthorityAppend(
+    input.handoff.controller,
+    "handoff-recorded",
+    recorded.id
+  );
+
+  await beforeMountedHandoffAuthorityEffect(
+    input.handoff.controller,
+    "run-terminal"
+  );
+  const completed = await input.handle.ledger.append({
+    type: "agent.specialist-run.completed",
+    version: 1,
+    streamId: `agent_run_${input.runId}`,
+    context: eventContext(recorded.id),
+    payload: {
+      runId: input.runId,
+      completedAt: occurredAt,
+      outputArtifactHashes: [outputArtifact.artifactHash],
+      relatedEventIds: [finalOutput.id],
+      summary: "Abstract local factory run reached terminal state."
+    }
+  });
+  await afterMountedHandoffAuthorityAppend(
+    input.handoff.controller,
+    "run-terminal",
+    completed.id
+  );
+
+  await beforeMountedHandoffAuthorityEffect(
+    input.handoff.controller,
+    "orchestration-completed"
+  );
+  const orchestrationCompleted = await input.handle.ledger.append({
+    type: "agent.task.orchestration.completed",
+    version: 1,
+    streamId: input.orchestrationClaim.streamId,
+    context: eventContext(completed.id),
+    payload: {
+      taskId: input.taskId,
+      runType: input.runType,
+      attemptId: input.attemptId,
+      retryGeneration: 0,
+      runId: input.runId,
+      completedAt: occurredAt,
+      specialistRunCompletedEventId: completed.id,
+      finalOutputStepEventId: finalOutput.id,
+      handoffPreparedEventId: prepared.id,
+      handoffRecordedEventId: recorded.id,
+      handoffReadback: {
+        handoffId,
+        handoffManifestHash: manifestHash,
+        handoffRecordedEventId: recorded.id,
+        verifiedAt: occurredAt
+      }
+    }
+  });
+  await afterMountedHandoffAuthorityAppend(
+    input.handoff.controller,
+    "orchestration-completed",
+    orchestrationCompleted.id
+  );
+
+  await beforeMountedHandoffAuthorityEffect(
+    input.handoff.controller,
+    "task-status"
+  );
+  const taskStatus = await input.handle.ledger.append({
+    type: "agent.task.status.changed",
+    version: 1,
+    streamId: `agent_task_${input.taskId}`,
+    context: eventContext(orchestrationCompleted.id),
+    payload: {
+      taskId: input.taskId,
+      runId: input.runId,
+      status: "completed",
+      changedBy: "agent_default",
+      reason: "Task completed after exact durable handoff readback."
+    }
+  });
+  await afterMountedHandoffAuthorityAppend(
+    input.handoff.controller,
+    "task-status",
+    taskStatus.id
+  );
+  return Object.freeze({ manifestHash });
+}
+
+function residentFactoryInitialCandidate(
+  providerPosture: ProviderPosture,
+  authorityReadback: ResidentLoopFactoryAuthorityReadback
+): unknown {
+  const authority = authorityReadback.handoff.authorityBinding;
+  const budgetFields = [
+    "planRevisions",
+    "observationRecords",
+    "toolSteps",
+    "providerInvocations",
+    "providerRequestBytes",
+    "providerResponseBytes",
+    "contextBytes",
+    "derivativeArtifactBytes",
+    "activeExecutionMs",
+    "approvalSuspensionMs"
+  ] as const;
+  const ceilings = {
+    planRevisions: 3,
+    observationRecords: 16,
+    toolSteps: 12,
+    providerInvocations: 3,
+    providerRequestBytes: 1_048_576,
+    providerResponseBytes: 1_048_576,
+    contextBytes: 32_768,
+    derivativeArtifactBytes: 65_536,
+    activeExecutionMs: 120_000,
+    approvalSuspensionMs: 120_000
+  };
+  const actionConsumption = Object.fromEntries(
+    budgetFields.map((field) => [field, field === "contextBytes" ? 1 : 0])
+  );
+  const consumed = { ...actionConsumption };
+  const remaining = Object.fromEntries(
+    budgetFields.map((field) => [
+      field,
+      ceilings[field] - Number(Reflect.get(consumed, field))
+    ])
+  );
+  const plannedTool = {
+    toolId: "legacy.staging.execute",
+    toolVersion: "0.1.0",
+    allowlistEntryHash: hash("8"),
+    expectedSafeOutputClass: "proposal",
+    prerequisiteStepOrdinals: []
+  };
+  const proposedPlan = {
+    schemaVersion: "resident-plan-record.v2",
+    residentAgentId: "agent_default",
+    workspaceId: providerPosture.workspace.workspaceId,
+    taskId: providerPosture.run.taskId,
+    attemptId: providerPosture.run.attemptId,
+    runId: providerPosture.run.runId,
+    runMode: "evidence-triage",
+    workflowDescriptor: {
+      workflowDescriptorId: "workflow_evidence_triage",
+      workflowDescriptorVersion: "v1",
+      workflowDescriptorHash: hash("2")
+    },
+    policy: {
+      policyId: "agent_policy_factory_ports",
+      policyVersion: providerPosture.workspace.policyVersion,
+      policyHash: authority.policyHash
+    },
+    authority,
+    sourceEventIds: [authority.ledgerHighWaterEventId],
+    contextPackRefs: [{
+      contextPackId: "context_pack_factory_ports",
+      contentHash: hash("3")
+    }],
+    budget: {
+      ceilings,
+      consumed,
+      remaining,
+      actionConsumption
+    },
+    causationId: authority.ledgerHighWaterEventId,
+    correlationId: `corr_${providerPosture.run.taskId}`,
+    planId: "plan_factory_ports_1",
+    planRevision: 0,
+    priorPlanReadback: null,
+    replanObservationReadback: null,
+    steps: [{
+      ordinal: 1,
+      purpose: "Stage one abstract local legacy assertion candidate.",
+      ...plannedTool
+    }]
+  };
+  return deepFreezeFactoryData({
+    kind: "initial",
+    proposedPlan,
+    providerPosture,
+    policyConstraints: {
+      toolAllowlist: [{
+        ...plannedTool,
+        sideEffectClass: "ledger-proposal",
+        requiredApprovalClass: "none"
+      }],
+      permittedAutomaticActionClasses: ["ledger-proposal"],
+      requiredApprovalClasses: ["none", "provider-byte-transfer"]
+    }
+  });
+}
+
+function deepFreezeFactoryData<T>(value: T): T {
+  if (value === null || typeof value !== "object") return value;
+  for (const nested of Object.values(value)) {
+    deepFreezeFactoryData(nested);
+  }
+  return Object.freeze(value);
+}
+
+function connectedLegacyRuntime(
+  handle: LocalRuntimeHandle,
+  suffix: string,
+  abstractAutomaticLegacy: boolean
+): {
   readonly runtime: LegacyImportRuntime;
   readonly calls: RuntimeBoundaryCalls;
 } {
@@ -907,10 +1491,36 @@ function connectedLegacyRuntime(handle: LocalRuntimeHandle): {
     actor: { id: "actor_factory_ports", kind: "human", label: "Factory ports" }
   });
   const calls: RuntimeBoundaryCalls = { preview: 0, approval: 0, effect: 0 };
+  const candidateId = `candidate_factory_ports_${suffix}`;
+  const evidenceId = `ev_factory_ports_${suffix}`;
+  const abstractCandidate = Object.freeze({
+    candidateId,
+    observationId: `observation_factory_ports_${suffix}`,
+    evidenceId,
+    evidenceContentHash: hash("2"),
+    predicate: "legacy.factory.fixture",
+    object: candidateId,
+    confidence: 0.8,
+    sourcePath: "factory-fixture.json"
+  });
   const runtime = Object.freeze({
     ...actual,
     async stagingPreview(input: Parameters<LegacyImportRuntime["stagingPreview"]>[0]) {
       calls.preview += 1;
+      if (abstractAutomaticLegacy) {
+        return {
+          ok: true as const,
+          command: "legacy staging-preview" as const,
+          sourceCollectionId: input.sourceCollectionId,
+          eventIds: [],
+          nextActions: [],
+          legacyReportId: input.legacyReportId ?? `legacy_report_factory_ports_${suffix}`,
+          reportHash: hash("f"),
+          candidateSetHash: hash("1"),
+          candidates: [abstractCandidate],
+          quarantineEntries: []
+        };
+      }
       return await actual.stagingPreview(input);
     },
     async approveStaging(input: Parameters<LegacyImportRuntime["approveStaging"]>[0]) {
@@ -919,6 +1529,53 @@ function connectedLegacyRuntime(handle: LocalRuntimeHandle): {
     },
     async stageApproved(input: Parameters<LegacyImportRuntime["stageApproved"]>[0]) {
       calls.effect += 1;
+      if (abstractAutomaticLegacy) {
+        const evidence = (await handle.ledger.readAll()).find(
+          (event) =>
+            event.type === "evidence.ingested" &&
+            event.payload.evidenceId === evidenceId
+        );
+        if (evidence === undefined) {
+          throw new Error("factory fixture local evidence is required");
+        }
+        const assertionId = `as_factory_ports_${suffix}`;
+        const proposal = await handle.ledger.append({
+          type: "assertion.proposed",
+          version: 1,
+          streamId: `assertion_${assertionId}`,
+          context: {
+            actor: {
+              id: "agent_default",
+              kind: "agent",
+              label: "Resident agent"
+            },
+            occurredAt: "2026-07-19T00:00:00.000Z",
+            causationId: evidence.id,
+            correlationId: `corr_factory_ports_proposal_${suffix}`,
+            coreVersion: "0.1.0",
+            packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+          },
+          payload: {
+            assertionId,
+            evidenceId,
+            predicate: abstractCandidate.predicate,
+            object: abstractCandidate.object,
+            confidence: abstractCandidate.confidence,
+            reviewState: "proposed"
+          }
+        });
+        return {
+          ok: true as const,
+          command: "legacy stage" as const,
+          sourceCollectionId: input.sourceCollectionId,
+          scanBatchId: input.scanBatchId,
+          eventIds: [proposal.id],
+          nextActions: [],
+          legacyReportId: input.legacyReportId,
+          stagingBatchId: input.stagingBatchId,
+          proposedAssertionIds: [assertionId]
+        };
+      }
       return await actual.stageApproved(input);
     }
   }) satisfies LegacyImportRuntime;
