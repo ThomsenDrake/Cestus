@@ -51909,6 +51909,59 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   provider, credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
 
+## RV-1-E-1287 — Task16 exact bounded producer composition integrated
+
+- Recorded at: 2026-07-30T20:32:17Z
+- Exact independently approved one-source candidate
+  `a2bf9bd3684bc512cbb105f87de27d06628a5468`, tree
+  `a4bdb0291aae7de8b701cedc7819c76c93942454`, is integrated by exact
+  history-preserving program merge
+  `d9d80536961743797cd666f76aa5dbaa379ea3e8`, tree
+  `96f3494d4135be8c06f3e5e6f164342393ad7656`. Its first parent is exact
+  E-1286 approval `3bc407e3e35d28e15a2de24a0ee1b195931b3cc5`;
+  its second parent is the exact approved candidate.
+- Relative to its candidate second parent, the integration adds only the
+  append-only E-1286 registry approval. The approved bounded-loop source
+  remains exact blob `215b324629534236321cc56fa9988d38096fb0c8`,
+  and the approved terminal-action test remains exact blob
+  `9d5f473e7dc499ed8e2cb047299a7153905be9f6`. Relative to its approval
+  first parent, the merge preserves complete Task136 history while advancing
+  only the approved source. Two-parent diff hygiene and unmerged-index checks
+  pass.
+- Fresh main-session integration-tree execution under `TMPDIR=/dev/shm`, one
+  worker, and the 120-second timeout reproduces bounded **3/3**, focused
+  **9/9**, producer **144/144**, Task136 card **383/383**, exact 37-file
+  cross-card **1,042/1,042**, policy corpus **8 allowed / 20 rejected**, and
+  Task138 **355/355**.
+- Standalone typecheck and factory readiness pass. Mission and V4 each pass
+  **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  and markers remain **29 / 20 / 29 / 15**. Clean repository mode stops
+  first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`
+  and emits no repository-prefix, closure, record-29, repository, or
+  product-release success marker.
+- Completely fresh source review
+  `/root/e1285_terminal_green_fresh_review` remains bound to the exact
+  immutable candidate and reports no P0-P3 defect, missing test,
+  specification drift, executability gap, or tautological bypass. Exact
+  E-1286/E-1285 ancestry, one-source scope, all source/test freezes,
+  TypeScript **5.9.3**, Vitest **4.1.9**, local non-symlink dependencies,
+  exact 33-path `15/17/1` ceiling and canonical hash
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`,
+  strict Git integrity, and clean program state pass.
+- Advance Task16's exact approved source repair and complete producer
+  composition `approved -> integrated`. Task16 is now `integrated`.
+  Authorize only this record's forward history-preserving merge into
+  Task136. Task17 candidate admission may begin only after that merge and
+  fresh revalidation of its exact committed packet.
+- Task136 remains `implementing`; strict product frontier remains
+  **28 of 29**. This is Task16 integration, not Task136 candidacy, strict
+  record 29, publication, Wave 3 start, repository closure, production
+  readiness, or release. `neo`, provider, credential, external-system,
+  pull-request, production-route, preview-branch, and unrelated actions
+  remain unauthorized.
+
 ## RV-1-E-1281 — Task16 exact bounded replay one-source GREEN authorized
 
 - Recorded at: 2026-07-30T19:08:57Z
