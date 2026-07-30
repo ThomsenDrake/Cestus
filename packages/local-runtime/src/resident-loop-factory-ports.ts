@@ -1,8 +1,19 @@
 import { isIP } from "node:net";
 import { types } from "node:util";
+import {
+  createResidentBoundedAgentLoopFromIssuedCapabilities,
+  type ResidentBoundedAgentLoop
+} from "../../agent/src/bounded-agent-loop.js";
+import { createResidentPlanCandidateProvider } from "../../agent/src/resident-plan-candidate-provider.js";
 import { isAgentSecretSafeText } from "../../agent/src/secret-safety.js";
+import createInternalSpecialistHandoffProjectionPort from "../../agent/src/specialist-handoff-projection.js";
 import type { ResidentLoopFactoryAuthorityReadback } from "./resident-loop-factory-composition.js";
 import type { ResidentLoopProviderPosture } from "./resident-loop-provider-posture.js";
+import type { LocalRuntimeHandle } from "./runtime-factory.js";
+import {
+  bindResidentLoopCapabilitiesForFactory,
+  type WakeSupervisorRuntime
+} from "./wake-supervisor-runtime.js";
 
 const workspaceIdPattern = /^ws_[a-zA-Z0-9_-]+$/;
 const mountInstanceIdPattern = /^mount_[a-zA-Z0-9_-]+$/;
@@ -72,6 +83,21 @@ export interface ResidentLoopFactoryPorts {
       readonly approvalPreviewHash: `sha256:${string}`;
     };
   };
+}
+
+export interface CreateResidentBoundedAgentLoopFactoryInput {
+  readonly runtimeHandle: LocalRuntimeHandle;
+  readonly wakeRuntime: WakeSupervisorRuntime;
+  readonly authorityReadback: ResidentLoopFactoryAuthorityReadback;
+  readonly providerPosture: ResidentLoopProviderPosture;
+  readonly domainExecution: object;
+  readonly nowMonotonicMs: () => number;
+}
+
+export interface ResidentBoundedAgentLoopFactoryResult {
+  readonly metadata: ResidentLoopFactoryPorts;
+  readonly loop: ResidentBoundedAgentLoop;
+  readonly stop: () => Promise<void>;
 }
 
 interface AuthorityReadback {
@@ -144,7 +170,7 @@ interface ProviderPosture extends WorkspaceBinding, RunBinding {
  * function has no issuer, handle, witness, storage, provider, or async path.
  */
 export function createResidentLoopFactoryPorts(input: unknown): ResidentLoopFactoryPorts {
-  const envelope = exactFrozenRecord(input, ["authorityReadback", "providerPosture"]);
+  const envelope = exactOwnDataRecord(input, ["authorityReadback", "providerPosture"]);
   const authority = normalizeAuthorityReadback(envelope.authorityReadback);
   const posture = normalizeProviderPosture(envelope.providerPosture);
   requireExactBinding(authority, posture);
@@ -178,6 +204,50 @@ export function createResidentLoopFactoryPorts(input: unknown): ResidentLoopFact
       approval: Object.freeze({ ...posture.approval }),
       binding: Object.freeze({ ...posture.binding })
     })
+  });
+}
+
+export async function createResidentBoundedAgentLoopFactory(
+  input: CreateResidentBoundedAgentLoopFactoryInput
+): Promise<ResidentBoundedAgentLoopFactoryResult> {
+  const prepared = exactFrozenRecord(input, [
+    "runtimeHandle",
+    "wakeRuntime",
+    "authorityReadback",
+    "providerPosture",
+    "domainExecution",
+    "nowMonotonicMs"
+  ]);
+  const mounted = await bindResidentLoopCapabilitiesForFactory(
+    prepared.wakeRuntime,
+    prepared.authorityReadback,
+    prepared.domainExecution,
+    prepared.runtimeHandle
+  );
+  const metadata = createResidentLoopFactoryPorts({
+    authorityReadback: prepared.authorityReadback,
+    providerPosture: prepared.providerPosture
+  });
+  const candidateProvider = createResidentPlanCandidateProvider();
+  const handoffProjection = createInternalSpecialistHandoffProjectionPort({
+    ledger: prepared.runtimeHandle.ledger,
+    handoffReader: mounted.handoffReader
+  });
+  const issued = createResidentBoundedAgentLoopFromIssuedCapabilities(
+    mounted.planObservation,
+    candidateProvider,
+    mounted.gateway,
+    mounted.mountedAuthority,
+    mounted.currentnessToken,
+    handoffProjection,
+    metadata,
+    prepared.nowMonotonicMs
+  );
+  let stopPromise: Promise<void>;
+  return Object.freeze({
+    metadata,
+    loop: issued.loop,
+    stop: () => (stopPromise ??= prepared.wakeRuntime.stop())
   });
 }
 
@@ -346,7 +416,10 @@ function requireExactBinding(authority: AuthorityReadback, posture: ProviderPost
   ) throw unavailable();
 }
 
-function exactFrozenRecord(value: unknown, keys: readonly string[]): Readonly<Record<string, unknown>> {
+function exactFrozenRecord<T>(
+  value: T,
+  keys: readonly string[]
+): Readonly<T & Record<string, unknown>> {
   if (
     types.isProxy(value) ||
     value === null ||
@@ -369,7 +442,44 @@ function exactFrozenRecord(value: unknown, keys: readonly string[]): Readonly<Re
     }
     result[key] = descriptor.value;
   }
-  return Object.freeze(result);
+  return Object.freeze(result) as Readonly<T & Record<string, unknown>>;
+}
+
+function exactOwnDataRecord<T>(
+  value: T,
+  keys: readonly string[]
+): Readonly<T & Record<string, unknown>> {
+  if (
+    types.isProxy(value) ||
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype ||
+    Object.getOwnPropertySymbols(value).length !== 0
+  ) throw unavailable();
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const actualKeys = Object.keys(descriptors).sort();
+  const expectedKeys = [...keys].sort();
+  if (
+    actualKeys.length !== expectedKeys.length ||
+    actualKeys.some((key, index) => key !== expectedKeys[index])
+  ) throw unavailable();
+
+  const result: Record<string, unknown> = Object.create(null);
+  for (const key of keys) {
+    const descriptor = descriptors[key];
+    if (
+      descriptor === undefined ||
+      !descriptor.enumerable ||
+      !("value" in descriptor) ||
+      descriptor.get !== undefined ||
+      descriptor.set !== undefined
+    ) {
+      throw unavailable();
+    }
+    result[key] = descriptor.value;
+  }
+  return Object.freeze(result) as Readonly<T & Record<string, unknown>>;
 }
 
 function requiredText(record: Readonly<Record<string, unknown>>, key: string): string {
