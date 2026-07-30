@@ -52214,3 +52214,305 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   repository closure, production readiness, or release. `neo`, provider,
   credential, external-system, pull-request, production-route,
   preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1288 — Registry-order repair; exact Task136 33-path candidate admitted to fresh dual review
+
+- Recorded at: 2026-07-30T21:00:06Z
+- History-preserving Task16 integration combined two append-only registry
+  histories without deleting or changing event text, but physical file order
+  now places E-1285 through E-1287 before already committed E-1281 through
+  E-1284. Preserve every event and commit unchanged; do not amend, move,
+  delete, renumber, squash, or reconstruct them. The E-1285-through-E-1287
+  transitions are administratively invalid in their earlier physical
+  position. This true-EOF event reasserts their exact immutable evidence and
+  lifecycle effects in numeric and Git-ancestry order, carries Task16
+  integration authority, and is the sole effective Task17 candidate
+  admission.
+- The reasserted sequence is exact E-1285 one-source repair authority program
+  commit `6551955672cbbccadea0e036dc14097929f0e6d5`, its Task136 forward
+  authority merge `29d8162348eee9799afebc4328d0d3b608feeecf`,
+  exact source candidate `a2bf9bd3684bc512cbb105f87de27d06628a5468`,
+  E-1286 approval commit `3bc407e3e35d28e15a2de24a0ee1b195931b3cc5`,
+  history-preserving approval-first/candidate-second integration merge
+  `d9d80536961743797cd666f76aa5dbaa379ea3e8`, and E-1287 integration
+  record `a5cb6cbc23e463e83077f43d7a68bf3ba5173d76`. Their exact evidence,
+  freezes, review, GREEN gates, and Task16 `approved -> integrated`
+  transition remain as recorded in the immutable event text and commits.
+- Exact Task136 forward merge and candidate packet is
+  `97d45f1d0b9b9c598101f70099b5745d8c586004`, tree
+  `e7f06702cac33046e6600aa03b2ee0387c6bf9da`, with exact first parent
+  approved Task16 source candidate
+  `a2bf9bd3684bc512cbb105f87de27d06628a5468` and exact second parent
+  E-1287 program record `a5cb6cbc23e463e83077f43d7a68bf3ba5173d76`.
+  Its subject is
+  `merge: forward-integrate Task16 bounded composition`; relative to its
+  first parent it adds only the append-only program registry. The Task136
+  worktree is clean with no unmerged index.
+- Supersede only Task17's obsolete final-source-subject,
+  final-source-equals-candidate-tip, seven-GREEN-union, and literal
+  authority-range-equals-owned-scope assertions. Exact source parent
+  `a2bf9bd3` retains subject
+  `fix(agent): validate exact terminal replay result`. Unique original
+  Task136 authority merge remains
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1`, tree
+  `a6a9f32c6606502350d78e3356694c06c8ceb1ac`.
+- Exact Task136-owned candidate scope remains the contract's 33 ordered
+  paths: **15 sources, 17 tests, and one claim**. The transferred composition
+  source remains position 23. Canonical newline-delimited ordered-path
+  SHA-256 is
+  `4cca816c5004bf922d47a44bc8e9216a7f4d1e00a030f20b34d59fb0cd1e442e`.
+  All 33 owned paths occur in the authority-to-candidate range with none
+  missing.
+- The complete authority-to-candidate range contains 44 paths because it
+  additionally preserves this exact eleven-path inherited allowlist:
+  `docs/agentic/claims/task-136-record29-producer-reconciliation-design.md`,
+  `docs/agentic/claims/task-136-v4-task137b-authority-transfer.md`,
+  `docs/agentic/contracts/software-factory-mission-state.v1.json`,
+  `docs/agentic/contracts/task136-bounded-assurance-v4.json`,
+  `docs/agentic/resident-agent-full-vision-program-registry.md`,
+  `docs/superpowers/plans/2026-07-23-task136-record29-producer-reconciliation-implementation.md`,
+  `docs/superpowers/specs/2026-07-22-task136-record29-producer-reconciliation-design.md`,
+  `packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts`,
+  `scripts/check-software-factory-mission-state.mjs`,
+  `scripts/resident-agent/assurance/task136-bounded-assurance.mjs`, and
+  `scripts/resident-agent/assurance/task136-bounded-assurance.test.mjs`.
+  Its sorted newline-delimited SHA-256 is
+  `1e15f9c9e5f637799567cc4e76fa3784a8dec16abde4accc92da824196a2ac88`.
+  The package test is the exact independently approved prerequisite-owned
+  Task135D public-companion correction, blob
+  `68aa54a4ed1af4cc531023b063e767286757f0ec`; it is not a new
+  Task136-owned path.
+- The current source-only last-touch proof uses exact commits
+  `9d1eb9abcb0f9445d074cb81b47a35b8f2d05c79`,
+  `f89c0e4cb3edf7587c387897296806906685b363`,
+  `32b7f7f062bd97678f8b430245aa7757fd6119fe`,
+  `23d9f05689940761abb82264968ae764f396c14d`,
+  `92078539b9c7f5060d973441623b66a8c0ba272f`,
+  `98966df0795ad2252e17adf9792acc64c5c597bd`,
+  `c4ecb400d3a5f29ae4c39a6d6dc1c381c017eb24`,
+  `fded47cc59ed24a82865384c80fbe9641e2ca849`,
+  `7ac09a1afccf7988ba3bf8e20bd256e73d779def`, and
+  `a2bf9bd3684bc512cbb105f87de27d06628a5468`.
+  Every direct delta is source-only. Their sorted direct-path union is exactly
+  the fifteen current Task136 sources with SHA-256
+  `aed1f0be55fe43594fc273c598e93c89eb961e0de3fcb6d464620d86bb16f80b`.
+  Rejected intermediate commits `32b7f7f0`, `23d9f056`, and `7ac09a1a`
+  remain lawful immutable provenance because their unaffected current bytes
+  were retained and cumulatively approved by later exact candidates.
+- Exact ancestry passes:
+  `85b47c8a -> 5173887d -> 1b99822e -> 9d1eb9ab -> f89c0e4c ->
+  21935b21 -> 2d07a3f0 -> 23d9f056 -> 92078539 -> f607eb3c ->
+  98966df0 -> c4ecb400 -> fded47cc -> 7ac09a1a -> 8d0c3aba ->
+  a2bf9bd3 -> 97d45f1d`.
+  These bind the original authority, claim checkpoint, permanent Task9 RED,
+  Task12 binding RED, all approved cumulative source milestones and retained
+  repairs, and final Task16 integration.
+- All ten prerequisite integrations are exact ancestors:
+  T120-R `0b5185f0d0dd276164ec70d5db150f5f6ccb3a79`,
+  Task136-FC-Core `7a7a650e7db97c1aad63447e3669e66ddf3dc7fe`,
+  Task136-FC-Ports `365279fdd4e772c389188d05376ba87afe9782df`,
+  Task139-P2 `6472c92bce3b6cd23e3128666524e575d9f9d236`,
+  C136-P `b69ebd003ec1c3afd7cc849f076cb245e98c58f6`,
+  G136-R `4e7e4f8069ad494b865c4c134b21767be4d7f961`,
+  Task137B-W `9e680b44c4284456eebaad79c00fabda5c2bd4ea`,
+  Task138-H `12d23a69047d58e14dd04c4f89daf3f8a528e8aa`,
+  CF1-HR `32d4e3fdf8b4b79178d616daff91ecc5dd341548`,
+  and G136-SC `253150b2ab5f2271d2b04a5b8fc5b82b7bf757a5`.
+- Fresh committed-packet execution under `TMPDIR=/dev/shm`, one worker, and
+  the 120-second import-policy timeout passes bounded **3/3**, focused
+  **9/9**, producer **144/144**, Task136 card **383/383**, exact 37-file
+  cross-card **1,042/1,042**, policy corpus **8 allowed / 20 rejected**, and
+  Task138 **355/355**. Standalone typecheck and factory readiness pass.
+  Mission and V4 each pass **20/20**; mission fingerprint remains
+  `sha256:799af83764d6c098f3b1a97d6d30fc3b9b13f32f7c57204d92383fab371179ac`;
+  markers remain **29 / 20 / 29 / 15**.
+- Task138 source, test, and claim remain byte-identical to prerequisite
+  `12d23a69`, at blobs `bb85aabb05b150fbb38d9dd4a7fa85e9a4a9d404`,
+  `1a993ba0d14cb49e406f356568f09a00f17242f3`, and
+  `e04acf26ca6eecb27548dad7e946bce1e0c97358`. Agent barrel, scheduler
+  types, every adapter except exact `legacy-staging.ts`, runtime factory,
+  HTTP routes/handler, operator-status providers, server, dependencies,
+  configuration, provider, activation, credential, and unrelated paths
+  remain frozen. TypeScript is **5.9.3**, Vitest is **4.1.9**, dependencies
+  are local and non-symlinked, diff hygiene and strict Git connectivity pass.
+- Clean repository mode emits all four contract markers, exits one, and
+  stops first only at exact
+  `blob mismatch: Task136-LEGACY-STAGING-ADOPTION:packages/agent/src/adapters/legacy-staging.ts`.
+  It emits no repository-prefix, release-closure, record-29, repository, or
+  product-release success marker.
+- Fresh 120-second serialized full differential is bound to authority
+  `85b47c8ab2a1770da12a8bdaed589715ad4bcfb1` and candidate
+  `97d45f1d0b9b9c598101f70099b5745d8c586004`. Authority is
+  **3,231 = 3,181 passed + 45 failed + 5 pending**, **504 = 486 passed +
+  18 failed** suites, and 241 result files; candidate is
+  **3,372 = 3,322 passed + 45 failed + 5 pending**, **506 = 488 passed +
+  18 failed** suites, and 242 result files. Both test commands exit one.
+  Exact E-1007 comparator passes
+  `removed=8 mapped=14 addedPassed=135 retainedLaterRed=0 addedFiles=1`.
+  Every remaining baseline file/test occurrence retains exact identity and
+  status; every addition is passing and inside the frozen seventeen tests;
+  all failed, pending, deferred, and suite-failure counts are equal.
+- Default `npm run verify` also exits one at both trees. Authority is
+  **3,231 = 3,178 passed + 48 failed + 5 skipped**; candidate is
+  **3,372 = 3,313 passed + 54 failed + 5 skipped**. The six additional
+  candidate failures are only default-timeout occurrences in unchanged
+  import-policy and Git-fixture controls; each disappears in the mandated
+  serialized 120-second execution. This is calibrated environmental timeout
+  variance, not an unassigned product failure.
+- Exact artifact SHA-256 values are authority Vitest JSON
+  `f9c61765bbf7f2d533eba0f1377c404cdcbe8b7216a336ee63f03135243fd885`,
+  authority npm-test log
+  `ec741c6fc1cc64aeb82cecabf6c1151c0f97232ba63b21666208e777b2c193f8`,
+  authority verify log
+  `2c0aeed666bfe1152cc1ffd2a81d35cb184aee78138cc767ae74d797c3ec8d94`,
+  candidate Vitest JSON
+  `7c239284cbeab0a5670e98d64ffd5c26773cf3adfd3e463dc0c4fc8eb98c86e0`,
+  candidate npm-test log
+  `cda38938d152c0d964f4086af875f603b163a5131227e84911de775a248506d8`,
+  candidate verify log
+  `1c2e3dad14ae6bb7211bc289233c4863b37a03dcf3e53c39450d74fc2851ac8e`,
+  and comparator evidence
+  `0a1b47f8b1d85ce5819bddc8a1051a27d58fd02abd4df187f44a10d38b19d0c6`.
+  Each full log carries exactly one matching exit-status and tree marker.
+- Assign completely fresh independent read-only architecture reviewer
+  `/root/task17_e1288_architecture_review` and different completely fresh
+  independent read-only executability reviewer
+  `/root/task17_e1288_executability_review`. Both must bind exact
+  candidate/tree/parents, the complete 33-owned-plus-11-inherited packet,
+  ten-commit source union, full ancestry and prerequisites, Task138 and
+  no-activation freezes, all deterministic gates, and the fresh full
+  differential. The executability reviewer must additionally reproduce
+  original Task9 and Task12 binding-RED causality from their exact immutable
+  commits. Changed candidate bytes invalidate both reviews.
+- Advance exact Task136 `implementing -> candidate -> reviewing`. Task16 is
+  `integrated`; strict product frontier remains **28 of 29**. This is
+  append-only registry-order recovery and Task17 review admission, not
+  approval, integration, strict record 29, repository closure, publication,
+  Wave 3 start, production readiness, or product release. `neo`, provider,
+  credential, external-system, pull-request, production-route,
+  preview-branch, and unrelated actions remain unauthorized.
+
+## RV-1-E-1289 — Task136 33-path candidate rejected; real-mounted completion RED authorized
+
+- Recorded at: 2026-07-30T21:29:36Z
+- Completely fresh independent architecture reviewer
+  `/root/task17_e1288_architecture_review`, UUID
+  `019fb4d8-0e21-7532-acbc-caac0ce301ff`, and different completely fresh
+  independent executability reviewer
+  `/root/task17_e1288_executability_review`, UUID
+  `019fb4d8-3ed8-7010-b3a0-3d6dc200191b`, both return **REJECTED** for exact
+  immutable Task136 candidate
+  `97d45f1d0b9b9c598101f70099b5745d8c586004`, tree
+  `e7f06702cac33046e6600aa03b2ee0387c6bf9da`, with exact parents
+  `a2bf9bd3684bc512cbb105f87de27d06628a5468` and
+  `a5cb6cbc23e463e83077f43d7a68bf3ba5173d76`.
+  Changed candidate bytes invalidate both reviews.
+- Both reviews bind the exact 44-path binary packet, **3,733,130 bytes**,
+  SHA-256
+  `a0ad98647827b1c6e0af159c0474aa2c8221e603be6e7d9bbec7ae5a1c3ec127`,
+  exact 33-owned-plus-11-inherited scope, ten-commit fifteen-source union,
+  ancestry, ten prerequisites, Task138 and no-activation freezes,
+  dependencies, diff hygiene, strict Git integrity, and clean candidate
+  state.
+- **P1 — the real mounted loop cannot complete.** W's exact outer
+  currentness predicate in
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` accepts only
+  bound `agent.resident-domain.*` events and resident plan, observation, and
+  tool-step records after the prior token snapshot. The legitimate
+  package-owned legacy execution also appends its catalog-attested local
+  `assertion.proposed` evidence, which is therefore rejected by R's next
+  outer revalidation even though G's private before/after-effect token was
+  correctly refreshed.
+- The same predicate omits
+  `agent.resident-loop.result.recorded.v2`. R's required completion path in
+  `packages/agent/src/bounded-agent-loop.ts` appends that exact bound result
+  and immediately revalidates before reread. The expected self-append is
+  consequently classified `recordable-stale`, and the loop throws
+  unavailable instead of returning its exact durable terminal result.
+- This violates the approved design requirement that exact expected
+  self-appends remain current and the acceptance requirement that exported
+  `createResidentBoundedAgentLoopFactory` run end-to-end against the real
+  mounted fixture without runtime activation. The existing test titled
+  `runs createResidentBoundedAgentLoopFactory against the real mounted fixture`
+  issues the real loop and checks method shapes and stop ownership, but never
+  invokes `advance` or `resume`. Bounded-loop unit tests use a local W double
+  that returns current and cannot prove the mounted adapter integration.
+- Architecture independently passes Task136 card **383/383**, exact 37-file
+  cross-card **1,042/1,042**, typecheck, factory readiness, mission
+  **20/20**, and markers **29 / 20 / 29 / 15** before stopping on the P1.
+  Executability independently reproduces the permanent Task9 causal RED
+  **255 = 228 passed + 27 failures**, released controls **443/443**, the
+  separate Task12 binding RED **79 = 76 passed + three failures**, exact
+  current focused **9/9**, producer **144/144**, and all static packet gates
+  before independently confirming the same P1. Passing broad gates do not
+  cure the absent real-mounted completion oracle.
+- Advance exact Task136 `reviewing -> rejected -> implementing`. Preserve
+  E-1288 and exact rejected candidate history. Authorize only the smallest
+  forward test-only correction in exactly:
+  `packages/local-runtime/test/wake-supervisor-runtime.test.ts`, starting
+  from blob `d4eb04515063ac50ea88989a0b1335ecc0ea0f61`, and
+  `packages/local-runtime/test/resident-loop-factory-ports.test.ts`, starting
+  from blob `67e27f3bb1116152c0ebe2062eebde9b92e2c776`.
+- In the existing wake title
+  `keeps currentness only across the exact approved resident causal advance`,
+  add two abstract local positive suffix controls using its existing real
+  bound fixture, token, and mounted-authority seam: one exact
+  catalog-attested ordinal-10 `assertion.proposed` adapter-evidence chain and
+  one exact same-bound `agent.resident-loop.result.recorded.v2` terminal
+  suffix. Each must remain `kind: current`, issue a fresh token, and preserve
+  the existing rejection of unrelated, swapped, foreign, and terminal
+  advances. Preserve title and cardinality.
+- Extend only the existing factory-ports real-mounted title. Preserve its
+  title and total test cardinality. Using the already approved abstract local
+  corpus, make the prepared factory issue one real product, supply one exact
+  automatic `legacy.staging.execute` candidate and exact local task-completed
+  H evidence, invoke `issued.loop.advance`, and require the exact durable
+  `agent.resident-loop.result.recorded.v2` result and reread. Require provider,
+  network, default-runtime activation, external-system, and
+  alternate-composition counters to remain zero; require only the exact
+  expected local legacy preview/execution evidence; and preserve the existing
+  exact stop-owner/idempotency and failure-propagation assertions.
+- The direct and end-to-end oracles must remain RED first on the actual
+  catalog-attested adapter-evidence suffix and, after any incomplete partial
+  correction, on the exact terminal-result suffix. They must not duplicate W's
+  implementation allowlist, broadly bless an event type, use a caller
+  heuristic, add a route/default runtime, invoke a provider, access a
+  credential, or add unrelated corpus cases.
+- Required corrected RED under `TMPDIR=/dev/shm`, one worker, and the
+  120-second timeout is focused
+  **9 = eight passed + one causal failure**, Task16 producer controls
+  **144/144**, factory boundary **10 = nine passed + one causal failure**,
+  wake boundary **140 = 139 passed + one causal failure**, Task136 card
+  **383 = 381 passed + two causal failures**, exact 37-file cross-card
+  **1,042 = 1,040 passed + two causal failures**, and Task138 **355/355**.
+  Typecheck, readiness, mission and V4 **20/20**, markers
+  **29 / 20 / 29 / 15**, exact repository first-stop, two-test scope,
+  33-path hash, all source and other-test freezes, ancestry, dependencies,
+  diff hygiene, Git integrity, and clean committed state must pass.
+- Freeze every product source, every other test, design, plan, claim,
+  contract, mission, assurance, dependency, route, provider, activation,
+  credential, preview branch, and unrelated byte. In particular freeze
+  mounted W source
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts` at blob
+  `2d86fdcd570efbdee499d1ec807d2db1066f48bc`, bounded R source at
+  `215b324629534236321cc56fa9988d38096fb0c8`, factory-ports source at
+  `ea45eddd73ed7c3f208abb6da7ce287d03bd6da2`, and every G, dispatcher,
+  adapter, wake, composition, mounted-storage, and portable-storage source.
+- Commit only the two corrected tests with subject
+  `test(local-runtime): require real mounted loop completion`. Obtain a
+  completely fresh independent read-only review of exact immutable RED
+  bytes, append approval, integrate approval-first/candidate-second on the
+  program branch, rerun the integration packet, append integration, and
+  forward-merge into Task136. Changed bytes invalidate review.
+- No product edit is authorized until that RED is independently approved,
+  recorded, integrated, forward-merged, and a separate GREEN authority
+  exists. The expected smallest later product ceiling is only
+  `packages/local-runtime/src/mounted-wake-lifecycle-store.ts`, but this event
+  grants no source authority.
+- Task16 remains `integrated`; Task136 remains `implementing`; strict product
+  frontier remains **28 of 29**. This is fresh-review rejection and two-test
+  causal-oracle authority, not Task136 approval, integration, strict record
+  29, publication, Wave 3 start, repository closure, production readiness,
+  or release. `neo`, provider, credential, external-system, pull-request,
+  production-route, preview-branch, and unrelated actions remain
+  unauthorized.
