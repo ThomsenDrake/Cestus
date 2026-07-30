@@ -248,9 +248,9 @@ describe("resident loop factory ports", () => {
       );
       expect(typeof issued.stop).toBe("function");
       expect(fixture.preparationCalls).toEqual({
+        claimPrefix: 1,
         construction: 1,
         start: 1,
-        preflight: 1,
         bind: 1
       });
       expect(constructionProbe.callCount()).toBe(0);
@@ -581,9 +581,9 @@ type MountedFactoryFixture = {
   readonly factoryInput: Readonly<Record<string, unknown>>;
   readonly exactOwnerStopCallCount: () => number;
   readonly preparationCalls: Readonly<{
+    readonly claimPrefix: 1;
     readonly construction: 1;
     readonly start: 1;
-    readonly preflight: 1;
     readonly bind: 1;
   }>;
   readonly runtimeCalls: RuntimeBoundaryCalls;
@@ -746,9 +746,9 @@ async function mountedFactoryFixture(
     factoryInput,
     exactOwnerStopCallCount: () => exactOwnerStopCalls,
     preparationCalls: Object.freeze({
+      claimPrefix: 1,
       construction: 1,
       start: 1,
-      preflight: 1,
       bind: 1
     }),
     runtimeCalls: connectedRuntime.calls,
