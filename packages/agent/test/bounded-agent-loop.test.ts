@@ -2718,7 +2718,7 @@ function residentResult(
   observationEvent: Readonly<Record<string, unknown>>,
   authorityBinding: Readonly<Record<string, unknown>>,
   sequence = terminal ? 5 : 6,
-  resultHash: `sha256:${string}` = hash("5")
+  resultHash: `sha256:${string}` = hash("7")
 ): Readonly<Record<string, unknown>> {
   const plan = Reflect.get(planEvent, "payload") as Readonly<Record<string, unknown>>;
   const payload = {

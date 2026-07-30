@@ -25,10 +25,7 @@ import {
   inspectMountedProviderAuthority,
   issueMountedProviderAuthority
 } from "../src/mounted-provider-authority.js";
-import {
-  createPortableMountedAgentArtifactStoreProducer,
-  preflightPortableMountedAgentHandoffBinding
-} from "../src/portable-mounted-agent-artifact-stores.js";
+import { createPortableMountedAgentArtifactStoreProducer } from "../src/portable-mounted-agent-artifact-stores.js";
 import * as residentLoopFactoryCompositionSurface from "../src/resident-loop-factory-composition.js";
 import type {
   ResidentLoopFactoryAuthorityReadback,
@@ -622,6 +619,18 @@ async function mountedFactoryFixture(
   });
   handles.push(handle);
   await handle.residentIdentity.ready();
+  const taskId = "task_factory_ports";
+  const attemptId = `attempt_${"a".repeat(64)}`;
+  const runId = "run_factory_ports";
+  const runType = "evidence-triage" as const;
+  const handoffLifecycle = Object.freeze({
+    taskId,
+    attemptId,
+    runId,
+    runType,
+    retryGeneration: 0
+  } as const);
+  await seedMountedFactoryClaim(handle, suffix, handoffLifecycle);
 
   const actor = { id: "agent_factory_ports", kind: "agent", label: "Factory ports" } as const;
   const supervisorEpoch = `epoch_factory_ports_${suffix}`;
@@ -662,27 +671,11 @@ async function mountedFactoryFixture(
   const operation = issueMountedArtifactAuthorityOperationForFactory(composition.wakeRuntime);
   const providerAuthority = issueMountedProviderAuthority(Object.freeze({ operation }));
   const handoff = await createPortableMountedAgentArtifactStoreProducer(operation).bind({
-    taskId: "task_factory_ports",
-    attemptId: "attempt_factory_ports",
-    approvedRunId: "run_factory_ports",
-    runType: "evidence-triage",
+    taskId,
+    attemptId,
+    approvedRunId: runId,
+    runType,
     retryGeneration: 0
-  });
-  const handoffLifecycle = Object.freeze({
-    taskId: "task_factory_ports",
-    attemptId: "attempt_factory_ports",
-    runId: "run_factory_ports",
-    runType: "evidence-triage",
-    retryGeneration: 0
-  } as const);
-  await preflightPortableMountedAgentHandoffBinding({
-    binding: handoff.binding,
-    controller: handoff.controller,
-    taskId: handoffLifecycle.taskId,
-    attemptId: handoffLifecycle.attemptId,
-    runId: handoffLifecycle.runId,
-    runType: handoffLifecycle.runType,
-    retryGeneration: handoffLifecycle.retryGeneration
   });
   const authorityReadback = await composition.bind(Object.freeze({
     providerAuthority,
@@ -696,9 +689,9 @@ async function mountedFactoryFixture(
     workspaceId: providerReadback.workspaceId,
     mountInstanceId: providerReadback.mountInstanceId,
     admissionGenerationId: providerReadback.admissionGenerationId,
-    taskId: "task_factory_ports",
-    attemptId: "attempt_factory_ports",
-    runId: "run_factory_ports",
+    taskId,
+    attemptId,
+    runId,
     promptArtifactHash: hash("c"),
     approvalPreviewHash: hash("d"),
     policyVersion: providerReadback.policyVersion,
@@ -714,7 +707,7 @@ async function mountedFactoryFixture(
       kind: "legacy-staging",
       workspaceId,
       residentAgentId: "agent_default",
-      taskId: "task_factory_ports",
+      taskId,
       context: Object.freeze({
         runtime: connectedRuntime.runtime,
         ledger: handle.ledger,
@@ -779,6 +772,114 @@ async function mountedFactoryFixture(
       connectedRuntime.runtime
     ])
   };
+}
+
+async function seedMountedFactoryClaim(
+  handle: LocalRuntimeHandle,
+  suffix: string,
+  binding: Readonly<{
+    readonly taskId: string;
+    readonly attemptId: string;
+    readonly runId: string;
+    readonly runType: "evidence-triage";
+  }>
+): Promise<void> {
+  const { taskId, attemptId, runType } = binding;
+  const occurredAt = "2026-07-19T00:00:00.000Z";
+  const actor = {
+    id: "agent_default",
+    kind: "agent" as const,
+    label: "Resident agent"
+  };
+  const identity = (await handle.ledger.readAll()).find(
+    (event) => event.type === "agent.identity.initialized"
+  );
+  if (identity === undefined) {
+    throw new Error("factory fixture resident identity is required");
+  }
+  const taskCreated = await handle.ledger.append({
+    type: "agent.task.created",
+    version: 1,
+    streamId: `agent_task_${taskId}`,
+    context: {
+      actor,
+      occurredAt,
+      causationId: identity.id,
+      correlationId: `corr_${taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      residentAgentId: "agent_default",
+      title: "Factory ports",
+      requestedBy: "agent_default",
+      priority: "normal",
+      sourceEventIds: [identity.id],
+      inputArtifactHashes: []
+    }
+  });
+  const taskQueued = await handle.ledger.append({
+    type: "agent.task.status.changed",
+    version: 1,
+    streamId: `agent_task_${taskId}`,
+    context: {
+      actor,
+      occurredAt,
+      causationId: taskCreated.id,
+      correlationId: `corr_${taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      status: "queued",
+      changedBy: "agent_default"
+    }
+  });
+  const claim = await handle.ledger.append({
+    type: "agent.task.orchestration.claimed",
+    version: 1,
+    streamId: `agent_task_orchestration_${taskId}_${runType}`,
+    context: {
+      actor,
+      occurredAt,
+      causationId: taskQueued.id,
+      correlationId: `corr_${taskId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      runType,
+      attemptId,
+      retryGeneration: 0,
+      leaseClaimGeneration: 1,
+      workerId: "agent_default",
+      claimedAt: occurredAt,
+      leaseExpiresAt: "2026-07-19T01:00:00.000Z",
+      idempotencyKey: `claim_factory_ports_${suffix}`,
+      selectedOrderingPosition: {
+        priorityRank: 0,
+        queuedAt: occurredAt,
+        taskId,
+        runType,
+        retryGeneration: 0
+      },
+      activeBudgetSnapshot: {
+        maxProviderInvocations: 1,
+        remainingProviderInvocations: 1,
+        contextByteBudget: 32_768,
+        promptByteBudget: 32_768,
+        derivativeArtifactByteBudget: 65_536,
+        wallClockBudgetMs: 120_000
+      },
+      causationEventId: taskQueued.id
+    }
+  });
+  if (claim.type !== "agent.task.orchestration.claimed") {
+    throw new Error("factory fixture orchestration claim is required");
+  }
 }
 
 function connectedLegacyRuntime(handle: LocalRuntimeHandle): {
